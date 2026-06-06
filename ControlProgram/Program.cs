@@ -22504,7 +22504,8 @@ internal sealed class TickCoordinator(
                     ack.DopamineRewardDiagnostics,
                     ack.SeptohippocampalThetaDiagnostics,
                     ack.SpinalProprioceptiveDiagnostics,
-                    ack.OlfactoryLimbicMemoryDiagnostics);
+                    ack.OlfactoryLimbicMemoryDiagnostics,
+                    ack.AuditoryLanguageMotorDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -24584,24 +24585,26 @@ internal sealed class TickCoordinator(
                 AverageDopamineRewardDiagnostics(members),
                 AverageSeptohippocampalThetaDiagnostics(members),
                 AverageSpinalProprioceptiveDiagnostics(members),
-                AverageOlfactoryLimbicMemoryDiagnostics(members)));
+                AverageOlfactoryLimbicMemoryDiagnostics(members),
+                AverageAuditoryLanguageMotorDiagnostics(members)));
         }
 
-        return EnrichOlfactoryLimbicMemoryDiagnostics(
-            EnrichSpinalProprioceptiveDiagnostics(
-                EnrichSeptohippocampalThetaDiagnostics(
-                    EnrichDopamineRewardDiagnostics(
-                        EnrichDescendingDefenseDiagnostics(
-                            EnrichSleepWakeArousalDiagnostics(
-                                EnrichHypothalamicHomeostasisDiagnostics(
-                                    EnrichThalamicAttentionGateDiagnostics(
-                                        EnrichPrefrontalWorkingMemoryDiagnostics(
-                                            EnrichSalienceAffectDiagnostics(
-                                                EnrichHippocampalSpatialMemoryDiagnostics(
-                                                    EnrichSuperiorColliculusOrientingDiagnostics(
-                                                        EnrichVestibuloReticularPostureDiagnostics(
-                                                            EnrichCerebellarCorrectionDiagnostics(
-                                                                EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+        return EnrichAuditoryLanguageMotorDiagnostics(
+            EnrichOlfactoryLimbicMemoryDiagnostics(
+                EnrichSpinalProprioceptiveDiagnostics(
+                    EnrichSeptohippocampalThetaDiagnostics(
+                        EnrichDopamineRewardDiagnostics(
+                            EnrichDescendingDefenseDiagnostics(
+                                EnrichSleepWakeArousalDiagnostics(
+                                    EnrichHypothalamicHomeostasisDiagnostics(
+                                        EnrichThalamicAttentionGateDiagnostics(
+                                            EnrichPrefrontalWorkingMemoryDiagnostics(
+                                                EnrichSalienceAffectDiagnostics(
+                                                    EnrichHippocampalSpatialMemoryDiagnostics(
+                                                        EnrichSuperiorColliculusOrientingDiagnostics(
+                                                            EnrichVestibuloReticularPostureDiagnostics(
+                                                                EnrichCerebellarCorrectionDiagnostics(
+                                                                    EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -24666,7 +24669,8 @@ internal sealed class TickCoordinator(
                 snapshot.DopamineRewardDiagnostics,
                 snapshot.SeptohippocampalThetaDiagnostics,
                 snapshot.SpinalProprioceptiveDiagnostics,
-                snapshot.OlfactoryLimbicMemoryDiagnostics));
+                snapshot.OlfactoryLimbicMemoryDiagnostics,
+                snapshot.AuditoryLanguageMotorDiagnostics));
         }
 
         return merged;
@@ -26747,6 +26751,160 @@ internal sealed class TickCoordinator(
         if (familiarity > 0.08f)
         {
             return "Familiarity";
+        }
+
+        if (coherence > 0.08f)
+        {
+            return "Integrated";
+        }
+
+        return "Quiet";
+    }
+
+    private static AuditoryLanguageMotorDiagnostics? AverageAuditoryLanguageMotorDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.AuditoryLanguageMotorDiagnostics)
+            .Where(m => m != null)
+            .Cast<AuditoryLanguageMotorDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var a1 = (float)diagnostics.Average(d => d.A1AuditoryDrive);
+        var wernicke = (float)diagnostics.Average(d => d.WernickeComprehension);
+        var arcuate = (float)diagnostics.Average(d => d.ArcuatePhonologicalRelay);
+        var broca = (float)diagnostics.Average(d => d.BrocaSpeechSequence);
+        var premotor = (float)diagnostics.Average(d => d.PremotorArticulationPlan);
+        var m1 = (float)diagnostics.Average(d => d.M1SpeechMotorCommand);
+        var basalGate = (float)diagnostics.Average(d => d.BasalGangliaSpeechGate);
+        var motorThalamic = (float)diagnostics.Average(d => d.MotorThalamicRelay);
+        var coherence = (float)diagnostics.Average(d => d.LanguageMotorCoherence);
+
+        return new AuditoryLanguageMotorDiagnostics(
+            SelectAuditoryLanguageMotorMode(a1, wernicke, arcuate, broca, premotor, m1, basalGate, motorThalamic, coherence),
+            a1,
+            wernicke,
+            arcuate,
+            broca,
+            premotor,
+            m1,
+            basalGate,
+            motorThalamic,
+            coherence);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichAuditoryLanguageMotorDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var acetylcholine = byId.TryGetValue(StructureId.A1, out var a1Snapshot)
+            ? a1Snapshot.NeuromodLocal.AcetylcholineLevel
+            : 0f;
+        var dopamine = byId.TryGetValue(StructureId.Striatum, out var striatalSnapshot)
+            ? striatalSnapshot.NeuromodLocal.DopamineLevel
+            : 0f;
+        var achGain = 0.85f + (Math.Clamp(acetylcholine, 0f, 1f) * 0.35f);
+        var dopamineGain = 0.85f + (Math.Clamp(dopamine, 0f, 1f) * 0.30f);
+        var a1 = GetRate(byId, StructureId.A1) * achGain;
+        var wernicke = GetRate(byId, StructureId.WernickePstgPsts) * achGain;
+        var arcuate = GetRate(byId, StructureId.ArcuateFasciculus);
+        var broca = GetRate(byId, StructureId.BrocaBa44Ba45);
+        var premotor = GetRate(byId, StructureId.PremotorCortex);
+        var m1 = GetRate(byId, StructureId.M1);
+        var basalGate =
+            (GetRate(byId, StructureId.Striatum) * dopamineGain) +
+            (GetRate(byId, StructureId.GPi) * 0.55f) +
+            (GetRate(byId, StructureId.Snr) * 0.55f);
+        var motorThalamic =
+            (GetRate(byId, StructureId.MotorThalamus) * achGain) +
+            (GetRate(byId, StructureId.Thalamus) * achGain * 0.35f);
+        var coherence = Math.Clamp(
+            (a1 * 0.14f) +
+            (wernicke * 0.17f) +
+            (arcuate * 0.16f) +
+            (broca * 0.18f) +
+            (premotor * 0.16f) +
+            (m1 * 0.14f) +
+            (basalGate * 0.12f) +
+            (motorThalamic * 0.13f),
+            0f,
+            120f);
+        var composite = new AuditoryLanguageMotorDiagnostics(
+            SelectAuditoryLanguageMotorMode(a1, wernicke, arcuate, broca, premotor, m1, basalGate, motorThalamic, coherence),
+            a1,
+            wernicke,
+            arcuate,
+            broca,
+            premotor,
+            m1,
+            basalGate,
+            motorThalamic,
+            coherence);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesAuditoryLanguageMotorComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { AuditoryLanguageMotorDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesAuditoryLanguageMotorComposite(StructureId structureId)
+        => structureId is StructureId.A1
+            or StructureId.WernickePstgPsts
+            or StructureId.ArcuateFasciculus
+            or StructureId.BrocaBa44Ba45
+            or StructureId.PremotorCortex
+            or StructureId.M1
+            or StructureId.Striatum
+            or StructureId.GPi
+            or StructureId.Snr
+            or StructureId.Thalamus
+            or StructureId.MotorThalamus;
+
+    private static string SelectAuditoryLanguageMotorMode(float a1, float wernicke, float arcuate, float broca, float premotor, float m1, float basalGate, float motorThalamic, float coherence)
+    {
+        if (a1 > Math.Max(0.10f, wernicke * 0.75f) && wernicke > 0.04f)
+        {
+            return "AuditoryParsing";
+        }
+
+        if (wernicke > Math.Max(0.10f, broca * 0.75f))
+        {
+            return "Comprehending";
+        }
+
+        if (arcuate > Math.Max(0.08f, broca * 0.55f))
+        {
+            return "PhonologicalRelay";
+        }
+
+        if (broca > Math.Max(0.10f, premotor * 0.75f))
+        {
+            return "SpeechSequencing";
+        }
+
+        if ((premotor + m1) > Math.Max(0.12f, broca * 0.85f))
+        {
+            return "Articulating";
+        }
+
+        if ((basalGate + motorThalamic) > Math.Max(0.12f, premotor * 0.65f))
+        {
+            return "ActionGated";
         }
 
         if (coherence > 0.08f)
@@ -35889,7 +36047,8 @@ internal sealed record InstanceStructureSnapshot(
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
-    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

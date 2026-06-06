@@ -182,7 +182,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(tickSignal.GlobalNeuromodState);
 			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(tickSignal.GlobalNeuromodState);
 			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory);
+			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor);
 			return ValueTask.FromResult(result);
 		}
 	}
@@ -2156,6 +2157,138 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		if (familiarity > 0.08f)
 		{
 			return "Familiarity";
+		}
+
+		if (coherence > 0.08f)
+		{
+			return "Integrated";
+		}
+
+		return "Quiet";
+	}
+
+	private AuditoryLanguageMotorDiagnostics? BuildAuditoryLanguageMotorDiagnostics(NeuromodState neuromod)
+	{
+		if (!IsAuditoryLanguageMotorDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var a1 = 0f;
+		var wernicke = 0f;
+		var arcuate = 0f;
+		var broca = 0f;
+		var premotor = 0f;
+		var m1 = 0f;
+		var basalGate = 0f;
+		var motorThalamic = 0f;
+		var achGain = 0.85f + (Math.Clamp(neuromod.AcetylcholineLevel, 0f, 1f) * 0.35f);
+		var dopamineGain = 0.85f + (Math.Clamp(neuromod.DopamineLevel, 0f, 1f) * 0.30f);
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.A1:
+			a1 = mean * achGain;
+			break;
+		case StructureId.WernickePstgPsts:
+			wernicke = mean * achGain;
+			break;
+		case StructureId.ArcuateFasciculus:
+			arcuate = mean;
+			break;
+		case StructureId.BrocaBa44Ba45:
+			broca = mean;
+			break;
+		case StructureId.PremotorCortex:
+			premotor = mean;
+			break;
+		case StructureId.M1:
+			m1 = mean;
+			break;
+		case StructureId.Striatum:
+			basalGate = mean * dopamineGain;
+			break;
+		case StructureId.GPi:
+		case StructureId.Snr:
+			basalGate = mean * 0.55f;
+			break;
+		case StructureId.Thalamus:
+			motorThalamic = mean * achGain * 0.35f;
+			break;
+		case StructureId.MotorThalamus:
+			motorThalamic = mean * achGain;
+			break;
+		}
+
+		var coherence = Math.Clamp(
+			(a1 * 0.14f) +
+			(wernicke * 0.17f) +
+			(arcuate * 0.16f) +
+			(broca * 0.18f) +
+			(premotor * 0.16f) +
+			(m1 * 0.14f) +
+			(basalGate * 0.12f) +
+			(motorThalamic * 0.13f),
+			0f,
+			120f);
+
+		return new AuditoryLanguageMotorDiagnostics(
+			SelectAuditoryLanguageMotorMode(a1, wernicke, arcuate, broca, premotor, m1, basalGate, motorThalamic, coherence),
+			a1,
+			wernicke,
+			arcuate,
+			broca,
+			premotor,
+			m1,
+			basalGate,
+			motorThalamic,
+			coherence);
+	}
+
+	private static bool IsAuditoryLanguageMotorDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.A1
+			or StructureId.WernickePstgPsts
+			or StructureId.ArcuateFasciculus
+			or StructureId.BrocaBa44Ba45
+			or StructureId.PremotorCortex
+			or StructureId.M1
+			or StructureId.Striatum
+			or StructureId.GPi
+			or StructureId.Snr
+			or StructureId.Thalamus
+			or StructureId.MotorThalamus;
+
+	private static string SelectAuditoryLanguageMotorMode(float a1, float wernicke, float arcuate, float broca, float premotor, float m1, float basalGate, float motorThalamic, float coherence)
+	{
+		if (a1 > Math.Max(0.10f, wernicke * 0.75f) && wernicke > 0.04f)
+		{
+			return "AuditoryParsing";
+		}
+
+		if (wernicke > Math.Max(0.10f, broca * 0.75f))
+		{
+			return "Comprehending";
+		}
+
+		if (arcuate > Math.Max(0.08f, broca * 0.55f))
+		{
+			return "PhonologicalRelay";
+		}
+
+		if (broca > Math.Max(0.10f, premotor * 0.75f))
+		{
+			return "SpeechSequencing";
+		}
+
+		if ((premotor + m1) > Math.Max(0.12f, broca * 0.85f))
+		{
+			return "Articulating";
+		}
+
+		if ((basalGate + motorThalamic) > Math.Max(0.12f, premotor * 0.65f))
+		{
+			return "ActionGated";
 		}
 
 		if (coherence > 0.08f)

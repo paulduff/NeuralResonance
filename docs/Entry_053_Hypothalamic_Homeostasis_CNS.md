@@ -37,4 +37,5 @@ Start the CNS-completion track by giving the avatar a named hypothalamic homeost
 - DONE: Added septal-hippocampal theta/navigation-memory diagnostics for medial septum proxy, hippocampal formation, entorhinal cortex, retrosplenial cortex, and vestibular/head-direction inputs.
 - DONE: Added spinal proprioceptive/reflex-loop diagnostics for spinal cord motor, S1, M1, cerebellar granule layer, vestibular nuclei, reticular formation, and thalamic relay.
 - DONE: Added olfactory-limbic/autobiographical memory diagnostics for olfactory bulb, temporal association/piriform proxy, amygdala, entorhinal cortex, hippocampal formation, OFC, and PFC.
-- Add auditory-language-motor integration diagnostics for A1, Wernicke pSTG/pSTS, arcuate fasciculus, Broca BA44/45, premotor cortex, M1, basal ganglia, and thalamic relay.
+- DONE: Added auditory-language-motor integration diagnostics for A1, Wernicke pSTG/pSTS, arcuate fasciculus, Broca BA44/45, premotor cortex, M1, basal ganglia, and thalamic relay.
+- Add visual-temporal-object recognition diagnostics for V1, V2, V4, MT, temporal association cortex, perirhinal cortex, PFC, and pulvinar/thalamic relay.

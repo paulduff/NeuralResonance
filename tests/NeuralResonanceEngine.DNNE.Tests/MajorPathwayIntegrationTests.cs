@@ -339,6 +339,23 @@ public sealed class MajorPathwayIntegrationTests
     }
 
     [Fact]
+    public async Task AuditoryLanguageMotorIntegration_Connectome_Uses_A1_Wernicke_Arcuate_Broca_Motor_BasalGanglia_And_Thalamic_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.A1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.A1, StructureId.WernickePstgPsts, "auditory_language_comprehension_feedforward"));
+        Assert.True(HasDirectConnection(rules, StructureId.WernickePstgPsts, StructureId.ArcuateFasciculus, "phonological_dorsal_stream"));
+        Assert.True(HasDirectConnection(rules, StructureId.ArcuateFasciculus, StructureId.BrocaBa44Ba45, "dorsal_language_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.BrocaBa44Ba45, StructureId.Sma, "speech_sequence_to_sma"));
+        Assert.True(HasDirectConnection(rules, StructureId.BrocaBa44Ba45, StructureId.M1, "speech_motor_output"));
+        Assert.True(HasDirectConnection(rules, StructureId.PremotorCortex, StructureId.M1, "premotor_motor_output"));
+        Assert.True(HasDirectConnection(rules, StructureId.PremotorCortex, StructureId.Striatum, "premotor_action_selection"));
+        Assert.True(HasDirectConnection(rules, StructureId.GPi, StructureId.MotorThalamus, "pallidothalamic_motor_inhibition"));
+        Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.PremotorCortex, "motor_thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.M1, "motor_thalamocortical_relay"));
+    }
+
+    [Fact]
     public async Task Limbic_Modulation_Amygdala_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();

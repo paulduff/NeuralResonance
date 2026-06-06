@@ -51,7 +51,8 @@ public sealed record TickAck(
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
-    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -244,6 +245,18 @@ public sealed record OlfactoryLimbicMemoryDiagnostics(
     float FamiliaritySignal,
     float AutobiographicalCoherence);
 
+public sealed record AuditoryLanguageMotorDiagnostics(
+    string LanguageMode,
+    float A1AuditoryDrive,
+    float WernickeComprehension,
+    float ArcuatePhonologicalRelay,
+    float BrocaSpeechSequence,
+    float PremotorArticulationPlan,
+    float M1SpeechMotorCommand,
+    float BasalGangliaSpeechGate,
+    float MotorThalamicRelay,
+    float LanguageMotorCoherence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -288,7 +301,8 @@ public sealed record StructureSnapshot(
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
-    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

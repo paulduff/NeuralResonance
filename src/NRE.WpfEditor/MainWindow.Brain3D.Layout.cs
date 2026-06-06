@@ -1499,7 +1499,8 @@ public partial class MainWindow
                     ParseDopamineRewardDiagnostics(state),
                     ParseSeptohippocampalThetaDiagnostics(state),
                     ParseSpinalProprioceptiveDiagnostics(state),
-                    ParseOlfactoryLimbicMemoryDiagnostics(state)));
+                    ParseOlfactoryLimbicMemoryDiagnostics(state),
+                    ParseAuditoryLanguageMotorDiagnostics(state)));
             }
         }
 
@@ -1948,6 +1949,32 @@ public partial class MainWindow
             GetSingle(diagnostics, "pfcAutobiographicalControl", "pfc_autobiographical_control"),
             GetSingle(diagnostics, "familiaritySignal", "familiarity_signal"),
             GetSingle(diagnostics, "autobiographicalCoherence", "autobiographical_coherence"));
+    }
+
+    private static AuditoryLanguageMotorTick? ParseAuditoryLanguageMotorDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "auditoryLanguageMotorDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "auditory_language_motor_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new AuditoryLanguageMotorTick(
+            GetString(diagnostics, "languageMode", "language_mode"),
+            GetSingle(diagnostics, "a1AuditoryDrive", "a1_auditory_drive"),
+            GetSingle(diagnostics, "wernickeComprehension", "wernicke_comprehension"),
+            GetSingle(diagnostics, "arcuatePhonologicalRelay", "arcuate_phonological_relay"),
+            GetSingle(diagnostics, "brocaSpeechSequence", "broca_speech_sequence"),
+            GetSingle(diagnostics, "premotorArticulationPlan", "premotor_articulation_plan"),
+            GetSingle(diagnostics, "m1SpeechMotorCommand", "m1_speech_motor_command"),
+            GetSingle(diagnostics, "basalGangliaSpeechGate", "basal_ganglia_speech_gate"),
+            GetSingle(diagnostics, "motorThalamicRelay", "motor_thalamic_relay"),
+            GetSingle(diagnostics, "languageMotorCoherence", "language_motor_coherence"));
     }
 
     private static Point3D RotateLocalPoint(Point3D p, double pitchDeg, double yawDeg, double rollDeg)

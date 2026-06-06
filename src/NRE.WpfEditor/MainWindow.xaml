@@ -840,17 +840,17 @@
                                         <Slider x:Name="NeuronBudgetSlider"
                                                 Grid.Column="0"
                                                 Minimum="24"
-                                                Maximum="40"
+                                                Maximum="48"
                                                 TickFrequency="1"
                                                 IsSnapToTickEnabled="True"
                                                 ValueChanged="NeuronBudgetSlider_OnValueChanged"
-                                                Value="30" />
+                                                Value="36" />
                                         <TextBlock x:Name="NeuronBudgetText"
                                                    Grid.Column="1"
                                                    Margin="8,0,0,0"
                                                    VerticalAlignment="Center"
                                                    Foreground="#C5D2F2"
-                                                   Text="display 30x30x30 (27000)" />
+                                                   Text="display 36x36x36 (46656)" />
                                     </Grid>
                                     <TextBlock Margin="0,12,0,4" Text="Min Awake Ticks" Foreground="#B9C8ED" />
                                     <Grid>

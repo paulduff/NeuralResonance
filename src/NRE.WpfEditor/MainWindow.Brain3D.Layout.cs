@@ -2032,7 +2032,7 @@ public partial class MainWindow
 
     private int GetTargetNeuronCountPerHemisphere(string structureId)
     {
-        const int corticalEngineMinimum = 256;
+        const int corticalEngineMinimum = 384;
         const int nonCorticalEngineMinimum = 112;
         const double fallbackMillions = 8.0;
         var counts = GetAdjustedDisplayNeuronWeightsMillions();
@@ -2043,8 +2043,8 @@ public partial class MainWindow
         var count = (int)Math.Round((estimate / total) * _displayNeuronsPerHemisphereBudget);
         if (IsCorticalSnapshotId(structureId))
         {
-            count = (int)Math.Round(count * 1.55);
-            var corticalMinimum = Math.Max(corticalEngineMinimum, _displayNeuronGridEdge * 2);
+            count = (int)Math.Round(count * 2.05);
+            var corticalMinimum = Math.Max(corticalEngineMinimum, _displayNeuronGridEdge * 4);
             return Math.Max(corticalMinimum, count);
         }
 
@@ -2153,7 +2153,7 @@ public partial class MainWindow
 
         var cerebellarTotal = counts.Where(kv => cerebellarIds.Contains(kv.Key)).Sum(kv => kv.Value);
         // Keep cerebellum visually present, but free additional point budget for cortical shell continuity.
-        var cerebellarCap = total * 0.18;
+        var cerebellarCap = total * 0.14;
         if (cerebellarTotal <= 0.0 || cerebellarTotal <= cerebellarCap)
         {
             return counts;
@@ -2200,7 +2200,7 @@ public partial class MainWindow
 
         var donorTotal = counts.Where(kv => subcorticalDonors.Contains(kv.Key)).Sum(kv => kv.Value);
         var recipientMantleTotal = counts.Where(kv => corticalRecipients.Contains(kv.Key)).Sum(kv => kv.Value);
-        const double transferFraction = 0.36;
+        const double transferFraction = 0.46;
         var transfer = donorTotal * transferFraction;
         if (donorTotal > 0.0 && recipientMantleTotal > 0.0 && transfer > 0.0)
         {

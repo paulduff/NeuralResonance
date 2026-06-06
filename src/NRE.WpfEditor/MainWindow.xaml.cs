@@ -92,8 +92,8 @@ public partial class MainWindow : Window
     private int _visualActivity;
     private static readonly TimeSpan ActiveRenderInterval = TimeSpan.FromMilliseconds(100.0);
     private static readonly TimeSpan IdleRenderInterval = TimeSpan.FromMilliseconds(250.0);
-    private int _displayNeuronGridEdge = 30;
-    private int _displayNeuronsPerHemisphereBudget = 30 * 30 * 30;
+    private int _displayNeuronGridEdge = 36;
+    private int _displayNeuronsPerHemisphereBudget = 36 * 36 * 36;
     private int _minWakeTicks = 220;
     private float _sleepPressureEnterThreshold = 0.68f;
     private string _lastRenderStatus = string.Empty;
@@ -279,16 +279,16 @@ public partial class MainWindow : Window
     private const int FrameStreamRequestedIntervalMs = 250;
     private const int FramePollMaxOutputLog = 40;
     private const int FramePollMaxSpikeLog = 40;
-    private const int FramePollMaxDispatchSpikes = 192;
+    private const int FramePollMaxDispatchSpikes = 512;
     private const int FrameStreamMaxOutputLog = 24;
     private const int FrameStreamMaxSpikeLog = 24;
-    private const int FrameStreamMaxDispatchSpikes = 192;
+    private const int FrameStreamMaxDispatchSpikes = 512;
     private const int ControlEndpointFailureThreshold = 10;
     private const int SpeechDefaultMinDispatchSpikes = 12;
     private const int WebcamReadFailureWarnThreshold = 30;
     private const int WebcamReadFailureReconnectThreshold = 250;
     private const int V1RouteRecoveryFailureThreshold = 3;
-    private const int MaxNeuronHighlightsPerStructurePerFrame = 384;
+    private const int MaxNeuronHighlightsPerStructurePerFrame = 768;
     private const int MaxPathwayActivationsPerFrame = 96;
     private const double MicrophoneUtterancePromoteRmsThreshold = 0.045;
     private const double MicrophoneUtterancePromoteZcrThreshold = 0.06;
@@ -1092,9 +1092,10 @@ public partial class MainWindow : Window
 
                 var spikeBrushes = new List<SolidColorBrush>();
                 var spikeBase = BoostSpikeColor(renderBaseColor);
-                var requestedSpikeCapacity = (int)Math.Round(displayLocalPoints.Count * 0.070);
+                var isCorticalDisplay = effectiveLayout == StructureLayout.CorticalSheet;
+                var requestedSpikeCapacity = (int)Math.Round(displayLocalPoints.Count * (isCorticalDisplay ? 0.115 : 0.070));
                 var spikeMarkerCapacity = renderStructure
-                    ? Math.Min(displayLocalPoints.Count, Math.Clamp(requestedSpikeCapacity, 48, 384))
+                    ? Math.Min(displayLocalPoints.Count, Math.Clamp(requestedSpikeCapacity, isCorticalDisplay ? 96 : 48, isCorticalDisplay ? 896 : 384))
                     : 0;
                 var spikeIndices = SelectSpikeNeuronIndices(displayLocalPoints, spikeMarkerCapacity, $"{def.SnapshotId}_{hemi}");
                 var spikeSurfaceLift = effectiveLayout == StructureLayout.CorticalSheet ? 0.020 : 0.007;

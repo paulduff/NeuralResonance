@@ -52,7 +52,8 @@ public sealed record TickAck(
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
-    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -257,6 +258,19 @@ public sealed record AuditoryLanguageMotorDiagnostics(
     float MotorThalamicRelay,
     float LanguageMotorCoherence);
 
+public sealed record VisualObjectRecognitionDiagnostics(
+    string RecognitionMode,
+    float V1EdgeDrive,
+    float V2ContourIntegration,
+    float V4ObjectFeatureBinding,
+    float MtMotionCue,
+    float TemporalObjectIdentity,
+    float PerirhinalFamiliarity,
+    float PulvinarVisualAttention,
+    float ThalamicRelayGain,
+    float PfcObjectContext,
+    float ObjectRecognitionCoherence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -302,7 +316,8 @@ public sealed record StructureSnapshot(
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
-    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

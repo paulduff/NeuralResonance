@@ -829,6 +829,12 @@
                                 "projectionType":  "prefrontal_premotor_preparation"
                             },
                             {
+                                "target":  "BrocaBa44Ba45",
+                                "synapseId":  "f369027b-169f-474e-94a9-4b24bfa7b75f",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "prefrontal_broca_speech_control"
+                            },
+                            {
                                 "target":  "PosteriorCingulate",
                                 "synapseId":  "197ebb8d-a521-4f93-a7a1-d7dcaca93552",
                                 "neurotransmitter":  "GLUTAMATE",

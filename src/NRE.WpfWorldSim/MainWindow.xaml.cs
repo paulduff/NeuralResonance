@@ -212,7 +212,7 @@ public partial class MainWindow : Window
     private readonly HttpClient _sensoryInputHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2200) });
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4200) });
     private readonly HttpClient _objectDispatchHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2500) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(

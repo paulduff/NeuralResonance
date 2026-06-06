@@ -1500,7 +1500,8 @@ public partial class MainWindow
                     ParseSeptohippocampalThetaDiagnostics(state),
                     ParseSpinalProprioceptiveDiagnostics(state),
                     ParseOlfactoryLimbicMemoryDiagnostics(state),
-                    ParseAuditoryLanguageMotorDiagnostics(state)));
+                    ParseAuditoryLanguageMotorDiagnostics(state),
+                    ParseVisualObjectRecognitionDiagnostics(state)));
             }
         }
 
@@ -1975,6 +1976,33 @@ public partial class MainWindow
             GetSingle(diagnostics, "basalGangliaSpeechGate", "basal_ganglia_speech_gate"),
             GetSingle(diagnostics, "motorThalamicRelay", "motor_thalamic_relay"),
             GetSingle(diagnostics, "languageMotorCoherence", "language_motor_coherence"));
+    }
+
+    private static VisualObjectRecognitionTick? ParseVisualObjectRecognitionDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "visualObjectRecognitionDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "visual_object_recognition_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new VisualObjectRecognitionTick(
+            GetString(diagnostics, "recognitionMode", "recognition_mode"),
+            GetSingle(diagnostics, "v1EdgeDrive", "v1_edge_drive"),
+            GetSingle(diagnostics, "v2ContourIntegration", "v2_contour_integration"),
+            GetSingle(diagnostics, "v4ObjectFeatureBinding", "v4_object_feature_binding"),
+            GetSingle(diagnostics, "mtMotionCue", "mt_motion_cue"),
+            GetSingle(diagnostics, "temporalObjectIdentity", "temporal_object_identity"),
+            GetSingle(diagnostics, "perirhinalFamiliarity", "perirhinal_familiarity"),
+            GetSingle(diagnostics, "pulvinarVisualAttention", "pulvinar_visual_attention"),
+            GetSingle(diagnostics, "thalamicRelayGain", "thalamic_relay_gain"),
+            GetSingle(diagnostics, "pfcObjectContext", "pfc_object_context"),
+            GetSingle(diagnostics, "objectRecognitionCoherence", "object_recognition_coherence"));
     }
 
     private static Point3D RotateLocalPoint(Point3D p, double pitchDeg, double yawDeg, double rollDeg)

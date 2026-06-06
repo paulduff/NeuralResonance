@@ -183,7 +183,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(tickSignal.GlobalNeuromodState);
 			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(tickSignal.GlobalNeuromodState);
 			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor);
+			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition);
 			return ValueTask.FromResult(result);
 		}
 	}
@@ -2289,6 +2290,140 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		if ((basalGate + motorThalamic) > Math.Max(0.12f, premotor * 0.65f))
 		{
 			return "ActionGated";
+		}
+
+		if (coherence > 0.08f)
+		{
+			return "Integrated";
+		}
+
+		return "Quiet";
+	}
+
+	private VisualObjectRecognitionDiagnostics? BuildVisualObjectRecognitionDiagnostics(NeuromodState neuromod)
+	{
+		if (!IsVisualObjectRecognitionDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var v1 = 0f;
+		var v2 = 0f;
+		var v4 = 0f;
+		var mt = 0f;
+		var temporal = 0f;
+		var perirhinal = 0f;
+		var pulvinar = 0f;
+		var thalamic = 0f;
+		var pfc = 0f;
+		var achGain = 0.85f + (Math.Clamp(neuromod.AcetylcholineLevel, 0f, 1f) * 0.35f);
+		var neGain = 0.90f + (Math.Clamp(neuromod.NorepinephrineLevel, 0f, 1f) * 0.25f);
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.V1:
+			v1 = mean * achGain;
+			break;
+		case StructureId.V2:
+			v2 = mean;
+			break;
+		case StructureId.V4:
+			v4 = mean;
+			break;
+		case StructureId.Mt:
+			mt = mean;
+			break;
+		case StructureId.TemporalAssociation:
+			temporal = mean;
+			break;
+		case StructureId.PerirhinalCortex:
+			perirhinal = mean;
+			break;
+		case StructureId.Pulvinar:
+			pulvinar = mean * neGain;
+			break;
+		case StructureId.Thalamus:
+			thalamic = mean * achGain;
+			break;
+		case StructureId.Pfc:
+			pfc = mean;
+			break;
+		}
+
+		var coherence = Math.Clamp(
+			(v1 * 0.13f) +
+			(v2 * 0.14f) +
+			(v4 * 0.18f) +
+			(mt * 0.10f) +
+			(temporal * 0.18f) +
+			(perirhinal * 0.16f) +
+			(pulvinar * 0.14f) +
+			(thalamic * 0.10f) +
+			(pfc * 0.14f),
+			0f,
+			120f);
+
+		return new VisualObjectRecognitionDiagnostics(
+			SelectVisualObjectRecognitionMode(v1, v2, v4, mt, temporal, perirhinal, pulvinar, thalamic, pfc, coherence),
+			v1,
+			v2,
+			v4,
+			mt,
+			temporal,
+			perirhinal,
+			pulvinar,
+			thalamic,
+			pfc,
+			coherence);
+	}
+
+	private static bool IsVisualObjectRecognitionDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.V1
+			or StructureId.V2
+			or StructureId.V4
+			or StructureId.Mt
+			or StructureId.TemporalAssociation
+			or StructureId.PerirhinalCortex
+			or StructureId.Pulvinar
+			or StructureId.Thalamus
+			or StructureId.Pfc;
+
+	private static string SelectVisualObjectRecognitionMode(float v1, float v2, float v4, float mt, float temporal, float perirhinal, float pulvinar, float thalamic, float pfc, float coherence)
+	{
+		if (v1 > Math.Max(0.10f, v2 * 0.75f))
+		{
+			return "EdgeEncoding";
+		}
+
+		if ((v2 + v4) > Math.Max(0.12f, temporal * 0.75f))
+		{
+			return "FeatureBinding";
+		}
+
+		if (mt > Math.Max(0.08f, v4 * 0.55f))
+		{
+			return "MotionCueing";
+		}
+
+		if (temporal > Math.Max(0.10f, perirhinal * 0.80f))
+		{
+			return "ObjectIdentity";
+		}
+
+		if (perirhinal > Math.Max(0.10f, temporal * 0.70f))
+		{
+			return "Familiarity";
+		}
+
+		if ((pulvinar + thalamic) > Math.Max(0.12f, v4 * 0.65f))
+		{
+			return "AttendedRelay";
+		}
+
+		if (pfc > Math.Max(0.10f, temporal * 0.65f))
+		{
+			return "ContextualControl";
 		}
 
 		if (coherence > 0.08f)

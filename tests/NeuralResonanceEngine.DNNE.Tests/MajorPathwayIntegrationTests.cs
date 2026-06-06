@@ -346,6 +346,7 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.A1, StructureId.WernickePstgPsts, "auditory_language_comprehension_feedforward"));
         Assert.True(HasDirectConnection(rules, StructureId.WernickePstgPsts, StructureId.ArcuateFasciculus, "phonological_dorsal_stream"));
         Assert.True(HasDirectConnection(rules, StructureId.ArcuateFasciculus, StructureId.BrocaBa44Ba45, "dorsal_language_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.BrocaBa44Ba45, "prefrontal_broca_speech_control"));
         Assert.True(HasDirectConnection(rules, StructureId.BrocaBa44Ba45, StructureId.Sma, "speech_sequence_to_sma"));
         Assert.True(HasDirectConnection(rules, StructureId.BrocaBa44Ba45, StructureId.M1, "speech_motor_output"));
         Assert.True(HasDirectConnection(rules, StructureId.PremotorCortex, StructureId.M1, "premotor_motor_output"));
@@ -353,6 +354,22 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.GPi, StructureId.MotorThalamus, "pallidothalamic_motor_inhibition"));
         Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.PremotorCortex, "motor_thalamocortical_relay"));
         Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.M1, "motor_thalamocortical_relay"));
+    }
+
+    [Fact]
+    public async Task VisualTemporalObjectRecognition_Connectome_Uses_V1_V2_V4_Mt_Temporal_Perirhinal_Pfc_And_Pulvinar_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.V1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.V1, StructureId.V2, "visual_secondary_feedforward"));
+        Assert.True(HasDirectConnection(rules, StructureId.V2, StructureId.V4, "visual_ventral_progression"));
+        Assert.True(HasDirectConnection(rules, StructureId.V2, StructureId.Mt, "visual_dorsal_motion"));
+        Assert.True(HasDirectConnection(rules, StructureId.V4, StructureId.TemporalAssociation, "object_feature_integration"));
+        Assert.True(HasDirectConnection(rules, StructureId.V4, StructureId.PerirhinalCortex, "object_familiarity_stream"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.Pfc, "semantic_to_control"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.PerirhinalCortex, "semantic_to_familiarity"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pulvinar, StructureId.TemporalAssociation, "pulvinar_temporal_integration"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pulvinar, StructureId.V1, "pulvinar_visual_feedback"));
     }
 
     [Fact]

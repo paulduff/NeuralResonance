@@ -1123,7 +1123,7 @@ app.MapPost("/api/v1/admin/input/auditory", async (
     var timestampMs = state.SimulationClockMs;
     var neuromod = state.GlobalNeuromodState;
     var initialDispatch = await DispatchStimulusToInstancesAsync(
-        targetInstances,
+        liveTargetInstances,
         instance =>
         {
             var hemisphere = instance.HemisphereNormalized;
@@ -22505,7 +22505,8 @@ internal sealed class TickCoordinator(
                     ack.SeptohippocampalThetaDiagnostics,
                     ack.SpinalProprioceptiveDiagnostics,
                     ack.OlfactoryLimbicMemoryDiagnostics,
-                    ack.AuditoryLanguageMotorDiagnostics);
+                    ack.AuditoryLanguageMotorDiagnostics,
+                    ack.VisualObjectRecognitionDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -24586,25 +24587,27 @@ internal sealed class TickCoordinator(
                 AverageSeptohippocampalThetaDiagnostics(members),
                 AverageSpinalProprioceptiveDiagnostics(members),
                 AverageOlfactoryLimbicMemoryDiagnostics(members),
-                AverageAuditoryLanguageMotorDiagnostics(members)));
+                AverageAuditoryLanguageMotorDiagnostics(members),
+                AverageVisualObjectRecognitionDiagnostics(members)));
         }
 
-        return EnrichAuditoryLanguageMotorDiagnostics(
-            EnrichOlfactoryLimbicMemoryDiagnostics(
-                EnrichSpinalProprioceptiveDiagnostics(
-                    EnrichSeptohippocampalThetaDiagnostics(
-                        EnrichDopamineRewardDiagnostics(
-                            EnrichDescendingDefenseDiagnostics(
-                                EnrichSleepWakeArousalDiagnostics(
-                                    EnrichHypothalamicHomeostasisDiagnostics(
-                                        EnrichThalamicAttentionGateDiagnostics(
-                                            EnrichPrefrontalWorkingMemoryDiagnostics(
-                                                EnrichSalienceAffectDiagnostics(
-                                                    EnrichHippocampalSpatialMemoryDiagnostics(
-                                                        EnrichSuperiorColliculusOrientingDiagnostics(
-                                                            EnrichVestibuloReticularPostureDiagnostics(
-                                                                EnrichCerebellarCorrectionDiagnostics(
-                                                                    EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+        return EnrichVisualObjectRecognitionDiagnostics(
+            EnrichAuditoryLanguageMotorDiagnostics(
+                EnrichOlfactoryLimbicMemoryDiagnostics(
+                    EnrichSpinalProprioceptiveDiagnostics(
+                        EnrichSeptohippocampalThetaDiagnostics(
+                            EnrichDopamineRewardDiagnostics(
+                                EnrichDescendingDefenseDiagnostics(
+                                    EnrichSleepWakeArousalDiagnostics(
+                                        EnrichHypothalamicHomeostasisDiagnostics(
+                                            EnrichThalamicAttentionGateDiagnostics(
+                                                EnrichPrefrontalWorkingMemoryDiagnostics(
+                                                    EnrichSalienceAffectDiagnostics(
+                                                        EnrichHippocampalSpatialMemoryDiagnostics(
+                                                            EnrichSuperiorColliculusOrientingDiagnostics(
+                                                                EnrichVestibuloReticularPostureDiagnostics(
+                                                                    EnrichCerebellarCorrectionDiagnostics(
+                                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -24670,7 +24673,8 @@ internal sealed class TickCoordinator(
                 snapshot.SeptohippocampalThetaDiagnostics,
                 snapshot.SpinalProprioceptiveDiagnostics,
                 snapshot.OlfactoryLimbicMemoryDiagnostics,
-                snapshot.AuditoryLanguageMotorDiagnostics));
+                snapshot.AuditoryLanguageMotorDiagnostics,
+                snapshot.VisualObjectRecognitionDiagnostics));
         }
 
         return merged;
@@ -26905,6 +26909,165 @@ internal sealed class TickCoordinator(
         if ((basalGate + motorThalamic) > Math.Max(0.12f, premotor * 0.65f))
         {
             return "ActionGated";
+        }
+
+        if (coherence > 0.08f)
+        {
+            return "Integrated";
+        }
+
+        return "Quiet";
+    }
+
+    private static VisualObjectRecognitionDiagnostics? AverageVisualObjectRecognitionDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.VisualObjectRecognitionDiagnostics)
+            .Where(m => m != null)
+            .Cast<VisualObjectRecognitionDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var v1 = (float)diagnostics.Average(d => d.V1EdgeDrive);
+        var v2 = (float)diagnostics.Average(d => d.V2ContourIntegration);
+        var v4 = (float)diagnostics.Average(d => d.V4ObjectFeatureBinding);
+        var mt = (float)diagnostics.Average(d => d.MtMotionCue);
+        var temporal = (float)diagnostics.Average(d => d.TemporalObjectIdentity);
+        var perirhinal = (float)diagnostics.Average(d => d.PerirhinalFamiliarity);
+        var pulvinar = (float)diagnostics.Average(d => d.PulvinarVisualAttention);
+        var thalamic = (float)diagnostics.Average(d => d.ThalamicRelayGain);
+        var pfc = (float)diagnostics.Average(d => d.PfcObjectContext);
+        var coherence = (float)diagnostics.Average(d => d.ObjectRecognitionCoherence);
+
+        return new VisualObjectRecognitionDiagnostics(
+            SelectVisualObjectRecognitionMode(v1, v2, v4, mt, temporal, perirhinal, pulvinar, thalamic, pfc, coherence),
+            v1,
+            v2,
+            v4,
+            mt,
+            temporal,
+            perirhinal,
+            pulvinar,
+            thalamic,
+            pfc,
+            coherence);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichVisualObjectRecognitionDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var acetylcholine = byId.TryGetValue(StructureId.V1, out var v1Snapshot)
+            ? v1Snapshot.NeuromodLocal.AcetylcholineLevel
+            : byId.TryGetValue(StructureId.Thalamus, out var thalamusSnapshot)
+                ? thalamusSnapshot.NeuromodLocal.AcetylcholineLevel
+                : 0f;
+        var norepinephrine = byId.TryGetValue(StructureId.Pulvinar, out var pulvinarSnapshot)
+            ? pulvinarSnapshot.NeuromodLocal.NorepinephrineLevel
+            : 0f;
+        var achGain = 0.85f + (Math.Clamp(acetylcholine, 0f, 1f) * 0.35f);
+        var neGain = 0.90f + (Math.Clamp(norepinephrine, 0f, 1f) * 0.25f);
+        var v1 = GetRate(byId, StructureId.V1) * achGain;
+        var v2 = GetRate(byId, StructureId.V2) + (v1 * 0.18f);
+        var v4 = GetRate(byId, StructureId.V4) + (v2 * 0.20f);
+        var mt = GetRate(byId, StructureId.Mt) + (v2 * 0.12f);
+        var temporal = GetRate(byId, StructureId.TemporalAssociation) + (v4 * 0.24f);
+        var perirhinal = GetRate(byId, StructureId.PerirhinalCortex) + (temporal * 0.18f);
+        var pulvinar = GetRate(byId, StructureId.Pulvinar) * neGain;
+        var thalamic = GetRate(byId, StructureId.Thalamus) * achGain;
+        var pfc = GetRate(byId, StructureId.Pfc) + (temporal * 0.12f) + (perirhinal * 0.08f);
+        var coherence = Math.Clamp(
+            (v1 * 0.13f) +
+            (v2 * 0.14f) +
+            (v4 * 0.18f) +
+            (mt * 0.10f) +
+            (temporal * 0.18f) +
+            (perirhinal * 0.16f) +
+            (pulvinar * 0.14f) +
+            (thalamic * 0.10f) +
+            (pfc * 0.14f),
+            0f,
+            120f);
+        var composite = new VisualObjectRecognitionDiagnostics(
+            SelectVisualObjectRecognitionMode(v1, v2, v4, mt, temporal, perirhinal, pulvinar, thalamic, pfc, coherence),
+            v1,
+            v2,
+            v4,
+            mt,
+            temporal,
+            perirhinal,
+            pulvinar,
+            thalamic,
+            pfc,
+            coherence);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesVisualObjectRecognitionComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { VisualObjectRecognitionDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesVisualObjectRecognitionComposite(StructureId structureId)
+        => structureId is StructureId.V1
+            or StructureId.V2
+            or StructureId.V4
+            or StructureId.Mt
+            or StructureId.TemporalAssociation
+            or StructureId.PerirhinalCortex
+            or StructureId.Pulvinar
+            or StructureId.Thalamus
+            or StructureId.Pfc;
+
+    private static string SelectVisualObjectRecognitionMode(float v1, float v2, float v4, float mt, float temporal, float perirhinal, float pulvinar, float thalamic, float pfc, float coherence)
+    {
+        if (v1 > Math.Max(0.10f, v2 * 0.75f))
+        {
+            return "EdgeEncoding";
+        }
+
+        if ((v2 + v4) > Math.Max(0.12f, temporal * 0.75f))
+        {
+            return "FeatureBinding";
+        }
+
+        if (mt > Math.Max(0.08f, v4 * 0.55f))
+        {
+            return "MotionCueing";
+        }
+
+        if (temporal > Math.Max(0.10f, perirhinal * 0.80f))
+        {
+            return "ObjectIdentity";
+        }
+
+        if (perirhinal > Math.Max(0.10f, temporal * 0.70f))
+        {
+            return "Familiarity";
+        }
+
+        if ((pulvinar + thalamic) > Math.Max(0.12f, v4 * 0.65f))
+        {
+            return "AttendedRelay";
+        }
+
+        if (pfc > Math.Max(0.10f, temporal * 0.65f))
+        {
+            return "ContextualControl";
         }
 
         if (coherence > 0.08f)
@@ -36048,7 +36211,8 @@ internal sealed record InstanceStructureSnapshot(
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
-    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null);
+    AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

@@ -214,7 +214,7 @@ public partial class MainWindow : Window
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4200) });
     private readonly HttpClient _objectDispatchHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2500) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(7500) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
     private readonly HttpClient _objectMemoryHttpClient = NreHttpClientFactory.Create(

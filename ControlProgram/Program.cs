@@ -18608,6 +18608,8 @@ internal sealed class SimulationState
             var noRouteCount = 0;
             var registeredDisconnectedCount = 0;
             var connectomeWithoutServiceCount = 0;
+            var warningCount = 0;
+            var noticeCount = 0;
             var okCount = 0;
 
             foreach (var structure in structures.OrderBy(s => s.ToString(), StringComparer.OrdinalIgnoreCase))
@@ -18715,16 +18717,26 @@ internal sealed class SimulationState
                 }
                 else
                 {
+                    var severity = ResolveCircuitAuditSeverity(
+                        receivesInputNoOutput,
+                        registeredDisconnected,
+                        connectomeWithoutService,
+                        !IsHealthyServiceStatus(serviceStatus),
+                        neverSpiked,
+                        silent);
+                    if (severity.Equals("warn", StringComparison.OrdinalIgnoreCase))
+                    {
+                        warningCount++;
+                    }
+                    else if (severity.Equals("info", StringComparison.OrdinalIgnoreCase))
+                    {
+                        noticeCount++;
+                    }
+
                     warnings.Add(new
                     {
                         Structure = structure.ToString(),
-                        Severity = ResolveCircuitAuditSeverity(
-                            receivesInputNoOutput,
-                            registeredDisconnected,
-                            connectomeWithoutService,
-                            !IsHealthyServiceStatus(serviceStatus),
-                            neverSpiked,
-                            silent),
+                        Severity = severity,
                         Issues = issueList.ToArray(),
                         RecentInputSpikes = inboundSpikes,
                         RecentOutputSpikes = outboundSpikes,
@@ -18782,7 +18794,8 @@ internal sealed class SimulationState
                     RecentWindowTicks = recentWindowTicks,
                     StructureCount = structures.Count,
                     OkCount = okCount,
-                    WarningCount = warnings.Count,
+                    WarningCount = warningCount,
+                    NoticeCount = noticeCount,
                     SilentCount = silentCount,
                     DisconnectedCount = disconnectedCount,
                     ReceivesInputNoOutputCount = receivesInputNoOutputCount,

@@ -126,11 +126,12 @@ internal sealed class StructureCircuitProfile
 		case StructureId.VentralPallidum:
 		case StructureId.Habenula:
 			return (224, 0.90, 1.24, 0.82, 0.86, 13, 192);
+		case StructureId.BasalForebrain:
+			return (160, 1.00, 1.04, 1.02, 0.94, 11, 160);
 		case StructureId.Snc:
 		case StructureId.Vta:
 		case StructureId.LocusCoeruleus:
 		case StructureId.RapheNuclei:
-		case StructureId.BasalForebrain:
 			return (160, 0.86, 1.18, 0.74, 0.92, 11, 160);
 		case StructureId.Pons:
 		case StructureId.Medulla:

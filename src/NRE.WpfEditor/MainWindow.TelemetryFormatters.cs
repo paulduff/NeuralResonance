@@ -547,7 +547,7 @@ public partial class MainWindow
         if (summary.ValueKind == JsonValueKind.Object)
         {
             lines.AppendLine($"Tick: {GetLong(summary, "tick")} | window: {GetLong(summary, "recentWindowTicks")} ticks");
-            lines.AppendLine($"Structures: {GetInt(summary, "structureCount")} | OK: {GetInt(summary, "okCount")} | warnings: {GetInt(summary, "warningCount")}");
+            lines.AppendLine($"Structures: {GetInt(summary, "structureCount")} | OK: {GetInt(summary, "okCount")} | warnings: {GetInt(summary, "warningCount")} | notices: {GetInt(summary, "noticeCount")}");
             lines.AppendLine($"Silent: {GetInt(summary, "silentCount")} | disconnected: {GetInt(summary, "disconnectedCount")} | input-no-output: {GetInt(summary, "receivesInputNoOutputCount")} | alive-idle: {GetInt(summary, "aliveNotParticipatingCount")}");
             lines.AppendLine($"Never spiked: {GetInt(summary, "neverSpikedCount")} | no-route: {GetInt(summary, "noRouteCount")} | visible-disconnected: {GetInt(summary, "registeredDisconnectedCount")} | route-without-service: {GetInt(summary, "connectomeWithoutServiceCount")}");
             lines.AppendLine($"Functions: {GetInt(summary, "functionCount")} | active: {GetInt(summary, "activeFunctionCount")} | weak: {GetInt(summary, "weakFunctionCount")} | unsupported: {GetInt(summary, "unsupportedFunctionCount")} | mean support: {GetDouble(summary, "functionSupportMean"):0.000}");

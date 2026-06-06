@@ -64,6 +64,10 @@ public partial class MainWindow : Window
     private const double OrientingTargetCenteredDeg = 7.5;
     private const double OrientingMaxTurnAssistDeg = 185.0;
     private const double OrientingIntentThreshold = 0.34;
+    private const double OrientingMemoryStepDriveThreshold = 0.46;
+    private const double OrientingMemoryAlignedDeg = 22.0;
+    private const double OrientingMemoryVisibleMinDistance = 1.8;
+    private const double OrientingMemoryTargetRange = 96.0;
     private const double AboutFaceThreatRangeMultiplier = 1.45;
     private const double AboutFaceAlignedDeg = 18.0;
     private const double AboutFaceRunCommitDeg = 36.0;
@@ -6370,6 +6374,42 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (TryFindRememberedOrientingTarget(goal, out var rememberedTarget))
+        {
+            var turnAssist = Math.Clamp(
+                rememberedTarget.SignedAngleDeg * OrientingTargetLockGain * drive,
+                -OrientingMaxTurnAssistDeg,
+                OrientingMaxTurnAssistDeg);
+            turnRateDeg = Math.Clamp(
+                turnRateDeg + turnAssist,
+                -WorldKinematicsOptions.MaxTurnRateDeg,
+                WorldKinematicsOptions.MaxTurnRateDeg);
+
+            if (drive >= OrientingMemoryStepDriveThreshold &&
+                rememberedTarget.Distance > OrientingMemoryVisibleMinDistance &&
+                Math.Abs(rememberedTarget.SignedAngleDeg) <= OrientingMemoryAlignedDeg)
+            {
+                var frontClearance = TraceCollisionDistanceFrom(
+                    _avatarX,
+                    _avatarZ,
+                    Math.Sin(DegreesToRadians(_avatarHeadingDeg)),
+                    Math.Cos(DegreesToRadians(_avatarHeadingDeg)),
+                    2.2);
+                if (frontClearance > 1.15)
+                {
+                    var cautiousSpeed = WorldWalkMaxForwardSpeed * (0.16 + (drive * 0.18));
+                    forwardSpeed = Math.Max(forwardSpeed, cautiousSpeed);
+                }
+            }
+            else if (Math.Abs(forwardSpeed) < 0.20)
+            {
+                forwardSpeed = 0.0;
+            }
+
+            LogOrientingOccasionally($"Avatar orienting: remembered {goal.ToString().ToLowerInvariant()} angle {rememberedTarget.SignedAngleDeg:0.0} deg, distance {rememberedTarget.Distance:0.0}m");
+            return;
+        }
+
         _orientingScanPhaseDeg = NormalizeDegrees(_orientingScanPhaseDeg + (dt * 58.0) + (drive * 11.0));
         var scanSign = ResolveCommandedScanSign();
         if (Math.Abs(scanSign) < 0.5)
@@ -6464,6 +6504,50 @@ public partial class MainWindow : Window
         return found;
     }
 
+    private bool TryFindRememberedOrientingTarget(OrientingGoalKind goal, out VisibleOrientingTarget target)
+    {
+        target = default;
+        var found = false;
+        var bestScore = double.NegativeInfinity;
+
+        if (goal == OrientingGoalKind.Food)
+        {
+            foreach (var pickup in _foodPickups)
+            {
+                if (pickup.Active)
+                {
+                    found |= TryConsiderRememberedOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
+                }
+            }
+
+            return found;
+        }
+
+        if (goal == OrientingGoalKind.Weapon)
+        {
+            foreach (var pickup in _weaponPickups)
+            {
+                if (pickup.Active)
+                {
+                    found |= TryConsiderRememberedOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
+                }
+            }
+
+            return found;
+        }
+
+        if (goal == OrientingGoalKind.Shelter)
+        {
+            foreach (var shelter in _shelterSites)
+            {
+                var position = new Point3D(shelter.X, shelter.BaseY + 0.8, shelter.Z);
+                found |= TryConsiderRememberedOrientingCandidate(goal, position, ref target, ref bestScore);
+            }
+        }
+
+        return found;
+    }
+
     private bool TryConsiderVisibleOrientingCandidate(
         OrientingGoalKind goal,
         Point3D position,
@@ -6474,11 +6558,12 @@ public partial class MainWindow : Window
         var dz = position.Z - _avatarZ;
         var distance = Math.Sqrt((dx * dx) + (dz * dz));
         if (distance > OrientingTargetVisibleRange ||
-            !TryProjectToAvatarView(position, distance, out var signedAngleDeg, out var confidence))
+            !TryProjectToAvatarView(position, distance, out _, out var confidence))
         {
             return false;
         }
 
+        var bodyAngleDeg = NormalizeSignedDegrees((Math.Atan2(dx, dz) * (180.0 / Math.PI)) - _avatarHeadingDeg);
         var score = (confidence * 1.55) + (1.0 - Math.Clamp(distance / OrientingTargetVisibleRange, 0.0, 1.0));
         if (score <= bestScore)
         {
@@ -6486,7 +6571,36 @@ public partial class MainWindow : Window
         }
 
         bestScore = score;
-        target = new VisibleOrientingTarget(goal, position, distance, signedAngleDeg, confidence);
+        target = new VisibleOrientingTarget(goal, position, distance, bodyAngleDeg, confidence);
+        return true;
+    }
+
+    private bool TryConsiderRememberedOrientingCandidate(
+        OrientingGoalKind goal,
+        Point3D position,
+        ref VisibleOrientingTarget target,
+        ref double bestScore)
+    {
+        var dx = position.X - _avatarX;
+        var dz = position.Z - _avatarZ;
+        var distance = Math.Sqrt((dx * dx) + (dz * dz));
+        if (distance < 0.25 || distance > OrientingMemoryTargetRange)
+        {
+            return false;
+        }
+
+        var targetHeadingDeg = NormalizeDegrees(Math.Atan2(dx, dz) * (180.0 / Math.PI));
+        var signedAngleDeg = NormalizeSignedDegrees(targetHeadingDeg - _avatarHeadingDeg);
+        var alignment = 1.0 - Math.Clamp(Math.Abs(signedAngleDeg) / 180.0, 0.0, 1.0);
+        var distanceScore = 1.0 - Math.Clamp(distance / OrientingMemoryTargetRange, 0.0, 1.0);
+        var score = (distanceScore * 1.25) + (alignment * 0.45);
+        if (score <= bestScore)
+        {
+            return true;
+        }
+
+        bestScore = score;
+        target = new VisibleOrientingTarget(goal, position, distance, signedAngleDeg, alignment);
         return true;
     }
 

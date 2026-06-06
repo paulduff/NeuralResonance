@@ -49,7 +49,8 @@ public sealed record TickAck(
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
-    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -218,6 +219,18 @@ public sealed record SeptohippocampalThetaDiagnostics(
     float VestibularPathIntegration,
     float ThetaCoherence);
 
+public sealed record SpinalProprioceptiveDiagnostics(
+    string ReflexMode,
+    float SpinalReflexDrive,
+    float S1ProprioceptiveMap,
+    float M1DescendingCommand,
+    float CerebellarMossyFeedback,
+    float VestibularBalanceInput,
+    float ReticularPosturalSet,
+    float ThalamicRelayTone,
+    float ReflexReadiness,
+    float ProprioceptiveCoherence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -260,7 +273,8 @@ public sealed record StructureSnapshot(
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
-    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

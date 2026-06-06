@@ -794,14 +794,14 @@ public partial class MainWindow : Window
             SelectionNameText.Text = $"Structure: {displayName} ({snapshotId})";
             SelectionModelText.Text = $"Neuron Model: {visual.NeuronModel}";
             SelectionPlasticityText.Text = $"Plasticity: {visual.Plasticity}. Firing: {avgRate:0.0} Hz";
-            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(visual.Microtubules, visual.BodySchema, visual.BasalGanglia, visual.Cerebellar, visual.VestibuloReticular, visual.SuperiorColliculus, visual.HippocampalSpatial, visual.SalienceAffect, visual.PrefrontalWorkingMemory, visual.ThalamicAttentionGate, visual.HypothalamicHomeostasis, visual.SleepWakeArousal, visual.DescendingDefense, visual.DopamineReward, visual.SeptohippocampalTheta, snapshotId);
+            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(visual.Microtubules, visual.BodySchema, visual.BasalGanglia, visual.Cerebellar, visual.VestibuloReticular, visual.SuperiorColliculus, visual.HippocampalSpatial, visual.SalienceAffect, visual.PrefrontalWorkingMemory, visual.ThalamicAttentionGate, visual.HypothalamicHomeostasis, visual.SleepWakeArousal, visual.DescendingDefense, visual.DopamineReward, visual.SeptohippocampalTheta, visual.SpinalProprioceptive, snapshotId);
         }
         else
         {
             SelectionNameText.Text = $"Structure: {displayName}";
             SelectionModelText.Text = "Neuron Model: -";
             SelectionPlasticityText.Text = "Plasticity: -";
-            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, snapshotId);
+            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, snapshotId);
         }
     }
 
@@ -2008,7 +2008,7 @@ public partial class MainWindow : Window
         var visibleNeuronHighlights = 0;
         var structuresWithNeuronSpikes = 0;
         var unmatchedNeuronIds = initialUnmatchedNeuronIds;
-        var meanFiringRateUpdates = new List<(StructureVisual Visual, float MeanRateHz, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta)>(payload.StructureStates.Count);
+        var meanFiringRateUpdates = new List<(StructureVisual Visual, float MeanRateHz, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta, SpinalProprioceptiveTick? SpinalProprioceptive)>(payload.StructureStates.Count);
 
         foreach (var state in payload.StructureStates)
         {
@@ -2035,7 +2035,7 @@ public partial class MainWindow : Window
 
             foreach (var visual in visuals)
             {
-                meanFiringRateUpdates.Add((visual, state.MeanRateHz, state.Microtubules, state.BodySchema, state.BasalGanglia, state.Cerebellar, state.VestibuloReticular, state.SuperiorColliculus, state.HippocampalSpatial, state.SalienceAffect, state.PrefrontalWorkingMemory, state.ThalamicAttentionGate, state.HypothalamicHomeostasis, state.SleepWakeArousal, state.DescendingDefense, state.DopamineReward, state.SeptohippocampalTheta));
+                meanFiringRateUpdates.Add((visual, state.MeanRateHz, state.Microtubules, state.BodySchema, state.BasalGanglia, state.Cerebellar, state.VestibuloReticular, state.SuperiorColliculus, state.HippocampalSpatial, state.SalienceAffect, state.PrefrontalWorkingMemory, state.ThalamicAttentionGate, state.HypothalamicHomeostasis, state.SleepWakeArousal, state.DescendingDefense, state.DopamineReward, state.SeptohippocampalTheta, state.SpinalProprioceptive));
 
                 if (realNeuronIds.Count == 0 || visual.SpikeNeuronBrushes.Count == 0)
                 {
@@ -2113,6 +2113,7 @@ public partial class MainWindow : Window
             update.Visual.DescendingDefense = update.DescendingDefense;
             update.Visual.DopamineReward = update.DopamineReward;
             update.Visual.SeptohippocampalTheta = update.SeptohippocampalTheta;
+            update.Visual.SpinalProprioceptive = update.SpinalProprioceptive;
         }
 
         RefreshSelectedStructureInspector();
@@ -2145,7 +2146,7 @@ public partial class MainWindow : Window
     private readonly record struct UnmatchedNeuronLog(string StructureId, string Hemisphere, string NeuronId, string Reason);
     private sealed record NeuronHighlightPrep(
         List<NeuronHighlightOp> Ops,
-        List<(StructureVisual Visual, float MeanRateHz, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta)> MeanFiringRateUpdates,
+        List<(StructureVisual Visual, float MeanRateHz, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta, SpinalProprioceptiveTick? SpinalProprioceptive)> MeanFiringRateUpdates,
         List<UnmatchedNeuronLog> UnmatchedLog,
         double CallosumLevel,
         NeuronHighlightResult Result);
@@ -3288,6 +3289,7 @@ public partial class MainWindow : Window
         DescendingDefenseTick? descendingDefense,
         DopamineRewardTick? dopamineReward,
         SeptohippocampalThetaTick? septohippocampalTheta,
+        SpinalProprioceptiveTick? spinalProprioceptive,
         string snapshotId)
     {
         var text = BuildMicrotubuleInspectorText(microtubules);
@@ -3415,6 +3417,15 @@ public partial class MainWindow : Window
         else if (IsSeptohippocampalThetaDiagnosticsStructure(snapshotId))
         {
             text += Environment.NewLine + "Theta navigation: awaiting live septal/hippocampal diagnostics";
+        }
+
+        if (spinalProprioceptive != null)
+        {
+            text += Environment.NewLine + BuildSpinalProprioceptiveInspectorText(spinalProprioceptive);
+        }
+        else if (IsSpinalProprioceptiveDiagnosticsStructure(snapshotId))
+        {
+            text += Environment.NewLine + "Spinal reflex: awaiting live spinal/S1/cerebellar diagnostics";
         }
 
         return text;
@@ -3758,6 +3769,29 @@ public partial class MainWindow : Window
            snapshotId.Equals("Parasubiculum", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("RetrosplenialCortex", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("VestibularNuclei", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildSpinalProprioceptiveInspectorText(SpinalProprioceptiveTick reflex)
+    {
+        return
+            $"Spinal reflex: {BlankAsDash(reflex.ReflexMode)}; " +
+            $"spinal {reflex.SpinalReflexDrive:0.0} Hz, " +
+            $"S1 proprio {reflex.S1ProprioceptiveMap:0.0} Hz, " +
+            $"M1 command {reflex.M1DescendingCommand:0.0} Hz, " +
+            $"mossy feedback {reflex.CerebellarMossyFeedback:0.0} Hz, " +
+            $"vestibular {reflex.VestibularBalanceInput:0.0} Hz, " +
+            $"reticular set {reflex.ReticularPosturalSet:0.0} Hz, " +
+            $"thalamic relay {reflex.ThalamicRelayTone:0.0} Hz, readiness {reflex.ReflexReadiness:0.0}, coherence {reflex.ProprioceptiveCoherence:0.0}";
+    }
+
+    private static bool IsSpinalProprioceptiveDiagnosticsStructure(string snapshotId)
+        => snapshotId.Equals("SpinalCordMotor", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("S1", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("M1", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("CerebellarGranule", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("VestibularNuclei", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("Thalamus", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase);
 
     private static string Normalize(string name) => name.Replace("_", string.Empty, StringComparison.Ordinal).ToLowerInvariant();
 
@@ -4493,6 +4527,7 @@ public partial class MainWindow : Window
         public DescendingDefenseTick? DescendingDefense { get; set; }
         public DopamineRewardTick? DopamineReward { get; set; }
         public SeptohippocampalThetaTick? SeptohippocampalTheta { get; set; }
+        public SpinalProprioceptiveTick? SpinalProprioceptive { get; set; }
         public DateTime LastSpikeLogUtc { get; set; }
     }
 
@@ -4547,7 +4582,7 @@ public partial class MainWindow : Window
     private sealed record HomuncularBand(double AlongStart, double AlongEnd, Color Diffuse, Color Emissive);
     private sealed record PathwayDefinition(string SourceId, string TargetId, string Neurotransmitter, string ProjectionType, bool IsFeedback);
     private sealed record HemispherePairing(string SourceInstance, string TargetInstance, string Hemisphere);
-private sealed record StructureTick(string StructureId, float MeanRateHz, int SpikeOut, int SpikeIn, IReadOnlyList<string> TopNeuronIds, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta);
+private sealed record StructureTick(string StructureId, float MeanRateHz, int SpikeOut, int SpikeIn, IReadOnlyList<string> TopNeuronIds, MicrotubuleTick? Microtubules, BodySchemaTick? BodySchema, BasalGangliaTick? BasalGanglia, CerebellarTick? Cerebellar, VestibuloReticularTick? VestibuloReticular, SuperiorColliculusTick? SuperiorColliculus, HippocampalSpatialTick? HippocampalSpatial, SalienceAffectTick? SalienceAffect, PrefrontalWorkingMemoryTick? PrefrontalWorkingMemory, ThalamicAttentionGateTick? ThalamicAttentionGate, HypothalamicHomeostasisTick? HypothalamicHomeostasis, SleepWakeArousalTick? SleepWakeArousal, DescendingDefenseTick? DescendingDefense, DopamineRewardTick? DopamineReward, SeptohippocampalThetaTick? SeptohippocampalTheta, SpinalProprioceptiveTick? SpinalProprioceptive);
 private sealed record MicrotubuleTick(
     string Mode,
     bool Enabled,
@@ -4700,6 +4735,17 @@ private sealed record SeptohippocampalThetaTick(
     float RetrosplenialSceneAnchor,
     float VestibularPathIntegration,
     float ThetaCoherence);
+private sealed record SpinalProprioceptiveTick(
+    string ReflexMode,
+    float SpinalReflexDrive,
+    float S1ProprioceptiveMap,
+    float M1DescendingCommand,
+    float CerebellarMossyFeedback,
+    float VestibularBalanceInput,
+    float ReticularPosturalSet,
+    float ThalamicRelayTone,
+    float ReflexReadiness,
+    float ProprioceptiveCoherence);
 private sealed record PathwayTick(string Source, string Target, int Volume);
 private sealed record DispatchSpikeTrace(string SourceStructure, string SourceNeuronId, string TargetStructure, string TargetNeuronId, long WallClockUnixMs);
 private sealed record DispatchPathwayActivity(string Source, string Target, string Hemisphere, int Volume);

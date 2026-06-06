@@ -306,6 +306,21 @@ public sealed class MajorPathwayIntegrationTests
     }
 
     [Fact]
+    public async Task SpinalProprioceptiveReflex_Connectome_Uses_Spinal_S1_M1_Cerebellar_Vestibular_Reticular_And_Thalamic_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.M1, StructureId.SpinalCordMotor, "corticospinal_output"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
+        Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.Thalamus, "proprioceptive_ascending_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.CerebellarGranule, "spinocerebellar_mossy_input"));
+        Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.ReticularFormation, "spinal_state_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.CerebellarGranule, "somatocerebellar_proprioceptive_mossy"));
+        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.S1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.M1, "motor_thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.ReticularFormation, "vestibulo_reticular_posture"));
+    }
+
+    [Fact]
     public async Task Limbic_Modulation_Amygdala_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();

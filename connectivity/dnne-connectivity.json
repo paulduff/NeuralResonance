@@ -1904,6 +1904,12 @@
         "source":  "SpinalCordMotor",
         "connections":  [
                             {
+                                "target":  "Thalamus",
+                                "synapseId":  "2918a111-7a54-480e-9c73-22de0136bc8f",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "proprioceptive_ascending_feedback"
+                            },
+                            {
                                 "target":  "S1",
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1024",
                                 "neurotransmitter":  "GLUTAMATE",

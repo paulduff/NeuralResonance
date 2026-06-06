@@ -1497,7 +1497,8 @@ public partial class MainWindow
                     ParseSleepWakeArousalDiagnostics(state),
                     ParseDescendingDefenseDiagnostics(state),
                     ParseDopamineRewardDiagnostics(state),
-                    ParseSeptohippocampalThetaDiagnostics(state)));
+                    ParseSeptohippocampalThetaDiagnostics(state),
+                    ParseSpinalProprioceptiveDiagnostics(state)));
             }
         }
 
@@ -1894,6 +1895,32 @@ public partial class MainWindow
             GetSingle(diagnostics, "retrosplenialSceneAnchor", "retrosplenial_scene_anchor"),
             GetSingle(diagnostics, "vestibularPathIntegration", "vestibular_path_integration"),
             GetSingle(diagnostics, "thetaCoherence", "theta_coherence"));
+    }
+
+    private static SpinalProprioceptiveTick? ParseSpinalProprioceptiveDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "spinalProprioceptiveDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "spinal_proprioceptive_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new SpinalProprioceptiveTick(
+            GetString(diagnostics, "reflexMode", "reflex_mode"),
+            GetSingle(diagnostics, "spinalReflexDrive", "spinal_reflex_drive"),
+            GetSingle(diagnostics, "s1ProprioceptiveMap", "s1_proprioceptive_map"),
+            GetSingle(diagnostics, "m1DescendingCommand", "m1_descending_command"),
+            GetSingle(diagnostics, "cerebellarMossyFeedback", "cerebellar_mossy_feedback"),
+            GetSingle(diagnostics, "vestibularBalanceInput", "vestibular_balance_input"),
+            GetSingle(diagnostics, "reticularPosturalSet", "reticular_postural_set"),
+            GetSingle(diagnostics, "thalamicRelayTone", "thalamic_relay_tone"),
+            GetSingle(diagnostics, "reflexReadiness", "reflex_readiness"),
+            GetSingle(diagnostics, "proprioceptiveCoherence", "proprioceptive_coherence"));
     }
 
     private static Point3D RotateLocalPoint(Point3D p, double pitchDeg, double yawDeg, double rollDeg)

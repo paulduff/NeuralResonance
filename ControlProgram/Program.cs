@@ -22502,7 +22502,8 @@ internal sealed class TickCoordinator(
                     ack.SleepWakeArousalDiagnostics,
                     ack.DescendingDefenseDiagnostics,
                     ack.DopamineRewardDiagnostics,
-                    ack.SeptohippocampalThetaDiagnostics);
+                    ack.SeptohippocampalThetaDiagnostics,
+                    ack.SpinalProprioceptiveDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -24580,22 +24581,24 @@ internal sealed class TickCoordinator(
                 AverageSleepWakeArousalDiagnostics(members),
                 AverageDescendingDefenseDiagnostics(members),
                 AverageDopamineRewardDiagnostics(members),
-                AverageSeptohippocampalThetaDiagnostics(members)));
+                AverageSeptohippocampalThetaDiagnostics(members),
+                AverageSpinalProprioceptiveDiagnostics(members)));
         }
 
-        return EnrichSeptohippocampalThetaDiagnostics(
-            EnrichDopamineRewardDiagnostics(
-                EnrichDescendingDefenseDiagnostics(
-                    EnrichSleepWakeArousalDiagnostics(
-                        EnrichHypothalamicHomeostasisDiagnostics(
-                            EnrichThalamicAttentionGateDiagnostics(
-                                EnrichPrefrontalWorkingMemoryDiagnostics(
-                                    EnrichSalienceAffectDiagnostics(
-                                        EnrichHippocampalSpatialMemoryDiagnostics(
-                                            EnrichSuperiorColliculusOrientingDiagnostics(
-                                                EnrichVestibuloReticularPostureDiagnostics(
-                                                    EnrichCerebellarCorrectionDiagnostics(
-                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+        return EnrichSpinalProprioceptiveDiagnostics(
+            EnrichSeptohippocampalThetaDiagnostics(
+                EnrichDopamineRewardDiagnostics(
+                    EnrichDescendingDefenseDiagnostics(
+                        EnrichSleepWakeArousalDiagnostics(
+                            EnrichHypothalamicHomeostasisDiagnostics(
+                                EnrichThalamicAttentionGateDiagnostics(
+                                    EnrichPrefrontalWorkingMemoryDiagnostics(
+                                        EnrichSalienceAffectDiagnostics(
+                                            EnrichHippocampalSpatialMemoryDiagnostics(
+                                                EnrichSuperiorColliculusOrientingDiagnostics(
+                                                    EnrichVestibuloReticularPostureDiagnostics(
+                                                        EnrichCerebellarCorrectionDiagnostics(
+                                                            EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -24658,7 +24661,8 @@ internal sealed class TickCoordinator(
                 snapshot.SleepWakeArousalDiagnostics,
                 snapshot.DescendingDefenseDiagnostics,
                 snapshot.DopamineRewardDiagnostics,
-                snapshot.SeptohippocampalThetaDiagnostics));
+                snapshot.SeptohippocampalThetaDiagnostics,
+                snapshot.SpinalProprioceptiveDiagnostics));
         }
 
         return merged;
@@ -26431,6 +26435,153 @@ internal sealed class TickCoordinator(
         if (coherence > 0.08f)
         {
             return "Synchronized";
+        }
+
+        return "Quiet";
+    }
+
+    private static SpinalProprioceptiveDiagnostics? AverageSpinalProprioceptiveDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.SpinalProprioceptiveDiagnostics)
+            .Where(m => m != null)
+            .Cast<SpinalProprioceptiveDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var spinal = (float)diagnostics.Average(d => d.SpinalReflexDrive);
+        var s1 = (float)diagnostics.Average(d => d.S1ProprioceptiveMap);
+        var m1 = (float)diagnostics.Average(d => d.M1DescendingCommand);
+        var cerebellar = (float)diagnostics.Average(d => d.CerebellarMossyFeedback);
+        var vestibular = (float)diagnostics.Average(d => d.VestibularBalanceInput);
+        var reticular = (float)diagnostics.Average(d => d.ReticularPosturalSet);
+        var thalamic = (float)diagnostics.Average(d => d.ThalamicRelayTone);
+        var readiness = (float)diagnostics.Average(d => d.ReflexReadiness);
+        var coherence = (float)diagnostics.Average(d => d.ProprioceptiveCoherence);
+
+        return new SpinalProprioceptiveDiagnostics(
+            SelectSpinalProprioceptiveMode(spinal, s1, m1, cerebellar, vestibular, reticular, thalamic, readiness, coherence),
+            spinal,
+            s1,
+            m1,
+            cerebellar,
+            vestibular,
+            reticular,
+            thalamic,
+            readiness,
+            coherence);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichSpinalProprioceptiveDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var acetylcholine = byId.TryGetValue(StructureId.S1, out var s1Snapshot)
+            ? s1Snapshot.NeuromodLocal.AcetylcholineLevel
+            : 0f;
+        var norepinephrine = byId.TryGetValue(StructureId.ReticularFormation, out var reticularSnapshot)
+            ? reticularSnapshot.NeuromodLocal.NorepinephrineLevel
+            : 0f;
+        var achGain = 0.90f + (Math.Clamp(acetylcholine, 0f, 1f) * 0.30f);
+        var neGain = 0.85f + (Math.Clamp(norepinephrine, 0f, 1f) * 0.35f);
+        var spinal = GetRate(byId, StructureId.SpinalCordMotor);
+        var s1 = GetRate(byId, StructureId.S1) * achGain;
+        var m1 = GetRate(byId, StructureId.M1);
+        var cerebellar = GetRate(byId, StructureId.CerebellarGranule);
+        var vestibular = GetRate(byId, StructureId.VestibularNuclei);
+        var reticular = GetRate(byId, StructureId.ReticularFormation) * neGain;
+        var thalamic = (GetRate(byId, StructureId.Thalamus) + (GetRate(byId, StructureId.MotorThalamus) * 0.80f)) * achGain;
+        var readiness = Math.Max(0f,
+            (spinal * 0.24f) +
+            (s1 * 0.18f) +
+            (m1 * 0.18f) +
+            (cerebellar * 0.18f) +
+            (vestibular * 0.14f) +
+            (reticular * 0.16f) +
+            (thalamic * 0.12f));
+        var coherence = Math.Clamp(
+            (s1 * 0.22f) +
+            (cerebellar * 0.20f) +
+            (vestibular * 0.16f) +
+            (thalamic * 0.16f) +
+            (spinal * 0.12f) +
+            (m1 * 0.10f) +
+            (reticular * 0.10f),
+            0f,
+            120f);
+        var composite = new SpinalProprioceptiveDiagnostics(
+            SelectSpinalProprioceptiveMode(spinal, s1, m1, cerebellar, vestibular, reticular, thalamic, readiness, coherence),
+            spinal,
+            s1,
+            m1,
+            cerebellar,
+            vestibular,
+            reticular,
+            thalamic,
+            readiness,
+            coherence);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesSpinalProprioceptiveComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { SpinalProprioceptiveDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesSpinalProprioceptiveComposite(StructureId structureId)
+        => structureId is StructureId.SpinalCordMotor
+            or StructureId.S1
+            or StructureId.M1
+            or StructureId.CerebellarGranule
+            or StructureId.VestibularNuclei
+            or StructureId.ReticularFormation
+            or StructureId.Thalamus
+            or StructureId.MotorThalamus;
+
+    private static string SelectSpinalProprioceptiveMode(float spinal, float s1, float m1, float cerebellar, float vestibular, float reticular, float thalamic, float readiness, float coherence)
+    {
+        if (spinal > Math.Max(0.10f, m1 * 0.75f) && readiness > 0.12f)
+        {
+            return "Reflexive";
+        }
+
+        if ((cerebellar + s1) > Math.Max(0.12f, vestibular + reticular))
+        {
+            return "Proprioceptive";
+        }
+
+        if ((vestibular + reticular) > Math.Max(0.12f, cerebellar))
+        {
+            return "Postural";
+        }
+
+        if (m1 > Math.Max(0.10f, spinal * 0.85f))
+        {
+            return "Descending";
+        }
+
+        if (thalamic > 0.08f)
+        {
+            return "Relaying";
+        }
+
+        if (coherence > 0.08f)
+        {
+            return "Integrated";
         }
 
         return "Quiet";
@@ -35566,7 +35717,8 @@ internal sealed record InstanceStructureSnapshot(
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
-    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

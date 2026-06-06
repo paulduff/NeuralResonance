@@ -180,7 +180,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var descendingDefense = BuildDescendingDefenseDiagnostics(tickSignal.GlobalNeuromodState);
 			var dopamineReward = BuildDopamineRewardDiagnostics(tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
 			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta);
+			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive);
 			return ValueTask.FromResult(result);
 		}
 	}
@@ -1884,6 +1885,129 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		if (coherence > 0.08f)
 		{
 			return "Synchronized";
+		}
+
+		return "Quiet";
+	}
+
+	private SpinalProprioceptiveDiagnostics? BuildSpinalProprioceptiveDiagnostics(NeuromodState neuromod)
+	{
+		if (!IsSpinalProprioceptiveDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var spinal = 0f;
+		var s1 = 0f;
+		var m1 = 0f;
+		var cerebellar = 0f;
+		var vestibular = 0f;
+		var reticular = 0f;
+		var thalamic = 0f;
+		var achGain = 0.90f + (Math.Clamp(neuromod.AcetylcholineLevel, 0f, 1f) * 0.30f);
+		var neGain = 0.85f + (Math.Clamp(neuromod.NorepinephrineLevel, 0f, 1f) * 0.35f);
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.SpinalCordMotor:
+			spinal = mean;
+			break;
+		case StructureId.S1:
+			s1 = mean * achGain;
+			break;
+		case StructureId.M1:
+			m1 = mean;
+			break;
+		case StructureId.CerebellarGranule:
+			cerebellar = mean;
+			break;
+		case StructureId.VestibularNuclei:
+			vestibular = mean;
+			break;
+		case StructureId.ReticularFormation:
+			reticular = mean * neGain;
+			break;
+		case StructureId.Thalamus:
+			thalamic = mean * achGain;
+			break;
+		case StructureId.MotorThalamus:
+			thalamic = mean * achGain * 0.80f;
+			break;
+		}
+
+		var readiness = Math.Max(0f,
+			(spinal * 0.24f) +
+			(s1 * 0.18f) +
+			(m1 * 0.18f) +
+			(cerebellar * 0.18f) +
+			(vestibular * 0.14f) +
+			(reticular * 0.16f) +
+			(thalamic * 0.12f));
+		var coherence = Math.Clamp(
+			(s1 * 0.22f) +
+			(cerebellar * 0.20f) +
+			(vestibular * 0.16f) +
+			(thalamic * 0.16f) +
+			(spinal * 0.12f) +
+			(m1 * 0.10f) +
+			(reticular * 0.10f),
+			0f,
+			120f);
+
+		return new SpinalProprioceptiveDiagnostics(
+			SelectSpinalProprioceptiveMode(spinal, s1, m1, cerebellar, vestibular, reticular, thalamic, readiness, coherence),
+			spinal,
+			s1,
+			m1,
+			cerebellar,
+			vestibular,
+			reticular,
+			thalamic,
+			readiness,
+			coherence);
+	}
+
+	private static bool IsSpinalProprioceptiveDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.SpinalCordMotor
+			or StructureId.S1
+			or StructureId.M1
+			or StructureId.CerebellarGranule
+			or StructureId.VestibularNuclei
+			or StructureId.ReticularFormation
+			or StructureId.Thalamus
+			or StructureId.MotorThalamus;
+
+	private static string SelectSpinalProprioceptiveMode(float spinal, float s1, float m1, float cerebellar, float vestibular, float reticular, float thalamic, float readiness, float coherence)
+	{
+		if (spinal > Math.Max(0.10f, m1 * 0.75f) && readiness > 0.12f)
+		{
+			return "Reflexive";
+		}
+
+		if ((cerebellar + s1) > Math.Max(0.12f, vestibular + reticular))
+		{
+			return "Proprioceptive";
+		}
+
+		if ((vestibular + reticular) > Math.Max(0.12f, cerebellar))
+		{
+			return "Postural";
+		}
+
+		if (m1 > Math.Max(0.10f, spinal * 0.85f))
+		{
+			return "Descending";
+		}
+
+		if (thalamic > 0.08f)
+		{
+			return "Relaying";
+		}
+
+		if (coherence > 0.08f)
+		{
+			return "Integrated";
 		}
 
 		return "Quiet";

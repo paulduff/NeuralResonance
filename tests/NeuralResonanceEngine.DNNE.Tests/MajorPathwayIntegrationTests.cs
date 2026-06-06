@@ -268,6 +268,44 @@ public sealed class MajorPathwayIntegrationTests
     }
 
     [Fact]
+    public async Task DopamineRewardLearning_Connectome_Uses_Vta_Snc_Accumbens_Striatum_Habenula_Ofc_And_Pfc_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.Vta, StructureId.NucleusAccumbens, "mesolimbic_reward"));
+        Assert.True(HasDirectConnection(rules, StructureId.Vta, StructureId.Pfc, "mesocortical_novelty"));
+        Assert.True(HasDirectConnection(rules, StructureId.Snc, StructureId.Striatum, "nigrostriatal_reward_prediction"));
+        Assert.True(HasDirectConnection(rules, StructureId.Snc, StructureId.NucleusAccumbens, "nigroaccumbal_reward_prediction"));
+        Assert.True(HasDirectConnection(rules, StructureId.Snc, StructureId.OrbitofrontalCortex, "mesocortical_value_modulation"));
+        Assert.True(HasDirectConnection(rules, StructureId.OrbitofrontalCortex, StructureId.NucleusAccumbens, "value_to_ventral_striatum"));
+        Assert.True(HasDirectConnection(rules, StructureId.OrbitofrontalCortex, StructureId.Striatum, "orbitostriatal_value"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.NucleusAccumbens, "mesocorticolimbic_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.OrbitofrontalCortex, "orbitofrontal_value_update"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusAccumbens, StructureId.Vta, "accumbens_vta_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.Habenula, StructureId.Vta, "aversive_dopamine_suppression"));
+        Assert.True(HasDirectConnection(rules, StructureId.Habenula, StructureId.Snc, "habenulo_nigral_inhibition"));
+        Assert.True(HasDirectConnection(rules, StructureId.Striatum, StructureId.Snc, "striosomal_dopamine_feedback"));
+    }
+
+    [Fact]
+    public async Task SeptohippocampalThetaNavigation_Connectome_Uses_Septal_Entorhinal_Hippocampal_HeadDirection_And_Retrosplenial_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.EntorhinalCortex, "septal_entorhinal_theta"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.DentateGyrus, "septodentate_theta_gate"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.CA1, "septohippocampal_theta_ca1"));
+        Assert.True(HasDirectConnection(rules, StructureId.EntorhinalCortex, StructureId.DentateGyrus, "perforant_path_l2"));
+        Assert.True(HasDirectConnection(rules, StructureId.DentateGyrus, StructureId.CA3, "mossy_fiber_ltp"));
+        Assert.True(HasDirectConnection(rules, StructureId.CA3, StructureId.CA1, "schaffer_collateral"));
+        Assert.True(HasDirectConnection(rules, StructureId.CA1, StructureId.Subiculum, "hippocampal_output"));
+        Assert.True(HasDirectConnection(rules, StructureId.CA1, StructureId.Presubiculum, "hippocampal_spatial_index"));
+        Assert.True(HasDirectConnection(rules, StructureId.Subiculum, StructureId.Presubiculum, "subicular_head_direction"));
+        Assert.True(HasDirectConnection(rules, StructureId.Presubiculum, StructureId.EntorhinalCortex, "presubiculum_ec_projection"));
+        Assert.True(HasDirectConnection(rules, StructureId.PosteriorCingulate, StructureId.RetrosplenialCortex, "default_navigation_loop"));
+        Assert.True(HasDirectConnection(rules, StructureId.RetrosplenialCortex, StructureId.Ppc, "spatial_reference_transform"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.Ppc, "vestibulo_parietal_spatial"));
+    }
+
+    [Fact]
     public async Task Limbic_Modulation_Amygdala_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();

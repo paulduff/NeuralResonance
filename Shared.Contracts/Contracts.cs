@@ -47,7 +47,9 @@ public sealed record TickAck(
     ThalamicAttentionGateDiagnostics? ThalamicAttentionGateDiagnostics = null,
     HypothalamicHomeostasisDiagnostics? HypothalamicHomeostasisDiagnostics = null,
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
-    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null);
+    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
+    DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -191,6 +193,31 @@ public sealed record DescendingDefenseDiagnostics(
     float SpinalWithdrawalDrive,
     float ProtectionReadiness);
 
+public sealed record DopamineRewardDiagnostics(
+    string RewardMode,
+    float VtaPhasicDopamine,
+    float SncActionTeaching,
+    float NucleusAccumbensIncentive,
+    float StriatalActionValue,
+    float HabenulaNegativePrediction,
+    float OrbitofrontalExpectedValue,
+    float PfcGoalBias,
+    float RewardPredictionError,
+    float LearningReadiness);
+
+public sealed record SeptohippocampalThetaDiagnostics(
+    string ThetaMode,
+    float SeptalThetaDrive,
+    float EntorhinalGridPhase,
+    float DentateEncodingGate,
+    float Ca3SequenceReplay,
+    float Ca1PlaceTiming,
+    float SubicularNavigationOutput,
+    float HeadDirectionAlignment,
+    float RetrosplenialSceneAnchor,
+    float VestibularPathIntegration,
+    float ThetaCoherence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -231,7 +258,9 @@ public sealed record StructureSnapshot(
     ThalamicAttentionGateDiagnostics? ThalamicAttentionGateDiagnostics = null,
     HypothalamicHomeostasisDiagnostics? HypothalamicHomeostasisDiagnostics = null,
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
-    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null);
+    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
+    DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

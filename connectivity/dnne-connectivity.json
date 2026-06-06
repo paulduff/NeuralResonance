@@ -1663,6 +1663,24 @@
                                 "projectionType":  "cholinergic_prefrontal_attention"
                             },
                             {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "7af5d3c0-82e4-4b95-b4d5-4749e98b9c80",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "septal_entorhinal_theta"
+                            },
+                            {
+                                "target":  "DentateGyrus",
+                                "synapseId":  "2c0770d1-e049-48f1-9a13-3f20c62d2767",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "septodentate_theta_gate"
+                            },
+                            {
+                                "target":  "CA1",
+                                "synapseId":  "e1a41fb0-5e91-4a31-a6f6-a109ed62b581",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "septohippocampal_theta_ca1"
+                            },
+                            {
                                 "target":  "OlfactoryBulb",
                                 "synapseId":  "3c406bc2-82a6-4dd7-9725-1de21a3923da",
                                 "neurotransmitter":  "ACETYLCHOLINE",

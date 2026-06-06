@@ -1495,7 +1495,9 @@ public partial class MainWindow
                     ParseThalamicAttentionGateDiagnostics(state),
                     ParseHypothalamicHomeostasisDiagnostics(state),
                     ParseSleepWakeArousalDiagnostics(state),
-                    ParseDescendingDefenseDiagnostics(state)));
+                    ParseDescendingDefenseDiagnostics(state),
+                    ParseDopamineRewardDiagnostics(state),
+                    ParseSeptohippocampalThetaDiagnostics(state)));
             }
         }
 
@@ -1839,6 +1841,59 @@ public partial class MainWindow
             GetSingle(diagnostics, "reticularPatternRelease", "reticular_pattern_release"),
             GetSingle(diagnostics, "spinalWithdrawalDrive", "spinal_withdrawal_drive"),
             GetSingle(diagnostics, "protectionReadiness", "protection_readiness"));
+    }
+
+    private static DopamineRewardTick? ParseDopamineRewardDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "dopamineRewardDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "dopamine_reward_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new DopamineRewardTick(
+            GetString(diagnostics, "rewardMode", "reward_mode"),
+            GetSingle(diagnostics, "vtaPhasicDopamine", "vta_phasic_dopamine"),
+            GetSingle(diagnostics, "sncActionTeaching", "snc_action_teaching"),
+            GetSingle(diagnostics, "nucleusAccumbensIncentive", "nucleus_accumbens_incentive"),
+            GetSingle(diagnostics, "striatalActionValue", "striatal_action_value"),
+            GetSingle(diagnostics, "habenulaNegativePrediction", "habenula_negative_prediction"),
+            GetSingle(diagnostics, "orbitofrontalExpectedValue", "orbitofrontal_expected_value"),
+            GetSingle(diagnostics, "pfcGoalBias", "pfc_goal_bias"),
+            GetSingle(diagnostics, "rewardPredictionError", "reward_prediction_error"),
+            GetSingle(diagnostics, "learningReadiness", "learning_readiness"));
+    }
+
+    private static SeptohippocampalThetaTick? ParseSeptohippocampalThetaDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "septohippocampalThetaDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "septohippocampal_theta_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new SeptohippocampalThetaTick(
+            GetString(diagnostics, "thetaMode", "theta_mode"),
+            GetSingle(diagnostics, "septalThetaDrive", "septal_theta_drive"),
+            GetSingle(diagnostics, "entorhinalGridPhase", "entorhinal_grid_phase"),
+            GetSingle(diagnostics, "dentateEncodingGate", "dentate_encoding_gate"),
+            GetSingle(diagnostics, "ca3SequenceReplay", "ca3_sequence_replay"),
+            GetSingle(diagnostics, "ca1PlaceTiming", "ca1_place_timing"),
+            GetSingle(diagnostics, "subicularNavigationOutput", "subicular_navigation_output"),
+            GetSingle(diagnostics, "headDirectionAlignment", "head_direction_alignment"),
+            GetSingle(diagnostics, "retrosplenialSceneAnchor", "retrosplenial_scene_anchor"),
+            GetSingle(diagnostics, "vestibularPathIntegration", "vestibular_path_integration"),
+            GetSingle(diagnostics, "thetaCoherence", "theta_coherence"));
     }
 
     private static Point3D RotateLocalPoint(Point3D p, double pitchDeg, double yawDeg, double rollDeg)

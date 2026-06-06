@@ -22500,7 +22500,9 @@ internal sealed class TickCoordinator(
                     ack.ThalamicAttentionGateDiagnostics,
                     ack.HypothalamicHomeostasisDiagnostics,
                     ack.SleepWakeArousalDiagnostics,
-                    ack.DescendingDefenseDiagnostics);
+                    ack.DescendingDefenseDiagnostics,
+                    ack.DopamineRewardDiagnostics,
+                    ack.SeptohippocampalThetaDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -24576,20 +24578,24 @@ internal sealed class TickCoordinator(
                 AverageThalamicAttentionGateDiagnostics(members),
                 AverageHypothalamicHomeostasisDiagnostics(members),
                 AverageSleepWakeArousalDiagnostics(members),
-                AverageDescendingDefenseDiagnostics(members)));
+                AverageDescendingDefenseDiagnostics(members),
+                AverageDopamineRewardDiagnostics(members),
+                AverageSeptohippocampalThetaDiagnostics(members)));
         }
 
-        return EnrichDescendingDefenseDiagnostics(
-            EnrichSleepWakeArousalDiagnostics(
-                EnrichHypothalamicHomeostasisDiagnostics(
-                    EnrichThalamicAttentionGateDiagnostics(
-                        EnrichPrefrontalWorkingMemoryDiagnostics(
-                            EnrichSalienceAffectDiagnostics(
-                                EnrichHippocampalSpatialMemoryDiagnostics(
-                                    EnrichSuperiorColliculusOrientingDiagnostics(
-                                        EnrichVestibuloReticularPostureDiagnostics(
-                                            EnrichCerebellarCorrectionDiagnostics(
-                                                EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+        return EnrichSeptohippocampalThetaDiagnostics(
+            EnrichDopamineRewardDiagnostics(
+                EnrichDescendingDefenseDiagnostics(
+                    EnrichSleepWakeArousalDiagnostics(
+                        EnrichHypothalamicHomeostasisDiagnostics(
+                            EnrichThalamicAttentionGateDiagnostics(
+                                EnrichPrefrontalWorkingMemoryDiagnostics(
+                                    EnrichSalienceAffectDiagnostics(
+                                        EnrichHippocampalSpatialMemoryDiagnostics(
+                                            EnrichSuperiorColliculusOrientingDiagnostics(
+                                                EnrichVestibuloReticularPostureDiagnostics(
+                                                    EnrichCerebellarCorrectionDiagnostics(
+                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -24650,7 +24656,9 @@ internal sealed class TickCoordinator(
                 snapshot.ThalamicAttentionGateDiagnostics,
                 snapshot.HypothalamicHomeostasisDiagnostics,
                 snapshot.SleepWakeArousalDiagnostics,
-                snapshot.DescendingDefenseDiagnostics));
+                snapshot.DescendingDefenseDiagnostics,
+                snapshot.DopamineRewardDiagnostics,
+                snapshot.SeptohippocampalThetaDiagnostics));
         }
 
         return merged;
@@ -26132,6 +26140,297 @@ internal sealed class TickCoordinator(
         if (protection > 0.08f)
         {
             return "Guarding";
+        }
+
+        return "Quiet";
+    }
+
+    private static DopamineRewardDiagnostics? AverageDopamineRewardDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.DopamineRewardDiagnostics)
+            .Where(m => m != null)
+            .Cast<DopamineRewardDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var vta = (float)diagnostics.Average(d => d.VtaPhasicDopamine);
+        var snc = (float)diagnostics.Average(d => d.SncActionTeaching);
+        var accumbens = (float)diagnostics.Average(d => d.NucleusAccumbensIncentive);
+        var striatum = (float)diagnostics.Average(d => d.StriatalActionValue);
+        var habenula = (float)diagnostics.Average(d => d.HabenulaNegativePrediction);
+        var ofc = (float)diagnostics.Average(d => d.OrbitofrontalExpectedValue);
+        var pfc = (float)diagnostics.Average(d => d.PfcGoalBias);
+        var rpe = (float)diagnostics.Average(d => d.RewardPredictionError);
+        var readiness = (float)diagnostics.Average(d => d.LearningReadiness);
+
+        return new DopamineRewardDiagnostics(
+            SelectDopamineRewardMode(vta, snc, accumbens, striatum, habenula, ofc, pfc, rpe, readiness),
+            vta,
+            snc,
+            accumbens,
+            striatum,
+            habenula,
+            ofc,
+            pfc,
+            rpe,
+            readiness);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichDopamineRewardDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var dopamine = byId.Values.Count == 0
+            ? 0f
+            : (float)byId.Values.Average(s => Math.Clamp(s.NeuromodLocal.DopamineLevel, 0f, 1f));
+        var vtaBase = GetRate(byId, StructureId.Vta);
+        var sncBase = GetRate(byId, StructureId.Snc);
+        var accumbensBase = GetRate(byId, StructureId.NucleusAccumbens);
+        var striatumBase = GetRate(byId, StructureId.Striatum);
+        var habenulaBase = GetRate(byId, StructureId.Habenula);
+        var ofcBase = GetRate(byId, StructureId.OrbitofrontalCortex);
+        var pfcBase = GetRate(byId, StructureId.Pfc);
+        var rpe = Math.Clamp(
+            ((vtaBase + sncBase + accumbensBase) * 0.030f) +
+            (ofcBase * 0.015f) +
+            (pfcBase * 0.010f) -
+            (habenulaBase * 0.045f),
+            -1f,
+            1f);
+        var positiveRpe = Math.Max(0f, rpe);
+        var negativeRpe = Math.Max(0f, -rpe);
+        var vta = vtaBase * (0.90f + (dopamine * 0.35f) + (positiveRpe * 0.25f));
+        var snc = sncBase * (0.90f + (dopamine * 0.30f) + (Math.Abs(rpe) * 0.15f));
+        var accumbens = accumbensBase * (0.85f + (dopamine * 0.35f) + (positiveRpe * 0.20f));
+        var striatum = striatumBase * (0.85f + (dopamine * 0.35f));
+        var habenula = habenulaBase * (0.85f + (negativeRpe * 0.45f));
+        var ofc = ofcBase * (0.85f + (dopamine * 0.15f) + (Math.Abs(rpe) * 0.20f));
+        var pfc = pfcBase * (0.85f + (dopamine * 0.20f));
+        var readiness = Math.Max(0f,
+            (vta * 0.24f) +
+            (snc * 0.22f) +
+            (accumbens * 0.20f) +
+            (striatum * 0.18f) +
+            (ofc * 0.18f) +
+            (pfc * 0.12f) +
+            (positiveRpe * 0.25f) -
+            (habenula * 0.16f));
+        var composite = new DopamineRewardDiagnostics(
+            SelectDopamineRewardMode(vta, snc, accumbens, striatum, habenula, ofc, pfc, rpe, readiness),
+            vta,
+            snc,
+            accumbens,
+            striatum,
+            habenula,
+            ofc,
+            pfc,
+            rpe,
+            readiness);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesDopamineRewardComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { DopamineRewardDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesDopamineRewardComposite(StructureId structureId)
+        => structureId is StructureId.Vta
+            or StructureId.Snc
+            or StructureId.NucleusAccumbens
+            or StructureId.Striatum
+            or StructureId.Habenula
+            or StructureId.OrbitofrontalCortex
+            or StructureId.Pfc;
+
+    private static string SelectDopamineRewardMode(float vta, float snc, float accumbens, float striatum, float habenula, float ofc, float pfc, float rpe, float readiness)
+    {
+        if (habenula > Math.Max(0.08f, Math.Max(vta, accumbens) * 0.70f) && rpe < -0.05f)
+        {
+            return "NegativeTeaching";
+        }
+
+        if ((vta + accumbens) > Math.Max(0.12f, habenula * 1.25f) && rpe > 0.05f)
+        {
+            return "PhasicReward";
+        }
+
+        if ((snc + striatum) > Math.Max(0.12f, ofc + pfc))
+        {
+            return "ActionTeaching";
+        }
+
+        if (ofc > Math.Max(0.10f, pfc * 0.85f))
+        {
+            return "Valuation";
+        }
+
+        if (pfc > Math.Max(0.10f, ofc * 0.85f))
+        {
+            return "GoalBias";
+        }
+
+        if (readiness > 0.08f)
+        {
+            return "TonicLearning";
+        }
+
+        return "Quiet";
+    }
+
+    private static SeptohippocampalThetaDiagnostics? AverageSeptohippocampalThetaDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.SeptohippocampalThetaDiagnostics)
+            .Where(m => m != null)
+            .Cast<SeptohippocampalThetaDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var septal = (float)diagnostics.Average(d => d.SeptalThetaDrive);
+        var entorhinal = (float)diagnostics.Average(d => d.EntorhinalGridPhase);
+        var dentate = (float)diagnostics.Average(d => d.DentateEncodingGate);
+        var ca3 = (float)diagnostics.Average(d => d.Ca3SequenceReplay);
+        var ca1 = (float)diagnostics.Average(d => d.Ca1PlaceTiming);
+        var subicular = (float)diagnostics.Average(d => d.SubicularNavigationOutput);
+        var headDirection = (float)diagnostics.Average(d => d.HeadDirectionAlignment);
+        var retrosplenial = (float)diagnostics.Average(d => d.RetrosplenialSceneAnchor);
+        var vestibular = (float)diagnostics.Average(d => d.VestibularPathIntegration);
+        var coherence = (float)diagnostics.Average(d => d.ThetaCoherence);
+
+        return new SeptohippocampalThetaDiagnostics(
+            SelectSeptohippocampalThetaMode(septal, entorhinal, ca3, ca1, headDirection, retrosplenial, vestibular, coherence),
+            septal,
+            entorhinal,
+            dentate,
+            ca3,
+            ca1,
+            subicular,
+            headDirection,
+            retrosplenial,
+            vestibular,
+            coherence);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichSeptohippocampalThetaDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var acetylcholine = byId.TryGetValue(StructureId.BasalForebrain, out var bfSnapshot)
+            ? bfSnapshot.NeuromodLocal.AcetylcholineLevel
+            : 0f;
+        var achGain = 0.85f + (Math.Clamp(acetylcholine, 0f, 1f) * 0.40f);
+        var septal = GetRate(byId, StructureId.BasalForebrain) * achGain;
+        var entorhinal = GetRate(byId, StructureId.EntorhinalCortex) * achGain;
+        var dentate = GetRate(byId, StructureId.DentateGyrus) * achGain;
+        var ca3 = GetRate(byId, StructureId.CA3) + (GetRate(byId, StructureId.CA2) * 0.35f);
+        var ca1 = (GetRate(byId, StructureId.CA1) + (GetRate(byId, StructureId.CA2) * 0.25f)) * achGain;
+        var subicular = GetRate(byId, StructureId.Subiculum);
+        var headDirection =
+            GetRate(byId, StructureId.Presubiculum) +
+            (GetRate(byId, StructureId.Parasubiculum) * 0.85f) +
+            (GetRate(byId, StructureId.Subiculum) * 0.20f) +
+            (GetRate(byId, StructureId.RetrosplenialCortex) * 0.30f) +
+            (GetRate(byId, StructureId.VestibularNuclei) * 0.35f);
+        var retrosplenial = GetRate(byId, StructureId.RetrosplenialCortex);
+        var vestibular = GetRate(byId, StructureId.VestibularNuclei);
+        var coherence = Math.Max(0f,
+            (septal * 0.22f) +
+            (entorhinal * 0.18f) +
+            (dentate * 0.12f) +
+            (ca3 * 0.14f) +
+            (ca1 * 0.18f) +
+            (subicular * 0.16f) +
+            (headDirection * 0.18f) +
+            (retrosplenial * 0.14f) +
+            (vestibular * 0.12f));
+        var composite = new SeptohippocampalThetaDiagnostics(
+            SelectSeptohippocampalThetaMode(septal, entorhinal, ca3, ca1, headDirection, retrosplenial, vestibular, coherence),
+            septal,
+            entorhinal,
+            dentate,
+            ca3,
+            ca1,
+            subicular,
+            headDirection,
+            retrosplenial,
+            vestibular,
+            coherence);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesSeptohippocampalThetaComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { SeptohippocampalThetaDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesSeptohippocampalThetaComposite(StructureId structureId)
+        => structureId is StructureId.BasalForebrain
+            or StructureId.EntorhinalCortex
+            or StructureId.DentateGyrus
+            or StructureId.CA3
+            or StructureId.CA2
+            or StructureId.CA1
+            or StructureId.Subiculum
+            or StructureId.Presubiculum
+            or StructureId.Parasubiculum
+            or StructureId.RetrosplenialCortex
+            or StructureId.VestibularNuclei;
+
+    private static string SelectSeptohippocampalThetaMode(float septal, float entorhinal, float ca3, float ca1, float headDirection, float retrosplenial, float vestibular, float coherence)
+    {
+        if (septal > Math.Max(0.10f, coherence * 0.35f) && entorhinal > 0.05f)
+        {
+            return "ThetaPacing";
+        }
+
+        if ((headDirection + vestibular + retrosplenial) > Math.Max(0.12f, ca1 + ca3))
+        {
+            return "PathIntegrating";
+        }
+
+        if (ca3 > Math.Max(0.10f, entorhinal * 0.80f))
+        {
+            return "Sequencing";
+        }
+
+        if (ca1 > Math.Max(0.10f, ca3 * 0.80f))
+        {
+            return "PlaceTiming";
+        }
+
+        if (coherence > 0.08f)
+        {
+            return "Synchronized";
         }
 
         return "Quiet";
@@ -35265,7 +35564,9 @@ internal sealed record InstanceStructureSnapshot(
     ThalamicAttentionGateDiagnostics? ThalamicAttentionGateDiagnostics = null,
     HypothalamicHomeostasisDiagnostics? HypothalamicHomeostasisDiagnostics = null,
     SleepWakeArousalDiagnostics? SleepWakeArousalDiagnostics = null,
-    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null);
+    DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
+    DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
+    SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

@@ -178,7 +178,9 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var hypothalamicHomeostasis = BuildHypothalamicHomeostasisDiagnostics(tickSignal.GlobalNeuromodState);
 			var sleepWakeArousal = BuildSleepWakeArousalDiagnostics(tickSignal.GlobalNeuromodState);
 			var descendingDefense = BuildDescendingDefenseDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense);
+			var dopamineReward = BuildDopamineRewardDiagnostics(tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
+			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta);
 			return ValueTask.FromResult(result);
 		}
 	}
@@ -1643,6 +1645,245 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		if (protection > 0.08f)
 		{
 			return "Guarding";
+		}
+
+		return "Quiet";
+	}
+
+	private DopamineRewardDiagnostics? BuildDopamineRewardDiagnostics(NeuromodState neuromod, float rewardPredictionError)
+	{
+		if (!IsDopamineRewardDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var rpe = Math.Clamp(rewardPredictionError, -1f, 1f);
+		var dopamine = Math.Clamp(neuromod.DopamineLevel, 0f, 1f);
+		var positiveRpe = Math.Max(0f, rpe);
+		var negativeRpe = Math.Max(0f, -rpe);
+		var vta = 0f;
+		var snc = 0f;
+		var accumbens = 0f;
+		var striatum = 0f;
+		var habenula = 0f;
+		var ofc = 0f;
+		var pfc = 0f;
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.Vta:
+			vta = mean * (0.90f + (dopamine * 0.35f) + (positiveRpe * 0.25f));
+			break;
+		case StructureId.Snc:
+			snc = mean * (0.90f + (dopamine * 0.30f) + (Math.Abs(rpe) * 0.15f));
+			break;
+		case StructureId.NucleusAccumbens:
+			accumbens = mean * (0.85f + (dopamine * 0.35f) + (positiveRpe * 0.20f));
+			break;
+		case StructureId.Striatum:
+			striatum = mean * (0.85f + (dopamine * 0.35f));
+			break;
+		case StructureId.Habenula:
+			habenula = mean * (0.85f + (negativeRpe * 0.45f));
+			break;
+		case StructureId.OrbitofrontalCortex:
+			ofc = mean * (0.85f + (dopamine * 0.15f) + (Math.Abs(rpe) * 0.20f));
+			break;
+		case StructureId.Pfc:
+			pfc = mean * (0.85f + (dopamine * 0.20f));
+			break;
+		}
+
+		var learning = Math.Max(0f,
+			(vta * 0.24f) +
+			(snc * 0.22f) +
+			(accumbens * 0.20f) +
+			(striatum * 0.18f) +
+			(ofc * 0.18f) +
+			(pfc * 0.12f) +
+			(positiveRpe * 0.25f) -
+			(habenula * 0.16f));
+
+		return new DopamineRewardDiagnostics(
+			SelectDopamineRewardMode(vta, snc, accumbens, striatum, habenula, ofc, pfc, rpe, learning),
+			vta,
+			snc,
+			accumbens,
+			striatum,
+			habenula,
+			ofc,
+			pfc,
+			rpe,
+			learning);
+	}
+
+	private static bool IsDopamineRewardDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.Vta
+			or StructureId.Snc
+			or StructureId.NucleusAccumbens
+			or StructureId.Striatum
+			or StructureId.Habenula
+			or StructureId.OrbitofrontalCortex
+			or StructureId.Pfc;
+
+	private static string SelectDopamineRewardMode(float vta, float snc, float accumbens, float striatum, float habenula, float ofc, float pfc, float rpe, float learning)
+	{
+		if (habenula > Math.Max(0.08f, Math.Max(vta, accumbens) * 0.70f) && rpe < -0.05f)
+		{
+			return "NegativeTeaching";
+		}
+
+		if ((vta + accumbens) > Math.Max(0.12f, habenula * 1.25f) && rpe > 0.05f)
+		{
+			return "PhasicReward";
+		}
+
+		if ((snc + striatum) > Math.Max(0.12f, ofc + pfc))
+		{
+			return "ActionTeaching";
+		}
+
+		if (ofc > Math.Max(0.10f, pfc * 0.85f))
+		{
+			return "Valuation";
+		}
+
+		if (pfc > Math.Max(0.10f, ofc * 0.85f))
+		{
+			return "GoalBias";
+		}
+
+		if (learning > 0.08f)
+		{
+			return "TonicLearning";
+		}
+
+		return "Quiet";
+	}
+
+	private SeptohippocampalThetaDiagnostics? BuildSeptohippocampalThetaDiagnostics(NeuromodState neuromod)
+	{
+		if (!IsSeptohippocampalThetaDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var septal = 0f;
+		var entorhinal = 0f;
+		var dentate = 0f;
+		var ca3 = 0f;
+		var ca1 = 0f;
+		var subicular = 0f;
+		var headDirection = 0f;
+		var retrosplenial = 0f;
+		var vestibular = 0f;
+		var achGain = 0.85f + (Math.Clamp(neuromod.AcetylcholineLevel, 0f, 1f) * 0.40f);
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.BasalForebrain:
+			septal = mean * achGain;
+			break;
+		case StructureId.EntorhinalCortex:
+			entorhinal = mean * achGain;
+			break;
+		case StructureId.DentateGyrus:
+			dentate = mean * achGain;
+			break;
+		case StructureId.CA3:
+			ca3 = mean;
+			break;
+		case StructureId.CA2:
+			ca3 = mean * 0.35f;
+			ca1 = mean * 0.25f;
+			headDirection = mean * 0.20f;
+			break;
+		case StructureId.CA1:
+			ca1 = mean * achGain;
+			break;
+		case StructureId.Subiculum:
+			subicular = mean;
+			headDirection = mean * 0.20f;
+			break;
+		case StructureId.Presubiculum:
+		case StructureId.Parasubiculum:
+			headDirection = mean;
+			break;
+		case StructureId.RetrosplenialCortex:
+			retrosplenial = mean;
+			headDirection = mean * 0.30f;
+			break;
+		case StructureId.VestibularNuclei:
+			vestibular = mean;
+			headDirection = mean * 0.35f;
+			break;
+		}
+
+		var coherence = Math.Max(0f,
+			(septal * 0.22f) +
+			(entorhinal * 0.18f) +
+			(dentate * 0.12f) +
+			(ca3 * 0.14f) +
+			(ca1 * 0.18f) +
+			(subicular * 0.16f) +
+			(headDirection * 0.18f) +
+			(retrosplenial * 0.14f) +
+			(vestibular * 0.12f));
+
+		return new SeptohippocampalThetaDiagnostics(
+			SelectSeptohippocampalThetaMode(septal, entorhinal, ca3, ca1, headDirection, retrosplenial, vestibular, coherence),
+			septal,
+			entorhinal,
+			dentate,
+			ca3,
+			ca1,
+			subicular,
+			headDirection,
+			retrosplenial,
+			vestibular,
+			coherence);
+	}
+
+	private static bool IsSeptohippocampalThetaDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.BasalForebrain
+			or StructureId.EntorhinalCortex
+			or StructureId.DentateGyrus
+			or StructureId.CA3
+			or StructureId.CA2
+			or StructureId.CA1
+			or StructureId.Subiculum
+			or StructureId.Presubiculum
+			or StructureId.Parasubiculum
+			or StructureId.RetrosplenialCortex
+			or StructureId.VestibularNuclei;
+
+	private static string SelectSeptohippocampalThetaMode(float septal, float entorhinal, float ca3, float ca1, float headDirection, float retrosplenial, float vestibular, float coherence)
+	{
+		if (septal > Math.Max(0.10f, coherence * 0.35f) && entorhinal > 0.05f)
+		{
+			return "ThetaPacing";
+		}
+
+		if ((headDirection + vestibular + retrosplenial) > Math.Max(0.12f, ca1 + ca3))
+		{
+			return "PathIntegrating";
+		}
+
+		if (ca3 > Math.Max(0.10f, entorhinal * 0.80f))
+		{
+			return "Sequencing";
+		}
+
+		if (ca1 > Math.Max(0.10f, ca3 * 0.80f))
+		{
+			return "PlaceTiming";
+		}
+
+		if (coherence > 0.08f)
+		{
+			return "Synchronized";
 		}
 
 		return "Quiet";

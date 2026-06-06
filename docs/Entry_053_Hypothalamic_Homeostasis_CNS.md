@@ -33,4 +33,6 @@ Start the CNS-completion track by giving the avatar a named hypothalamic homeost
 
 - DONE: Added sleep-wake/arousal-state diagnostics for hypothalamus, reticular formation, pons, medulla, LC, raphe, basal forebrain, and intralaminar thalamus.
 - DONE: Added descending pain/defensive-action diagnostics for amygdala, hypothalamus, PAG, raphe, medulla, reticular formation, and spinal motor withdrawal/protection.
-- Add dopamine reward-prediction/action-learning diagnostics for VTA, SNc, nucleus accumbens, striatum, habenula, OFC, and PFC.
+- DONE: Added dopamine reward-prediction/action-learning diagnostics for VTA, SNc, nucleus accumbens, striatum, habenula, OFC, and PFC.
+- DONE: Added septal-hippocampal theta/navigation-memory diagnostics for medial septum proxy, hippocampal formation, entorhinal cortex, retrosplenial cortex, and vestibular/head-direction inputs.
+- Add spinal proprioceptive/reflex-loop diagnostics for spinal cord motor, S1, M1, cerebellar granule layer, vestibular nuclei, reticular formation, and thalamic relay.

@@ -130,8 +130,8 @@ public partial class MainWindow : Window
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
-    private const int EnvironmentAudioDispatchIntervalMs = 2200;
-    private const int ObjectMemoryPollIntervalMs = 3000;
+    private const int EnvironmentAudioDispatchIntervalMs = 4200;
+    private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyStateDispatchIntervalMs = 350;
     private const int DefaultObjectDispatchMaxCuesPerCycle = 1;
@@ -212,13 +212,13 @@ public partial class MainWindow : Window
     private readonly HttpClient _sensoryInputHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2200) });
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4200) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(7500) });
     private readonly HttpClient _objectDispatchHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(7500) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
     private readonly HttpClient _objectMemoryHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(6500) });
 
     // Pixel-vision dispatch: posts raw grayscale frames to NRE.Api (the brain engine
     // that hosts SetVisualFrame). This is a SEPARATE target from the ControlProgram
@@ -407,6 +407,7 @@ public partial class MainWindow : Window
     private string _visionComputeWarning = string.Empty;
     private int _visionGeneration;
     private int[,]? _visionHeightsSnapshot;
+    private VisionTerrainCell[,]? _visionTerrainCellsSnapshot;
     private VisionHitBox[] _visionHitBoxesSnapshot = [];
     private VisionHitGrid _visionHitGridSnapshot = VisionHitGrid.Empty;
     private IReadOnlyDictionary<long, BlockKind> _visionSurfaceOverridesSnapshot = EmptySurfaceOverrides;
@@ -5058,6 +5059,7 @@ public partial class MainWindow : Window
             RightX: rightX,
             RightZ: rightZ,
             Heights: sceneSnapshot.Heights,
+            TerrainCells: sceneSnapshot.TerrainCells,
             VisionHitGrid: sceneSnapshot.HitGrid,
             DynamicVisionHitBoxes: dynamicHitBoxes,
             SurfaceOverrides: sceneSnapshot.SurfaceOverrides);
@@ -5074,15 +5076,41 @@ public partial class MainWindow : Window
                 _surfaceOverrides.Count == 0
                     ? EmptySurfaceOverrides
                     : new Dictionary<long, BlockKind>(_surfaceOverrides);
+            _visionTerrainCellsSnapshot = BuildVisionTerrainCells(_visionHeightsSnapshot, _visionSurfaceOverridesSnapshot);
             _visionSceneSnapshotDirty = false;
         }
 
-        return new VisionSceneSnapshot(_visionHeightsSnapshot, _visionHitGridSnapshot, _visionSurfaceOverridesSnapshot);
+        return new VisionSceneSnapshot(
+            _visionHeightsSnapshot,
+            _visionTerrainCellsSnapshot!,
+            _visionHitGridSnapshot,
+            _visionSurfaceOverridesSnapshot);
     }
 
     private void InvalidateVisionSceneSnapshot()
     {
         _visionSceneSnapshotDirty = true;
+    }
+
+    private static VisionTerrainCell[,] BuildVisionTerrainCells(
+        int[,] heights,
+        IReadOnlyDictionary<long, BlockKind> surfaceOverrides)
+    {
+        var width = heights.GetLength(0);
+        var depth = heights.GetLength(1);
+        var cells = new VisionTerrainCell[width, depth];
+
+        for (var x = 0; x < width; x++)
+        {
+            for (var z = 0; z < depth; z++)
+            {
+                var kind = ResolveAvatarVisionTerrainKind(heights[x, z], surfaceOverrides, x, z);
+                var color = ApplyAvatarVisionTerrainLighting(GetAvatarVisionObjectColor(kind), kind, heights, x, z);
+                cells[x, z] = new VisionTerrainCell(kind, color);
+            }
+        }
+
+        return cells;
     }
 
     private VisionHitBox[] BuildDynamicVisionHitBoxes()
@@ -5255,7 +5283,7 @@ public partial class MainWindow : Window
 
                     if (sampleY <= topY)
                     {
-                        hitColor = GetAvatarVisionTerrainColor(cellHeight, request.Heights, request.SurfaceOverrides, gridX, gridZ);
+                        hitColor = request.TerrainCells[gridX, gridZ].Color;
                         hitDistance = dist;
                         hit = true;
                         break;
@@ -5366,15 +5394,7 @@ public partial class MainWindow : Window
 
                 if (sampleY <= topY)
                 {
-                    if (request.SurfaceOverrides.TryGetValue(MakeSurfaceKey(gridX, gridZ), out var overrideKind))
-                    {
-                        saliency = ComputeWorldVisionSaliency(overrideKind, dist, maxDistance);
-                    }
-                    else
-                    {
-                        saliency = ComputeTerrainVisionSaliency(cellHeight, request.SurfaceOverrides, gridX, gridZ, dist, maxDistance);
-                    }
-
+                    saliency = ComputeWorldVisionSaliency(request.TerrainCells[gridX, gridZ].Kind, dist, maxDistance);
                     break;
                 }
             }
@@ -5414,18 +5434,6 @@ public partial class MainWindow : Window
         };
         var distanceBoost = 1.0 - Math.Clamp(distance / Math.Max(0.001, maxDistance), 0.0, 1.0);
         return Math.Clamp(baseSaliency * (0.44 + (distanceBoost * 0.72)), 0.02, 1.0);
-    }
-
-    private static double ComputeTerrainVisionSaliency(
-        int cellHeight,
-        IReadOnlyDictionary<long, BlockKind> surfaceOverrides,
-        int gridX,
-        int gridZ,
-        double distance,
-        double maxDistance)
-    {
-        var terrainKind = ResolveAvatarVisionTerrainKind(cellHeight, surfaceOverrides, gridX, gridZ);
-        return ComputeWorldVisionSaliency(terrainKind, distance, maxDistance);
     }
 
     private Vector3D GetAvatarVisualForward() => GetForwardVector(GetAvatarLookHeadingDeg());
@@ -5475,18 +5483,6 @@ public partial class MainWindow : Window
         }
 
         return GetAvatarVisionObjectColor(BlockKind.Grass);
-    }
-
-    private static Color GetAvatarVisionTerrainColor(
-        int cellHeight,
-        int[,] heights,
-        IReadOnlyDictionary<long, BlockKind> surfaceOverrides,
-        int gridX,
-        int gridZ)
-    {
-        var kind = ResolveAvatarVisionTerrainKind(cellHeight, surfaceOverrides, gridX, gridZ);
-        var color = GetAvatarVisionObjectColor(kind);
-        return ApplyAvatarVisionTerrainLighting(color, kind, heights, gridX, gridZ);
     }
 
     private static BlockKind ResolveAvatarVisionTerrainKind(
@@ -8455,14 +8451,20 @@ public partial class MainWindow : Window
         double RightX,
         double RightZ,
         int[,] Heights,
+        VisionTerrainCell[,] TerrainCells,
         VisionHitGrid VisionHitGrid,
         VisionHitBox[] DynamicVisionHitBoxes,
         IReadOnlyDictionary<long, BlockKind> SurfaceOverrides);
 
     private readonly record struct VisionSceneSnapshot(
         int[,] Heights,
+        VisionTerrainCell[,] TerrainCells,
         VisionHitGrid HitGrid,
         IReadOnlyDictionary<long, BlockKind> SurfaceOverrides);
+
+    private readonly record struct VisionTerrainCell(
+        BlockKind Kind,
+        Color Color);
 
     private readonly record struct VisibleOrientingTarget(
         OrientingGoalKind Kind,

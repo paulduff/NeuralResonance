@@ -321,6 +321,24 @@ public sealed class MajorPathwayIntegrationTests
     }
 
     [Fact]
+    public async Task OlfactoryLimbicAutobiographicalMemory_Connectome_Uses_Olfactory_Temporal_Amygdala_Hippocampal_Ofc_And_Pfc_Routes()
+    {
+        var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.TemporalAssociation, "olfactory_cortical"));
+        Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.Amygdala, "olfactory_limbic"));
+        Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.EntorhinalCortex, "olfactory_hippocampal"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.EntorhinalCortex, "semantic_to_memory"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.Amygdala, "salience_labeling"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.PerirhinalCortex, "semantic_to_familiarity"));
+        Assert.True(HasDirectConnection(rules, StructureId.PerirhinalCortex, StructureId.EntorhinalCortex, "perirhinal_entorhinal_object_memory"));
+        Assert.True(HasDirectConnection(rules, StructureId.ParahippocampalCortex, StructureId.EntorhinalCortex, "context_to_hippocampal_index"));
+        Assert.True(HasDirectConnection(rules, StructureId.EntorhinalCortex, StructureId.DentateGyrus, "perforant_path_l2"));
+        Assert.True(HasDirectConnection(rules, StructureId.CA3, StructureId.CA1, "schaffer_collateral"));
+        Assert.True(HasDirectConnection(rules, StructureId.CA1, StructureId.Pfc, "memory_to_control"));
+        Assert.True(HasDirectConnection(rules, StructureId.OrbitofrontalCortex, StructureId.Pfc, "value_to_control"));
+    }
+
+    [Fact]
     public async Task Limbic_Modulation_Amygdala_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();

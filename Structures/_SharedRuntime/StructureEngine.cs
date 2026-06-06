@@ -181,7 +181,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var dopamineReward = BuildDopamineRewardDiagnostics(tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
 			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(tickSignal.GlobalNeuromodState);
 			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive);
+			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory);
 			return ValueTask.FromResult(result);
 		}
 	}
@@ -2003,6 +2004,158 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		if (thalamic > 0.08f)
 		{
 			return "Relaying";
+		}
+
+		if (coherence > 0.08f)
+		{
+			return "Integrated";
+		}
+
+		return "Quiet";
+	}
+
+	private OlfactoryLimbicMemoryDiagnostics? BuildOlfactoryLimbicMemoryDiagnostics(NeuromodState neuromod)
+	{
+		if (!IsOlfactoryLimbicMemoryDiagnosticsStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var mean = _meanFiringRateHz;
+		var olfactory = 0f;
+		var temporal = 0f;
+		var amygdala = 0f;
+		var entorhinal = 0f;
+		var hippocampal = 0f;
+		var ofc = 0f;
+		var pfc = 0f;
+		var familiarity = 0f;
+		var achGain = 0.85f + (Math.Clamp(neuromod.AcetylcholineLevel, 0f, 1f) * 0.35f);
+		var neGain = 0.85f + (Math.Clamp(neuromod.NorepinephrineLevel, 0f, 1f) * 0.35f);
+		var dopamineGain = 0.85f + (Math.Clamp(neuromod.DopamineLevel, 0f, 1f) * 0.25f);
+
+		switch (_profile.StructureId)
+		{
+		case StructureId.OlfactoryBulb:
+			olfactory = mean * achGain;
+			break;
+		case StructureId.TemporalAssociation:
+			temporal = mean;
+			familiarity = mean * 0.20f;
+			break;
+		case StructureId.PerirhinalCortex:
+			temporal = mean * 0.35f;
+			familiarity = mean;
+			break;
+		case StructureId.ParahippocampalCortex:
+			entorhinal = mean * 0.25f;
+			hippocampal = mean * 0.45f;
+			break;
+		case StructureId.Amygdala:
+			amygdala = mean * neGain;
+			break;
+		case StructureId.EntorhinalCortex:
+			entorhinal = mean * achGain;
+			break;
+		case StructureId.DentateGyrus:
+			hippocampal = mean * 0.35f;
+			break;
+		case StructureId.CA3:
+			hippocampal = mean * 0.55f;
+			break;
+		case StructureId.CA2:
+			hippocampal = mean * 0.25f;
+			break;
+		case StructureId.CA1:
+			hippocampal = mean * 0.70f;
+			break;
+		case StructureId.Subiculum:
+			hippocampal = mean * 0.45f;
+			pfc = mean * 0.15f;
+			break;
+		case StructureId.OrbitofrontalCortex:
+			ofc = mean * dopamineGain;
+			break;
+		case StructureId.Pfc:
+			pfc = mean;
+			break;
+		}
+
+		var coherence = Math.Clamp(
+			(olfactory * 0.18f) +
+			(temporal * 0.15f) +
+			(amygdala * 0.16f) +
+			(entorhinal * 0.17f) +
+			(hippocampal * 0.20f) +
+			(ofc * 0.12f) +
+			(pfc * 0.16f) +
+			(familiarity * 0.10f),
+			0f,
+			120f);
+
+		return new OlfactoryLimbicMemoryDiagnostics(
+			SelectOlfactoryLimbicMemoryMode(olfactory, temporal, amygdala, entorhinal, hippocampal, ofc, pfc, familiarity, coherence),
+			olfactory,
+			temporal,
+			amygdala,
+			entorhinal,
+			hippocampal,
+			ofc,
+			pfc,
+			familiarity,
+			coherence);
+	}
+
+	private static bool IsOlfactoryLimbicMemoryDiagnosticsStructure(StructureId structureId)
+		=> structureId is StructureId.OlfactoryBulb
+			or StructureId.TemporalAssociation
+			or StructureId.PerirhinalCortex
+			or StructureId.ParahippocampalCortex
+			or StructureId.Amygdala
+			or StructureId.EntorhinalCortex
+			or StructureId.DentateGyrus
+			or StructureId.CA3
+			or StructureId.CA2
+			or StructureId.CA1
+			or StructureId.Subiculum
+			or StructureId.OrbitofrontalCortex
+			or StructureId.Pfc;
+
+	private static string SelectOlfactoryLimbicMemoryMode(float olfactory, float temporal, float amygdala, float entorhinal, float hippocampal, float ofc, float pfc, float familiarity, float coherence)
+	{
+		if (olfactory > Math.Max(0.10f, temporal * 0.75f) && (amygdala + entorhinal) > 0.08f)
+		{
+			return "OdorCueing";
+		}
+
+		if (amygdala > Math.Max(0.10f, ofc * 0.80f))
+		{
+			return "AffectiveTagging";
+		}
+
+		if (entorhinal > Math.Max(0.10f, hippocampal * 0.70f))
+		{
+			return "Encoding";
+		}
+
+		if (hippocampal > Math.Max(0.10f, entorhinal * 0.80f))
+		{
+			return "Recalling";
+		}
+
+		if (ofc > Math.Max(0.10f, pfc * 0.70f))
+		{
+			return "Valuating";
+		}
+
+		if (pfc > Math.Max(0.10f, hippocampal * 0.70f))
+		{
+			return "NarrativeControl";
+		}
+
+		if (familiarity > 0.08f)
+		{
+			return "Familiarity";
 		}
 
 		if (coherence > 0.08f)

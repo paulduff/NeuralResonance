@@ -50,7 +50,8 @@ public sealed record TickAck(
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
-    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -231,6 +232,18 @@ public sealed record SpinalProprioceptiveDiagnostics(
     float ReflexReadiness,
     float ProprioceptiveCoherence);
 
+public sealed record OlfactoryLimbicMemoryDiagnostics(
+    string MemoryMode,
+    float OlfactoryCueDrive,
+    float TemporalPiriformAssociation,
+    float AmygdalaAffectiveTag,
+    float EntorhinalMemoryGate,
+    float HippocampalEpisodeIndex,
+    float OrbitofrontalValenceContext,
+    float PfcAutobiographicalControl,
+    float FamiliaritySignal,
+    float AutobiographicalCoherence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -274,7 +287,8 @@ public sealed record StructureSnapshot(
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
-    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

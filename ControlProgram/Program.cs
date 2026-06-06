@@ -22503,7 +22503,8 @@ internal sealed class TickCoordinator(
                     ack.DescendingDefenseDiagnostics,
                     ack.DopamineRewardDiagnostics,
                     ack.SeptohippocampalThetaDiagnostics,
-                    ack.SpinalProprioceptiveDiagnostics);
+                    ack.SpinalProprioceptiveDiagnostics,
+                    ack.OlfactoryLimbicMemoryDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -24582,23 +24583,25 @@ internal sealed class TickCoordinator(
                 AverageDescendingDefenseDiagnostics(members),
                 AverageDopamineRewardDiagnostics(members),
                 AverageSeptohippocampalThetaDiagnostics(members),
-                AverageSpinalProprioceptiveDiagnostics(members)));
+                AverageSpinalProprioceptiveDiagnostics(members),
+                AverageOlfactoryLimbicMemoryDiagnostics(members)));
         }
 
-        return EnrichSpinalProprioceptiveDiagnostics(
-            EnrichSeptohippocampalThetaDiagnostics(
-                EnrichDopamineRewardDiagnostics(
-                    EnrichDescendingDefenseDiagnostics(
-                        EnrichSleepWakeArousalDiagnostics(
-                            EnrichHypothalamicHomeostasisDiagnostics(
-                                EnrichThalamicAttentionGateDiagnostics(
-                                    EnrichPrefrontalWorkingMemoryDiagnostics(
-                                        EnrichSalienceAffectDiagnostics(
-                                            EnrichHippocampalSpatialMemoryDiagnostics(
-                                                EnrichSuperiorColliculusOrientingDiagnostics(
-                                                    EnrichVestibuloReticularPostureDiagnostics(
-                                                        EnrichCerebellarCorrectionDiagnostics(
-                                                            EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+        return EnrichOlfactoryLimbicMemoryDiagnostics(
+            EnrichSpinalProprioceptiveDiagnostics(
+                EnrichSeptohippocampalThetaDiagnostics(
+                    EnrichDopamineRewardDiagnostics(
+                        EnrichDescendingDefenseDiagnostics(
+                            EnrichSleepWakeArousalDiagnostics(
+                                EnrichHypothalamicHomeostasisDiagnostics(
+                                    EnrichThalamicAttentionGateDiagnostics(
+                                        EnrichPrefrontalWorkingMemoryDiagnostics(
+                                            EnrichSalienceAffectDiagnostics(
+                                                EnrichHippocampalSpatialMemoryDiagnostics(
+                                                    EnrichSuperiorColliculusOrientingDiagnostics(
+                                                        EnrichVestibuloReticularPostureDiagnostics(
+                                                            EnrichCerebellarCorrectionDiagnostics(
+                                                                EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -24662,7 +24665,8 @@ internal sealed class TickCoordinator(
                 snapshot.DescendingDefenseDiagnostics,
                 snapshot.DopamineRewardDiagnostics,
                 snapshot.SeptohippocampalThetaDiagnostics,
-                snapshot.SpinalProprioceptiveDiagnostics));
+                snapshot.SpinalProprioceptiveDiagnostics,
+                snapshot.OlfactoryLimbicMemoryDiagnostics));
         }
 
         return merged;
@@ -26577,6 +26581,172 @@ internal sealed class TickCoordinator(
         if (thalamic > 0.08f)
         {
             return "Relaying";
+        }
+
+        if (coherence > 0.08f)
+        {
+            return "Integrated";
+        }
+
+        return "Quiet";
+    }
+
+    private static OlfactoryLimbicMemoryDiagnostics? AverageOlfactoryLimbicMemoryDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(m => m.OlfactoryLimbicMemoryDiagnostics)
+            .Where(m => m != null)
+            .Cast<OlfactoryLimbicMemoryDiagnostics>()
+            .ToList();
+        if (diagnostics.Count == 0)
+        {
+            return null;
+        }
+
+        var olfactory = (float)diagnostics.Average(d => d.OlfactoryCueDrive);
+        var temporal = (float)diagnostics.Average(d => d.TemporalPiriformAssociation);
+        var amygdala = (float)diagnostics.Average(d => d.AmygdalaAffectiveTag);
+        var entorhinal = (float)diagnostics.Average(d => d.EntorhinalMemoryGate);
+        var hippocampal = (float)diagnostics.Average(d => d.HippocampalEpisodeIndex);
+        var ofc = (float)diagnostics.Average(d => d.OrbitofrontalValenceContext);
+        var pfc = (float)diagnostics.Average(d => d.PfcAutobiographicalControl);
+        var familiarity = (float)diagnostics.Average(d => d.FamiliaritySignal);
+        var coherence = (float)diagnostics.Average(d => d.AutobiographicalCoherence);
+
+        return new OlfactoryLimbicMemoryDiagnostics(
+            SelectOlfactoryLimbicMemoryMode(olfactory, temporal, amygdala, entorhinal, hippocampal, ofc, pfc, familiarity, coherence),
+            olfactory,
+            temporal,
+            amygdala,
+            entorhinal,
+            hippocampal,
+            ofc,
+            pfc,
+            familiarity,
+            coherence);
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichOlfactoryLimbicMemoryDiagnostics(List<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(s => s.StructureId);
+        var acetylcholine = byId.TryGetValue(StructureId.OlfactoryBulb, out var olfactorySnapshot)
+            ? olfactorySnapshot.NeuromodLocal.AcetylcholineLevel
+            : 0f;
+        var norepinephrine = byId.TryGetValue(StructureId.Amygdala, out var amygdalaSnapshot)
+            ? amygdalaSnapshot.NeuromodLocal.NorepinephrineLevel
+            : 0f;
+        var dopamine = byId.TryGetValue(StructureId.OrbitofrontalCortex, out var ofcSnapshot)
+            ? ofcSnapshot.NeuromodLocal.DopamineLevel
+            : 0f;
+        var achGain = 0.85f + (Math.Clamp(acetylcholine, 0f, 1f) * 0.35f);
+        var neGain = 0.85f + (Math.Clamp(norepinephrine, 0f, 1f) * 0.35f);
+        var dopamineGain = 0.85f + (Math.Clamp(dopamine, 0f, 1f) * 0.25f);
+        var olfactory = GetRate(byId, StructureId.OlfactoryBulb) * achGain;
+        var temporal = GetRate(byId, StructureId.TemporalAssociation) + (GetRate(byId, StructureId.PerirhinalCortex) * 0.35f);
+        var familiarity = GetRate(byId, StructureId.PerirhinalCortex) + (GetRate(byId, StructureId.TemporalAssociation) * 0.20f);
+        var amygdala = GetRate(byId, StructureId.Amygdala) * neGain;
+        var entorhinal = (GetRate(byId, StructureId.EntorhinalCortex) * achGain) + (GetRate(byId, StructureId.ParahippocampalCortex) * 0.25f);
+        var hippocampal =
+            (GetRate(byId, StructureId.DentateGyrus) * 0.35f) +
+            (GetRate(byId, StructureId.CA3) * 0.55f) +
+            (GetRate(byId, StructureId.CA2) * 0.25f) +
+            (GetRate(byId, StructureId.CA1) * 0.70f) +
+            (GetRate(byId, StructureId.Subiculum) * 0.45f) +
+            (GetRate(byId, StructureId.ParahippocampalCortex) * 0.45f);
+        var ofc = GetRate(byId, StructureId.OrbitofrontalCortex) * dopamineGain;
+        var pfc = GetRate(byId, StructureId.Pfc) + (GetRate(byId, StructureId.Subiculum) * 0.15f);
+        var coherence = Math.Clamp(
+            (olfactory * 0.18f) +
+            (temporal * 0.15f) +
+            (amygdala * 0.16f) +
+            (entorhinal * 0.17f) +
+            (hippocampal * 0.20f) +
+            (ofc * 0.12f) +
+            (pfc * 0.16f) +
+            (familiarity * 0.10f),
+            0f,
+            120f);
+        var composite = new OlfactoryLimbicMemoryDiagnostics(
+            SelectOlfactoryLimbicMemoryMode(olfactory, temporal, amygdala, entorhinal, hippocampal, ofc, pfc, familiarity, coherence),
+            olfactory,
+            temporal,
+            amygdala,
+            entorhinal,
+            hippocampal,
+            ofc,
+            pfc,
+            familiarity,
+            coherence);
+
+        for (var i = 0; i < snapshots.Count; i++)
+        {
+            var snapshot = snapshots[i];
+            if (!CarriesOlfactoryLimbicMemoryComposite(snapshot.StructureId))
+            {
+                continue;
+            }
+
+            snapshots[i] = snapshot with { OlfactoryLimbicMemoryDiagnostics = composite };
+        }
+
+        return snapshots;
+    }
+
+    private static bool CarriesOlfactoryLimbicMemoryComposite(StructureId structureId)
+        => structureId is StructureId.OlfactoryBulb
+            or StructureId.TemporalAssociation
+            or StructureId.PerirhinalCortex
+            or StructureId.ParahippocampalCortex
+            or StructureId.Amygdala
+            or StructureId.EntorhinalCortex
+            or StructureId.DentateGyrus
+            or StructureId.CA3
+            or StructureId.CA2
+            or StructureId.CA1
+            or StructureId.Subiculum
+            or StructureId.OrbitofrontalCortex
+            or StructureId.Pfc;
+
+    private static string SelectOlfactoryLimbicMemoryMode(float olfactory, float temporal, float amygdala, float entorhinal, float hippocampal, float ofc, float pfc, float familiarity, float coherence)
+    {
+        if (olfactory > Math.Max(0.10f, temporal * 0.75f) && (amygdala + entorhinal) > 0.08f)
+        {
+            return "OdorCueing";
+        }
+
+        if (amygdala > Math.Max(0.10f, ofc * 0.80f))
+        {
+            return "AffectiveTagging";
+        }
+
+        if (entorhinal > Math.Max(0.10f, hippocampal * 0.70f))
+        {
+            return "Encoding";
+        }
+
+        if (hippocampal > Math.Max(0.10f, entorhinal * 0.80f))
+        {
+            return "Recalling";
+        }
+
+        if (ofc > Math.Max(0.10f, pfc * 0.70f))
+        {
+            return "Valuating";
+        }
+
+        if (pfc > Math.Max(0.10f, hippocampal * 0.70f))
+        {
+            return "NarrativeControl";
+        }
+
+        if (familiarity > 0.08f)
+        {
+            return "Familiarity";
         }
 
         if (coherence > 0.08f)
@@ -35718,7 +35888,8 @@ internal sealed record InstanceStructureSnapshot(
     DescendingDefenseDiagnostics? DescendingDefenseDiagnostics = null,
     DopamineRewardDiagnostics? DopamineRewardDiagnostics = null,
     SeptohippocampalThetaDiagnostics? SeptohippocampalThetaDiagnostics = null,
-    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null);
+    SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
+    OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

@@ -1498,7 +1498,8 @@ public partial class MainWindow
                     ParseDescendingDefenseDiagnostics(state),
                     ParseDopamineRewardDiagnostics(state),
                     ParseSeptohippocampalThetaDiagnostics(state),
-                    ParseSpinalProprioceptiveDiagnostics(state)));
+                    ParseSpinalProprioceptiveDiagnostics(state),
+                    ParseOlfactoryLimbicMemoryDiagnostics(state)));
             }
         }
 
@@ -1921,6 +1922,32 @@ public partial class MainWindow
             GetSingle(diagnostics, "thalamicRelayTone", "thalamic_relay_tone"),
             GetSingle(diagnostics, "reflexReadiness", "reflex_readiness"),
             GetSingle(diagnostics, "proprioceptiveCoherence", "proprioceptive_coherence"));
+    }
+
+    private static OlfactoryLimbicMemoryTick? ParseOlfactoryLimbicMemoryDiagnostics(JsonElement state)
+    {
+        if (!TryGetProperty(state, "olfactoryLimbicMemoryDiagnostics", out var diagnostics) &&
+            !TryGetProperty(state, "olfactory_limbic_memory_diagnostics", out diagnostics))
+        {
+            return null;
+        }
+
+        if (diagnostics.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        return new OlfactoryLimbicMemoryTick(
+            GetString(diagnostics, "memoryMode", "memory_mode"),
+            GetSingle(diagnostics, "olfactoryCueDrive", "olfactory_cue_drive"),
+            GetSingle(diagnostics, "temporalPiriformAssociation", "temporal_piriform_association"),
+            GetSingle(diagnostics, "amygdalaAffectiveTag", "amygdala_affective_tag"),
+            GetSingle(diagnostics, "entorhinalMemoryGate", "entorhinal_memory_gate"),
+            GetSingle(diagnostics, "hippocampalEpisodeIndex", "hippocampal_episode_index"),
+            GetSingle(diagnostics, "orbitofrontalValenceContext", "orbitofrontal_valence_context"),
+            GetSingle(diagnostics, "pfcAutobiographicalControl", "pfc_autobiographical_control"),
+            GetSingle(diagnostics, "familiaritySignal", "familiarity_signal"),
+            GetSingle(diagnostics, "autobiographicalCoherence", "autobiographical_coherence"));
     }
 
     private static Point3D RotateLocalPoint(Point3D p, double pitchDeg, double yawDeg, double rollDeg)

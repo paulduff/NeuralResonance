@@ -1,0 +1,213 @@
+<Solution>
+  <Folder Name="/ControlProgram/">
+    <Project Path="ControlProgram/NeuralResonanceEngine.ControlProgram.csproj" />
+  </Folder>
+  <Folder Name="/Protocol/">
+    <Project Path="Protocol/NeuralResonanceEngine.Protocol.csproj" />
+  </Folder>
+  <Folder Name="/Shared.Contracts/">
+    <Project Path="Shared.Contracts/NeuralResonanceEngine.Shared.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/NRE.WpfEditor/NRE.WpfEditor.csproj" />
+    <Project Path="src/NRE.WpfMazeSim/NRE.WpfMazeSim.csproj" />
+    <Project Path="src/NRE.WpfWorldSim/NRE.WpfWorldSim.csproj" />
+    <Project Path="src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
+  </Folder>
+  <Folder Name="/Structures/" />
+  <Folder Name="/Structures/A1/">
+    <Project Path="Structures/A1/NeuralResonanceEngine.Structures.A1.csproj" />
+  </Folder>
+  <Folder Name="/Structures/ACC/">
+    <Project Path="Structures/ACC/NeuralResonanceEngine.Structures.ACC.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Amygdala/">
+    <Project Path="Structures/Amygdala/NeuralResonanceEngine.Structures.Amygdala.csproj" />
+  </Folder>
+  <Folder Name="/Structures/ArcuateFasciculus/">
+    <Project Path="Structures/ArcuateFasciculus/NeuralResonanceEngine.Structures.ArcuateFasciculus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/BasalForebrainCholinergic/">
+    <Project Path="Structures/BasalForebrainCholinergic/NeuralResonanceEngine.Structures.BasalForebrainCholinergic.csproj" />
+  </Folder>
+  <Folder Name="/Structures/BrocaBa44Ba45/">
+    <Project Path="Structures/BrocaBa44Ba45/NeuralResonanceEngine.Structures.BrocaBa44Ba45.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Cerebellum.DCN/">
+    <Project Path="Structures/Cerebellum.DCN/NeuralResonanceEngine.Structures.Cerebellum_DCN.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Cerebellum.GranuleCellLayer/">
+    <Project Path="Structures/Cerebellum.GranuleCellLayer/NeuralResonanceEngine.Structures.Cerebellum_GranuleCellLayer.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Cerebellum.PurkinjeCellLayer/">
+    <Project Path="Structures/Cerebellum.PurkinjeCellLayer/NeuralResonanceEngine.Structures.Cerebellum_PurkinjeCellLayer.csproj" />
+  </Folder>
+  <Folder Name="/Structures/EntorhinalCortex/">
+    <Project Path="Structures/EntorhinalCortex/NeuralResonanceEngine.Structures.EntorhinalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/GlobusPallidus/">
+    <Project Path="Structures/GlobusPallidus/NeuralResonanceEngine.Structures.GlobusPallidus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Hippocampus.CA1/">
+    <Project Path="Structures/Hippocampus.CA1/NeuralResonanceEngine.Structures.Hippocampus_CA1.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Hippocampus.CA3/">
+    <Project Path="Structures/Hippocampus.CA3/NeuralResonanceEngine.Structures.Hippocampus_CA3.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Hippocampus.DG/">
+    <Project Path="Structures/Hippocampus.DG/NeuralResonanceEngine.Structures.Hippocampus_DG.csproj" />
+  </Folder>
+  <Folder Name="/Structures/InferiorOlive/">
+    <Project Path="Structures/InferiorOlive/NeuralResonanceEngine.Structures.InferiorOlive.csproj" />
+  </Folder>
+  <Folder Name="/Structures/LocusCoeruleus/">
+    <Project Path="Structures/LocusCoeruleus/NeuralResonanceEngine.Structures.LocusCoeruleus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/M1/">
+    <Project Path="Structures/M1/NeuralResonanceEngine.Structures.M1.csproj" />
+  </Folder>
+  <Folder Name="/Structures/OlfactoryBulb/">
+    <Project Path="Structures/OlfactoryBulb/NeuralResonanceEngine.Structures.OlfactoryBulb.csproj" />
+  </Folder>
+  <Folder Name="/Structures/PFC/">
+    <Project Path="Structures/PFC/NeuralResonanceEngine.Structures.PFC.csproj" />
+  </Folder>
+  <Folder Name="/Structures/PPC/">
+    <Project Path="Structures/PPC/NeuralResonanceEngine.Structures.PPC.csproj" />
+  </Folder>
+  <Folder Name="/Structures/RapheNuclei/">
+    <Project Path="Structures/RapheNuclei/NeuralResonanceEngine.Structures.RapheNuclei.csproj" />
+  </Folder>
+  <Folder Name="/Structures/S1/">
+    <Project Path="Structures/S1/NeuralResonanceEngine.Structures.S1.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SMA/">
+    <Project Path="Structures/SMA/NeuralResonanceEngine.Structures.SMA.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SNc/">
+    <Project Path="Structures/SNc/NeuralResonanceEngine.Structures.SNc.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SNr/">
+    <Project Path="Structures/SNr/NeuralResonanceEngine.Structures.SNr.csproj" />
+  </Folder>
+  <Folder Name="/Structures/STN/">
+    <Project Path="Structures/STN/NeuralResonanceEngine.Structures.STN.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Striatum/">
+    <Project Path="Structures/Striatum/NeuralResonanceEngine.Structures.Striatum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Subiculum/">
+    <Project Path="Structures/Subiculum/NeuralResonanceEngine.Structures.Subiculum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SupramarginalAngular/">
+    <Project Path="Structures/SupramarginalAngular/NeuralResonanceEngine.Structures.SupramarginalAngular.csproj" />
+  </Folder>
+  <Folder Name="/Structures/TemporalAssociation/">
+    <Project Path="Structures/TemporalAssociation/NeuralResonanceEngine.Structures.TemporalAssociation.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Thalamus/">
+    <Project Path="Structures/Thalamus/NeuralResonanceEngine.Structures.Thalamus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/TRN/">
+    <Project Path="Structures/TRN/NeuralResonanceEngine.Structures.TRN.csproj" />
+  </Folder>
+  <Folder Name="/Structures/V1/">
+    <Project Path="Structures/V1/NeuralResonanceEngine.Structures.V1.csproj" />
+  </Folder>
+  <Folder Name="/Structures/VTA/">
+    <Project Path="Structures/VTA/NeuralResonanceEngine.Structures.VTA.csproj" />
+  </Folder>
+  <Folder Name="/Structures/CorpusCallosum/">
+    <Project Path="Structures/CorpusCallosum/NeuralResonanceEngine.Structures.CorpusCallosum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Hypothalamus/">
+    <Project Path="Structures/Hypothalamus/NeuralResonanceEngine.Structures.Hypothalamus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Pons/">
+    <Project Path="Structures/Pons/NeuralResonanceEngine.Structures.Pons.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Medulla/">
+    <Project Path="Structures/Medulla/NeuralResonanceEngine.Structures.Medulla.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Insula/">
+    <Project Path="Structures/Insula/NeuralResonanceEngine.Structures.Insula.csproj" />
+  </Folder>
+  <Folder Name="/Structures/OrbitofrontalCortex/">
+    <Project Path="Structures/OrbitofrontalCortex/NeuralResonanceEngine.Structures.OrbitofrontalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/GPe/">
+    <Project Path="Structures/GPe/NeuralResonanceEngine.Structures.GPe.csproj" />
+  </Folder>
+  <Folder Name="/Structures/GPi/">
+    <Project Path="Structures/GPi/NeuralResonanceEngine.Structures.GPi.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Pulvinar/">
+    <Project Path="Structures/Pulvinar/NeuralResonanceEngine.Structures.Pulvinar.csproj" />
+  </Folder>
+  <Folder Name="/Structures/MediodorsalThalamus/">
+    <Project Path="Structures/MediodorsalThalamus/NeuralResonanceEngine.Structures.MediodorsalThalamus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/IntralaminarThalamus/">
+    <Project Path="Structures/IntralaminarThalamus/NeuralResonanceEngine.Structures.IntralaminarThalamus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Hippocampus.CA2/">
+    <Project Path="Structures/Hippocampus.CA2/NeuralResonanceEngine.Structures.Hippocampus_CA2.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Presubiculum/">
+    <Project Path="Structures/Presubiculum/NeuralResonanceEngine.Structures.Presubiculum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Parasubiculum/">
+    <Project Path="Structures/Parasubiculum/NeuralResonanceEngine.Structures.Parasubiculum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Cerebellum.Vermis/">
+    <Project Path="Structures/Cerebellum.Vermis/NeuralResonanceEngine.Structures.Cerebellum_Vermis.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Cerebellum.Lobules/">
+    <Project Path="Structures/Cerebellum.Lobules/NeuralResonanceEngine.Structures.Cerebellum_Lobules.csproj" />
+  </Folder>
+  <Folder Name="/Structures/V2/">
+    <Project Path="Structures/V2/NeuralResonanceEngine.Structures.V2.csproj" />
+  </Folder>
+  <Folder Name="/Structures/V4/">
+    <Project Path="Structures/V4/NeuralResonanceEngine.Structures.V4.csproj" />
+  </Folder>
+  <Folder Name="/Structures/MT/">
+    <Project Path="Structures/MT/NeuralResonanceEngine.Structures.MT.csproj" />
+  </Folder>
+  <Folder Name="/Structures/PremotorCortex/">
+    <Project Path="Structures/PremotorCortex/NeuralResonanceEngine.Structures.PremotorCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/ParahippocampalCortex/">
+    <Project Path="Structures/ParahippocampalCortex/NeuralResonanceEngine.Structures.ParahippocampalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/PerirhinalCortex/">
+    <Project Path="Structures/PerirhinalCortex/NeuralResonanceEngine.Structures.PerirhinalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/PosteriorCingulate/">
+    <Project Path="Structures/PosteriorCingulate/NeuralResonanceEngine.Structures.PosteriorCingulate.csproj" />
+  </Folder>
+  <Folder Name="/Structures/RetrosplenialCortex/">
+    <Project Path="Structures/RetrosplenialCortex/NeuralResonanceEngine.Structures.RetrosplenialCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/NucleusAccumbens/">
+    <Project Path="Structures/NucleusAccumbens/NeuralResonanceEngine.Structures.NucleusAccumbens.csproj" />
+  </Folder>
+  <Folder Name="/Structures/VentralPallidum/">
+    <Project Path="Structures/VentralPallidum/NeuralResonanceEngine.Structures.VentralPallidum.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Habenula/">
+    <Project Path="Structures/Habenula/NeuralResonanceEngine.Structures.Habenula.csproj" />
+  </Folder>
+  <Folder Name="/Structures/MotorThalamus/">
+    <Project Path="Structures/MotorThalamus/NeuralResonanceEngine.Structures.MotorThalamus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SuperiorColliculus/">
+    <Project Path="Structures/SuperiorColliculus/NeuralResonanceEngine.Structures.SuperiorColliculus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/WernickePstgPsts/">
+    <Project Path="Structures/WernickePstgPsts/NeuralResonanceEngine.Structures.WernickePstgPsts.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj" />
+  </Folder>
+</Solution>

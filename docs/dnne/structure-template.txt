@@ -1,0 +1,347 @@
+using System.Collections.Concurrent;
+using System.Net.Mime;
+using NeuralResonanceEngine.Protocol;
+using NeuralResonanceEngine.Shared.Contracts;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port) ? port : 6000);
+});
+builder.Services.AddSingleton(new StructureProfile(
+    StructureId.__STRUCTURE_ENUM__,
+    "__MODEL__",
+    "__PLASTICITY__",
+    "__JUST__",
+    new DelayWindow(__DELAY_MIN__, __DELAY_MAX__)));
+builder.Services.AddSingleton<StructureEngine>();
+
+var app = builder.Build();
+
+app.MapPost("/api/v1/structure/spike", async (HttpRequest request, StructureEngine engine, CancellationToken ct) =>
+{
+    var spike = await SpikeProtocol.receive_spike(request.Body, ct);
+    if (spike is null)
+    {
+        return Results.BadRequest("Spike payload missing");
+    }
+
+    await engine.EnqueueSpikeAsync(spike, ct);
+    return Results.Accepted();
+}).Accepts<SpikeMessage>(MediaTypeNames.Application.Octet);
+
+app.MapPost("/api/v1/structure/tick", async (TickSignal tickSignal, StructureEngine engine, CancellationToken ct) =>
+{
+    var ack = await engine.ProcessTickAsync(tickSignal, ct);
+    return Results.Ok(ack);
+});
+
+app.MapPost("/api/v1/structure/drain", async (StructureEngine engine, CancellationToken ct) =>
+{
+    var spikes = await engine.DrainOutboundSpikesAsync(ct);
+    return Results.Ok(spikes);
+});
+
+app.MapGet("/api/v1/structure/top", async (int count, StructureEngine engine, CancellationToken ct) =>
+{
+    var result = await engine.GetTopActiveNeuronsAsync(Math.Clamp(count, 1, 100), ct);
+    return Results.Ok(result);
+});
+
+app.MapGet("/health", (StructureProfile profile) => Results.Ok(new { structure = profile.StructureId, profile.NeuronModel, profile.PlasticityRule }));
+
+app.Run();
+
+internal sealed record DelayWindow(int MinMs, int MaxMs)
+{
+    public int Mean => (MinMs + MaxMs) / 2;
+}
+
+internal sealed record StructureProfile(
+    StructureId StructureId,
+    string NeuronModel,
+    string PlasticityRule,
+    string BiologicalJustification,
+    DelayWindow FeedbackDelay);
+
+internal sealed class StructureEngine(StructureProfile profile) : IStructureHost
+{
+    private readonly ConcurrentQueue<SpikeEnvelope> _feedForward = new();
+    private readonly ConcurrentQueue<SpikeEnvelope> _feedback = new();
+    private readonly ConcurrentQueue<SpikeMessage> _outbound = new();
+    private readonly List<ModelNeuron> _neurons = Enumerable.Range(0, 256).Select(i => new ModelNeuron($"n-{i:000}", profile.NeuronModel)).ToList();
+    private readonly Dictionary<string, SynapseState> _synapses = new();
+    private readonly Random _rng = new(profile.StructureId.GetHashCode());
+
+    private int _spikeInCount;
+    private int _spikeOutCount;
+
+    public ValueTask EnqueueSpikeAsync(SpikeMessage message, CancellationToken cancellationToken = default)
+    {
+        var delay = message.IsFeedback ? profile.FeedbackDelay.Mean : 0;
+        var envelope = new SpikeEnvelope(message, message.TimestampMs + delay);
+        if (message.IsFeedback)
+        {
+            _feedback.Enqueue(envelope);
+        }
+        else
+        {
+            _feedForward.Enqueue(envelope);
+        }
+
+        Interlocked.Increment(ref _spikeInCount);
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<TickAck> ProcessTickAsync(TickSignal tickSignal, CancellationToken cancellationToken = default)
+    {
+        var dueFeed = DequeueDue(_feedForward, tickSignal.TimestampMs);
+        var dueFeedback = DequeueDue(_feedback, tickSignal.TimestampMs);
+        var merged = dueFeed.Concat(dueFeedback).ToList();
+
+        foreach (var incoming in merged)
+        {
+            var target = _neurons[_rng.Next(_neurons.Count)];
+            target.Integrate(incoming.Message, tickSignal.TickDurationMs);
+            ApplyPlasticity(incoming.Message, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
+        }
+
+        var fired = 0;
+        foreach (var neuron in _neurons)
+        {
+            var firedNow = neuron.Step(tickSignal.TickDurationMs, tickSignal.GlobalNeuromodState);
+            if (!firedNow)
+            {
+                continue;
+            }
+
+            fired++;
+            var spike = BuildOutboundSpike(neuron, tickSignal, neuron.PreferredTarget, neuron.PreferredNt, false);
+            _outbound.Enqueue(spike);
+            Interlocked.Increment(ref _spikeOutCount);
+
+            if (profile.StructureId is StructureId.CA3)
+            {
+                var recurrent = BuildOutboundSpike(neuron, tickSignal, StructureId.CA3, NTEnum.GLUTAMATE, true);
+                _outbound.Enqueue(recurrent);
+                Interlocked.Increment(ref _spikeOutCount);
+            }
+        }
+
+        var meanRateHz = (float)(_neurons.Average(n => n.FiringRateHz));
+        var dominant = SelectDominantRhythm(profile.StructureId);
+
+        var ack = new TickAck(
+            profile.StructureId,
+            tickSignal.Tick,
+            fired,
+            meanRateHz,
+            _feedback.Count,
+            Volatile.Read(ref _spikeInCount),
+            Volatile.Read(ref _spikeOutCount),
+            _neurons.Count(n => n.IsActive),
+            dominant,
+            tickSignal.GlobalNeuromodState);
+
+        return ValueTask.FromResult(ack);
+    }
+
+    public ValueTask<IReadOnlyList<SpikeMessage>> DrainOutboundSpikesAsync(CancellationToken cancellationToken = default)
+    {
+        var drained = new List<SpikeMessage>();
+        while (_outbound.TryDequeue(out var spike))
+        {
+            drained.Add(spike);
+        }
+
+        return ValueTask.FromResult<IReadOnlyList<SpikeMessage>>(drained);
+    }
+
+    public ValueTask<IReadOnlyList<NeuronActivity>> GetTopActiveNeuronsAsync(int topK, CancellationToken cancellationToken = default)
+    {
+        var top = _neurons.OrderByDescending(n => n.FiringRateHz).Take(topK).Select(n => new NeuronActivity(n.Id, n.FiringRateHz)).ToList();
+        return ValueTask.FromResult<IReadOnlyList<NeuronActivity>>(top);
+    }
+
+    private void ApplyPlasticity(SpikeMessage message, NeuromodState neuromod, float rewardPredictionError)
+    {
+        var key = message.SynapseId.ToString("N");
+        if (!_synapses.TryGetValue(key, out var synapse))
+        {
+            synapse = new SynapseState(message.SynapseId, message.Neurotransmitter, message.VesicleQuanta);
+            _synapses[key] = synapse;
+        }
+
+        var delta = profile.PlasticityRule switch
+        {
+            "BCM" => PlasticityRules.Bcm(synapse.VesicleQuanta, _neurons.Average(n => n.ActivityTrace)),
+            "DopamineModulatedSTDP" => PlasticityRules.DopamineStdp(synapse.VesicleQuanta, neuromod.DopamineLevel, rewardPredictionError),
+            "DopamineModulatedSTDP+SynapticTaggingCapture" => PlasticityRules.DopamineStdp(synapse.VesicleQuanta, neuromod.DopamineLevel, rewardPredictionError) + PlasticityRules.SynapticTagCapture(synapse.VesicleQuanta, neuromod.AcetylcholineLevel),
+            "CerebellarLTD" => PlasticityRules.CerebellarLtd(synapse.VesicleQuanta),
+            "MossyFiberLTP" => PlasticityRules.MossyFiberLtp(synapse.VesicleQuanta),
+            "SynapticTaggingCapture" => PlasticityRules.SynapticTagCapture(synapse.VesicleQuanta, neuromod.AcetylcholineLevel),
+            _ => PlasticityRules.Stdp(synapse.VesicleQuanta)
+        };
+
+        synapse.VesicleQuanta = Math.Clamp(synapse.VesicleQuanta + delta, 0.05f, 5.0f);
+    }
+
+    private static List<SpikeEnvelope> DequeueDue(ConcurrentQueue<SpikeEnvelope> queue, double currentTimestampMs)
+    {
+        var list = new List<SpikeEnvelope>();
+        while (queue.TryPeek(out var peek) && peek.DeliverAtTimestampMs <= currentTimestampMs)
+        {
+            if (queue.TryDequeue(out var envelope))
+            {
+                list.Add(envelope);
+            }
+        }
+
+        return list;
+    }
+
+    private SpikeMessage BuildOutboundSpike(ModelNeuron source, TickSignal tickSignal, StructureId target, NTEnum neurotransmitter, bool isFeedback)
+    {
+        var synapseId = Guid.NewGuid();
+        var quanta = _synapses.Values.FirstOrDefault()?.VesicleQuanta ?? 1.0f;
+
+        return new SpikeMessage
+        {
+            MessageId = Guid.NewGuid(),
+            TimestampMs = tickSignal.TimestampMs,
+            SourceStructure = profile.StructureId,
+            TargetStructure = target,
+            SourceNeuronId = source.Id,
+            TargetNeuronId = $"auto-{target}-{Math.Abs(source.Id.GetHashCode()) % 128}",
+            SynapseId = synapseId,
+            Neurotransmitter = neurotransmitter,
+            VesicleQuanta = quanta,
+            ReuptakeRate = neurotransmitter switch
+            {
+                NTEnum.DOPAMINE => 40f,
+                NTEnum.SEROTONIN => 50f,
+                NTEnum.ACETYLCHOLINE => 20f,
+                NTEnum.NOREPINEPHRINE => 30f,
+                NTEnum.GABA => 12f,
+                _ => 8f
+            },
+            SpikeType = profile.StructureId switch
+            {
+                StructureId.PurkinjeCellLayer or StructureId.InferiorOlive => SpikeTypeEnum.COMPLEX,
+                StructureId.CA3 => SpikeTypeEnum.BURST,
+                _ => SpikeTypeEnum.ACTION_POTENTIAL
+            },
+            IsFeedback = isFeedback,
+            ModulationContext = tickSignal.GlobalNeuromodState
+        };
+    }
+
+    private static BrainRhythm SelectDominantRhythm(StructureId structureId)
+    {
+        return structureId switch
+        {
+            StructureId.OlfactoryBulb => BrainRhythm.GAMMA,
+            StructureId.EntorhinalCortex or StructureId.DentateGyrus or StructureId.CA3 or StructureId.CA1 or StructureId.Subiculum => BrainRhythm.THETA,
+            StructureId.Pfc or StructureId.Ppc => BrainRhythm.BETA,
+            StructureId.M1 or StructureId.Sma => BrainRhythm.BETA,
+            _ => BrainRhythm.ALPHA
+        };
+    }
+}
+
+internal sealed record SpikeEnvelope(SpikeMessage Message, double DeliverAtTimestampMs);
+
+internal sealed class SynapseState(Guid synapseId, NTEnum neurotransmitter, float vesicleQuanta)
+{
+    public Guid SynapseId { get; } = synapseId;
+    public NTEnum Neurotransmitter { get; } = neurotransmitter;
+    public float VesicleQuanta { get; set; } = vesicleQuanta;
+}
+
+internal sealed class ModelNeuron(string id, string neuronModel)
+{
+    public string Id { get; } = id;
+    public bool IsActive { get; private set; }
+    public float FiringRateHz { get; private set; }
+    public float ActivityTrace { get; private set; }
+    public StructureId PreferredTarget { get; private set; } = StructureId.Thalamus;
+    public NTEnum PreferredNt { get; private set; } = NTEnum.GLUTAMATE;
+
+    private double _v = -65.0;
+    private double _u = 0.0;
+    private double _synCurrent;
+
+    public void Integrate(SpikeMessage spike, double dtMs)
+    {
+        var ntGain = spike.Neurotransmitter switch
+        {
+            NTEnum.GLUTAMATE => 1.0,
+            NTEnum.GABA => -1.1,
+            NTEnum.DOPAMINE => 0.4,
+            NTEnum.SEROTONIN => 0.3,
+            NTEnum.ACETYLCHOLINE => 0.5,
+            NTEnum.NOREPINEPHRINE => 0.6,
+            _ => 1.0
+        };
+
+        _synCurrent += spike.VesicleQuanta * ntGain * Math.Exp(-(dtMs / spike.ReuptakeRate));
+        if (spike.IsFeedback)
+        {
+            _synCurrent *= 0.92;
+        }
+
+        PreferredTarget = spike.SourceStructure;
+        PreferredNt = spike.Neurotransmitter is NTEnum.GABA ? NTEnum.GABA : NTEnum.GLUTAMATE;
+    }
+
+    public bool Step(double dtMs, NeuromodState neuromod)
+    {
+        var modulation = 1.0 + (0.2 * neuromod.NorepinephrineLevel) + (0.15 * neuromod.AcetylcholineLevel);
+        var dopamineGate = 1.0 + (0.1 * neuromod.DopamineLevel);
+
+        if (string.Equals(neuronModel, "LIF", StringComparison.OrdinalIgnoreCase))
+        {
+            _v += dtMs * ((-(_v + 65.0) + (_synCurrent * modulation)) / 20.0);
+            IsActive = _v >= (-50.0 / dopamineGate);
+            if (IsActive) _v = -65.0;
+        }
+        else if (string.Equals(neuronModel, "HH", StringComparison.OrdinalIgnoreCase))
+        {
+            var m = 1.0 / (1.0 + Math.Exp(-(_v + 40.0) / 10.0));
+            var h = 1.0 / (1.0 + Math.Exp((_v + 62.0) / 10.0));
+            var n = 1.0 / (1.0 + Math.Exp(-(_v + 53.0) / 16.0));
+            var iNa = 120.0 * Math.Pow(m, 3) * h * (_v - 50.0);
+            var iK = 36.0 * Math.Pow(n, 4) * (_v + 77.0);
+            var iL = 0.3 * (_v + 54.387);
+            _v += dtMs * ((_synCurrent * modulation) - iNa - iK - iL) / 100.0;
+            IsActive = _v >= 30.0;
+            if (IsActive) _v = -58.0;
+        }
+        else
+        {
+            _v += dtMs * (0.04 * _v * _v + 5.0 * _v + 140.0 - _u + (_synCurrent * modulation));
+            _u += dtMs * (0.02 * (0.2 * _v - _u));
+            IsActive = _v >= 30.0;
+            if (IsActive)
+            {
+                _v = -65.0;
+                _u += 8.0 * dopamineGate;
+            }
+        }
+
+        _synCurrent *= 0.75;
+        ActivityTrace = (float)(0.95 * ActivityTrace + (IsActive ? 0.05 : 0.0));
+        FiringRateHz = (float)(0.9 * FiringRateHz + (IsActive ? (1000.0 / Math.Max(dtMs, 1.0)) * 0.1 : 0.0));
+        return IsActive;
+    }
+}
+
+internal static class PlasticityRules
+{
+    public static float Stdp(float quanta) => 0.01f * (1.0f - (quanta / 5.0f));
+    public static float Bcm(float quanta, double activity) => (float)(0.015 * ((activity - 0.2) - (quanta / 10.0)));
+    public static float DopamineStdp(float quanta, float dopamine, float rpe) => 0.02f * (dopamine + rpe) * (1f - (quanta / 5f));
+    public static float CerebellarLtd(float quanta) => -0.02f * quanta;
+    public static float MossyFiberLtp(float quanta) => 0.025f * (1f - (quanta / 5f));
+    public static float SynapticTagCapture(float quanta, float acetylcholine) => 0.01f * acetylcholine * (1f - (quanta / 6f));
+}

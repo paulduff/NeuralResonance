@@ -1,0 +1,1428 @@
+﻿<Window x:Class="NRE.WpfEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:dock="clr-namespace:AvalonDock;assembly=AvalonDock"
+        xmlns:layout="clr-namespace:AvalonDock.Layout;assembly=AvalonDock"
+        mc:Ignorable="d"
+        Title="Neural Resonance Editor"
+        Height="900"
+        Width="1400"
+        Background="#0B1321">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#111A2E" BorderBrush="#24304E" BorderThickness="0,0,0,1">
+            <Grid Margin="12,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="DNNE Editor" FontSize="20" FontWeight="SemiBold" Foreground="#D7E2FF" />
+                <TextBlock Grid.Column="1"
+                           Margin="16,2,0,0"
+                           Text="Dock panes, inspect pathways, and manipulate 3D brain model"
+                           Foreground="#8FA3D3" />
+            </Grid>
+        </Border>
+
+        <Menu DockPanel.Dock="Top"
+              Background="#0F172A"
+              Foreground="#565A66"
+              BorderBrush="#24304E"
+              BorderThickness="0,0,0,1">
+            <Menu.Resources>
+                <Style TargetType="{x:Type MenuItem}">
+                    <Setter Property="Foreground" Value="#565A66" />
+                </Style>
+            </Menu.Resources>
+            <MenuItem Header="_File">
+                <MenuItem Header="_Open Network..." Click="FileOpenNetworkMenuItem_OnClick" />
+                <MenuItem Header="_Save Network..." Click="FileSaveNetworkMenuItem_OnClick" />
+                <Separator />
+                <MenuItem Header="_Exit" Click="FileExitMenuItem_OnClick" />
+            </MenuItem>
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Copy Output" Click="EditCopyOutputMenuItem_OnClick" />
+                <MenuItem Header="_Clear Output" Click="EditClearOutputMenuItem_OnClick" />
+            </MenuItem>
+            <MenuItem Header="_View">
+                <MenuItem x:Name="ViewStructuresMenuItem"
+                          Header="Structures"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="Structures"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewSensoryIoMenuItem"
+                          Header="Sensory I/O"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="SensoryIo"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewTransportStatsMenuItem"
+                          Header="Transport Stats"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="TransportStats"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewBrainDashboardMenuItem"
+                          Header="Brain Dashboard"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="BrainDashboard"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewInhabitanceMenuItem"
+                          Header="Inhabitance"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="Inhabitance"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewCircuitAuditMenuItem"
+                          Header="Circuit Audit"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="CircuitAudit"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewReasoningMenuItem"
+                          Header="Reasoning"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="Reasoning"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <Separator />
+                <MenuItem x:Name="ViewSpikeLogMenuItem"
+                          Header="Spike Log"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="SpikeLog"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewOutputMenuItem"
+                          Header="Output"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="Output"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewControlBarMenuItem"
+                          Header="Control Bar"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="ControlBar"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+                <MenuItem x:Name="ViewInspectorMenuItem"
+                          Header="Inspector"
+                          IsCheckable="True"
+                          IsChecked="True"
+                          Tag="Inspector"
+                          Checked="ViewPanelMenuItem_OnChecked"
+                          Unchecked="ViewPanelMenuItem_OnUnchecked" />
+            </MenuItem>
+        </Menu>
+
+        <dock:DockingManager x:Name="DockManager" Background="#0B1321">
+            <dock:DockingManager.Layout>
+                <layout:LayoutRoot>
+                <layout:LayoutPanel Orientation="Horizontal">
+                    <layout:LayoutAnchorablePane DockWidth="270">
+                        <layout:LayoutAnchorable x:Name="StructuresAnchorable" Title="Structures" CanClose="False" CanHide="True">
+                            <Border Padding="8" Background="#111A2E">
+                                <TreeView x:Name="StructuresTree"
+                                          Foreground="#E2EAFF"
+                                          Background="#111A2E"
+                                          BorderThickness="0" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="SensoryIoAnchorable" Title="Sensory I/O" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <TextBlock Text="Avatar Sight Input" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <Border x:Name="WebcamPreviewBorder"
+                                                Margin="0,8,0,0"
+                                                Width="196"
+                                                Height="196"
+                                                HorizontalAlignment="Left"
+                                                Background="#0E1830"
+                                                BorderBrush="#2D3D63"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <Grid>
+                                                <Image x:Name="WebcamPreviewImage"
+                                                       Stretch="Uniform" />
+                                                <TextBlock x:Name="WebcamPreviewOverlayText"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#9EB3E5"
+                                                           Text="Avatar sight unavailable" />
+                                                <Canvas x:Name="WebcamOverlayCanvas" IsHitTestVisible="False">
+                                                    <Rectangle x:Name="WebcamAttentionReticle"
+                                                               Visibility="Collapsed"
+                                                               RadiusX="6"
+                                                               RadiusY="6"
+                                                               Stroke="#FF91E7FF"
+                                                               StrokeThickness="2.6"
+                                                               Fill="#2091E7FF" />
+                                                </Canvas>
+                                            </Grid>
+                                        </Border>
+                                        <Grid Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"
+                                                       Foreground="#C5D2F2"
+                                                       Text="Camera Index" />
+                                            <TextBox x:Name="WebcamIndexTextBox"
+                                                     Grid.Column="1"
+                                                     Background="#14203B"
+                                                     Foreground="#DDE6FF"
+                                                     BorderBrush="#2D3D63"
+                                                     Text="0" />
+                                        </Grid>
+                                        <TextBlock Margin="0,8,0,4" Text="Frame Size" Foreground="#B9C8ED" />
+                                        <ComboBox x:Name="WebcamResolutionCombo"
+                                                  SelectedIndex="1"
+                                                  SelectionChanged="WebcamResolutionCombo_OnSelectionChanged"
+                                                  Foreground="#0E1830"
+                                                  Background="#E7EEFF">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Foreground" Value="#0E1830" />
+                                                    <Setter Property="Background" Value="#E7EEFF" />
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                            <ComboBoxItem Content="128 x 128" Tag="128" />
+                                            <ComboBoxItem Content="196 x 196" Tag="196" />
+                                            <ComboBoxItem Content="256 x 256" Tag="256" />
+                                        </ComboBox>
+                                        <Button x:Name="ToggleWebcamInputButton"
+                                                Margin="0,8,0,0"
+                                                Padding="10,4"
+                                                Click="ToggleWebcamInputButton_OnClick"
+                                                Content="Start Webcam Input" />
+                                        <TextBlock x:Name="WebcamStatusText"
+                                                   Margin="0,6,0,0"
+                                                   Foreground="#9EB3E5"
+                                                   Text="Webcam: idle" />
+
+                                        <TextBlock Margin="0,12,0,4" Text="Microphone Input" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"
+                                                       Foreground="#C5D2F2"
+                                                       Text="Mic Index" />
+                                            <TextBox x:Name="MicrophoneIndexTextBox"
+                                                     Grid.Column="1"
+                                                     Background="#14203B"
+                                                     Foreground="#DDE6FF"
+                                                     BorderBrush="#2D3D63"
+                                                     Text="0" />
+                                        </Grid>
+                                        <Button x:Name="ToggleMicrophoneInputButton"
+                                                Margin="0,8,0,0"
+                                                Padding="10,4"
+                                                Click="ToggleMicrophoneInputButton_OnClick"
+                                                Content="Start Microphone Input" />
+                                        <TextBlock x:Name="MicrophoneStatusText"
+                                                   Margin="0,6,0,0"
+                                                   Foreground="#9EB3E5"
+                                                   Text="Microphone: idle" />
+                                        <TextBlock Margin="0,8,0,4" Text="Input Level" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ProgressBar x:Name="MicrophoneLevelBar"
+                                                         Grid.Column="0"
+                                                         Height="10"
+                                                         Minimum="0"
+                                                         Maximum="100"
+                                                         Value="0"
+                                                         Background="#1A2742"
+                                                         Foreground="#6EC8FF"
+                                                         BorderBrush="#2D3D63"
+                                                         BorderThickness="1" />
+                                            <TextBlock x:Name="MicrophoneLevelText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="0%" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,12,0,4"
+                                                   Text="Sensory Health"
+                                                   Foreground="#DDE6FF"
+                                                   FontWeight="SemiBold" />
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Ellipse x:Name="WebcamHealthLight"
+                                                     Grid.Row="0"
+                                                     Grid.Column="0"
+                                                     Width="10"
+                                                     Height="10"
+                                                     VerticalAlignment="Center"
+                                                     Fill="#64748B"
+                                                     Stroke="#364152"
+                                                     StrokeThickness="1" />
+                                            <TextBlock x:Name="WebcamHealthText"
+                                                       Grid.Row="0"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       Foreground="#9EB3E5"
+                                                       Text="Webcam pipeline: inactive" />
+
+                                            <Ellipse x:Name="MicrophoneHealthLight"
+                                                     Grid.Row="1"
+                                                     Grid.Column="0"
+                                                     Margin="0,6,0,0"
+                                                     Width="10"
+                                                     Height="10"
+                                                     VerticalAlignment="Center"
+                                                     Fill="#64748B"
+                                                     Stroke="#364152"
+                                                     StrokeThickness="1" />
+                                            <TextBlock x:Name="MicrophoneHealthText"
+                                                       Grid.Row="1"
+                                                       Grid.Column="1"
+                                                       Margin="8,6,0,0"
+                                                       Foreground="#9EB3E5"
+                                                       Text="Microphone pipeline: inactive" />
+
+                                            <Ellipse x:Name="VisualRouteHealthLight"
+                                                     Grid.Row="2"
+                                                     Grid.Column="0"
+                                                     Margin="0,6,0,0"
+                                                     Width="10"
+                                                     Height="10"
+                                                     VerticalAlignment="Center"
+                                                     Fill="#64748B"
+                                                     Stroke="#364152"
+                                                     StrokeThickness="1" />
+                                            <TextBlock x:Name="VisualRouteHealthText"
+                                                       Grid.Row="2"
+                                                       Grid.Column="1"
+                                                       Margin="8,6,0,0"
+                                                       Foreground="#9EB3E5"
+                                                       Text="V1 route: awaiting webcam input" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,12,0,4"
+                                                   Text="Avatar Self"
+                                                   Foreground="#DDE6FF"
+                                                   FontWeight="SemiBold" />
+                                        <Border Background="#0E1830"
+                                                BorderBrush="#2D3D63"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="8">
+                                            <StackPanel>
+                                                <TextBlock x:Name="AvatarSelfMoodText"
+                                                           Foreground="#DDE6FF"
+                                                           TextWrapping="Wrap"
+                                                           Text="Body: unknown" />
+                                                <TextBlock x:Name="AvatarSelfAttentionText"
+                                                           Margin="0,4,0,0"
+                                                           Foreground="#B9C8ED"
+                                                           TextWrapping="Wrap"
+                                                           Text="Attention: none" />
+                                                <TextBlock x:Name="AvatarSelfActionText"
+                                                           Margin="0,4,0,0"
+                                                           Foreground="#B9C8ED"
+                                                           TextWrapping="Wrap"
+                                                           Text="Action: resting" />
+                                                <TextBlock x:Name="AvatarSelfNeedText"
+                                                           Margin="0,4,0,0"
+                                                           Foreground="#B9C8ED"
+                                                           TextWrapping="Wrap"
+                                                           Text="Need: none" />
+                                                <TextBlock x:Name="AvatarSelfSensationText"
+                                                           Margin="0,4,0,0"
+                                                           Foreground="#9EB3E5"
+                                                           TextWrapping="Wrap"
+                                                           Text="Last: none" />
+                                                <TextBlock x:Name="AvatarSelfEventText"
+                                                           Margin="0,4,0,0"
+                                                           Foreground="#9EB3E5"
+                                                           TextWrapping="Wrap"
+                                                           Text="Recent: none" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="TransportStatsAnchorable" Title="Transport Stats" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <TextBox x:Name="TransportStatsTextBox"
+                                         BorderThickness="0"
+                                         Background="#0E1830"
+                                         Foreground="#D3E0FF"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         IsReadOnly="True"
+                                         IsReadOnlyCaretVisible="True"
+                                         AcceptsReturn="True"
+                                         TextWrapping="NoWrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Auto" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="BrainDashboardAnchorable" Title="Brain Dashboard" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <TextBox x:Name="BrainDashboardTextBox"
+                                         BorderThickness="0"
+                                         Background="#0E1830"
+                                         Foreground="#D3E0FF"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         IsReadOnly="True"
+                                         IsReadOnlyCaretVisible="True"
+                                         AcceptsReturn="True"
+                                         TextWrapping="NoWrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Auto" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="InhabitanceAnchorable" Title="Inhabitance" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <TextBox x:Name="InhabitanceTextBox"
+                                         BorderThickness="0"
+                                         Background="#0E1830"
+                                         Foreground="#D3E0FF"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         IsReadOnly="True"
+                                         IsReadOnlyCaretVisible="True"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Disabled" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="CircuitAuditAnchorable" Title="Circuit Audit" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <TextBox x:Name="CircuitAuditTextBox"
+                                         BorderThickness="0"
+                                         Background="#0E1830"
+                                         Foreground="#D3E0FF"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         IsReadOnly="True"
+                                         IsReadOnlyCaretVisible="True"
+                                         AcceptsReturn="True"
+                                         TextWrapping="NoWrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         HorizontalScrollBarVisibility="Auto" />
+                            </Border>
+                        </layout:LayoutAnchorable>
+                        <layout:LayoutAnchorable x:Name="ReasoningAnchorable" Title="Reasoning" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="8">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <TextBox x:Name="ReasoningTextBox"
+                                                 Height="240"
+                                                 BorderThickness="0"
+                                                 Background="#0E1830"
+                                                 Foreground="#D3E0FF"
+                                                 FontFamily="Consolas"
+                                                 FontSize="12"
+                                                 IsReadOnly="True"
+                                                 IsReadOnlyCaretVisible="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="NoWrap"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Auto" />
+                                        <TextBlock x:Name="ReasoningStatusText"
+                                                   Margin="0,8,0,0"
+                                                   Foreground="#9EB3E5"
+                                                   Text="Reasoning controls: awaiting runtime state" />
+
+                                        <TextBlock Margin="0,12,0,4" Text="Planning Workspace" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <TextBlock Text="Goal" Foreground="#B9C8ED" />
+                                        <TextBox x:Name="ReasoningGoalTextBox"
+                                                 Margin="0,4,0,0"
+                                                 Background="#14203B"
+                                                 Foreground="#DDE6FF"
+                                                 BorderBrush="#2D3D63"
+                                                 Text="stabilize energy while preserving reward" />
+                                        <CheckBox x:Name="ReasoningGoalActiveCheckBox"
+                                                  Margin="0,8,0,0"
+                                                  Foreground="#C5D2F2"
+                                                  Content="Goal Active"
+                                                  IsChecked="True" />
+
+                                        <TextBlock Margin="0,10,0,4" Text="Horizon Steps" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningHorizonSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="1"
+                                                    Maximum="16"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="6" />
+                                            <TextBlock x:Name="ReasoningHorizonText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="6" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,10,0,4" Text="Max Branching" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningBranchingSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="1"
+                                                    Maximum="32"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="8" />
+                                            <TextBlock x:Name="ReasoningBranchingText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="8" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,10,0,4" Text="Exploration Temperature" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningExplorationSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.05"
+                                                    Maximum="2.00"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="0.40" />
+                                            <TextBlock x:Name="ReasoningExplorationText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="0.40" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,10,0,4" Text="Dopamine Bias" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningDopamineSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.00"
+                                                    Maximum="2.50"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="1.00" />
+                                            <TextBlock x:Name="ReasoningDopamineText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="1.00" />
+                                        </Grid>
+
+                                        <TextBlock Margin="0,10,0,4" Text="Inhibitory Gate" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningInhibitorySlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.00"
+                                                    Maximum="2.50"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="1.00" />
+                                            <TextBlock x:Name="ReasoningInhibitoryText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="1.00" />
+                                        </Grid>
+
+                                        <Button Margin="0,10,0,0"
+                                                Padding="8,4"
+                                                Click="ReasoningApplyPlanningButton_OnClick"
+                                                Content="Apply Planning" />
+
+                                        <TextBlock Margin="0,14,0,4" Text="Curriculum" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <CheckBox x:Name="ReasoningCurriculumEnabledCheckBox"
+                                                  Foreground="#C5D2F2"
+                                                  Content="Curriculum Enabled"
+                                                  IsChecked="True" />
+                                        <TextBlock Margin="0,10,0,4" Text="Stage Index" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningCurriculumStageSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0"
+                                                    Maximum="3"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="0" />
+                                            <TextBlock x:Name="ReasoningCurriculumStageText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="0" />
+                                        </Grid>
+                                        <CheckBox x:Name="ReasoningCurriculumResetCheckBox"
+                                                  Margin="0,8,0,0"
+                                                  Foreground="#C5D2F2"
+                                                  Content="Reset Curriculum Progress" />
+                                        <Button Margin="0,10,0,0"
+                                                Padding="8,4"
+                                                Click="ReasoningApplyCurriculumButton_OnClick"
+                                                Content="Apply Curriculum" />
+
+                                        <TextBlock Margin="0,14,0,4" Text="Consolidation Control" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <CheckBox x:Name="ReasoningConsolidationEnabledCheckBox"
+                                                  Foreground="#C5D2F2"
+                                                  Content="Consolidation Enabled"
+                                                  IsChecked="True" />
+                                        <TextBlock Margin="0,10,0,4" Text="Replay Weight (Early Hippocampal)" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningReplayEarlySlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.20"
+                                                    Maximum="4.00"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="1.80" />
+                                            <TextBlock x:Name="ReasoningReplayEarlyText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="1.80" />
+                                        </Grid>
+                                        <TextBlock Margin="0,10,0,4" Text="Replay Weight (Late Cortical)" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningReplayLateSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.20"
+                                                    Maximum="4.00"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="1.40" />
+                                            <TextBlock x:Name="ReasoningReplayLateText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="1.40" />
+                                        </Grid>
+                                        <TextBlock Margin="0,10,0,4" Text="Anti-Forgetting Homeostasis" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningAntiForgettingSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="0.00"
+                                                    Maximum="1.00"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="0.60" />
+                                            <TextBlock x:Name="ReasoningAntiForgettingText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="0.60" />
+                                        </Grid>
+                                        <Button Margin="0,10,0,0"
+                                                Padding="8,4"
+                                                Click="ReasoningApplyConsolidationButton_OnClick"
+                                                Content="Apply Consolidation" />
+
+                                        <TextBlock Margin="0,14,0,4" Text="Counterfactual Probe" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                        <TextBlock Text="Action Key (source|target|NT|feedback)" Foreground="#B9C8ED" />
+                                        <TextBox x:Name="ReasoningCounterfactualActionTextBox"
+                                                 Margin="0,4,0,0"
+                                                 Background="#14203B"
+                                                 Foreground="#DDE6FF"
+                                                 BorderBrush="#2D3D63"
+                                                 Text="idle" />
+                                        <TextBlock Margin="0,10,0,4" Text="Horizon Steps" Foreground="#B9C8ED" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider x:Name="ReasoningCounterfactualHorizonSlider"
+                                                    Grid.Column="0"
+                                                    Minimum="1"
+                                                    Maximum="12"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    ValueChanged="ReasoningSlider_OnValueChanged"
+                                                    Value="4" />
+                                            <TextBlock x:Name="ReasoningCounterfactualHorizonText"
+                                                       Grid.Column="1"
+                                                       Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#C5D2F2"
+                                                       Text="4" />
+                                        </Grid>
+                                        <Button Margin="0,10,0,0"
+                                                Padding="8,4"
+                                                Click="ReasoningEvaluateCounterfactualButton_OnClick"
+                                                Content="Evaluate Counterfactual" />
+                                        <TextBox x:Name="ReasoningCounterfactualResultTextBox"
+                                                 Margin="0,8,0,0"
+                                                 Height="120"
+                                                 BorderThickness="0"
+                                                 Background="#0E1830"
+                                                 Foreground="#D3E0FF"
+                                                 FontFamily="Consolas"
+                                                 FontSize="12"
+                                                 IsReadOnly="True"
+                                                 IsReadOnlyCaretVisible="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="NoWrap"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Auto" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </layout:LayoutAnchorable>
+                    </layout:LayoutAnchorablePane>
+
+                    <layout:LayoutPanel Orientation="Vertical">
+                        <layout:LayoutDocumentPaneGroup>
+                            <layout:LayoutDocumentPane>
+                                <layout:LayoutDocument Title="Brain 3D Display" CanClose="False">
+                                    <Grid Background="#0C1426"
+                                          PreviewMouseLeftButtonDown="BrainViewport_OnMouseLeftButtonDown"
+                                          PreviewMouseLeftButtonUp="BrainViewport_OnMouseLeftButtonUp"
+                                          PreviewMouseMove="BrainViewport_OnMouseMove"
+                                          MouseLeave="BrainViewport_OnMouseLeave"
+                                          LostMouseCapture="BrainViewport_OnLostMouseCapture"
+                                          PreviewMouseWheel="BrainViewport_OnMouseWheel">
+                                        <Viewport3D x:Name="BrainViewport"
+                                                    ClipToBounds="True"
+                                                    Focusable="True">
+                                            <Viewport3D.Camera>
+                                                <PerspectiveCamera x:Name="BrainCamera"
+                                                                   Position="0,0,5.2"
+                                                                   LookDirection="0,0,-5.2"
+                                                                   UpDirection="0,1,0"
+                                                                   FieldOfView="45" />
+                                            </Viewport3D.Camera>
+                                        </Viewport3D>
+                                        <Canvas x:Name="HoverOverlayCanvas" IsHitTestVisible="False">
+                                            <Border x:Name="HoverLabelBorder"
+                                                    Visibility="Collapsed"
+                                                    Background="#C615233F"
+                                                    BorderBrush="#7FA7D9"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    Padding="6,3">
+                                                <TextBlock x:Name="HoverLabelText"
+                                                           Foreground="#E6EEFF"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold" />
+                                            </Border>
+                                        </Canvas>
+                                    </Grid>
+                                </layout:LayoutDocument>
+                            </layout:LayoutDocumentPane>
+                        </layout:LayoutDocumentPaneGroup>
+
+                        <layout:LayoutAnchorablePane DockHeight="190">
+                            <layout:LayoutAnchorable x:Name="SpikeLogAnchorable" Title="Spike Log" CanClose="False" CanHide="True">
+                                <Border Background="#111A2E" Padding="8">
+                                    <ListBox x:Name="SpikeLogList"
+                                             BorderThickness="0"
+                                             Background="#0E1830"
+                                             Foreground="#D3E0FF" />
+                                </Border>
+                            </layout:LayoutAnchorable>
+                            <layout:LayoutAnchorable x:Name="OutputAnchorable" Title="Output" CanClose="False" CanHide="True">
+                                <Border Background="#111A2E" Padding="8">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock x:Name="RenderStatusText"
+                                                   Grid.Row="0"
+                                                   Margin="0,0,0,6"
+                                                   Foreground="#9EB3E5"
+                                                   Text="Idle" />
+                                        <TextBox x:Name="OutputLogTextBox"
+                                                 Grid.Row="1"
+                                                 BorderThickness="0"
+                                                 Background="#0E1830"
+                                                 Foreground="#D3E0FF"
+                                                 FontFamily="Consolas"
+                                                 FontSize="12"
+                                                 IsReadOnly="True"
+                                                 IsReadOnlyCaretVisible="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="NoWrap"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Auto" />
+                                    </Grid>
+                                </Border>
+                            </layout:LayoutAnchorable>
+                        </layout:LayoutAnchorablePane>
+                    </layout:LayoutPanel>
+
+                    <layout:LayoutAnchorablePane DockWidth="320">
+                        <layout:LayoutAnchorable x:Name="ControlBarAnchorable" Title="Control Bar" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="10">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              CanContentScroll="False">
+                                <StackPanel>
+                                    <TextBlock Text="Simulation Controls" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,10,0,4" Text="Display Sample / Hemisphere" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="NeuronBudgetSlider"
+                                                Grid.Column="0"
+                                                Minimum="24"
+                                                Maximum="40"
+                                                TickFrequency="1"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="NeuronBudgetSlider_OnValueChanged"
+                                                Value="30" />
+                                        <TextBlock x:Name="NeuronBudgetText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#C5D2F2"
+                                                   Text="display 30x30x30 (27000)" />
+                                    </Grid>
+                                    <TextBlock Margin="0,12,0,4" Text="Min Awake Ticks" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="MinWakeTicksSlider"
+                                                Grid.Column="0"
+                                                Minimum="80"
+                                                Maximum="1200"
+                                                TickFrequency="10"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="MinWakeTicksSlider_OnValueChanged"
+                                                Value="220" />
+                                        <TextBlock x:Name="MinWakeTicksText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                    Foreground="#C5D2F2"
+                                                    Text="220" />
+                                    </Grid>
+                                    <TextBlock Margin="0,10,0,4" Text="Sleep Pressure Enter" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="SleepPressureEnterSlider"
+                                                Grid.Column="0"
+                                                Minimum="0.10"
+                                                Maximum="1.00"
+                                                TickFrequency="0.01"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="SleepPressureEnterSlider_OnValueChanged"
+                                                Value="0.68" />
+                                        <TextBlock x:Name="SleepPressureEnterText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#C5D2F2"
+                                                   Text="0.68" />
+                                    </Grid>
+                                    <TextBlock Margin="0,12,0,4" Text="Yaw" Foreground="#B9C8ED" />
+                                    <Slider x:Name="YawSlider"
+                                            Minimum="-180"
+                                            Maximum="180"
+                                            ValueChanged="YawSlider_OnValueChanged"
+                                            Value="0" />
+                                    <TextBlock Margin="0,12,0,4" Text="Preset Views" Foreground="#B9C8ED" />
+                                    <UniformGrid Columns="3" Rows="2">
+                                        <Button Margin="0,0,6,6"
+                                                Padding="8,4"
+                                                Click="AnteriorViewButton_OnClick"
+                                                Content="Anterior" />
+                                        <Button Margin="0,0,0,6"
+                                                Padding="8,4"
+                                                Click="PosteriorViewButton_OnClick"
+                                                Content="Posterior" />
+                                        <Button Margin="6,0,0,6"
+                                                Padding="8,4"
+                                                Click="LeftViewButton_OnClick"
+                                                Content="Left" />
+                                        <Button Margin="0,0,6,0"
+                                                Padding="8,4"
+                                                Click="SuperiorViewButton_OnClick"
+                                                Content="Superior" />
+                                        <Button Margin="0,0,0,0"
+                                                Padding="8,4"
+                                                Click="InferiorViewButton_OnClick"
+                                                Content="Inferior" />
+                                        <Button Margin="6,0,0,0"
+                                                Padding="8,4"
+                                                Click="RightViewButton_OnClick"
+                                                Content="Right" />
+                                    </UniformGrid>
+                                    <CheckBox x:Name="LockPresetTransformsCheckBox"
+                                              Margin="0,8,0,0"
+                                              Foreground="#C5D2F2"
+                                              IsChecked="True"
+                                              Checked="LockPresetTransformsCheckBox_OnChecked"
+                                              Unchecked="LockPresetTransformsCheckBox_OnUnchecked"
+                                              Content="Lock preset transforms" />
+                                    <Button Margin="0,12,0,0"
+                                            Padding="10,4"
+                                            Click="ResetViewButton_OnClick"
+                                            Content="Reset View" />
+                                    <Button Margin="0,8,0,0"
+                                            Padding="10,4"
+                                            Click="RestartSimButton_OnClick"
+                                            Content="Restart Sim" />
+                                    <TextBlock Margin="0,10,0,4" Text="Performance Profile" Foreground="#B9C8ED" />
+                                    <UniformGrid Columns="2" Rows="2">
+                                        <Button Margin="0,0,6,4"
+                                                Padding="10,4"
+                                                Click="DiagnosticPerfButton_OnClick"
+                                                Content="Diagnostic" />
+                                        <Button Margin="6,0,0,4"
+                                                Padding="10,4"
+                                                Click="NormalPerfButton_OnClick"
+                                                Content="Normal" />
+                                        <Button Margin="0,4,6,0"
+                                                Padding="10,4"
+                                                Click="FastPerfButton_OnClick"
+                                                Content="Fast" />
+                                        <Button Margin="6,4,0,0"
+                                                Padding="10,4"
+                                                Click="HeadlessPerfButton_OnClick"
+                                                Content="Headless" />
+                                    </UniformGrid>
+                                    <Expander Margin="0,10,0,0"
+                                              Header="Auto Profile Tuning"
+                                              Foreground="#C5D2F2"
+                                              IsExpanded="False">
+                                        <StackPanel Margin="0,8,0,0">
+                                            <CheckBox x:Name="AutoProfileEnabledCheckBox"
+                                                      Foreground="#C5D2F2"
+                                                      Checked="AutoProfileControl_OnChanged"
+                                                      Unchecked="AutoProfileControl_OnChanged"
+                                                      Content="Enable Auto Profile" />
+                                            <CheckBox x:Name="AutoProfileAllowRecoveryCheckBox"
+                                                      Margin="0,6,0,0"
+                                                      Foreground="#C5D2F2"
+                                                      Checked="AutoProfileControl_OnChanged"
+                                                      Unchecked="AutoProfileControl_OnChanged"
+                                                      Content="Allow Recovery to Fast" />
+
+                                            <TextBlock Margin="0,10,0,4" Text="Warmup Ticks" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileWarmupTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="0"
+                                                        Maximum="5000"
+                                                        TickFrequency="25"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="80" />
+                                                <TextBlock x:Name="AutoProfileWarmupTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="80" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Manual Hold Ticks" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileManualHoldTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="0"
+                                                        Maximum="3000"
+                                                        TickFrequency="25"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="500" />
+                                                <TextBlock x:Name="AutoProfileManualHoldTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="500" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,10,0,4" Text="Degrade Non-OK Ratio" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileDegradeNonOkRatioSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="0.01"
+                                                        Maximum="1.00"
+                                                        TickFrequency="0.01"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="0.12" />
+                                                <TextBlock x:Name="AutoProfileDegradeNonOkRatioText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="0.120" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Degrade Ack Latency (ms)" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileDegradeAckLatencyMsSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="100"
+                                                        Maximum="5000"
+                                                        TickFrequency="25"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="900" />
+                                                <TextBlock x:Name="AutoProfileDegradeAckLatencyMsText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="900" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Degrade Snapshot Age (ticks)" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileDegradeSnapshotAgeTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="4"
+                                                        Maximum="1000"
+                                                        TickFrequency="5"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="20" />
+                                                <TextBlock x:Name="AutoProfileDegradeSnapshotAgeTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="20" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Degrade Consecutive Ticks" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileDegradeConsecutiveTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="2"
+                                                        Maximum="100"
+                                                        TickFrequency="1"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="6" />
+                                                <TextBlock x:Name="AutoProfileDegradeConsecutiveTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="6" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,10,0,4" Text="Recovery Non-OK Ratio" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileRecoveryNonOkRatioSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="0.00"
+                                                        Maximum="0.20"
+                                                        TickFrequency="0.005"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="0.02" />
+                                                <TextBlock x:Name="AutoProfileRecoveryNonOkRatioText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="0.020" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Recovery Ack Latency (ms)" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileRecoveryAckLatencyMsSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="50"
+                                                        Maximum="3000"
+                                                        TickFrequency="25"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="350" />
+                                                <TextBlock x:Name="AutoProfileRecoveryAckLatencyMsText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="350" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Recovery Snapshot Age (ticks)" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileRecoverySnapshotAgeTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="2"
+                                                        Maximum="500"
+                                                        TickFrequency="2"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="8" />
+                                                <TextBlock x:Name="AutoProfileRecoverySnapshotAgeTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="8" />
+                                            </Grid>
+
+                                            <TextBlock Margin="0,8,0,4" Text="Recovery Consecutive Ticks" Foreground="#B9C8ED" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider x:Name="AutoProfileRecoveryConsecutiveTicksSlider"
+                                                        Grid.Column="0"
+                                                        Minimum="20"
+                                                        Maximum="3000"
+                                                        TickFrequency="10"
+                                                        IsSnapToTickEnabled="True"
+                                                        ValueChanged="AutoProfileControl_OnChanged"
+                                                        Value="350" />
+                                                <TextBlock x:Name="AutoProfileRecoveryConsecutiveTicksText"
+                                                           Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#C5D2F2"
+                                                           Text="350" />
+                                            </Grid>
+
+                                            <Button x:Name="ApplyAutoProfileButton"
+                                                    Margin="0,10,0,0"
+                                                    Padding="10,4"
+                                                    Click="ApplyAutoProfileButton_OnClick"
+                                                    Content="Apply Auto Profile Tuning" />
+                                            <TextBlock x:Name="AutoProfileStatusText"
+                                                       Margin="0,6,0,0"
+                                                       Foreground="#9EB3E5"
+                                                       Text="Auto profile: awaiting runtime settings" />
+                                        </StackPanel>
+                                    </Expander>
+                                    <TextBlock Margin="0,12,0,4" Text="Input Gates" Foreground="#B9C8ED" />
+                                    <CheckBox x:Name="AvatarVisionInputGateCheckBox"
+                                              Foreground="#C5D2F2"
+                                              IsChecked="True"
+                                              Checked="InputGatesCheckBox_OnChanged"
+                                              Unchecked="InputGatesCheckBox_OnChanged"
+                                              Content="Enable Avatar Vision Input" />
+                                    <CheckBox x:Name="SpontaneousSpikingInputGateCheckBox"
+                                              Margin="0,6,0,0"
+                                              Foreground="#C5D2F2"
+                                              IsChecked="True"
+                                              Checked="InputGatesCheckBox_OnChanged"
+                                              Unchecked="InputGatesCheckBox_OnChanged"
+                                              Content="Enable Spontaneous Spiking" />
+                                    <TextBlock x:Name="InputGatesStatusText"
+                                               Margin="0,6,0,0"
+                                               Foreground="#9EB3E5"
+                                               Text="Input gates: awaiting runtime settings" />
+                                    <TextBlock Margin="0,12,0,4" Text="Language Input" Foreground="#B9C8ED" />
+                                    <TextBox x:Name="LanguageInputTextBox"
+                                             Background="#14203B"
+                                             Foreground="#DDE6FF"
+                                             BorderBrush="#2D3D63"
+                                             Text="repeat hello world" />
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="#C5D2F2"
+                                                   Text="Mode" />
+                                        <ComboBox x:Name="LanguageModeCombo"
+                                                  Grid.Column="1"
+                                                  Margin="0,0,8,0"
+                                                  SelectedIndex="0"
+                                                  Foreground="#0E1830"
+                                                  Background="#E7EEFF">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Foreground" Value="#0E1830" />
+                                                    <Setter Property="Background" Value="#E7EEFF" />
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                            <ComboBoxItem Content="English" Tag="english" />
+                                            <ComboBoxItem Content="Comprehension" Tag="comprehension" />
+                                            <ComboBoxItem Content="Production" Tag="production" />
+                                            <ComboBoxItem Content="Repetition" Tag="repetition" />
+                                            <ComboBoxItem Content="Prosody" Tag="prosody" />
+                                            <ComboBoxItem Content="Emergent" Tag="emergent" />
+                                        </ComboBox>
+                                        <TextBlock Grid.Column="2"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0"
+                                                   Foreground="#C5D2F2"
+                                                   Text="Hemisphere" />
+                                        <ComboBox x:Name="LanguageHemisphereCombo"
+                                                  Grid.Column="3"
+                                                  SelectedIndex="0"
+                                                  Foreground="#0E1830"
+                                                  Background="#E7EEFF">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Foreground" Value="#0E1830" />
+                                                    <Setter Property="Background" Value="#E7EEFF" />
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                            <ComboBoxItem Content="Left" Tag="L" />
+                                            <ComboBoxItem Content="Both" Tag="*" />
+                                            <ComboBoxItem Content="Right" Tag="R" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <Button x:Name="SendLanguageInputButton"
+                                            Margin="0,8,0,0"
+                                            Padding="10,4"
+                                            Click="SendLanguageInputButton_OnClick"
+                                            Content="Send Language Stimulus" />
+                                    <TextBlock x:Name="LanguageInputStatusText"
+                                               Margin="0,6,0,0"
+                                               Foreground="#9EB3E5"
+                                               Text="Language: idle" />
+                                    <TextBlock Margin="0,12,0,4" Text="Brain Telemetry" Foreground="#B9C8ED" />
+                                    <Border Background="#0E1830"
+                                            BorderBrush="#2D3D63"
+                                            BorderThickness="1"
+                                            Padding="6">
+                                        <TextBox x:Name="LanguageCommandTelemetryTextBox"
+                                                 Height="180"
+                                                 BorderThickness="0"
+                                                 Background="#0E1830"
+                                                 Foreground="#D3E0FF"
+                                                 FontFamily="Consolas"
+                                                 FontSize="12"
+                                                 IsReadOnly="True"
+                                                 IsReadOnlyCaretVisible="True"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 HorizontalScrollBarVisibility="Disabled"
+                                                 Text="Brain telemetry: awaiting runtime state" />
+                                    </Border>
+                                    <TextBlock Margin="0,12,0,4" Text="Speech Output" Foreground="#B9C8ED" />
+                                    <Button x:Name="ToggleSpeechOutputButton"
+                                            Margin="0,8,0,0"
+                                            Padding="10,4"
+                                            Click="ToggleSpeechOutputButton_OnClick"
+                                            Content="Disable Speech Output" />
+                                    <TextBlock Margin="0,8,0,4" Text="Trigger Mode" Foreground="#B9C8ED" />
+                                    <ComboBox x:Name="SpeechTriggerModeCombo"
+                                              SelectedIndex="0"
+                                              SelectionChanged="SpeechTriggerModeCombo_OnSelectionChanged"
+                                              Foreground="#0E1830"
+                                              Background="#E7EEFF">
+                                        <ComboBox.ItemContainerStyle>
+                                            <Style TargetType="ComboBoxItem">
+                                                <Setter Property="Foreground" Value="#0E1830" />
+                                                <Setter Property="Background" Value="#E7EEFF" />
+                                            </Style>
+                                        </ComboBox.ItemContainerStyle>
+                                        <ComboBoxItem Content="Language Pathway" Tag="language" />
+                                        <ComboBoxItem Content="Global Dispatch" Tag="global" />
+                                    </ComboBox>
+                                    <TextBlock Margin="0,8,0,4" Text="Min Dispatch Spikes" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="SpeechThresholdSlider"
+                                                Grid.Column="0"
+                                                Minimum="4"
+                                                Maximum="96"
+                                                TickFrequency="1"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="SpeechThresholdSlider_OnValueChanged"
+                                                Value="12" />
+                                        <TextBlock x:Name="SpeechThresholdText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#C5D2F2"
+                                                   Text="12" />
+                                    </Grid>
+                                    <TextBlock Margin="0,8,0,4" Text="Speech Rate" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="SpeechRateSlider"
+                                                Grid.Column="0"
+                                                Minimum="50"
+                                                Maximum="200"
+                                                TickFrequency="5"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="SpeechRateSlider_OnValueChanged"
+                                                Value="100" />
+                                        <TextBlock x:Name="SpeechRateText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#C5D2F2"
+                                                   Text="1.00x" />
+                                    </Grid>
+                                    <TextBlock Margin="0,8,0,4" Text="Speech Volume" Foreground="#B9C8ED" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="SpeechVolumeSlider"
+                                                Grid.Column="0"
+                                                Minimum="0"
+                                                Maximum="100"
+                                                TickFrequency="1"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="SpeechVolumeSlider_OnValueChanged"
+                                                Value="95" />
+                                        <TextBlock x:Name="SpeechVolumeText"
+                                                   Grid.Column="1"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#C5D2F2"
+                                                   Text="95%" />
+                                    </Grid>
+                                    <TextBlock x:Name="SpeechOutputStatusText"
+                                               Margin="0,6,0,0"
+                                               Foreground="#9EB3E5"
+                                               Text="Speech: listening for language pathway activity" />
+                                </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </layout:LayoutAnchorable>
+
+                        <layout:LayoutAnchorable x:Name="InspectorAnchorable" Title="Inspector" CanClose="False" CanHide="True">
+                            <Border Background="#111A2E" Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="Selection Details" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="SelectionNameText" Margin="0,10,0,0" Foreground="#B9C8ED" />
+                                    <TextBlock x:Name="SelectionModelText" Margin="0,6,0,0" Foreground="#B9C8ED" />
+                                    <TextBlock x:Name="SelectionPlasticityText" Margin="0,6,0,0" Foreground="#B9C8ED" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="SelectionMicrotubuleText" Margin="0,6,0,0" Foreground="#D5B8FF" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </layout:LayoutAnchorable>
+                    </layout:LayoutAnchorablePane>
+                </layout:LayoutPanel>
+                </layout:LayoutRoot>
+            </dock:DockingManager.Layout>
+        </dock:DockingManager>
+    </DockPanel>
+</Window>
+

@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Structures.MotorThalamus</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Structures.MotorThalamus</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+  </ItemGroup>
+</Project>
+

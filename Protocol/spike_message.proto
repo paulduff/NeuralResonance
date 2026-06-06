@@ -1,0 +1,44 @@
+﻿syntax = "proto3";
+
+package neuralresonanceengine.protocol.v1;
+
+message NeuromodState {
+  float dopamine_level = 1;
+  float serotonin_level = 2;
+  float acetylcholine_level = 3;
+  float norepinephrine_level = 4;
+}
+
+enum NTEnum {
+  NT_ENUM_UNSPECIFIED = 0;
+  GLUTAMATE = 1;
+  GABA = 2;
+  DOPAMINE = 3;
+  SEROTONIN = 4;
+  ACETYLCHOLINE = 5;
+  NOREPINEPHRINE = 6;
+}
+
+enum SpikeTypeEnum {
+  SPIKE_TYPE_UNSPECIFIED = 0;
+  ACTION_POTENTIAL = 1;
+  GRADED = 2;
+  COMPLEX = 3;
+  BURST = 4;
+}
+
+message SpikeMessage {
+  string message_id = 1;
+  double timestamp_ms = 2;
+  string source_structure = 3;
+  string target_structure = 4;
+  string source_neuron_id = 5;
+  string target_neuron_id = 6;
+  string synapse_id = 7;
+  NTEnum neurotransmitter = 8;
+  float vesicle_quanta = 9;
+  float reuptake_rate = 10;
+  SpikeTypeEnum spike_type = 11;
+  bool is_feedback = 12;
+  NeuromodState modulation_context = 13;
+}

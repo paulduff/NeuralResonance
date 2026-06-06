@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Protocol</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Protocol</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="protobuf-net" Version="3.2.56" />
+  </ItemGroup>
+</Project>

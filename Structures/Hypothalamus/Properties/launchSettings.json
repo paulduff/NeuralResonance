@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NeuralResonanceEngine.Structures.Hypothalamus": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:54536;http://localhost:54537"
+    }
+  }
+}

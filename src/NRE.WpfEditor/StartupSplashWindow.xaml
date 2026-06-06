@@ -1,0 +1,51 @@
+<Window x:Class="NRE.WpfEditor.StartupSplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Starting DNNE Editor"
+        Width="560"
+        Height="310"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
+        Background="#0A1326"
+        ShowInTaskbar="False"
+        Topmost="True">
+    <Border Margin="14" Padding="18" BorderBrush="#304267" BorderThickness="1" CornerRadius="10" Background="#101C35">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0"
+                       Text="Neural Resonance Editor"
+                       FontSize="26"
+                       FontWeight="SemiBold"
+                       Foreground="#E4ECFF" />
+            <TextBlock Grid.Row="1"
+                       Margin="0,8,0,0"
+                       Text="Starting the distributed engine and loading 3D scene..."
+                       Foreground="#AFC2EA" />
+            <ProgressBar Grid.Row="2"
+                         Margin="0,14,0,0"
+                         IsIndeterminate="True"
+                         Height="8"
+                         Background="#263A63"
+                         Foreground="#7DB2FF" />
+            <Border Grid.Row="3" Margin="0,16,0,0" Padding="10" Background="#0B1731" BorderBrush="#28406C" BorderThickness="1" CornerRadius="6">
+                <StackPanel>
+                    <TextBlock x:Name="StatusSummaryText"
+                               Foreground="#D8E4FF"
+                               FontWeight="SemiBold"
+                               Text="Waiting for startup state..." />
+                    <TextBlock x:Name="StatusDetailText"
+                               Margin="0,8,0,0"
+                               Foreground="#9FB3DD"
+                               TextWrapping="Wrap"
+                               Text="No telemetry yet." />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

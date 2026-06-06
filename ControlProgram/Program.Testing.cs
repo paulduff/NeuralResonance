@@ -1,0 +1,3 @@
+internal partial class Program
+{
+}

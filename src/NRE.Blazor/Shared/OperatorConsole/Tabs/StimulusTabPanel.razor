@@ -1,0 +1,103 @@
+<div class="panel">
+    <div class="row">
+        <button class="btn" @onclick="OnInjectLeft">Inject Left</button>
+        <button class="btn" @onclick="OnInjectRight">Inject Right</button>
+        <button class="btn" @onclick="OnInjectBoth">Inject Both</button>
+    </div>
+
+    <div class="group-title">Live Inputs</div>
+    <div class="row">
+        <button class="btn" @onclick="OnStartWebcam" @attributes="(WebcamRunning ? DisabledAttributes : null)">Start Webcam</button>
+        <button class="btn" @onclick="OnStopWebcam" @attributes="(!WebcamRunning ? DisabledAttributes : null)">Stop Webcam</button>
+    </div>
+    <div class="row">
+        <button class="btn" @onclick="OnStartMic" @attributes="(MicRunning ? DisabledAttributes : null)">Start Microphone</button>
+        <button class="btn" @onclick="OnStopMic" @attributes="(!MicRunning ? DisabledAttributes : null)">Stop Microphone</button>
+    </div>
+
+    <div class="group-title">Internet Stream</div>
+    <div class="row">
+        <input class="inp" style="width:100%;" type="text" value="@InternetStreamUrl" @oninput="OnInternetStreamUrlInput" placeholder="https://example.com/live.mp4" />
+    </div>
+    <div class="row">
+        <button class="btn" @onclick="OnStartInternetStream" @attributes="(InternetStreamRunning ? DisabledAttributes : null)">Start Internet Stream</button>
+        <button class="btn" @onclick="OnStopInternetStream" @attributes="(!InternetStreamRunning ? DisabledAttributes : null)">Stop Internet Stream</button>
+    </div>
+    <div class="small">Internet stream drives both visual and auditory channels using the same compact feature pipeline. Use direct media URLs (CORS support required for video pixels).</div>
+
+    <div class="small">Webcam drives Functional Area 1 (Visual). Microphone drives Functional Area 5 (Auditory). Uses on-device feature extraction; only compact stimulus values are posted to the API.</div>
+
+    <div class="group-title">Visual (Area 1)</div>
+    <div class="row">
+        <label class="lbl">Visual Intensity @VisualIntensity.ToString("0.00")</label>
+        <input type="range" min="0" max="1.5" step="0.01" value="@VisualIntensity" @oninput="OnVisualIntensityInput" />
+    </div>
+    <div class="row">
+        <label class="lbl">Visual Speed Hz @VisualSpeedHz.ToString("0.00")</label>
+        <input type="range" min="0" max="5" step="0.01" value="@VisualSpeedHz" @oninput="OnVisualSpeedInput" />
+    </div>
+    <div class="row">
+        <label class="lbl">Spatial Freq @VisualSpatialFreq.ToString("0.00")</label>
+        <input type="range" min="0.5" max="10" step="0.1" value="@VisualSpatialFreq" @oninput="OnVisualSpatialFreqInput" />
+    </div>
+    <div class="row">
+        <button class="btn" @onclick="OnApplyVisual">Apply Visual</button>
+    </div>
+
+    <div class="group-title">Auditory (Area 5)</div>
+    <div class="row">
+        <label class="lbl">Audio Intensity @AudioIntensity.ToString("0.00")</label>
+        <input type="range" min="0" max="1.5" step="0.01" value="@AudioIntensity" @oninput="OnAudioIntensityInput" />
+    </div>
+    <div class="row">
+        <label class="lbl">Tone Hz @AudioToneHz.ToString("0")</label>
+        <input type="range" min="60" max="2000" step="1" value="@AudioToneHz" @oninput="OnAudioToneInput" />
+    </div>
+    <div class="row">
+        <button class="btn" @onclick="OnApplyAudio">Apply Audio</button>
+    </div>
+
+    <div class="small">Drag-rotate to inspect; scroll to zoom.</div>
+</div>
+
+@code {
+    [Parameter] public bool WebcamRunning { get; set; }
+    [Parameter] public bool MicRunning { get; set; }
+    [Parameter] public bool InternetStreamRunning { get; set; }
+    [Parameter] public string InternetStreamUrl { get; set; } = string.Empty;
+    [Parameter] public double VisualIntensity { get; set; }
+    [Parameter] public EventCallback<double> VisualIntensityChanged { get; set; }
+    [Parameter] public double VisualSpeedHz { get; set; }
+    [Parameter] public EventCallback<double> VisualSpeedHzChanged { get; set; }
+    [Parameter] public double VisualSpatialFreq { get; set; }
+    [Parameter] public EventCallback<double> VisualSpatialFreqChanged { get; set; }
+    [Parameter] public double AudioIntensity { get; set; }
+    [Parameter] public EventCallback<double> AudioIntensityChanged { get; set; }
+    [Parameter] public double AudioToneHz { get; set; }
+    [Parameter] public EventCallback<double> AudioToneHzChanged { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, object>? DisabledAttributes { get; set; }
+    [Parameter] public EventCallback OnInjectLeft { get; set; }
+    [Parameter] public EventCallback OnInjectRight { get; set; }
+    [Parameter] public EventCallback OnInjectBoth { get; set; }
+    [Parameter] public EventCallback OnStartWebcam { get; set; }
+    [Parameter] public EventCallback OnStopWebcam { get; set; }
+    [Parameter] public EventCallback OnStartMic { get; set; }
+    [Parameter] public EventCallback OnStopMic { get; set; }
+    [Parameter] public EventCallback OnStartInternetStream { get; set; }
+    [Parameter] public EventCallback OnStopInternetStream { get; set; }
+    [Parameter] public EventCallback<string> InternetStreamUrlChanged { get; set; }
+    [Parameter] public EventCallback OnApplyVisual { get; set; }
+    [Parameter] public EventCallback OnApplyAudio { get; set; }
+
+    private Task OnVisualIntensityInput(ChangeEventArgs e) => VisualIntensityChanged.InvokeAsync(ParseDouble(e.Value, VisualIntensity));
+    private Task OnVisualSpeedInput(ChangeEventArgs e) => VisualSpeedHzChanged.InvokeAsync(ParseDouble(e.Value, VisualSpeedHz));
+    private Task OnVisualSpatialFreqInput(ChangeEventArgs e) => VisualSpatialFreqChanged.InvokeAsync(ParseDouble(e.Value, VisualSpatialFreq));
+    private Task OnAudioIntensityInput(ChangeEventArgs e) => AudioIntensityChanged.InvokeAsync(ParseDouble(e.Value, AudioIntensity));
+    private Task OnAudioToneInput(ChangeEventArgs e) => AudioToneHzChanged.InvokeAsync(ParseDouble(e.Value, AudioToneHz));
+    private Task OnInternetStreamUrlInput(ChangeEventArgs e) => InternetStreamUrlChanged.InvokeAsync(Convert.ToString(e.Value) ?? InternetStreamUrl);
+
+    private static double ParseDouble(object? value, double fallback)
+        => double.TryParse(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : fallback;
+}

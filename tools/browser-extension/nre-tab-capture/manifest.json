@@ -1,0 +1,36 @@
+﻿{
+    "manifest_version":  3,
+    "name":  "NRE Tab Capture Stimulus Bridge",
+    "version":  "0.1.0",
+    "description":  "Capture active tab sight/sound and send compact stimuli to Neural Resonance Engine.",
+    "minimum_chrome_version":  "116",
+    "permissions":  [
+                        "tabCapture",
+                        "tabs",
+                        "storage",
+                        "offscreen"
+                    ],
+    "host_permissions":  [
+                             "http://localhost:5005/*",
+                             "https://localhost:5005/*"
+                         ],
+    "background":  {
+                       "service_worker":  "background.js"
+                   },
+    "action":  {
+                   "default_title":  "NRE Tab Capture",
+                   "default_popup":  "popup.html"
+               },
+    "content_scripts":  [
+                            {
+                                "run_at":  "document_idle",
+                                "matches":  [
+                                                "http://*/*",
+                                                "https://*/*"
+                                            ],
+                                "js":  [
+                                           "contentScript.js"
+                                       ]
+                            }
+                        ]
+}

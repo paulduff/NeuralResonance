@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Shared.Contracts</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Shared.Contracts</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="protobuf-net.Grpc" Version="1.2.2" />
+  </ItemGroup>
+</Project>

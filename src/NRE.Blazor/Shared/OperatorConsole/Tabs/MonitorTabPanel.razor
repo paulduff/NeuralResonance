@@ -1,0 +1,111 @@
+@using NRE.Blazor.Shared.OperatorConsole
+
+<div class="panel">
+    <div class="row">
+        <button class="btn" @onclick="OnShowResonant">Resonant</button>
+        <button class="btn" @onclick="OnShowThoughts">Thoughts</button>
+        <button class="btn btn-action" @onclick="OnFetchTelemetry">Telemetry</button>
+    </div>
+    <div class="small">Res(L/R): @ResonantLeft / @ResonantRight</div>
+    <div class="small">Top Thought: @TopThought</div>
+
+    @if (Telemetry is not null)
+    {
+        <div class="panel" style="margin-top:8px">
+            <div class="small"><b>NETWORK HEALTH</b></div>
+            <div class="status-grid" style="margin-top:4px">
+                <div class="status-cell"><span class="label">FIRING</span><span class="value @(Telemetry.Network.GlobalMeanFiringRate > 0.1f ? "live" : "")">@Telemetry.Network.GlobalMeanFiringRate.ToString("0.000")</span></div>
+                <div class="status-cell"><span class="label">STABILITY</span><span class="value">@Telemetry.Network.NetworkStability.ToString("0.00")</span></div>
+                <div class="status-cell"><span class="label">LEARNING</span><span class="value @(Telemetry.Network.LearningProgress > 0.01f ? "live" : "")">@Telemetry.Network.LearningProgress.ToString("0.000")</span></div>
+                <div class="status-cell"><span class="label">DIVERSITY</span><span class="value">@Telemetry.Network.SynapticDiversity.ToString("0.000")</span></div>
+                <div class="status-cell"><span class="label">CONSOL</span><span class="value">@Telemetry.Network.TotalConsolidations</span></div>
+                <div class="status-cell"><span class="label">UPTIME</span><span class="value">@(Telemetry.UptimeSeconds.ToString("0.0"))s</span></div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top:6px">
+            <div class="small"><b>EPISODIC MEMORY</b></div>
+            <div class="status-grid" style="margin-top:4px">
+                <div class="status-cell"><span class="label">EPISODES</span><span class="value @(Telemetry.Episodes.TotalEpisodes > 0 ? "live" : "")">@Telemetry.Episodes.TotalEpisodes</span></div>
+                <div class="status-cell"><span class="label">VOXELS</span><span class="value">@Telemetry.Episodes.TotalVoxelsCaptured</span></div>
+                <div class="status-cell"><span class="label">STRONG</span><span class="value live">@Telemetry.Episodes.StrongEpisodes</span></div>
+                <div class="status-cell"><span class="label">WEAK</span><span class="value @(Telemetry.Episodes.WeakEpisodes > Telemetry.Episodes.StrongEpisodes ? "warn" : "")">@Telemetry.Episodes.WeakEpisodes</span></div>
+                <div class="status-cell"><span class="label">AVG SIZE</span><span class="value">@Telemetry.Episodes.MeanEpisodeSize.ToString("0.0")</span></div>
+                <div class="status-cell"><span class="label">AVG STR</span><span class="value">@Telemetry.Episodes.MeanStrength.ToString("0.00")</span></div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top:6px">
+            <div class="small"><b>PATHWAYS</b></div>
+            @foreach (var p in Telemetry.Pathways)
+            {
+                <div class="small" style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)">
+                    <span>@p.Name</span>
+                    <span style="font-family:var(--font-mono);font-size:0.7rem">@p.SynapseCount · @p.MeanWeight.ToString("0.000") · @p.ActiveConnections act</span>
+                </div>
+            }
+        </div>
+
+        <div class="panel" style="margin-top:6px">
+            <div class="small"><b>REGION ACTIVITY</b></div>
+            <div style="max-height:200px;overflow-y:auto;margin-top:4px">
+                @foreach (var r in RegionsByRate)
+                {
+                    <div class="small" style="display:flex;align-items:center;padding:1px 0;gap:4px">
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@r.Name</span>
+                        <span style="font-family:var(--font-mono);font-size:0.68rem;width:28px;text-align:right">@r.NeuronCount</span>
+                        <span style="font-family:var(--font-mono);font-size:0.68rem;width:38px;text-align:right">@r.MeanFiringRate.ToString("0.000")</span>
+                        <span style="width:40px"><span style="display:inline-block;height:5px;background:var(--green);border-radius:2px;width:@(Math.Min(100, r.MeanFiringRate * 200).ToString("0"))%"></span></span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Telemetry.FiringRateHistory.Length > 1)
+        {
+            <div class="panel" style="margin-top:6px">
+                <div class="small"><b>FIRING RATE HISTORY</b></div>
+                <div style="height:36px;display:flex;align-items:end;gap:1px;margin-top:4px">
+                    @{ float maxRate = MaxOf(Telemetry.FiringRateHistory); }
+                    @foreach (var rate in Telemetry.FiringRateHistory)
+                    {
+                        float pct = maxRate > 0 ? rate / maxRate * 100f : 0;
+                        <span style="flex:1;background:var(--accent);border-radius:1px 1px 0 0;height:@(pct.ToString("0"))%;min-height:1px;opacity:0.7"></span>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    <details style="margin-top:10px">
+        <summary class="small"><b>Reference Legend</b></summary>
+        <div class="legend-grid" style="margin-top:4px">
+            <span class="legend-item"><span class="swatch" style="background:#8c7533"></span>Thalamus</span>
+            <span class="legend-item"><span class="swatch" style="background:#388c4d"></span>Hippocampus</span>
+            <span class="legend-item"><span class="swatch" style="background:#8c3838"></span>Amygdala</span>
+            <span class="legend-item"><span class="swatch" style="background:#73598c"></span>Cerebellum</span>
+            <span class="legend-item"><span class="swatch" style="background:#e0e0e0"></span>Corpus Callosum</span>
+        </div>
+    </details>
+</div>
+
+@code {
+    [Parameter] public int ResonantLeft { get; set; }
+    [Parameter] public int ResonantRight { get; set; }
+    [Parameter] public string TopThought { get; set; } = string.Empty;
+    [Parameter] public TelemetrySnapshotDto? Telemetry { get; set; }
+    [Parameter] public RegionTelemetryDto[] RegionsByRate { get; set; } = Array.Empty<RegionTelemetryDto>();
+    [Parameter] public EventCallback OnShowResonant { get; set; }
+    [Parameter] public EventCallback OnShowThoughts { get; set; }
+    [Parameter] public EventCallback OnFetchTelemetry { get; set; }
+
+    private static float MaxOf(float[] values)
+    {
+        float max = 0f;
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (values[i] > max) max = values[i];
+        }
+        return max;
+    }
+}

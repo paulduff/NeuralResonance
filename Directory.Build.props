@@ -1,0 +1,41 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**\artifacts\**</DefaultItemExcludes>
+    <NoWarn>$(NoWarn);AD0001</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('NeuralResonanceEngine.Structures.'))">
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
+  <ItemGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('NeuralResonanceEngine.Structures.'))">
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\CircuitKernels.cs" Link="CircuitKernels.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\ControlPublishClient.cs" Link="ControlPublishClient.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\DelayWindow.cs" Link="DelayWindow.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\IntracellularMicrotubuleState.cs" Link="IntracellularMicrotubuleState.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\ModelNeuron.cs" Link="ModelNeuron.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\NeuronModelKind.cs" Link="NeuronModelKind.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\PlasticityRules.cs" Link="PlasticityRules.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\SpikeEnvelope.cs" Link="SpikeEnvelope.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureEngine.cs" Link="StructureEngine.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureHostApplication.cs" Link="StructureHostApplication.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureJsonContext.cs" Link="StructureJsonContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureTelemetry.cs" Link="StructureTelemetry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureProfile.cs" Link="StructureProfile.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\StructureSpikeGrpcService.cs" Link="StructureSpikeGrpcService.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\SynapseState.cs" Link="SynapseState.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Structures\_SharedRuntime\SynapsePersistenceStore.cs" Link="SynapsePersistenceStore.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdkWeb)' == 'true'">
+    <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdkWeb)' == 'true'">
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+</Project>

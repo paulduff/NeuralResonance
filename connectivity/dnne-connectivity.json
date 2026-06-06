@@ -1,0 +1,1908 @@
+﻿[
+    {
+        "source":  "A1",
+        "connections":  [
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "11111111-1111-1111-1111-111111111201",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "auditory_association"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111202",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "auditory_spatial_stream"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111111203",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticothalamic_feedback"
+                            },
+                            {
+                                "target":  "WernickePstgPsts",
+                                "synapseId":  "71dd49be-c145-443f-843c-54578427b4a8",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "auditory_language_comprehension_feedforward"
+                            }
+                        ]
+    },
+    {
+        "source":  "Acc",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112901",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "error_to_control"
+                            },
+                            {
+                                "target":  "LocusCoeruleus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112902",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "arousal_drive"
+                            },
+                            {
+                                "target":  "BasalForebrain",
+                                "synapseId":  "11111111-1111-1111-1111-111111112903",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "attention_drive"
+                            }
+                        ]
+    },
+    {
+        "source":  "Amygdala",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112801",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "cea_pfc_feedback"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112802",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "salience_to_conflict"
+                            },
+                            {
+                                "target":  "Hypothalamus",
+                                "synapseId":  "e7e81aff-8fb1-4c8d-92ee-62470b6cf8b2",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "limbic_homeostatic_drive"
+                            },
+                            {
+                                "target":  "Insula",
+                                "synapseId":  "a6ce588c-a6a3-49a0-8884-ff54a9305435",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "interoceptive_salience"
+                            },
+                            {
+                                "target":  "NucleusAccumbens",
+                                "synapseId":  "b20b4365-4287-4f93-9f4d-9966dfa7d289",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "salience_to_ventral_striatum"
+                            },
+                            {
+                                "target":  "PeriaqueductalGray",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1030",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "fear_defense_output"
+                            }
+                        ]
+    },
+    {
+        "source":  "CA1",
+        "connections":  [
+                            {
+                                "target":  "Subiculum",
+                                "synapseId":  "11111111-1111-1111-1111-111111111801",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "hippocampal_output"
+                            },
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "11111111-1111-1111-1111-111111111802",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "hippocampal_index_feedback"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111803",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "memory_to_control"
+                            },
+                            {
+                                "target":  "CA2",
+                                "synapseId":  "6e766573-ab50-44b8-8a47-980a6f624a52",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ca1_ca2_relay"
+                            },
+                            {
+                                "target":  "Presubiculum",
+                                "synapseId":  "692eba67-4436-4ff1-a979-25deb99a46e1",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "hippocampal_spatial_index"
+                            },
+                            {
+                                "target":  "Parasubiculum",
+                                "synapseId":  "8489eef4-b92a-400a-b6c2-955c9b056a6a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "hippocampal_spatial_index"
+                            }
+                        ]
+    },
+    {
+        "source":  "CA2",
+        "connections":  [
+                            {
+                                "target":  "CA1",
+                                "synapseId":  "6ad263b8-d007-4e54-87bd-0a566b866728",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ca2_ca1_association"
+                            },
+                            {
+                                "target":  "CA3",
+                                "synapseId":  "47470b94-f929-4d41-8613-c33368674862",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ca2_ca3_association"
+                            },
+                            {
+                                "target":  "Presubiculum",
+                                "synapseId":  "ca8eef69-6cf1-41a0-a7e3-553e9b4f589c",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ca2_spatial_index"
+                            }
+                        ]
+    },
+    {
+        "source":  "CA3",
+        "connections":  [
+                            {
+                                "target":  "CA1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111701",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "schaffer_collateral"
+                            },
+                            {
+                                "target":  "CA3",
+                                "synapseId":  "11111111-1111-1111-1111-111111111702",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ca3_recurrent_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "CerebellarGranule",
+        "connections":  [
+                            {
+                                "target":  "PurkinjeCellLayer",
+                                "synapseId":  "11111111-1111-1111-1111-111111113001",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "parallel_fiber"
+                            }
+                        ]
+    },
+    {
+        "source":  "CerebellarLobules",
+        "connections":  [
+                            {
+                                "target":  "PurkinjeCellLayer",
+                                "synapseId":  "847cf4d0-1203-46a5-ba2f-7794ec7c5496",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "lobular_parallel_fiber"
+                            },
+                            {
+                                "target":  "DeepCerebellarNuclei",
+                                "synapseId":  "ea6c2920-274a-4f73-adac-2fc5e073bfac",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "lobular_dcn_output"
+                            }
+                        ]
+    },
+    {
+        "source":  "CerebellarVermis",
+        "connections":  [
+                            {
+                                "target":  "DeepCerebellarNuclei",
+                                "synapseId":  "dc86e575-038d-4f29-b651-b1939f86adbc",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vermis_dcn_drive"
+                            },
+                            {
+                                "target":  "PurkinjeCellLayer",
+                                "synapseId":  "0b08e8a1-c326-4ce3-975a-4205425b3b01",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vermis_purkinje_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "CorpusCallosum",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "8f446245-a886-485a-9f23-52f29494f09e",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_transfer"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "ea217927-0b2d-4fe8-a0da-bb0cb5ae8cb1",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_transfer"
+                            },
+                            {
+                                "target":  "M1",
+                                "synapseId":  "f31b81fa-4cf6-4c59-9ff5-941ec89e7a47",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_motor_transfer"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "9078e262-4eef-45bf-b015-4e5ab9c19ba6",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_temporal_transfer"
+                            }
+                        ]
+    },
+    {
+        "source":  "DeepCerebellarNuclei",
+        "connections":  [
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111113301",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebellothalamic_motor"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111113302",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebellothalamic_association"
+                            },
+                            {
+                                "target":  "SuperiorColliculus",
+                                "synapseId":  "f6728bc3-f078-4d91-95f6-2ea77d0e33c1",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebellotectal_orienting"
+                            },
+                            {
+                                "target":  "PremotorCortex",
+                                "synapseId":  "33aafaa3-9be5-4c8c-91f1-d9a2f42cc0e9",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebellar_premotor_planning"
+                            },
+                            {
+                                "target":  "VestibularNuclei",
+                                "synapseId":  "45f2962c-25b8-4f42-8b46-4cd6ea81d301",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebellovestibular_balance_correction"
+                            },
+                            {
+                                "target":  "ReticularFormation",
+                                "synapseId":  "45f2962c-25b8-4f42-8b46-4cd6ea81d302",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cerebelloreticular_posture_correction"
+                            }
+                        ]
+    },
+    {
+        "source":  "DentateGyrus",
+        "connections":  [
+                            {
+                                "target":  "CA3",
+                                "synapseId":  "11111111-1111-1111-1111-111111111601",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "mossy_fiber_ltp"
+                            }
+                        ]
+    },
+    {
+        "source":  "EntorhinalCortex",
+        "connections":  [
+                            {
+                                "target":  "DentateGyrus",
+                                "synapseId":  "11111111-1111-1111-1111-111111111501",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "perforant_path_l2"
+                            },
+                            {
+                                "target":  "CA3",
+                                "synapseId":  "11111111-1111-1111-1111-111111111502",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "perforant_path_l2_l3"
+                            },
+                            {
+                                "target":  "CA1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111503",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "temporoammonic_path"
+                            }
+                        ]
+    },
+    {
+        "source":  "GlobusPallidus",
+        "connections":  [
+                            {
+                                "target":  "Snr",
+                                "synapseId":  "11111111-1111-1111-1111-111111112501",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "pallidonigral"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112502",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "pallidothalamic"
+                            },
+                            {
+                                "target":  "Stn",
+                                "synapseId":  "11111111-1111-1111-1111-111111112503",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "gpe_stn"
+                            }
+                        ]
+    },
+    {
+        "source":  "GPe",
+        "connections":  [
+                            {
+                                "target":  "Stn",
+                                "synapseId":  "c6f31f2e-916a-4c5c-b385-ad5e7b1f0496",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "gpe_stn_inhibition"
+                            },
+                            {
+                                "target":  "GPi",
+                                "synapseId":  "051aa6e6-f2c7-4a74-81cc-71d9a9fe8a88",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "gpe_gpi_inhibition"
+                            }
+                        ]
+    },
+    {
+        "source":  "GPi",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "a5ec78ae-500f-46a8-a411-ab31d4adea00",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "gpi_thalamic_output"
+                            },
+                            {
+                                "target":  "Snr",
+                                "synapseId":  "e60f723f-0147-44c7-9c61-c43a55da7745",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "gpi_nigral_output"
+                            },
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "3a5ef6f0-4472-4a83-9f2b-a84c7797f6d0",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "pallidothalamic_motor_inhibition"
+                            }
+                        ]
+    },
+    {
+        "source":  "Habenula",
+        "connections":  [
+                            {
+                                "target":  "Vta",
+                                "synapseId":  "2b581fc7-247b-4791-b0e6-50be542ac573",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "aversive_dopamine_suppression"
+                            },
+                            {
+                                "target":  "RapheNuclei",
+                                "synapseId":  "3e03c5c1-91e5-4082-80e1-e83dfcabb487",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "habenulo_raphe_drive"
+                            },
+                            {
+                                "target":  "LocusCoeruleus",
+                                "synapseId":  "ade4b01b-12e6-482d-9a7a-b209c3521b1b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "habenulo_lc_drive"
+                            },
+                            {
+                                "target":  "Snc",
+                                "synapseId":  "7a8f9f30-07b4-4d0a-bf87-ec2b43af0f41",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "habenulo_nigral_inhibition"
+                            }
+                        ]
+    },
+    {
+        "source":  "Hypothalamus",
+        "connections":  [
+                            {
+                                "target":  "LocusCoeruleus",
+                                "synapseId":  "98e280ec-a146-4162-857b-2ace1782929a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "arousal_drive"
+                            },
+                            {
+                                "target":  "RapheNuclei",
+                                "synapseId":  "aad914e0-db11-4124-992f-1de59524efc1",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "serotonergic_drive"
+                            },
+                            {
+                                "target":  "BasalForebrain",
+                                "synapseId":  "6bab47ac-8044-408c-b2c6-cefe4c2b4ab1",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cholinergic_drive"
+                            },
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "f6d3d48a-b169-4a02-8201-76560bb11247",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "autonomic_brainstem"
+                            },
+                            {
+                                "target":  "Medulla",
+                                "synapseId":  "44705456-1d14-430a-8db6-1e47b6f33f98",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "autonomic_brainstem"
+                            },
+                            {
+                                "target":  "PeriaqueductalGray",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1031",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "homeostatic_defense_command"
+                            }
+                        ]
+    },
+    {
+        "source":  "InferiorOlive",
+        "connections":  [
+                            {
+                                "target":  "PurkinjeCellLayer",
+                                "synapseId":  "11111111-1111-1111-1111-111111113101",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "climbing_fiber_teaching"
+                            }
+                        ]
+    },
+    {
+        "source":  "Insula",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "a7f2bb1c-cae1-4ec1-b677-61e6b0029585",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "insula_prefrontal_interoception"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "a9fefdcf-16fe-407f-827a-24d49763947a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "insula_conflict_affect"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "0ca2520b-7c74-4b0d-9042-b755f48ce316",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "insula_salience"
+                            },
+                            {
+                                "target":  "Hypothalamus",
+                                "synapseId":  "743b78e3-5510-41d2-bd64-c13c8eaa7af7",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "insula_homeostatic"
+                            }
+                        ]
+    },
+    {
+        "source":  "IntralaminarThalamus",
+        "connections":  [
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "70e1141f-054b-44d9-98aa-a9f15fe0d84d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "intralaminar_striatal_broadcast"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "96388995-fb39-4ac7-80ad-d5e8ee8e01f2",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "intralaminar_prefrontal_arousal"
+                            },
+                            {
+                                "target":  "Insula",
+                                "synapseId":  "7d3e161a-a35a-4681-afe3-6315e73cf71c",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "intralaminar_interoceptive_arousal"
+                            }
+                        ]
+    },
+    {
+        "source":  "M1",
+        "connections":  [
+                            {
+                                "target":  "InferiorOlive",
+                                "synapseId":  "11111111-1111-1111-1111-111111113401",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motor_error_afferent"
+                            },
+                            {
+                                "target":  "SpinalCordMotor",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1032",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticospinal_output"
+                            },
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "f773af9a-2a9e-4d3a-bc76-2cf4815f5d11",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticopontine_motor_efference"
+                            }
+                        ]
+    },
+    {
+        "source":  "MediodorsalThalamus",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "0a5b1e9d-38b8-4229-a90f-6b4b6c7cfc8d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "md_pfc_loop"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "802c1f6b-4ad6-434f-b1d0-2abdefc5aa2e",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "md_acc_loop"
+                            },
+                            {
+                                "target":  "OrbitofrontalCortex",
+                                "synapseId":  "1c37fe4e-23eb-4aa2-9c8c-3bc8d7b00a8d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "md_orbitofrontal_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "Medulla",
+        "connections":  [
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "92c570da-e39a-44eb-a3f0-9e003da3051b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticular_ascending"
+                            },
+                            {
+                                "target":  "LocusCoeruleus",
+                                "synapseId":  "aeaf435b-3bfb-4217-9c08-69d4018553b8",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticular_ne"
+                            },
+                            {
+                                "target":  "RapheNuclei",
+                                "synapseId":  "1c5f46b6-6a93-447a-9980-6f10c4eaf1ff",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticular_5ht"
+                            },
+                            {
+                                "target":  "NucleusTractusSolitarius",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1028",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visceral_afferent_relay"
+                            },
+                            {
+                                "target":  "VestibularNuclei",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1029",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vestibular_brainstem_reflex"
+                            }
+                        ]
+    },
+    {
+        "source":  "MotorThalamus",
+        "connections":  [
+                            {
+                                "target":  "PremotorCortex",
+                                "synapseId":  "ed296b88-b99b-4522-a94a-dec7a3fc5d8b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motor_thalamocortical_relay"
+                            },
+                            {
+                                "target":  "M1",
+                                "synapseId":  "a7ea5ba0-d80c-4849-af63-e5d519f87c49",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motor_thalamocortical_relay"
+                            },
+                            {
+                                "target":  "Sma",
+                                "synapseId":  "c3b777b0-8d2a-4c8d-aaa7-e2e923836059",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motor_thalamocortical_relay"
+                            }
+                        ]
+    },
+    {
+        "source":  "Mt",
+        "connections":  [
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "c81f2c0e-8724-4594-bf3e-dbbbcf8ede5a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motion_spatial_attention"
+                            },
+                            {
+                                "target":  "SuperiorColliculus",
+                                "synapseId":  "ea481140-781f-472b-bbac-08fb4b392dd5",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motion_orienting_drive"
+                            }
+                        ]
+    },
+    {
+        "source":  "NucleusAccumbens",
+        "connections":  [
+                            {
+                                "target":  "VentralPallidum",
+                                "synapseId":  "751361b6-6dd5-4cb2-b172-e978a984bf74",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "ventral_striatopallidal_inhibition"
+                            },
+                            {
+                                "target":  "Vta",
+                                "synapseId":  "853dd8ff-b526-4697-8729-8baba794275e",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "accumbens_vta_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "OlfactoryBulb",
+        "connections":  [
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "11111111-1111-1111-1111-111111111401",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "olfactory_cortical"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "11111111-1111-1111-1111-111111111402",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "olfactory_limbic"
+                            },
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "11111111-1111-1111-1111-111111111403",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "olfactory_hippocampal"
+                            }
+                        ]
+    },
+    {
+        "source":  "OrbitofrontalCortex",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "44c3a8f1-a20f-4ad7-9f7b-713b2998c168",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "value_to_control"
+                            },
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "0e24bc9d-470c-446b-a1d9-bdca15524b63",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "orbitostriatal_value"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "a98c5986-3791-4e79-9817-5e00a16ee241",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "value_salience"
+                            },
+                            {
+                                "target":  "Insula",
+                                "synapseId":  "098b7598-0309-4dc3-8b17-90d5b6222a7d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "valuation_interoception"
+                            },
+                            {
+                                "target":  "NucleusAccumbens",
+                                "synapseId":  "0fce2539-33fa-4235-9de6-3a722bac1e95",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "value_to_ventral_striatum"
+                            }
+                        ]
+    },
+    {
+        "source":  "ParahippocampalCortex",
+        "connections":  [
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "df0f9591-1306-4d1e-ad35-c6ff1fb7d4f6",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "context_to_hippocampal_index"
+                            },
+                            {
+                                "target":  "RetrosplenialCortex",
+                                "synapseId":  "7535658b-bdd3-4d8d-b3f8-a36bc562eee2",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "context_navigation_bridge"
+                            },
+                            {
+                                "target":  "PosteriorCingulate",
+                                "synapseId":  "63f25733-6297-46e9-88b8-94183570f0d2",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "episodic_context_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "Parasubiculum",
+        "connections":  [
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "d5af9540-5a6b-49fc-ad8c-7d2db477f320",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "parasubiculum_ec_projection"
+                            },
+                            {
+                                "target":  "Subiculum",
+                                "synapseId":  "355d631e-b777-41ec-96bd-9a2467db5159",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "parasubiculum_subiculum_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "PerirhinalCortex",
+        "connections":  [
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "a2afc6ab-aae0-4330-a7f0-80d02a130296",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "perirhinal_entorhinal_object_memory"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "6100e3b9-621c-414d-80b7-a94dc1e1fa38",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "perirhinal_temporal_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "Pfc",
+        "connections":  [
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112001",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "frontoparietal_loop"
+                            },
+                            {
+                                "target":  "Sma",
+                                "synapseId":  "11111111-1111-1111-1111-111111112002",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "motor_planning"
+                            },
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "11111111-1111-1111-1111-111111112003",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticostriatal_direct"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112004",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticothalamic_feedback"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112005",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "conflict_control"
+                            },
+                            {
+                                "target":  "OrbitofrontalCortex",
+                                "synapseId":  "3cfcffb9-a7ba-4f00-b9ce-018e23431f73",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "orbitofrontal_value_update"
+                            },
+                            {
+                                "target":  "Insula",
+                                "synapseId":  "57617486-fe41-4d15-802a-2b2a1b459b28",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "interoceptive_control"
+                            },
+                            {
+                                "target":  "CorpusCallosum",
+                                "synapseId":  "a13d0eb3-281e-4a3d-9e1b-28acaf25a06e",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_output"
+                            },
+                            {
+                                "target":  "PremotorCortex",
+                                "synapseId":  "4ba5ce06-df57-4ebe-83a9-b39050b75c67",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "prefrontal_premotor_preparation"
+                            },
+                            {
+                                "target":  "PosteriorCingulate",
+                                "synapseId":  "197ebb8d-a521-4f93-a7a1-d7dcaca93552",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "control_default_mode_coordination"
+                            },
+                            {
+                                "target":  "NucleusAccumbens",
+                                "synapseId":  "93caa573-5e8e-41ca-96ad-f76814800691",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "mesocorticolimbic_drive"
+                            }
+                        ]
+    },
+    {
+        "source":  "Pons",
+        "connections":  [
+                            {
+                                "target":  "CerebellarGranule",
+                                "synapseId":  "156a98c3-0418-428e-ac29-8e7079e1e526",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pontocerebellar_mossy"
+                            },
+                            {
+                                "target":  "Medulla",
+                                "synapseId":  "da7c02b8-9916-4f68-9a84-2bff81095c6e",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pontomedullary_relay"
+                            },
+                            {
+                                "target":  "CerebellarVermis",
+                                "synapseId":  "680993ad-8af9-4b5b-a9a3-723bc8e5dc16",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pontocerebellar_vermis"
+                            },
+                            {
+                                "target":  "CerebellarLobules",
+                                "synapseId":  "5b70e021-9288-4242-a3f2-40ff810d5351",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pontocerebellar_lobules"
+                            },
+                            {
+                                "target":  "IntralaminarThalamus",
+                                "synapseId":  "87fdd2cc-5bf2-4c62-a820-87799649d354",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ascending_arousal"
+                            }
+                        ]
+    },
+    {
+        "source":  "PosteriorCingulate",
+        "connections":  [
+                            {
+                                "target":  "RetrosplenialCortex",
+                                "synapseId":  "60a948bf-3e6a-4fee-8f34-81963801ff87",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "default_navigation_loop"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "79ee35d3-f3aa-402f-98b0-8492113f4ca6",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "autobiographical_control_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "Ppc",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112101",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "frontoparietal_loop"
+                            },
+                            {
+                                "target":  "Sma",
+                                "synapseId":  "11111111-1111-1111-1111-111111112102",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "spatial_to_motor"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112103",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticothalamic_feedback"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112104",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "attention_conflict"
+                            },
+                            {
+                                "target":  "Pulvinar",
+                                "synapseId":  "3b25cca7-7fa8-4366-99d0-6c2724de5cf5",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pulvinar_attention_loop"
+                            },
+                            {
+                                "target":  "CorpusCallosum",
+                                "synapseId":  "2fdae80d-78b5-4567-83d0-2b2672d6e663",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "callosal_spatial_transfer"
+                            },
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "45f2962c-25b8-4f42-8b46-4cd6ea81d303",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "parietopontine_spatial_efference"
+                            }
+                        ]
+    },
+    {
+        "source":  "PremotorCortex",
+        "connections":  [
+                            {
+                                "target":  "Sma",
+                                "synapseId":  "4571cf8f-20aa-4ee1-a5f2-2e6ece54ff75",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "premotor_sequence_preparation"
+                            },
+                            {
+                                "target":  "M1",
+                                "synapseId":  "8d28e608-5742-49c4-9571-9d1792f1f56e",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "premotor_motor_output"
+                            },
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "3780f4b2-5d99-42c7-bf43-e663cc9a0d66",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "premotor_action_selection"
+                            },
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "a5a0cf4d-99c1-4e1e-aef3-6e32f40f7f13",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "premotor_corticopontine"
+                            }
+                        ]
+    },
+    {
+        "source":  "Presubiculum",
+        "connections":  [
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "4aa03f0c-93e2-45f5-bf8c-1daf2a751d08",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "presubiculum_ec_projection"
+                            },
+                            {
+                                "target":  "Subiculum",
+                                "synapseId":  "a08257d4-82bd-4a4e-b48f-ba8c91d9a806",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "presubiculum_subiculum_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "Pulvinar",
+        "connections":  [
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "4367ac08-c943-4636-93db-c96ba2f9044a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pulvinar_parietal_attention"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "95a7feed-fda0-4bb4-b3e5-5f6c050917c7",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pulvinar_temporal_integration"
+                            },
+                            {
+                                "target":  "V1",
+                                "synapseId":  "8bd4aeb9-1910-42b3-a7c3-4cfb940480ec",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "pulvinar_visual_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "PurkinjeCellLayer",
+        "connections":  [
+                            {
+                                "target":  "DeepCerebellarNuclei",
+                                "synapseId":  "11111111-1111-1111-1111-111111113201",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "purkinje_inhibition"
+                            }
+                        ]
+    },
+    {
+        "source":  "RetrosplenialCortex",
+        "connections":  [
+                            {
+                                "target":  "ParahippocampalCortex",
+                                "synapseId":  "2d67383b-9f23-4728-aeda-c212414967bc",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "retrosplenial_context_feedback"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "36bf9a52-b161-4754-b919-59cd7702a843",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "spatial_reference_transform"
+                            }
+                        ]
+    },
+    {
+        "source":  "S1",
+        "connections":  [
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111301",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "somatosensory_integration"
+                            },
+                            {
+                                "target":  "M1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111302",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "sensorimotor_loop"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111111303",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticothalamic_feedback"
+                            },
+                            {
+                                "target":  "CerebellarGranule",
+                                "synapseId":  "45f2962c-25b8-4f42-8b46-4cd6ea81d304",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "somatocerebellar_proprioceptive_mossy"
+                            }
+                        ]
+    },
+    {
+        "source":  "Sma",
+        "connections":  [
+                            {
+                                "target":  "M1",
+                                "synapseId":  "11111111-1111-1111-1111-111111112301",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "premotor_drive"
+                            },
+                            {
+                                "target":  "Stn",
+                                "synapseId":  "11111111-1111-1111-1111-111111112302",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "hyperdirect_pathway"
+                            },
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "11111111-1111-1111-1111-111111112303",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticostriatal_indirect"
+                            },
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "dd9b61fd-e7a3-49a5-bf73-06c53874fd2d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "sma_corticopontine_sequence"
+                            }
+                        ]
+    },
+    {
+        "source":  "Snc",
+        "connections":  [
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "f2ea99f5-abb2-4782-9eae-0704526e7925",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "nigrostriatal_reward_prediction"
+                            },
+                            {
+                                "target":  "NucleusAccumbens",
+                                "synapseId":  "088268e6-ba41-4fa7-a15d-d29a77effc58",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "nigroaccumbal_reward_prediction"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "5690a445-d2ef-4927-8ce3-f431060cdf24",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "mesocortical_control_modulation"
+                            },
+                            {
+                                "target":  "OrbitofrontalCortex",
+                                "synapseId":  "6f22f209-402f-4522-9ed9-1f6f1f1c71e9",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "mesocortical_value_modulation"
+                            }
+                        ]
+    },
+    {
+        "source":  "Snr",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112701",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "basal_ganglia_feedback"
+                            },
+                            {
+                                "target":  "SuperiorColliculus",
+                                "synapseId":  "8c8c6fe4-dc25-4169-9ec2-941e5d2c968a",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "nigrotectal_inhibition"
+                            },
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "2f6b8d1a-4d0f-43d9-a890-ccb81af76274",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "nigrothalamic_motor_inhibition"
+                            }
+                        ]
+    },
+    {
+        "source":  "Stn",
+        "connections":  [
+                            {
+                                "target":  "GlobusPallidus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112601",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "stn_pallidal"
+                            },
+                            {
+                                "target":  "Snr",
+                                "synapseId":  "11111111-1111-1111-1111-111111112602",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "stn_nigral"
+                            },
+                            {
+                                "target":  "GPi",
+                                "synapseId":  "5f9ed559-f17e-4c4b-a6d0-3e5cbf37a942",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "stn_gpi_drive"
+                            }
+                        ]
+    },
+    {
+        "source":  "Striatum",
+        "connections":  [
+                            {
+                                "target":  "GlobusPallidus",
+                                "synapseId":  "11111111-1111-1111-1111-111111112401",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "direct_indirect_balance"
+                            },
+                            {
+                                "target":  "Snr",
+                                "synapseId":  "11111111-1111-1111-1111-111111112402",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "direct_pathway"
+                            },
+                            {
+                                "target":  "GPe",
+                                "synapseId":  "1632ef97-2782-4fe6-bce4-e65e0b3622dc",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "indirect_pathway_gpe"
+                            },
+                            {
+                                "target":  "GPi",
+                                "synapseId":  "26a42b51-8a22-4ba1-807e-7c487e52878c",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "direct_pathway_gpi"
+                            },
+                            {
+                                "target":  "Snc",
+                                "synapseId":  "8fe0323f-9b25-47cb-85d0-f8d0df36a28b",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "striosomal_dopamine_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "Subiculum",
+        "connections":  [
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "11111111-1111-1111-1111-111111111901",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "subiculum_feedback"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111902",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "context_output"
+                            },
+                            {
+                                "target":  "Presubiculum",
+                                "synapseId":  "d221e9c5-3729-412d-84b1-346f0902299d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "subicular_head_direction"
+                            },
+                            {
+                                "target":  "Parasubiculum",
+                                "synapseId":  "0df7dbce-0829-4f91-a0e9-b39c14067181",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "subicular_grid_interface"
+                            }
+                        ]
+    },
+    {
+        "source":  "SuperiorColliculus",
+        "connections":  [
+                            {
+                                "target":  "Pulvinar",
+                                "synapseId":  "5848ae65-65b7-4166-8699-997534c0193b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "tectopulvinar_orienting"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "6efb752a-5bac-4ff1-ae92-ca05db386823",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "tectothalamic_orienting"
+                            },
+                            {
+                                "target":  "PremotorCortex",
+                                "synapseId":  "df40d031-e9ab-408d-9d22-7665572d512f",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "orienting_to_premotor"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "ebdddb37-60a1-416d-988c-bd6dd3f99ec2",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "tectoparietal_attention"
+                            },
+                            {
+                                "target":  "Retina",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1027",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "tectoretinal_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "TemporalAssociation",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111112201",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "semantic_to_control"
+                            },
+                            {
+                                "target":  "EntorhinalCortex",
+                                "synapseId":  "11111111-1111-1111-1111-111111112202",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "semantic_to_memory"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "11111111-1111-1111-1111-111111112203",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "salience_labeling"
+                            },
+                            {
+                                "target":  "PerirhinalCortex",
+                                "synapseId":  "df3a5a38-8ef9-43f5-9705-816f13fb12e3",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "semantic_to_familiarity"
+                            },
+                            {
+                                "target":  "ParahippocampalCortex",
+                                "synapseId":  "726a596c-1395-419d-9043-3d896cfe3832",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "semantic_contextual_binding"
+                            }
+                        ]
+    },
+    {
+        "source":  "Thalamus",
+        "connections":  [
+                            {
+                                "target":  "V1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111001",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamocortical_relay"
+                            },
+                            {
+                                "target":  "A1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111002",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamocortical_relay"
+                            },
+                            {
+                                "target":  "S1",
+                                "synapseId":  "11111111-1111-1111-1111-111111111003",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamocortical_relay"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111004",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "matrix_projection"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111005",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "matrix_projection"
+                            },
+                            {
+                                "target":  "Pulvinar",
+                                "synapseId":  "c378e6e7-e98d-49ca-8c11-219f32c6b6e5",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamic_attention_hub"
+                            },
+                            {
+                                "target":  "MediodorsalThalamus",
+                                "synapseId":  "a2c51a77-dc61-48da-9e4d-66eb076ea7c0",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamic_association_hub"
+                            },
+                            {
+                                "target":  "IntralaminarThalamus",
+                                "synapseId":  "34c0073a-3967-4244-b699-b39a6426249b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamic_matrix_broadcast"
+                            },
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "a38878dc-dc8d-4b4b-bbb6-827e5d37f96a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamic_motor_nucleus_exchange"
+                            }
+                        ]
+    },
+    {
+        "source":  "Trn",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "42bc5401-05bb-47bb-8ab5-d1824e2af861",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "reticular_thalamic_gating"
+                            },
+                            {
+                                "target":  "Pulvinar",
+                                "synapseId":  "6d5a1312-44cf-4eaa-9aad-e1e9c207cea2",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "reticular_pulvinar_gating"
+                            },
+                            {
+                                "target":  "MediodorsalThalamus",
+                                "synapseId":  "00dbe11e-bcb5-4785-b6cd-27c203e3bdbb",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "reticular_association_gating"
+                            },
+                            {
+                                "target":  "IntralaminarThalamus",
+                                "synapseId":  "8b0f42ca-1958-4fd8-bd17-81947a7c58a0",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "reticular_matrix_gating"
+                            },
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "b95872a6-387a-4654-bdc1-da2e362e0ec4",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "reticular_motor_gate"
+                            }
+                        ]
+    },
+    {
+        "source":  "V1",
+        "connections":  [
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "11111111-1111-1111-1111-111111111101",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_dorsal_stream"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "11111111-1111-1111-1111-111111111102",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_ventral_stream"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "11111111-1111-1111-1111-111111111103",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticothalamic_feedback"
+                            },
+                            {
+                                "target":  "V2",
+                                "synapseId":  "b9f00d69-3e83-4b66-9693-5f0a31e62fd6",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_secondary_feedforward"
+                            }
+                        ]
+    },
+    {
+        "source":  "V2",
+        "connections":  [
+                            {
+                                "target":  "V4",
+                                "synapseId":  "de4cd7a7-1036-4024-a5ac-4469de62e209",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_ventral_progression"
+                            },
+                            {
+                                "target":  "Mt",
+                                "synapseId":  "7485a3b3-6ac1-4fb1-9890-fe31ee8b8679",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_dorsal_motion"
+                            },
+                            {
+                                "target":  "V1",
+                                "synapseId":  "526c57c3-b290-46c6-8862-891cb55f696b",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visual_feedback_refinement"
+                            }
+                        ]
+    },
+    {
+        "source":  "V4",
+        "connections":  [
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "cbc4b638-acbf-462c-97ad-7aeafb75d419",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "object_feature_integration"
+                            },
+                            {
+                                "target":  "PerirhinalCortex",
+                                "synapseId":  "3abae7f6-60cd-467a-aa35-0f82b0aae449",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "object_familiarity_stream"
+                            }
+                        ]
+    },
+    {
+        "source":  "VentralPallidum",
+        "connections":  [
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "fc573654-ee07-4293-a276-3edb6dc30049",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "ventral_pallidal_thalamic_gating"
+                            },
+                            {
+                                "target":  "MediodorsalThalamus",
+                                "synapseId":  "ff6240d8-4fb5-4dec-b5bd-30461d8b4067",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "ventral_pallidal_association_gating"
+                            },
+                            {
+                                "target":  "Habenula",
+                                "synapseId":  "22cfb513-e95c-4661-8671-615f59d6befa",
+                                "neurotransmitter":  "GABA",
+                                "projectionType":  "ventral_pallidal_habenula_control"
+                            }
+                        ]
+    },
+    {
+        "source":  "WernickePstgPsts",
+        "connections":  [
+                            {
+                                "target":  "ArcuateFasciculus",
+                                "synapseId":  "729dbb26-2f7e-4f5f-9f6d-3f31ea194f63",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "phonological_dorsal_stream"
+                            },
+                            {
+                                "target":  "SupramarginalAngular",
+                                "synapseId":  "062077c5-0f4f-4190-ac7b-5346d6ed8fa5",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "lexical_semantic_integration"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "29f1619f-8ea3-44dc-b280-7f0609eb8c95",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "language_to_semantic_association"
+                            }
+                        ]
+    },
+    {
+        "source":  "ArcuateFasciculus",
+        "connections":  [
+                            {
+                                "target":  "BrocaBa44Ba45",
+                                "synapseId":  "d38c5637-f881-4f3b-b3c2-798e96a5d7e8",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "dorsal_language_relay"
+                            }
+                        ]
+    },
+    {
+        "source":  "SupramarginalAngular",
+        "connections":  [
+                            {
+                                "target":  "WernickePstgPsts",
+                                "synapseId":  "c34ff1fe-9e51-468c-a23a-f99f452fd8c0",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "phonological_loop_support"
+                            },
+                            {
+                                "target":  "BrocaBa44Ba45",
+                                "synapseId":  "7a6a6675-f7af-43e8-9d5f-9932050fcb05",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "phonological_to_articulation"
+                            },
+                            {
+                                "target":  "TemporalAssociation",
+                                "synapseId":  "2a4f9779-cf55-40f6-87f6-b44c11b7b968",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "language_semantic_bridge"
+                            }
+                        ]
+    },
+    {
+        "source":  "BrocaBa44Ba45",
+        "connections":  [
+                            {
+                                "target":  "Sma",
+                                "synapseId":  "174df0fb-37d6-4499-9da2-430ec4414f8d",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "speech_sequence_to_sma"
+                            },
+                            {
+                                "target":  "M1",
+                                "synapseId":  "4f5d6f5f-148f-4bef-a4e8-348dece1048a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "speech_motor_output"
+                            },
+                            {
+                                "target":  "WernickePstgPsts",
+                                "synapseId":  "88f9c5f7-08c6-451d-94a8-152ff258f389",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "broca_wernicke_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "LocusCoeruleus",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "6cc595c4-0d97-40e3-a3a5-673f315f0f01",
+                                "neurotransmitter":  "NOREPINEPHRINE",
+                                "projectionType":  "lc_cortical_gain"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "8abf79fa-0a7d-4ca9-9571-829f7c6f0f02",
+                                "neurotransmitter":  "NOREPINEPHRINE",
+                                "projectionType":  "lc_thalamic_gain"
+                            },
+                            {
+                                "target":  "OlfactoryBulb",
+                                "synapseId":  "f3f8ae99-3545-4a7a-8ea6-b61d58f00f03",
+                                "neurotransmitter":  "NOREPINEPHRINE",
+                                "projectionType":  "lc_olfactory_gain"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "bdcc1235-316e-4d80-ab4c-b3e213e54bab",
+                                "neurotransmitter":  "NOREPINEPHRINE",
+                                "projectionType":  "lc_parietal_attention_gain"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "f6f74481-dcff-4c20-ab56-d74f00589a69",
+                                "neurotransmitter":  "NOREPINEPHRINE",
+                                "projectionType":  "lc_salience_arousal_bias"
+                            }
+                        ]
+    },
+    {
+        "source":  "RapheNuclei",
+        "connections":  [
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "6fba5f3f-7a0f-45ee-8e7d-91cb11fd1a11",
+                                "neurotransmitter":  "SEROTONIN",
+                                "projectionType":  "raphe_prefrontal_modulation"
+                            },
+                            {
+                                "target":  "Acc",
+                                "synapseId":  "d0bd661f-9d47-4af9-9c57-75d13b9f1a12",
+                                "neurotransmitter":  "SEROTONIN",
+                                "projectionType":  "raphe_conflict_modulation"
+                            },
+                            {
+                                "target":  "CA1",
+                                "synapseId":  "0aa5ccdd-b556-4a14-8a7e-97d4cc3f1a13",
+                                "neurotransmitter":  "SEROTONIN",
+                                "projectionType":  "raphe_hippocampal_modulation"
+                            },
+                            {
+                                "target":  "Striatum",
+                                "synapseId":  "45f18038-a67a-4000-b9e0-b0caaf80fe76",
+                                "neurotransmitter":  "SEROTONIN",
+                                "projectionType":  "raphe_action_inhibition_tone"
+                            }
+                        ]
+    },
+    {
+        "source":  "BasalForebrain",
+        "connections":  [
+                            {
+                                "target":  "V1",
+                                "synapseId":  "f8cc3922-d0dc-4237-8915-2e6ff9db2b21",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "cholinergic_visual_attention"
+                            },
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "9f8f1c45-a86f-4a13-8f7e-203fc65d2b22",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "cholinergic_thalamic_gate"
+                            },
+                            {
+                                "target":  "Trn",
+                                "synapseId":  "4e706f9f-0095-45da-bf12-0eddbf1e2b23",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "cholinergic_trn_attention"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "8977873a-8c2c-4ea1-a6ad-bf89b0bf8917",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "cholinergic_prefrontal_attention"
+                            },
+                            {
+                                "target":  "OlfactoryBulb",
+                                "synapseId":  "3c406bc2-82a6-4dd7-9725-1de21a3923da",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "cholinergic_olfactory_tuning"
+                            }
+                        ]
+    },
+    {
+        "source":  "Vta",
+        "connections":  [
+                            {
+                                "target":  "NucleusAccumbens",
+                                "synapseId":  "f506b888-df96-44a8-bf83-de3e9aa981ac",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "mesolimbic_reward"
+                            },
+                            {
+                                "target":  "Pfc",
+                                "synapseId":  "c48d4b42-9fb6-45fa-b76d-2d576dbdf548",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "mesocortical_novelty"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "fa050d53-8f9c-4e05-b262-d3c3d275243b",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "mesolimbic_salience"
+                            },
+                            {
+                                "target":  "ParahippocampalCortex",
+                                "synapseId":  "b12c2f00-4cbd-44f6-a61f-2a1c08c9c462",
+                                "neurotransmitter":  "DOPAMINE",
+                                "projectionType":  "novel_context_tagging"
+                            }
+                        ]
+    },
+    {
+        "source":  "Retina",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1001",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "retinothalamic_relay"
+                            },
+                            {
+                                "target":  "SuperiorColliculus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1002",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "retinotectal_orienting"
+                            }
+                        ]
+    },
+    {
+        "source":  "Cochlea",
+        "connections":  [
+                            {
+                                "target":  "CochlearNucleus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1003",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "auditory_nerve_to_cn"
+                            }
+                        ]
+    },
+    {
+        "source":  "CochlearNucleus",
+        "connections":  [
+                            {
+                                "target":  "SuperiorOlive",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1004",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "binaural_timing_feedforward"
+                            },
+                            {
+                                "target":  "InferiorColliculus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1005",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ascending_auditory_midbrain"
+                            }
+                        ]
+    },
+    {
+        "source":  "SuperiorOlive",
+        "connections":  [
+                            {
+                                "target":  "InferiorColliculus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1006",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "olivocollicular_relay"
+                            },
+                            {
+                                "target":  "Cochlea",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1007",
+                                "neurotransmitter":  "ACETYLCHOLINE",
+                                "projectionType":  "olivocochlear_efferent"
+                            }
+                        ]
+    },
+    {
+        "source":  "InferiorColliculus",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1008",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "colliculo_thalamic_auditory"
+                            },
+                            {
+                                "target":  "A1",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1009",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "colliculo_cortical_auditory"
+                            },
+                            {
+                                "target":  "SuperiorColliculus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1010",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "orienting_multisensory_link"
+                            }
+                        ]
+    },
+    {
+        "source":  "VestibularNuclei",
+        "connections":  [
+                            {
+                                "target":  "CerebellarVermis",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1011",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vestibulo_cerebellar_alignment"
+                            },
+                            {
+                                "target":  "ReticularFormation",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1012",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vestibulo_reticular_posture"
+                            },
+                            {
+                                "target":  "Ppc",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1013",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vestibulo_parietal_spatial"
+                            }
+                        ]
+    },
+    {
+        "source":  "NucleusTractusSolitarius",
+        "connections":  [
+                            {
+                                "target":  "Hypothalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1014",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "visceral_homeostasis_drive"
+                            },
+                            {
+                                "target":  "LocusCoeruleus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1015",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "autonomic_arousal_gate"
+                            },
+                            {
+                                "target":  "ReticularFormation",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1016",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cardiorespiratory_patterning"
+                            }
+                        ]
+    },
+    {
+        "source":  "ReticularFormation",
+        "connections":  [
+                            {
+                                "target":  "Pons",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1017",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticulo_pontine_drive"
+                            },
+                            {
+                                "target":  "Medulla",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1018",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticulo_bulbar_drive"
+                            },
+                            {
+                                "target":  "SpinalCordMotor",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1019",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "reticulospinal_posture"
+                            },
+                            {
+                                "target":  "MotorThalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1020",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ascending_arousal_motor"
+                            }
+                        ]
+    },
+    {
+        "source":  "PeriaqueductalGray",
+        "connections":  [
+                            {
+                                "target":  "ReticularFormation",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1021",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "defensive_pattern_release"
+                            },
+                            {
+                                "target":  "RapheNuclei",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1022",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "descending_pain_modulation"
+                            },
+                            {
+                                "target":  "Amygdala",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1023",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "threat_feedback_loop"
+                            }
+                        ]
+    },
+    {
+        "source":  "SpinalCordMotor",
+        "connections":  [
+                            {
+                                "target":  "S1",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1024",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "proprioceptive_ascending_feedback"
+                            },
+                            {
+                                "target":  "CerebellarGranule",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1025",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "spinocerebellar_mossy_input"
+                            },
+                            {
+                                "target":  "ReticularFormation",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1026",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "spinal_state_feedback"
+                            }
+                        ]
+    }
+]

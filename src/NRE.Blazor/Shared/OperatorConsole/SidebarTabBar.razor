@@ -1,0 +1,13 @@
+@using NRE.Blazor.Shared.OperatorConsole
+
+<div class="tabbar">
+    @foreach (var tab in ConsoleTabs.All)
+    {
+        <div class="tab @(SelectedTab == tab.Key ? "active" : "")" @onclick="() => OnSelectedTabChanged.InvokeAsync(tab.Key)">@tab.Title</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string SelectedTab { get; set; } = ConsoleTabs.Stimulus;
+    [Parameter] public EventCallback<string> OnSelectedTabChanged { get; set; }
+}

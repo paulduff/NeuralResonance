@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NeuralResonanceEngine.Structures.BasalForebrainCholinergic": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52178;http://localhost:52179"
+    }
+  }
+}

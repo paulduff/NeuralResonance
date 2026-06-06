@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NeuralResonanceEngine.Structures.MediodorsalThalamus": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:54524;http://localhost:54526"
+    }
+  }
+}

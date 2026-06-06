@@ -1,0 +1,328 @@
+<Window x:Class="NRE.WpfWorldSim.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NRE World Simulator"
+        Width="1600"
+        Height="980"
+        MinWidth="1200"
+        MinHeight="760"
+        Background="#071635"
+        Foreground="#D8E6FF"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#D8E6FF" />
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Foreground" Value="#D8E6FF" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#D8E6FF" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#D8E6FF" />
+            <Setter Property="Background" Value="#0A1D45" />
+            <Setter Property="BorderBrush" Value="#1F3A70" />
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#D8E6FF" />
+            <Setter Property="Background" Value="#0A1D45" />
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="190" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#0B1E45" BorderBrush="#1B2E56" BorderThickness="0,0,0,1" Padding="10,8">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Control Endpoint" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox x:Name="EndpointComboBox" Width="220" SelectedIndex="0">
+                        <ComboBoxItem Content="http://localhost:5080" />
+                        <ComboBoxItem Content="https://localhost:5081" />
+                    </ComboBox>
+                    <Button x:Name="ReconnectButton" Content="Reconnect" Margin="10,0,0,0" Padding="10,2" Click="ReconnectButton_OnClick" />
+                    <TextBlock Text="Seed" VerticalAlignment="Center" Margin="16,0,8,0" />
+                    <TextBox x:Name="SeedTextBox" Width="90" Text="317" />
+                    <Button x:Name="ReseedButton" Content="Reseed World" Margin="8,0,0,0" Padding="10,2" Click="ReseedButton_OnClick" />
+                    <Button x:Name="ResetViewButton" Content="Reset View" Margin="8,0,0,0" Padding="10,2" Click="ResetViewButton_OnClick" />
+                </StackPanel>
+
+                <TextBlock x:Name="ConnectionStatusText"
+                           DockPanel.Dock="Right"
+                           VerticalAlignment="Center"
+                           FontWeight="SemiBold"
+                           Text="Status: Initializing..." />
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="330" />
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="WorldViewportFrame" Grid.Column="0" Margin="8" BorderBrush="#1A2F5D" BorderThickness="1" CornerRadius="4" Background="#04112B">
+                <Viewport3D x:Name="WorldViewport" ClipToBounds="True" />
+            </Border>
+
+            <Border Grid.Column="1" Margin="0,8,8,8" BorderBrush="#1A2F5D" BorderThickness="1" CornerRadius="4" Background="#081A3F" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Brain Habitat World" FontWeight="Bold" FontSize="16" />
+                        <TextBlock Margin="0,8,0,0" Text="Voxel-style environment for embodied brain simulation." TextWrapping="Wrap" />
+                        <TextBlock Text="Not a game loop: this is a persistent habitat scene." TextWrapping="Wrap" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="World Stats" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SeedInfoText" Margin="0,6,0,0" Text="Seed: -" />
+                        <TextBlock x:Name="TerrainInfoText" Margin="0,4,0,0" Text="Terrain columns: -" />
+                        <TextBlock x:Name="WaterInfoText" Margin="0,4,0,0" Text="Water blocks: -" />
+                        <TextBlock x:Name="TreeInfoText" Margin="0,4,0,0" Text="Tree clusters: -" />
+                        <TextBlock x:Name="HabitatInfoText" Margin="0,4,0,0" Text="Habitat core: -" TextWrapping="Wrap" />
+                        <TextBlock x:Name="DayNightText" Margin="0,4,0,0" Text="Light cycle: -" TextWrapping="Wrap" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Control Program Telemetry" FontWeight="SemiBold" />
+                        <TextBlock x:Name="TickText" Margin="0,6,0,0" Text="Tick: -" />
+                        <TextBlock x:Name="SimulationText" Margin="0,4,0,0" Text="Simulation ms: -" />
+                        <TextBlock x:Name="DispatchText" Margin="0,4,0,0" Text="Dispatched spikes: -" />
+                        <TextBlock x:Name="MotorDispatchText" Margin="0,4,0,0" Text="Motor dispatch events: -" />
+                        <TextBlock x:Name="MotorDriveText" Margin="0,4,0,0" Text="Motor drive L/R: -" />
+                        <TextBlock x:Name="AvatarPoseText" Margin="0,4,0,0" Text="Avatar pose: -" />
+                        <TextBlock x:Name="CollisionText" Margin="0,4,0,0" Text="Collision hits: -" />
+                        <TextBlock x:Name="TrailText" Margin="0,4,0,0" Text="Trail points: -" />
+                        <TextBlock x:Name="AntiStallText" Margin="0,4,0,0" Text="Anti-stall: recoveries -, hard -, contacts -, escape ticks -" TextWrapping="Wrap" />
+                        <TextBlock x:Name="PathwaysText" Margin="0,4,0,0" Text="Active pathways: -" />
+                        <TextBlock x:Name="ServicesText" Margin="0,4,0,0" Text="Service health: -" TextWrapping="Wrap" />
+                        <TextBlock x:Name="BrainStateText" Margin="0,4,0,0" Text="Brain state: -" TextWrapping="Wrap" />
+                        <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,8,0,0" Text="English Command" FontWeight="SemiBold" />
+                        <TextBox x:Name="EnglishCommandTextBox"
+                                 Margin="0,4,0,0"
+                                 Padding="6,4"
+                                 Background="#030E24"
+                                 Foreground="#D8E6FF"
+                                 BorderBrush="#264B7E"
+                                 Text="find shelter"
+                                 KeyDown="EnglishCommandTextBox_OnKeyDown" />
+                        <Button x:Name="SendEnglishCommandButton"
+                                Margin="0,4,0,0"
+                                Padding="8,3"
+                                Content="Send English Command"
+                                Click="SendEnglishCommandButton_OnClick" />
+                        <TextBlock x:Name="EnglishCommandStatusText" Margin="0,3,0,0" Text="Command: idle" TextWrapping="Wrap" />
+                        <TextBlock x:Name="ObjectRecognitionText" Margin="0,4,0,0" Text="Object recognition: -" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,8,0,0" Text="Recognized Objects" FontWeight="SemiBold" />
+                        <TextBlock x:Name="ObjectCueFoodText" Margin="0,4,0,0" Text="Food: -" />
+                        <TextBlock x:Name="ObjectCueDangerText" Margin="0,2,0,0" Text="Danger: -" />
+                        <TextBlock x:Name="ObjectCueShelterText" Margin="0,2,0,0" Text="Shelter: -" />
+                        <TextBlock x:Name="ObjectCueToolText" Margin="0,2,0,0" Text="Tool: -" />
+                        <TextBlock x:Name="ObjectCueObstacleText" Margin="0,2,0,0" Text="Obstacle: -" />
+                        <TextBlock x:Name="ObjectCueWaterText" Margin="0,2,0,0" Text="Water: -" />
+                        <TextBlock Margin="0,8,0,0" Text="Max Object Cues / Cycle" />
+                        <Slider x:Name="ObjectDispatchMaxCuesSlider"
+                                Minimum="1"
+                                Maximum="6"
+                                Value="2"
+                                TickFrequency="1"
+                                IsSnapToTickEnabled="True"
+                                ValueChanged="ObjectDispatchMaxCuesSlider_OnValueChanged" />
+                        <TextBlock x:Name="ObjectDispatchMaxCuesValueText" Margin="0,2,0,0" Text="2" />
+                        <TextBlock x:Name="ObjectMemoryStatusText" Margin="0,8,0,0" Text="Object memory: -" TextWrapping="Wrap" />
+                        <Border Margin="0,4,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#030E24" CornerRadius="3">
+                            <TextBox x:Name="ObjectMemoryTextBox"
+                                     Margin="0"
+                                     Padding="6,4"
+                                     Background="#030E24"
+                                     Foreground="#D8E6FF"
+                                     BorderThickness="0"
+                                     FontFamily="Consolas"
+                                     FontSize="11"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinHeight="110"
+                                     MaxHeight="150"
+                                     Text="No object memory samples yet." />
+                        </Border>
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Survival Imperative" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SurvivalHungerText" Margin="0,6,0,0" Text="Hunger: -" />
+                        <TextBlock x:Name="SurvivalHealthText" Margin="0,4,0,0" Text="Health: -" />
+                        <TextBlock x:Name="SurvivalThreatText" Margin="0,4,0,0" Text="Threat: -" />
+                        <TextBlock x:Name="SurvivalFoodText" Margin="0,4,0,0" Text="Food collected: -" />
+                        <TextBlock x:Name="SurvivalWeaponText" Margin="0,4,0,0" Text="Weapon charge: -" />
+                        <TextBlock x:Name="SurvivalShelterText" Margin="0,4,0,0" Text="Shelter: -" />
+                        <TextBlock x:Name="SurvivalPredatorText" Margin="0,4,0,0" Text="Predators: -" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Survival Tuning" FontWeight="SemiBold" />
+                        <TextBlock Margin="0,6,0,0" Text="Hunger Rate" />
+                        <Slider x:Name="HungerRateSlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                ValueChanged="HungerRateSlider_OnValueChanged" />
+                        <TextBlock x:Name="HungerRateValueText" Margin="0,2,0,0" Text="x1.00" />
+                        <TextBlock Margin="0,6,0,0" Text="Threat Decay" />
+                        <Slider x:Name="ThreatDecaySlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                ValueChanged="ThreatDecaySlider_OnValueChanged" />
+                        <TextBlock x:Name="ThreatDecayValueText" Margin="0,2,0,0" Text="x1.00" />
+                        <TextBlock Margin="0,6,0,0" Text="Predator Speed" />
+                        <Slider x:Name="PredatorSpeedSlider" Minimum="0.4" Maximum="2.0" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                ValueChanged="PredatorSpeedSlider_OnValueChanged" />
+                        <TextBlock x:Name="PredatorSpeedValueText" Margin="0,2,0,0" Text="x1.00" />
+                        <TextBlock Margin="0,6,0,0" Text="Predator Sense Radius" />
+                        <Slider x:Name="PredatorSenseSlider" Minimum="6" Maximum="18" Value="10" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="PredatorSenseSlider_OnValueChanged" />
+                        <TextBlock x:Name="PredatorSenseValueText" Margin="0,2,0,0" Text="10.0 units" />
+                        <TextBlock Margin="0,6,0,0" Text="Weapon Effectiveness" />
+                        <Slider x:Name="WeaponEffectSlider" Minimum="0.4" Maximum="2.0" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                ValueChanged="WeaponEffectSlider_OnValueChanged" />
+                        <TextBlock x:Name="WeaponEffectValueText" Margin="0,2,0,0" Text="x1.00" />
+                        <TextBlock Margin="0,6,0,0" Text="Shelter Radius" />
+                        <Slider x:Name="ShelterRadiusSlider" Minimum="3" Maximum="9" Value="4.8" TickFrequency="0.2" IsSnapToTickEnabled="False"
+                                ValueChanged="ShelterRadiusSlider_OnValueChanged" />
+                        <TextBlock x:Name="ShelterRadiusValueText" Margin="0,2,0,0" Text="4.8 units" />
+                        <TextBlock Margin="0,6,0,0" Text="Food Spawn Count" />
+                        <Slider x:Name="FoodSpawnSlider" Minimum="6" Maximum="24" Value="12" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="FoodSpawnSlider_OnValueChanged" />
+                        <TextBlock x:Name="FoodSpawnValueText" Margin="0,2,0,0" Text="12" />
+                        <TextBlock Margin="0,6,0,0" Text="Predator Count" />
+                        <Slider x:Name="PredatorSpawnSlider" Minimum="1" Maximum="6" Value="3" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="PredatorSpawnSlider_OnValueChanged" />
+                        <TextBlock x:Name="PredatorSpawnValueText" Margin="0,2,0,0" Text="3" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Anti-Stall Tuning" FontWeight="SemiBold" />
+                        <TextBlock Margin="0,6,0,0" Text="No-progress Timeout (s)" />
+                        <Slider x:Name="AntiStallTimeoutSlider" Minimum="0.6" Maximum="4.0" Value="1.65" TickFrequency="0.05" IsSnapToTickEnabled="False"
+                                ValueChanged="AntiStallTimeoutSlider_OnValueChanged" />
+                        <TextBlock x:Name="AntiStallTimeoutValueText" Margin="0,2,0,0" Text="1.65 s" />
+                        <TextBlock Margin="0,6,0,0" Text="Wall Contact Threshold" />
+                        <Slider x:Name="AntiStallContactSlider" Minimum="2" Maximum="16" Value="7" TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="AntiStallContactSlider_OnValueChanged" />
+                        <TextBlock x:Name="AntiStallContactValueText" Margin="0,2,0,0" Text="7" />
+                        <TextBlock Margin="0,6,0,0" Text="Recovery Cooldown (s)" />
+                        <Slider x:Name="AntiStallCooldownSlider" Minimum="0.1" Maximum="1.5" Value="0.42" TickFrequency="0.05" IsSnapToTickEnabled="False"
+                                ValueChanged="AntiStallCooldownSlider_OnValueChanged" />
+                        <TextBlock x:Name="AntiStallCooldownValueText" Margin="0,2,0,0" Text="0.42 s" />
+                        <TextBlock Margin="0,6,0,0" Text="Reverse Speed" />
+                        <Slider x:Name="AntiStallReverseSlider" Minimum="-1.8" Maximum="-0.2" Value="-1.05" TickFrequency="0.05" IsSnapToTickEnabled="False"
+                                ValueChanged="AntiStallReverseSlider_OnValueChanged" />
+                        <TextBlock x:Name="AntiStallReverseValueText" Margin="0,2,0,0" Text="-1.05" />
+                        <TextBlock Margin="0,6,0,0" Text="Escape Strafe Speed" />
+                        <Slider x:Name="AntiStallStrafeSlider" Minimum="0.0" Maximum="1.2" Value="0.52" TickFrequency="0.05" IsSnapToTickEnabled="False"
+                                ValueChanged="AntiStallStrafeSlider_OnValueChanged" />
+                        <TextBlock x:Name="AntiStallStrafeValueText" Margin="0,2,0,0" Text="0.52" />
+                        <CheckBox x:Name="ShowThreatFieldCheckBox"
+                                  Margin="0,8,0,0"
+                                  Content="Show threat field"
+                                  IsChecked="True"
+                                  Checked="ShowThreatFieldCheckBox_OnChecked"
+                                  Unchecked="ShowThreatFieldCheckBox_OnUnchecked" />
+                        <CheckBox x:Name="ShowPatrolPathsCheckBox"
+                                  Margin="0,4,0,0"
+                                  Content="Show predator patrol paths"
+                                  IsChecked="False"
+                                  Checked="ShowPatrolPathsCheckBox_OnChecked"
+                                  Unchecked="ShowPatrolPathsCheckBox_OnUnchecked" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Camera" FontWeight="SemiBold" />
+                        <TextBlock Margin="0,6,0,0" Text="Mouse drag: orbit | Wheel: zoom" />
+                        <CheckBox x:Name="FollowAvatarCameraCheckBox"
+                                  Margin="0,6,0,0"
+                                  IsChecked="True"
+                                  Content="Follow avatar"
+                                  Checked="FollowAvatarCameraCheckBox_OnChecked"
+                                  Unchecked="FollowAvatarCameraCheckBox_OnUnchecked" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Map Editor" FontWeight="SemiBold" />
+                        <CheckBox x:Name="EnableMapEditorCheckBox"
+                                  Margin="0,6,0,0"
+                                  Content="Enable terrain paint mode"
+                                  Checked="EnableMapEditorCheckBox_OnChecked"
+                                  Unchecked="EnableMapEditorCheckBox_OnUnchecked" />
+                        <TextBlock Margin="0,6,0,0" Text="Brush" />
+                        <ComboBox x:Name="MapBrushComboBox" SelectedIndex="0">
+                            <ComboBoxItem Content="Raise" />
+                            <ComboBoxItem Content="Lower" />
+                            <ComboBoxItem Content="Flatten" />
+                            <ComboBoxItem Content="Water" />
+                            <ComboBoxItem Content="Rock" />
+                            <ComboBoxItem Content="Grass" />
+                        </ComboBox>
+                        <TextBlock Margin="0,6,0,0" Text="Brush Radius" />
+                        <Slider x:Name="BrushRadiusSlider" Minimum="1" Maximum="6" Value="2" TickFrequency="1" IsSnapToTickEnabled="True" />
+                        <TextBlock Margin="0,4,0,0" Text="Brush Strength" />
+                        <Slider x:Name="BrushStrengthSlider" Minimum="1" Maximum="5" Value="2" TickFrequency="1" IsSnapToTickEnabled="True" />
+                        <TextBlock x:Name="MapEditorHintText"
+                                   Margin="0,6,0,0"
+                                   TextWrapping="Wrap"
+                                   Text="Editor off. Enable map editor and left-click terrain to paint." />
+                        <Button x:Name="ClearOverridesButton"
+                                Margin="0,8,0,0"
+                                Padding="8,3"
+                                Content="Clear Paint Overrides"
+                                Click="ClearOverridesButton_OnClick" />
+                        <Separator Margin="0,10,0,10" />
+                        <TextBlock Text="Avatar Vision Preview" FontWeight="SemiBold" />
+                        <CheckBox x:Name="SendAvatarVisionCheckBox"
+                                  Margin="0,6,0,0"
+                                  IsChecked="True"
+                                  Content="Send avatar vision to brain (V1)"
+                                  Checked="SendAvatarVisionCheckBox_OnChecked"
+                                  Unchecked="SendAvatarVisionCheckBox_OnUnchecked" />
+                        <Border Margin="0,6,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#020B1C" Height="160">
+                            <Image x:Name="AvatarPreviewImage"
+                                   Stretch="Fill"
+                                   SnapsToDevicePixels="True"
+                                   UseLayoutRounding="True" />
+                        </Border>
+                        <TextBlock x:Name="AvatarPreviewInfoText" Margin="0,6,0,0" Text="Preview: waiting for frame..." />
+
+                        <!-- Pixel-level vision: posts the raw rendered preview as grayscale bytes
+                             to NRE.Api so the brain's V1 Gabor hierarchy + retinotopic occipital
+                             injection see actual pixels rather than symbolic intensity/saliency.
+                             Independent of the V1 symbolic dispatch above (ControlProgram). -->
+                        <TextBlock Text="Pixel-Vision (NRE.Api)" FontWeight="SemiBold" Margin="0,12,0,0" />
+                        <CheckBox x:Name="PixelVisionCheckBox"
+                                  IsChecked="True"
+                                  Content="Send pixel vision to NRE.Api (V1 Gabor)"
+                                  Margin="0,6,0,0"
+                                  Checked="PixelVisionCheckBox_OnChecked"
+                                  Unchecked="PixelVisionCheckBox_OnUnchecked" />
+                        <DockPanel Margin="0,4,0,0">
+                            <TextBlock Text="Endpoint:" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#B8C6E6" />
+                            <TextBox x:Name="PixelVisionEndpointTextBox"
+                                     Text="http://localhost:5005"
+                                     LostFocus="PixelVisionEndpointTextBox_OnLostFocus"
+                                     KeyDown="PixelVisionEndpointTextBox_OnKeyDown" />
+                        </DockPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Margin="8,0,8,8" BorderBrush="#1A2F5D" BorderThickness="1" CornerRadius="4" Background="#061633">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Margin="8,6,8,4" Text="World Log" FontWeight="SemiBold" />
+                <TextBox Grid.Row="1"
+                         x:Name="LogTextBox"
+                         Margin="8,0,8,8"
+                         Background="#030E24"
+                         Foreground="#D8E6FF"
+                         BorderBrush="#1D335F"
+                         BorderThickness="1"
+                         FontFamily="Consolas"
+                         FontSize="12"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

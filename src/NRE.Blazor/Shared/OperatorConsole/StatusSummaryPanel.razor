@@ -1,0 +1,62 @@
+<div class="status-grid">
+    <div class="status-cell">
+        <span class="stat-label">Step</span>
+        <span class="stat-value @(IsRunning ? "live" : "")">@Step.ToString("N0")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Wall Time</span>
+        <span class="stat-value @(IsRunning ? "live" : "")">@WallTimeText</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Sim Time</span>
+        <span class="stat-value">@SimTimeText</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Step ms</span>
+        <span class="stat-value @(AvgStepMs > 16 ? "warn" : "")">@AvgStepMs.ToString("0.0")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Sim/Real</span>
+        <span class="stat-value @(SimRatio < 0.8f ? "warn" : "")">@SimRatio.ToString("0.0")x</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Sleep</span>
+        <span class="stat-value @SleepClass">@SleepPhase</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Thalamus</span>
+        <span class="stat-value @(ThalamicPulse ? "warn" : "")">@(ThalamicPulse ? "Active" : "Idle")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Neurons</span>
+        <span class="stat-value">@TotalNeurons.ToString("N0")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Synapses</span>
+        <span class="stat-value">@TotalSynapses.ToString("N0")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Callosum</span>
+        <span class="stat-value">@CallosalTraffic.ToString("0.00")</span>
+    </div>
+    <div class="status-cell">
+        <span class="stat-label">Episodes</span>
+        <span class="stat-value">@EpisodeCount</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public long Step { get; set; }
+    [Parameter] public bool IsRunning { get; set; }
+    [Parameter] public string WallTimeText { get; set; } = string.Empty;
+    [Parameter] public string SimTimeText { get; set; } = string.Empty;
+    [Parameter] public float AvgStepMs { get; set; }
+    [Parameter] public float SimRatio { get; set; }
+    [Parameter] public string SleepPhase { get; set; } = "Unknown";
+    [Parameter] public string SleepClass { get; set; } = string.Empty;
+    [Parameter] public bool ThalamicPulse { get; set; }
+    [Parameter] public int TotalNeurons { get; set; }
+    [Parameter] public int TotalSynapses { get; set; }
+    [Parameter] public float CallosalTraffic { get; set; }
+    [Parameter] public int EpisodeCount { get; set; }
+}

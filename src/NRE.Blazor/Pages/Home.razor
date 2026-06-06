@@ -1,0 +1,1290 @@
+@using System.Collections.Generic
+@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
+@using NRE.Contracts.Voice
+@using NRE.Blazor.Shared.OperatorConsole
+@using NRE.Blazor.Shared.OperatorConsole.Tabs
+@page "/"
+@implements IDisposable
+@inject EngineApiClient Api
+@inject RendererInteropService Renderer
+@inject ConsoleRefreshCoordinator RefreshCoordinator
+
+<div class="shell">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>Neural Resonance Engine</h3>
+            <div class="subtitle">v10 · Biological Subsystem Integration</div>
+        </div>
+
+        <div class="sidebar-scroll">
+
+        <StatusSummaryPanel
+            Step="@_step"
+            IsRunning="@_running"
+            WallTimeText="@FormatTime(_wallClockUptime)"
+            SimTimeText="@FormatTime(_step / 60f)"
+            AvgStepMs="@_avgStepMs"
+            SimRatio="@_simRatio"
+            SleepPhase="@_sleepPhase"
+            SleepClass="@GetSleepClass()"
+            ThalamicPulse="@_thalamicPulse"
+            TotalNeurons="@_totalNeurons"
+            TotalSynapses="@_totalSynapses"
+            CallosalTraffic="@_callosalTraffic"
+            EpisodeCount="@_episodeCount" />
+
+        <ControlToolbar
+            IsRunning="@_running"
+            IsDark="@_dark"
+            DisabledAttributes="@AttrDisabled"
+            OnStart="@Start"
+            OnStop="@Stop"
+            OnSave="@SaveBrain"
+            OnLoad="@LoadBrainClick"
+            OnToggleDark="@ToggleDark"
+            OnToggleAvatar="@ToggleAvatar"
+            OnBrainFileSelected="@OnBrainFileSelected" />
+        @if (!string.IsNullOrEmpty(_saveLoadStatus))
+        {
+            <div class="small" style="margin:-4px 0 4px;">@_saveLoadStatus</div>
+        }
+
+            <SidebarTabBar SelectedTab="@Tab" OnSelectedTabChanged="@(tab => Tab = tab)" />
+
+            @if (Tab==ConsoleTabs.Stimulus)
+            {
+                <StimulusTabPanel
+                    WebcamRunning="@_webcamRunning"
+                    MicRunning="@_micRunning"
+                    InternetStreamRunning="@_internetStreamRunning"
+                    InternetStreamUrl="@_internetStreamUrl"
+                    InternetStreamUrlChanged="@(v => _internetStreamUrl = v)"
+                    VisualIntensity="@VisualIntensity"
+                    VisualIntensityChanged="@(v => VisualIntensity = v)"
+                    VisualSpeedHz="@VisualSpeedHz"
+                    VisualSpeedHzChanged="@(v => VisualSpeedHz = v)"
+                    VisualSpatialFreq="@VisualSpatialFreq"
+                    VisualSpatialFreqChanged="@(v => VisualSpatialFreq = v)"
+                    AudioIntensity="@AudioIntensity"
+                    AudioIntensityChanged="@(v => AudioIntensity = v)"
+                    AudioToneHz="@AudioToneHz"
+                    AudioToneHzChanged="@(v => AudioToneHz = v)"
+                    DisabledAttributes="@AttrDisabled"
+                    OnInjectLeft="@InjectLeft"
+                    OnInjectRight="@InjectRight"
+                    OnInjectBoth="@InjectBoth"
+                    OnStartWebcam="@StartWebcam"
+                    OnStopWebcam="@StopWebcam"
+                    OnStartMic="@StartMic"
+                    OnStopMic="@StopMic"
+                    OnStartInternetStream="@StartInternetStream"
+                    OnStopInternetStream="@StopInternetStream"
+                    OnApplyVisual="@ApplyVisual"
+                    OnApplyAudio="@ApplyAudio" />
+            }
+            else if (Tab==ConsoleTabs.Modulators)
+            {
+                <ModulatorsTabPanel
+                    Dopamine="@_dopamine"
+                    DopamineChanged="@(v => _dopamine = (float)v)"
+                    Serotonin="@_serotonin"
+                    SerotoninChanged="@(v => _serotonin = (float)v)"
+                    Noradrenaline="@_norad"
+                    NoradrenalineChanged="@(v => _norad = (float)v)"
+                    OnApply="@ApplyNeuromods" />
+            }
+            else if (Tab==ConsoleTabs.Pons)
+            {
+                <PonsTabPanel
+                    PonsArousal="@_ponsArousal"
+                    PonsArousalChanged="@(v => _ponsArousal = (float)v)"
+                    PonsStability="@_ponsStability"
+                    PonsStabilityChanged="@(v => _ponsStability = (float)v)"
+                    PonsReset="@_ponsReset"
+                    PonsResetChanged="@(v => _ponsReset = (float)v)"
+                    PonsThetaHz="@_ponsThetaHz"
+                    PonsThetaHzChanged="@(v => _ponsThetaHz = (float)v)"
+                    OnApply="@ApplyPons" />
+            }
+            else if (Tab==ConsoleTabs.Scenes)
+            {
+                <ScenesTabPanel
+                    OnSceneStartle="@SceneStartle"
+                    OnSceneHabituation="@SceneHabituation"
+                    OnSceneFocusedAttention="@SceneFocusedAttention"
+                    OnSceneExploratoryDrive="@SceneExploratoryDrive"
+                    OnSceneAnxious="@SceneAnxious"
+                    OnSceneSleepCycle="@SceneSleepCycle"
+                    OnSceneLucidDream="@SceneLucidDream"
+                    OnSceneRewardLearning="@SceneRewardLearning"
+                    OnSceneCallosalRace="@SceneCallosalRace"
+                    OnSceneReset="@SceneReset" />
+            }
+            else if (Tab==ConsoleTabs.Systems)
+            {
+                <SystemsTabPanel
+                    ThalamicPulse="@_thalamicPulse"
+                    ThalamicFreq="@_thalamicFreq"
+                    ThalamicFreqTarget="@_thalamicFreqTarget"
+                    ThalamicFreqTargetChanged="@(v => _thalamicFreqTarget = v)"
+                    SleepPhase="@_sleepPhase"
+                    SleepClass="@GetSleepClass()"
+                    SleepPressure="@_sleepPressure"
+                    ConsolidationCycles="@_consolidationCycles"
+                    EpisodeCount="@_episodeCount"
+                    AssociationCount="@_associationCount"
+                    ReplaysTriggered="@_replaysTriggered"
+                    AmygdalaPulseActive="@_amygdalaPulseActive"
+                    SalientEvents="@_salientEvents"
+                    RegionSalience="@_regionSalience"
+                    RegionSalienceChanged="@(v => _regionSalience = v)"
+                    PredictionError="@_predictionError"
+                    SmoothedActivity="@_smoothedActivity"
+                    OnApplyThalamus="@ApplyThalamus"
+                    OnForceSleep="@ForceSleep"
+                    OnBuildSleepPressure="@BuildSleepPressure"
+                    OnApplySalience="@ApplySalience" />
+            }
+            else if (Tab==ConsoleTabs.Voice)
+            {
+                <VoiceTabPanel
+                    BgConfidenceThreshold="@_bgConfThreshold"
+                    BgConfidenceThresholdChanged="@(v => _bgConfThreshold = (float)v)"
+                    VocalCooldown="@_vocalCooldown"
+                    VocalCooldownChanged="@(v => _vocalCooldown = v)"
+                    MotorGain="@_motorGain"
+                    MotorGainChanged="@(v => _motorGain = (float)v)"
+                    M1StripsLeft="@_m1StripsL"
+                    M1StripsRight="@_m1StripsR"
+                    VoiceLog="@_voiceLog"
+                    OnApplyVocalSettings="@ApplyVocalSettings"
+                    OnApplyMotorGain="@ApplyMotorGain" />
+            }
+            else if (Tab==ConsoleTabs.Peer)
+            {
+                <PeerTabPanel
+                    PeerInstanceId="@_peerInstanceId"
+                    PeerInstanceName="@_peerInstanceName"
+                    PeerNameInput="@_peerNameInput"
+                    PeerNameInputChanged="@(v => _peerNameInput = v)"
+                    PeerHubInstances="@_peerHubInstances"
+                    PeerInfoPeers="@_peerInfoPeers"
+                    PeerSayText="@_peerSayText"
+                    PeerSayTextChanged="@(v => _peerSayText = v)"
+                    VocalTractStatus="@_vocalTractStatus"
+                    PeerBasePitch="@_peerBasePitch"
+                    PeerBasePitchChanged="@(v => _peerBasePitch = v)"
+                    OnSetPeerName="@SetPeerName"
+                    OnPeerConnectAll="@PeerConnectAll"
+                    OnRefreshPeerHub="@RefreshPeerHub"
+                    OnPeerSay="@PeerSay"
+                    OnSetPeerPitch="@SetPeerPitch" />
+            }
+            else if (Tab==ConsoleTabs.View)
+            {
+                <ViewTabPanel
+                    ConnectionFilter="@_connectionFilter"
+                    ShowCallosalConn="@_showCallosalConn"
+                    ShowCallosalConnChanged="@(v => _showCallosalConn = v)"
+                    ShowThalamicConn="@_showThalamicConn"
+                    ShowThalamicConnChanged="@(v => _showThalamicConn = v)"
+                    ShowHypothalamicConn="@_showHypothalamicConn"
+                    ShowHypothalamicConnChanged="@(v => _showHypothalamicConn = v)"
+                    ShowHippocampalConn="@_showHippocampalConn"
+                    ShowHippocampalConnChanged="@(v => _showHippocampalConn = v)"
+                    ShowPontineConn="@_showPontineConn"
+                    ShowPontineConnChanged="@(v => _showPontineConn = v)"
+                    ShowCerebellarConn="@_showCerebellarConn"
+                    ShowCerebellarConnChanged="@(v => _showCerebellarConn = v)"
+                    ShowCortex="@_showCortex"
+                    ShowCortexChanged="@(v => _showCortex = v)"
+                    ShowHippocampus="@_showHippocampus"
+                    ShowHippocampusChanged="@(v => _showHippocampus = v)"
+                    ShowThalamus="@_showThalamus"
+                    ShowThalamusChanged="@(v => _showThalamus = v)"
+                    ShowBasalGanglia="@_showBasalGanglia"
+                    ShowBasalGangliaChanged="@(v => _showBasalGanglia = v)"
+                    ShowAmygdala="@_showAmygdala"
+                    ShowAmygdalaChanged="@(v => _showAmygdala = v)"
+                    ShowCerebellum="@_showCerebellum"
+                    ShowCerebellumChanged="@(v => _showCerebellum = v)"
+                    ShowBrainstem="@_showBrainstem"
+                    ShowBrainstemChanged="@(v => _showBrainstem = v)"
+                    ShowVta="@_showVTA"
+                    ShowVtaChanged="@(v => _showVTA = v)"
+                    RenderMode="@_renderMode"
+                    RenderModeChanged="@OnRenderModeChanged"
+                    ShellVisible="@_shellVisible"
+                    ShellVisibleChanged="@OnShellVisibleChanged"
+                    FibrePulseEnabled="@_fibrePulseEnabled"
+                    FibrePulseEnabledChanged="@OnFibrePulseEnabledChanged"
+                    OnRefreshRenderer="@RefreshRenderer"
+                    OnSetViewPreset="@SetViewPreset"
+                    OnShowAllConnections="@ShowAllConnections"
+                    OnHideAllConnections="@HideAllConnections"
+                    OnShowKeyPathways="@ShowKeyPathways"
+                    OnShowLocalConnections="@ShowLocalConnections"
+                    OnShowCallosalOnly="@ShowCallosalOnly"
+                    OnShowDeepOnly="@ShowDeepOnly"
+                    OnConnectionFilterChanged="@OnConnectionFilterChanged"
+                    OnOpenAnatomicalViewer="@OpenAnatomicalViewer"
+                    OnCircuitToggle="@OnCircuitToggle" />
+            }
+            else if (Tab==ConsoleTabs.Monitor)
+            {
+                <MonitorTabPanel
+                    ResonantLeft="@_resL"
+                    ResonantRight="@_resR"
+                    TopThought="@_topThought"
+                    Telemetry="@_telemetry"
+                    RegionsByRate="@_regionsByRate"
+                    OnShowResonant="@ShowResonant"
+                    OnShowThoughts="@ShowThoughts"
+                    OnFetchTelemetry="@FetchTelemetry" />
+            }
+    </div></aside>
+
+    <main class="main">
+        <div class="canvas-header">
+            <h2>Live 3D View</h2>
+            <span class="hint">drag · scroll · right-drag</span>
+        </div>
+        <canvas id="nreCanvas"></canvas>
+        <div id="avatarInset" class="avatar-inset" style="display:none">
+            <svg id="avatarSvg" viewBox="-60 -10 120 170" width="120" height="165"></svg>
+            <div id="avatarEmotions" class="avatar-emotions"></div>
+        </div>
+    </main>
+</div>
+
+@code {
+
+    private static readonly IReadOnlyDictionary<string, object> AttrDisabled =
+        new Dictionary<string, object> { ["disabled"] = "disabled" };
+private double VisualIntensity { get; set; } = 0.20;
+private double VisualSpeedHz { get; set; } = 0.60;
+private double VisualSpatialFreq { get; set; } = 3.00;
+
+private double AudioIntensity { get; set; } = 0.20;
+private double AudioToneHz { get; set; } = 220;
+
+    // Voice & Motor
+    private readonly List<VoiceLogEntry> _voiceLog = new(64);
+    private float _bgConfThreshold = 0.30f;
+    private int _vocalCooldown = 60;
+    private float _motorGain = 1.0f;
+    private float[] _m1StripsL = new float[6];
+    private float[] _m1StripsR = new float[6];
+
+    // Peer Bridge
+    private string _peerInstanceId = "";
+    private string? _peerInstanceName;
+    private string _peerNameInput = "";
+    private string _peerSayText = "";
+    private float _peerBasePitch = 120f;
+    private string[] _peerHubInstances = Array.Empty<string>();
+    private PeerStatusDto[] _peerInfoPeers = Array.Empty<PeerStatusDto>();
+    private VocalTractStatusDto? _vocalTractStatus;
+
+    // Live sensory input capture (browser)
+    private bool _webcamRunning;
+    private bool _micRunning;
+    private bool _internetStreamRunning;
+    private string _internetStreamUrl = string.Empty;
+    private string _apiBase = "http://localhost:5005/";
+
+
+    private bool _initialized;
+    private bool _running;
+    private long _step;
+    private float _wallClockUptime;
+    private float _avgStepMs;
+    private float _simRatio = 1f;
+    private System.Diagnostics.Stopwatch _uiStopwatch = new();
+    private long _lastStepForRatio;
+    private double _lastRatioCheckSec;
+
+    private float _dopamine;
+    private float _serotonin;
+    private float _norad;
+
+    private float _ponsArousal;
+    private float _ponsStability;
+    private float _ponsReset;
+    private float _ponsThetaHz;
+
+    private int _w = 32, _h = 32, _d = 32;
+
+    private float _callosalTraffic;
+    private int _resL, _resR;
+    private int _thL, _thR;
+    private string _topThought = "(none)";
+    private TelemetrySnapshotDto? _telemetry;
+    private RegionTelemetryDto[] _regionsByRate = Array.Empty<RegionTelemetryDto>();
+
+    private bool _dark = true;
+    private string Tab { get; set; } = "Stim";
+
+    private CancellationTokenSource? _cts;
+    
+    // === SUBSYSTEM STATE ===
+    private string _sleepPhase = "Awake";
+    private float _sleepPressure;
+    private int _consolidationCycles;
+    private int _replaysTriggered;
+    
+    private bool _thalamicPulse;
+    private float _thalamicFreq = 40f;
+    private float _thalamicFreqTarget = 40f;
+    
+    private int _episodeCount;
+    private int _associationCount;
+    private int _totalNeurons;
+    private int _totalSynapses;
+    
+    private bool _amygdalaPulseActive;
+    private int _salientEvents;
+    private float _regionSalience = 0.5f;
+    
+    private float _predictionError;
+    private float _smoothedActivity;
+
+    // === VIEW TAB STATE ===
+    // Neural Renderer controls
+    private bool _anatomicalMode = true;
+    private bool _brainWarpEnabled = true;
+    private bool _gyrificationEnabled = true;
+    private float _jitter = 0.25f;
+    private string _renderMode = "activity";
+    private bool _shellVisible = true;
+    private bool _fibrePulseEnabled = true;
+    
+    // Anatomical Circuit Viewer toggles
+    private bool _showCortex = false;
+    private bool _showHippocampus = true;
+    private bool _showThalamus = true;
+    private bool _showBasalGanglia = true;
+    private bool _showAmygdala = false;
+    private bool _showCerebellum = false;
+    private bool _showBrainstem = false;
+    private bool _showVTA = false;
+    
+    // Connection filter state
+    private string _connectionFilter = "key";  // "all", "none", "key", "custom"
+    private bool _showCallosalConn = true;
+    private bool _showThalamicConn = true;
+    private bool _showHypothalamicConn = true;
+    private bool _showHippocampalConn = true;
+    private bool _showPontineConn = true;
+    private bool _showCerebellarConn = true;
+
+    // Helper method for sleep phase CSS class
+    private string GetSleepClass() => _sleepPhase switch
+    {
+        "Nrem" => "sleep-nrem",
+        "Rem" => "sleep-rem",
+        _ => ""
+    };
+
+    private static string FormatTime(float seconds)
+    {
+        if (seconds < 60) return $"{seconds:0.0}s";
+        int m = (int)(seconds / 60);
+        float s = seconds - m * 60;
+        return $"{m}m{s:00.0}s";
+    }
+
+    private static float MaxOf(float[] arr)
+    {
+        float max = 0f;
+        for (int i = 0; i < arr.Length; i++)
+            if (arr[i] > max) max = arr[i];
+        return max;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _apiBase = Api.BaseAddress;
+        var status = await Api.GetStatusAsync();
+        if (status is not null)
+            ApplyStatus(status);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+
+            await Renderer.SetDarkThemeAsync(_dark);
+
+            // Voice (browser TTS). Non-fatal if unavailable.
+            try
+            {
+                var voiceErr = await Renderer.InitVoiceAsync();
+                if (!string.IsNullOrWhiteSpace(voiceErr))
+                    _topThought = "Voice unavailable: " + voiceErr;
+            }
+            catch { }
+
+            // Renderer options:
+            // - sagittal split (Option A): hemispheres become half-volumes with a midline fissure
+            // - hemisphere fit (Option B): keep warped points inside a hemisphere envelope
+            var initErr = await Renderer.InitNeuralRendererSafeAsync(
+                "nreCanvas",
+                _w, _h, _d,
+                new
+                {
+                    spacing = 2.0,
+                    mirrorRight = true,
+                    midlineGapVox = 0.90,
+                    medialFlattenEnabled = true,
+                    medialFlattenStrength = 0.20,
+                    superiorFissureBoost = 0.12,
+                    fitToHemisphereEnabled = true,
+                    fitExponent = 2.35
+                });
+            // Static layout points so connections terminate on visible neurons
+            try
+            {
+                var layout = await Api.GetLayoutAsync();
+                if (layout is not null)
+                    await Renderer.SetLayoutAsync(layout);
+            }
+            catch { }
+
+            if (!string.IsNullOrWhiteSpace(initErr))
+                _topThought = "Renderer error: " + initErr;
+
+            await Renderer.SetRenderModeAsync(_renderMode);
+            await Renderer.SetShellVisibleAsync(_shellVisible);
+            await Renderer.SetFibrePulseEnabledAsync(_fibrePulseEnabled);
+
+            // Fetch connections once (graph is relatively stable)
+            try
+            {
+                var lines = await Api.GetConnectionsAsync(12000);
+                if (lines is not null)
+                    await Renderer.SetConnectionsAsync(lines);
+
+                    // Apply initial pathway filter (keeps Live view legible)
+                    await Renderer.ShowKeyPathwayConnectionsAsync();
+            }
+            catch
+            {
+                // ignore if API isn't ready yet; user can refresh page
+            }
+
+            _cts = new CancellationTokenSource();
+            _ = Task.Run(() => RefreshCoordinator.RunFrameLoopAsync(ApplyFrameAsync, _cts.Token));
+            _ = Task.Run(() => RefreshCoordinator.RunStatusLoopAsync(ApplyStatusAsync, _ => FetchTelemetry(), () => InvokeAsync(StateHasChanged), () => Tab, _cts.Token));
+            _ = Task.Run(() => RefreshCoordinator.RunVoiceLoopAsync(ApplyVoiceAsync, _cts.Token));
+        }
+    }
+
+    private Task ApplyVoiceAsync(VoiceUtteranceDto message)
+    {
+        var surface = string.IsNullOrWhiteSpace(message.Text)
+            ? (message.Phonemes is { Length: > 0 } ? string.Join(" ", message.Phonemes) : "[silent]")
+            : message.Text;
+        var display = !string.IsNullOrWhiteSpace(message.Gloss) && !string.Equals(surface, message.Gloss, StringComparison.OrdinalIgnoreCase)
+            ? $"{surface} [{message.Gloss}]"
+            : surface;
+
+        _voiceLog.Insert(0, new VoiceLogEntry(
+            DateTime.Now.ToString("HH:mm:ss"),
+            display));
+        if (_voiceLog.Count > 50) _voiceLog.RemoveAt(50);
+        return Task.CompletedTask;
+    }
+
+    private async Task ApplyFrameAsync(RenderFrameFastDto frame)
+    {
+        _step = frame.StepIndex;
+        _callosalTraffic = frame.CallosalTraffic01;
+
+        if (!_uiStopwatch.IsRunning) _uiStopwatch.Start();
+        _wallClockUptime = (float)_uiStopwatch.Elapsed.TotalSeconds;
+        float simTimeSec = _step / 60f;
+        if (_wallClockUptime > 0.5f)
+            _simRatio = simTimeSec / _wallClockUptime;
+
+        double nowSec = _uiStopwatch.Elapsed.TotalSeconds;
+        double wallDelta = nowSec - _lastRatioCheckSec;
+        if (wallDelta >= 0.5)
+        {
+            long stepDelta = _step - _lastStepForRatio;
+            _avgStepMs = stepDelta > 0 ? (float)(wallDelta * 1000.0 / stepDelta) : 0;
+            _lastStepForRatio = _step;
+            _lastRatioCheckSec = nowSec;
+        }
+
+        _sleepPhase = frame.SleepPhase ?? "Unknown";
+        _thalamicPulse = frame.ThalamicPulseActive ?? false;
+
+        await Renderer.UpdateFrameCombinedAsync(frame, _showAvatar);
+
+        if (frame.Body is { Length: >= 14 })
+        {
+            var bd = frame.Body;
+            _m1StripsL = new[] { bd[10], bd[8], bd[12], bd[2], bd[4], bd[0] };
+            _m1StripsR = new[] { bd[11], bd[9], bd[13], bd[3], bd[5], bd[1] };
+        }
+    }
+
+    private Task ApplyStatusAsync(EngineStatusDto status)
+    {
+        ApplyStatus(status);
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadStatusAsync()
+    {
+        var status = await Api.GetStatusAsync();
+        if (status is not null)
+            ApplyStatus(status);
+    }
+
+    private void ApplyStatus(EngineStatusDto status)
+    {
+        _running = status.Running;
+        _totalNeurons = status.TotalNeurons;
+        _totalSynapses = status.TotalSynapses;
+
+        _w = status.VolumeW; _h = status.VolumeH; _d = status.VolumeD;
+
+        _dopamine = status.Neuromodulators.Dopamine;
+        _serotonin = status.Neuromodulators.Serotonin;
+        _norad = status.Neuromodulators.Noradrenaline;
+
+        _ponsArousal = status.Pons.Arousal;
+        _ponsStability = status.Pons.Stability;
+        _ponsReset = status.Pons.ResetPressure;
+        _ponsThetaHz = status.Pons.ThetaHz;
+
+        if (status.Thalamus is not null)
+        {
+            _thalamicPulse = status.Thalamus.IsAtPulse;
+            _thalamicFreq = status.Thalamus.FrequencyHz;
+        }
+
+        if (status.Sleep is not null)
+        {
+            _sleepPhase = status.Sleep.Phase;
+            _sleepPressure = status.Sleep.SleepPressure;
+            _consolidationCycles = status.Sleep.ConsolidationCycles;
+            _replaysTriggered = status.Sleep.ReplaysTriggered;
+        }
+
+        if (status.Hippocampus is not null)
+        {
+            _episodeCount = status.Hippocampus.EpisodeCount;
+            _associationCount = status.Hippocampus.AssociationCount;
+        }
+
+        if (status.Amygdala is not null)
+        {
+            _amygdalaPulseActive = status.Amygdala.NoradrenalinePulseActive;
+            _salientEvents = status.Amygdala.SalientEventsPerSecond;
+        }
+
+        if (status.Cerebellum is not null)
+        {
+            _predictionError = status.Cerebellum.GlobalPredictionError;
+            _smoothedActivity = status.Cerebellum.SmoothedActivity;
+        }
+
+        _vocalTractStatus = status.VocalTract;
+        if (status.PeerBridge is not null)
+        {
+            _peerInstanceId = status.PeerBridge.InstanceId;
+            _peerInstanceName = status.PeerBridge.InstanceName;
+            _peerInfoPeers = status.PeerBridge.Peers;
+        }
+    }
+
+    private async Task Start()
+    {
+        await Api.StartAsync();
+        var status = await Api.GetStatusAsync();
+        if (status is not null) ApplyStatus(status);
+    }
+
+    private async Task Stop()
+    {
+        await Api.StopAsync();
+        var status = await Api.GetStatusAsync();
+        if (status is not null) ApplyStatus(status);
+    }
+
+    private async Task ToggleDark()
+    {
+        _dark = !_dark;
+        await Renderer.SetDarkThemeAsync(_dark);
+    }
+
+    private bool _showAvatar;
+
+    private async Task ToggleAvatar()
+    {
+        _showAvatar = !_showAvatar;
+        if (_showAvatar)
+            await Renderer.InitAvatarAsync();
+        else
+            await Renderer.DestroyAvatarAsync();
+    }
+
+    // Save/Load brain state
+    private string _saveLoadStatus = "";
+
+    private async Task SaveBrain()
+    {
+        try
+        {
+            _saveLoadStatus = "Saving...";
+            StateHasChanged();
+            
+            var response = await Api.SaveBrainAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var b64 = Convert.ToBase64String(bytes);
+                var fileName = $"brain_{DateTime.Now:yyyyMMdd_HHmmss}.nre";
+                await Renderer.DownloadBlobAsync(b64, fileName);
+                _saveLoadStatus = $"Saved ({bytes.Length / 1024}KB)";
+            }
+            else
+            {
+                _saveLoadStatus = "Save failed: " + response.StatusCode;
+            }
+        }
+        catch (Exception ex)
+        {
+            _saveLoadStatus = "Save error: " + ex.Message;
+        }
+    }
+
+    private async Task LoadBrainClick()
+    {
+        await Renderer.FocusBrainFileInputAsync();
+    }
+
+    private async Task OnBrainFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            _saveLoadStatus = "Loading...";
+            StateHasChanged();
+
+            var file = e.File;
+            if (file.Size > 50_000_000)
+            {
+                _saveLoadStatus = "File too large (max 50MB)";
+                return;
+            }
+
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(50_000_000).CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            var content = new ByteArrayContent(bytes);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            var response = await Api.LoadBrainAsync(bytes);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _saveLoadStatus = $"Loaded ({bytes.Length / 1024}KB) — refreshing view...";
+                StateHasChanged();
+                await Renderer.RefreshAsync();
+                _saveLoadStatus = $"Brain loaded successfully ({bytes.Length / 1024}KB)";
+            }
+            else
+            {
+                var msg = await response.Content.ReadAsStringAsync();
+                _saveLoadStatus = "Load failed: " + msg;
+            }
+        }
+        catch (Exception ex)
+        {
+            _saveLoadStatus = "Load error: " + ex.Message;
+        }
+    }
+
+    private async Task ApplyNeuromods()
+    {
+        await Api.SetNeuromodulatorAsync("dopamine", _dopamine);
+        await Api.SetNeuromodulatorAsync("serotonin", _serotonin);
+        await Api.SetNeuromodulatorAsync("noradrenaline", _norad);
+        var status = await Api.GetStatusAsync();
+        if (status is not null) ApplyStatus(status);
+    }
+
+    private async Task ApplyPons()
+    {
+        await Api.SetPonsAsync(_ponsArousal, _ponsStability, _ponsReset, _ponsThetaHz);
+        var status = await Api.GetStatusAsync();
+        if (status is not null) ApplyStatus(status);
+    }
+
+    private async Task ApplyVocalSettings()
+    {
+        await Api.SetVoiceSettingsAsync(_bgConfThreshold, _vocalCooldown);
+    }
+
+    private async Task ApplyMotorGain()
+    {
+        await Api.SetMotorGainAsync(_motorGain);
+    }
+
+    // Peer Bridge methods
+    private async Task SetPeerName()
+    {
+        if (!string.IsNullOrWhiteSpace(_peerNameInput))
+        {
+            await Api.SetPeerNameAsync(_peerNameInput);
+            _peerInstanceName = _peerNameInput;
+        }
+    }
+
+    private async Task PeerConnectAll()
+    {
+        await Api.ConnectAllPeersAsync();
+        await RefreshPeerInfo();
+    }
+
+    private async Task RefreshPeerHub()
+    {
+        try
+        {
+            _peerHubInstances = await Api.GetPeerHubInstancesAsync();
+        }
+        catch { _peerHubInstances = Array.Empty<string>(); }
+    }
+
+    private async Task RefreshPeerInfo()
+    {
+        try
+        {
+            var info = await Api.GetPeerInfoAsync();
+            if (info != null)
+            {
+                _peerInstanceId = info.InstanceId;
+                _peerInstanceName = info.InstanceName;
+                _peerInfoPeers = info.Peers;
+            }
+        }
+        catch { }
+    }
+
+    private async Task PeerSay()
+    {
+        if (!string.IsNullOrWhiteSpace(_peerSayText))
+        {
+            await Api.PeerSayAsync(_peerSayText);
+            _peerSayText = "";
+        }
+    }
+
+    private async Task SetPeerPitch()
+    {
+        await Api.SetPeerPitchAsync(_peerBasePitch);
+    }
+
+    private async Task InjectLeft()
+    {
+        var req = new InjectRequestDto(_w / 2, _h / 2, _d / 2, Intensity: 1.0f, DelayTicks: 0, Hemisphere: "left");
+        await Api.InjectAsync(req);
+    }
+
+    private async Task InjectRight()
+    {
+        var req = new InjectRequestDto(_w / 2, _h / 2, _d / 2, Intensity: 1.0f, DelayTicks: 0, Hemisphere: "right");
+        await Api.InjectAsync(req);
+    }
+
+    private async Task InjectBoth()
+    {
+        await InjectLeft();
+        await InjectRight();
+    }
+
+private async Task StartWebcam()
+{
+    if (_webcamRunning) return;
+    if (_internetStreamRunning) await StopInternetStream();
+    try
+    {
+        await Renderer.StartWebcamAsync(_apiBase, new { fps = 4 });
+        _webcamRunning = true;
+    }
+    catch (Exception ex)
+    {
+        _topThought = "Webcam error: " + ex.Message;
+    }
+}
+
+private async Task StopWebcam()
+{
+    try { await Renderer.StopWebcamAsync(); } catch { }
+    _webcamRunning = false;
+}
+
+private async Task StartMic()
+{
+    if (_micRunning) return;
+    if (_internetStreamRunning) await StopInternetStream();
+    try
+    {
+        await Renderer.StartMicAsync(_apiBase, new { fps = 4 });
+        _micRunning = true;
+    }
+    catch (Exception ex)
+    {
+        _topThought = "Microphone error: " + ex.Message;
+    }
+}
+
+private async Task StopMic()
+{
+    try { await Renderer.StopMicAsync(); } catch { }
+    _micRunning = false;
+}
+
+private async Task StartInternetStream()
+{
+    if (_internetStreamRunning) return;
+    if (string.IsNullOrWhiteSpace(_internetStreamUrl))
+    {
+        _topThought = "Enter an internet media stream URL first.";
+        return;
+    }
+
+    try
+    {
+        if (_webcamRunning) await StopWebcam();
+        if (_micRunning) await StopMic();
+
+        await Renderer.StartInternetStreamAsync(_apiBase, _internetStreamUrl, new
+        {
+            fps = 4,
+            width = 96,
+            height = 96,
+            enableVisual = true,
+            enableAudio = true,
+            allowAudioPlayback = false,
+            crossOrigin = "anonymous"
+        });
+
+        _internetStreamRunning = true;
+    }
+    catch (Exception ex)
+    {
+        _topThought = "Internet stream error: " + ex.Message;
+    }
+}
+
+private async Task StopInternetStream()
+{
+    try { await Renderer.StopInternetStreamAsync(); } catch { }
+    _internetStreamRunning = false;
+}
+
+private async Task ApplyVisual()
+{
+    await Api.ApplyVisualAsync((float)VisualIntensity, (float)VisualSpeedHz, (float)VisualSpatialFreq);
+}
+
+private async Task ApplyAudio()
+{
+    await Api.ApplyAudioAsync((float)AudioIntensity, (float)AudioToneHz);
+}
+
+
+// === SUBSYSTEM ACTIONS ===
+
+private async Task ApplyThalamus()
+{
+    await Api.ApplyThalamusAsync(_thalamicFreqTarget);
+    var status = await Api.GetStatusAsync();
+    if (status is not null) ApplyStatus(status);
+}
+
+private async Task ForceSleep(string phase)
+{
+    await Api.ForceSleepAsync(phase);
+    var status = await Api.GetStatusAsync();
+    if (status is not null) ApplyStatus(status);
+}
+
+private async Task BuildSleepPressure()
+{
+    await Api.BuildSleepPressureAsync(0.25f);
+    var status = await Api.GetStatusAsync();
+    if (status is not null) ApplyStatus(status);
+}
+
+private async Task ApplySalience()
+{
+    // Set salience on Visual cortex (InferiorOccipital = 26)
+    await Api.ApplySalienceAsync(26, _regionSalience);
+    var status = await Api.GetStatusAsync();
+    if (status is not null) ApplyStatus(status);
+}
+
+
+    private async Task ShowResonant()
+    {
+        var clusters = await Api.GetResonantClustersAsync();
+        _resL = clusters?.PointsLeft?.Length ?? 0;
+        _resR = clusters?.PointsRight?.Length ?? 0;
+    }
+
+    private async Task ShowThoughts()
+    {
+        var thoughts = await Api.GetThoughtClustersAsync();
+        _thL = thoughts?.Left?.Length ?? 0;
+        _thR = thoughts?.Right?.Length ?? 0;
+
+        ThoughtClusterDto? best = null;
+
+        if (thoughts?.Left is not null)
+            for (int i = 0; i < thoughts.Left.Length; i++)
+                best = (best is null || thoughts.Left[i].Coherence01 > best.Coherence01) ? thoughts.Left[i] : best;
+
+        if (thoughts?.Right is not null)
+            for (int i = 0; i < thoughts.Right.Length; i++)
+                best = (best is null || thoughts.Right[i].Coherence01 > best.Coherence01) ? thoughts.Right[i] : best;
+
+        if (best is null)
+            _topThought = "(none)";
+        else
+            _topThought = $"#{best.Id} size={best.Size} coh={best.Coherence01:0.00} @({best.Centroid.X:0},{best.Centroid.Y:0},{best.Centroid.Z:0})";
+    }
+
+    private async Task FetchTelemetry()
+    {
+        try
+        {
+            _telemetry = await Api.GetTelemetryAsync();
+
+            // PERF: avoid LINQ in UI rendering by preparing a sorted array once per fetch.
+            if (_telemetry?.Regions is not null)
+            {
+                var src = _telemetry.Regions;
+                var arr = new RegionTelemetryDto[src.Length];
+                Array.Copy(src, arr, src.Length);
+                Array.Sort(arr, (a, b) => b.MeanFiringRate.CompareTo(a.MeanFiringRate));
+                _regionsByRate = arr;
+            }
+            else
+            {
+                _regionsByRate = Array.Empty<RegionTelemetryDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            _topThought = $"Telemetry error: {ex.Message}";
+        }
+    }
+
+    // === SCENARIO METHODS ===
+    // Each scenario orchestrates multiple subsystems to create biologically meaningful
+    // conditions for emergent dynamics. All learning is from feedforward internal
+    // feedback loops and neurotransmitter-dependent plasticity.
+
+    private async Task SceneStartle()
+    {
+        await Api.ApplyVisualAsync(1.4f, 3.0f, 5.0f);
+        await Api.ApplyAudioAsync(1.3f, 800f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.90f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.55f);
+        await Api.SetPonsAsync(0.95f, 0.20f, 0.10f, 7f);
+        await Api.ApplySalienceAsync(26, 0.9f);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneHabituation()
+    {
+        await Api.ApplyVisualAsync(0.45f, 1.0f, 3.0f);
+        await Api.ApplyAudioAsync(0.35f, 440f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.55f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.25f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.20f);
+        await Api.SetPonsAsync(0.50f, 0.70f, 0.3f, 4f);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneFocusedAttention()
+    {
+        await Api.SetNeuromodulatorAsync("dopamine", 0.50f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.40f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.35f);
+        await Api.SetPonsAsync(0.75f, 0.85f, 0.1f, 6f);
+        await Api.PostAbsoluteAsync("api/engine/thalamus?frequencyHz=42&bindingWindow=0.40");
+        await Api.ApplyVisualAsync(0.35f, 0.5f, 2.0f);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneExploratoryDrive()
+    {
+        await Api.SetNeuromodulatorAsync("dopamine", 0.75f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.15f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.45f);
+        await Api.SetPonsAsync(0.80f, 0.40f, 0.15f, 7f);
+        await Api.ApplyVisualAsync(0.30f, 2.0f, 4.0f);
+        await Api.ApplyAudioAsync(0.20f, 330f);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneAnxious()
+    {
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.85f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.10f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.30f);
+        await Api.SetPonsAsync(0.90f, 0.25f, 0.05f, 8f);
+        await Api.PostAbsoluteAsync("api/engine/thalamus?frequencyHz=38&bindingWindow=0.25");
+        await Api.ApplyVisualAsync(0.25f, 0.3f, 6.0f);
+        await Api.ApplyAudioAsync(0.15f, 180f);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneSleepCycle()
+    {
+        await Api.ApplyVisualAsync(0f, 0f, 1f);
+        await Api.ApplyAudioAsync(0f, 220f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.10f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.15f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.05f);
+        await Api.SetPonsAsync(0.10f, 0.90f, 0.8f, 1f);
+        await Api.BuildSleepPressureAsync(0.6f);
+        await Api.ForceSleepAsync("Nrem");
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneLucidDream()
+    {
+        await Api.ApplyVisualAsync(0f, 0f, 1f);
+        await Api.ApplyAudioAsync(0f, 220f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.50f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.03f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.02f);
+        await Api.SetPonsAsync(0.20f, 0.30f, 0.6f, 5f);
+        await Api.ForceSleepAsync("Rem");
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneRewardLearning()
+    {
+        await Api.ApplyVisualAsync(0.70f, 1.5f, 3.0f);
+        await Api.ApplyAudioAsync(0.50f, 660f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.85f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.30f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.50f);
+        await Api.SetPonsAsync(0.80f, 0.60f, 0.1f, 6f);
+        await Api.ApplySalienceAsync(26, 0.7f);
+        var req = new InjectRequestDto(_w / 2, _h / 3, _d / 2, Intensity: 0.8f, DelayTicks: 0, Hemisphere: "left");
+        await Api.InjectAsync(req);
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneCallosalRace()
+    {
+        await Api.ApplyVisualAsync(0.10f, 0.3f, 2.0f);
+        await Api.SetNeuromodulatorAsync("dopamine", 0.35f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.40f);
+        await Api.SetPonsAsync(0.70f, 0.65f, 0.15f, 5f);
+        for (int i = 0; i < 5; i++)
+        {
+            int jx = _w / 4 + (i * 2) % _w;
+            int jy = _h / 3 + (i * 3) % _h;
+            int jz = _d / 4 + (i * 5) % _d;
+            var req = new InjectRequestDto(jx, jy, jz, Intensity: 1.2f, DelayTicks: i * 3, Hemisphere: "left");
+            await Api.InjectAsync(req);
+        }
+        await ReloadStatusAsync();
+    }
+
+    private async Task SceneReset()
+    {
+        await Api.SetNeuromodulatorAsync("dopamine", 0.15f);
+        await Api.SetNeuromodulatorAsync("serotonin", 0.20f);
+        await Api.SetNeuromodulatorAsync("noradrenaline", 0.10f);
+        await Api.SetPonsAsync(0.50f, 0.60f, 0.3f, 4f);
+        await Api.ApplyThalamusAsync(40f);
+        await Api.ApplyVisualAsync(0.20f, 0.6f, 3.0f);
+        await Api.ApplyAudioAsync(0.20f, 220f);
+        await Api.ForceSleepAsync("Awake");
+        await ReloadStatusAsync();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+
+        // Stop any active browser capture loops
+        try { _ = Renderer.StopWebcamAsync(); } catch { }
+        try { _ = Renderer.StopMicAsync(); } catch { }
+        try { _ = Renderer.StopInternetStreamAsync(); } catch { }
+        try { _ = Renderer.DestroyAvatarAsync(); } catch { }
+    }
+
+    // === VIEW TAB METHODS ===
+    private async Task OnAnatomicalModeChanged()
+    {
+        if (_anatomicalMode)
+        {
+            // Anatomical mode disables other controls
+            _brainWarpEnabled = false;
+            _gyrificationEnabled = false;
+            _jitter = 0;
+        }
+        else
+        {
+            // Restore defaults
+            _brainWarpEnabled = true;
+            _gyrificationEnabled = true;
+            _jitter = 0.25f;
+        }
+        await Renderer.SetAnatomicalModeAsync(_anatomicalMode);
+    }
+    
+    private async Task OnBrainWarpChanged()
+    {
+        await Renderer.SetBrainWarpEnabledAsync(_brainWarpEnabled);
+    }
+    
+    private async Task OnGyrificationChanged()
+    {
+        await Renderer.SetGyrificationEnabledAsync(_gyrificationEnabled);
+    }
+    
+    private async Task OnJitterChanged()
+    {
+        await Renderer.SetJitterAsync(_jitter);
+    }
+    
+
+
+    private async Task OnRenderModeChanged(string mode)
+    {
+        _renderMode = string.IsNullOrWhiteSpace(mode) ? "activity" : mode;
+        await Renderer.SetRenderModeAsync(_renderMode);
+    }
+
+    private async Task OnShellVisibleChanged(bool value)
+    {
+        _shellVisible = value;
+        await Renderer.SetShellVisibleAsync(_shellVisible);
+    }
+
+    private async Task OnFibrePulseEnabledChanged(bool value)
+    {
+        _fibrePulseEnabled = value;
+        await Renderer.SetFibrePulseEnabledAsync(_fibrePulseEnabled);
+    }
+
+    private async Task RefreshRenderer()
+    {
+        await Renderer.RefreshAsync();
+    }
+    
+    private async Task OpenAnatomicalViewer()
+    {
+        await Renderer.OpenWindowAsync("anatomical-viewer.html", "_blank");
+    }
+    
+    private async Task OnCircuitToggle()
+    {
+        // These toggles communicate with the anatomical viewer if it's open
+        // For now just store state - full integration would use BroadcastChannel or similar
+        await Task.CompletedTask;
+    }
+    
+    
+    private async Task SetViewPreset(string preset)
+    {
+        await Renderer.SetViewPresetAsync(preset);
+    }
+
+    // === CONNECTION FILTER METHODS ===
+    private async Task ShowAllConnections()
+    {
+        _connectionFilter = "all";
+        _showCallosalConn = true;
+        _showThalamicConn = true;
+        _showHypothalamicConn = true;
+        _showHippocampalConn = true;
+        _showPontineConn = true;
+        _showCerebellarConn = true;
+        await Renderer.ShowAllConnectionsAsync();
+    }
+
+    private async Task HideAllConnections()
+    {
+        _connectionFilter = "none";
+        _showCallosalConn = false;
+        _showThalamicConn = false;
+        _showHypothalamicConn = false;
+        _showHippocampalConn = false;
+        _showPontineConn = false;
+        _showCerebellarConn = false;
+        await Renderer.HideAllConnectionsAsync();
+    }
+
+    private async Task ShowKeyPathways()
+    {
+        _connectionFilter = "key";
+        _showCallosalConn = true;
+        _showThalamicConn = true;
+        _showHypothalamicConn = true;
+        _showHippocampalConn = true;
+        _showPontineConn = true;
+        _showCerebellarConn = true;
+        await Renderer.ShowKeyPathwayConnectionsAsync();
+    }
+
+
+    private async Task ShowLocalConnections()
+    {
+        _connectionFilter = "local";
+        await Renderer.SetConnectionFilterAsync("local");
+    }
+
+    private async Task ShowCallosalOnly()
+    {
+        _connectionFilter = "callosal";
+        await Renderer.SetConnectionFilterAsync("callosal");
+    }
+
+    private async Task ShowDeepOnly()
+    {
+        _connectionFilter = "deep";
+        await Renderer.SetConnectionFilterAsync("deep");
+    }
+
+
+    private async Task OnConnectionFilterChanged()
+    {
+        _connectionFilter = "custom";
+        // Region IDs: 1=Thalamus, 2=Hypothalamus, 5=Hippocampus, 8=Pons, 14=CorpusCallosum, 27=Cerebellum
+        var regions = new List<int>();
+        if (_showCallosalConn) regions.Add(14);
+        if (_showThalamicConn) regions.Add(1);
+        if (_showHypothalamicConn) regions.Add(2);
+        if (_showHippocampalConn) regions.Add(5);
+        if (_showPontineConn) regions.Add(8);
+        if (_showCerebellarConn) regions.Add(27);
+
+        if (regions.Count == 0)
+        {
+            await Renderer.SetConnectionFilterAsync("none");
+        }
+        else
+        {
+            await Renderer.SetConnectionFilterAsync("regions", regions.ToArray());
+        }
+    }
+
+}

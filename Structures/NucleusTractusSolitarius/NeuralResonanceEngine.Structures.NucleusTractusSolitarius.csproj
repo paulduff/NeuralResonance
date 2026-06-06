@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Structures.NucleusTractusSolitarius</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Structures.NucleusTractusSolitarius</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+  </ItemGroup>
+</Project>
+

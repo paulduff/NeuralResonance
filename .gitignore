@@ -1,0 +1,30 @@
+# Build outputs
+bin/
+obj/
+artifacts/
+.vs/
+
+# Runtime logs and local probes
+*.log
+*.err
+*.ndjson
+TestResults/
+coverage.cobertura.xml
+.build-*.log
+.clean-*.log
+.rebuild-*.log
+.smoke-*.log
+.debug-*.log
+.live-*.log
+runtime_livecheck_*.log
+tmp_control_*.log
+
+# Local tool/runtime caches
+.dotnet-home/
+.tools/
+.claude/
+.codex/
+
+# User launch settings
+*.slnLaunch.user
+*.csproj.user

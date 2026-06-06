@@ -1,0 +1,168 @@
+﻿<div class="panel view-panel">
+    <div class="view-panel__hero">
+        <div class="group-title">Neural Renderer</div>
+        <div class="small">Biological anatomical view with camera presets, pathway filters, and structure toggles tuned for inspection.</div>
+        <div class="view-panel__actions">
+            <button class="btn view-panel__refresh" @onclick="OnRefreshRenderer">Refresh View</button>
+        </div>
+    </div>
+
+    <section class="view-panel__section">
+        <div class="group-title">Camera Presets</div>
+        <div class="small">Quick snaps for left, superior, anterior, and posterior checks.</div>
+        <div class="row view-panel__button-grid">
+            <button class="btn" @onclick="OnSetLeftPreset">Left</button>
+            <button class="btn" @onclick="OnSetSuperiorPreset">Superior</button>
+            <button class="btn" @onclick="OnSetAnteriorPreset">Anterior</button>
+            <button class="btn" @onclick="OnSetPosteriorPreset">Posterior</button>
+        </div>
+    </section>
+
+    <section class="view-panel__section">
+        <div class="group-title">Signal Modes</div>
+        <div class="small">Switch between anatomy, activity, connectivity, and validation emphasis.</div>
+        <div class="row view-panel__button-grid">
+            <button class='btn @(RenderMode == "anatomy" ? "active" : "")' @onclick="OnSetAnatomyMode">Anatomy</button>
+            <button class='btn @(RenderMode == "activity" ? "active" : "")' @onclick="OnSetActivityMode">Activity</button>
+            <button class='btn @(RenderMode == "connectivity" ? "active" : "")' @onclick="OnSetConnectivityMode">Connectivity</button>
+            <button class='btn @(RenderMode == "validation" ? "active" : "")' @onclick="OnSetValidationMode">Validation</button>
+        </div>
+        <div class="circuit-toggles view-panel__toggles">
+            <label class="toggle-row"><input type="checkbox" checked="@ShellVisible" @onchange="OnShellVisibleChangedLocal" /> Translucent cortical shell</label>
+            <label class="toggle-row"><input type="checkbox" checked="@FibrePulseEnabled" @onchange="OnFibrePulseEnabledChangedLocal" /> Pulse propagation on fibres</label>
+        </div>
+    </section>
+
+    <section class="view-panel__section">
+        <div class="group-title">Pathway Filters</div>
+        <div class="small">Show the whole network, isolate major pathway groups, or strip the scene back.</div>
+        <div class="row view-panel__button-grid view-panel__button-grid--dense">
+            <button class='btn @(ConnectionFilter == "all" ? "active" : "")' @onclick="OnShowAllConnections">All</button>
+            <button class='btn @(ConnectionFilter == "none" ? "active" : "")' @onclick="OnHideAllConnections">None</button>
+            <button class='btn @(ConnectionFilter == "key" ? "active" : "")' @onclick="OnShowKeyPathways">Key Pathways</button>
+            <button class='btn @(ConnectionFilter == "local" ? "active" : "")' @onclick="OnShowLocalConnections">Local</button>
+            <button class='btn @(ConnectionFilter == "callosal" ? "active" : "")' @onclick="OnShowCallosalOnly">Callosal</button>
+            <button class='btn @(ConnectionFilter == "deep" ? "active" : "")' @onclick="OnShowDeepOnly">Deep</button>
+        </div>
+
+        <div class="small view-panel__subhead"><b>Individual Pathways</b></div>
+        <div class="circuit-toggles view-panel__toggles">
+            <label class="toggle-row"><input type="checkbox" checked="@ShowCallosalConn" @onchange="OnShowCallosalConnChanged" /><span class="pathway-swatch pathway-swatch--callosum"></span> Corpus Callosum</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowThalamicConn" @onchange="OnShowThalamicConnChanged" /><span class="pathway-swatch pathway-swatch--thalamus"></span> Thalamus</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowHypothalamicConn" @onchange="OnShowHypothalamicConnChanged" /><span class="pathway-swatch pathway-swatch--hypothalamus"></span> Hypothalamus</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowHippocampalConn" @onchange="OnShowHippocampalConnChanged" /><span class="pathway-swatch pathway-swatch--hippocampus"></span> Hippocampus</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowPontineConn" @onchange="OnShowPontineConnChanged" /><span class="pathway-swatch pathway-swatch--pons"></span> Pons</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowCerebellarConn" @onchange="OnShowCerebellarConnChanged" /><span class="pathway-swatch pathway-swatch--cerebellum"></span> Cerebellum</label>
+        </div>
+    </section>
+
+    <section class="view-panel__section">
+        <div class="group-title">Anatomical Circuit Viewer</div>
+        <div class="small">Open the dedicated viewer for structure-scale inspection and circuit isolation.</div>
+        <div class="row view-panel__actions">
+            <button class="btn" @onclick="OnOpenAnatomicalViewer">Open Viewer</button>
+        </div>
+
+        <div class="small view-panel__subhead"><b>Quick Structure Toggle</b></div>
+        <div class="circuit-toggles view-panel__toggles">
+            <label class="toggle-row"><input type="checkbox" checked="@ShowCortex" @onchange="OnShowCortexChanged" /><span class="pathway-swatch pathway-swatch--cortex"></span> Cortex (16B neurons)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowHippocampus" @onchange="OnShowHippocampusChanged" /><span class="pathway-swatch pathway-swatch--hippocampus"></span> Hippocampus (25M)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowThalamus" @onchange="OnShowThalamusChanged" /><span class="pathway-swatch pathway-swatch--thalamus"></span> Thalamus (50M)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowBasalGanglia" @onchange="OnShowBasalGangliaChanged" /><span class="pathway-swatch pathway-swatch--basal"></span> Basal Ganglia (816M)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowAmygdala" @onchange="OnShowAmygdalaChanged" /><span class="pathway-swatch pathway-swatch--amygdala"></span> Amygdala (12M)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowCerebellum" @onchange="OnShowCerebellumChanged" /><span class="pathway-swatch pathway-swatch--cerebellum"></span> Cerebellum (69B)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowBrainstem" @onchange="OnShowBrainstemChanged" /><span class="pathway-swatch pathway-swatch--brainstem"></span> Brainstem (1B)</label>
+            <label class="toggle-row"><input type="checkbox" checked="@ShowVta" @onchange="OnShowVtaChanged" /><span class="pathway-swatch pathway-swatch--vta"></span> VTA (400K)</label>
+        </div>
+
+        <div class="small view-panel__note">
+            Circuit toggles affect the dedicated anatomical viewer window.
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter] public string ConnectionFilter { get; set; } = "all";
+    [Parameter] public string RenderMode { get; set; } = "activity";
+    [Parameter] public EventCallback<string> RenderModeChanged { get; set; }
+    [Parameter] public bool ShellVisible { get; set; }
+    [Parameter] public EventCallback<bool> ShellVisibleChanged { get; set; }
+    [Parameter] public bool FibrePulseEnabled { get; set; }
+    [Parameter] public EventCallback<bool> FibrePulseEnabledChanged { get; set; }
+    [Parameter] public bool ShowCallosalConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowCallosalConnChanged { get; set; }
+    [Parameter] public bool ShowThalamicConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowThalamicConnChanged { get; set; }
+    [Parameter] public bool ShowHypothalamicConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowHypothalamicConnChanged { get; set; }
+    [Parameter] public bool ShowHippocampalConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowHippocampalConnChanged { get; set; }
+    [Parameter] public bool ShowPontineConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowPontineConnChanged { get; set; }
+    [Parameter] public bool ShowCerebellarConn { get; set; }
+    [Parameter] public EventCallback<bool> ShowCerebellarConnChanged { get; set; }
+    [Parameter] public bool ShowCortex { get; set; }
+    [Parameter] public EventCallback<bool> ShowCortexChanged { get; set; }
+    [Parameter] public bool ShowHippocampus { get; set; }
+    [Parameter] public EventCallback<bool> ShowHippocampusChanged { get; set; }
+    [Parameter] public bool ShowThalamus { get; set; }
+    [Parameter] public EventCallback<bool> ShowThalamusChanged { get; set; }
+    [Parameter] public bool ShowBasalGanglia { get; set; }
+    [Parameter] public EventCallback<bool> ShowBasalGangliaChanged { get; set; }
+    [Parameter] public bool ShowAmygdala { get; set; }
+    [Parameter] public EventCallback<bool> ShowAmygdalaChanged { get; set; }
+    [Parameter] public bool ShowCerebellum { get; set; }
+    [Parameter] public EventCallback<bool> ShowCerebellumChanged { get; set; }
+    [Parameter] public bool ShowBrainstem { get; set; }
+    [Parameter] public EventCallback<bool> ShowBrainstemChanged { get; set; }
+    [Parameter] public bool ShowVta { get; set; }
+    [Parameter] public EventCallback<bool> ShowVtaChanged { get; set; }
+    [Parameter] public EventCallback OnRefreshRenderer { get; set; }
+    [Parameter] public EventCallback<string> OnSetViewPreset { get; set; }
+    [Parameter] public EventCallback OnShowAllConnections { get; set; }
+    [Parameter] public EventCallback OnHideAllConnections { get; set; }
+    [Parameter] public EventCallback OnShowKeyPathways { get; set; }
+    [Parameter] public EventCallback OnShowLocalConnections { get; set; }
+    [Parameter] public EventCallback OnShowCallosalOnly { get; set; }
+    [Parameter] public EventCallback OnShowDeepOnly { get; set; }
+    [Parameter] public EventCallback OnConnectionFilterChanged { get; set; }
+    [Parameter] public EventCallback OnOpenAnatomicalViewer { get; set; }
+    [Parameter] public EventCallback OnCircuitToggle { get; set; }
+
+    private Task OnSetLeftPreset() => OnSetViewPreset.InvokeAsync("left");
+    private Task OnSetSuperiorPreset() => OnSetViewPreset.InvokeAsync("superior");
+    private Task OnSetAnteriorPreset() => OnSetViewPreset.InvokeAsync("anterior");
+    private Task OnSetPosteriorPreset() => OnSetViewPreset.InvokeAsync("posterior");
+
+    private Task OnSetAnatomyMode() => RenderModeChanged.InvokeAsync("anatomy");
+    private Task OnSetActivityMode() => RenderModeChanged.InvokeAsync("activity");
+    private Task OnSetConnectivityMode() => RenderModeChanged.InvokeAsync("connectivity");
+    private Task OnSetValidationMode() => RenderModeChanged.InvokeAsync("validation");
+
+    private Task OnShellVisibleChangedLocal(ChangeEventArgs e) => ShellVisibleChanged.InvokeAsync(ParseBool(e.Value, ShellVisible));
+    private Task OnFibrePulseEnabledChangedLocal(ChangeEventArgs e) => FibrePulseEnabledChanged.InvokeAsync(ParseBool(e.Value, FibrePulseEnabled));
+
+    private async Task OnShowCallosalConnChanged(ChangeEventArgs e) { await ShowCallosalConnChanged.InvokeAsync(ParseBool(e.Value, ShowCallosalConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+    private async Task OnShowThalamicConnChanged(ChangeEventArgs e) { await ShowThalamicConnChanged.InvokeAsync(ParseBool(e.Value, ShowThalamicConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+    private async Task OnShowHypothalamicConnChanged(ChangeEventArgs e) { await ShowHypothalamicConnChanged.InvokeAsync(ParseBool(e.Value, ShowHypothalamicConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+    private async Task OnShowHippocampalConnChanged(ChangeEventArgs e) { await ShowHippocampalConnChanged.InvokeAsync(ParseBool(e.Value, ShowHippocampalConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+    private async Task OnShowPontineConnChanged(ChangeEventArgs e) { await ShowPontineConnChanged.InvokeAsync(ParseBool(e.Value, ShowPontineConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+    private async Task OnShowCerebellarConnChanged(ChangeEventArgs e) { await ShowCerebellarConnChanged.InvokeAsync(ParseBool(e.Value, ShowCerebellarConn)); await OnConnectionFilterChanged.InvokeAsync(); }
+
+    private async Task OnShowCortexChanged(ChangeEventArgs e) { await ShowCortexChanged.InvokeAsync(ParseBool(e.Value, ShowCortex)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowHippocampusChanged(ChangeEventArgs e) { await ShowHippocampusChanged.InvokeAsync(ParseBool(e.Value, ShowHippocampus)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowThalamusChanged(ChangeEventArgs e) { await ShowThalamusChanged.InvokeAsync(ParseBool(e.Value, ShowThalamus)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowBasalGangliaChanged(ChangeEventArgs e) { await ShowBasalGangliaChanged.InvokeAsync(ParseBool(e.Value, ShowBasalGanglia)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowAmygdalaChanged(ChangeEventArgs e) { await ShowAmygdalaChanged.InvokeAsync(ParseBool(e.Value, ShowAmygdala)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowCerebellumChanged(ChangeEventArgs e) { await ShowCerebellumChanged.InvokeAsync(ParseBool(e.Value, ShowCerebellum)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowBrainstemChanged(ChangeEventArgs e) { await ShowBrainstemChanged.InvokeAsync(ParseBool(e.Value, ShowBrainstem)); await OnCircuitToggle.InvokeAsync(); }
+    private async Task OnShowVtaChanged(ChangeEventArgs e) { await ShowVtaChanged.InvokeAsync(ParseBool(e.Value, ShowVta)); await OnCircuitToggle.InvokeAsync(); }
+
+    private static bool ParseBool(object? value, bool fallback)
+        => value switch
+        {
+            bool b => b,
+            string s when bool.TryParse(s, out var parsed) => parsed,
+            _ => fallback
+        };
+}

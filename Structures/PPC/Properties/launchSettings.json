@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NeuralResonanceEngine.Structures.PPC": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52200;http://localhost:52201"
+    }
+  }
+}

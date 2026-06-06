@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NeuralResonanceEngine.Structures.VTA": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52226;http://localhost:52227"
+    }
+  }
+}

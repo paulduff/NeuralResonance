@@ -1,0 +1,10 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Structures.LocusCoeruleus</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Structures.LocusCoeruleus</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+  </ItemGroup>
+</Project>

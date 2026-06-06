@@ -1,0 +1,18 @@
+﻿{
+    "schemaVersion":  1,
+    "savedAtUtc":  "2026-04-24T12:50:15.4084448Z",
+    "readiness":  "strict",
+    "summary":  "tick=8 services=74 nonOk=0 lastSnapshotTick=5 snapshotAgeTicks=3 allowableNonOk=3 softAllowableNonOk=5",
+    "settings":  {
+                     "startupTimeoutSec":  420,
+                     "allowableNonOkServices":  3,
+                     "startupSoftNonOkAllowance":  2,
+                     "startupSoftMinTick":  40,
+                     "startupSoftMaxSnapshotAgeTicks":  20,
+                     "restartGracePeriodSec":  15,
+                     "restartAttemptCooldownSec":  5,
+                     "startupRecoveryGraceSec":  120,
+                     "startupHealthTimeoutSec":  12,
+                     "stateFallbackTimeoutSec":  20
+                 }
+}

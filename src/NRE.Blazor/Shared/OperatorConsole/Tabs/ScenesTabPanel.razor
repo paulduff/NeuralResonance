@@ -1,0 +1,65 @@
+<div class="panel">
+    <div class="group-title">🧪 Scenarios</div>
+    <div class="small">Each scenario configures multiple systems to create conditions for emergent dynamics. All learning is from feedforward internal feedback loops and neurotransmitter-dependent plasticity.</div>
+
+    <div class="group-title" style="margin-top:12px">Sensory</div>
+    <div class="row">
+        <button class="btn btn-scene" @onclick="OnSceneStartle">⚡ Startle</button>
+        <button class="btn btn-scene" @onclick="OnSceneHabituation">🔄 Habituation</button>
+    </div>
+    <div class="small">
+        <b>Startle</b>: Sudden loud+bright burst → amygdala salience spike → NE flood → thalamic gating → cortical arousal wave → hippocampal episode capture.<br/>
+        <b>Habituation</b>: Steady moderate stimulus. Watch the amygdala response weaken as serotonin rises and prediction error falls — the brain learns the stimulus is safe.
+    </div>
+
+    <div class="group-title" style="margin-top:12px">Neuromodulator States</div>
+    <div class="row">
+        <button class="btn btn-scene" @onclick="OnSceneFocusedAttention">🎯 Focused</button>
+        <button class="btn btn-scene" @onclick="OnSceneExploratoryDrive">🔍 Exploratory</button>
+        <button class="btn btn-scene" @onclick="OnSceneAnxious">😰 Anxious</button>
+    </div>
+    <div class="small">
+        <b>Focused</b>: High ACh + moderate DA → thalamic relay sharpened, attention gain high, working memory gating open. Watch frontal gyri sustain activity.<br/>
+        <b>Exploratory</b>: Tonic DA elevated + low 5-HT → basal ganglia Go pathway favoured, action selection rapid, broad cortical search. Watch the BG cycle through channels.<br/>
+        <b>Anxious</b>: High NE + low 5-HT → amygdala hyper-responsive, thalamic gating broad (hypervigilance), hippocampal encoding boosted. Watch threat-assessment circuits light up.
+    </div>
+
+    <div class="group-title" style="margin-top:12px">Sleep &amp; Consolidation</div>
+    <div class="row">
+        <button class="btn btn-scene" @onclick="OnSceneSleepCycle">💤 Full Sleep Cycle</button>
+        <button class="btn btn-scene" @onclick="OnSceneLucidDream">🌙 Lucid REM</button>
+    </div>
+    <div class="small">
+        <b>Full Sleep Cycle</b>: Build pressure → NREM (slow oscillations + spindles + ripple replay) → REM (ACh spike, theta, hippocampal replay). Watch the consolidation triplet align.<br/>
+        <b>Lucid REM</b>: Force REM with elevated frontal DA. Prefrontal stays partially active during dreaming — hippocampal replay visible alongside frontal executive activity.
+    </div>
+
+    <div class="group-title" style="margin-top:12px">Circuit Dynamics</div>
+    <div class="row">
+        <button class="btn btn-scene" @onclick="OnSceneRewardLearning">🏆 Reward Burst</button>
+        <button class="btn btn-scene" @onclick="OnSceneCallosalRace">🧠 Callosal Race</button>
+    </div>
+    <div class="small">
+        <b>Reward Burst</b>: Inject stimulus + dopamine surge → RPE positive → BG Go pathway activated → working memory encodes → hippocampal capture. The full reinforcement learning loop in one moment.<br/>
+        <b>Callosal Race</b>: Inject left hemisphere only at high intensity. Watch the callosal transfer as spikes cross the CC, arrive in right hemisphere, and propagate through the mirrored circuits.
+    </div>
+
+    <div class="group-title" style="margin-top:12px">Reset</div>
+    <div class="row">
+        <button class="btn" @onclick="OnSceneReset">🔄 Reset to Baseline</button>
+    </div>
+    <div class="small">Return all neuromodulators, pons, and stimuli to resting baseline.</div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnSceneStartle { get; set; }
+    [Parameter] public EventCallback OnSceneHabituation { get; set; }
+    [Parameter] public EventCallback OnSceneFocusedAttention { get; set; }
+    [Parameter] public EventCallback OnSceneExploratoryDrive { get; set; }
+    [Parameter] public EventCallback OnSceneAnxious { get; set; }
+    [Parameter] public EventCallback OnSceneSleepCycle { get; set; }
+    [Parameter] public EventCallback OnSceneLucidDream { get; set; }
+    [Parameter] public EventCallback OnSceneRewardLearning { get; set; }
+    [Parameter] public EventCallback OnSceneCallosalRace { get; set; }
+    [Parameter] public EventCallback OnSceneReset { get; set; }
+}

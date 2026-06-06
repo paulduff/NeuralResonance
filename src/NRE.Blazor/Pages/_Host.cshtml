@@ -1,0 +1,38 @@
+@page "/"
+@namespace NRE.Blazor.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neural Resonance Engine</title>
+    <base href="~/" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link href="css/site.css?v=5" rel="stylesheet" />
+</head>
+<body class="dark">
+    <app>
+        <component type="typeof(App)" render-mode="ServerPrerendered" />
+    </app>
+
+    <!--
+      IMPORTANT: Our Blazor components call JS interop (NeuralRenderer.initSafe) during first render.
+      With ServerPrerendered, the first client-side render can occur very quickly, so we must ensure
+      our JS globals are defined BEFORE blazor.server.js starts.
+    -->
+    <!-- Three.js must load BEFORE neuralRenderer.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/interopBootstrap.js?v=1"></script>
+    <!-- Cache-bust neuralRenderer.js so shape/mirroring changes always load after updates -->
+    <script src="js/neuralRenderer.js?v=31"></script>
+    <script src="js/avatarRenderer.js?v=8"></script>
+    <script src="js/bodyAvatar.js?v=1"></script>
+    <script src="js/sensoryCapture.js?v=2"></script>
+    <script src="js/voiceOut.js?v=1"></script>
+
+    <!-- Start Blazor AFTER our JS dependencies -->
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>

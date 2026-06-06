@@ -4620,9 +4620,14 @@ public partial class MainWindow : Window
 
     private static BlockKind ResolveTerrainKindFromHeight(int cellHeight)
     {
-        if (cellHeight <= SeaLevel + 1)
+        if (cellHeight < SeaLevel)
         {
             return BlockKind.Water;
+        }
+
+        if (cellHeight <= SeaLevel + 1)
+        {
+            return BlockKind.Sand;
         }
 
         if (cellHeight >= SeaLevel + 10)
@@ -5250,7 +5255,7 @@ public partial class MainWindow : Window
 
                     if (sampleY <= topY)
                     {
-                        hitColor = GetAvatarVisionTerrainColor(cellHeight, request.SurfaceOverrides, gridX, gridZ);
+                        hitColor = GetAvatarVisionTerrainColor(cellHeight, request.Heights, request.SurfaceOverrides, gridX, gridZ);
                         hitDistance = dist;
                         hit = true;
                         break;
@@ -5367,7 +5372,7 @@ public partial class MainWindow : Window
                     }
                     else
                     {
-                        saliency = ComputeTerrainVisionSaliency(cellHeight, dist, maxDistance);
+                        saliency = ComputeTerrainVisionSaliency(cellHeight, request.SurfaceOverrides, gridX, gridZ, dist, maxDistance);
                     }
 
                     break;
@@ -5411,15 +5416,15 @@ public partial class MainWindow : Window
         return Math.Clamp(baseSaliency * (0.44 + (distanceBoost * 0.72)), 0.02, 1.0);
     }
 
-    private static double ComputeTerrainVisionSaliency(int cellHeight, double distance, double maxDistance)
+    private static double ComputeTerrainVisionSaliency(
+        int cellHeight,
+        IReadOnlyDictionary<long, BlockKind> surfaceOverrides,
+        int gridX,
+        int gridZ,
+        double distance,
+        double maxDistance)
     {
-        var terrainKind = cellHeight < SeaLevel
-            ? BlockKind.Water
-            : cellHeight > SeaLevel + 2
-                ? BlockKind.Stone
-                : cellHeight < SeaLevel + 1
-                    ? BlockKind.Dirt
-                    : BlockKind.Grass;
+        var terrainKind = ResolveAvatarVisionTerrainKind(cellHeight, surfaceOverrides, gridX, gridZ);
         return ComputeWorldVisionSaliency(terrainKind, distance, maxDistance);
     }
 
@@ -5449,9 +5454,14 @@ public partial class MainWindow : Window
             return GetAvatarVisionObjectColor(overrideKind);
         }
 
-        if (cellHeight <= SeaLevel + 1)
+        if (cellHeight < SeaLevel)
         {
             return GetAvatarVisionObjectColor(BlockKind.Water);
+        }
+
+        if (cellHeight <= SeaLevel + 1)
+        {
+            return GetAvatarVisionObjectColor(BlockKind.Sand);
         }
 
         if (cellHeight >= SeaLevel + 10)
@@ -5469,31 +5479,92 @@ public partial class MainWindow : Window
 
     private static Color GetAvatarVisionTerrainColor(
         int cellHeight,
+        int[,] heights,
+        IReadOnlyDictionary<long, BlockKind> surfaceOverrides,
+        int gridX,
+        int gridZ)
+    {
+        var kind = ResolveAvatarVisionTerrainKind(cellHeight, surfaceOverrides, gridX, gridZ);
+        var color = GetAvatarVisionObjectColor(kind);
+        return ApplyAvatarVisionTerrainLighting(color, kind, heights, gridX, gridZ);
+    }
+
+    private static BlockKind ResolveAvatarVisionTerrainKind(
+        int cellHeight,
         IReadOnlyDictionary<long, BlockKind> surfaceOverrides,
         int gridX,
         int gridZ)
     {
         if (surfaceOverrides.TryGetValue(MakeSurfaceKey(gridX, gridZ), out var overrideKind))
         {
-            return GetAvatarVisionObjectColor(overrideKind);
+            return overrideKind;
+        }
+
+        if (cellHeight < SeaLevel)
+        {
+            return BlockKind.Water;
         }
 
         if (cellHeight <= SeaLevel + 1)
         {
-            return GetAvatarVisionObjectColor(BlockKind.Water);
+            return BlockKind.Sand;
         }
 
         if (cellHeight >= SeaLevel + 10)
         {
-            return GetAvatarVisionObjectColor(BlockKind.Stone);
+            return BlockKind.Stone;
         }
 
         if (cellHeight >= SeaLevel + 6)
         {
-            return GetAvatarVisionObjectColor(BlockKind.Dirt);
+            return BlockKind.Dirt;
         }
 
-        return GetAvatarVisionObjectColor(BlockKind.Grass);
+        return BlockKind.Grass;
+    }
+
+    private static Color ApplyAvatarVisionTerrainLighting(Color baseColor, BlockKind kind, int[,] heights, int gridX, int gridZ)
+    {
+        if (kind is BlockKind.Water or BlockKind.HabitatGlass)
+        {
+            return baseColor;
+        }
+
+        var maxX = heights.GetLength(0) - 1;
+        var maxZ = heights.GetLength(1) - 1;
+        var x0 = Math.Max(0, gridX - 1);
+        var x1 = Math.Min(maxX, gridX + 1);
+        var z0 = Math.Max(0, gridZ - 1);
+        var z1 = Math.Min(maxZ, gridZ + 1);
+        var center = heights[gridX, gridZ];
+        var dx = heights[x1, gridZ] - heights[x0, gridZ];
+        var dz = heights[gridX, z1] - heights[gridX, z0];
+        var normal = new Vector3D(-dx * 0.42, 2.0, -dz * 0.42);
+        normal.Normalize();
+
+        var lightToSurface = new Vector3D(0.85, 1.0, 0.62);
+        lightToSurface.Normalize();
+        var direct = Math.Max(0.0, Vector3D.DotProduct(normal, lightToSurface));
+        var shade = 0.64 + (direct * 0.42);
+
+        var blockerX = Math.Min(maxX, gridX + 1);
+        var blockerZ = Math.Min(maxZ, gridZ + 1);
+        var blockerHeight = Math.Max(
+            heights[blockerX, gridZ],
+            Math.Max(heights[gridX, blockerZ], heights[blockerX, blockerZ]));
+        if (blockerHeight > center + 1)
+        {
+            shade *= 0.76;
+        }
+
+        var localAverage =
+            (heights[x0, gridZ] + heights[x1, gridZ] + heights[gridX, z0] + heights[gridX, z1]) * 0.25;
+        if (center < localAverage - 0.75)
+        {
+            shade *= 0.88;
+        }
+
+        return ShadeColor(baseColor, Math.Clamp(shade, 0.48, 1.18));
     }
 
     private static Color GetAvatarVisionObjectColor(BlockKind kind)
@@ -5503,7 +5574,7 @@ public partial class MainWindow : Window
             BlockKind.Grass => Color.FromRgb(90, 168, 96),
             BlockKind.Dirt => Color.FromRgb(129, 98, 73),
             BlockKind.Stone => Color.FromRgb(116, 130, 142),
-            BlockKind.Sand => Color.FromRgb(176, 166, 124),
+            BlockKind.Sand => Color.FromRgb(204, 172, 116),
             BlockKind.Water => Color.FromRgb(92, 160, 228),
             BlockKind.Wood => Color.FromRgb(141, 102, 70),
             BlockKind.Leaves => Color.FromRgb(72, 156, 95),

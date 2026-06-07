@@ -4921,6 +4921,21 @@ internal sealed class SimulationState
         }
     }
 
+    public bool EnsureSpontaneousSpikingEnabled(string reason)
+    {
+        lock (_gate)
+        {
+            if (InputGates.SpontaneousSpikingEnabled)
+            {
+                return false;
+            }
+
+            InputGates = InputGates with { SpontaneousSpikingEnabled = true };
+            AppendLog(_outputLog, $"Input gates auto-restored: spontaneousSpiking=true ({reason}).");
+            return true;
+        }
+    }
+
     public bool TrySetInputGates(InputGateControlRequest request, out InputGateRuntime runtime, out string? error)
     {
         lock (_gate)
@@ -21775,6 +21790,7 @@ internal sealed class TickCoordinator(
         var spontaneousNoiseBenchmarkMode = configuration.GetValue<bool>("SpontaneousNoise:BenchmarkMode", false);
         var spontaneousNoiseForceFallback = configuration.GetValue<bool>("SpontaneousNoise:EnableForcedFallback", false);
         var spontaneousNoiseMaxEventsPerTick = Math.Clamp(configuration.GetValue<int>("SpontaneousNoise:MaxEventsPerTick", 48), 1, 4096);
+        const int NeuralStarvationAutoRestoreTicks = 240;
         var perceptionLanguageBridgeEnabled = configuration.GetValue<bool>("PerceptionLanguageBridge:Enabled", true);
         var perceptionLanguageCooldownTicks = Math.Clamp(configuration.GetValue<int>("PerceptionLanguageBridge:CooldownTicks", 14), 1, 10_000);
         var perceptionLanguageMinVisualFocusConfidence = Math.Clamp(configuration.GetValue<double>("PerceptionLanguageBridge:MinVisualFocusConfidence", 0.58), 0.0, 1.0);
@@ -21899,6 +21915,7 @@ internal sealed class TickCoordinator(
             var tickWallSamples = new Queue<double>(256);
             var lastPerceptionLanguageTick = long.MinValue / 4;
             var lastAutoProfileSignal = "none";
+            var spontaneousGateStarvationTicks = 0;
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -22558,6 +22575,25 @@ internal sealed class TickCoordinator(
                     activePathways);
 
             var spontaneousSpikingEnabled = state.IsSpontaneousSpikingEnabled();
+            if (!sleepRuntimeAtTickStart.IsSleeping && IsTransportSilent(previousTransport))
+            {
+                spontaneousGateStarvationTicks++;
+            }
+            else
+            {
+                spontaneousGateStarvationTicks = 0;
+            }
+
+            if (!spontaneousSpikingEnabled &&
+                spontaneousGateStarvationTicks >= NeuralStarvationAutoRestoreTicks &&
+                healthySources.Count > 0)
+            {
+                state.EnsureSpontaneousSpikingEnabled(
+                    $"awake neural starvation for {spontaneousGateStarvationTicks} ticks with {healthySources.Count} live sources");
+                spontaneousSpikingEnabled = true;
+                spontaneousGateStarvationTicks = 0;
+            }
+
             if (spontaneousSpikingEnabled && !sleepRuntimeAtTickStart.IsSleeping)
             {
                 spontaneousStats = await InjectSpontaneousSpikesAsync(
@@ -22575,7 +22611,7 @@ internal sealed class TickCoordinator(
                     spontaneousNoiseScale,
                     spontaneousNoiseMaxEventsPerTick,
                     spontaneousNoiseBenchmarkMode,
-                    spontaneousNoiseForceFallback,
+                    spontaneousNoiseForceFallback || IsTransportSilent(previousTransport),
                     attentionBiasForNoise,
                     visualAttentionRuntime,
                     effectiveTickIoTimeoutMs,
@@ -27709,7 +27745,7 @@ internal sealed class TickCoordinator(
             dispatchQueueMaxBatches,
             dispatchQueueMaxSpikes);
 
-        if (generated == 0 && benchmarkMode && forceFallbackWhenSilent)
+        if (generated == 0 && forceFallbackWhenSilent)
         {
             generated += QueueFallbackSpontaneousSpike(
                 tickSignal,
@@ -27856,6 +27892,15 @@ internal sealed class TickCoordinator(
 
         return generated;
     }
+
+    private static bool IsTransportSilent(TransportRuntimeStats stats)
+        => stats.GeneratedSpikes <= 0 &&
+           stats.RoutedSpikes <= 0 &&
+           stats.DeliveredSpikes <= 0 &&
+           stats.ActivePathways <= 0 &&
+           stats.SpontaneousDelivered <= 0 &&
+           stats.EngramReplayDelivered <= 0 &&
+           stats.PerceptionLanguageDelivered <= 0;
 
     private int QueueFallbackSpontaneousSpike(
         TickSignal tickSignal,

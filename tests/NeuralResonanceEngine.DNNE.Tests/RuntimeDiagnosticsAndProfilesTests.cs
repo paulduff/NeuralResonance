@@ -101,6 +101,35 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Input_Gates_AutoRestore_Spontaneous_Spiking_After_Neural_Starvation()
+    {
+        var state = new SimulationState();
+        Assert.True(state.TrySetInputGates(
+            new InputGateControlRequest(AvatarVisionEnabled: true, SpontaneousSpikingEnabled: false),
+            out var disabled,
+            out var error));
+        Assert.Null(error);
+        Assert.False(disabled.SpontaneousSpikingEnabled);
+
+        var changed = state.EnsureSpontaneousSpikingEnabled("test starvation");
+        var restored = state.GetInputGatesSnapshot();
+
+        Assert.True(changed);
+        Assert.True(restored.SpontaneousSpikingEnabled);
+    }
+
+    [Fact]
+    public void Input_Gates_AutoRestore_Is_Idempotent_When_Spontaneous_Spiking_Is_Already_On()
+    {
+        var state = new SimulationState();
+
+        var changed = state.EnsureSpontaneousSpikingEnabled("already active");
+
+        Assert.False(changed);
+        Assert.True(state.GetInputGatesSnapshot().SpontaneousSpikingEnabled);
+    }
+
+    [Fact]
     public void Circuit_Audit_Reports_Function_Level_Biological_Support()
     {
         var state = new SimulationState();

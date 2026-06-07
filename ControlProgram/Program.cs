@@ -201,7 +201,7 @@ app.MapGet("/api/v1/frame", (HttpRequest request, SimulationState state, Snapsho
     var includeConnectome = ParseBooleanQuery(request, "include_connectome", defaultValue: true);
     var maxOutputLog = ParseIntQuery(request, "max_output_log", 160, 0, 2000);
     var maxSpikeLog = ParseIntQuery(request, "max_spike_log", 160, 0, 2000);
-    var maxDispatchSpikes = ParseIntQuery(request, "max_dispatch_spikes", 900, 0, 1200);
+    var maxDispatchSpikes = ParseIntQuery(request, "max_dispatch_spikes", 1200, 0, 4096);
 
     try
     {
@@ -237,7 +237,7 @@ app.MapGet("/api/v1/frame/stream", async (HttpRequest request, HttpResponse resp
     var includeConnectome = ParseBooleanQuery(request, "include_connectome", defaultValue: true);
     var maxOutputLog = ParseIntQuery(request, "max_output_log", 120, 0, 2000);
     var maxSpikeLog = ParseIntQuery(request, "max_spike_log", 120, 0, 2000);
-    var maxDispatchSpikes = ParseIntQuery(request, "max_dispatch_spikes", 720, 0, 1200);
+    var maxDispatchSpikes = ParseIntQuery(request, "max_dispatch_spikes", 1200, 0, 4096);
     var requestedIntervalMs = ParseIntQuery(request, "stream_interval_ms", 0, 0, 2000);
     var defaultIntervalMs = Math.Clamp(performanceProfiles.GetSnapshot().FrameStreamIntervalMs, 20, 1000);
     var intervalMs = requestedIntervalMs > 0

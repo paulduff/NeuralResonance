@@ -70,7 +70,7 @@ public sealed class Amygdala
     
     public Amygdala()
     {
-        _la = new LateralNucleus(learningRate: 0.01f);
+        _la = new LateralNucleus();
         _basal = new BasalNucleus();
         _itc = new IntercalatedCells();
         _cea = new CentralNucleus();
@@ -232,20 +232,16 @@ public sealed class Amygdala
     
     private sealed class LateralNucleus
     {
-        private readonly float _learningRate;
         private float _activity;
-        private readonly Dictionary<int, float> _threatWeights = new();
-        
-        public LateralNucleus(float learningRate) => _learningRate = learningRate;
-        
+
         public float Process(float sensoryInput, float dt)
         {
             _activity = _activity * 0.9f + sensoryInput * 0.1f;
             return MathF.Tanh(_activity);
         }
-        
+
         public float GetActivity() => _activity;
-        public void Reset() { _activity = 0; _threatWeights.Clear(); }
+        public void Reset() => _activity = 0;
     }
     
     private sealed class BasalNucleus
@@ -270,8 +266,10 @@ public sealed class Amygdala
         
         public float Process(float basalInput, float pfcInhibition, float dt)
         {
-            // PFC activates ITC → inhibits CeA (extinction)
-            _gatingLevel = _gatingLevel * 0.9f + pfcInhibition * 0.1f;
+            // ITC are GABAergic gate cells driven by BLA feedforward input and by
+            // PFC (extinction); both raise gating that inhibits CeA output.
+            float drive = pfcInhibition + basalInput * 0.3f;
+            _gatingLevel = _gatingLevel * 0.9f + drive * 0.1f;
             return Math.Clamp(_gatingLevel, 0f, 0.8f);
         }
         

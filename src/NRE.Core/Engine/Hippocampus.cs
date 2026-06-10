@@ -39,14 +39,7 @@ public sealed class Hippocampus
     
     // === EPISODE STORAGE ===
     private readonly List<Episode> _episodes = new();
-    
-    // Ring buffer for recent spikes (for Hebbian detection)
-    private readonly (long step, int index, byte hemi)[] _recentSpikesRing;
-    private int _recentSpikesHead;
-    private int _recentSpikesCount;
-    private const int RecentSpikeWindowSteps = 8;
-    private const int MaxRecentSpikes = 200;
-    
+
     // Reusable buffers
     private readonly List<EpisodeVoxel> _captureBuffer = new(512);
     private readonly List<int> _dgOutputBuffer = new(256);
@@ -65,8 +58,7 @@ public sealed class Hippocampus
     {
         _maxEpisodes = maxEpisodes;
         _maxVoxelsPerEpisode = maxVoxelsPerEpisode;
-        _recentSpikesRing = new (long, int, byte)[MaxRecentSpikes];
-        
+
         // Initialize trisynaptic circuit components
         _dg = new DentateGyrus(sparseRatio: 0.1f, lateralInhibitionRadius: 3);
         _ca3 = new CA3Region(recurrentStrength: 0.6f, maxPatterns: 128);
@@ -116,30 +108,6 @@ public sealed class Hippocampus
             // CA1 compares CA3 output with direct EC input for novelty detection
             _ca1OutputBuffer.Clear();
             _ca1NoveltySignal = _ca1.ProcessInput(_ca3OutputBuffer, spikes, _ca1OutputBuffer);
-            
-            // === 4) Recent spike buffer for temporal associations ===
-            const int maxSpikesToProcess = 50;
-            int step = Math.Max(1, spikes.Count / maxSpikesToProcess);
-            for (int i = 0; i < spikes.Count && _recentSpikesCount < MaxRecentSpikes; i += step)
-            {
-                var spike = spikes[i];
-                int idx = (_recentSpikesHead + _recentSpikesCount) % MaxRecentSpikes;
-                _recentSpikesRing[idx] = (stepIndex, spike.idx, spike.hemi);
-                if (_recentSpikesCount < MaxRecentSpikes)
-                    _recentSpikesCount++;
-            }
-            
-            // Trim old spikes
-            while (_recentSpikesCount > 0)
-            {
-                var oldest = _recentSpikesRing[_recentSpikesHead];
-                if (_currentStep - oldest.step > RecentSpikeWindowSteps)
-                {
-                    _recentSpikesHead = (_recentSpikesHead + 1) % MaxRecentSpikes;
-                    _recentSpikesCount--;
-                }
-                else break;
-            }
             
             // Decay episodes periodically
             if (stepIndex % 8 == 0)
@@ -396,7 +364,8 @@ public sealed class Hippocampus
         private readonly float _sparseRatio;
         private readonly int _lateralInhibRadius;
         private readonly Dictionary<int, float> _granuleCellActivity = new();
-        
+        private readonly List<(int idx, float act)> _ranked = new(256);
+
         public DentateGyrus(float sparseRatio, int lateralInhibitionRadius)
         {
             _sparseRatio = sparseRatio;
@@ -421,31 +390,20 @@ public sealed class Hippocampus
                 _granuleCellActivity[idx] = act + 1.0f;
             }
             
-            // Apply winner-take-all competitive inhibition
-            // Only top _sparseRatio fraction survive
+            // Apply winner-take-all competitive inhibition: only the top
+            // _sparseRatio fraction of granule cells (by activation) survive.
             int targetCount = Math.Max(1, (int)(_granuleCellActivity.Count * _sparseRatio));
-            
-            // Output top-k by simple threshold (avoid sort allocation)
-            // Find approximate threshold via sampling
-            float threshold = 0f;
-            if (_granuleCellActivity.Count > targetCount)
-            {
-                float maxAct = 0f;
-                foreach (var kv in _granuleCellActivity)
-                    if (kv.Value > maxAct) maxAct = kv.Value;
-                threshold = maxAct * 0.3f; // rough top-k approximation
-            }
-            
-            int added = 0;
+
+            _ranked.Clear();
             foreach (var kv in _granuleCellActivity)
-            {
-                if (kv.Value > threshold && added < targetCount)
-                {
-                    output.Add(kv.Key);
-                    added++;
-                }
-            }
-            
+                _ranked.Add((kv.Key, kv.Value));
+            // Descending by activation; in-place sort reuses the buffer (no alloc).
+            _ranked.Sort(static (x, y) => y.act.CompareTo(x.act));
+
+            int take = Math.Min(targetCount, _ranked.Count);
+            for (int i = 0; i < take; i++)
+                output.Add(_ranked[i].idx);
+
             return output.Count / (float)Math.Max(1, input.Count);
         }
     }
@@ -497,16 +455,27 @@ public sealed class Hippocampus
             var activation = new Dictionary<int, float>(dgInput.Count * 2);
             foreach (int idx in dgInput)
                 activation[idx] = 1.0f;
-            
-            // Targeted recurrent spread: for each active unit, find its associations
-            // This is O(active * avg_neighbors) instead of O(total_associations)
-            foreach (int idx in dgInput)
+
+            // Recurrent collateral spread: each active CA3 unit excites the units
+            // it is associated with (autoassociative pattern completion via the
+            // learned recurrent weights). Bounded by the association cap below.
+            foreach (var kv in _associations)
             {
-                // Scan only associations starting from this unit
-                // Since keys are (pre,post) tuples, we can't do prefix lookup on Dictionary
-                // So we use the stored patterns instead for completion
+                var (a, b) = kv.Key;
+                float w = kv.Value * _recurrentStrength;
+
+                if (activation.TryGetValue(a, out float aAct) && aAct > 0f)
+                {
+                    activation.TryGetValue(b, out float bAct);
+                    activation[b] = bAct + w;
+                }
+                if (activation.TryGetValue(b, out float bAct2) && bAct2 > 0f)
+                {
+                    activation.TryGetValue(a, out float aAct2);
+                    activation[a] = aAct2 + w;
+                }
             }
-            
+
             // Use stored patterns for completion (fast path)
             if (_storedPatterns.Count > 0)
             {

@@ -48,6 +48,10 @@ public sealed class BasalGangliaCircuit
     private float _lastThalamicGating;
     private int _selectedChannel = -1;
     private float _selectionConfidence;
+
+    // GPe→STN is a recurrent loop; STN is evaluated before GPe each step, so it
+    // consumes the previous tick's GPe output (standard discrete approximation).
+    private float[] _lastGpeToStn;
     
     // Metrics
     private int _totalSelections;
@@ -59,6 +63,10 @@ public sealed class BasalGangliaCircuit
         _gpe = new GPeRegion(numChannels);
         _stn = new STNRegion(numChannels);
         _output = new OutputNuclei(numChannels);
+
+        // Seed with GPe tonic activity so STN starts appropriately inhibited.
+        _lastGpeToStn = new float[numChannels];
+        Array.Fill(_lastGpeToStn, GPeRegion.TonicActivity);
     }
     
     /// <summary>Get current state snapshot for monitoring.</summary>
@@ -108,10 +116,13 @@ public sealed class BasalGangliaCircuit
                 corticalSum += corticalInput[i];
             float hyperdirectInput = corticalSum / Math.Max(1, _numChannels);
             
-            var stnOut = _stn.Process(hyperdirectInput, striatumOut.IndirectToGPe, dt);
-            
+            // STN is inhibited by GPe (the indirect pathway reaches STN only via
+            // GPe, not directly from striatum). Use the previous tick's GPe output.
+            var stnOut = _stn.Process(hyperdirectInput, _lastGpeToStn, dt);
+
             // === 3) GPe: Process indirect pathway input ===
             var gpeOut = _gpe.Process(striatumOut.IndirectToGPe, stnOut.ToGPe, dt);
+            _lastGpeToStn = gpeOut.ToSTN;
             
             // === 4) OUTPUT NUCLEI (SNr/GPi): Final integration ===
             // Direct pathway inhibits SNr/GPi (disinhibits thalamus) → GO
@@ -196,6 +207,7 @@ public sealed class BasalGangliaCircuit
             _selectionConfidence = 0f;
             _currentDopamine = 0.15f;
             _lastThalamicGating = 0f;
+            Array.Fill(_lastGpeToStn, GPeRegion.TonicActivity);
         }
     }
     
@@ -315,7 +327,7 @@ public sealed class BasalGangliaCircuit
         private readonly float[] _activity;
         
         // GPe has high tonic activity that is suppressed by striatal input
-        private const float TonicActivity = 0.7f;
+        internal const float TonicActivity = 0.7f;
         
         public GPeRegion(int numChannels)
         {

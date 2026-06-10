@@ -22322,113 +22322,93 @@ internal sealed class TickCoordinator(
                             continue;
                         }
 
-                        var route = ResolveRoute(candidates, spike);
-                        if (sleepRuntimeAtTickStart.IsSleeping &&
-                            IsMotorSleepSuppressedRoute(spike.SourceStructure, route.Target))
+                        // Axonal fan-out: propagate the spike along EVERY connectome edge of the
+                        // source structure, not just one. Previously routing collapsed to the
+                        // single DefaultTarget, leaving divergent projections (e.g. the
+                        // basal-ganglia indirect/hyperdirect pathways and cerebellar error inputs)
+                        // dead for forward flow. The per-tick dispatch budget still counts source
+                        // spikes, so total fan-out volume is bounded by the dispatch-queue caps.
+                        var routedAnyTarget = false;
+                        var spikeTargetsCerebellarInput = IsCerebellarInputTarget(spike.TargetStructure);
+                        foreach (var route in ResolveRoutes(candidates, spike))
                         {
-                            continue;
-                        }
-
-                        var routedSpike = ApplySleepInhibitoryGating(
-                            RewriteSpikeForRoute(spike, route),
-                            sleepRuntimeAtTickStart,
-                            sleepReplayStage,
-                            isReplay: false);
-                        var routeKey = (route.Target, route.ProjectionType ?? string.Empty);
-                        if (!targetResolutionCache.TryGetValue(routeKey, out var targetInstances))
-                        {
-                            targetInstances = ResolveTargetInstances(
-                                route.Target,
-                                sourceHemisphere,
-                                instancesByStructure,
-                                structureId,
-                                route.ProjectionType);
-                            targetResolutionCache[routeKey] = targetInstances;
-                        }
-                        if (targetInstances.Count == 0)
-                        {
-                            Interlocked.Increment(ref routeDroppedNoTargetsCount);
-                            continue;
-                        }
-
-                        var acceptedTargets = 0;
-                        foreach (var targetInstance in targetInstances)
-                        {
-                            if (!clients.ContainsKey(targetInstance.InstanceKey))
-                            {
-                                continue;
-                            }
-                            if (!serviceHealth.TryGetValue(targetInstance.InstanceKey, out var targetHealth) ||
-                                !targetHealth.CanAttempt(healthNowMs))
+                            if (sleepRuntimeAtTickStart.IsSleeping &&
+                                IsMotorSleepSuppressedRoute(spike.SourceStructure, route.Target))
                             {
                                 continue;
                             }
 
-                            if (!batchedSpikesByTarget.TryGetValue(targetInstance.InstanceKey, out var targetBatch))
+                            // Motor-command copies to cerebellar inputs are delivered as attenuated
+                            // efference copies on the feedback channel (forward model), preserving
+                            // the behavior of the former dedicated efference-copy path.
+                            var asEfferenceCopy = !sleepRuntimeAtTickStart.IsSleeping
+                                && IsMotorOutputStructure(spike.SourceStructure)
+                                && IsCerebellarInputTarget(route.Target)
+                                && !spikeTargetsCerebellarInput;
+                            var builtSpike = asEfferenceCopy
+                                ? BuildCerebellarEfferenceCopySpike(spike, route)
+                                : RewriteSpikeForRoute(spike, route);
+
+                            var routedSpike = ApplySleepInhibitoryGating(
+                                builtSpike,
+                                sleepRuntimeAtTickStart,
+                                sleepReplayStage,
+                                isReplay: false);
+                            var routeKey = (route.Target, route.ProjectionType ?? string.Empty);
+                            if (!targetResolutionCache.TryGetValue(routeKey, out var targetInstances))
                             {
-                                targetBatch = [];
-                                batchedSpikesByTarget[targetInstance.InstanceKey] = targetBatch;
+                                targetInstances = ResolveTargetInstances(
+                                    route.Target,
+                                    sourceHemisphere,
+                                    instancesByStructure,
+                                    structureId,
+                                    route.ProjectionType);
+                                targetResolutionCache[routeKey] = targetInstances;
+                            }
+                            if (targetInstances.Count == 0)
+                            {
+                                Interlocked.Increment(ref routeDroppedNoTargetsCount);
+                                continue;
                             }
 
-                            targetBatch.Add(routedSpike);
-                            acceptedTargets++;
-                            Interlocked.Increment(ref routedSpikeCount);
+                            var acceptedTargets = 0;
+                            foreach (var targetInstance in targetInstances)
+                            {
+                                if (!clients.ContainsKey(targetInstance.InstanceKey))
+                                {
+                                    continue;
+                                }
+                                if (!serviceHealth.TryGetValue(targetInstance.InstanceKey, out var targetHealth) ||
+                                    !targetHealth.CanAttempt(healthNowMs))
+                                {
+                                    continue;
+                                }
+
+                                if (!batchedSpikesByTarget.TryGetValue(targetInstance.InstanceKey, out var targetBatch))
+                                {
+                                    targetBatch = [];
+                                    batchedSpikesByTarget[targetInstance.InstanceKey] = targetBatch;
+                                }
+
+                                targetBatch.Add(routedSpike);
+                                acceptedTargets++;
+                                Interlocked.Increment(ref routedSpikeCount);
+                            }
+
+                            if (acceptedTargets < targetInstances.Count)
+                            {
+                                Interlocked.Add(ref routeDroppedTargetUnavailableCount, targetInstances.Count - acceptedTargets);
+                            }
+
+                            if (acceptedTargets > 0)
+                            {
+                                routedAnyTarget = true;
+                            }
                         }
 
-                        if (acceptedTargets < targetInstances.Count)
-                        {
-                            Interlocked.Add(ref routeDroppedTargetUnavailableCount, targetInstances.Count - acceptedTargets);
-                        }
-
-                        if (acceptedTargets > 0)
+                        if (routedAnyTarget)
                         {
                             routedByService++;
-                        }
-
-                        if (!sleepRuntimeAtTickStart.IsSleeping)
-                        {
-                            foreach (var (cerebellarSpike, cerebellarProjectionType) in BuildCerebellarEfferenceCopySpikes(
-                                routedSpike,
-                                state.ConnectivityMap))
-                            {
-                                var cerebellarRouteKey = (cerebellarSpike.TargetStructure, cerebellarProjectionType ?? string.Empty);
-                                if (!targetResolutionCache.TryGetValue(cerebellarRouteKey, out var cerebellarTargets))
-                                {
-                                    cerebellarTargets = ResolveTargetInstances(
-                                        cerebellarSpike.TargetStructure,
-                                        sourceHemisphere,
-                                        instancesByStructure,
-                                        structureId,
-                                        cerebellarProjectionType);
-                                    targetResolutionCache[cerebellarRouteKey] = cerebellarTargets;
-                                }
-
-                                if (cerebellarTargets.Count > 0)
-                                {
-                                    foreach (var targetInstance in cerebellarTargets)
-                                    {
-                                        if (!clients.ContainsKey(targetInstance.InstanceKey))
-                                        {
-                                            continue;
-                                        }
-
-                                        if (!serviceHealth.TryGetValue(targetInstance.InstanceKey, out var targetHealth) ||
-                                            !targetHealth.CanAttempt(healthNowMs))
-                                        {
-                                            continue;
-                                        }
-
-                                        if (!batchedSpikesByTarget.TryGetValue(targetInstance.InstanceKey, out var targetBatch))
-                                        {
-                                            targetBatch = [];
-                                            batchedSpikesByTarget[targetInstance.InstanceKey] = targetBatch;
-                                        }
-
-                                        targetBatch.Add(cerebellarSpike);
-                                        Interlocked.Increment(ref routedSpikeCount);
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -24170,13 +24150,12 @@ internal sealed class TickCoordinator(
             $"Sample: {sample}");
     }
 
-    private static SynapticConnection ResolveRoute(IReadOnlyList<SynapticConnection> candidates, SpikeMessage spike)
+    // Axonal fan-out: a structure's spike propagates along ALL of its connectome edges,
+    // not a single selected one. internal so the behavior can be pinned by tests.
+    internal static IReadOnlyList<SynapticConnection> ResolveRoutes(IReadOnlyList<SynapticConnection> candidates, SpikeMessage spike)
     {
-        return candidates.FirstOrDefault(c => c.SynapseId == spike.SynapseId)
-            ?? candidates.FirstOrDefault(c => c.Target == spike.TargetStructure && c.Neurotransmitter == spike.Neurotransmitter)
-            ?? candidates.FirstOrDefault(c => c.Target == spike.TargetStructure)
-            ?? candidates.FirstOrDefault(c => c.Neurotransmitter == spike.Neurotransmitter)
-            ?? candidates[0];
+        _ = spike; // fan-out is independent of the spike's nominal (DefaultTarget) target
+        return candidates;
     }
 
     private static bool IsMotorSleepSuppressedRoute(StructureId source, StructureId target)
@@ -24195,50 +24174,6 @@ internal sealed class TickCoordinator(
             or StructureId.CerebellarVermis
             or StructureId.CerebellarLobules
             or StructureId.Pons;
-
-    private static IReadOnlyList<(SpikeMessage Spike, string? ProjectionType)> BuildCerebellarEfferenceCopySpikes(
-        SpikeMessage sourceSpike,
-        IReadOnlyDictionary<StructureId, List<SynapticConnection>> connectivity)
-    {
-        if (!IsMotorOutputStructure(sourceSpike.SourceStructure) || IsCerebellarInputTarget(sourceSpike.TargetStructure))
-        {
-            return [];
-        }
-
-        if (!connectivity.TryGetValue(sourceSpike.SourceStructure, out var candidates) || candidates.Count == 0)
-        {
-            return [];
-        }
-
-        var routes = candidates
-            .Where(c => IsCerebellarInputTarget(c.Target))
-            .OrderBy(c => GetCerebellarEfferencePriority(c.Target))
-            .Take(3)
-            .ToArray();
-        if (routes.Length == 0)
-        {
-            return [];
-        }
-
-        var result = new List<(SpikeMessage Spike, string? ProjectionType)>(routes.Length);
-        foreach (var route in routes)
-        {
-            result.Add((BuildCerebellarEfferenceCopySpike(sourceSpike, route), route.ProjectionType));
-        }
-
-        return result;
-    }
-
-    private static int GetCerebellarEfferencePriority(StructureId target)
-        => target switch
-        {
-            StructureId.InferiorOlive => 0,
-            StructureId.Pons => 1,
-            StructureId.CerebellarGranule => 2,
-            StructureId.CerebellarVermis => 3,
-            StructureId.CerebellarLobules => 4,
-            _ => 9
-        };
 
     private static SpikeMessage BuildCerebellarEfferenceCopySpike(SpikeMessage sourceSpike, SynapticConnection route)
     {

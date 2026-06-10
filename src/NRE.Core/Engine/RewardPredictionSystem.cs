@@ -421,14 +421,36 @@ public sealed class RewardPredictionSystem
     
     private void PruneOldActions()
     {
-        // Remove action values for states no longer tracked
+        // First pass: remove action values for states no longer tracked.
         var validStates = new HashSet<int>(_stateValues.Keys);
         var toRemove = _actionValues.Keys
             .Where(k => !validStates.Contains(k.state))
             .ToList();
-        
+
         foreach (var k in toRemove)
             _actionValues.Remove(k);
+
+        if (_actionValues.Count <= 50000)
+            return;
+
+        // Fallback: every state is still live but we are over budget. Evict the
+        // actions belonging to the least-visited states until back under the cap,
+        // so the prune always makes progress (otherwise the O(n) scan would rerun
+        // on every subsequent insert).
+        var coldestStates = _actionValues.Keys
+            .Select(k => k.state)
+            .Distinct()
+            .OrderBy(s => _stateVisitCounts.TryGetValue(s, out float v) ? v : 0f)
+            .ToList();
+
+        foreach (var state in coldestStates)
+        {
+            if (_actionValues.Count <= 50000)
+                break;
+
+            foreach (var k in _actionValues.Keys.Where(k => k.state == state).ToList())
+                _actionValues.Remove(k);
+        }
     }
 }
 

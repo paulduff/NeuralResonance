@@ -115,8 +115,8 @@ public sealed class NeuromodulatorSystem
             SerotoninPhasic *= MathF.Exp(-SerotoninPhasicDecayHz * dt);
             AcetylcholinePhasic *= MathF.Exp(-AChPhasicDecayHz * dt);
             
-            // Clamp near-zero
-            if (DopaminePhasic < 0.001f) DopaminePhasic = 0f;
+            // Clamp near-zero (dopamine phasic can be negative during a dip, so test magnitude)
+            if (MathF.Abs(DopaminePhasic) < 0.001f) DopaminePhasic = 0f;
             if (NorepinephrinePhasic < 0.001f) NorepinephrinePhasic = 0f;
             if (SerotoninPhasic < 0.001f) SerotoninPhasic = 0f;
             if (AcetylcholinePhasic < 0.001f) AcetylcholinePhasic = 0f;
@@ -233,7 +233,8 @@ public sealed class NeuromodulatorSystem
             if (rpe > 0)
                 DopaminePhasic = MathF.Min(1f, DopaminePhasic + rpe * 0.5f);
             else
-                DopaminePhasic = MathF.Max(0f, DopaminePhasic + rpe * 0.3f); // Dips are smaller
+                // Negative RPE produces a phasic pause below baseline (smaller than a burst).
+                DopaminePhasic = MathF.Max(-1f, DopaminePhasic + rpe * 0.3f);
         }
     }
     
@@ -350,9 +351,10 @@ public sealed class NeuromodulatorSystem
         if (ne < 0.3f)
             gain = 0.7f + ne; // Low NE = low gain
         else if (ne > 0.5f)
-            gain = 1.3f - (ne - 0.5f) * 0.6f; // High NE = reduced gain (stress impairs)
+            // High NE = reduced gain (stress impairs); continuous with the 1.1 peak at ne=0.5.
+            gain = 1.1f - (ne - 0.5f) * 0.6f;
         else
-            gain = 1.0f + (ne - 0.3f) * 0.5f; // Optimal range
+            gain = 1.0f + (ne - 0.3f) * 0.5f; // Optimal range (peaks at 1.1 when ne=0.5)
             
         return Math.Clamp(gain, 0.5f, 1.5f);
     }

@@ -775,6 +775,12 @@
         "source":  "Pfc",
         "connections":  [
                             {
+                                "target":  "Trn",
+                                "synapseId":  "da77cf39-b422-412f-baf3-744cca0b4680",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticoreticular_attention"
+                            },
+                            {
                                 "target":  "Ppc",
                                 "synapseId":  "11111111-1111-1111-1111-111111112001",
                                 "neurotransmitter":  "GLUTAMATE",
@@ -903,6 +909,12 @@
     {
         "source":  "Ppc",
         "connections":  [
+                            {
+                                "target":  "Trn",
+                                "synapseId":  "76c4ee93-2fa0-4535-8c72-51f40f7bba5a",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticoreticular_attention"
+                            },
                             {
                                 "target":  "Pfc",
                                 "synapseId":  "11111111-1111-1111-1111-111111112101",
@@ -1314,6 +1326,12 @@
     {
         "source":  "Thalamus",
         "connections":  [
+                            {
+                                "target":  "Trn",
+                                "synapseId":  "f0c2d92c-b0f4-4f69-9c8f-a30567bb46b8",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "thalamoreticular_collateral"
+                            },
                             {
                                 "target":  "V1",
                                 "synapseId":  "11111111-1111-1111-1111-111111111001",

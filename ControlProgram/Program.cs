@@ -22697,7 +22697,13 @@ internal sealed class TickCoordinator(
 
             var sleepTransition = state.AdvanceSleepHomeostasis(new SleepTickInput(
                 DrainedSpikes: drainedSpikeCount,
-                DispatchedSpikes: dispatchedSpikeCount,
+                // Metabolic ATP drain tracks neural FIRING (spikes generated), not the
+                // transport-layer delivery count. Axonal fan-out replicates each generated
+                // spike to all its connectome targets, so dispatchedSpikeCount scales with
+                // mean out-degree; feeding it here drained energy ~out-degree-x too fast and
+                // forced near-perpetual sleep (frozen avatar). generatedSpikeCount is
+                // invariant to fan-out and matches the pre-fan-out dispatched count.
+                DispatchedSpikes: generatedSpikeCount,
                 ActivePathways: activePathways.Count,
                 SpontaneousGenerated: spontaneousStats.Generated,
                 EngramsCaptured: capturedEngrams,

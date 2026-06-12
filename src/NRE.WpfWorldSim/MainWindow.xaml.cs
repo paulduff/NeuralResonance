@@ -112,7 +112,9 @@ public partial class MainWindow : Window
     // still excludes residual drive from decay (0.92/tick decays a 120 drive to
     // ~12 over ~25 ticks).
     private const double StuckDamageMotorIntentThreshold = 12.0;
-    private const int IdleMotorFallbackTicks = 14;
+    // Idle wandering disabled: the avatar moves only on brain motor output, never on a
+    // simulator-side autopilot. (Matches the maze sim.)
+    private const int IdleMotorFallbackTicks = int.MaxValue;
     private const double IdleMotorFallbackBaseDrive = 36.0;
     private const double AvatarVisualYawOffsetDeg = 0.0;
     private const double AvatarHeadMaxYawDeg = 76.0;
@@ -234,7 +236,10 @@ public partial class MainWindow : Window
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2500) });
     // Default NRE.Api dev port; users can override via the field (UI hookup later).
     private string _pixelVisionEndpoint = "http://localhost:5005";
-    private bool _sendAvatarPixelsToBrain = true;
+    // NRE.Api (which served /api/engine/visual-frame) was removed, so raw pixel-vision has
+    // no live target; off by default to avoid per-frame dispatch failures. Structured
+    // vision still reaches the DNNE brain via _sendAvatarVisionToBrain.
+    private bool _sendAvatarPixelsToBrain = false;
     private bool _pixelVisionDispatchInFlight;
     private long _pixelVisionConsecutiveFailures;
     private long _lastPixelVisionFailureLogMs;
@@ -400,6 +405,13 @@ public partial class MainWindow : Window
     private WriteableBitmap? _avatarPreviewBitmap;
     private bool _followAvatarCamera = true;
     private bool _sendAvatarVisionToBrain = true;
+
+    // Heuristic navigation "autopilot" (urgency speed, threat escape, target orienting,
+    // reactive obstacle avoidance, auto path-around-walls). OFF by default: the brain is
+    // the sole source of motor behavior and the avatar only executes brain motor output
+    // and reacts to physics (collisions block; pain still feeds back to the brain).
+    // Enable as a debug crutch / A-B comparison against the brain alone.
+    private bool _navigationAssistEnabled;
     private bool _visionDispatchInFlight;
     private long _lastVisionDispatchMs;
     private readonly AvatarRetryBackoff _visionDispatchBackoff = new();
@@ -523,6 +535,7 @@ public partial class MainWindow : Window
         AvatarPreviewImage.Source = _avatarPreviewBitmap;
         _followAvatarCamera = FollowAvatarCameraCheckBox?.IsChecked ?? _followAvatarCamera;
         _sendAvatarVisionToBrain = SendAvatarVisionCheckBox?.IsChecked ?? _sendAvatarVisionToBrain;
+        _navigationAssistEnabled = NavigationAssistCheckBox?.IsChecked ?? _navigationAssistEnabled;
         SyncSurvivalTuningFromUi();
         RefreshSurvivalTuningLabels();
         RebuildWorldFromSeed();
@@ -858,6 +871,18 @@ public partial class MainWindow : Window
     private void SendAvatarVisionCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
     {
         _sendAvatarVisionToBrain = false;
+    }
+
+    private void NavigationAssistCheckBox_OnChecked(object sender, RoutedEventArgs e)
+    {
+        _navigationAssistEnabled = true;
+        if (IsLoaded) Log("Navigation assist ON: simulator heuristics may override brain motor output.");
+    }
+
+    private void NavigationAssistCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
+    {
+        _navigationAssistEnabled = false;
+        if (IsLoaded) Log("Navigation assist OFF: brain motor output is the sole driver.");
     }
 
     private void SyncSurvivalTuningFromUi()
@@ -2583,16 +2608,23 @@ public partial class MainWindow : Window
         var moved = false;
         var blocked = false;
 
-        var runScale = ComputeUrgentRunScale();
+        // The brain's motor output is the sole driver. The heuristic autopilot (urgency
+        // speed, threat escape, target orienting, reactive obstacle avoidance, scripted
+        // escape) only runs when navigation assist is explicitly enabled.
+        var runScale = _navigationAssistEnabled ? ComputeUrgentRunScale() : 1.0;
         var actionOutput = _avatarService.PublishActionOutput(forwardScale: runScale);
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
-        var escapingThreat = ApplyAboutFaceEscape(dt, ref forwardSpeed, ref turnRateDeg);
-        if (!escapingThreat)
+        var escapingThreat = false;
+        if (_navigationAssistEnabled)
         {
-            ApplyOrientingTargetLock(dt, ref forwardSpeed, ref turnRateDeg);
+            escapingThreat = ApplyAboutFaceEscape(dt, ref forwardSpeed, ref turnRateDeg);
+            if (!escapingThreat)
+            {
+                ApplyOrientingTargetLock(dt, ref forwardSpeed, ref turnRateDeg);
+            }
+            ApplyReactiveCollisionAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
+            ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
         }
-        ApplyReactiveCollisionAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
-        ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
 
         if (_sleepState)
         {
@@ -2700,9 +2732,13 @@ public partial class MainWindow : Window
         else if (!moved && Math.Abs(step) > 0.001)
         {
             blocked = true;
-            if (TryApplyNavigationFilter(headingRad, step, out nextY) ||
-                TryCornerSidestep(headingRad, step, out nextY) ||
-                TryProbeStepAroundObstacle(headingRad, step, out nextY))
+            // Auto path-around-walls is part of navigation assist; with it off, a blocked
+            // avatar simply stays put and the wall-contact pain (below) feeds back to the
+            // brain so the brain learns to turn.
+            if (_navigationAssistEnabled &&
+                (TryApplyNavigationFilter(headingRad, step, out nextY) ||
+                 TryCornerSidestep(headingRad, step, out nextY) ||
+                 TryProbeStepAroundObstacle(headingRad, step, out nextY)))
             {
                 _avatarY = nextY;
                 moved = true;
@@ -2727,8 +2763,11 @@ public partial class MainWindow : Window
             _collisionPulse = 1.0;
             _consecutiveWallContacts++;
             QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.26, DamageLevel: 0.08, EffortCost: 0.24), force: true);
-            var severe = _consecutiveWallContacts >= _antiStallContactThreshold;
-            TryStartEscapeMotorProgram(severe, severe ? "consecutive-wall trap" : "wall impact");
+            if (_navigationAssistEnabled)
+            {
+                var severe = _consecutiveWallContacts >= _antiStallContactThreshold;
+                TryStartEscapeMotorProgram(severe, severe ? "consecutive-wall trap" : "wall impact");
+            }
         }
         else if (moved)
         {

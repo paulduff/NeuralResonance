@@ -1644,16 +1644,22 @@ public partial class MainWindow : Window
             turnRateDeg += brainTurn;
         }
 
-        var runScale = ComputeUrgentRunScale();
-        if (forwardSpeed > 0.0)
+        // The brain's motor output is the sole driver by default. The heuristic autopilot
+        // (urgency speed, limbic coupling, wall avoidance, corridor centering, scripted
+        // escape) only runs when navigation assist is explicitly enabled.
+        if (NavigationAssistCheckBox?.IsChecked == true)
         {
-            forwardSpeed = Math.Min(forwardSpeed * runScale, MazeRunMaxForwardSpeed);
-        }
+            var runScale = ComputeUrgentRunScale();
+            if (forwardSpeed > 0.0)
+            {
+                forwardSpeed = Math.Min(forwardSpeed * runScale, MazeRunMaxForwardSpeed);
+            }
 
-        ApplyLimbicCoupling(dt, ref forwardSpeed, ref turnRateDeg);
-        ApplyReactiveWallAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
-        ApplyCorridorCentering(dt, ref forwardSpeed, ref turnRateDeg);
-        ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
+            ApplyLimbicCoupling(dt, ref forwardSpeed, ref turnRateDeg);
+            ApplyReactiveWallAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
+            ApplyCorridorCentering(dt, ref forwardSpeed, ref turnRateDeg);
+            ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
+        }
 
         if (_sleepState)
         {

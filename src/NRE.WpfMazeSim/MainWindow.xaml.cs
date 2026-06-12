@@ -47,15 +47,8 @@ public partial class MainWindow : Window
     private const double WallProbeRange = 1.7;
     private const double WallProbeSideAngleDeg = 34.0;
     private const double HardStuckTimeoutSec = 6.5;
-    private const int HardStuckWallContactThreshold = 18;
-    private const int MaxEscapeProgramTicks = 28;
     private const double HardStuckCollisionBurstWindowSec = 1.8;
     private const int HardStuckCollisionBurstThreshold = 5;
-    private const double HighProximityEscapeThreshold = 0.84;
-    private const int HighProximityEscapeTicks = 14;
-    private const double FrontalTrapProximityThreshold = 0.76;
-    private const int FrontalTrapTicksThreshold = 6;
-    private static readonly TimeSpan SideStepCooldown = TimeSpan.FromMilliseconds(420);
     private static readonly TimeSpan HazardDamageCooldown = TimeSpan.FromMilliseconds(820);
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
     private static readonly TimeSpan NoProgressRecoveryTimeout = TimeSpan.FromSeconds(4.0);
@@ -164,11 +157,6 @@ public partial class MainWindow : Window
     private double _lastForwardSpeed;
     private double _lastTurnRateDeg;
 
-    private bool _keyW;
-    private bool _keyA;
-    private bool _keyS;
-    private bool _keyD;
-
     private double _leftMotorDrive;
     private double _rightMotorDrive;
     private int _lastMotorDispatchCount;
@@ -212,13 +200,10 @@ public partial class MainWindow : Window
     private int _consecutiveWallContacts;
     private int _stuckRecoveries;
     private int _hardUnstuckEvents;
-    private int _escapeProgramTicksRemaining;
-    private double _escapeProgramTurnDeg;
     private double _lastWallProximity;
     private double _lastFrontProximity;
     private double _lastLeftProximity;
     private double _lastRightProximity;
-    private int _frontalTrapTicks;
     private int _checkpointActivations;
     private string _lastMazeEvent = "-";
     private string _limbicStage = "unknown";
@@ -231,11 +216,6 @@ public partial class MainWindow : Window
     private double _limbicRewardPredictionError;
     private double _limbicDopamine;
     private double _limbicNorepinephrine;
-    private double _lastLimbicForwardAssist;
-    private double _lastLimbicTurnAssistDeg;
-    private DateTime _lastHardUnstuckUtc = DateTime.MinValue;
-    private DateTime _lastSideStepUtc = DateTime.MinValue;
-    private int _highProximityTicks;
     private readonly Queue<long> _recentWallImpactTicks = new();
     private readonly Queue<LearningSample> _learningSamples = new();
     private double _totalDistanceTravelled;
@@ -287,8 +267,6 @@ public partial class MainWindow : Window
 
         Loaded += MainWindow_OnLoaded;
         Closed += MainWindow_OnClosed;
-        KeyDown += MainWindow_OnKeyDown;
-        KeyUp += MainWindow_OnKeyUp;
         MazeViewport.MouseDown += MazeViewport_OnMouseDown;
         MazeViewport.MouseMove += MazeViewport_OnMouseMove;
         MazeViewport.MouseUp += MazeViewport_OnMouseUp;
@@ -306,7 +284,6 @@ public partial class MainWindow : Window
         ObjectMemoryTextBox.Text = "Object memory: waiting for first frame";
         LimbicStageText.Text = "Limbic stage: awaiting telemetry";
         LimbicDriveText.Text = "Limbic drives: waiting for Control Program state.";
-        LimbicAssistText.Text = "Limbic assist: idle";
         BrainNarrationText.Text = "Brain narration: waiting for brain state.";
         EnglishCommandStatusText.Text = "Command: idle";
     }
@@ -319,7 +296,7 @@ public partial class MainWindow : Window
         _visionTimer.Start();
         SetConnectionStatus(AvatarControlStatusText.Connecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Maze simulator ready. Waiting for motor pathway spikes from Control Program dispatch stream.");
-        Log("Anti-stall tune-up active: wall probing + collision-burst detector + escape motor program + soft unstick nudge.");
+        Log("Brain-drive only: movement follows motor pathway spikes.");
         Log("Mouse controls: drag in viewport to rotate, mouse wheel to zoom.");
     }
 
@@ -334,52 +311,6 @@ public partial class MainWindow : Window
         _httpClient.Dispose();
         _pixelVisionHttpClient.Dispose();
         _shutdown.Dispose();
-    }
-
-    private void MainWindow_OnKeyDown(object sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.W:
-                _keyW = true;
-                e.Handled = true;
-                break;
-            case Key.A:
-                _keyA = true;
-                e.Handled = true;
-                break;
-            case Key.S:
-                _keyS = true;
-                e.Handled = true;
-                break;
-            case Key.D:
-                _keyD = true;
-                e.Handled = true;
-                break;
-        }
-    }
-
-    private void MainWindow_OnKeyUp(object sender, KeyEventArgs e)
-    {
-        switch (e.Key)
-        {
-            case Key.W:
-                _keyW = false;
-                e.Handled = true;
-                break;
-            case Key.A:
-                _keyA = false;
-                e.Handled = true;
-                break;
-            case Key.S:
-                _keyS = false;
-                e.Handled = true;
-                break;
-            case Key.D:
-                _keyD = false;
-                e.Handled = true;
-                break;
-        }
     }
 
     private void MazeViewport_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -1627,39 +1558,10 @@ public partial class MainWindow : Window
     {
         SyncMotorDriveFromAvatarService();
 
-        var manualForward = (_keyW ? 1.0 : 0.0) + (_keyS ? -1.0 : 0.0);
-        var manualTurn = (_keyD ? 1.0 : 0.0) + (_keyA ? -1.0 : 0.0);
-
-        var forwardSpeed = manualForward * 1.8;
-        var turnRateDeg = manualTurn * 130.0;
-
-        if (BrainDriveCheckBox.IsChecked == true)
-        {
-            var actionOutput = _avatarService.PublishActionOutput(
-                forwardGain: ForwardGainSlider.Value,
-                turnGain: TurnGainSlider.Value);
-            var (brainForward, brainTurn) = actionOutput.Movement;
-
-            forwardSpeed += brainForward;
-            turnRateDeg += brainTurn;
-        }
-
-        // The brain's motor output is the sole driver by default. The heuristic autopilot
-        // (urgency speed, limbic coupling, wall avoidance, corridor centering, scripted
-        // escape) only runs when navigation assist is explicitly enabled.
-        if (NavigationAssistCheckBox?.IsChecked == true)
-        {
-            var runScale = ComputeUrgentRunScale();
-            if (forwardSpeed > 0.0)
-            {
-                forwardSpeed = Math.Min(forwardSpeed * runScale, MazeRunMaxForwardSpeed);
-            }
-
-            ApplyLimbicCoupling(dt, ref forwardSpeed, ref turnRateDeg);
-            ApplyReactiveWallAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
-            ApplyCorridorCentering(dt, ref forwardSpeed, ref turnRateDeg);
-            ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
-        }
+        var actionOutput = _avatarService.PublishActionOutput(
+            forwardGain: ForwardGainSlider.Value,
+            turnGain: TurnGainSlider.Value);
+        var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
 
         if (_sleepState)
         {
@@ -1669,14 +1571,11 @@ public partial class MainWindow : Window
             _avatarHeadYawDeg = 0.0;
             _avatarService.PostResetMotor();
             ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
-            _escapeProgramTicksRemaining = 0;
-            _escapeProgramTurnDeg = 0.0;
         }
 
         var movingForward = forwardSpeed > 0.08;
         var translating = Math.Abs(forwardSpeed) > 0.08;
-        var manualTurning = Math.Abs(manualTurn) > 0.01;
-        var bodyTurnRateDeg = (movingForward || translating || manualTurning) ? turnRateDeg : 0.0;
+        var bodyTurnRateDeg = (movingForward || translating) ? turnRateDeg : 0.0;
         if (Math.Abs(bodyTurnRateDeg) > 0.001)
         {
             _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, bodyTurnRateDeg, dt);
@@ -1686,7 +1585,7 @@ public partial class MainWindow : Window
         {
             _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
         }
-        else if (!manualTurning && !translating && Math.Abs(turnRateDeg) > 0.01)
+        else if (!translating && Math.Abs(turnRateDeg) > 0.01)
         {
             _avatarHeadYawDeg = Math.Clamp(_avatarHeadYawDeg + (turnRateDeg * dt), -AvatarHeadMaxYawDeg, AvatarHeadMaxYawDeg);
         }
@@ -1777,214 +1676,6 @@ public partial class MainWindow : Window
         return 1.0 + ((MazeRunSpeedMultiplier - 1.0) * smoothUrgency);
     }
 
-    private void ApplyLimbicCoupling(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (LimbicDriveCheckBox.IsChecked != true)
-        {
-            _lastLimbicForwardAssist = 0.0;
-            _lastLimbicTurnAssistDeg = 0.0;
-            return;
-        }
-
-        var currentHeadingRad = _avatarHeadingDeg * Math.PI / 180.0;
-
-        // Goal-seeking term: dopamine/valence/salience bias the avatar toward reward.
-        var toGoalX = _goalWorld.X - _avatarX;
-        var toGoalZ = _goalWorld.Y - _avatarZ;
-        var goalDistance = Math.Sqrt((toGoalX * toGoalX) + (toGoalZ * toGoalZ));
-        var goalBearingRad = Math.Atan2(toGoalX, toGoalZ);
-        var goalErrorRad = NormalizeRadians(goalBearingRad - currentHeadingRad);
-        var goalErrorDeg = goalErrorRad * 180.0 / Math.PI;
-
-        var rewardDrive = Math.Clamp(
-            ((_limbicValence + 1.0) * 0.5 * 0.35)
-            + (_limbicDopamine * 0.35)
-            + (_limbicSalience * 0.20)
-            + (_limbicInteroceptiveDrive * 0.10),
-            0.0,
-            1.0);
-
-        var mazeScale = Math.Max(_mazeRows, _mazeCols) * CellSize;
-        var goalDistanceNorm = mazeScale > 0.0 ? Math.Clamp(goalDistance / mazeScale, 0.2, 1.0) : 0.4;
-        var goalForwardAssist = rewardDrive * (0.30 + (0.95 * goalDistanceNorm));
-        var goalTurnAssist = goalErrorDeg * (0.22 + (0.38 * rewardDrive));
-
-        // Threat-avoidance term: hazard proximity + aversive/threat drives push steering away.
-        var nearestHazardDistance = double.MaxValue;
-        var nearestHazardBearingRad = 0.0;
-        for (var i = 0; i < _hazardEntities.Count; i++)
-        {
-            var hazard = _hazardEntities[i];
-            var hx = hazard.World.X - _avatarX;
-            var hz = hazard.World.Y - _avatarZ;
-            var distance = Math.Sqrt((hx * hx) + (hz * hz));
-            if (distance < nearestHazardDistance)
-            {
-                nearestHazardDistance = distance;
-                nearestHazardBearingRad = Math.Atan2(hx, hz);
-            }
-        }
-
-        var hazardTurnAssist = 0.0;
-        var hazardForwardPenalty = 0.0;
-        if (nearestHazardDistance < double.MaxValue)
-        {
-            var threatDrive = Math.Clamp(
-                (_limbicThreat * 0.50)
-                + (_limbicAversiveDrive * 0.35)
-                + (_limbicNorepinephrine * 0.15),
-                0.0,
-                1.0);
-
-            var proximity = Math.Clamp(1.0 - (nearestHazardDistance / (CellSize * 4.5)), 0.0, 1.0);
-            var avoidWeight = proximity * threatDrive;
-            var awayBearingRad = NormalizeRadians(nearestHazardBearingRad + Math.PI);
-            var awayErrorDeg = NormalizeRadians(awayBearingRad - currentHeadingRad) * 180.0 / Math.PI;
-            hazardTurnAssist = awayErrorDeg * (0.25 + (0.55 * avoidWeight)) * avoidWeight;
-
-            var facingHazard = Math.Max(0.0, Math.Cos(NormalizeRadians(nearestHazardBearingRad - currentHeadingRad)));
-            hazardForwardPenalty = avoidWeight * (0.8 + (1.2 * facingHazard));
-        }
-
-        // Mild exploration/adjustment from RPE and hippocampal context.
-        var exploratoryTurn = _limbicRewardPredictionError * (8.0 + (8.0 * _limbicHippocampalContext));
-
-        var forwardAssist = goalForwardAssist - hazardForwardPenalty;
-        var turnAssist = goalTurnAssist + hazardTurnAssist + exploratoryTurn;
-
-        if (_limbicStage.Contains("sleep", StringComparison.OrdinalIgnoreCase))
-        {
-            forwardAssist *= 0.15;
-            turnAssist *= 0.2;
-        }
-        else if (_limbicStage.Contains("transition", StringComparison.OrdinalIgnoreCase))
-        {
-            forwardAssist *= 0.5;
-            turnAssist *= 0.6;
-        }
-
-        var limbicDtScale = Math.Clamp(dt / 0.033, 0.35, 2.0);
-        forwardAssist *= limbicDtScale;
-        turnAssist *= limbicDtScale;
-
-        forwardAssist = Math.Clamp(forwardAssist, -1.3, 2.4);
-        turnAssist = Math.Clamp(turnAssist, -160.0, 160.0);
-
-        _lastLimbicForwardAssist = forwardAssist;
-        _lastLimbicTurnAssistDeg = turnAssist;
-
-        forwardSpeed = Math.Clamp(forwardSpeed + forwardAssist, -2.0, MazeRunMaxForwardSpeed);
-        turnRateDeg = Math.Clamp(turnRateDeg + turnAssist, -260.0, 260.0);
-    }
-
-    private void ApplyReactiveWallAvoidance(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (dt <= 0.0)
-        {
-            return;
-        }
-
-        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
-        var probeOffset = WallProbeSideAngleDeg * Math.PI / 180.0;
-        var front = TraceVisionRay(Math.Sin(headingRad), Math.Cos(headingRad), WallProbeRange);
-        var left = TraceVisionRay(Math.Sin(headingRad - probeOffset), Math.Cos(headingRad - probeOffset), WallProbeRange);
-        var right = TraceVisionRay(Math.Sin(headingRad + probeOffset), Math.Cos(headingRad + probeOffset), WallProbeRange);
-
-        var frontProximity = front.HitWall ? Math.Clamp(1.0 - (front.Distance / WallProbeRange), 0.0, 1.0) : 0.0;
-        var leftProximity = left.HitWall ? Math.Clamp(1.0 - (left.Distance / WallProbeRange), 0.0, 1.0) : 0.0;
-        var rightProximity = right.HitWall ? Math.Clamp(1.0 - (right.Distance / WallProbeRange), 0.0, 1.0) : 0.0;
-        _lastFrontProximity = frontProximity;
-        _lastLeftProximity = leftProximity;
-        _lastRightProximity = rightProximity;
-        _frontalTrapTicks = frontProximity >= FrontalTrapProximityThreshold
-            ? Math.Min(_frontalTrapTicks + 1, 64)
-            : Math.Max(0, _frontalTrapTicks - 1);
-
-        _lastWallProximity = Math.Clamp(Math.Max(frontProximity, Math.Max(leftProximity, rightProximity)), 0.0, 1.0);
-        _highProximityTicks = _lastWallProximity >= HighProximityEscapeThreshold
-            ? _highProximityTicks + 1
-            : Math.Max(0, _highProximityTicks - 1);
-
-        if (_lastWallProximity <= 0.01)
-        {
-            return;
-        }
-
-        var steer = leftProximity - rightProximity;
-        if (Math.Abs(steer) < 0.06 && frontProximity > 0.35)
-        {
-            steer = ((_stuckRecoveries + _hardUnstuckEvents) & 1) == 0 ? 0.22 : -0.22;
-        }
-
-        var turnAssist = steer * (100.0 + (160.0 * frontProximity));
-        var sidePressure = Math.Max(leftProximity, rightProximity);
-        var forwardPenalty = (0.65 * frontProximity) + (0.30 * sidePressure);
-        forwardPenalty *= (1.10 + (0.65 * GetEscapeAggressiveness()));
-
-        turnRateDeg = Math.Clamp(turnRateDeg + turnAssist, -300.0, 300.0);
-        forwardSpeed = Math.Clamp(forwardSpeed - forwardPenalty, -2.2, MazeRunMaxForwardSpeed);
-
-        // If the avatar is pressed up against a frontal wall, actively reverse.
-        if (frontProximity >= 0.82)
-        {
-            var forcedReverse = -0.45 - (0.20 * GetEscapeAggressiveness());
-            forwardSpeed = Math.Min(forwardSpeed, forcedReverse);
-        }
-    }
-
-    private void ApplyCorridorCentering(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (dt <= 0.0)
-        {
-            return;
-        }
-
-        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
-        var sideProbeRange = CellSize * 1.55;
-        var sideOffset = Math.PI * 0.5;
-        var left = TraceVisionRay(Math.Sin(headingRad - sideOffset), Math.Cos(headingRad - sideOffset), sideProbeRange);
-        var right = TraceVisionRay(Math.Sin(headingRad + sideOffset), Math.Cos(headingRad + sideOffset), sideProbeRange);
-
-        var leftDistance = left.HitWall ? left.Distance : sideProbeRange;
-        var rightDistance = right.HitWall ? right.Distance : sideProbeRange;
-        var leftProximity = Math.Clamp(1.0 - (leftDistance / sideProbeRange), 0.0, 1.0);
-        var rightProximity = Math.Clamp(1.0 - (rightDistance / sideProbeRange), 0.0, 1.0);
-        var imbalance = Math.Clamp((rightDistance - leftDistance) / Math.Max(0.01, sideProbeRange), -1.0, 1.0);
-
-        if (Math.Abs(imbalance) > 0.025)
-        {
-            var centerTurnAssist = imbalance * (55.0 + (85.0 * Math.Max(leftProximity, rightProximity)));
-            turnRateDeg = Math.Clamp(turnRateDeg + centerTurnAssist, -320.0, 320.0);
-        }
-
-        var corridorCompression = Math.Clamp(1.0 - ((leftDistance + rightDistance) / (CellSize * 1.7)), 0.0, 1.0);
-        if (corridorCompression > 0.0)
-        {
-            var maxForward = 2.4 - (1.8 * corridorCompression);
-            forwardSpeed = Math.Min(forwardSpeed, maxForward);
-        }
-
-        if (leftProximity > 0.88 || rightProximity > 0.88)
-        {
-            var turnAway = (rightProximity - leftProximity) * 180.0;
-            turnRateDeg = Math.Clamp(turnRateDeg + turnAway, -320.0, 320.0);
-            forwardSpeed = Math.Min(forwardSpeed, 0.25);
-        }
-    }
-
-    private void ApplyEscapeMotorProgram(ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (_escapeProgramTicksRemaining <= 0)
-        {
-            return;
-        }
-
-        var reverseSpeed = -0.70 - (0.35 * GetEscapeAggressiveness());
-        forwardSpeed = Math.Min(forwardSpeed, reverseSpeed);
-        turnRateDeg = Math.Clamp(turnRateDeg + _escapeProgramTurnDeg, -320.0, 320.0);
-        _escapeProgramTicksRemaining--;
-    }
-
     private bool Collides(double x, double z)
     {
         return PointIntersectsWall(x, z, AvatarRadius * 0.85);
@@ -2050,9 +1741,6 @@ public partial class MainWindow : Window
             _sceneRoot.Children.Remove(food.Model);
             _foodsCollected++;
             _score += 30;
-            _avatarService.PostAddMotorDrive(8.0, 8.0);
-            _leftMotorDrive += 8.0;
-            _rightMotorDrive += 8.0;
             QueueOutcomeInput(new AvatarOutcomeTelemetry(SatietyRelief: 0.82, Progress: 0.28, Novelty: 0.06), force: true);
             SetMazeEvent($"Food collected ({_foodsCollected}/{_foodEntities.Count})");
         }
@@ -2168,29 +1856,6 @@ public partial class MainWindow : Window
     {
         var movedSquared = DistanceSquared(previousX, previousZ, _avatarX, _avatarZ);
         var now = DateTime.UtcNow;
-        if (_frontalTrapTicks >= FrontalTrapTicksThreshold && collisionDetected)
-        {
-            if (TryApplySideStepUnstick())
-            {
-                TryStartEscapeMotorProgram(severe: true, reason: "frontal side-step recovery");
-                TriggerOrientingStimulus("frontal side-step recovery", preferOppositeTurn: true, severeImpact: true);
-                _frontalTrapTicks = 0;
-                _lastProgressUtc = now;
-                _consecutiveWallContacts = 0;
-                return;
-            }
-        }
-
-        if (_highProximityTicks >= HighProximityEscapeTicks)
-        {
-            TryStartEscapeMotorProgram(severe: true, reason: "high proximity trap");
-            TriggerOrientingStimulus("high proximity trap", preferOppositeTurn: false, severeImpact: true);
-            _highProximityTicks = 0;
-            _lastProgressUtc = now;
-            _consecutiveWallContacts = 0;
-            return;
-        }
-
         if (movedSquared >= 0.0016)
         {
             _lastProgressUtc = now;
@@ -2204,7 +1869,6 @@ public partial class MainWindow : Window
             var threshold = slidAlongWall ? 10 : 6;
             if (_consecutiveWallContacts >= threshold)
             {
-                TryStartEscapeMotorProgram(severe: true, reason: "wall-trap recovery");
                 TriggerOrientingStimulus("wall-trap recovery", preferOppositeTurn: !slidAlongWall, severeImpact: true);
                 _consecutiveWallContacts = 0;
             }
@@ -2215,54 +1879,10 @@ public partial class MainWindow : Window
         if (now - _lastProgressUtc > NoProgressRecoveryTimeout)
         {
             var severe = (now - _lastProgressUtc).TotalSeconds >= HardStuckTimeoutSec;
-            TryStartEscapeMotorProgram(severe, severe ? "hard no-progress recovery" : "no-progress recovery");
             TriggerOrientingStimulus("no-progress recovery", preferOppositeTurn: false, severeImpact: severe);
             _lastProgressUtc = now;
             _consecutiveWallContacts = 0;
         }
-    }
-
-    private bool TryApplySideStepUnstick()
-    {
-        var now = DateTime.UtcNow;
-        if (now - _lastSideStepUtc < SideStepCooldown)
-        {
-            return false;
-        }
-
-        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
-        var sideStep = Math.Clamp(CellSize * 0.48, 0.36, 0.82);
-
-        var rightIsFreer = _lastRightProximity < _lastLeftProximity;
-        var preferredSign = rightIsFreer ? 1.0 : -1.0; // +90 or -90 deg
-        var signs = new[] { preferredSign, -preferredSign };
-
-        for (var i = 0; i < signs.Length; i++)
-        {
-            var sideAngle = headingRad + (signs[i] * (Math.PI * 0.5));
-            var stepX = _avatarX + (Math.Sin(sideAngle) * sideStep);
-            var stepZ = _avatarZ + (Math.Cos(sideAngle) * sideStep);
-            if (Collides(stepX, stepZ))
-            {
-                continue;
-            }
-
-            var forwardCheck = TraceVisionRay(stepX, stepZ, Math.Sin(headingRad), Math.Cos(headingRad), Math.Clamp(CellSize * 0.95, 0.7, 1.6));
-            if (forwardCheck.HitWall && forwardCheck.Distance < (CellSize * 0.28))
-            {
-                continue;
-            }
-
-            _avatarX = stepX;
-            _avatarZ = stepZ;
-            _lastSideStepUtc = now;
-            SetMazeEvent("Lateral unstick side-step");
-            _recentWallCollisionUtc.Clear();
-            _highProximityTicks = 0;
-            return true;
-        }
-
-        return false;
     }
 
     private void RegisterWallCollisionEvent(DateTime now, bool slidAlongWall)
@@ -2280,101 +1900,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        TryStartEscapeMotorProgram(severe: true, reason: "collision burst recovery");
         TriggerOrientingStimulus("collision burst recovery", preferOppositeTurn: !slidAlongWall, severeImpact: true);
         _recentWallCollisionUtc.Clear();
-    }
-
-    private void TryStartEscapeMotorProgram(bool severe, string reason)
-    {
-        var now = DateTime.UtcNow;
-        if (now - _lastHardUnstuckUtc < TimeSpan.FromMilliseconds(420))
-        {
-            return;
-        }
-
-        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
-        var probeOffset = WallProbeSideAngleDeg * Math.PI / 180.0;
-        var leftProbe = TraceVisionRay(Math.Sin(headingRad - probeOffset), Math.Cos(headingRad - probeOffset), WallProbeRange + 0.6);
-        var rightProbe = TraceVisionRay(Math.Sin(headingRad + probeOffset), Math.Cos(headingRad + probeOffset), WallProbeRange + 0.6);
-        var gap = rightProbe.Distance - leftProbe.Distance;
-
-        var turnSign = Math.Abs(gap) > 0.10
-            ? Math.Sign(gap)
-            : (((_hardUnstuckEvents + _stuckRecoveries) & 1) == 0 ? 1.0 : -1.0);
-
-        if (turnSign == 0.0)
-        {
-            turnSign = 1.0;
-        }
-
-        var baseTurn = severe ? 165.0 : 128.0;
-        _escapeProgramTurnDeg = turnSign * (baseTurn + (GetEscapeAggressiveness() * 32.0));
-
-        var ticks = severe ? 16 : 10;
-        ticks += Math.Clamp(_consecutiveWallContacts / 3, 0, 10);
-        _escapeProgramTicksRemaining = Math.Clamp(ticks, 8, MaxEscapeProgramTicks);
-
-        if (turnSign > 0.0)
-        {
-            _avatarService.PostAddMotorDrive(10.0, 54.0);
-            _leftMotorDrive += 10.0;
-            _rightMotorDrive += 54.0;
-        }
-        else
-        {
-            _avatarService.PostAddMotorDrive(54.0, 10.0);
-            _leftMotorDrive += 54.0;
-            _rightMotorDrive += 10.0;
-        }
-
-        _hardUnstuckEvents++;
-        _lastHardUnstuckUtc = now;
-        SetMazeEvent($"Escape motor #{_hardUnstuckEvents}: {reason}");
-
-        var prolonged = (now - _lastProgressUtc).TotalSeconds >= HardStuckTimeoutSec;
-        if (severe && (prolonged || _consecutiveWallContacts >= HardStuckWallContactThreshold))
-        {
-            TrySoftUnstickNudge();
-        }
-    }
-
-    private void TrySoftUnstickNudge()
-    {
-        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
-        var radii = new[] { 0.45, 0.65, 0.90, 1.15 };
-        var offsets = new[] { Math.PI, Math.PI * 0.75, -Math.PI * 0.75, Math.PI * 0.5, -Math.PI * 0.5, Math.PI * 0.25, -Math.PI * 0.25, 0.0 };
-
-        foreach (var radius in radii)
-        {
-            foreach (var offset in offsets)
-            {
-                var angle = headingRad + offset;
-                var candidateX = _avatarX + (Math.Sin(angle) * radius);
-                var candidateZ = _avatarZ + (Math.Cos(angle) * radius);
-
-                if (Collides(candidateX, candidateZ))
-                {
-                    continue;
-                }
-
-                var front = TraceVisionRay(Math.Sin(angle), Math.Cos(angle), 1.25);
-                if (front.HitWall && front.Distance < 0.28)
-                {
-                    continue;
-                }
-
-                _avatarX = candidateX;
-                _avatarZ = candidateZ;
-                _lastProgressUtc = DateTime.UtcNow;
-                _consecutiveWallContacts = 0;
-                _escapeProgramTicksRemaining = Math.Max(_escapeProgramTicksRemaining, 8);
-                _highProximityTicks = 0;
-                _recentWallCollisionUtc.Clear();
-                SetMazeEvent("Soft unstick nudge applied");
-                return;
-            }
-        }
     }
 
     private void TriggerOrientingStimulus(string reason, bool preferOppositeTurn, bool severeImpact)
@@ -3574,18 +3101,12 @@ public partial class MainWindow : Window
         _avatarYawRotation.Angle = _avatarHeadingDeg;
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
         _lastProgressUtc = DateTime.UtcNow;
-        _lastHardUnstuckUtc = DateTime.MinValue;
-        _escapeProgramTicksRemaining = 0;
-        _escapeProgramTurnDeg = 0.0;
         _lastWallProximity = 0.0;
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
-        _frontalTrapTicks = 0;
-        _highProximityTicks = 0;
         _recentWallCollisionUtc.Clear();
         _recentWallImpactTicks.Clear();
-        _lastSideStepUtc = DateTime.MinValue;
         if (logMessage)
         {
             Log("Avatar reset to maze start.");
@@ -3602,21 +3123,15 @@ public partial class MainWindow : Window
         _consecutiveWallContacts = 0;
         _stuckRecoveries = 0;
         _hardUnstuckEvents = 0;
-        _escapeProgramTicksRemaining = 0;
-        _escapeProgramTurnDeg = 0.0;
         _lastWallProximity = 0.0;
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
-        _frontalTrapTicks = 0;
-        _highProximityTicks = 0;
         _checkpointActivations = 0;
         _lastMazeEvent = "-";
         _lastHazardDamageUtc = DateTime.MinValue;
         _lastWallImpactUtc = DateTime.MinValue;
         _lastEscapeReflexUtc = DateTime.MinValue;
-        _lastHardUnstuckUtc = DateTime.MinValue;
-        _lastSideStepUtc = DateTime.MinValue;
         _recentWallCollisionUtc.Clear();
         _recentWallImpactTicks.Clear();
         _collisionStimulusInFlight = false;
@@ -3734,13 +3249,11 @@ public partial class MainWindow : Window
         MoveText.Text = $"Speed/Turn: {_lastForwardSpeed:0.00} m/s | body {_lastTurnRateDeg:0.0} deg/s | head {_avatarHeadYawDeg:0.0}° | wall={_lastWallProximity:0.00}";
         PoseText.Text = $"Avatar pose: x {_avatarX:0.00}, z {_avatarZ:0.00}, body yaw {_avatarHeadingDeg:0.0}°, look {GetAvatarLookHeadingDeg():0.0}°";
         ScoreText.Text = $"Score: {_score} | Food {_foodsCollected}/{_foodEntities.Count}";
-        HealthText.Text = $"Health: {_health} | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts} | Recoveries {_stuckRecoveries} | Unsticks {_hardUnstuckEvents} | Trap {_highProximityTicks}/{HighProximityEscapeTicks} | FrontTrap {_frontalTrapTicks}/{FrontalTrapTicksThreshold} | Burst {_recentWallCollisionUtc.Count}/{HardStuckCollisionBurstThreshold}";
+        HealthText.Text = $"Health: {_health} | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts} | Recoveries {_stuckRecoveries} | Unsticks {_hardUnstuckEvents} | Burst {_recentWallCollisionUtc.Count}/{HardStuckCollisionBurstThreshold}";
         CheckpointText.Text = $"Checkpoint: {_checkpointActivations}/{_checkpointEntities.Count} @ ({_respawnWorld.X:0.0}, {_respawnWorld.Y:0.0})";
         EventText.Text = $"Event: {_lastMazeEvent}";
         LimbicStageText.Text = $"Limbic stage: {_limbicStage} | sal={_limbicSalience:0.00} thr={_limbicThreat:0.00}";
         LimbicDriveText.Text = $"Limbic drives: val={_limbicValence:0.00} int={_limbicInteroceptiveDrive:0.00} av={_limbicAversiveDrive:0.00} hip={_limbicHippocampalContext:0.00} rpe={_limbicRewardPredictionError:0.00} da={_limbicDopamine:0.00} ne={_limbicNorepinephrine:0.00}";
-        var limbicMode = LimbicDriveCheckBox.IsChecked == true ? "active" : "disabled";
-        LimbicAssistText.Text = $"Limbic assist: fwd={_lastLimbicForwardAssist:0.00} turn={_lastLimbicTurnAssistDeg:0.0} deg/s ({limbicMode})";
         UpdateLearningProgressHud();
     }
 

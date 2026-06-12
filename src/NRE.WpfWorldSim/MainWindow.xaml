@@ -264,13 +264,6 @@
                                 Content="Clear Paint Overrides"
                                 Click="ClearOverridesButton_OnClick" />
                         <Separator Margin="0,10,0,10" />
-                        <CheckBox x:Name="NavigationAssistCheckBox"
-                                  Margin="0,0,0,8"
-                                  IsChecked="False"
-                                  Content="Navigation assist (simulator autopilot)"
-                                  ToolTip="OFF (default): the brain's motor output is the sole driver; the avatar only reacts to physics (collisions block, pain feeds back to the brain). ON: simulator heuristics (obstacle avoidance, threat escape, orienting, auto path-around-walls) may override the brain."
-                                  Checked="NavigationAssistCheckBox_OnChecked"
-                                  Unchecked="NavigationAssistCheckBox_OnUnchecked" />
                         <TextBlock Text="Avatar Vision Preview" FontWeight="SemiBold" />
                         <CheckBox x:Name="SendAvatarVisionCheckBox"
                                   Margin="0,6,0,0"

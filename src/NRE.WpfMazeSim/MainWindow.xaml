@@ -128,22 +128,8 @@
                                  Text="Object memory: waiting for first frame" />
                         <Separator Margin="0,10,0,10" />
 
-                        <CheckBox x:Name="BrainDriveCheckBox"
-                                  IsChecked="True"
-                                  Content="Use brain motor drive"
-                                  Margin="0,0,0,6" />
-                        <CheckBox x:Name="NavigationAssistCheckBox"
-                                  IsChecked="False"
-                                  Content="Navigation assist (simulator autopilot)"
-                                  ToolTip="OFF (default): the brain's motor output is the sole driver; the avatar only reacts to physics. ON: simulator heuristics (urgency speed, limbic coupling, wall avoidance, corridor centering, scripted escape) may override the brain."
-                                  Margin="0,0,0,6" />
-                        <CheckBox x:Name="LimbicDriveCheckBox"
-                                  IsChecked="True"
-                                  Content="Apply limbic coupling (threat/reward)"
-                                  Margin="0,0,0,6" />
                         <TextBlock x:Name="LimbicStageText" Margin="0,2,0,0" Text="Limbic stage: -" />
                         <TextBlock x:Name="LimbicDriveText" Margin="0,2,0,0" Text="Limbic drives: -" TextWrapping="Wrap" />
-                        <TextBlock x:Name="LimbicAssistText" Margin="0,2,0,4" Text="Limbic assist: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
                         <TextBlock Margin="0,8,0,0" Text="English Command" FontWeight="SemiBold" />
                         <TextBox x:Name="EnglishCommandTextBox"
@@ -191,9 +177,6 @@
                                 IsSnapToTickEnabled="False" />
                         <TextBlock x:Name="EscapeCooldownText" Margin="0,2,0,8" Text="900 ms" />
 
-                        <Separator Margin="0,10,0,10" />
-                        <TextBlock Text="Manual override" FontWeight="SemiBold" />
-                        <TextBlock Text="W/S: throttle, A/D: turn" Margin="0,4,0,0" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>

@@ -58,6 +58,8 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorWidth = 1.35;
     private const double AvatarVisionPredatorHeight = 1.10;
     private const double AvatarVisionPredatorLength = 1.85;
+    private const int AvatarVisionDispatchTimeoutMs = 1600;
+    private const int ObjectCueDispatchTimeoutMs = 1800;
     private const double OrientingTargetVisibleRange = 26.0;
     private const double OrientingTargetLockGain = 3.4;
     private const double OrientingScanTurnRateDeg = 96.0;
@@ -81,9 +83,7 @@ public partial class MainWindow : Window
     private const double StuckDistanceThresholdSq = 0.0007;
     private const double NoProgressRecoveryTimeoutSec = 1.65;
     private const int ConsecutiveWallContactThreshold = 7;
-    private const int MaxEscapeProgramTicks = 24;
     private const double EscapeReflexCooldownSec = 0.42;
-    private const int EscapeRearmCooldownTicks = 14;
     private const int SpinGuardTickThreshold = 16;
     private const double EscapeReverseBaseSpeed = -1.05;
     private const double EscapeStrafeSpeed = 0.52;
@@ -97,8 +97,7 @@ public partial class MainWindow : Window
 
     // Tier-7 anti-stall: instead of teleporting (not embodied), a sustained stuck
     // condition damages the avatar, eventually killing it. Death triggers an
-    // honest, narrated respawn at the world spawn point. This is the *terminal*
-    // fallback — tier 1-2 (escape program, lateral probe) still get a chance first.
+    // honest, narrated respawn at the world spawn point.
     //
     // StuckDamagePerSec  : drained while _inStuckEpisode, regardless of contact.
     // StuckImpactDamage  : extra hit per collision tick while stuck (wall-bashing).
@@ -112,8 +111,7 @@ public partial class MainWindow : Window
     // still excludes residual drive from decay (0.92/tick decays a 120 drive to
     // ~12 over ~25 ticks).
     private const double StuckDamageMotorIntentThreshold = 12.0;
-    // Idle wandering disabled: the avatar moves only on brain motor output, never on a
-    // simulator-side autopilot. (Matches the maze sim.)
+    // Idle wandering disabled: the avatar moves only on brain motor output.
     private const int IdleMotorFallbackTicks = int.MaxValue;
     private const double IdleMotorFallbackBaseDrive = 36.0;
     private const double AvatarVisualYawOffsetDeg = 0.0;
@@ -406,12 +404,6 @@ public partial class MainWindow : Window
     private bool _followAvatarCamera = true;
     private bool _sendAvatarVisionToBrain = true;
 
-    // Heuristic navigation "autopilot" (urgency speed, threat escape, target orienting,
-    // reactive obstacle avoidance, auto path-around-walls). OFF by default: the brain is
-    // the sole source of motor behavior and the avatar only executes brain motor output
-    // and reacts to physics (collisions block; pain still feeds back to the brain).
-    // Enable as a debug crutch / A-B comparison against the brain alone.
-    private bool _navigationAssistEnabled;
     private bool _visionDispatchInFlight;
     private long _lastVisionDispatchMs;
     private readonly AvatarRetryBackoff _visionDispatchBackoff = new();
@@ -457,10 +449,6 @@ public partial class MainWindow : Window
     private DateTime _lastProgressUtc = DateTime.UtcNow;
     private DateTime _lastEscapeReflexUtc = DateTime.MinValue;
     private int _consecutiveWallContacts;
-    private int _escapeProgramTicksRemaining;
-    private double _escapeProgramTurnDeg;
-    private double _escapeProgramStrafeSign;
-    private double _escapeProgramReverseScale = 1.0;
     private int _escapeRearmTicksRemaining;
     private int _noProgressTicks;
     private int _stuckRecoveries;
@@ -479,7 +467,6 @@ public partial class MainWindow : Window
     private double _lastRightProximity;
     private double _lastForwardSpeed;
     private double _lastTurnRateDeg;
-    private long _lastEscapeLogMs;
     private long _lastBodyStateDispatchMs;
     private long _lastOutcomeDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
@@ -535,7 +522,6 @@ public partial class MainWindow : Window
         AvatarPreviewImage.Source = _avatarPreviewBitmap;
         _followAvatarCamera = FollowAvatarCameraCheckBox?.IsChecked ?? _followAvatarCamera;
         _sendAvatarVisionToBrain = SendAvatarVisionCheckBox?.IsChecked ?? _sendAvatarVisionToBrain;
-        _navigationAssistEnabled = NavigationAssistCheckBox?.IsChecked ?? _navigationAssistEnabled;
         SyncSurvivalTuningFromUi();
         RefreshSurvivalTuningLabels();
         RebuildWorldFromSeed();
@@ -615,10 +601,6 @@ public partial class MainWindow : Window
         _collisionHits = 0;
         _collisionPulse = 0.0;
         _consecutiveWallContacts = 0;
-        _escapeProgramTicksRemaining = 0;
-        _escapeProgramTurnDeg = 0.0;
-        _escapeProgramStrafeSign = 0.0;
-        _escapeProgramReverseScale = 1.0;
         _escapeRearmTicksRemaining = 0;
         _noProgressTicks = 0;
         _stuckRecoveries = 0;
@@ -873,18 +855,6 @@ public partial class MainWindow : Window
         _sendAvatarVisionToBrain = false;
     }
 
-    private void NavigationAssistCheckBox_OnChecked(object sender, RoutedEventArgs e)
-    {
-        _navigationAssistEnabled = true;
-        if (IsLoaded) Log("Navigation assist ON: simulator heuristics may override brain motor output.");
-    }
-
-    private void NavigationAssistCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
-    {
-        _navigationAssistEnabled = false;
-        if (IsLoaded) Log("Navigation assist OFF: brain motor output is the sole driver.");
-    }
-
     private void SyncSurvivalTuningFromUi()
     {
         _hungerRate = HungerRateSlider?.Value > 0 ? HungerRateSlider.Value : _hungerRate;
@@ -1099,10 +1069,6 @@ public partial class MainWindow : Window
         _inStuckEpisode = false;
         _noProgressTicks = 0;
         _consecutiveWallContacts = 0;
-        _escapeProgramTicksRemaining = 0;
-        _escapeProgramTurnDeg = 0.0;
-        _escapeProgramStrafeSign = 0.0;
-        _escapeProgramReverseScale = 1.0;
         _escapeRearmTicksRemaining = 0;
         _navFilteredMoves = 0;
         _orientingScanPhaseDeg = 0.0;
@@ -2598,7 +2564,7 @@ public partial class MainWindow : Window
         var mappedPercent = _explorableTerrainCells > 0 ? (mapped * 100.0 / _explorableTerrainCells) : 0.0;
         TrailText.Text = $"Trail points: {_trailPoints.Count} | mapped: {mapped}/{Math.Max(_explorableTerrainCells, 1)} ({mappedPercent:0.0}%)";
         AntiStallText.Text =
-            $"Anti-stall: episodes {_stuckEpisodes}, recoveries {_stuckRecoveries}, path {_pathRecoveries}, hard {_hardUnstuckEvents}, deaths {_avatarDeaths}, nav {_navFilteredMoves}, contacts {_consecutiveWallContacts}, escape ticks {_escapeProgramTicksRemaining}, stuck {_stuckSecondsAccum:0.0}s";
+            $"Anti-stall: episodes {_stuckEpisodes}, recoveries {_stuckRecoveries}, path {_pathRecoveries}, hard {_hardUnstuckEvents}, deaths {_avatarDeaths}, nav {_navFilteredMoves}, contacts {_consecutiveWallContacts}, stuck {_stuckSecondsAccum:0.0}s";
     }
 
     private void UpdateAvatar(double dt)
@@ -2608,23 +2574,11 @@ public partial class MainWindow : Window
         var moved = false;
         var blocked = false;
 
-        // The brain's motor output is the sole driver. The heuristic autopilot (urgency
-        // speed, threat escape, target orienting, reactive obstacle avoidance, scripted
-        // escape) only runs when navigation assist is explicitly enabled.
-        var runScale = _navigationAssistEnabled ? ComputeUrgentRunScale() : 1.0;
-        var actionOutput = _avatarService.PublishActionOutput(forwardScale: runScale);
+        // Brain motor output is the only locomotion driver. The simulator may block
+        // movement through physics and feed consequences back, but it never steers.
+        var actionOutput = _avatarService.PublishActionOutput(forwardScale: 1.0);
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
         var escapingThreat = false;
-        if (_navigationAssistEnabled)
-        {
-            escapingThreat = ApplyAboutFaceEscape(dt, ref forwardSpeed, ref turnRateDeg);
-            if (!escapingThreat)
-            {
-                ApplyOrientingTargetLock(dt, ref forwardSpeed, ref turnRateDeg);
-            }
-            ApplyReactiveCollisionAvoidance(dt, ref forwardSpeed, ref turnRateDeg);
-            ApplyEscapeMotorProgram(ref forwardSpeed, ref turnRateDeg);
-        }
 
         if (_sleepState)
         {
@@ -2633,16 +2587,11 @@ public partial class MainWindow : Window
             turnRateDeg = 0.0;
             _avatarService.PostResetMotor();
             ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
-            _escapeProgramTicksRemaining = 0;
-            _escapeProgramTurnDeg = 0.0;
-            _escapeProgramStrafeSign = 0.0;
         }
 
-        var strafeSpeed = _escapeProgramTicksRemaining > 0
-            ? _escapeProgramStrafeSign * _antiStallStrafeSpeed
-            : 0.0;
+        var strafeSpeed = 0.0;
         var isTranslating = Math.Abs(forwardSpeed) > 0.08 || Math.Abs(strafeSpeed) > 0.08;
-        var forceBodyTurn = escapingThreat || _escapeProgramTicksRemaining > 0 || isTranslating;
+        var forceBodyTurn = escapingThreat || isTranslating;
         var bodyTurnRateDeg = forceBodyTurn ? turnRateDeg : 0.0;
         UpdateAvatarHeadYaw(dt, turnRateDeg, returnToForward: isTranslating || escapingThreat || _sleepState);
 
@@ -2664,8 +2613,7 @@ public partial class MainWindow : Window
         // displacement can approach or exceed AvatarRadius, which would let the
         // avatar tunnel through thin obstacles. Split the move into segments no
         // larger than 0.8 * AvatarRadius and advance through them, stopping at the
-        // last clear sub-step if the path collides. The remaining tail then falls
-        // through to the existing lateral-only / sidestep / probe fallback chain.
+        // last clear sub-step if the path collides.
         var moveDx = (dirX * step) + (lateralX * strafeStep);
         var moveDz = (dirZ * step) + (lateralZ * strafeStep);
         var moveLen = Math.Sqrt((moveDx * moveDx) + (moveDz * moveDz));
@@ -2732,19 +2680,8 @@ public partial class MainWindow : Window
         else if (!moved && Math.Abs(step) > 0.001)
         {
             blocked = true;
-            // Auto path-around-walls is part of navigation assist; with it off, a blocked
-            // avatar simply stays put and the wall-contact pain (below) feeds back to the
-            // brain so the brain learns to turn.
-            if (_navigationAssistEnabled &&
-                (TryApplyNavigationFilter(headingRad, step, out nextY) ||
-                 TryCornerSidestep(headingRad, step, out nextY) ||
-                 TryProbeStepAroundObstacle(headingRad, step, out nextY)))
-            {
-                _avatarY = nextY;
-                moved = true;
-                blocked = false;
-                _pathRecoveries++;
-            }
+            // Brain-drive only: a blocked avatar stays put. Wall-contact pain below
+            // feeds back so the brain can learn a different action.
         }
 
         _avatarTranslate.OffsetX = _avatarX;
@@ -2763,11 +2700,6 @@ public partial class MainWindow : Window
             _collisionPulse = 1.0;
             _consecutiveWallContacts++;
             QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.26, DamageLevel: 0.08, EffortCost: 0.24), force: true);
-            if (_navigationAssistEnabled)
-            {
-                var severe = _consecutiveWallContacts >= _antiStallContactThreshold;
-                TryStartEscapeMotorProgram(severe, severe ? "consecutive-wall trap" : "wall impact");
-            }
         }
         else if (moved)
         {
@@ -2889,21 +2821,6 @@ public partial class MainWindow : Window
         }
 
         return maxDistance;
-    }
-
-    private void ApplyEscapeMotorProgram(ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (_escapeProgramTicksRemaining <= 0)
-        {
-            _escapeProgramStrafeSign = 0.0;
-            _escapeProgramReverseScale = 1.0;
-            return;
-        }
-
-        var decay = 0.35 + (0.65 * (_escapeProgramTicksRemaining / (double)MaxEscapeProgramTicks));
-        forwardSpeed = Math.Min(forwardSpeed, _antiStallReverseBaseSpeed * _escapeProgramReverseScale);
-        turnRateDeg = Math.Clamp(turnRateDeg + (_escapeProgramTurnDeg * decay), -280.0, 280.0);
-        _escapeProgramTicksRemaining--;
     }
 
     private bool TryApplyNavigationFilter(double headingRad, double signedStep, out double nextY)
@@ -3100,53 +3017,14 @@ public partial class MainWindow : Window
         }
 
         var headingDelta = Math.Abs(headingDeltaSigned);
-        if (headingDelta > 12.0 && _noProgressTicks >= SpinGuardTickThreshold)
-        {
-            // Drop differential drive when spinning without progress so recovery can translate.
-            var averageDrive = (_leftMotorDrive + _rightMotorDrive) * 0.5;
-            _avatarService.PostSetMotorDrive(averageDrive, averageDrive);
-            _leftMotorDrive = averageDrive;
-            _rightMotorDrive = averageDrive;
-        }
-
         if (collisionDetected)
         {
-            if (_consecutiveWallContacts >= _antiStallContactThreshold)
-            {
-                TryStartEscapeMotorProgram(severe: true, "wall-trap recovery");
-                _consecutiveWallContacts = 0;
-            }
-
-            // Tier-7 replaces the previous mid-life teleport: keep escalating the
-            // existing escape program; the rising HP cost above will eventually
-            // trigger an honest death+respawn if nothing breaks the deadlock.
+            // Brain-drive only: collisions feed pain/body-state back to the brain.
             return;
         }
 
         if ((now - _lastProgressUtc) > TimeSpan.FromSeconds(_antiStallNoProgressTimeoutSec))
         {
-            var severe = (now - _lastProgressUtc) > TimeSpan.FromSeconds(_antiStallNoProgressTimeoutSec * 1.8);
-            if (severe && _noProgressTicks >= (SpinGuardTickThreshold + 6))
-            {
-                // Last-resort local probe before re-arming the full reverse program.
-                var headingRad = DegreesToRadians(_avatarHeadingDeg);
-                if (TryProbeStepAroundObstacle(headingRad, 0.62, out var recoveredY))
-                {
-                    _avatarY = recoveredY;
-                    _consecutiveWallContacts = 0;
-                    _noProgressTicks = 0;
-                    _lastProgressUtc = now;
-                    _inStuckEpisode = false;
-                    _pathRecoveries++;
-                    Log("Avatar anti-stall: lateral probe recovery.");
-                    return;
-                }
-            }
-
-            // Tier-7: no longer relocates. The escape program runs again; if the
-            // avatar still cannot make progress, stuck-damage above will kill it
-            // and trigger an honest respawn.
-            TryStartEscapeMotorProgram(severe, severe ? "hard no-progress recovery" : "no-progress recovery");
             _lastProgressUtc = now;
         }
     }
@@ -3578,77 +3456,6 @@ public partial class MainWindow : Window
         }
 
         return nearest;
-    }
-
-    private void TryStartEscapeMotorProgram(bool severe, string reason)
-    {
-        var now = DateTime.UtcNow;
-        if (_escapeRearmTicksRemaining > 0 && !severe)
-        {
-            return;
-        }
-
-        if ((now - _lastEscapeReflexUtc) < TimeSpan.FromSeconds(_antiStallEscapeCooldownSec))
-        {
-            return;
-        }
-
-        var headingRad = DegreesToRadians(_avatarHeadingDeg);
-        var sideProbeOffset = DegreesToRadians(EscapeSideProbeAngleDeg);
-        var leftDistance = TraceCollisionDistance(Math.Sin(headingRad - sideProbeOffset), Math.Cos(headingRad - sideProbeOffset), EscapeProbeRange + 0.8);
-        var rightDistance = TraceCollisionDistance(Math.Sin(headingRad + sideProbeOffset), Math.Cos(headingRad + sideProbeOffset), EscapeProbeRange + 0.8);
-        var gap = rightDistance - leftDistance;
-
-        var turnSign = Math.Abs(gap) > 0.10
-            ? Math.Sign(gap)
-            : (((_hardUnstuckEvents + _stuckRecoveries) & 1) == 0 ? 1.0 : -1.0);
-        if (turnSign == 0.0)
-        {
-            turnSign = 1.0;
-        }
-
-        // Break deterministic corner loops: when already in heavy contact, flip direction
-        // every other severe escape cycle to guarantee exploration of the opposite side.
-        if (severe && _consecutiveWallContacts >= _antiStallContactThreshold + 2 && (_hardUnstuckEvents & 1) == 1)
-        {
-            turnSign *= -1.0;
-        }
-
-        var baseTurn = severe ? 170.0 : 132.0;
-        _escapeProgramTurnDeg = turnSign * (baseTurn + Math.Clamp(_consecutiveWallContacts * 3.0, 0.0, 40.0));
-        _escapeProgramStrafeSign = turnSign;
-        _escapeProgramReverseScale = severe ? 1.24 : 1.06;
-        var ticks = severe ? 16 : 10;
-        ticks += Math.Clamp(_consecutiveWallContacts / 2, 0, 8);
-        _escapeProgramTicksRemaining = Math.Clamp(ticks, 8, MaxEscapeProgramTicks);
-        _escapeRearmTicksRemaining = EscapeRearmCooldownTicks + (_escapeProgramTicksRemaining / 2);
-
-        if (turnSign > 0.0)
-        {
-            _avatarService.PostAddMotorDrive(10.0, 44.0);
-            _leftMotorDrive += 10.0;
-            _rightMotorDrive += 44.0;
-        }
-        else
-        {
-            _avatarService.PostAddMotorDrive(44.0, 10.0);
-            _leftMotorDrive += 44.0;
-            _rightMotorDrive += 10.0;
-        }
-
-        _lastEscapeReflexUtc = now;
-        _stuckRecoveries++;
-        if (severe)
-        {
-            _hardUnstuckEvents++;
-        }
-
-        var nowMs = Environment.TickCount64;
-        if ((nowMs - _lastEscapeLogMs) >= 1300)
-        {
-            _lastEscapeLogMs = nowMs;
-            Log($"Avatar anti-stall: {reason} (turn {_escapeProgramTurnDeg:0} deg/s, ticks {_escapeProgramTicksRemaining}).");
-        }
     }
 
     private void UpdateSurvival(double dt, double nowSeconds)
@@ -4264,13 +4071,15 @@ public partial class MainWindow : Window
         {
             try
             {
-                using var response = await _objectDispatchHttpClient.PostAsJsonAsync(uri, request, token);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeout.CancelAfter(TimeSpan.FromMilliseconds(ObjectCueDispatchTimeoutMs));
+                using var response = await _objectDispatchHttpClient.PostAsJsonAsync(uri, request, timeout.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     return (true, null);
                 }
 
-                var body = await response.Content.ReadAsStringAsync(token);
+                var body = await response.Content.ReadAsStringAsync(timeout.Token);
                 var error = $"HTTP {(int)response.StatusCode}: {TrimForLog(body, 180)}";
                 if (attempt == 0 && (
                         response.StatusCode == HttpStatusCode.RequestTimeout ||
@@ -4810,6 +4619,11 @@ public partial class MainWindow : Window
         _avatarPreviewBitmap!.WritePixels(rect, frame.Pixels, frame.Stride, 0);
         _avatarPreviewPixels = frame.Pixels;
         UpdateAvatarPreviewInfo(frame, lagMs, isStale);
+        if (!isStale)
+        {
+            _avatarService.PostSightInputFrame(frame.SightFrame);
+        }
+
         if (isStale)
         {
             LogStaleVisionPreviewFrame(lagMs);
@@ -5301,7 +5115,7 @@ public partial class MainWindow : Window
                         break;
                     }
 
-                    if (TryGetVisionHitKind(request.VisionHitGrid, sampleX, sampleY, sampleZ, out var visionKind))
+                    if (TryGetVisionHitKind(request.DynamicVisionHitBoxes, sampleX, sampleY, sampleZ, out var visionKind))
                     {
                         hitColor = GetAvatarVisionObjectColor(visionKind);
                         hitDistance = dist;
@@ -5309,7 +5123,7 @@ public partial class MainWindow : Window
                         break;
                     }
 
-                    if (TryGetVisionHitKind(request.DynamicVisionHitBoxes, sampleX, sampleY, sampleZ, out visionKind))
+                    if (TryGetVisionHitKind(request.VisionHitGrid, sampleX, sampleY, sampleZ, out visionKind))
                     {
                         hitColor = GetAvatarVisionObjectColor(visionKind);
                         hitDistance = dist;
@@ -5421,8 +5235,8 @@ public partial class MainWindow : Window
                     break;
                 }
 
-                if (TryGetVisionHitKind(request.VisionHitGrid, sampleX, sampleY, sampleZ, out var visionKind) ||
-                    TryGetVisionHitKind(request.DynamicVisionHitBoxes, sampleX, sampleY, sampleZ, out visionKind))
+                if (TryGetVisionHitKind(request.DynamicVisionHitBoxes, sampleX, sampleY, sampleZ, out var visionKind) ||
+                    TryGetVisionHitKind(request.VisionHitGrid, sampleX, sampleY, sampleZ, out visionKind))
                 {
                     saliency = ComputeWorldVisionSaliency(visionKind, dist, maxDistance);
                     break;
@@ -5659,11 +5473,13 @@ public partial class MainWindow : Window
         try
         {
             var endpoint = GetSelectedEndpoint();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(AvatarVisionDispatchTimeoutMs));
             var outcome = await _visualInputClient.DispatchWithHemisphereFallbackAsync(
                 new Uri(endpoint),
                 request,
                 ex => VisualInputDispatchClient.ShouldRetryHemisphereFallback(ex, "V1"),
-                token);
+                timeout.Token);
             if (outcome.FallbackAttempted)
             {
                 if (outcome.LeftResponse is not null &&
@@ -5771,10 +5587,6 @@ public partial class MainWindow : Window
         _trailPoints.Clear();
         _trailAccumulatorSeconds = 0.0;
         _consecutiveWallContacts = 0;
-        _escapeProgramTicksRemaining = 0;
-        _escapeProgramTurnDeg = 0.0;
-        _escapeProgramStrafeSign = 0.0;
-        _escapeProgramReverseScale = 1.0;
         _escapeRearmTicksRemaining = 0;
         _noProgressTicks = 0;
         _lastProgressUtc = DateTime.UtcNow;

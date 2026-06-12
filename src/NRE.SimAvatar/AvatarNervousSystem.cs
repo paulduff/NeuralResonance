@@ -8,7 +8,6 @@ namespace NRE.SimAvatar;
 public sealed class AvatarNervousSystem
 {
     private readonly AvatarNervousSystemOptions _options;
-    private double _idleMotorFallbackPhaseDeg;
 
     public AvatarNervousSystem(AvatarNervousSystemOptions options)
     {
@@ -29,7 +28,6 @@ public sealed class AvatarNervousSystem
         RightMotorDrive = 0.0;
         LastMotorDispatchCount = 0;
         TicksWithoutMotorDispatch = 0;
-        _idleMotorFallbackPhaseDeg = 0.0;
     }
 
     public void SetMotorDrive(double left, double right)
@@ -99,30 +97,8 @@ public sealed class AvatarNervousSystem
 
     private void ApplyIdleFallback(AvatarNervousSystemBodyState body)
     {
-        if (TicksWithoutMotorDispatch < _options.IdleMotorFallbackTicks)
-        {
-            return;
-        }
-
-        _idleMotorFallbackPhaseDeg = AvatarKinematics.NormalizeDegrees(
-            _idleMotorFallbackPhaseDeg + _options.IdleFallbackPhaseStepDeg);
-        var phaseRad = AvatarKinematics.DegreesToRadians(_idleMotorFallbackPhaseDeg);
-        var arousal = Math.Clamp(
-            0.20 + (body.Hunger * 0.95) + (body.Threat * 1.10) + ((1.0 - body.Health) * 0.55),
-            0.25,
-            1.90);
-        var baseDrive = _options.IdleMotorFallbackBaseDrive * arousal;
-        var steerBias = Math.Sin(phaseRad) * (8.0 + (body.Threat * 7.0));
-
-        if (body.NoProgressTimeoutSeconds > 0.0 &&
-            body.SecondsSinceProgress > body.NoProgressTimeoutSeconds * 0.85)
-        {
-            baseDrive += 28.0;
-        }
-
-        SetMotorDrive(
-            Math.Max(LeftMotorDrive, baseDrive - steerBias),
-            Math.Max(RightMotorDrive, baseDrive + steerBias));
+        // Brain-drive only: idle body state must not synthesize locomotion.
+        // Movement is produced only by motor pathway dispatches.
     }
 
     public AvatarToolSignal InterpretToolSignal(IReadOnlyList<AvatarDispatchSpike> dispatches)

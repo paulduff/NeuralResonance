@@ -476,6 +476,22 @@ public partial class MainWindow : Window
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
     private string _brainMotorDecisionText = "Motor decision: waiting for brain state.";
+    private string _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
+    private static readonly MotorPathwayStage[] MotorPathwayStages =
+    [
+        new("PFC", ["Pfc"]),
+        new("ACC", ["Acc"]),
+        new("PM", ["PremotorCortex"]),
+        new("Str", ["Striatum"]),
+        new("STN", ["Stn"]),
+        new("GPi/SNr", ["GPi", "Snr"]),
+        new("MThal", ["MotorThalamus"]),
+        new("SMA", ["Sma"]),
+        new("M1", ["M1"]),
+        new("DCN", ["DeepCerebellarNuclei"]),
+        new("Spinal", ["SpinalCordMotor"])
+    ];
+    private static readonly IReadOnlyDictionary<string, MotorPathwayStage> MotorPathwayStageLookup = BuildMotorPathwayStageLookup();
 
     public MainWindow()
     {
@@ -599,6 +615,7 @@ public partial class MainWindow : Window
         _brainGoalKey = string.Empty;
         _brainActionTarget = string.Empty;
         _brainMotorDecisionText = "Motor decision: waiting for brain state.";
+        _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
         _sleepState = false;
         _collisionHits = 0;
         _collisionPulse = 0.0;
@@ -1111,6 +1128,7 @@ public partial class MainWindow : Window
         MotorDispatchText.Text = "Motor dispatch events: 0";
         MotorDriveText.Text = "Motor drive L/R: 0.0 / 0.0";
         MotorDecisionText.Text = _brainMotorDecisionText;
+        MotorPathwayAuditText.Text = _motorPathwayAuditText;
         CollisionText.Text = "Collision hits: 0";
         TrailText.Text = "Trail points: 0 | mapped: 0";
         AntiStallText.Text = "Anti-stall: episodes 0, recoveries 0, path 0, hard 0, fail 0, nav 0, contacts 0, escape ticks 0";
@@ -2562,6 +2580,7 @@ public partial class MainWindow : Window
         MotorDispatchText.Text = $"Motor dispatch events: {_lastMotorDispatchCount}";
         MotorDriveText.Text = $"Motor drive L/R: {_leftMotorDrive:0.0} / {_rightMotorDrive:0.0}";
         MotorDecisionText.Text = _brainMotorDecisionText;
+        MotorPathwayAuditText.Text = _motorPathwayAuditText;
         AvatarPoseText.Text = $"Avatar pose: x {_avatarX:0.00}, y {_avatarY:0.00}, z {_avatarZ:0.00}, body {_avatarHeadingDeg:0.0} deg, head {_avatarHeadYawDeg:0.0} deg";
         CollisionText.Text = $"Collision hits: {_collisionHits}";
         var mapped = _visitedTerrainCells.Count;
@@ -7620,6 +7639,7 @@ public partial class MainWindow : Window
                 _dispatchSinceMs = maxWallClockMs;
             }
 
+            UpdateMotorPathwayAuditFromFrame(root, dispatches);
             ApplyMotorDispatch(dispatches);
         }
         catch (Exception ex)
@@ -8243,6 +8263,141 @@ public partial class MainWindow : Window
         _brainActionTarget = target.Trim();
     }
 
+    private void UpdateMotorPathwayAuditFromFrame(JsonElement frameRoot, IReadOnlyList<AvatarDispatchSpike> dispatches)
+    {
+        if (!TryGetProperty(frameRoot, "latestSnapshot", out var snapshot) ||
+            snapshot.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
+            return;
+        }
+
+        var signals = ReadMotorPathwaySignals(snapshot, dispatches);
+        if (signals.Count == 0)
+        {
+            _motorPathwayAuditText = "Motor pathway: no motor-chain structures in latest snapshot.";
+            return;
+        }
+
+        var parts = new List<string>(MotorPathwayStages.Length);
+        foreach (var stage in MotorPathwayStages)
+        {
+            signals.TryGetValue(stage.Label, out var signal);
+            parts.Add($"{stage.Label} {signal.MeanRateHz:0.0}Hz d{signal.DispatchCount}");
+        }
+
+        _motorPathwayAuditText = $"Motor pathway: {string.Join(" | ", parts)}; {ResolveMotorPathwayBreak(signals)}";
+    }
+
+    private static Dictionary<string, MotorPathwaySignal> ReadMotorPathwaySignals(
+        JsonElement snapshot,
+        IReadOnlyList<AvatarDispatchSpike> dispatches)
+    {
+        var signals = new Dictionary<string, MotorPathwaySignal>(StringComparer.OrdinalIgnoreCase);
+        if (!TryGetProperty(snapshot, "structureStates", out var states) || states.ValueKind != JsonValueKind.Array)
+        {
+            return signals;
+        }
+
+        foreach (var state in states.EnumerateArray())
+        {
+            if (state.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var structure = ParseAnyStructureId(state, "structureId", "structure_id");
+            if (string.IsNullOrWhiteSpace(structure) || !MotorPathwayStageLookup.TryGetValue(structure, out var stage))
+            {
+                continue;
+            }
+
+            signals.TryGetValue(stage.Label, out var current);
+            signals[stage.Label] = current.AddSnapshot(
+                GetDouble(state, "meanFiringRateHz", "mean_firing_rate_hz"),
+                (int)Math.Max(0, GetLong(state, "spikeInCount", "spike_in_count")),
+                (int)Math.Max(0, GetLong(state, "spikeOutCount", "spike_out_count")));
+        }
+
+        foreach (var dispatch in dispatches)
+        {
+            if (string.IsNullOrWhiteSpace(dispatch.SourceStructure) ||
+                !MotorPathwayStageLookup.TryGetValue(dispatch.SourceStructure, out var stage))
+            {
+                continue;
+            }
+
+            signals.TryGetValue(stage.Label, out var current);
+            signals[stage.Label] = current.AddDispatch();
+        }
+
+        if (TryGetProperty(snapshot, "activePathways", out var pathways) && pathways.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var pathway in pathways.EnumerateArray())
+            {
+                var source = ParseAnyStructureId(pathway, "source", "sourceStructure", "source_structure");
+                if (string.IsNullOrWhiteSpace(source) || !MotorPathwayStageLookup.TryGetValue(source, out var stage))
+                {
+                    continue;
+                }
+
+                var volume = (int)Math.Max(0, GetLong(pathway, "spikeVolume", "spike_volume"));
+                signals.TryGetValue(stage.Label, out var current);
+                signals[stage.Label] = current.AddPathwayVolume(volume);
+            }
+        }
+
+        return signals;
+    }
+
+    private static Dictionary<string, MotorPathwayStage> BuildMotorPathwayStageLookup()
+    {
+        var lookup = new Dictionary<string, MotorPathwayStage>(StringComparer.OrdinalIgnoreCase);
+        foreach (var stage in MotorPathwayStages)
+        {
+            foreach (var alias in stage.Structures)
+            {
+                lookup[alias] = stage;
+            }
+        }
+
+        return lookup;
+    }
+
+    private static string ResolveMotorPathwayBreak(IReadOnlyDictionary<string, MotorPathwaySignal> signals)
+    {
+        var anyActive = false;
+        for (var i = 0; i < MotorPathwayStages.Length; i++)
+        {
+            var stage = MotorPathwayStages[i];
+            signals.TryGetValue(stage.Label, out var signal);
+            if (signal.IsActive)
+            {
+                anyActive = true;
+                continue;
+            }
+
+            if (anyActive)
+            {
+                return $"break near {stage.Label}";
+            }
+        }
+
+        if (!anyActive)
+        {
+            return "chain quiet";
+        }
+
+        signals.TryGetValue("M1", out var m1);
+        signals.TryGetValue("Spinal", out var spinal);
+        if (m1.IsActive && !spinal.IsActive)
+        {
+            return "M1 active, spinal output quiet";
+        }
+
+        return "descending chain active";
+    }
+
     private void UpdateBrainMotorDecisionFromState(JsonElement stateElement)
     {
         var action = string.Empty;
@@ -8658,6 +8813,36 @@ public partial class MainWindow : Window
         public int Stride => SightFrame.Stride;
         public byte[] Pixels => SightFrame.Pixels;
         public double PreviewHeadingDeg => SightFrame.PreviewHeadingDeg;
+    }
+
+    private sealed record MotorPathwayStage(string Label, string[] Structures);
+
+    private readonly record struct MotorPathwaySignal(
+        double MeanRateHz,
+        int SpikeInCount,
+        int SpikeOutCount,
+        int DispatchCount,
+        int PathwayVolume)
+    {
+        public bool IsActive =>
+            DispatchCount > 0 ||
+            SpikeOutCount > 0 ||
+            PathwayVolume > 0 ||
+            MeanRateHz >= 0.30;
+
+        public MotorPathwaySignal AddSnapshot(double meanRateHz, int spikeInCount, int spikeOutCount)
+            => this with
+            {
+                MeanRateHz = Math.Max(MeanRateHz, Math.Max(0.0, meanRateHz)),
+                SpikeInCount = SpikeInCount + spikeInCount,
+                SpikeOutCount = SpikeOutCount + spikeOutCount
+            };
+
+        public MotorPathwaySignal AddDispatch()
+            => this with { DispatchCount = DispatchCount + 1 };
+
+        public MotorPathwaySignal AddPathwayVolume(int volume)
+            => this with { PathwayVolume = PathwayVolume + volume };
     }
 
     private readonly struct OptionalElement

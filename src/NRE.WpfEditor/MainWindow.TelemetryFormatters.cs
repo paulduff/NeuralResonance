@@ -558,6 +558,8 @@ public partial class MainWindow
             lines.AppendLine("Circuit audit summary unavailable.");
         }
 
+        AppendMotorPathwayAudit(lines, items);
+
         lines.AppendLine();
         lines.AppendLine("Live warnings:");
         if (warnings.ValueKind != JsonValueKind.Array || warnings.GetArrayLength() == 0)
@@ -649,6 +651,95 @@ public partial class MainWindow
         }
 
         return lines.ToString().TrimEnd();
+    }
+
+    private static readonly (string Label, string[] Structures)[] MotorAuditStages =
+    [
+        ("PFC", ["Pfc"]),
+        ("ACC", ["Acc"]),
+        ("PM", ["PremotorCortex"]),
+        ("Str", ["Striatum"]),
+        ("STN", ["Stn"]),
+        ("GPi/SNr", ["GPi", "Snr"]),
+        ("MThal", ["MotorThalamus"]),
+        ("SMA", ["Sma"]),
+        ("M1", ["M1"]),
+        ("DCN", ["DeepCerebellarNuclei"]),
+        ("Spinal", ["SpinalCordMotor"])
+    ];
+
+    private static void AppendMotorPathwayAudit(StringBuilder lines, JsonElement items)
+    {
+        lines.AppendLine();
+        lines.AppendLine("Motor pathway chain:");
+        if (items.ValueKind != JsonValueKind.Array || items.GetArrayLength() == 0)
+        {
+            lines.AppendLine("  unavailable");
+            return;
+        }
+
+        var byStructure = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in items.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var structure = GetString(item, "structure");
+            if (!string.IsNullOrWhiteSpace(structure))
+            {
+                byStructure[structure] = item;
+            }
+        }
+
+        var parts = new List<string>(MotorAuditStages.Length);
+        var activeFlags = new List<bool>(MotorAuditStages.Length);
+        foreach (var stage in MotorAuditStages)
+        {
+            var recentInput = 0;
+            var recentOutput = 0;
+            var serviceOk = false;
+            foreach (var structure in stage.Structures)
+            {
+                if (!byStructure.TryGetValue(structure, out var item))
+                {
+                    continue;
+                }
+
+                recentInput += GetInt(item, "recentInputSpikes");
+                recentOutput += GetInt(item, "recentOutputSpikes");
+                serviceOk |= GetString(item, "serviceStatus").Equals("OK", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var active = recentInput > 0 || recentOutput > 0;
+            activeFlags.Add(active);
+            var status = active ? $"{recentInput}/{recentOutput}" : serviceOk ? "quiet" : "down";
+            parts.Add($"{stage.Label} {status}");
+        }
+
+        lines.AppendLine($"  {string.Join(" | ", parts)}");
+        lines.AppendLine($"  Break: {ResolveMotorAuditBreak(activeFlags)}");
+    }
+
+    private static string ResolveMotorAuditBreak(IReadOnlyList<bool> activeFlags)
+    {
+        var anyActive = false;
+        for (var i = 0; i < activeFlags.Count && i < MotorAuditStages.Length; i++)
+        {
+            if (activeFlags[i])
+            {
+                anyActive = true;
+                continue;
+            }
+
+            if (anyActive)
+            {
+                return $"near {MotorAuditStages[i].Label}";
+            }
+        }
+
+        return anyActive ? "descending chain active" : "chain quiet";
     }
 
     private static string FormatObjectMemoryState(JsonElement root)

@@ -561,7 +561,7 @@ public partial class MainWindow
         AppendMotorPathwayAudit(lines, items);
 
         lines.AppendLine();
-        lines.AppendLine("Live warnings:");
+        lines.AppendLine("Action warnings:");
         if (warnings.ValueKind != JsonValueKind.Array || warnings.GetArrayLength() == 0)
         {
             lines.AppendLine("  -");
@@ -569,7 +569,7 @@ public partial class MainWindow
         else
         {
             var index = 1;
-            foreach (var warning in warnings.EnumerateArray().Take(24))
+            foreach (var warning in warnings.EnumerateArray().Where(IsWarningFinding).Take(24))
             {
                 if (warning.ValueKind != JsonValueKind.Object)
                 {
@@ -589,6 +589,43 @@ public partial class MainWindow
                 lines.AppendLine($"{index,2}. {structure} [{BlankAsDash(severity)}] {issueText}");
                 lines.AppendLine($"    routes in/out {incomingRoutes}/{outgoingRoutes} | recent spikes in/out {recentInput}/{recentOutput} | lifetime in/out {lifetimeInput}/{lifetimeOutput} | service {BlankAsDash(serviceStatus)}");
                 index++;
+            }
+
+            if (index == 1)
+            {
+                lines.AppendLine("  -");
+            }
+        }
+
+        lines.AppendLine();
+        lines.AppendLine("Quiet notices:");
+        if (warnings.ValueKind != JsonValueKind.Array || warnings.GetArrayLength() == 0)
+        {
+            lines.AppendLine("  -");
+        }
+        else
+        {
+            var index = 1;
+            foreach (var warning in warnings.EnumerateArray().Where(IsNoticeFinding).Take(16))
+            {
+                if (warning.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var structure = GetString(warning, "structure");
+                var serviceStatus = GetString(warning, "serviceStatus");
+                var recentInput = GetInt(warning, "recentInputSpikes");
+                var recentOutput = GetInt(warning, "recentOutputSpikes");
+                var issueText = ReadStringArray(warning, "issues");
+                var silenceCause = GetString(warning, "silenceCause");
+                lines.AppendLine($"{index,2}. {structure} {issueText} | recent {recentInput}/{recentOutput} | service {BlankAsDash(serviceStatus)} | cause {BlankAsDash(silenceCause)}");
+                index++;
+            }
+
+            if (index == 1)
+            {
+                lines.AppendLine("  -");
             }
         }
 
@@ -652,6 +689,14 @@ public partial class MainWindow
 
         return lines.ToString().TrimEnd();
     }
+
+    private static bool IsWarningFinding(JsonElement finding)
+        => finding.ValueKind == JsonValueKind.Object &&
+           GetString(finding, "severity").Equals("warn", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNoticeFinding(JsonElement finding)
+        => finding.ValueKind == JsonValueKind.Object &&
+           !GetString(finding, "severity").Equals("warn", StringComparison.OrdinalIgnoreCase);
 
     private static readonly (string Label, string[] Structures)[] MotorAuditStages =
     [

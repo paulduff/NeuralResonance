@@ -59,7 +59,7 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorHeight = 1.10;
     private const double AvatarVisionPredatorLength = 1.85;
     private const int AvatarVisionDispatchTimeoutMs = 1600;
-    private const int ObjectCueDispatchTimeoutMs = 1800;
+    private const int ObjectCueDispatchTimeoutMs = 3500;
     private const double OrientingTargetVisibleRange = 26.0;
     private const double OrientingTargetLockGain = 3.4;
     private const double OrientingScanTurnRateDeg = 96.0;
@@ -134,7 +134,8 @@ public partial class MainWindow : Window
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
-    private const int EnvironmentAudioDispatchIntervalMs = 4200;
+    private const int EnvironmentAudioDispatchTimeoutMs = 3200;
+    private const int EnvironmentAudioDispatchIntervalMs = 9000;
     private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyStateDispatchIntervalMs = 350;
@@ -434,10 +435,10 @@ public partial class MainWindow : Window
     private bool _objectDispatchInFlight;
     private bool _environmentAudioInFlight;
     private bool _outcomeStimulusInFlight;
-    private readonly AvatarRetryBackoff _objectDispatchBackoff = new();
+    private readonly AvatarRetryBackoff _objectDispatchBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 2000);
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
-    private readonly AvatarWarningGate _objectDispatchWarningGate = new();
-    private readonly AvatarWarningGate _environmentAudioWarningGate = new();
+    private readonly AvatarWarningGate _objectDispatchWarningGate = new(minimumIntervalMs: 15000);
+    private readonly AvatarWarningGate _environmentAudioWarningGate = new(minimumIntervalMs: 15000);
     private bool _objectMemoryInFlight;
     private long _nextObjectMemoryPollMs;
     private readonly AvatarRetryBackoff _objectMemoryBackoff = new();
@@ -4090,60 +4091,76 @@ public partial class MainWindow : Window
 
     private async Task<(bool Success, string? Error)> TryPostObjectCueAsync(Uri uri, ObjectAdminInputRequest request, CancellationToken token)
     {
-        for (var attempt = 0; attempt < 2; attempt++)
+        try
         {
-            try
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(ObjectCueDispatchTimeoutMs));
+            using var response = await _objectDispatchHttpClient.PostAsJsonAsync(uri, request, timeout.Token);
+            if (response.IsSuccessStatusCode)
             {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-                timeout.CancelAfter(TimeSpan.FromMilliseconds(ObjectCueDispatchTimeoutMs));
-                using var response = await _objectDispatchHttpClient.PostAsJsonAsync(uri, request, timeout.Token);
-                if (response.IsSuccessStatusCode)
-                {
-                    return (true, null);
-                }
-
-                var body = await response.Content.ReadAsStringAsync(timeout.Token);
-                var error = $"HTTP {(int)response.StatusCode}: {TrimForLog(body, 180)}";
-                if (attempt == 0 && (
-                        response.StatusCode == HttpStatusCode.RequestTimeout ||
-                        response.StatusCode == HttpStatusCode.TooManyRequests ||
-                        response.StatusCode == HttpStatusCode.BadGateway ||
-                        response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                        response.StatusCode == HttpStatusCode.GatewayTimeout))
-                {
-                    await Task.Delay(80, token);
-                    continue;
-                }
-
-                return (false, error);
+                return (true, null);
             }
-            catch (TaskCanceledException) when (token.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (TaskCanceledException)
-            {
-                if (attempt == 0)
-                {
-                    await Task.Delay(120, token);
-                    continue;
-                }
 
-                return (false, "timeout posting recognized object cue");
-            }
-            catch (Exception ex)
-            {
-                if (attempt == 0)
-                {
-                    await Task.Delay(80, token);
-                    continue;
-                }
-
-                return (false, $"{ex.GetType().Name}: {TrimForLog(ex.Message, 180)}");
-            }
+            var body = await response.Content.ReadAsStringAsync(timeout.Token);
+            var retryableSuffix =
+                response.StatusCode == HttpStatusCode.RequestTimeout ||
+                response.StatusCode == HttpStatusCode.TooManyRequests ||
+                response.StatusCode == HttpStatusCode.BadGateway ||
+                response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                response.StatusCode == HttpStatusCode.GatewayTimeout
+                    ? " (engine busy; backing off)"
+                    : string.Empty;
+            return (false, $"HTTP {(int)response.StatusCode}: {TrimForLog(body, 180)}{retryableSuffix}");
         }
+        catch (TaskCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "timeout posting recognized object cue");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"{ex.GetType().Name}: {TrimForLog(ex.Message, 180)}");
+        }
+    }
 
-        return (false, "object cue dispatch retry exhausted");
+    private async Task<bool> TryPostEnvironmentAudioCueAsync(string endpoint, AvatarAuditoryCue cue, CancellationToken token)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(EnvironmentAudioDispatchTimeoutMs));
+            var result = await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cue, timeout.Token);
+            if (result.PausedDueToSleep)
+            {
+                return true;
+            }
+
+            if (result.GeneratedSpikes <= 0 || result.DeliveredSpikes <= 0)
+            {
+                RegisterEnvironmentAudioFailure(
+                    $"auditory cue delivered {result.DeliveredSpikes}/{result.GeneratedSpikes} spikes");
+                return false;
+            }
+
+            return true;
+        }
+        catch (TaskCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (TaskCanceledException)
+        {
+            RegisterEnvironmentAudioFailure("timeout posting environment audio cue");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            RegisterEnvironmentAudioFailure($"{ex.GetType().Name}: {TrimForLog(ex.Message, 160)}");
+            return false;
+        }
     }
 
     private async Task<List<AvatarObjectObservation>> DrainAvatarObjectObservationsAsync(int maxObservations, CancellationToken token)
@@ -6777,13 +6794,16 @@ public partial class MainWindow : Window
         _lastEnvironmentAudioDispatchMs = nowMs;
         try
         {
-            var limit = 1;
-            for (var i = 0; i < limit; i++)
+            var success = true;
+            for (var i = 0; i < cues.Count; i++)
             {
-                await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cues[i], token);
+                success &= await TryPostEnvironmentAudioCueAsync(endpoint, cues[i], token);
             }
 
-            _environmentAudioBackoff.Reset();
+            if (success)
+            {
+                _environmentAudioBackoff.Reset();
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {

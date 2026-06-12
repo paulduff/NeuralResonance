@@ -3832,7 +3832,7 @@ internal sealed class SimulationState
         [BrainRhythm.GAMMA] = 0
     };
 
-    public AttentionVector GlobalAttentionBias { get; private set; } = new(0.25f, 0.25f, 0.25f, 0.25f);
+    public AttentionVector GlobalAttentionBias { get; private set; } = new(0.42f, 0.16f, 0.16f, 0.26f);
     public float RewardPredictionError { get; private set; }
     public long Tick { get; private set; }
     public long LastSnapshotTick { get; private set; }
@@ -17046,6 +17046,7 @@ internal sealed class SimulationState
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Default;
             PlaceMemory = PlaceMemoryRuntime.Default;
             VisualAttention = VisualAttentionRuntime.Default;
+            GlobalAttentionBias = BiologicalAttentionRuntime.Default.SensoryBias;
             AttentionState = BiologicalAttentionRuntime.Default;
             LimbicState = LimbicRuntimeState.Default;
             EmotionState = EmotionRuntimeState.Default;
@@ -32981,13 +32982,13 @@ internal sealed record PlanningWorkspaceRuntime(
     IReadOnlyList<string> ProposedPlan)
 {
     public static PlanningWorkspaceRuntime Default { get; } = new(
-        Goal: "maximize reward while conserving energy",
+        Goal: "observe, learn, and conserve energy",
         GoalActive: true,
         HorizonSteps: 4,
         MaxBranching: 8,
-        ExplorationTemperature: 0.35,
-        DopamineBias: 1.00,
-        InhibitoryGate: 1.00,
+        ExplorationTemperature: 0.42,
+        DopamineBias: 1.08,
+        InhibitoryGate: 0.72,
         SelectedActionKey: "idle",
         SelectedUtility: 0.0,
         SelectedConfidence: 0.0,
@@ -33042,15 +33043,15 @@ internal sealed record GoalIntentRuntime(
     public static GoalIntentRuntime Default { get; } = new(
         Active: false,
         GoalKey: "Observe",
-        DisplayName: "Observe",
+        DisplayName: "Observe and learn",
         MotorDirective: "motor_idle",
-        BiologicalSource: "tonic brainstem monitoring",
-        Drive: 0.20f,
-        Urgency: 0.10f,
-        Confidence: 0.20f,
-        BasalGangliaGate: 0.30f,
-        DopamineBias: 0.30f,
-        InhibitoryTone: 0.40f,
+        BiologicalSource: "tonic brainstem monitoring with basal forebrain alerting",
+        Drive: 0.18f,
+        Urgency: 0.06f,
+        Confidence: 0.24f,
+        BasalGangliaGate: 0.38f,
+        DopamineBias: 0.40f,
+        InhibitoryTone: 0.30f,
         LastUpdatedTick: 0,
         ExpiresAtTick: 0,
         Candidates: []);
@@ -33122,26 +33123,26 @@ internal sealed record MotivationArbitrationRuntime(
         Active: false,
         WinningGoalKey: "Observe",
         RivalGoalKey: "none",
-        WinningScore: 0f,
+        WinningScore: 0.12f,
         RivalScore: 0f,
-        WinningMargin: 0f,
-        HypothalamicHungerDrive: 0f,
-        HypothalamicTiredDrive: 0f,
-        AmygdalaThreatDrive: 0f,
-        InsulaBodyNeed: 0f,
-        ShelterDrive: 0f,
+        WinningMargin: 0.08f,
+        HypothalamicHungerDrive: 0.08f,
+        HypothalamicTiredDrive: 0.06f,
+        AmygdalaThreatDrive: 0.04f,
+        InsulaBodyNeed: 0.10f,
+        ShelterDrive: 0.08f,
         PfcCommandDrive: 0f,
-        HippocampalCuriosityDrive: 0f,
-        AccConflict: 0f,
-        BasalGangliaGate: 0f,
-        DopamineBias: 0f,
-        InhibitoryTone: 0f,
-        CircuitEvidence: 0f,
-        Confidence: 0f,
+        HippocampalCuriosityDrive: 0.16f,
+        AccConflict: 0.06f,
+        BasalGangliaGate: 0.38f,
+        DopamineBias: 0.40f,
+        InhibitoryTone: 0.30f,
+        CircuitEvidence: 0.20f,
+        Confidence: 0.24f,
         LastUpdatedTick: 0,
         Sequence: 0,
         Candidates: [],
-        Evidence: "quiet motivation arbitration");
+        Evidence: "healthy awake baseline: observe and learn");
 
     public static MotivationArbitrationRuntime Normalize(MotivationArbitrationRuntime? value)
     {
@@ -33358,7 +33359,7 @@ internal sealed class NetworkStateDocument
     public double TickDurationMs { get; set; } = 1.0;
     public NeuromodState GlobalNeuromodState { get; set; } = new();
     public Dictionary<string, double> OscillationPhases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    public AttentionVector GlobalAttentionBias { get; set; } = new(0.25f, 0.25f, 0.25f, 0.25f);
+    public AttentionVector GlobalAttentionBias { get; set; } = BiologicalAttentionRuntime.Default.SensoryBias;
     public float RewardPredictionError { get; set; }
     public string PerformanceProfileName { get; set; } = "normal";
     public MemoryControlSettings MemoryControl { get; set; } = MemoryControlSettings.Default;
@@ -33862,28 +33863,28 @@ internal sealed record IntentionalActionLoopRuntime(
 {
     public static IntentionalActionLoopRuntime Default { get; } = new(
         Active: false,
-        IntentionKey: "Observe:idle",
+        IntentionKey: "Observe:orient",
         GoalKey: "Observe",
-        ActionKey: "idle",
+        ActionKey: "orient_and_sample",
         MotorDirective: "motor_idle",
         Target: "environment",
-        Why: "tonic observation",
-        PredictedOutcome: "watch and wait",
-        Commitment: 0.10f,
-        Readiness: 0.10f,
-        Inhibition: 0.40f,
-        BasalGangliaCommit: 0.20f,
-        PremotorPlan: 0.10f,
-        SmaSequence: 0.10f,
-        M1Readiness: 0.10f,
-        CerebellarCorrection: 0.20f,
+        Why: "healthy awake orienting baseline",
+        PredictedOutcome: "sample the scene before acting",
+        Commitment: 0.12f,
+        Readiness: 0.24f,
+        Inhibition: 0.24f,
+        BasalGangliaCommit: 0.24f,
+        PremotorPlan: 0.20f,
+        SmaSequence: 0.18f,
+        M1Readiness: 0.22f,
+        CerebellarCorrection: 0.26f,
         ExpectedValue: 0.20f,
         ExpectedCost: 0.0f,
-        Conflict: 0.0f,
-        Confidence: 0.20f,
+        Conflict: 0.04f,
+        Confidence: 0.24f,
         LastUpdatedTick: 0,
         Sequence: 0,
-        Evidence: "quiet motor monitoring");
+        Evidence: "awake baseline primes orienting without locomotion");
 
     public static IntentionalActionLoopRuntime Normalize(IntentionalActionLoopRuntime? value)
     {
@@ -35859,20 +35860,20 @@ internal sealed record BiologicalAttentionRuntime(
     int HoldTicksRemaining)
 {
     public static BiologicalAttentionRuntime Default { get; } = new(
-        Visual: 0.25f,
-        Auditory: 0.12f,
-        Somatosensory: 0.12f,
-        Interoceptive: 0.18f,
-        Language: 0.10f,
-        Memory: 0.12f,
-        Motor: 0.11f,
+        Visual: 0.34f,
+        Auditory: 0.14f,
+        Somatosensory: 0.16f,
+        Interoceptive: 0.20f,
+        Language: 0.12f,
+        Memory: 0.18f,
+        Motor: 0.18f,
         DominantChannel: "visual",
-        FocusConfidence: 0.10f,
-        Salience: 0.25f,
-        ThalamicRelayGain: 0.50f,
-        TrnInhibition: 0.20f,
-        BasalForebrainGain: 0.30f,
-        SensoryBias: new AttentionVector(0.37f, 0.18f, 0.18f, 0.27f),
+        FocusConfidence: 0.34f,
+        Salience: 0.36f,
+        ThalamicRelayGain: 0.62f,
+        TrnInhibition: 0.16f,
+        BasalForebrainGain: 0.46f,
+        SensoryBias: new AttentionVector(0.42f, 0.16f, 0.16f, 0.26f),
         LastSwitchTick: 0,
         HoldTicksRemaining: 0);
 
@@ -35973,26 +35974,26 @@ internal sealed record LimbicRuntimeState(
 {
     public static LimbicRuntimeState Default { get; } = new(
         Stage: "awake",
-        Salience: 0.25f,
-        Threat: 0.15f,
-        TiredDrive: 0.18f,
-        InteroceptiveDrive: 0.20f,
-        AversiveDrive: 0.10f,
-        ExpectedReward: 0.30f,
-        ObservedReward: 0.25f,
-        HippocampalContext: 0.25f,
-        Valence: 0.0f,
+        Salience: 0.34f,
+        Threat: 0.06f,
+        TiredDrive: 0.08f,
+        InteroceptiveDrive: 0.18f,
+        AversiveDrive: 0.04f,
+        ExpectedReward: 0.42f,
+        ObservedReward: 0.40f,
+        HippocampalContext: 0.34f,
+        Valence: 0.08f,
         RewardPredictionError: 0.0f,
-        DopamineTarget: 0.30f,
-        SerotoninTarget: 0.35f,
-        AcetylcholineTarget: 0.30f,
-        NorepinephrineTarget: 0.25f,
+        DopamineTarget: 0.46f,
+        SerotoninTarget: 0.42f,
+        AcetylcholineTarget: 0.50f,
+        NorepinephrineTarget: 0.32f,
         NeuromodState: new NeuromodState
         {
-            DopamineLevel = 0.30f,
-            SerotoninLevel = 0.35f,
-            AcetylcholineLevel = 0.30f,
-            NorepinephrineLevel = 0.25f
+            DopamineLevel = 0.46f,
+            SerotoninLevel = 0.42f,
+            AcetylcholineLevel = 0.50f,
+            NorepinephrineLevel = 0.32f
         },
         LastUpdatedTick: 0);
 }
@@ -36076,7 +36077,7 @@ internal sealed record SleepMemoryRuntime(
         IsSleeping: false,
         AtpBudget: 1.0f,
         MaxAtpBudget: 1.0f,
-        SleepPressure: 0.25f,
+        SleepPressure: 0.12f,
         MaxSleepPressure: 1.0f,
         SleepEnterThreshold: 0.22f,
         SleepExitThreshold: 0.70f,

@@ -39,6 +39,29 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Runtime_Defaults_Start_In_Healthy_Awake_Baseline()
+    {
+        var state = new SimulationState();
+
+        Assert.False(state.SleepMemory.IsSleeping);
+        Assert.InRange(state.SleepMemory.SleepPressure, 0.0f, 0.20f);
+        Assert.False(state.GoalIntent.Active);
+        Assert.Equal("motor_idle", state.GoalIntent.MotorDirective);
+        Assert.False(state.MotivationArbitration.Active);
+        Assert.False(state.IntentionalActionLoop.Active);
+        Assert.Equal("motor_idle", state.IntentionalActionLoop.MotorDirective);
+        Assert.InRange(state.IntentionalActionLoop.M1Readiness, 0.18f, 0.35f);
+        Assert.InRange(state.GoalIntent.InhibitoryTone, 0.0f, 0.35f);
+        Assert.InRange(state.GoalIntent.BasalGangliaGate, 0.30f, 0.50f);
+        Assert.InRange(state.AttentionState.FocusConfidence, 0.25f, 0.45f);
+        Assert.InRange(state.AttentionState.ThalamicRelayGain, 0.55f, 0.75f);
+        Assert.InRange(state.AttentionState.TrnInhibition, 0.0f, 0.25f);
+        Assert.InRange(state.LimbicState.NeuromodState.DopamineLevel, 0.40f, 0.55f);
+        Assert.InRange(state.LimbicState.NeuromodState.AcetylcholineLevel, 0.45f, 0.60f);
+        Assert.InRange(state.LimbicState.Threat, 0.0f, 0.10f);
+    }
+
+    [Fact]
     public void Circuit_Audit_Warns_When_Registered_Structure_Has_No_Route_Or_Spikes()
     {
         var state = new SimulationState();

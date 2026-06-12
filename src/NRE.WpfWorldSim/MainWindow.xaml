@@ -90,6 +90,7 @@
                         <TextBlock x:Name="DispatchText" Margin="0,4,0,0" Text="Dispatched spikes: -" />
                         <TextBlock x:Name="MotorDispatchText" Margin="0,4,0,0" Text="Motor dispatch events: -" />
                         <TextBlock x:Name="MotorDriveText" Margin="0,4,0,0" Text="Motor drive L/R: -" />
+                        <TextBlock x:Name="MotorDecisionText" Margin="0,4,0,0" Text="Motor decision: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="AvatarPoseText" Margin="0,4,0,0" Text="Avatar pose: -" />
                         <TextBlock x:Name="CollisionText" Margin="0,4,0,0" Text="Collision hits: -" />
                         <TextBlock x:Name="TrailText" Margin="0,4,0,0" Text="Trail points: -" />

@@ -475,6 +475,7 @@ public partial class MainWindow : Window
     private bool _englishCommandInFlight;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
+    private string _brainMotorDecisionText = "Motor decision: waiting for brain state.";
 
     public MainWindow()
     {
@@ -597,6 +598,7 @@ public partial class MainWindow : Window
         _brainMotorDirective = "motor_idle";
         _brainGoalKey = string.Empty;
         _brainActionTarget = string.Empty;
+        _brainMotorDecisionText = "Motor decision: waiting for brain state.";
         _sleepState = false;
         _collisionHits = 0;
         _collisionPulse = 0.0;
@@ -1108,6 +1110,7 @@ public partial class MainWindow : Window
         HabitatInfoText.Text = $"Habitat core elevation: {_habitatBaseY:0.0} units | homes {_homesBuilt}, mountains {_mountainClusters}, rocks {_rockClusters}, caves {_caveEntrances}, paint {_overrideCells}";
         MotorDispatchText.Text = "Motor dispatch events: 0";
         MotorDriveText.Text = "Motor drive L/R: 0.0 / 0.0";
+        MotorDecisionText.Text = _brainMotorDecisionText;
         CollisionText.Text = "Collision hits: 0";
         TrailText.Text = "Trail points: 0 | mapped: 0";
         AntiStallText.Text = "Anti-stall: episodes 0, recoveries 0, path 0, hard 0, fail 0, nav 0, contacts 0, escape ticks 0";
@@ -2558,6 +2561,7 @@ public partial class MainWindow : Window
     {
         MotorDispatchText.Text = $"Motor dispatch events: {_lastMotorDispatchCount}";
         MotorDriveText.Text = $"Motor drive L/R: {_leftMotorDrive:0.0} / {_rightMotorDrive:0.0}";
+        MotorDecisionText.Text = _brainMotorDecisionText;
         AvatarPoseText.Text = $"Avatar pose: x {_avatarX:0.00}, y {_avatarY:0.00}, z {_avatarZ:0.00}, body {_avatarHeadingDeg:0.0} deg, head {_avatarHeadYawDeg:0.0} deg";
         CollisionText.Text = $"Collision hits: {_collisionHits}";
         var mapped = _visitedTerrainCells.Count;
@@ -7607,6 +7611,7 @@ public partial class MainWindow : Window
                 UpdateLimbicFromState(stateElement);
                 UpdateBrainNarrationFromState(stateElement);
                 UpdateBrainMotorIntentFromState(stateElement);
+                UpdateBrainMotorDecisionFromState(stateElement);
             }
 
             var dispatches = ParseDispatchSpikes(root, out var maxWallClockMs);
@@ -8237,6 +8242,200 @@ public partial class MainWindow : Window
         _brainGoalKey = goalKey.Trim();
         _brainActionTarget = target.Trim();
     }
+
+    private void UpdateBrainMotorDecisionFromState(JsonElement stateElement)
+    {
+        var action = string.Empty;
+        var directive = string.Empty;
+        var goal = string.Empty;
+        var target = string.Empty;
+        var confidence = double.NaN;
+        var gate = double.NaN;
+        var readiness = double.NaN;
+        var inhibition = double.NaN;
+        var candidateCount = -1;
+
+        if (TryGetObject(stateElement, "planningWorkspace").TryGetValue(out var planning))
+        {
+            SetIfNotBlank(ref action, GetString(planning, "selectedActionKey", "selected_action_key", "selectedAction", "actionKey"));
+            SetIfNotBlank(ref goal, GetString(planning, "goal", "goalKey", "goal_key"));
+            TrySetIfValid(ref confidence, planning, "selectedConfidence", "selected_confidence", "confidence");
+            TrySetIfValid(ref gate, planning, "inhibitoryGate", "inhibitory_gate");
+            candidateCount = Math.Max(candidateCount, CountArrayItems(planning, "candidateActions", "candidate_actions"));
+        }
+
+        if (TryGetObject(stateElement, "goalIntent").TryGetValue(out var goalIntent))
+        {
+            SetIfNotBlank(ref directive, GetString(goalIntent, "motorDirective", "motor_directive"));
+            SetIfNotBlank(ref goal, GetString(goalIntent, "goalKey", "goal_key", "displayName", "display_name"));
+            TrySetIfValid(ref confidence, goalIntent, "confidence");
+            TrySetIfValid(ref gate, goalIntent, "basalGangliaGate", "basal_ganglia_gate");
+            candidateCount = Math.Max(candidateCount, CountArrayItems(goalIntent, "candidates"));
+        }
+
+        if (TryGetObject(stateElement, "intentionalActionLoop").TryGetValue(out var actionLoop))
+        {
+            SetIfNotBlank(ref action, GetString(actionLoop, "actionKey", "action_key", "intentionKey", "intention_key"));
+            SetIfNotBlank(ref directive, GetString(actionLoop, "motorDirective", "motor_directive"));
+            SetIfNotBlank(ref goal, GetString(actionLoop, "goalKey", "goal_key"));
+            SetIfNotBlank(ref target, GetString(actionLoop, "target", "targetKey", "target_key"));
+            TrySetIfValid(ref confidence, actionLoop, "confidence");
+            TrySetIfValid(ref gate, actionLoop, "basalGangliaCommit", "basal_ganglia_commit");
+            TrySetIfValid(ref readiness, actionLoop, "m1Readiness", "m1_readiness", "readiness");
+            TrySetIfValid(ref inhibition, actionLoop, "inhibition");
+        }
+
+        SetIfNotBlank(ref directive, _brainMotorDirective);
+        SetIfNotBlank(ref goal, _brainGoalKey);
+        SetIfNotBlank(ref target, _brainActionTarget);
+
+        var selected = SelectMotorDecisionLabel(directive, action, goal);
+        var goalText = FirstNonBlank(goal, "observe");
+        var targetText = FirstNonBlank(target, "environment");
+        var candidates = candidateCount >= 0 ? candidateCount.ToString(CultureInfo.InvariantCulture) : "-";
+        var holdReason = ResolveMotorDecisionStatus(confidence, gate, readiness, inhibition);
+
+        _brainMotorDecisionText =
+            $"Motor decision: {selected}; goal {goalText}; target {targetText}; conf {FormatUnit(confidence)}; gate {FormatUnit(gate)}; ready {FormatUnit(readiness)}; candidates {candidates}; body fwd {_lastForwardSpeed:0.00}, turn {_lastTurnRateDeg:0}; status {holdReason}";
+    }
+
+    private string ResolveMotorDecisionStatus(double confidence, double gate, double readiness, double inhibition)
+    {
+        if (_sleepState)
+        {
+            return "sleep gate";
+        }
+
+        if (!double.IsNaN(gate) && gate < 0.18)
+        {
+            return "basal ganglia gate low";
+        }
+
+        if (!double.IsNaN(inhibition) && inhibition > 0.72)
+        {
+            return "inhibition high";
+        }
+
+        if (!double.IsNaN(readiness) && readiness < 0.18)
+        {
+            return "M1 readiness low";
+        }
+
+        if (!double.IsNaN(confidence) && confidence < 0.18)
+        {
+            return "selection confidence low";
+        }
+
+        if (_lastMotorDispatchCount <= 0 && _ticksWithoutMotorDispatch > 3)
+        {
+            return "no recent M1/SMA dispatch";
+        }
+
+        var drive = Math.Max(Math.Abs(_leftMotorDrive), Math.Abs(_rightMotorDrive));
+        if (drive < 1.0 && Math.Abs(_lastForwardSpeed) < 0.05 && Math.Abs(_lastTurnRateDeg) < 2.0)
+        {
+            return "motor drive near zero";
+        }
+
+        if (_lastForwardSpeed > 0.08)
+        {
+            return "forward command active";
+        }
+
+        if (_lastForwardSpeed < -0.08)
+        {
+            return "reverse command active";
+        }
+
+        if (Math.Abs(_lastTurnRateDeg) > 2.0)
+        {
+            return "turn command active";
+        }
+
+        return "standing by";
+    }
+
+    private static string FirstNonBlank(params string[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string SelectMotorDecisionLabel(string directive, string action, string goal)
+    {
+        if (IsNonIdleMotorLabel(directive))
+        {
+            return directive.Trim();
+        }
+
+        if (IsNonIdleMotorLabel(action))
+        {
+            return action.Trim();
+        }
+
+        return FirstNonBlank(directive, action, goal, "motor_idle");
+    }
+
+    private static bool IsNonIdleMotorLabel(string value)
+        => !string.IsNullOrWhiteSpace(value) &&
+           !value.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
+           !value.Equals("motor_idle", StringComparison.OrdinalIgnoreCase);
+
+    private static void TrySetIfValid(ref double destination, JsonElement element, params string[] propertyNames)
+    {
+        if (TryReadDouble(element, out var value, propertyNames))
+        {
+            destination = value;
+        }
+    }
+
+    private static bool TryReadDouble(JsonElement element, out double value, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!TryGetProperty(element, propertyName, out var candidate))
+            {
+                continue;
+            }
+
+            if (candidate.ValueKind == JsonValueKind.Number && candidate.TryGetDouble(out value))
+            {
+                return true;
+            }
+
+            if (candidate.ValueKind == JsonValueKind.String &&
+                double.TryParse(candidate.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+        }
+
+        value = double.NaN;
+        return false;
+    }
+
+    private static int CountArrayItems(JsonElement element, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (TryGetProperty(element, propertyName, out var candidate) && candidate.ValueKind == JsonValueKind.Array)
+            {
+                return candidate.GetArrayLength();
+            }
+        }
+
+        return -1;
+    }
+
+    private static string FormatUnit(double value)
+        => double.IsNaN(value) ? "-" : Math.Clamp(value, 0.0, 1.0).ToString("0.00", CultureInfo.InvariantCulture);
 
     private static void ReadBrainIntentCarrier(JsonElement carrier, ref string directive, ref string goalKey, ref string target)
     {

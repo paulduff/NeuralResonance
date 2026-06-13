@@ -58,8 +58,8 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorWidth = 1.35;
     private const double AvatarVisionPredatorHeight = 1.10;
     private const double AvatarVisionPredatorLength = 1.85;
-    private const int AvatarVisionDispatchTimeoutMs = 1600;
-    private const int ObjectCueDispatchTimeoutMs = 3500;
+    private const int AvatarVisionDispatchTimeoutMs = 3000;
+    private const int ObjectCueDispatchTimeoutMs = 9000;
     private const double OrientingTargetVisibleRange = 26.0;
     private const double OrientingTargetLockGain = 3.4;
     private const double OrientingScanTurnRateDeg = 96.0;
@@ -134,7 +134,7 @@ public partial class MainWindow : Window
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
-    private const int EnvironmentAudioDispatchTimeoutMs = 3200;
+    private const int EnvironmentAudioDispatchTimeoutMs = 6000;
     private const int EnvironmentAudioDispatchIntervalMs = 9000;
     private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
@@ -215,11 +215,11 @@ public partial class MainWindow : Window
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
     private readonly VisualInputDispatchClient _visualInputClient;
     private readonly HttpClient _sensoryInputHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(2200) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4000) });
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(7500) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(9000) });
     private readonly HttpClient _objectDispatchHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(7500) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(12000) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
     private readonly HttpClient _objectMemoryHttpClient = NreHttpClientFactory.Create(
@@ -7756,9 +7756,13 @@ public partial class MainWindow : Window
             ? GetLong(s2, "nonOk", "NonOk")
             : CountNonOkServicesFromTelemetry(root);
         _engineServiceNonOkCount = serviceNonOk;
-        _engineInputPressure = transport.TryGetValue(out var pressureTransport)
+        var transportPressure = transport.TryGetValue(out var pressureTransport)
             ? EstimateEngineInputPressure(pressureTransport)
             : 0.0;
+        var ingressPressure = TryGetObject(root, "inputIngress").TryGetValue(out var ingress)
+            ? EstimateInputIngressPressure(ingress)
+            : 0.0;
+        _engineInputPressure = Math.Max(transportPressure, ingressPressure);
 
         TickText.Text = $"Tick: {tick}";
         SimulationText.Text = $"Simulation ms: {simMs:0.0}";
@@ -7808,6 +7812,28 @@ public partial class MainWindow : Window
         var pressureSignal = droppedSpikes + (dispatchErrors * 24.0) + (spontaneousErrors * 6.0) + (queuedSpikes * 0.08);
         var denominator = Math.Max(32.0, queuedSpikes + dispatchedSpikes + 1.0);
         return Math.Clamp(pressureSignal / denominator, 0.0, 1.0);
+    }
+
+    private static double EstimateInputIngressPressure(JsonElement ingress)
+    {
+        var pressure = 0.0;
+        foreach (var property in ingress.EnumerateObject())
+        {
+            if (property.Value.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var maxConcurrent = Math.Max(1.0, GetDouble(property.Value, "maxConcurrent", "MaxConcurrent"));
+            var inFlight = Math.Max(0.0, GetDouble(property.Value, "inFlight", "InFlight"));
+            var rejected = Math.Max(0.0, GetDouble(property.Value, "rejected", "Rejected"));
+            var accepted = Math.Max(0.0, GetDouble(property.Value, "accepted", "Accepted"));
+            var saturation = inFlight / maxConcurrent;
+            var rejectionRate = rejected / Math.Max(1.0, accepted + rejected);
+            pressure = Math.Max(pressure, Math.Clamp((saturation * 0.72) + (rejectionRate * 0.55), 0.0, 1.0));
+        }
+
+        return pressure;
     }
 
     private async Task PollObjectMemoryAsync(string endpoint)

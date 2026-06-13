@@ -41,19 +41,20 @@ internal static class AdminTelemetryRoutes
     internal static IResult GetRecentTransportSpikes(SimulationState state, int? limit)
     {
         var requested = limit.GetValueOrDefault(256);
-        var clamped = Math.Clamp(requested, 1, 5000);
+        var clamped = Math.Clamp(requested, 1, 1024);
         return Results.Ok(state.GetRecentDispatchedSpikes(clamped));
     }
 
-    internal static IResult GetTransportStats(SimulationState state)
-        => Results.Ok(BuildPerformanceSnapshot(state));
+    internal static IResult GetTransportStats(SimulationState state, InputIngressRuntime ingress)
+        => Results.Ok(BuildPerformanceSnapshot(state, ingress));
 
-    internal static IResult GetPerformanceSnapshot(SimulationState state)
-        => Results.Ok(BuildPerformanceSnapshot(state));
+    internal static IResult GetPerformanceSnapshot(SimulationState state, InputIngressRuntime ingress)
+        => Results.Ok(BuildPerformanceSnapshot(state, ingress));
 
-    private static object BuildPerformanceSnapshot(SimulationState state)
+    private static object BuildPerformanceSnapshot(SimulationState state, InputIngressRuntime ingress)
     {
         var transport = state.TransportStats;
+        var ingressSnapshot = ingress.GetSnapshot();
         var (totalServices, nonOkServices) = state.GetServiceHealthCounts();
         var snapshotAgeTicks = state.LastSnapshotTick > 0 && state.Tick >= state.LastSnapshotTick
             ? state.Tick - state.LastSnapshotTick
@@ -174,7 +175,8 @@ internal static class AdminTelemetryRoutes
             {
                 total = totalServices,
                 nonOk = nonOkServices
-            }
+            },
+            inputIngress = ingressSnapshot
         };
     }
 }

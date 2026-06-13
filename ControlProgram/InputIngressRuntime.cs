@@ -4,7 +4,8 @@ using System.Threading;
 internal enum AdminInputIngressKind
 {
     Sensory,
-    Video
+    Video,
+    Object
 }
 
 internal sealed record InputIngressKindSnapshot(
@@ -16,7 +17,8 @@ internal sealed record InputIngressKindSnapshot(
 
 internal sealed record InputIngressSnapshot(
     InputIngressKindSnapshot Sensory,
-    InputIngressKindSnapshot Video);
+    InputIngressKindSnapshot Video,
+    InputIngressKindSnapshot Object);
 
 internal sealed class InputIngressRuntime(IConfiguration configuration)
 {
@@ -41,14 +43,18 @@ internal sealed class InputIngressRuntime(IConfiguration configuration)
     {
         var sensory = _counters.GetOrAdd(AdminInputIngressKind.Sensory, key => CreateCounter(key, configuration));
         var video = _counters.GetOrAdd(AdminInputIngressKind.Video, key => CreateCounter(key, configuration));
-        return new InputIngressSnapshot(sensory.ToSnapshot(), video.ToSnapshot());
+        var objectInput = _counters.GetOrAdd(AdminInputIngressKind.Object, key => CreateCounter(key, configuration));
+        return new InputIngressSnapshot(sensory.ToSnapshot(), video.ToSnapshot(), objectInput.ToSnapshot());
     }
 
     private static InputIngressCounter CreateCounter(AdminInputIngressKind kind, IConfiguration configuration)
     {
-        var configured = kind == AdminInputIngressKind.Video
-            ? configuration.GetValue<int>("AdminInputIngress:VideoMaxConcurrent", 6)
-            : configuration.GetValue<int>("AdminInputIngress:SensoryMaxConcurrent", 12);
+        var configured = kind switch
+        {
+            AdminInputIngressKind.Video => configuration.GetValue<int>("AdminInputIngress:VideoMaxConcurrent", 6),
+            AdminInputIngressKind.Object => configuration.GetValue<int>("AdminInputIngress:ObjectMaxConcurrent", 2),
+            _ => configuration.GetValue<int>("AdminInputIngress:SensoryMaxConcurrent", 12)
+        };
         return new InputIngressCounter(Math.Clamp(configured, 1, 128));
     }
 

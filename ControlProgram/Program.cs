@@ -820,7 +820,7 @@ app.MapPost("/api/v1/admin/input/object", async (
     var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(20), 4, 128);
     var encodeMemory = request.EncodeMemory.GetValueOrDefault(true);
     var inputSource = AdminInputSource.Normalize(request.InputSource);
-    if (!ingress.TryEnter(AdminInputIngressKind.Video, out var ingressLease, out var ingressSnapshot))
+    if (!ingress.TryEnter(AdminInputIngressKind.Object, out var ingressLease, out var ingressSnapshot))
     {
         state.AppendOutputLog(
             $"Object input throttled by ingress gate: key={objectKey}, label={label}, inputSource={inputSource}.");

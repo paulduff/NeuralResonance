@@ -124,6 +124,12 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.True(GetBool(doc.RootElement, "blockedByInputGate"));
         Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+
+        var ingressResponse = await client.GetAsync("/api/v1/admin/input/ingress");
+        Assert.Equal(HttpStatusCode.OK, ingressResponse.StatusCode);
+        using var ingressDoc = await ReadJsonAsync(ingressResponse);
+        Assert.True(TryGetProperty(ingressDoc.RootElement, "object", out var objectIngress));
+        Assert.True(GetInt(objectIngress, "accepted") >= 1);
     }
 
     [Fact]
@@ -185,6 +191,9 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
 
         var transport = await client.GetAsync("/api/v1/transport/stats");
         Assert.Equal(HttpStatusCode.OK, transport.StatusCode);
+        using var transportDoc = await ReadJsonAsync(transport);
+        Assert.True(TryGetProperty(transportDoc.RootElement, "inputIngress", out var inputIngress));
+        Assert.True(TryGetProperty(inputIngress, "object", out _));
     }
 
     [Fact]

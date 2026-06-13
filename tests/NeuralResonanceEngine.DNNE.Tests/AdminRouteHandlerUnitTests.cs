@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
@@ -80,8 +81,12 @@ public sealed class AdminRouteHandlerUnitTests
         var startup = await ExecuteJsonResultAsync(AdminTelemetryRoutes.GetStartupHealth(state, 4));
         Assert.Equal(StatusCodes.Status200OK, startup.StatusCode);
 
-        var transport = await ExecuteJsonResultAsync(AdminTelemetryRoutes.GetTransportStats(state));
+        var ingress = new InputIngressRuntime(new ConfigurationBuilder().Build());
+        var transport = await ExecuteJsonResultAsync(AdminTelemetryRoutes.GetTransportStats(state, ingress));
         Assert.Equal(StatusCodes.Status200OK, transport.StatusCode);
+        Assert.NotNull(transport.Body);
+        Assert.True(TryGetProperty(transport.Body.RootElement, "inputIngress", out var inputIngress));
+        Assert.True(TryGetProperty(inputIngress, "object", out _));
     }
 
     [Fact]

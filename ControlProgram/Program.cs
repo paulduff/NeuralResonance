@@ -18921,6 +18921,12 @@ internal sealed class SimulationState
             var noRouteCount = 0;
             var registeredDisconnectedCount = 0;
             var connectomeWithoutServiceCount = 0;
+            var serviceOfflineCount = 0;
+            var serviceBackoffCount = 0;
+            var serviceUnhealthyCount = 0;
+            var serviceUnknownCount = 0;
+            var sleepInhibitedCount = 0;
+            var inhibitedCount = 0;
             var warningCount = 0;
             var noticeCount = 0;
             var okCount = 0;
@@ -18935,7 +18941,7 @@ internal sealed class SimulationState
                 var lifetimeOutputSpikes = _dispatchLifetimeOut.TryGetValue(structure, out var totalOutputCount) ? totalOutputCount : 0;
                 var lastInputTick = _dispatchLastInTick.TryGetValue(structure, out var lit) ? lit : long.MinValue;
                 var lastOutputTick = _dispatchLastOutTick.TryGetValue(structure, out var lot) ? lot : long.MinValue;
-                ServiceTelemetry.TryGetValue(structure, out var telemetry);
+                var hasTelemetry = ServiceTelemetry.TryGetValue(structure, out var telemetry);
                 var hasRegisteredService = ServiceRegistry.ContainsKey(structure);
                 var serviceStatus = telemetry?.LastStatus ?? (hasRegisteredService ? "INIT" : "UNREGISTERED");
                 var issueList = new List<string>(6);
@@ -18952,6 +18958,9 @@ internal sealed class SimulationState
                 var inputSummary = DescribeCircuitInputs(structure);
                 var outputSummary = DescribeCircuitOutputs(structure);
                 var activationReason = ResolveCircuitActivationReason(structure, inboundSpikes, outboundSpikes, lastInputTick, lastOutputTick);
+                var inhibited = IsCircuitCurrentlyInhibited(structure);
+                var sleepInhibited = SleepMemory.IsSleeping && IsMotorOrLanguageCircuit(structure);
+                var serviceHealth = ClassifyCircuitServiceStatus(serviceStatus, hasRegisteredService, hasTelemetry, Tick);
                 var silenceCause = ResolveCircuitSilenceCause(
                     structure,
                     incoming,
@@ -18961,8 +18970,8 @@ internal sealed class SimulationState
                     lifetimeInputSpikes,
                     lifetimeOutputSpikes,
                     serviceStatus,
+                    serviceHealth.IsHealthy,
                     hasRegisteredService);
-                var inhibited = IsCircuitCurrentlyInhibited(structure);
 
                 if (disconnected)
                 {
@@ -19007,6 +19016,45 @@ internal sealed class SimulationState
                     issueList.Add("service alive but not participating");
                 }
 
+                if (!serviceHealth.IsHealthy)
+                {
+                    if (serviceHealth.IsOffline)
+                    {
+                        serviceOfflineCount++;
+                    }
+
+                    if (serviceHealth.IsBackoff)
+                    {
+                        serviceBackoffCount++;
+                    }
+
+                    if (serviceHealth.IsUnhealthy)
+                    {
+                        serviceUnhealthyCount++;
+                    }
+
+                    if (serviceHealth.IsUnknown)
+                    {
+                        serviceUnknownCount++;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(serviceHealth.Issue))
+                    {
+                        issueList.Add(serviceHealth.Issue);
+                    }
+                }
+
+                if (silent && sleepInhibited)
+                {
+                    sleepInhibitedCount++;
+                    issueList.Add("sleep inhibited");
+                }
+                else if (silent && inhibited)
+                {
+                    inhibitedCount++;
+                    issueList.Add("inhibited");
+                }
+
                 if (registeredDisconnected)
                 {
                     registeredDisconnectedCount++;
@@ -19019,11 +19067,6 @@ internal sealed class SimulationState
                     issueList.Add("connectome route has no registered service");
                 }
 
-                if (!IsHealthyServiceStatus(serviceStatus))
-                {
-                    issueList.Add($"service {serviceStatus}");
-                }
-
                 if (issueList.Count == 0)
                 {
                     okCount++;
@@ -19034,7 +19077,7 @@ internal sealed class SimulationState
                         receivesInputNoOutput,
                         registeredDisconnected,
                         connectomeWithoutService,
-                        !IsHealthyServiceStatus(serviceStatus),
+                        serviceHealth.Warn,
                         neverSpiked,
                         silent);
                     if (severity.Equals("warn", StringComparison.OrdinalIgnoreCase))
@@ -19058,6 +19101,7 @@ internal sealed class SimulationState
                         IncomingRoutes = incoming,
                         OutgoingRoutes = outgoing,
                         ServiceStatus = serviceStatus,
+                        ServiceState = serviceHealth.State,
                         RegisteredService = hasRegisteredService,
                         Purpose = purpose,
                         Inputs = inputSummary,
@@ -19075,6 +19119,7 @@ internal sealed class SimulationState
                     Inputs = inputSummary,
                     Outputs = outputSummary,
                     ServiceStatus = serviceStatus,
+                    ServiceState = serviceHealth.State,
                     IncomingRoutes = incoming,
                     OutgoingRoutes = outgoing,
                     RecentInputSpikes = inboundSpikes,
@@ -19117,6 +19162,12 @@ internal sealed class SimulationState
                     NoRouteCount = noRouteCount,
                     RegisteredDisconnectedCount = registeredDisconnectedCount,
                     ConnectomeWithoutServiceCount = connectomeWithoutServiceCount,
+                    ServiceOfflineCount = serviceOfflineCount,
+                    ServiceBackoffCount = serviceBackoffCount,
+                    ServiceUnhealthyCount = serviceUnhealthyCount,
+                    ServiceUnknownCount = serviceUnknownCount,
+                    SleepInhibitedCount = sleepInhibitedCount,
+                    InhibitedCount = inhibitedCount,
                     FunctionCount = functionSupport.Count,
                     ActiveFunctionCount = activeFunctionCount,
                     WeakFunctionCount = weakFunctionCount,
@@ -19224,16 +19275,12 @@ internal sealed class SimulationState
         int lifetimeInputSpikes,
         int lifetimeOutputSpikes,
         string serviceStatus,
+        bool serviceHealthy,
         bool hasRegisteredService)
     {
         if (inboundSpikes + outboundSpikes > 0)
         {
             return "active";
-        }
-
-        if (!IsHealthyServiceStatus(serviceStatus))
-        {
-            return $"missing service or unhealthy service: {serviceStatus}";
         }
 
         if (!hasRegisteredService && incoming + outgoing > 0)
@@ -19244,6 +19291,11 @@ internal sealed class SimulationState
         if (incoming + outgoing == 0)
         {
             return "disconnected route";
+        }
+
+        if (!serviceHealthy)
+        {
+            return $"service unavailable: {serviceStatus}";
         }
 
         if (SleepMemory.IsSleeping && IsMotorOrLanguageCircuit(structure))
@@ -19330,11 +19382,90 @@ internal sealed class SimulationState
         return "ok";
     }
 
-    private static bool IsHealthyServiceStatus(string? status)
-        => string.IsNullOrWhiteSpace(status) ||
-           status.Equals("OK", StringComparison.OrdinalIgnoreCase) ||
-           status.Equals("INIT", StringComparison.OrdinalIgnoreCase) ||
-           status.Equals("UNREGISTERED", StringComparison.OrdinalIgnoreCase);
+    private static CircuitServiceAuditState ClassifyCircuitServiceStatus(
+        string? status,
+        bool hasRegisteredService,
+        bool hasTelemetry,
+        long tick)
+    {
+        const long startupGraceTicks = 120;
+        var normalized = string.IsNullOrWhiteSpace(status) ? "UNKNOWN" : status.Trim();
+
+        if (!hasRegisteredService && normalized.Equals("UNREGISTERED", StringComparison.OrdinalIgnoreCase))
+        {
+            return CircuitServiceAuditState.Healthy("unregistered");
+        }
+
+        if (normalized.Equals("OK", StringComparison.OrdinalIgnoreCase))
+        {
+            return CircuitServiceAuditState.Healthy("online");
+        }
+
+        if (normalized.Equals("BACKOFF", StringComparison.OrdinalIgnoreCase))
+        {
+            return new CircuitServiceAuditState(
+                IsHealthy: false,
+                Warn: true,
+                IsOffline: false,
+                IsBackoff: true,
+                IsUnhealthy: false,
+                IsUnknown: false,
+                State: "backoff",
+                Issue: "service backoff");
+        }
+
+        if (hasRegisteredService && (!hasTelemetry || normalized.Equals("INIT", StringComparison.OrdinalIgnoreCase)))
+        {
+            var initialising = tick <= startupGraceTicks;
+            return new CircuitServiceAuditState(
+                IsHealthy: false,
+                Warn: !initialising,
+                IsOffline: !initialising,
+                IsBackoff: false,
+                IsUnhealthy: false,
+                IsUnknown: initialising,
+                State: initialising ? "initialising" : "offline",
+                Issue: hasTelemetry ? "service initialising" : "registered service has no telemetry");
+        }
+
+        if (hasRegisteredService && normalized.Equals("UNKNOWN", StringComparison.OrdinalIgnoreCase))
+        {
+            var initialising = tick <= startupGraceTicks;
+            return new CircuitServiceAuditState(
+                IsHealthy: false,
+                Warn: !initialising,
+                IsOffline: !initialising,
+                IsBackoff: false,
+                IsUnhealthy: false,
+                IsUnknown: initialising,
+                State: initialising ? "initialising" : "offline",
+                Issue: "service status unknown");
+        }
+
+        return new CircuitServiceAuditState(
+            IsHealthy: false,
+            Warn: true,
+            IsOffline: false,
+            IsBackoff: false,
+            IsUnhealthy: true,
+            IsUnknown: false,
+            State: "unhealthy",
+            Issue: $"service {normalized}");
+    }
+
+    private sealed record CircuitServiceAuditState(
+        bool IsHealthy,
+        bool Warn,
+        bool IsOffline,
+        bool IsBackoff,
+        bool IsUnhealthy,
+        bool IsUnknown,
+        string State,
+        string Issue)
+    {
+        public static CircuitServiceAuditState Healthy(string state)
+            => new(true, false, false, false, false, false, state, string.Empty);
+    }
 
     private static float Clamp01(float value) => Math.Clamp(value, 0.0f, 1.0f);
     private static float ClampSigned01(float value) => Math.Clamp(value, -1.0f, 1.0f);
@@ -22204,6 +22335,7 @@ internal sealed class TickCoordinator(
             var topQueryCursor = 0;
             var lastSeenRestartGeneration = state.GetRestartGeneration();
             var lastNonOkServiceCount = -1;
+            var lastServiceHealthDiskLogTick = long.MinValue;
             var lastLiveCatalogInstanceCount = serviceInstances.Count;
             var autoProfileDegradeStreak = 0;
             var autoProfileRecoveryStreak = 0;
@@ -22963,10 +23095,25 @@ internal sealed class TickCoordinator(
             }
 
             var (_, nonOkServiceCount) = state.GetServiceHealthCounts();
-            if (nonOkServiceCount != lastNonOkServiceCount)
+            var serviceHealthChanged = nonOkServiceCount != lastNonOkServiceCount;
+            var serviceHealthPersistent = nonOkServiceCount > 0 &&
+                tickSignal.Tick - lastServiceHealthDiskLogTick >= 600;
+            if (serviceHealthChanged)
             {
                 lastNonOkServiceCount = nonOkServiceCount;
                 state.AppendOutputLog($"Service health changed: {nonOkServiceCount} non-OK.");
+            }
+
+            if (serviceHealthChanged || serviceHealthPersistent)
+            {
+                lastServiceHealthDiskLogTick = tickSignal.Tick;
+                AppendServiceHealthDiskLog(
+                    tickSignal.Tick,
+                    healthNowMs,
+                    serviceInstances,
+                    serviceHealth,
+                    nonOkServiceCount,
+                    serviceHealthChanged ? "count-change" : "persistent");
             }
 
             autoHealRestartTask = MaybeStartAutoHealRestartAsync(
@@ -23396,12 +23543,19 @@ internal sealed class TickCoordinator(
 
                 state.AppendOutputLog(
                     $"Auto-heal complete: requested={autoHealResult.Requested}, restarted={autoHealResult.Restarted}, healthy={autoHealResult.Healthy}.");
+                ControlHealthLog.Append(
+                    $"auto-heal complete requested={autoHealResult.Requested} restarted={autoHealResult.Restarted} healthy={autoHealResult.Healthy}{Environment.NewLine}" +
+                    string.Join(
+                        Environment.NewLine,
+                        autoHealResult.Items.Select(item =>
+                            $"{item.InstanceKey} restarted={item.Restarted} healthy={item.Healthy} message={item.Message}")));
             }
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Auto-heal restart task failed.");
             state.AppendOutputLog($"Auto-heal failure: {ClassifyFailure(ex)}");
+            ControlHealthLog.Append($"auto-heal failure {ClassifyFailure(ex)}");
         }
 
         return null;
@@ -23688,6 +23842,9 @@ internal sealed class TickCoordinator(
 
         state.AppendOutputLog(
             $"Auto-heal triggered at tick {tick}: restarting {restartCandidates.Count} service instance(s).");
+        ControlHealthLog.Append(
+            $"auto-heal triggered tick={tick} restarting={restartCandidates.Count}{Environment.NewLine}" +
+            string.Join(Environment.NewLine, restartCandidates.Select(candidate => $"{candidate.InstanceKey} {candidate.StructureId} {candidate.HemisphereNormalized} endpoint={candidate.Endpoint}")));
         return structureSupervisor.RestartServicesAsync(restartCandidates, stoppingToken);
     }
 
@@ -29941,6 +30098,80 @@ internal sealed class TickCoordinator(
         }
 
         throw new HttpRequestException($"Response status code {(int)response.StatusCode} ({response.StatusCode}). {details}");
+    }
+
+    private static void AppendServiceHealthDiskLog(
+        long tick,
+        double nowMs,
+        IReadOnlyList<ServiceInstance> serviceInstances,
+        IReadOnlyDictionary<string, ServiceHealth> serviceHealth,
+        int nonOkServiceCount,
+        string reason)
+    {
+        try
+        {
+            var details = serviceInstances
+                .Select(instance =>
+                {
+                    if (!serviceHealth.TryGetValue(instance.InstanceKey, out var health))
+                    {
+                        return new
+                        {
+                            Instance = instance,
+                            Telemetry = (ServiceRuntimeTelemetry?)null,
+                            Status = "MISSING_HEALTH"
+                        };
+                    }
+
+                    var telemetry = health.CreateTelemetry(nowMs);
+                    return new
+                    {
+                        Instance = instance,
+                        Telemetry = (ServiceRuntimeTelemetry?)telemetry,
+                        Status = string.IsNullOrWhiteSpace(telemetry.LastStatus) ? "UNKNOWN" : telemetry.LastStatus
+                    };
+                })
+                .Where(item => !string.Equals(item.Status, "OK", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(item => item.Telemetry?.ConsecutiveFailures ?? int.MaxValue)
+                .ThenBy(item => item.Instance.StructureId.ToString(), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
+                .Take(32)
+                .Select(item =>
+                {
+                    var telemetry = item.Telemetry;
+                    if (telemetry is null)
+                    {
+                        return $"{item.Instance.InstanceKey} {item.Instance.StructureId} {item.Instance.HemisphereNormalized} status={item.Status} endpoint={item.Instance.Endpoint}";
+                    }
+
+                    var nextRetryInMs = Math.Max(0, telemetry.NextRetryTimestampMs - nowMs);
+                    var error = string.IsNullOrWhiteSpace(telemetry.LastError)
+                        ? "none"
+                        : telemetry.LastError.Replace(Environment.NewLine, " ");
+                    if (error.Length > 180)
+                    {
+                        error = $"{error[..180]}...";
+                    }
+
+                    return
+                        $"{item.Instance.InstanceKey} {item.Instance.StructureId} {item.Instance.HemisphereNormalized} " +
+                        $"status={item.Status} failures={telemetry.ConsecutiveFailures} attempts={telemetry.AttemptCount} " +
+                        $"success={telemetry.SuccessCount} timeouts={telemetry.TimeoutFailureCount} " +
+                        $"ackEwmaMs={telemetry.AckLatencyEwmaMs:0.0} nextRetryInMs={nextRetryInMs:0} " +
+                        $"lastTick={telemetry.LastTickProcessed} endpoint={item.Instance.Endpoint} error={error}";
+                })
+                .ToArray();
+
+            var detailText = details.Length == 0
+                ? "non-OK instances: none in instance registry"
+                : string.Join(Environment.NewLine, details);
+            ControlHealthLog.Append(
+                $"tick={tick} reason={reason} nonOk={nonOkServiceCount}/{serviceInstances.Count}{Environment.NewLine}{detailText}");
+        }
+        catch
+        {
+            // Diagnostics must stay best-effort only.
+        }
     }
 
     private sealed record SpontaneousNoiseProfile(

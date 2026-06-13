@@ -124,6 +124,51 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Circuit_Audit_Classifies_Routed_Registered_Service_Without_Telemetry_As_Offline()
+    {
+        var state = new SimulationState();
+        state.Configure(
+            tickDurationMs: 1.0,
+            registry: new Dictionary<StructureId, string>
+            {
+                [StructureId.Pfc] = "http://localhost:5001",
+                [StructureId.M1] = "http://localhost:5002"
+            },
+            connectivity: new Dictionary<StructureId, List<SynapticConnection>>
+            {
+                [StructureId.Pfc] =
+                [
+                    new SynapticConnection(
+                        StructureId.M1,
+                        Guid.NewGuid(),
+                        NTEnum.GLUTAMATE,
+                        "corticospinal planning")
+                ],
+                [StructureId.M1] =
+                [
+                    new SynapticConnection(
+                        StructureId.Pfc,
+                        Guid.NewGuid(),
+                        NTEnum.GLUTAMATE,
+                        "efference copy")
+                ]
+            });
+
+        AdvanceTicks(state, 121);
+
+        using var document = SerializeDiagnostics(state);
+        var audit = GetObject(document.RootElement, "circuitAudit");
+        var summary = GetObject(audit, "summary");
+        var pfcWarning = EnumerateObjects(audit, "warnings")
+            .First(w => GetString(w, "structure").Equals("Pfc", StringComparison.OrdinalIgnoreCase));
+
+        Assert.True(GetInt(summary, "serviceOfflineCount") >= 1);
+        Assert.Contains("registered service has no telemetry", ReadStringArray(pfcWarning, "issues"));
+        Assert.Equal("offline", GetString(pfcWarning, "serviceState"));
+        Assert.Equal("service unavailable: INIT", GetString(pfcWarning, "silenceCause"));
+    }
+
+    [Fact]
     public void Input_Gates_AutoRestore_Spontaneous_Spiking_After_Neural_Starvation()
     {
         var state = new SimulationState();

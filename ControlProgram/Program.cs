@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
-using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -37126,10 +37125,14 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
 
         if (offline.Count == 0)
         {
+            ControlHealthLog.Append($"structure autostart check: all {instances.Count} services API-healthy");
             return;
         }
 
         logger.LogInformation("Structure autostart: {Count} services offline. Attempting launch...", offline.Count);
+        ControlHealthLog.Append(
+            $"structure autostart check: offline={offline.Count}/{instances.Count}{Environment.NewLine}" +
+            string.Join(Environment.NewLine, offline.Values.Select(instance => $"{instance.InstanceKey} {instance.StructureId} {instance.HemisphereNormalized} endpoint={instance.Endpoint}")));
 
         var localLaunchTargets = offline.Values
             .Where(i => IsLocallyManagedEndpoint(i.Endpoint))
@@ -37197,10 +37200,14 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             logger.LogWarning(
                 "Structure autostart incomplete. Still offline: {Offline}",
                 string.Join(", ", offline.Values.Select(x => $"{x.InstanceKey}@{x.Endpoint}")));
+            ControlHealthLog.Append(
+                $"structure autostart incomplete: offline={offline.Count}/{instances.Count}{Environment.NewLine}" +
+                string.Join(Environment.NewLine, offline.Values.Select(instance => $"{instance.InstanceKey} {instance.StructureId} {instance.HemisphereNormalized} endpoint={instance.Endpoint}")));
         }
         else
         {
             logger.LogInformation("Structure autostart: all services are online.");
+            ControlHealthLog.Append($"structure autostart complete: all {instances.Count} services API-healthy");
         }
     }
 
@@ -37652,23 +37659,11 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         }
         catch
         {
-            // Intentionally ignored: health probe is best-effort.
+            // A structure is only considered online when its API responds.
+            // A bare open TCP port can still be a warming or failed host.
         }
 
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(timeoutMs);
-
-            using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            var host = endpoint.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? "127.0.0.1" : endpoint.Host;
-            await socket.ConnectAsync(host, endpoint.Port, timeout.Token);
-            return socket.Connected;
-        }
-        catch
-        {
-            return false;
-        }
+        return false;
     }
 
     private static bool TryResolveProjectPath(string repositoryRoot, StructureId structureId, out string projectPath)

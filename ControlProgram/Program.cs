@@ -22323,7 +22323,15 @@ internal sealed class TickCoordinator(
                     ? "Spike transport: HTTP primary; gRPC registration skipped for current cleartext structure endpoints, HTTP fallback enabled."
                     : $"Spike transport: HTTP primary, HTTP fallback {(useHttpSpikeTransportFallback ? "enabled" : "disabled")}.");
 
-        await structureSupervisor.EnsureServicesOnlineAsync(serviceInstances, tickTimeoutMs, stoppingToken);
+        var startupResult = await structureSupervisor.EnsureServicesOnlineAsync(serviceInstances, tickTimeoutMs, stoppingToken);
+        ApplySupervisorServiceHealthResult(
+            startupResult,
+            serviceHealth,
+            DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            state.Tick,
+            "startup");
+        state.AppendOutputLog(
+            $"Structure startup health: healthy={startupResult.Healthy}/{startupResult.Requested}, launched={startupResult.Restarted}.");
         publishBuffer.Clear();
         var dispatchSemaphore = new SemaphoreSlim(maxDispatchConcurrency, maxDispatchConcurrency);
         var tickRequestSemaphore = new SemaphoreSlim(maxTickRequestConcurrency, maxTickRequestConcurrency);
@@ -23470,6 +23478,34 @@ internal sealed class TickCoordinator(
         return string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static void ApplySupervisorServiceHealthResult(
+        RestartServiceResult result,
+        IReadOnlyDictionary<string, ServiceHealth> serviceHealth,
+        double healthNowMs,
+        long tick,
+        string context)
+    {
+        foreach (var item in result.Items)
+        {
+            if (!serviceHealth.TryGetValue(item.InstanceKey, out var health))
+            {
+                continue;
+            }
+
+            if (item.Healthy)
+            {
+                health.MarkSuccess(healthNowMs, ackLatencyMs: 0, tick);
+            }
+            else
+            {
+                var message = string.IsNullOrWhiteSpace(item.Message)
+                    ? "service did not become API-healthy"
+                    : item.Message;
+                health.MarkFailure(healthNowMs, tick, $"{context}: {message}");
+            }
+        }
+    }
+
     private async Task<Task<RestartServiceResult>?> HandleSimulationRestartAsync(
         SimulationState state,
         SnapshotStore snapshotStore,
@@ -23499,13 +23535,26 @@ internal sealed class TickCoordinator(
             if (restartStructureServicesOnSimRestart)
             {
                 var restartResult = await structureSupervisor.RestartServicesAsync(serviceInstances, stoppingToken);
+                ApplySupervisorServiceHealthResult(
+                    restartResult,
+                    serviceHealth,
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    state.Tick,
+                    "simulation restart");
                 state.AppendOutputLog(
                     $"Simulation restart applied. Structure services restarted: {restartResult.Restarted}/{restartResult.Requested}; healthy after restart: {restartResult.Healthy}.");
             }
             else
             {
-                await structureSupervisor.EnsureServicesOnlineAsync(serviceInstances, tickTimeoutMs, stoppingToken);
-                state.AppendOutputLog("Simulation restart applied and services re-probed.");
+                var startupResult = await structureSupervisor.EnsureServicesOnlineAsync(serviceInstances, tickTimeoutMs, stoppingToken);
+                ApplySupervisorServiceHealthResult(
+                    startupResult,
+                    serviceHealth,
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    state.Tick,
+                    "simulation restart reprobe");
+                state.AppendOutputLog(
+                    $"Simulation restart applied and services re-probed: healthy={startupResult.Healthy}/{startupResult.Requested}, launched={startupResult.Restarted}.");
             }
         }
         catch (Exception ex)
@@ -37100,17 +37149,20 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         [StructureId.SuperiorColliculus] = "SuperiorColliculus"
     };
 
-    public async Task EnsureServicesOnlineAsync(IReadOnlyList<ServiceInstance> instances, int tickTimeoutMs, CancellationToken cancellationToken)
+    public async Task<RestartServiceResult> EnsureServicesOnlineAsync(IReadOnlyList<ServiceInstance> instances, int tickTimeoutMs, CancellationToken cancellationToken)
     {
-        if (!configuration.GetValue<bool>("StructureProcessHost:AutoStartEnabled", true))
+        if (instances.Count == 0)
         {
-            return;
+            return new RestartServiceResult(0, 0, 0, []);
         }
 
+        var autoStartEnabled = configuration.GetValue<bool>("StructureProcessHost:AutoStartEnabled", true);
         var startupTimeoutMs = Math.Clamp(configuration.GetValue<int>("StructureProcessHost:StartupTimeoutMs", 20000), 2000, 120000);
         var probeTimeoutMs = Math.Clamp(configuration.GetValue<int>("StructureProcessHost:HealthProbeTimeoutMs", Math.Max(250, tickTimeoutMs / 3)), 150, 5000);
         var launchParallelism = Math.Clamp(configuration.GetValue<int>("StructureProcessHost:LaunchParallelism", 8), 1, 64);
         var root = ResolveRepositoryRoot();
+        var launchedKeys = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+        var launchMessages = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         var initialChecks = await Task.WhenAll(instances.Select(async instance =>
             new
@@ -37126,13 +37178,23 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         if (offline.Count == 0)
         {
             ControlHealthLog.Append($"structure autostart check: all {instances.Count} services API-healthy");
-            return;
+            return BuildSupervisorProbeResult(instances, offline, launchedKeys, launchMessages);
         }
 
         logger.LogInformation("Structure autostart: {Count} services offline. Attempting launch...", offline.Count);
         ControlHealthLog.Append(
             $"structure autostart check: offline={offline.Count}/{instances.Count}{Environment.NewLine}" +
             string.Join(Environment.NewLine, offline.Values.Select(instance => $"{instance.InstanceKey} {instance.StructureId} {instance.HemisphereNormalized} endpoint={instance.Endpoint}")));
+
+        if (!autoStartEnabled)
+        {
+            foreach (var instance in offline.Values)
+            {
+                launchMessages.TryAdd(instance.InstanceKey, "autostart disabled; endpoint is not API-healthy");
+            }
+
+            return BuildSupervisorProbeResult(instances, offline, launchedKeys, launchMessages);
+        }
 
         var localLaunchTargets = offline.Values
             .Where(i => IsLocallyManagedEndpoint(i.Endpoint))
@@ -37146,6 +37208,10 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             logger.LogInformation(
                 "Structure autostart: skipping unmanaged remote endpoints: {Endpoints}",
                 string.Join(", ", remoteUnmanagedTargets.Select(x => $"{x.InstanceKey}@{x.Endpoint}")));
+            foreach (var instance in remoteUnmanagedTargets)
+            {
+                launchMessages.TryAdd(instance.InstanceKey, "remote endpoint unmanaged by local supervisor");
+            }
         }
 
         await Parallel.ForEachAsync(
@@ -37160,6 +37226,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
                 if (!TryResolveProjectPath(root, pair.StructureId, out var projectPath))
                 {
                     logger.LogWarning("Structure autostart: unable to resolve project path for {ServiceInstance}.", pair.InstanceKey);
+                    launchMessages.TryAdd(pair.InstanceKey, "project path not found");
                     return ValueTask.CompletedTask;
                 }
 
@@ -37167,6 +37234,11 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
                 if (!started)
                 {
                     logger.LogWarning("Structure autostart: failed to launch {ServiceInstance} on {Endpoint}.", pair.InstanceKey, pair.Endpoint);
+                    launchMessages.TryAdd(pair.InstanceKey, "launch failed");
+                }
+                else
+                {
+                    launchedKeys.TryAdd(pair.InstanceKey, 0);
                 }
 
                 return ValueTask.CompletedTask;
@@ -37200,6 +37272,11 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             logger.LogWarning(
                 "Structure autostart incomplete. Still offline: {Offline}",
                 string.Join(", ", offline.Values.Select(x => $"{x.InstanceKey}@{x.Endpoint}")));
+            foreach (var instance in offline.Values)
+            {
+                launchMessages.TryAdd(instance.InstanceKey, "health probe timeout");
+            }
+
             ControlHealthLog.Append(
                 $"structure autostart incomplete: offline={offline.Count}/{instances.Count}{Environment.NewLine}" +
                 string.Join(Environment.NewLine, offline.Values.Select(instance => $"{instance.InstanceKey} {instance.StructureId} {instance.HemisphereNormalized} endpoint={instance.Endpoint}")));
@@ -37209,6 +37286,36 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             logger.LogInformation("Structure autostart: all services are online.");
             ControlHealthLog.Append($"structure autostart complete: all {instances.Count} services API-healthy");
         }
+
+        return BuildSupervisorProbeResult(instances, offline, launchedKeys, launchMessages);
+    }
+
+    private static RestartServiceResult BuildSupervisorProbeResult(
+        IReadOnlyList<ServiceInstance> instances,
+        IReadOnlyDictionary<string, ServiceInstance> offline,
+        IReadOnlyDictionary<string, byte> launchedKeys,
+        IReadOnlyDictionary<string, string> messages)
+    {
+        var items = instances
+            .Select(instance =>
+            {
+                var healthy = !offline.ContainsKey(instance.InstanceKey);
+                var restarted = launchedKeys.ContainsKey(instance.InstanceKey);
+                var message = healthy
+                    ? "online"
+                    : messages.TryGetValue(instance.InstanceKey, out var reason)
+                        ? reason
+                        : "endpoint is not API-healthy";
+                return new RestartServiceItem(instance.InstanceKey, restarted, healthy, message);
+            })
+            .OrderBy(item => item.InstanceKey, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new RestartServiceResult(
+            instances.Count,
+            items.Count(item => item.Restarted),
+            items.Count(item => item.Healthy),
+            items);
     }
 
     public async Task<RestartServiceResult> RestartServicesAsync(IReadOnlyList<ServiceInstance> instances, CancellationToken cancellationToken)

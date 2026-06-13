@@ -180,7 +180,9 @@ public sealed class AvatarNervousSystem
             return AvatarToolAction.Dig;
         }
 
-        if (dispatch.SourceStructure.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase))
+        if (dispatch.SourceStructure.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase) ||
+            dispatch.SourceStructure.Equals("SpinalCordMotor", StringComparison.OrdinalIgnoreCase) ||
+            dispatch.SourceStructure.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase))
         {
             return AvatarToolAction.None;
         }

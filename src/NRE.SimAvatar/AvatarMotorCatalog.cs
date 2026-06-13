@@ -7,7 +7,9 @@ public static class AvatarMotorCatalog
         return structure.Equals("M1", StringComparison.OrdinalIgnoreCase)
                || structure.Equals("Sma", StringComparison.OrdinalIgnoreCase)
                || structure.Equals("PremotorCortex", StringComparison.OrdinalIgnoreCase)
-               || structure.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase);
+               || structure.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase)
+               || structure.Equals("SpinalCordMotor", StringComparison.OrdinalIgnoreCase)
+               || structure.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase);
     }
 
     public static double ResolveMotorWeight(string structure)
@@ -30,6 +32,16 @@ public static class AvatarMotorCatalog
         if (structure.Equals("MotorThalamus", StringComparison.OrdinalIgnoreCase))
         {
             return 0.8;
+        }
+
+        if (structure.Equals("SpinalCordMotor", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2.2;
+        }
+
+        if (structure.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase))
+        {
+            return 0.9;
         }
 
         return 0.6;
@@ -88,7 +100,9 @@ public static class AvatarMotorCatalog
         }
 
         var normalized = sourceNeuronId.Trim().ToLowerInvariant();
-        if (normalized.Contains("motor_stop", StringComparison.Ordinal))
+        if (normalized.Contains("motor_stop", StringComparison.Ordinal) ||
+            normalized.Contains("motor_rest", StringComparison.Ordinal) ||
+            normalized.Contains("motor_immobilize", StringComparison.Ordinal))
         {
             leftInput -= weight * 10.5;
             rightInput -= weight * 10.5;
@@ -107,6 +121,35 @@ public static class AvatarMotorCatalog
         {
             leftInput += weight * 1.12;
             rightInput += weight * 1.12;
+            return true;
+        }
+
+        if (normalized.Contains("motor_explore", StringComparison.Ordinal))
+        {
+            leftInput += weight * 0.82;
+            rightInput += weight * 0.82;
+            return true;
+        }
+
+        if (normalized.Contains("motor_slow_protect", StringComparison.Ordinal))
+        {
+            leftInput += weight * 0.24;
+            rightInput += weight * 0.24;
+            return true;
+        }
+
+        if (normalized.Contains("motor_guard_body", StringComparison.Ordinal))
+        {
+            leftInput -= weight * 0.35;
+            rightInput -= weight * 0.35;
+            return true;
+        }
+
+        if (normalized.Contains("motor_reorient", StringComparison.Ordinal))
+        {
+            leftInput -= weight * 1.05;
+            rightInput += weight * 1.05;
+            inPlaceTurnEvents++;
             return true;
         }
 

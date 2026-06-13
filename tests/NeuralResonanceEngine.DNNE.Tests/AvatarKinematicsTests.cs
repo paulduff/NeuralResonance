@@ -113,4 +113,88 @@ public sealed class AvatarKinematicsTests
         Assert.True(forwardSpeed < 0.0);
         Assert.InRange(Math.Abs(turnRateDeg), 0.0, 0.0001);
     }
+
+    [Fact]
+    public void Spinal_Output_Command_Produces_Forward_Drive()
+    {
+        var dispatches = new[]
+        {
+            new AvatarDispatchSpike("SpinalCordMotor", "M", 100, "M:motor_seek_shelter_100_0")
+        };
+        var options = new AvatarKinematicsOptions(
+            MaxMotorDrive: 240.0,
+            ForwardSpeedCoefficient: 0.0128,
+            TurnSpeedCoefficient: 3.2,
+            MinForwardSpeed: -1.6,
+            MaxForwardSpeed: 8.1,
+            MaxTurnRateDeg: 240.0,
+            AllowSignedMotorDrive: true,
+            InPlaceTurnCancelsForwardDrive: true);
+
+        double leftDrive = 0.0;
+        double rightDrive = 0.0;
+        var summary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
+        var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
+
+        Assert.Equal(1, summary.MotorEvents);
+        Assert.True(leftDrive > 0.0);
+        Assert.True(rightDrive > 0.0);
+        Assert.True(forwardSpeed > 0.0);
+        Assert.InRange(Math.Abs(turnRateDeg), 0.0, 0.0001);
+    }
+
+    [Fact]
+    public void Explore_Command_Produces_Cautious_Forward_Drive()
+    {
+        var dispatches = new[]
+        {
+            new AvatarDispatchSpike("ReticularFormation", "M", 100, "M:motor_explore_100_0")
+        };
+        var options = new AvatarKinematicsOptions(
+            MaxMotorDrive: 240.0,
+            ForwardSpeedCoefficient: 0.0128,
+            TurnSpeedCoefficient: 3.2,
+            MinForwardSpeed: -1.6,
+            MaxForwardSpeed: 8.1,
+            MaxTurnRateDeg: 240.0,
+            AllowSignedMotorDrive: true,
+            InPlaceTurnCancelsForwardDrive: true);
+
+        double leftDrive = 0.0;
+        double rightDrive = 0.0;
+        var summary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
+        var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
+
+        Assert.Equal(1, summary.MotorEvents);
+        Assert.True(forwardSpeed > 0.0);
+        Assert.InRange(Math.Abs(turnRateDeg), 0.0, 0.0001);
+    }
+
+    [Theory]
+    [InlineData("motor_rest")]
+    [InlineData("motor_guard_body")]
+    [InlineData("motor_immobilize_protect")]
+    public void Protective_Hold_Commands_Do_Not_Create_Forward_Drive(string directive)
+    {
+        var dispatches = new[]
+        {
+            new AvatarDispatchSpike("SpinalCordMotor", "M", 100, $"M:{directive}_100_0")
+        };
+        var options = new AvatarKinematicsOptions(
+            MaxMotorDrive: 240.0,
+            ForwardSpeedCoefficient: 0.0128,
+            TurnSpeedCoefficient: 3.2,
+            MinForwardSpeed: -1.6,
+            MaxForwardSpeed: 8.1,
+            MaxTurnRateDeg: 240.0,
+            AllowSignedMotorDrive: true,
+            InPlaceTurnCancelsForwardDrive: true);
+
+        double leftDrive = 0.0;
+        double rightDrive = 0.0;
+        AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
+        var (forwardSpeed, _) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
+
+        Assert.True(forwardSpeed <= 0.0);
+    }
 }

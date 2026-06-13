@@ -198,6 +198,31 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Runtime_Instance_Catalog_Does_Not_Treat_Known_Instances_As_Live()
+    {
+        var catalog = new RuntimeInstanceCatalog();
+        var v1 = new ServiceInstance(
+            StructureId.V1,
+            "V1_L",
+            "L",
+            new Uri("http://localhost:5001"));
+
+        catalog.SetKnownInstances([v1]);
+
+        Assert.Empty(catalog.GetByStructure(StructureId.V1, "left"));
+        Assert.Single(catalog.GetByStructureWithKnownFallback(StructureId.V1, "left"));
+
+        catalog.SetLiveInstances([v1]);
+
+        Assert.Single(catalog.GetByStructure(StructureId.V1, "left"));
+
+        catalog.SetLiveInstances([]);
+
+        Assert.Empty(catalog.GetByStructure(StructureId.V1, "left"));
+        Assert.Single(catalog.GetByStructureWithKnownFallback(StructureId.V1, "left"));
+    }
+
+    [Fact]
     public void Circuit_Audit_Reports_Function_Level_Biological_Support()
     {
         var state = new SimulationState();

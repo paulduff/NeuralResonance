@@ -22307,7 +22307,7 @@ internal sealed class TickCoordinator(
             AvatarVisionEnabled: true,
             SpontaneousSpikingEnabled: spontaneousNoiseEnabled));
         runtimeCatalog.SetKnownInstances(serviceInstances);
-        runtimeCatalog.SetLiveInstances(serviceInstances);
+        runtimeCatalog.SetLiveInstances([]);
 
         var transportClients = InitializeTransportClients(serviceInstances, useGrpcSpikeTransport);
         var clients = transportClients.Clients;
@@ -22330,8 +22330,10 @@ internal sealed class TickCoordinator(
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             state.Tick,
             "startup");
+        var startupLiveInstances = SelectHealthyInstancesFromSupervisorResult(serviceInstances, startupResult);
+        runtimeCatalog.SetLiveInstances(startupLiveInstances);
         state.AppendOutputLog(
-            $"Structure startup health: healthy={startupResult.Healthy}/{startupResult.Requested}, launched={startupResult.Restarted}.");
+            $"Structure startup health: healthy={startupResult.Healthy}/{startupResult.Requested}, launched={startupResult.Restarted}, live={startupLiveInstances.Count}.");
         publishBuffer.Clear();
         var dispatchSemaphore = new SemaphoreSlim(maxDispatchConcurrency, maxDispatchConcurrency);
         var tickRequestSemaphore = new SemaphoreSlim(maxTickRequestConcurrency, maxTickRequestConcurrency);
@@ -22343,7 +22345,7 @@ internal sealed class TickCoordinator(
             var lastSeenRestartGeneration = state.GetRestartGeneration();
             var lastNonOkServiceCount = -1;
             var lastServiceHealthDiskLogTick = long.MinValue;
-            var lastLiveCatalogInstanceCount = serviceInstances.Count;
+            var lastLiveCatalogInstanceCount = startupLiveInstances.Count;
             var autoProfileDegradeStreak = 0;
             var autoProfileRecoveryStreak = 0;
             var autoProfileDowngradedFromUltra = false;
@@ -22439,6 +22441,7 @@ internal sealed class TickCoordinator(
                     autoHealRestartTask = await HandleSimulationRestartAsync(
                         state,
                         snapshotStore,
+                        runtimeCatalog,
                         serviceInstances,
                         serviceHealth,
                         autoHealLastRestartByInstance,
@@ -23506,9 +23509,29 @@ internal sealed class TickCoordinator(
         }
     }
 
+    private static List<ServiceInstance> SelectHealthyInstancesFromSupervisorResult(
+        IReadOnlyList<ServiceInstance> serviceInstances,
+        RestartServiceResult result)
+    {
+        var healthyKeys = result.Items
+            .Where(item => item.Healthy)
+            .Select(item => item.InstanceKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (healthyKeys.Count == 0)
+        {
+            return [];
+        }
+
+        return serviceInstances
+            .Where(instance => healthyKeys.Contains(instance.InstanceKey))
+            .ToList();
+    }
+
     private async Task<Task<RestartServiceResult>?> HandleSimulationRestartAsync(
         SimulationState state,
         SnapshotStore snapshotStore,
+        RuntimeInstanceCatalog runtimeCatalog,
         IReadOnlyList<ServiceInstance> serviceInstances,
         IReadOnlyDictionary<string, ServiceHealth> serviceHealth,
         IDictionary<string, double> autoHealLastRestartByInstance,
@@ -23541,6 +23564,7 @@ internal sealed class TickCoordinator(
                     DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     state.Tick,
                     "simulation restart");
+                runtimeCatalog.SetLiveInstances(SelectHealthyInstancesFromSupervisorResult(serviceInstances, restartResult));
                 state.AppendOutputLog(
                     $"Simulation restart applied. Structure services restarted: {restartResult.Restarted}/{restartResult.Requested}; healthy after restart: {restartResult.Healthy}.");
             }
@@ -23553,6 +23577,7 @@ internal sealed class TickCoordinator(
                     DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     state.Tick,
                     "simulation restart reprobe");
+                runtimeCatalog.SetLiveInstances(SelectHealthyInstancesFromSupervisorResult(serviceInstances, startupResult));
                 state.AppendOutputLog(
                     $"Simulation restart applied and services re-probed: healthy={startupResult.Healthy}/{startupResult.Requested}, launched={startupResult.Restarted}.");
             }

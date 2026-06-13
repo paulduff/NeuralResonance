@@ -341,6 +341,55 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Equal("object:food", GetString(diagnostic, "lastCue"));
         Assert.True(GetSingle(diagnostic, "surprise") > 0.20f);
         Assert.True(GetSingle(diagnostic, "hippocampalEncodingGate") > 0.0f);
+        Assert.True(GetSingle(diagnostic, "sensitizationGate") > 0.0f);
+        Assert.True(GetSingle(diagnostic, "noveltyEncodingDrive") > 0.0f);
+        Assert.NotEqual("stable", GetString(diagnostic, "adaptationMode"));
+        Assert.Contains("hippocampus", GetString(diagnostic, "adaptationEvidence"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Predictive_Perception_Tracks_Stimulus_Adaptation()
+    {
+        var state = new SimulationState();
+        AdvanceTicks(state, 12);
+
+        var first = state.ObservePredictivePerception(
+            "visual",
+            "object:lamp",
+            observation: 0.72f,
+            confidence: 0.84f,
+            inputSource: "test");
+        PredictivePerceptionRuntime repeated = first;
+        for (var i = 0; i < 6; i++)
+        {
+            repeated = state.ObservePredictivePerception(
+                "visual",
+                "object:lamp",
+                observation: 0.72f,
+                confidence: 0.84f,
+                inputSource: "test");
+        }
+
+        var novel = state.ObservePredictivePerception(
+            "visual",
+            "object:door",
+            observation: 0.96f,
+            confidence: 0.86f,
+            inputSource: "test");
+
+        Assert.True(repeated.HabituationGate > first.HabituationGate);
+        Assert.True(repeated.RepetitionSuppression > first.RepetitionSuppression);
+        Assert.Contains(repeated.AdaptationMode, new[] { "habituating", "sensitizing", "novelty_encoding" });
+        Assert.True(novel.NoveltyEncodingDrive >= repeated.NoveltyEncodingDrive || novel.SensitizationGate >= repeated.SensitizationGate);
+
+        using var document = SerializeDiagnostics(state);
+        var audit = GetObject(document.RootElement, "circuitAudit");
+        var functions = EnumerateObjects(audit, "functionSupport").ToArray();
+        var adaptation = functions.First(entry => GetString(entry, "functionKey") == "stimulus_adaptation");
+
+        Assert.True(GetSingle(adaptation, "support") > 0.10f);
+        Assert.Contains(ReadStringArray(adaptation, "requiredStructures"), structure => structure.Contains("BasalForebrain", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(ReadStringArray(adaptation, "requiredStructures"), structure => structure.Contains("LocusCoeruleus", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

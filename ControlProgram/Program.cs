@@ -5117,6 +5117,35 @@ internal sealed class SimulationState
         var dopamineTeaching = ClampSigned01((previous.DopamineTeachingSignal * 0.70f) + ((clampedObservation - expected) * clampedConfidence * 0.30f));
         var sensoryBias = BuildPredictivePerceptionAttentionBias(normalizedChannel, surprise, previous.SensoryBias);
         var predictiveCircuitEvidence = ResolvePredictivePerceptionCircuitEvidenceLocked(tick, normalizedChannel);
+        var adaptationCircuitEvidence = ResolveStimulusAdaptationCircuitEvidenceLocked(tick, normalizedChannel);
+        var repeatedCue = !cueChanged;
+        var habituationGate = Clamp01((previous.HabituationGate * 0.72f) + (repeatedCue ? (1f - surprise) * clampedConfidence * 0.28f : 0f));
+        var sensitizationGate = Clamp01((previous.SensitizationGate * 0.64f) + (surprise * (0.22f + (accConflict * 0.18f) + (lcAlert * 0.20f))));
+        var repetitionSuppression = Clamp01((previous.RepetitionSuppression * 0.74f) + (habituationGate * 0.26f));
+        var noveltyEncodingDrive = Clamp01((previous.NoveltyEncodingDrive * 0.66f) + (novelty * hippocampalGate * 0.34f));
+        var stimulusAdaptationGain = Clamp01(
+            0.50f +
+            (sensitizationGate * 0.34f) +
+            (noveltyEncodingDrive * 0.22f) -
+            (habituationGate * 0.28f));
+        var adaptationMode = ResolveStimulusAdaptationMode(
+            habituationGate,
+            sensitizationGate,
+            noveltyEncodingDrive,
+            surprise);
+        var adaptationEvidence = BuildStimulusAdaptationEvidence(
+            normalizedChannel,
+            normalizedCue,
+            repeatedCue,
+            habituationGate,
+            sensitizationGate,
+            repetitionSuppression,
+            noveltyEncodingDrive,
+            lcAlert,
+            accConflict,
+            hippocampalGate,
+            AttentionState.BasalForebrainGain,
+            adaptationCircuitEvidence);
 
         PredictivePerception = PredictivePerceptionRuntime.Normalize(new PredictivePerceptionRuntime(
             Active: predictiveCircuitEvidence > 0.10f,
@@ -5140,6 +5169,13 @@ internal sealed class SimulationState
             HippocampalEncodingGate: ApplyCircuitGate(hippocampalGate, predictiveCircuitEvidence),
             AccConflictSignal: ApplyCircuitGate(accConflict, predictiveCircuitEvidence),
             DopamineTeachingSignal: dopamineTeaching,
+            HabituationGate: ApplyCircuitGate(habituationGate, adaptationCircuitEvidence),
+            SensitizationGate: ApplyCircuitGate(sensitizationGate, adaptationCircuitEvidence),
+            RepetitionSuppression: ApplyCircuitGate(repetitionSuppression, adaptationCircuitEvidence),
+            NoveltyEncodingDrive: ApplyCircuitGate(noveltyEncodingDrive, adaptationCircuitEvidence),
+            StimulusAdaptationGain: ApplyCircuitGate(stimulusAdaptationGain, adaptationCircuitEvidence),
+            AdaptationMode: adaptationMode,
+            AdaptationEvidence: adaptationEvidence,
             SensoryBias: sensoryBias,
             ExpectedChannel: previous.ExpectedChannel,
             ExpectedCue: previous.ExpectedCue,
@@ -5275,6 +5311,34 @@ internal sealed class SimulationState
         var novelty = Clamp01(previous.Novelty * 0.93f);
         var accConflict = Clamp01((previous.AccConflictSignal * 0.84f) + (SelfMonitoringLoop.MonitorState is "stalled" or "unsafe" ? 0.12f : 0f));
         var lcAlert = Clamp01((previous.LocusCoeruleusAlert * 0.82f) + (expected.Channel == "auditory" && auditoryTarget > 0.45f ? 0.10f : 0f));
+        var adaptationEvidence = ResolveStimulusAdaptationCircuitEvidenceLocked(tick, expected.Channel);
+        var habituationGate = Clamp01((previous.HabituationGate * 0.94f) + (forwardConfidence > 0.45f && surprise < 0.18f ? 0.04f : 0f));
+        var sensitizationGate = Clamp01((previous.SensitizationGate * 0.88f) + (surprise * 0.08f) + (lcAlert * 0.04f));
+        var repetitionSuppression = Clamp01((previous.RepetitionSuppression * 0.92f) + (habituationGate * 0.06f));
+        var noveltyEncodingDrive = Clamp01((previous.NoveltyEncodingDrive * 0.90f) + (novelty * 0.06f) + (hippocampalCompletion * 0.04f));
+        var stimulusAdaptationGain = Clamp01(
+            0.50f +
+            (sensitizationGate * 0.34f) +
+            (noveltyEncodingDrive * 0.22f) -
+            (habituationGate * 0.28f));
+        var adaptationMode = ResolveStimulusAdaptationMode(
+            habituationGate,
+            sensitizationGate,
+            noveltyEncodingDrive,
+            surprise);
+        var adaptationEvidenceText = BuildStimulusAdaptationEvidence(
+            expected.Channel,
+            expectedCue,
+            false,
+            habituationGate,
+            sensitizationGate,
+            repetitionSuppression,
+            noveltyEncodingDrive,
+            lcAlert,
+            accConflict,
+            hippocampalCompletion,
+            AttentionState.BasalForebrainGain,
+            adaptationEvidence);
 
         PredictivePerception = PredictivePerceptionRuntime.Normalize(previous with
         {
@@ -5294,13 +5358,20 @@ internal sealed class SimulationState
             LocusCoeruleusAlert = ApplyCircuitGate(lcAlert, circuitEvidence),
             HippocampalEncodingGate = ApplyCircuitGate(Clamp01((previous.HippocampalEncodingGate * 0.76f) + (hippocampalCompletion * 0.24f)), circuitEvidence),
             AccConflictSignal = ApplyCircuitGate(accConflict, circuitEvidence),
+            HabituationGate = ApplyCircuitGate(habituationGate, adaptationEvidence),
+            SensitizationGate = ApplyCircuitGate(sensitizationGate, adaptationEvidence),
+            RepetitionSuppression = ApplyCircuitGate(repetitionSuppression, adaptationEvidence),
+            NoveltyEncodingDrive = ApplyCircuitGate(noveltyEncodingDrive, adaptationEvidence),
+            StimulusAdaptationGain = ApplyCircuitGate(stimulusAdaptationGain, adaptationEvidence),
+            AdaptationMode = adaptationMode,
+            AdaptationEvidence = adaptationEvidenceText,
             SensoryBias = sensoryBias,
             ForwardModelConfidence = forwardConfidence,
             CerebellarForwardModel = ApplyCircuitGate(cerebellarForward, circuitEvidence),
             HippocampalPatternCompletion = ApplyCircuitGate(hippocampalCompletion, circuitEvidence),
             PfcTopDownExpectation = ApplyCircuitGate(pfcTopDown, circuitEvidence),
             LastSimulationTick = tick,
-            SimulationEvidence = $"expect={expected.Channel}:{expectedCue}, goal={goalKey}, action={actionKey}, PFC={pfcTopDown:0.00}, CA3={hippocampalCompletion:0.00}, cerebellum={cerebellarForward:0.00}, circuit={circuitEvidence:0.00}",
+            SimulationEvidence = $"expect={expected.Channel}:{expectedCue}, goal={goalKey}, action={actionKey}, PFC={pfcTopDown:0.00}, CA3={hippocampalCompletion:0.00}, cerebellum={cerebellarForward:0.00}, adaptation={adaptationMode}, circuit={circuitEvidence:0.00}",
             LastUpdatedTick = tick
         });
     }
@@ -5397,6 +5468,45 @@ internal sealed class SimulationState
         var total = Math.Max(0.0001f, visual + auditory + somatosensory + interoceptive);
         return new AttentionVector(visual / total, auditory / total, somatosensory / total, interoceptive / total);
     }
+
+    private static string ResolveStimulusAdaptationMode(
+        float habituationGate,
+        float sensitizationGate,
+        float noveltyEncodingDrive,
+        float surprise)
+    {
+        if (sensitizationGate >= Math.Max(0.24f, habituationGate + 0.08f) || surprise >= 0.42f)
+        {
+            return "sensitizing";
+        }
+
+        if (noveltyEncodingDrive >= 0.20f && noveltyEncodingDrive >= habituationGate)
+        {
+            return "novelty_encoding";
+        }
+
+        if (habituationGate >= 0.18f)
+        {
+            return "habituating";
+        }
+
+        return "stable";
+    }
+
+    private static string BuildStimulusAdaptationEvidence(
+        string channel,
+        string cue,
+        bool repeatedCue,
+        float habituationGate,
+        float sensitizationGate,
+        float repetitionSuppression,
+        float noveltyEncodingDrive,
+        float lcAlert,
+        float accConflict,
+        float hippocampalGate,
+        float basalForebrainGain,
+        float circuitEvidence)
+        => $"channel={channel}, cue={cue}, repeated={repeatedCue}, habituation={habituationGate:0.00}, sensitization={sensitizationGate:0.00}, repetitionSuppression={repetitionSuppression:0.00}, noveltyEncoding={noveltyEncodingDrive:0.00}, LC={lcAlert:0.00}, ACC={accConflict:0.00}, hippocampus={hippocampalGate:0.00}, ACh/BF={basalForebrainGain:0.00}, circuit={circuitEvidence:0.00}";
 
     private static (string Channel, float Value) SelectPredictiveExpectedChannel(
         float visual,
@@ -9959,6 +10069,65 @@ internal sealed class SimulationState
             (EpisodicMemory.HippocampalBinding * 0.08f) +
             (ResolveGlobalCircuitFallback() * 0.12f));
         return Clamp01(Math.Max(Math.Max(modalityRecent, predictiveRecent), integrated));
+    }
+
+    private float ResolveStimulusAdaptationCircuitEvidenceLocked(long tick, string channel)
+    {
+        var modalityRecent = channel switch
+        {
+            "visual" => GetRecentStructureSpikeSupportLocked(
+                tick,
+                StructureId.Retina,
+                StructureId.V1,
+                StructureId.V2,
+                StructureId.V4,
+                StructureId.Mt,
+                StructureId.Pulvinar,
+                StructureId.SuperiorColliculus),
+            "auditory" => GetRecentStructureSpikeSupportLocked(
+                tick,
+                StructureId.Cochlea,
+                StructureId.CochlearNucleus,
+                StructureId.InferiorColliculus,
+                StructureId.A1,
+                StructureId.Thalamus),
+            "somatosensory" => GetRecentStructureSpikeSupportLocked(
+                tick,
+                StructureId.S1,
+                StructureId.Ppc,
+                StructureId.MotorThalamus,
+                StructureId.CerebellarVermis),
+            "interoceptive" => GetRecentStructureSpikeSupportLocked(
+                tick,
+                StructureId.NucleusTractusSolitarius,
+                StructureId.Insula,
+                StructureId.Acc,
+                StructureId.Hypothalamus),
+            _ => ResolveGlobalCircuitFallback()
+        };
+        var neuromodulatoryRecent = GetRecentStructureSpikeSupportLocked(
+            tick,
+            StructureId.BasalForebrain,
+            StructureId.LocusCoeruleus,
+            StructureId.Acc,
+            StructureId.Amygdala,
+            StructureId.EntorhinalCortex,
+            StructureId.CA3,
+            StructureId.CA1,
+            StructureId.Vta,
+            StructureId.Snc);
+        var integrated = Clamp01(
+            (ResolvePredictivePerceptionCircuitEvidenceLocked(tick, channel) * 0.22f) +
+            (AttentionState.BasalForebrainGain * 0.14f) +
+            (AttentionState.ThalamicRelayGain * 0.10f) +
+            ((1f - AttentionState.TrnInhibition) * 0.08f) +
+            (PredictivePerception.LocusCoeruleusAlert * 0.12f) +
+            (PredictivePerception.HippocampalEncodingGate * 0.12f) +
+            (PredictivePerception.AccConflictSignal * 0.08f) +
+            (Math.Abs(PredictivePerception.DopamineTeachingSignal) * 0.06f) +
+            (GlobalNeuromodState.AcetylcholineLevel * 0.04f) +
+            (GlobalNeuromodState.NorepinephrineLevel * 0.04f));
+        return Clamp01(Math.Max(Math.Max(modalityRecent, neuromodulatoryRecent), integrated));
     }
 
     private float ResolveSemanticCircuitEvidenceLocked(long tick)
@@ -18368,6 +18537,29 @@ internal sealed class SimulationState
                 StructureId.CA3,
                 StructureId.Subiculum,
                 StructureId.Pulvinar),
+            BuildFunctionalCircuitSupportEntry(
+                "stimulus_adaptation",
+                "Stimulus adaptation",
+                PredictivePerception.Active &&
+                (PredictivePerception.HabituationGate > 0.04f ||
+                 PredictivePerception.SensitizationGate > 0.04f ||
+                 PredictivePerception.NoveltyEncodingDrive > 0.04f),
+                ResolveStimulusAdaptationCircuitEvidenceLocked(tick, PredictivePerception.LastChannel),
+                "sensory cortex/TRN-pulvinar gating with basal-forebrain ACh, LC-NE, ACC, hippocampal novelty, and VTA/SNc teaching",
+                StructureId.V1,
+                StructureId.A1,
+                StructureId.S1,
+                StructureId.Pulvinar,
+                StructureId.Trn,
+                StructureId.BasalForebrain,
+                StructureId.LocusCoeruleus,
+                StructureId.Acc,
+                StructureId.Amygdala,
+                StructureId.EntorhinalCortex,
+                StructureId.CA3,
+                StructureId.CA1,
+                StructureId.Vta,
+                StructureId.Snc),
             BuildFunctionalCircuitSupportEntry(
                 "body_schema",
                 "Body schema",
@@ -30076,6 +30268,13 @@ internal sealed record PredictivePerceptionRuntime(
     float HippocampalEncodingGate,
     float AccConflictSignal,
     float DopamineTeachingSignal,
+    float HabituationGate,
+    float SensitizationGate,
+    float RepetitionSuppression,
+    float NoveltyEncodingDrive,
+    float StimulusAdaptationGain,
+    string AdaptationMode,
+    string AdaptationEvidence,
     AttentionVector SensoryBias,
     string ExpectedChannel,
     string ExpectedCue,
@@ -30110,6 +30309,13 @@ internal sealed record PredictivePerceptionRuntime(
         HippocampalEncodingGate: 0f,
         AccConflictSignal: 0f,
         DopamineTeachingSignal: 0f,
+        HabituationGate: 0f,
+        SensitizationGate: 0f,
+        RepetitionSuppression: 0f,
+        NoveltyEncodingDrive: 0f,
+        StimulusAdaptationGain: 0f,
+        AdaptationMode: "stable",
+        AdaptationEvidence: "none",
         SensoryBias: new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f),
         ExpectedChannel: "none",
         ExpectedCue: "baseline",
@@ -30152,6 +30358,13 @@ internal sealed record PredictivePerceptionRuntime(
             HippocampalEncodingGate = Math.Clamp(value.HippocampalEncodingGate, 0f, 1f),
             AccConflictSignal = Math.Clamp(value.AccConflictSignal, 0f, 1f),
             DopamineTeachingSignal = Math.Clamp(value.DopamineTeachingSignal, -1f, 1f),
+            HabituationGate = Math.Clamp(value.HabituationGate, 0f, 1f),
+            SensitizationGate = Math.Clamp(value.SensitizationGate, 0f, 1f),
+            RepetitionSuppression = Math.Clamp(value.RepetitionSuppression, 0f, 1f),
+            NoveltyEncodingDrive = Math.Clamp(value.NoveltyEncodingDrive, 0f, 1f),
+            StimulusAdaptationGain = Math.Clamp(value.StimulusAdaptationGain, 0f, 1f),
+            AdaptationMode = NormalizeText(value.AdaptationMode, Default.AdaptationMode).ToLowerInvariant(),
+            AdaptationEvidence = NormalizeText(value.AdaptationEvidence, Default.AdaptationEvidence),
             SensoryBias = sensoryBias,
             ExpectedChannel = NormalizeText(value.ExpectedChannel, Default.ExpectedChannel).ToLowerInvariant(),
             ExpectedCue = NormalizeText(value.ExpectedCue, Default.ExpectedCue),

@@ -8,6 +8,7 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class RuntimeDiagnosticsAndProfilesTests
 {
     [Theory]
+    [InlineData("stable", 12, 250, false)]
     [InlineData("diagnostic", 2, 80, false)]
     [InlineData("normal", 6, 120, false)]
     [InlineData("fast", 12, 120, false)]

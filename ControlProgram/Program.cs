@@ -3495,9 +3495,10 @@ internal sealed record RuntimePerformanceProfileSettings(
     int FrameStreamIntervalMs,
     bool UseDirectStepFastPath)
 {
-    public const string SupportedProfileList = "diagnostic, normal, fast, headless";
+    public const string SupportedProfileList = "stable, diagnostic, normal, fast, headless";
 
     public static bool IsSupported(string profile) =>
+        profile.Equals("stable", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("diagnostic", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("normal", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("fast", StringComparison.OrdinalIgnoreCase) ||
@@ -3545,6 +3546,26 @@ internal sealed record RuntimePerformanceProfileSettings(
 
     public static RuntimePerformanceProfileSettings ForProfile(string profile)
     {
+        if (profile.Equals("stable", StringComparison.OrdinalIgnoreCase) ||
+            profile.Equals("local", StringComparison.OrdinalIgnoreCase))
+        {
+            return new RuntimePerformanceProfileSettings(
+                "stable",
+                TickAckTimeoutMs: 5200,
+                TickIoTimeoutMs: 14000,
+                TickPublishWaitMs: 360,
+                TickPublishSettleMs: 18,
+                MaxTickRequestConcurrency: 10,
+                MaxDispatchConcurrency: 32,
+                MaxSpikeDispatchPerServicePerTick: 6,
+                MaxSpikeDispatchTotalPerTick: 160,
+                TopQueryEveryNTicks: 24,
+                MaxTopQueriesPerTick: 1,
+                SnapshotEveryNTicks: 12,
+                FrameStreamIntervalMs: 250,
+                UseDirectStepFastPath: false);
+        }
+
         if (profile.Equals("diagnostic", StringComparison.OrdinalIgnoreCase))
         {
             return new RuntimePerformanceProfileSettings(
@@ -22355,6 +22376,7 @@ internal sealed class TickCoordinator(
             var lastPerceptionLanguageTick = long.MinValue / 4;
             var lastAutoProfileSignal = "none";
             var spontaneousGateStarvationTicks = 0;
+            var tickParticipantCursor = 0;
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -22462,13 +22484,13 @@ internal sealed class TickCoordinator(
                 var sleepReplayStage = ResolveSleepReplayStage(sleepRuntimeAtTickStart);
                 var activePathways = new ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int>();
                 var snapshots = new List<StructureSnapshot>();
-                var activeServices = serviceInstances.Where(i => serviceHealth[i.InstanceKey].CanAttempt(healthNowMs)).ToList();
+                var availableServices = serviceInstances.Where(i => serviceHealth[i.InstanceKey].CanAttempt(healthNowMs)).ToList();
                 var previousTransport = state.TransportStats;
                 var (healthTotalServices, healthNonOkServices) = state.GetServiceHealthCounts();
                 var nonOkRatio = healthTotalServices <= 0
                     ? 0.0
                     : healthNonOkServices / (double)Math.Max(1, healthTotalServices);
-                var ackEwmaSamples = activeServices
+                var ackEwmaSamples = availableServices
                     .Select(s => serviceHealth[s.InstanceKey].CreateTelemetry(healthNowMs).AckLatencyEwmaMs)
                     .Where(v => v > 0.001)
                     .ToList();
@@ -22605,6 +22627,18 @@ internal sealed class TickCoordinator(
                     effectiveTickAckTimeoutMs = Math.Max(effectiveTickAckTimeoutMs, startupWarmupAckTimeoutMs);
                     effectiveTickIoTimeoutMs = Math.Max(effectiveTickIoTimeoutMs, startupWarmupIoTimeoutMs);
                 }
+                var tickParticipantSelection = SelectTickParticipants(
+                    availableServices,
+                    ref tickParticipantCursor,
+                    maxTickRequestConcurrency,
+                    adaptivePressure,
+                    tickSignal.Tick <= Math.Max(1, startupWarmupTicks));
+                var activeServices = tickParticipantSelection.Participants;
+                if (tickParticipantSelection.Throttled && tickSignal.Tick % 24 == 0)
+                {
+                    state.AppendOutputLog(
+                        $"Tick load shed @ tick {tickSignal.Tick}: ticking {activeServices.Count}/{availableServices.Count} available structures (pressure={adaptivePressure:0.000}).");
+                }
                 var shouldQueryTop = (tickSignal.Tick % topQueryEveryNTicks) == 0;
                 var remainingDispatchBudget = effectiveMaxSpikeDispatchTotalPerTick;
                 var drainedSpikeCount = 0;
@@ -22654,7 +22688,7 @@ internal sealed class TickCoordinator(
                 var healthySources = tickExecution.HealthySources;
 
                 lastLiveCatalogInstanceCount = UpdateLiveInstanceCatalog(
-                    healthySources,
+                    availableServices,
                     runtimeCatalog,
                     state,
                     serviceInstances.Count,
@@ -23852,6 +23886,40 @@ internal sealed class TickCoordinator(
         return liveInstancesForCatalog.Count;
     }
 
+    private static TickParticipantSelection SelectTickParticipants(
+        IReadOnlyList<ServiceInstance> availableServices,
+        ref int cursor,
+        int maxTickRequestConcurrency,
+        double adaptivePressure,
+        bool startupWarmup)
+    {
+        if (availableServices.Count == 0)
+        {
+            return new TickParticipantSelection([], false);
+        }
+
+        var baselineMultiplier = startupWarmup ? 2.0 : 3.0;
+        var relaxedBudget = Math.Max(1, (int)Math.Round(maxTickRequestConcurrency * baselineMultiplier));
+        var pressureRatio = Math.Clamp(adaptivePressure, 0.0, 1.0);
+        var pressureScale = 1.0 - (pressureRatio * 0.45);
+        var pressureBudget = Math.Max(1, (int)Math.Round(maxTickRequestConcurrency * pressureScale));
+        var participantBudget = Math.Clamp(Math.Min(relaxedBudget, Math.Max(maxTickRequestConcurrency, pressureBudget)), 1, availableServices.Count);
+        if (participantBudget >= availableServices.Count)
+        {
+            cursor = 0;
+            return new TickParticipantSelection(availableServices.ToList(), false);
+        }
+
+        var selected = new List<ServiceInstance>(participantBudget);
+        for (var i = 0; i < participantBudget; i++)
+        {
+            selected.Add(availableServices[(cursor + i) % availableServices.Count]);
+        }
+
+        cursor = (cursor + participantBudget) % availableServices.Count;
+        return new TickParticipantSelection(selected, true);
+    }
+
     private Task<RestartServiceResult>? MaybeStartAutoHealRestartAsync(
         bool autoHealEnabled,
         Task<RestartServiceResult>? autoHealRestartTask,
@@ -23895,6 +23963,7 @@ internal sealed class TickCoordinator(
             })
             .Where(x =>
                 x.Telemetry.ConsecutiveFailures >= autoHealFailureThreshold &&
+                IsAutoHealRestartWorthy(x.Telemetry) &&
                 (!autoHealLastRestartByInstance.TryGetValue(x.Instance.InstanceKey, out var lastRestartMs) ||
                  (healthNowMs - lastRestartMs) >= autoHealCooldownMs))
             .OrderByDescending(x => x.Telemetry.ConsecutiveFailures)
@@ -23919,6 +23988,30 @@ internal sealed class TickCoordinator(
             $"auto-heal triggered tick={tick} restarting={restartCandidates.Count}{Environment.NewLine}" +
             string.Join(Environment.NewLine, restartCandidates.Select(candidate => $"{candidate.InstanceKey} {candidate.StructureId} {candidate.HemisphereNormalized} endpoint={candidate.Endpoint}")));
         return structureSupervisor.RestartServicesAsync(restartCandidates, stoppingToken);
+    }
+
+    private static bool IsAutoHealRestartWorthy(ServiceRuntimeTelemetry telemetry)
+    {
+        var error = telemetry.LastError ?? string.Empty;
+        if (error.Contains("500", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("Internal Server Error", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("connection refused", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("actively refused", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("No connection could be made", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("project path not found", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("launch failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (error.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("TickAck", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(telemetry.LastStatus, "BACKOFF", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return telemetry.ConsecutiveFailures >= 6;
     }
 
     private sealed record TransportClientBundle(
@@ -24042,6 +24135,10 @@ internal sealed class TickCoordinator(
         List<TickStepResult> SuccessfulSteps,
         List<ServiceInstance> HealthySources,
         int TopQueryCount);
+
+    private sealed record TickParticipantSelection(
+        List<ServiceInstance> Participants,
+        bool Throttled);
 
     private int CaptureSignificantEngrams(
         long tick,

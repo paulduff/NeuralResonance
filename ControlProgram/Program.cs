@@ -22374,6 +22374,7 @@ internal sealed class TickCoordinator(
             long? pendingAutoProfileGeneration = null;
             var tickWallSamples = new Queue<double>(256);
             var lastPerceptionLanguageTick = long.MinValue / 4;
+            var lastIntentionalMotorDispatchTick = long.MinValue / 4;
             var lastAutoProfileSignal = "none";
             var spontaneousGateStarvationTicks = 0;
             var tickParticipantCursor = 0;
@@ -23175,13 +23176,51 @@ internal sealed class TickCoordinator(
                 state,
                 stoppingToken);
 
+            var intentionalMotorStats = IntentionalMotorDispatchResult.Empty;
+            var intentionalMotorCooldownTicks = adaptivePressure >= 0.45
+                ? 12
+                : adaptivePressure >= 0.20
+                    ? 6
+                    : 3;
+            if (!sleepRuntimeAtTickStart.IsSleeping &&
+                (tickSignal.Tick - lastIntentionalMotorDispatchTick) >= intentionalMotorCooldownTicks)
+            {
+                intentionalMotorStats = await DispatchIntentionalActionMotorSpikesAsync(
+                    state.GetIntentionalActionLoopSnapshot(),
+                    runtimeCatalog,
+                    state,
+                    tickSignal.Tick,
+                    tickSignal.TimestampMs,
+                    state.GlobalNeuromodState,
+                    dispatchSemaphore,
+                    grpcSpikeTransports,
+                    clients,
+                    useHttpSpikeTransportFallback,
+                    activePathways,
+                    effectiveTickIoTimeoutMs,
+                    stoppingToken);
+                if (intentionalMotorStats.GeneratedSpikes > 0)
+                {
+                    lastIntentionalMotorDispatchTick = tickSignal.Tick;
+                    generatedSpikeCount += intentionalMotorStats.GeneratedSpikes;
+                    dispatchedSpikeCount += intentionalMotorStats.DeliveredSpikes;
+                }
+
+                if (intentionalMotorStats.Errors.Count > 0 && tickSignal.Tick % 64 == 0)
+                {
+                    state.AppendOutputLog(
+                        $"Intentional motor dispatch warning: generated={intentionalMotorStats.GeneratedSpikes}, delivered={intentionalMotorStats.DeliveredSpikes}, errors={intentionalMotorStats.Errors.Count}, last={intentionalMotorStats.Errors[^1]}.");
+                }
+            }
+
             if (dispatchedSpikeCount > 0 ||
                 spontaneousStats.Delivered > 0 ||
                 replayStats.Delivered > 0 ||
-                perceptionLanguageStats.Delivered > 0)
+                perceptionLanguageStats.Delivered > 0 ||
+                intentionalMotorStats.DeliveredSpikes > 0)
             {
                 state.AppendSpikeLog(
-                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, replay={replayStats.Delivered}/{replayStats.Generated}, pathways={activePathways.Count}");
+                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, motorIntent={intentionalMotorStats.DeliveredSpikes}/{intentionalMotorStats.GeneratedSpikes}, replay={replayStats.Delivered}/{replayStats.Generated}, pathways={activePathways.Count}");
             }
 
             var sleepTransition = state.AdvanceSleepHomeostasis(new SleepTickInput(
@@ -23918,6 +23957,254 @@ internal sealed class TickCoordinator(
 
         cursor = (cursor + participantBudget) % availableServices.Count;
         return new TickParticipantSelection(selected, true);
+    }
+
+    private async Task<IntentionalMotorDispatchResult> DispatchIntentionalActionMotorSpikesAsync(
+        IntentionalActionLoopRuntime intent,
+        RuntimeInstanceCatalog catalog,
+        SimulationState state,
+        long tick,
+        double timestampMs,
+        NeuromodState neuromod,
+        SemaphoreSlim dispatchSemaphore,
+        IReadOnlyDictionary<string, IStructureSpikeTransport> grpcSpikeTransports,
+        IReadOnlyDictionary<string, HttpClient> httpClients,
+        bool useHttpSpikeTransportFallback,
+        ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
+        int tickIoTimeoutMs,
+        CancellationToken cancellationToken)
+    {
+        if (!ShouldDispatchIntentionalMotor(intent))
+        {
+            return IntentionalMotorDispatchResult.Empty;
+        }
+
+        var targetStructures = ResolveIntentionalMotorTargetStructures(intent.MotorDirective);
+        var instances = targetStructures
+            .SelectMany(structure => catalog.GetByStructure(structure, null))
+            .GroupBy(instance => instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToArray();
+        if (instances.Length == 0)
+        {
+            return new IntentionalMotorDispatchResult(
+                0,
+                0,
+                0,
+                [$"No live descending motor structures available for {intent.MotorDirective}."]);
+        }
+
+        var errors = new ConcurrentBag<string>();
+        var generated = 0;
+        var delivered = 0;
+        var drive = ResolveIntentionalMotorDrive(intent);
+        var tasks = instances.Select(async instance =>
+        {
+            var hemisphere = string.IsNullOrWhiteSpace(instance.Hemisphere)
+                ? "M"
+                : instance.Hemisphere.ToUpperInvariant();
+            var spikes = BuildIntentionalActionMotorSpikes(
+                tick,
+                timestampMs,
+                instance.StructureId,
+                hemisphere,
+                intent,
+                drive,
+                neuromod);
+            Interlocked.Add(ref generated, spikes.Count);
+
+            await dispatchSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(tickIoTimeoutMs, 500, 30_000)));
+                var accepted = await SendSpikeBatchToTargetAsync(
+                    instance.InstanceKey,
+                    spikes,
+                    grpcSpikeTransports,
+                    httpClients,
+                    useHttpSpikeTransportFallback,
+                    timeout.Token);
+                accepted = Math.Clamp(accepted, 0, spikes.Count);
+                if (accepted <= 0)
+                {
+                    return;
+                }
+
+                Interlocked.Add(ref delivered, accepted);
+                state.RecordDispatchedSpikes(
+                    tick,
+                    timestampMs,
+                    hemisphere,
+                    hemisphere,
+                    instance.InstanceKey,
+                    spikes,
+                    accepted);
+
+                for (var i = 0; i < accepted; i++)
+                {
+                    var spike = spikes[i];
+                    var key = (spike.SourceStructure, spike.TargetStructure, spike.Neurotransmitter);
+                    activePathways.AddOrUpdate(key, 1, (_, count) => count + 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{instance.InstanceKey}: intentional motor dispatch failed ({ClassifyFailure(ex)})");
+            }
+            finally
+            {
+                dispatchSemaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+        if (delivered > 0 && tick % 24 == 0)
+        {
+            state.AppendSpikeLog(
+                $"Intentional motor efference {intent.ActionKey}: delivered {delivered}/{generated} spikes ({intent.MotorDirective}).");
+        }
+
+        return new IntentionalMotorDispatchResult(
+            generated,
+            delivered,
+            instances.Length,
+            errors.ToArray());
+    }
+
+    private static bool ShouldDispatchIntentionalMotor(IntentionalActionLoopRuntime intent)
+    {
+        if (!intent.Active || string.IsNullOrWhiteSpace(intent.MotorDirective))
+        {
+            return false;
+        }
+
+        if (intent.MotorDirective.Equals("motor_idle", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var readiness = Math.Clamp(intent.Readiness, 0f, 1f);
+        var commitment = Math.Clamp(intent.Commitment, 0f, 1f);
+        var confidence = Math.Clamp(intent.Confidence, 0f, 1f);
+        var inhibition = Math.Clamp(intent.Inhibition, 0f, 1f);
+        var threshold = IsIntentionalHoldDirective(intent.MotorDirective) ? 0.16f : 0.22f;
+        return readiness >= threshold &&
+               commitment >= threshold &&
+               confidence >= 0.16f &&
+               inhibition <= 0.78f;
+    }
+
+    private static float ResolveIntentionalMotorDrive(IntentionalActionLoopRuntime intent)
+    {
+        var readiness = Math.Clamp(intent.Readiness, 0f, 1f);
+        var commitment = Math.Clamp(intent.Commitment, 0f, 1f);
+        var confidence = Math.Clamp(intent.Confidence, 0f, 1f);
+        var inhibition = Math.Clamp(intent.Inhibition, 0f, 1f);
+        return Math.Clamp((readiness * 0.36f) + (commitment * 0.30f) + (confidence * 0.22f) + ((1f - inhibition) * 0.12f), 0.12f, 1.35f);
+    }
+
+    private static StructureId[] ResolveIntentionalMotorTargetStructures(string motorDirective)
+    {
+        var normalized = string.IsNullOrWhiteSpace(motorDirective)
+            ? string.Empty
+            : motorDirective.Trim().ToLowerInvariant();
+        if (normalized.Contains("reorient", StringComparison.Ordinal) ||
+            normalized.Contains("about_face", StringComparison.Ordinal) ||
+            normalized.Contains("turn", StringComparison.Ordinal))
+        {
+            return
+            [
+                StructureId.PremotorCortex,
+                StructureId.Sma,
+                StructureId.M1,
+                StructureId.MotorThalamus,
+                StructureId.ReticularFormation,
+                StructureId.SpinalCordMotor
+            ];
+        }
+
+        if (IsIntentionalHoldDirective(normalized))
+        {
+            return
+            [
+                StructureId.M1,
+                StructureId.MotorThalamus,
+                StructureId.ReticularFormation,
+                StructureId.SpinalCordMotor
+            ];
+        }
+
+        return
+        [
+            StructureId.PremotorCortex,
+            StructureId.Sma,
+            StructureId.M1,
+            StructureId.MotorThalamus,
+            StructureId.ReticularFormation,
+            StructureId.SpinalCordMotor
+        ];
+    }
+
+    private static bool IsIntentionalHoldDirective(string motorDirective)
+    {
+        var normalized = string.IsNullOrWhiteSpace(motorDirective)
+            ? string.Empty
+            : motorDirective.Trim().ToLowerInvariant();
+        return normalized.Contains("rest", StringComparison.Ordinal) ||
+               normalized.Contains("stop", StringComparison.Ordinal) ||
+               normalized.Contains("guard", StringComparison.Ordinal) ||
+               normalized.Contains("immobilize", StringComparison.Ordinal);
+    }
+
+    private static List<SpikeMessage> BuildIntentionalActionMotorSpikes(
+        long tick,
+        double timestampMs,
+        StructureId motorStructure,
+        string hemisphere,
+        IntentionalActionLoopRuntime intent,
+        float drive,
+        NeuromodState neuromod)
+    {
+        var directive = string.IsNullOrWhiteSpace(intent.MotorDirective)
+            ? "motor_idle"
+            : intent.MotorDirective.Trim();
+        var burstBase = motorStructure switch
+        {
+            StructureId.SpinalCordMotor => 5.0,
+            StructureId.ReticularFormation => 3.0,
+            StructureId.M1 => 4.0,
+            StructureId.Sma => 3.0,
+            StructureId.PremotorCortex => 3.0,
+            _ => 2.0
+        };
+        var burstCount = Math.Clamp((int)Math.Round(burstBase + (drive * 6.0f)), 2, 14);
+        var spikes = new List<SpikeMessage>(burstCount);
+        var clampedNeuromod = NeuromodState.Clamp(neuromod);
+        var inhibitory = IsIntentionalHoldDirective(directive);
+        for (var i = 0; i < burstCount; i++)
+        {
+            var channel = Math.Abs(HashCode.Combine(intent.IntentionKey, directive, motorStructure, hemisphere, i)) % 64;
+            var vesicle = Math.Clamp((0.50f + (channel * 0.010f)) * Math.Clamp(drive, 0.12f, 1.35f), 0.04f, 6.0f);
+            spikes.Add(new SpikeMessage
+            {
+                MessageId = Guid.NewGuid(),
+                TimestampMs = timestampMs,
+                SourceStructure = motorStructure,
+                TargetStructure = motorStructure,
+                SourceNeuronId = $"{hemisphere}:{directive}_{tick}_{channel}_{i}",
+                TargetNeuronId = $"{hemisphere}:{directive}_descending_pool_{channel}",
+                SynapseId = Guid.NewGuid(),
+                Neurotransmitter = inhibitory ? NTEnum.GABA : NTEnum.GLUTAMATE,
+                VesicleQuanta = vesicle,
+                ReuptakeRate = Math.Clamp(2.0f + (channel * 0.07f), 1.2f, 10.0f),
+                SpikeType = i % 4 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL,
+                IsFeedback = false,
+                ModulationContext = clampedNeuromod
+            });
+        }
+
+        return spikes;
     }
 
     private Task<RestartServiceResult>? MaybeStartAutoHealRestartAsync(
@@ -34170,6 +34457,14 @@ internal sealed record LanguageMotorIntentDispatchResult(
     IReadOnlyList<string> Errors)
 {
     public static LanguageMotorIntentDispatchResult Empty { get; } = new(0, 0, 0, Array.Empty<string>());
+}
+internal sealed record IntentionalMotorDispatchResult(
+    int GeneratedSpikes,
+    int DeliveredSpikes,
+    int TargetInstances,
+    IReadOnlyList<string> Errors)
+{
+    public static IntentionalMotorDispatchResult Empty { get; } = new(0, 0, 0, Array.Empty<string>());
 }
 internal sealed record LanguageStimulusTarget(
     StructureId SourceStructure,

@@ -134,6 +134,8 @@ public partial class MainWindow : Window
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
+    private const double VisionPreviewEyelidCloseRate = 5.8;
+    private const double VisionPreviewEyelidOpenRate = 3.4;
     private const int EnvironmentAudioDispatchTimeoutMs = 6000;
     private const int EnvironmentAudioDispatchIntervalMs = 9000;
     private const int ObjectMemoryPollIntervalMs = 5000;
@@ -402,8 +404,11 @@ public partial class MainWindow : Window
     private int _collisionHits;
     private bool _mapEditorEnabled;
     private WriteableBitmap? _avatarPreviewBitmap;
+    private byte[]? _avatarPreviewDisplayPixels;
     private bool _followAvatarCamera = true;
     private bool _sendAvatarVisionToBrain = true;
+    private double _avatarPreviewEyelidClosure;
+    private long _lastAvatarPreviewEyelidUpdateMs;
 
     private bool _visionDispatchInFlight;
     private long _lastVisionDispatchMs;
@@ -4609,6 +4614,8 @@ public partial class MainWindow : Window
         var width = _avatarPreviewBitmap.PixelWidth;
         var height = _avatarPreviewBitmap.PixelHeight;
         var stride = width * 4;
+        var eyelidsChanged = UpdateAvatarPreviewEyelidState();
+        var presentedFrame = false;
         var frame = Interlocked.Exchange(ref _pendingVisionComputeResult, null);
         if (frame is not null && frame.Generation == Volatile.Read(ref _visionGeneration))
         {
@@ -4620,8 +4627,14 @@ public partial class MainWindow : Window
             else
             {
                 PresentAvatarVisionFrame(frame);
+                presentedFrame = true;
                 TryDispatchAvatarVisionFrame(frame);
             }
+        }
+
+        if (!presentedFrame && eyelidsChanged)
+        {
+            RepaintAvatarVisionPreview(width, height, stride);
         }
 
         var warning = Interlocked.Exchange(ref _visionComputeWarning, string.Empty);
@@ -4662,8 +4675,9 @@ public partial class MainWindow : Window
         var rect = frame.Width == AvatarPreviewWidth && frame.Height == AvatarPreviewHeight
             ? AvatarPreviewBitmapRect
             : new Int32Rect(0, 0, frame.Width, frame.Height);
-        _avatarPreviewBitmap!.WritePixels(rect, frame.Pixels, frame.Stride, 0);
         _avatarPreviewPixels = frame.Pixels;
+        var displayPixels = ApplyAvatarPreviewEyelidOverlay(frame.Pixels, frame.Width, frame.Height, frame.Stride);
+        _avatarPreviewBitmap!.WritePixels(rect, displayPixels, frame.Stride, 0);
         UpdateAvatarPreviewInfo(frame, lagMs, isStale);
         if (!isStale)
         {
@@ -4674,6 +4688,97 @@ public partial class MainWindow : Window
         {
             LogStaleVisionPreviewFrame(lagMs);
         }
+    }
+
+    private bool UpdateAvatarPreviewEyelidState()
+    {
+        var nowMs = Environment.TickCount64;
+        var previousMs = Interlocked.Exchange(ref _lastAvatarPreviewEyelidUpdateMs, nowMs);
+        if (previousMs <= 0)
+        {
+            return false;
+        }
+
+        var dt = Math.Clamp((nowMs - previousMs) / 1000.0, 0.0, 0.12);
+        var target = _sleepState ? 1.0 : 0.0;
+        var rate = _sleepState ? VisionPreviewEyelidCloseRate : VisionPreviewEyelidOpenRate;
+        var previous = _avatarPreviewEyelidClosure;
+        _avatarPreviewEyelidClosure = MoveTowards(_avatarPreviewEyelidClosure, target, rate * dt);
+        return Math.Abs(_avatarPreviewEyelidClosure - previous) > 0.002;
+    }
+
+    private void RepaintAvatarVisionPreview(int width, int height, int stride)
+    {
+        var source = _avatarPreviewPixels;
+        if (source is null || source.Length < stride * height)
+        {
+            source = EnsureAvatarPreviewBuffer(stride, height);
+            Array.Clear(source, 0, stride * height);
+        }
+
+        var displayPixels = ApplyAvatarPreviewEyelidOverlay(source, width, height, stride);
+        var rect = width == AvatarPreviewWidth && height == AvatarPreviewHeight
+            ? AvatarPreviewBitmapRect
+            : new Int32Rect(0, 0, width, height);
+        _avatarPreviewBitmap!.WritePixels(rect, displayPixels, stride, 0);
+        if (_sleepState || _avatarPreviewEyelidClosure > 0.02)
+        {
+            var state = _sleepState ? "eyes closed" : "eyes opening";
+            AvatarPreviewInfoText.Text = $"Preview: {state} ({_avatarPreviewEyelidClosure * 100.0:0}% closed)";
+        }
+    }
+
+    private byte[] ApplyAvatarPreviewEyelidOverlay(byte[] source, int width, int height, int stride)
+    {
+        var required = stride * height;
+        if (_avatarPreviewDisplayPixels is null || _avatarPreviewDisplayPixels.Length != required)
+        {
+            _avatarPreviewDisplayPixels = new byte[required];
+        }
+
+        if (source.Length < required)
+        {
+            Array.Clear(_avatarPreviewDisplayPixels, 0, required);
+        }
+
+        source.AsSpan(0, Math.Min(required, source.Length)).CopyTo(_avatarPreviewDisplayPixels);
+        if (_avatarPreviewEyelidClosure <= 0.002)
+        {
+            return _avatarPreviewDisplayPixels;
+        }
+
+        var closure = Math.Clamp(_avatarPreviewEyelidClosure, 0.0, 1.0);
+        var halfClosedRows = (int)Math.Round(height * 0.5 * closure);
+        var dim = Math.Clamp(1.0 - (closure * 0.72), 0.0, 1.0);
+        for (var y = 0; y < height; y++)
+        {
+            var lidStrength = y < halfClosedRows || y >= height - halfClosedRows
+                ? 1.0
+                : closure >= 0.98
+                    ? 1.0
+                    : 0.0;
+            var rowOffset = y * stride;
+            for (var x = 0; x < width; x++)
+            {
+                var offset = rowOffset + (x * 4);
+                if (lidStrength >= 1.0)
+                {
+                    _avatarPreviewDisplayPixels[offset] = 0;
+                    _avatarPreviewDisplayPixels[offset + 1] = 0;
+                    _avatarPreviewDisplayPixels[offset + 2] = 0;
+                }
+                else if (dim < 0.999)
+                {
+                    _avatarPreviewDisplayPixels[offset] = (byte)Math.Clamp(_avatarPreviewDisplayPixels[offset] * dim, 0.0, 255.0);
+                    _avatarPreviewDisplayPixels[offset + 1] = (byte)Math.Clamp(_avatarPreviewDisplayPixels[offset + 1] * dim, 0.0, 255.0);
+                    _avatarPreviewDisplayPixels[offset + 2] = (byte)Math.Clamp(_avatarPreviewDisplayPixels[offset + 2] * dim, 0.0, 255.0);
+                }
+
+                _avatarPreviewDisplayPixels[offset + 3] = 255;
+            }
+        }
+
+        return _avatarPreviewDisplayPixels;
     }
 
     private void TryDispatchAvatarVisionFrame(VisionComputeResult frame)
@@ -4844,6 +4949,13 @@ public partial class MainWindow : Window
 
     private void UpdateAvatarPreviewInfo(VisionComputeResult frame, long lagMs, bool isStale)
     {
+        if (_sleepState || _avatarPreviewEyelidClosure > 0.02)
+        {
+            var state = _sleepState ? "eyes closed" : "eyes opening";
+            AvatarPreviewInfoText.Text = $"Preview: {state}, heading {frame.PreviewHeadingDeg:0.0} deg, lag {lagMs} ms";
+            return;
+        }
+
         var staleTag = isStale ? ", stale" : string.Empty;
         var sendStatus = _sendAvatarVisionToBrain ? "send on" : "send off";
         AvatarPreviewInfoText.Text = $"Preview: {frame.Width}x{frame.Height}, heading {frame.PreviewHeadingDeg:0.0} deg, lag {lagMs} ms{staleTag} ({sendStatus})";

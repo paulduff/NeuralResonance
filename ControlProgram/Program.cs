@@ -857,6 +857,31 @@ app.MapPost("/api/v1/admin/input/object", async (
         });
     }
 
+    if (state.GetSleepMemoryRuntime().IsSleeping)
+    {
+        state.AppendOutputLog(
+            $"Object input paused by sleep gate: key={objectKey}, label={label}, inputSource={inputSource}.");
+        return Results.Ok(new
+        {
+            ObjectId = objectKey,
+            Label = label,
+            Salience = salience,
+            Confidence = confidence,
+            Intensity = intensity,
+            BurstCount = burstCount,
+            Hemisphere = "both",
+            RouteStages = 0,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            Targets = Array.Empty<object>(),
+            Memory = (ObjectMemoryTrace?)null,
+            PausedDueToSleep = true,
+            SleepState = "sleeping",
+            InputSource = inputSource,
+            Errors = Array.Empty<string>()
+        });
+    }
+
     var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
     if (hemisphereHint is null)
     {

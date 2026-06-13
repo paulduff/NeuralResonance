@@ -4001,6 +4001,12 @@ public partial class MainWindow : Window
             : $"Object recognition: {FormatRecognizedCueSummary(cues)}";
         UpdateRecognizedCueLines(cues);
 
+        if (_sleepState)
+        {
+            _objectDispatchBackoff.Reset();
+            return;
+        }
+
         if (cues.Count == 0 || _objectDispatchInFlight)
         {
             return;
@@ -5506,6 +5512,13 @@ public partial class MainWindow : Window
 
     private async Task DispatchAvatarVisionAsync(AvatarVisualSignal visualSignal, CancellationToken token)
     {
+        if (_sleepState)
+        {
+            _visionDispatchBackoff.Reset();
+            _visionDispatchInFlight = false;
+            return;
+        }
+
         var request = visualSignal.ToVisualInputRequest(
             targetStructure: StructureId.V1.ToString(),
             sourceStructure: StructureId.Retina.ToString());
@@ -7841,6 +7854,14 @@ public partial class MainWindow : Window
         var nowMs = Environment.TickCount64;
         if (_objectMemoryInFlight || nowMs < _nextObjectMemoryPollMs)
         {
+            return;
+        }
+
+        if (_sleepState)
+        {
+            _nextObjectMemoryPollMs = nowMs + ObjectMemoryPollIntervalMs;
+            ObjectMemoryStatusText.Text = "Object memory: paused while brain sleeps";
+            _objectMemoryBackoff.Reset();
             return;
         }
 

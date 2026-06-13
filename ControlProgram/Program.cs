@@ -10985,7 +10985,8 @@ internal sealed class SimulationState
                 .Select(ApplyDopamineLearningBias)
                 .Select(ApplyActionMemoryBias)
                 .Select(ApplyBodyCerebellarBias)
-                .OrderByDescending(c => c.Utility)
+                .OrderByDescending(c => ResolveExecutablePlanningPriority(c, goalIntent, activeLanguageIntent))
+                .ThenByDescending(c => c.Utility)
                 .ThenByDescending(c => c.Confidence)
                 .Take(Math.Max(1, PlanningWorkspace.MaxBranching))
                 .ToList();
@@ -11082,7 +11083,8 @@ internal sealed class SimulationState
                 .Select(ApplyDopamineLearningBias)
                 .Select(ApplyActionMemoryBias)
                 .Select(ApplyBodyCerebellarBias)
-                .OrderByDescending(c => c.Utility)
+                .OrderByDescending(c => ResolveExecutablePlanningPriority(c, goalIntent, activeLanguageIntent))
+                .ThenByDescending(c => c.Utility)
                 .ThenByDescending(c => c.Confidence)
                 .Take(maxCandidates)
                 .ToList();
@@ -11116,6 +11118,66 @@ internal sealed class SimulationState
             SelectedConfidence = ApplyCircuitGate((float)selected.Confidence, planningCircuitEvidence)
         };
     }
+
+    private static double ResolveExecutablePlanningPriority(
+        PlanningActionCandidate candidate,
+        GoalIntentRuntime goalIntent,
+        LanguageIntentRuntime? activeLanguageIntent)
+    {
+        var priority = 0.0;
+        if (activeLanguageIntent is not null &&
+            candidate.ActionKey.Equals(activeLanguageIntent.CommandKey, StringComparison.OrdinalIgnoreCase))
+        {
+            priority += 4.0 + Math.Clamp(activeLanguageIntent.Strength, 0.0f, 2.0f);
+        }
+
+        if (goalIntent.Active)
+        {
+            var goalActionKey = BuildGoalActionKey(goalIntent.GoalKey);
+            if (candidate.ActionKey.Equals(goalActionKey, StringComparison.OrdinalIgnoreCase))
+            {
+                priority += 3.0 + (Math.Clamp(goalIntent.Drive, 0.0f, 1.0f) * 2.0) + (Math.Clamp(goalIntent.Urgency, 0.0f, 1.0f) * 2.0);
+            }
+            else if (IsRawConnectomeActionKey(candidate.ActionKey) && IsEmbodiedGoalKey(goalIntent.GoalKey))
+            {
+                priority -= 2.0 + Math.Clamp(goalIntent.Drive, 0.0f, 1.0f);
+            }
+        }
+
+        if (IsExecutableBodyActionKey(candidate.ActionKey))
+        {
+            priority += 0.5;
+        }
+
+        return priority;
+    }
+
+    private static string BuildGoalActionKey(string goalKey)
+        => $"goal.{(string.IsNullOrWhiteSpace(goalKey) ? "Observe" : goalKey.Trim())}";
+
+    private static bool IsExecutableBodyActionKey(string actionKey)
+    {
+        if (string.IsNullOrWhiteSpace(actionKey))
+        {
+            return false;
+        }
+
+        var normalized = actionKey.Trim();
+        return normalized.StartsWith("goal.", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("language.", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("motor_", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("approach_", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("turn_", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("step_", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRawConnectomeActionKey(string actionKey)
+        => !string.IsNullOrWhiteSpace(actionKey) &&
+           (actionKey.Contains("->", StringComparison.Ordinal) ||
+            actionKey.Contains('|', StringComparison.Ordinal));
+
+    private static bool IsEmbodiedGoalKey(string goalKey)
+        => goalKey is "FindShelter" or "FindFood" or "AvoidThreat" or "SeekWeapon" or "Explore" or "RecoverBalance" or "ProtectBody";
 
     private GoalIntentRuntime UpdateGoalIntentLocked(long tick, LanguageIntentRuntime? activeLanguageIntent)
     {
@@ -11750,7 +11812,7 @@ internal sealed class SimulationState
             _ => 0.0
         };
         return new PlanningActionCandidate(
-            $"goal.{intent.GoalKey}",
+            BuildGoalActionKey(intent.GoalKey),
             summary,
             Utility: 1.60 + (drive * 1.40) + (urgency * 0.80) + (intent.BasalGangliaGate * 0.35),
             Confidence: Math.Clamp(confidence, 0.05, 0.98),
@@ -16487,6 +16549,12 @@ internal sealed class SimulationState
             var environmentalExposure = 1f - environmentalSafety;
             var environmentalHealthDeficit = 1f - environmentalHealth;
             var dangerWakeHold = Math.Clamp(environmentalPredatorThreat * environmentalExposure, 0f, 1f);
+            var shelterSeekingWakeHold = Math.Clamp(
+                environmentalExposure *
+                Math.Max(environmentalShelterNeed, environmentalDarkness * 0.72f) *
+                (0.58f + (environmentalAnxiety * 0.28f) + (environmentalHealthDeficit * 0.14f)),
+                0f,
+                1f);
 
             if (runtime.IsSleeping)
             {
@@ -16569,9 +16637,14 @@ internal sealed class SimulationState
             atp = Math.Clamp(atp, 0f, runtime.MaxAtpBudget);
             sleepPressure = Math.Clamp(sleepPressure, 0f, maxSleepPressure);
 
-            var unsafeToSleep = dangerWakeHold > 0.45f &&
+            var unsafeToSleep = (dangerWakeHold > 0.45f || shelterSeekingWakeHold > 0.46f) &&
                 environmentalSafety < 0.40f &&
                 atp > (runtime.SleepEnterThreshold * 0.55f);
+            var unsafeArousalFromSleep = runtime.IsSleeping &&
+                sleepTicks >= Math.Min(runtime.MinSleepTicks, 30) &&
+                environmentalSafety < 0.35f &&
+                atp > (runtime.SleepEnterThreshold * 0.65f) &&
+                (dangerWakeHold > 0.35f || shelterSeekingWakeHold > 0.62f);
 
             if (!runtime.IsSleeping &&
                 wakeInertiaTicksRemaining <= 0 &&
@@ -16622,9 +16695,10 @@ internal sealed class SimulationState
                 sleepTicks = 0;
             }
             else if (runtime.IsSleeping &&
-                sleepTicks >= runtime.MinSleepTicks &&
-                atp >= runtime.SleepExitThreshold &&
-                sleepPressure <= sleepPressureExitThreshold)
+                ((sleepTicks >= runtime.MinSleepTicks &&
+                  atp >= runtime.SleepExitThreshold &&
+                  sleepPressure <= sleepPressureExitThreshold) ||
+                 unsafeArousalFromSleep))
             {
                 exitedSleep = true;
                 lastSleepDurationTicks = sleepTicks;
@@ -16640,6 +16714,12 @@ internal sealed class SimulationState
                 var wakeReserve = (runtime.MaxAtpBudget - runtime.SleepExitThreshold) * reserveFactor;
                 atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
                 wakeInertiaTicksRemaining = minWakeTicks;
+                if (unsafeArousalFromSleep)
+                {
+                    lastAlert = $"Unsafe sleep arousal at tick {Tick}: exposure={environmentalExposure:0.00}, shelterNeed={environmentalShelterNeed:0.00}, safety={environmentalSafety:0.00}, pressure={sleepPressure:0.000}.";
+                    lastAlertTick = Tick;
+                    AppendLog(_outputLog, lastAlert);
+                }
 
                 if (observedWakeDuty < targetWakeDuty - 0.05f)
                 {

@@ -128,6 +128,47 @@ public sealed class SleepMemoryEngramHarnessTests
     }
 
     [Fact]
+    public void Exposed_Shelter_Need_Can_Wake_Sleeping_Avatar()
+    {
+        var state = CreateState();
+        var exported = state.ExportNetworkState();
+        exported.SleepMemory = SleepMemoryRuntime.Default with
+        {
+            IsSleeping = true,
+            AtpBudget = 0.52f,
+            SleepPressure = 0.72f,
+            SleepTicks = 34,
+            WakeTicks = 0
+        };
+        Assert.True(state.TryImportNetworkState(exported, out var error), error);
+        state.AdvanceClockAndCreateTickSignal();
+        state.UpdateEnvironmentalState(
+            darkness: 0.88f,
+            shelterNeed: 0.96f,
+            anxiety: 0.42f,
+            hunger: 0.12f,
+            predatorThreat: 0.0f,
+            inShelter: 0.0f,
+            health: 0.86f,
+            shelterSafety: 0.0f);
+
+        var transition = state.AdvanceSleepHomeostasis(new SleepTickInput(
+            DrainedSpikes: 0,
+            DispatchedSpikes: 0,
+            ActivePathways: 0,
+            SpontaneousGenerated: 0,
+            EngramsCaptured: 0,
+            ReplayedEngrams: 0,
+            ReplayDispatchedSpikes: 0));
+        var runtime = state.GetSleepMemoryRuntime();
+
+        Assert.True(transition.ExitedSleep);
+        Assert.False(runtime.IsSleeping);
+        Assert.True(runtime.WakeInertiaTicksRemaining > 0);
+        Assert.Contains("Unsafe sleep arousal", runtime.LastAlert, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Replay_Selection_EarlySleep_Prioritizes_Hippocampal_Engrams()
     {
         var state = CreateState();

@@ -956,6 +956,63 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Planning_Prefers_Executable_Goal_Action_Over_Raw_Connectome_Pathway()
+    {
+        var state = new SimulationState();
+        var exported = state.ExportNetworkState();
+        exported.WorldModel = WorldModelRuntime.Default with
+        {
+            Enabled = true,
+            LearnedTransitions = 1
+        };
+        exported.WorldModelTransitions.Add(new WorldModelTransition(
+            ActionKey: "ArcuateFasciculus->BrocaBa44Ba45|GLUTAMATE|fb=0",
+            SourceStructure: StructureId.ArcuateFasciculus,
+            TargetStructure: StructureId.BrocaBa44Ba45,
+            Neurotransmitter: NTEnum.GLUTAMATE,
+            IsFeedback: false,
+            ExpectedDispatchDelta: 4.0f,
+            ExpectedPathwayDelta: 4.0f,
+            ExpectedRewardDelta: 4.0f,
+            ExpectedSleepPressureDelta: -0.60f,
+            PredictionError: 0.01f,
+            Samples: 2000,
+            LastTick: 1));
+        Assert.True(state.TryImportNetworkState(exported, out var error), error);
+
+        state.RegisterObjectObservation(
+            objectId: "shelter_exec_target",
+            label: "shelter",
+            hemisphere: "M",
+            salience: 0.90f,
+            confidence: 0.88f,
+            intensity: 1.0f,
+            deliveredSpikes: 32);
+        state.UpdateEnvironmentalState(
+            darkness: 0.82f,
+            shelterNeed: 0.90f,
+            anxiety: 0.38f,
+            hunger: 0.18f,
+            predatorThreat: 0.05f,
+            inShelter: 0.0f,
+            health: 0.88f,
+            shelterSafety: 0.0f);
+        state.UpdateLimbicState(MakeLimbic(tired: 0.22f, interoceptive: 0.18f, threat: 0.18f, aversive: 0.36f));
+        DriveCognition(state, 6);
+
+        using var document = SerializeDiagnostics(state);
+        var planning = GetObject(document.RootElement, "planningWorkspace");
+        var intent = GetObject(document.RootElement, "intentionalActionLoop");
+        var candidates = EnumerateObjects(planning, "candidateActions").ToArray();
+
+        Assert.Contains(candidates, candidate => GetString(candidate, "actionKey").Contains("->", StringComparison.Ordinal));
+        Assert.Equal("goal.FindShelter", GetString(planning, "selectedActionKey"));
+        Assert.Equal("goal.FindShelter", GetString(candidates[0], "actionKey"));
+        Assert.Equal("goal.FindShelter", GetString(intent, "actionKey"));
+        Assert.Equal("motor_seek_shelter", GetString(intent, "motorDirective"));
+    }
+
+    [Fact]
     public void Prefrontal_Working_Memory_Holds_Intent_Across_Brief_Sensory_Gap()
     {
         var state = new SimulationState();

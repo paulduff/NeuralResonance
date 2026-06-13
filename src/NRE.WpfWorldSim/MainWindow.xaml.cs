@@ -442,7 +442,7 @@ public partial class MainWindow : Window
     private bool _outcomeStimulusInFlight;
     private readonly AvatarRetryBackoff _objectDispatchBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 2000);
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
-    private readonly AvatarInputPressureGate _optionalBrainInputPressureGate = new(maxStreak: 8, maxExponent: 5, baseDelayMs: 500);
+    private readonly Dictionary<string, AvatarInputPressureGate> _brainInputPressureGates = new(StringComparer.OrdinalIgnoreCase);
     private readonly AvatarWarningGate _objectDispatchWarningGate = new(minimumIntervalMs: 15000);
     private readonly AvatarWarningGate _environmentAudioWarningGate = new(minimumIntervalMs: 15000);
     private readonly AvatarWarningGate _optionalBrainInputPressureWarningGate = new(minimumIntervalMs: 8000);
@@ -650,7 +650,7 @@ public partial class MainWindow : Window
         _objectDispatchWarningGate.Reset();
         _environmentAudioBackoff.Reset();
         _environmentAudioWarningGate.Reset();
-        _optionalBrainInputPressureGate.Reset();
+        ResetBrainInputPressureGates();
         _optionalBrainInputPressureWarningGate.Reset();
         _objectMemoryInFlight = false;
         _nextObjectMemoryPollMs = 0;
@@ -1085,7 +1085,7 @@ public partial class MainWindow : Window
         _objectDispatchWarningGate.Reset();
         _environmentAudioBackoff.Reset();
         _environmentAudioWarningGate.Reset();
-        _optionalBrainInputPressureGate.Reset();
+        ResetBrainInputPressureGates();
         _optionalBrainInputPressureWarningGate.Reset();
         _objectMemoryInFlight = false;
         _nextObjectMemoryPollMs = 0;
@@ -4082,7 +4082,7 @@ public partial class MainWindow : Window
             if (successCount > 0)
             {
                 _objectDispatchBackoff.Reset();
-                RegisterOptionalBrainInputSuccess();
+                RegisterOptionalBrainInputSuccess("object recognition");
                 if (failureCount > 0)
                 {
                     LogObjectDispatchWarning($"Partial object dispatch failure ({failureCount}/{cuesToDispatch.Count}): {lastFailure}");
@@ -4163,7 +4163,7 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            RegisterOptionalBrainInputSuccess();
+            RegisterOptionalBrainInputSuccess("environment audio");
             return true;
         }
         catch (TaskCanceledException) when (token.IsCancellationRequested)
@@ -4800,15 +4800,24 @@ public partial class MainWindow : Window
         var lagMs = Math.Max(0, nowMs - frame.CaptureTimestampMs);
         var isStale = lagMs > VisionPreviewMaxLagMs;
         if (isStale ||
-            _visionDispatchBackoff.IsBlocked(nowMs) ||
-            ShouldPauseOptionalBrainInput("avatar vision", nowMs, out _))
+            _visionDispatchBackoff.IsBlocked(nowMs))
         {
             return;
         }
 
-        var minDispatchIntervalMs = IsEngineInputOverloaded()
-            ? Math.Max(GetVisionDispatchIntervalMs(), 1200)
-            : GetVisionDispatchIntervalMs();
+        var baseDispatchIntervalMs = GetVisionDispatchIntervalMs();
+        var pressureDecision = EvaluateBrainInputPressure(
+            "avatar vision",
+            nowMs,
+            AvatarInputPriority.Critical,
+            baseDispatchIntervalMs);
+        if (pressureDecision.ShouldPause)
+        {
+            LogOptionalBrainInputPause("avatar vision", pressureDecision.Reason, nowMs);
+            return;
+        }
+
+        var minDispatchIntervalMs = Math.Max(baseDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
         if (_visionDispatchInFlight || (nowMs - _lastVisionDispatchMs) < minDispatchIntervalMs)
         {
             return;
@@ -5674,7 +5683,7 @@ public partial class MainWindow : Window
             }
 
             _visionDispatchBackoff.Reset();
-            RegisterOptionalBrainInputSuccess();
+            RegisterOptionalBrainInputSuccess("avatar vision");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -6754,7 +6763,7 @@ public partial class MainWindow : Window
             if (outcome.HasValue)
             {
                 await AvatarControlApi.PostOutcomeAsync(_sensoryInputHttpClient, endpoint, outcome.Value, token);
-                RegisterOptionalBrainInputSuccess();
+                RegisterOptionalBrainInputSuccess("outcome input");
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -6778,9 +6787,18 @@ public partial class MainWindow : Window
             return false;
         }
 
-        var bodyDispatchIntervalMs = IsEngineInputOverloaded()
-            ? BodyStateDispatchIntervalMs * 3
-            : BodyStateDispatchIntervalMs;
+        var pressureDecision = EvaluateBrainInputPressure(
+            "body state",
+            nowMs,
+            AvatarInputPriority.Critical,
+            BodyStateDispatchIntervalMs);
+        if (pressureDecision.ShouldPause)
+        {
+            LogOptionalBrainInputPause("body state", pressureDecision.Reason, nowMs);
+            return false;
+        }
+
+        var bodyDispatchIntervalMs = Math.Max(BodyStateDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
 
         return (nowMs - _lastBodyStateDispatchMs) >= bodyDispatchIntervalMs;
     }
@@ -6870,7 +6888,7 @@ public partial class MainWindow : Window
                     bodyInput.Value.Telemetry,
                     bodyInput.Value.Profile,
                     token);
-                RegisterOptionalBrainInputSuccess();
+                RegisterOptionalBrainInputSuccess("body state");
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -6894,12 +6912,19 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (ShouldPauseOptionalBrainInput("environment audio", nowMs, out _))
+        var pressureDecision = EvaluateBrainInputPressure(
+            "environment audio",
+            nowMs,
+            AvatarInputPriority.Optional,
+            EnvironmentAudioDispatchIntervalMs);
+        if (pressureDecision.ShouldPause)
         {
+            LogOptionalBrainInputPause("environment audio", pressureDecision.Reason, nowMs);
             return false;
         }
 
-        return (nowMs - _lastEnvironmentAudioDispatchMs) >= EnvironmentAudioDispatchIntervalMs &&
+        var dispatchIntervalMs = Math.Max(EnvironmentAudioDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
+        return (nowMs - _lastEnvironmentAudioDispatchMs) >= dispatchIntervalMs &&
                !_environmentAudioBackoff.IsBlocked(nowMs);
     }
 
@@ -7935,35 +7960,57 @@ public partial class MainWindow : Window
            IsBrainInputPressureHigh(Environment.TickCount64);
 
     private bool IsBrainInputPressureHigh(long nowMs)
-        => _engineInputPressure >= 0.18 ||
-           _telemetryFailureStreak >= 2 ||
-           _optionalBrainInputPressureGate.ShouldPause(nowMs, out _);
+        => _engineInputPressure >= AvatarInputPressurePolicy.OptionalPausePressure ||
+           _telemetryFailureStreak >= 2;
+
+    private AvatarInputPressureDecision EvaluateBrainInputPressure(
+        string channel,
+        long nowMs,
+        AvatarInputPriority priority,
+        long normalIntervalMs)
+    {
+        var gate = GetBrainInputPressureGate(channel);
+        var channelPaused = gate.ShouldPause(nowMs, out var gateReason);
+        return AvatarInputPressurePolicy.Evaluate(
+            _engineInputPressure,
+            _telemetryFailureStreak,
+            channelPaused,
+            gateReason,
+            priority,
+            normalIntervalMs);
+    }
+
+    private AvatarInputPressureGate GetBrainInputPressureGate(string channel)
+    {
+        var key = NormalizeBrainInputChannel(channel);
+        lock (_brainInputPressureGates)
+        {
+            if (!_brainInputPressureGates.TryGetValue(key, out var gate))
+            {
+                gate = new AvatarInputPressureGate(maxStreak: 8, maxExponent: 5, baseDelayMs: 500);
+                _brainInputPressureGates[key] = gate;
+            }
+
+            return gate;
+        }
+    }
+
+    private static string NormalizeBrainInputChannel(string channel)
+        => string.IsNullOrWhiteSpace(channel)
+            ? "unknown"
+            : channel.Trim().ToLowerInvariant();
 
     private bool ShouldPauseOptionalBrainInput(string channel, long nowMs, out string reason)
     {
-        if (_optionalBrainInputPressureGate.ShouldPause(nowMs, out var gateReason))
+        var decision = EvaluateBrainInputPressure(channel, nowMs, AvatarInputPriority.Optional, 1);
+        reason = decision.Reason;
+        if (!decision.ShouldPause)
         {
-            reason = gateReason;
-            LogOptionalBrainInputPause(channel, reason, nowMs);
-            return true;
+            return false;
         }
 
-        if (_engineInputPressure >= 0.18)
-        {
-            reason = $"engine input pressure {_engineInputPressure:0.00}";
-            LogOptionalBrainInputPause(channel, reason, nowMs);
-            return true;
-        }
-
-        if (_telemetryFailureStreak >= 2)
-        {
-            reason = $"telemetry delayed (failures {_telemetryFailureStreak})";
-            LogOptionalBrainInputPause(channel, reason, nowMs);
-            return true;
-        }
-
-        reason = string.Empty;
-        return false;
+        LogOptionalBrainInputPause(channel, reason, nowMs);
+        return true;
     }
 
     private void LogOptionalBrainInputPause(string channel, string reason, long nowMs)
@@ -8053,7 +8100,7 @@ public partial class MainWindow : Window
 
             ApplyObjectMemoryPayload(objectMemoryDoc.RootElement);
             _objectMemoryBackoff.Reset();
-            RegisterOptionalBrainInputSuccess();
+            RegisterOptionalBrainInputSuccess("object memory");
         }
         catch (Exception ex)
         {
@@ -8415,8 +8462,9 @@ public partial class MainWindow : Window
     {
         var severe = IsControlEndpointPressureFailure(message);
         var reason = $"{channel}: {TrimForLog(message, 90)}";
-        var pauseMs = _optionalBrainInputPressureGate.RegisterFailure(nowMs, reason, severe);
-        var warning = $"Optional brain input pressure: paused after {reason} (streak {_optionalBrainInputPressureGate.FailureStreak}, backoff {pauseMs}ms)";
+        var gate = GetBrainInputPressureGate(channel);
+        var pauseMs = gate.RegisterFailure(nowMs, reason, severe);
+        var warning = $"Optional brain input pressure: paused after {reason} (streak {gate.FailureStreak}, backoff {pauseMs}ms)";
         var key = $"optional-brain-input-pressure:{CreateDispatchWarningKey(channel, message)}";
         if (_optionalBrainInputPressureWarningGate.ShouldLog(warning, key, nowMs))
         {
@@ -8424,9 +8472,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RegisterOptionalBrainInputSuccess()
+    private void RegisterOptionalBrainInputSuccess(string channel)
     {
-        _optionalBrainInputPressureGate.RegisterSuccess(Environment.TickCount64);
+        GetBrainInputPressureGate(channel).RegisterSuccess(Environment.TickCount64);
+    }
+
+    private void ResetBrainInputPressureGates()
+    {
+        lock (_brainInputPressureGates)
+        {
+            foreach (var gate in _brainInputPressureGates.Values)
+            {
+                gate.Reset();
+            }
+        }
     }
 
     private static bool IsControlEndpointPressureFailure(string message)

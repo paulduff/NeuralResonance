@@ -40,4 +40,66 @@ public sealed class AvatarInputPressureGateTests
         Assert.Equal(0, gate.FailureStreak);
         Assert.False(gate.ShouldPause(nowMs: 101, out _));
     }
+
+    [Fact]
+    public void CriticalAvatarInputThrottlesButDoesNotPauseAtModeratePressure()
+    {
+        var decision = AvatarInputPressurePolicy.Evaluate(
+            engineInputPressure: 0.36,
+            telemetryFailureStreak: 0,
+            channelGatePaused: false,
+            channelGateReason: string.Empty,
+            priority: AvatarInputPriority.Critical,
+            normalIntervalMs: 200);
+
+        Assert.False(decision.ShouldPause);
+        Assert.True(decision.ShouldThrottle);
+        Assert.True(decision.MinimumIntervalMs >= 750);
+        Assert.Contains("critical sensory throttle", decision.Reason);
+    }
+
+    [Fact]
+    public void OptionalAvatarInputPausesAtModeratePressure()
+    {
+        var decision = AvatarInputPressurePolicy.Evaluate(
+            engineInputPressure: 0.36,
+            telemetryFailureStreak: 0,
+            channelGatePaused: false,
+            channelGateReason: string.Empty,
+            priority: AvatarInputPriority.Optional,
+            normalIntervalMs: 9000);
+
+        Assert.True(decision.ShouldPause);
+        Assert.False(decision.ShouldThrottle);
+        Assert.Contains("engine input pressure 0.36", decision.Reason);
+    }
+
+    [Fact]
+    public void CriticalAvatarInputKeepsLifelineAtSeverePressure()
+    {
+        var decision = AvatarInputPressurePolicy.Evaluate(
+            engineInputPressure: 0.72,
+            telemetryFailureStreak: 0,
+            channelGatePaused: false,
+            channelGateReason: string.Empty,
+            priority: AvatarInputPriority.Critical,
+            normalIntervalMs: 350);
+
+        Assert.False(decision.ShouldPause);
+        Assert.True(decision.ShouldThrottle);
+        Assert.True(decision.MinimumIntervalMs >= 2100);
+        Assert.Contains("critical sensory lifeline", decision.Reason);
+    }
+
+    [Fact]
+    public void ChannelBackoffPausesOnlyTheChannelThatFailed()
+    {
+        var visionGate = new AvatarInputPressureGate(baseDelayMs: 100);
+        var audioGate = new AvatarInputPressureGate(baseDelayMs: 100);
+
+        visionGate.RegisterFailure(nowMs: 1000, "vision timeout", severe: false);
+
+        Assert.True(visionGate.ShouldPause(nowMs: 1050, out _));
+        Assert.False(audioGate.ShouldPause(nowMs: 1050, out _));
+    }
 }

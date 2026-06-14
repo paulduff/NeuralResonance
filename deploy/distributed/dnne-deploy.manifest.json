@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "name": "DNNE distributed deployables",
+  "description": "Package groups for running the control program, WPF simulators, and brain structure services across separate machines.",
+  "controlBaseUrlDefault": "http://localhost:5080",
+  "listenHostDefault": "0.0.0.0",
+  "apps": {
+    "control-program": {
+      "project": "ControlProgram/NeuralResonanceEngine.ControlProgram.csproj",
+      "role": "control"
+    },
+    "world-sim": {
+      "project": "src/NRE.WpfWorldSim/NRE.WpfWorldSim.csproj",
+      "role": "wpf"
+    },
+    "editor": {
+      "project": "src/NRE.WpfEditor/NRE.WpfEditor.csproj",
+      "role": "wpf"
+    },
+    "maze-sim": {
+      "project": "src/NRE.WpfMazeSim/NRE.WpfMazeSim.csproj",
+      "role": "wpf"
+    }
+  },
+  "deployables": [
+    {
+      "name": "machine1-control-avatar",
+      "description": "Control Program plus the WPF world, editor, and maze simulators. Keep this on the interactive machine.",
+      "apps": [ "control-program", "world-sim", "editor", "maze-sim" ],
+      "structures": []
+    },
+    {
+      "name": "visual-perception",
+      "description": "Retinal input, early visual cortex, visual feature/motion streams, and attentional orienting.",
+      "apps": [],
+      "structures": [ "Retina", "V1", "V2", "V4", "Mt", "TemporalAssociation", "Pulvinar", "SuperiorColliculus" ]
+    },
+    {
+      "name": "auditory",
+      "description": "Cochlear and midbrain auditory pathway through primary auditory cortex.",
+      "apps": [],
+      "structures": [ "Cochlea", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "A1" ]
+    },
+    {
+      "name": "body-motor-cerebellum",
+      "description": "Somatosensory, vestibular, motor cortex, spinal, brainstem, and cerebellar timing/correction circuits.",
+      "apps": [],
+      "structures": [
+        "S1",
+        "VestibularNuclei",
+        "NucleusTractusSolitarius",
+        "M1",
+        "PremotorCortex",
+        "Sma",
+        "MotorThalamus",
+        "SpinalCordMotor",
+        "ReticularFormation",
+        "Pons",
+        "Medulla",
+        "CerebellarGranule",
+        "CerebellarVermis",
+        "CerebellarLobules",
+        "PurkinjeCellLayer",
+        "DeepCerebellarNuclei",
+        "InferiorOlive"
+      ]
+    },
+    {
+      "name": "memory-navigation",
+      "description": "Medial temporal memory, contextual scene, and navigation circuits.",
+      "apps": [],
+      "structures": [
+        "EntorhinalCortex",
+        "DentateGyrus",
+        "CA3",
+        "CA2",
+        "CA1",
+        "Subiculum",
+        "Presubiculum",
+        "Parasubiculum",
+        "ParahippocampalCortex",
+        "PerirhinalCortex",
+        "PosteriorCingulate",
+        "RetrosplenialCortex"
+      ]
+    },
+    {
+      "name": "attention-language-executive",
+      "description": "Prefrontal, thalamic, parietal, interhemispheric, language, and cortical association loops.",
+      "apps": [],
+      "structures": [
+        "Pfc",
+        "Ppc",
+        "Thalamus",
+        "Trn",
+        "MediodorsalThalamus",
+        "IntralaminarThalamus",
+        "CorpusCallosum",
+        "BrocaBa44Ba45",
+        "WernickePstgPsts",
+        "ArcuateFasciculus",
+        "SupramarginalAngular",
+        "OrbitofrontalCortex",
+        "Insula"
+      ]
+    },
+    {
+      "name": "limbic-basal-homeostasis",
+      "description": "Affect, motivation, basal ganglia action gating, homeostasis, and neuromodulatory circuits.",
+      "apps": [],
+      "structures": [
+        "Hypothalamus",
+        "Amygdala",
+        "Acc",
+        "NucleusAccumbens",
+        "VentralPallidum",
+        "Striatum",
+        "GlobusPallidus",
+        "GPe",
+        "GPi",
+        "Stn",
+        "Snr",
+        "Snc",
+        "Vta",
+        "Habenula",
+        "LocusCoeruleus",
+        "RapheNuclei",
+        "BasalForebrain",
+        "PeriaqueductalGray",
+        "OlfactoryBulb"
+      ]
+    }
+  ]
+}

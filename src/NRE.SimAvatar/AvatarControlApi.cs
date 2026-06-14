@@ -107,7 +107,9 @@ public static class AvatarControlApi
             GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
             DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
             TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
-            PausedDueToSleep: AvatarJson.GetBool(root, "pausedDueToSleep"));
+            PausedDueToSleep: AvatarJson.GetBool(root, "pausedDueToSleep"),
+            Accepted: AvatarJson.GetBool(root, "accepted"),
+            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"));
     }
 
     private static async Task<AvatarLanguageCommandResult> PostLanguageCommandCoreAsync(HttpClient client, Uri uri, AvatarLanguageCommand command, CancellationToken cancellationToken)

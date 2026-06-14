@@ -45,7 +45,8 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         var response = await client.PostAsJsonAsync("/api/v1/admin/input-gates", new { });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        using var doc = await ReadJsonAsync(response);
+        var audioPayload = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(audioPayload);
         Assert.Contains("at least one setting", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -70,7 +71,8 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
                 InputSource: "avatar_vision"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        using var doc = await ReadJsonAsync(response);
+        var audioPayload = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(audioPayload);
         Assert.True(GetBool(doc.RootElement, "blockedByInputGate"));
         Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
@@ -98,6 +100,108 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var doc = await ReadJsonAsync(response);
         Assert.False(GetBool(doc.RootElement, "blockedByInputGate"));
+    }
+
+    [Fact]
+    public async Task VisualInput_AvatarSource_Accepts_And_Defers_Dispatch_When_Gate_Enabled()
+    {
+        var client = _fixture.Client;
+        await SetAvatarVisionGateAsync(client, enabled: true);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/admin/input/visual",
+            new VisualInputRequest(
+                Pattern: "VideoFrame",
+                Intensity: 0.8f,
+                BurstCount: 16,
+                TargetStructure: "V1",
+                SourceStructure: "Retina",
+                Hemisphere: null,
+                LeftFieldSaliency: 0.5f,
+                RightFieldSaliency: 0.5f,
+                UseAttentionRouting: false,
+                InputSource: "avatar_vision"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(payload);
+        if (GetBool(doc.RootElement, "pausedDueToSleep"))
+        {
+            Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+            Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+            return;
+        }
+
+        Assert.True(GetBool(doc.RootElement, "accepted"), payload);
+        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), payload);
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+    }
+
+    [Fact]
+    public async Task AuditoryInput_AvatarSource_Accepts_And_Defers_Dispatch()
+    {
+        var client = _fixture.Client;
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/admin/input/auditory",
+            new
+            {
+                Pattern = "EnvironmentalSound",
+                Intensity = 0.7f,
+                BurstCount = 12,
+                TargetStructure = "A1",
+                SourceStructure = "CochlearNucleus",
+                Hemisphere = (string?)null,
+                InputSource = "avatar_audio"
+            });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var audioPayload = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(audioPayload);
+        if (GetBool(doc.RootElement, "pausedDueToSleep"))
+        {
+            Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+            Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+            return;
+        }
+
+        Assert.True(GetBool(doc.RootElement, "accepted"), audioPayload);
+        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), audioPayload);
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+    }
+
+    [Fact]
+    public async Task BodyStateInput_AvatarSource_Accepts_And_Defers_Dispatch()
+    {
+        var client = _fixture.Client;
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/admin/input/body-state",
+            new BodyStateInputRequest(
+                ForwardVelocity: 0.2f,
+                TurnRateDeg: 0.0f,
+                ContactLevel: 0.0f,
+                LeftMotorDrive: 0.4f,
+                RightMotorDrive: 0.4f,
+                Intensity: null,
+                BurstCount: null,
+                TargetStructure: "S1",
+                SourceStructure: "SpinalCordMotor",
+                Hemisphere: null,
+                IncludeVestibular: false,
+                IncludeCerebellar: false,
+                IsFeedback: true,
+                Pattern: "BodyState",
+                InputSource: "avatar_body"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = await ReadJsonAsync(response);
+        Assert.True(GetBool(doc.RootElement, "accepted"));
+        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"));
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
     }
 
     [Fact]
@@ -347,7 +451,13 @@ public sealed class ControlProgramProcessFixture : IAsyncLifetime
                 " --ServiceInstances:Exclusive=true" +
                 " --ServiceInstances:0:StructureId=V1" +
                 " --ServiceInstances:0:Endpoint=http://127.0.0.1:1" +
-                " --ServiceInstances:0:Hemisphere=M",
+                " --ServiceInstances:0:Hemisphere=M" +
+                " --ServiceInstances:1:StructureId=A1" +
+                " --ServiceInstances:1:Endpoint=http://127.0.0.1:1" +
+                " --ServiceInstances:1:Hemisphere=M" +
+                " --ServiceInstances:2:StructureId=S1" +
+                " --ServiceInstances:2:Endpoint=http://127.0.0.1:1" +
+                " --ServiceInstances:2:Hemisphere=M",
             WorkingDirectory = repoRoot,
             UseShellExecute = false,
             RedirectStandardOutput = true,

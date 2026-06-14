@@ -5,4 +5,6 @@ public readonly record struct AvatarAuditoryDispatchResult(
     int GeneratedSpikes,
     int DeliveredSpikes,
     int TargetInstances,
-    bool PausedDueToSleep);
+    bool PausedDueToSleep,
+    bool Accepted = false,
+    bool DispatchDeferred = false);

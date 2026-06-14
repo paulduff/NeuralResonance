@@ -518,6 +518,8 @@ app.MapPost("/api/v1/admin/input/visual", async (
             PredictiveSurprise = predictivePerception.Surprise,
             AttentionAppliedHemisphere = hemisphereHint ?? "both",
             InputSource = inputSource,
+            Accepted = AdminInputSource.IsAvatarSource(inputSource),
+            DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
             Errors = new[]
             {
                 $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
@@ -557,6 +559,60 @@ app.MapPost("/api/v1/admin/input/visual", async (
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     var neuromod = state.GlobalNeuromodState;
+    if (AdminInputSource.IsAvatarSource(inputSource))
+    {
+        DispatchStimulusToInstancesInBackground(
+            "Visual input",
+            liveTargetInstances,
+            instance =>
+            {
+                var hemisphere = instance.HemisphereNormalized;
+                return BuildVisualStimulusSpikes(
+                    tick,
+                    timestampMs,
+                    sourceStructure,
+                    targetStructure,
+                    hemisphere,
+                    pattern,
+                    intensity,
+                    burstCount,
+                    neuromod);
+            },
+            clientFactory,
+            state,
+            tick,
+            timestampMs);
+
+        state.AppendOutputLog(
+            $"Visual input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, target={targetStructure}, inputSource={inputSource}, liveInstances={liveTargetInstances.Count}, knownInstances={knownTargetInstances.Count}, focus={visualAttention.FocusedField}/{visualAttention.FocusedHemisphere}.");
+        return Results.Ok(new
+        {
+            Pattern = pattern,
+            Source = sourceStructure.ToString(),
+            Target = targetStructure.ToString(),
+            Intensity = intensity,
+            BurstCount = burstCount,
+            TargetInstances = liveTargetInstances.Count,
+            KnownTargetInstances = knownTargetInstances.Count,
+            LiveTargetInstances = liveTargetInstances.Count,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            RecoveryAttempted = false,
+            RecoveryRestarted = 0,
+            RecoveryHealthy = 0,
+            RecoveryRetriedInstances = 0,
+            AttentionFocusField = visualAttention.FocusedField,
+            AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
+            AttentionFocusConfidence = visualAttention.FocusConfidence,
+            PredictiveSurprise = predictivePerception.Surprise,
+            AttentionAppliedHemisphere = hemisphereHint ?? "both",
+            InputSource = inputSource,
+            Accepted = true,
+            DispatchDeferred = true,
+            Errors = Array.Empty<string>()
+        });
+    }
+
     var initialDispatch = await DispatchStimulusToInstancesAsync(
         liveTargetInstances,
         instance =>
@@ -1003,6 +1059,8 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             RecoveryRetriedInstances = 0,
             PredictiveSurprise = auditoryPredictivePerception.Surprise,
             InputSource = inputSource,
+            Accepted = AdminInputSource.IsAvatarSource(inputSource),
+            DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
             Errors = new[]
             {
                 $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
@@ -1037,6 +1095,57 @@ app.MapPost("/api/v1/admin/input/auditory", async (
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     var neuromod = state.GlobalNeuromodState;
+    if (AdminInputSource.IsAvatarSource(inputSource))
+    {
+        DispatchStimulusToInstancesInBackground(
+            "Auditory input",
+            liveTargetInstances,
+            instance =>
+            {
+                var hemisphere = instance.HemisphereNormalized;
+                return BuildAuditoryStimulusSpikes(
+                    tick,
+                    timestampMs,
+                    sourceStructure,
+                    targetStructure,
+                    hemisphere,
+                    pattern,
+                    intensity,
+                    burstCount,
+                    neuromod);
+            },
+            clientFactory,
+            state,
+            tick,
+            timestampMs);
+
+        state.AppendOutputLog(
+            $"Auditory input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, target={targetStructure}, inputSource={inputSource}, liveInstances={liveTargetInstances.Count}, knownInstances={targetInstances.Count}.");
+        return Results.Ok(new
+        {
+            Pattern = pattern,
+            Source = sourceStructure.ToString(),
+            Target = targetStructure.ToString(),
+            Intensity = intensity,
+            BurstCount = burstCount,
+            TargetInstances = liveTargetInstances.Count,
+            KnownTargetInstances = targetInstances.Count,
+            LiveTargetInstances = liveTargetInstances.Count,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            RecoveryAttempted = false,
+            RecoveryRestarted = 0,
+            RecoveryHealthy = 0,
+            RecoveryRetriedInstances = 0,
+            PausedDueToSleep = false,
+            PredictiveSurprise = auditoryPredictivePerception.Surprise,
+            InputSource = inputSource,
+            Accepted = true,
+            DispatchDeferred = true,
+            Errors = Array.Empty<string>()
+        });
+    }
+
     var initialDispatch = await DispatchStimulusToInstancesAsync(
         liveTargetInstances,
         instance =>
@@ -1505,6 +1614,8 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             Targets = Array.Empty<object>(),
             GeneratedSpikes = 0,
             DeliveredSpikes = 0,
+            Accepted = AdminInputSource.IsAvatarSource(inputSource),
+            DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
             Errors = new[]
             {
                 $"No live service instances currently available for body-state targets ({targetLabel}) with hemisphere {(hemisphereHint ?? "both")}."
@@ -1515,6 +1626,83 @@ app.MapPost("/api/v1/admin/input/body-state", async (
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     var neuromod = state.GlobalNeuromodState;
+    var targetSummary = liveTargetInstances
+        .Select(i => new
+        {
+            i.InstanceKey,
+            Structure = i.StructureId.ToString(),
+            Hemisphere = string.IsNullOrWhiteSpace(i.Hemisphere) ? "M" : i.Hemisphere.ToUpperInvariant()
+        })
+        .ToArray();
+
+    if (AdminInputSource.IsAvatarSource(inputSource))
+    {
+        DispatchStimulusToInstancesInBackground(
+            "Body-state input",
+            liveTargetInstances,
+            instance =>
+            {
+                var hemisphere = instance.HemisphereNormalized;
+                return BuildCollisionStimulusSpikes(
+                    tick,
+                    timestampMs,
+                    sourceStructure,
+                    instance.StructureId,
+                    hemisphere,
+                    pattern,
+                    intensity,
+                    burstCount,
+                    isFeedback,
+                    neuromod);
+            },
+            clientFactory,
+            state,
+            tick,
+            timestampMs);
+
+        state.AppendOutputLog(
+            $"Body-state input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, inputSource={inputSource}, sleep={sleepState.IsSleeping}.");
+        return Results.Ok(new
+        {
+            Pattern = pattern,
+            Source = sourceStructure.ToString(),
+            PrimaryTarget = targetStructure.ToString(),
+            IncludeVestibular = includeVestibular,
+            IncludeCerebellar = includeCerebellar,
+            CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
+            Intensity = intensity,
+            BurstCount = burstCount,
+            IsFeedback = isFeedback,
+            ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
+            TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
+            ContactLevel = contactLevel,
+            TactileFront = tactileFront,
+            TactileLeft = tactileLeft,
+            TactileRight = tactileRight,
+            TactileGround = tactileGround,
+            PainLevel = painLevel,
+            Urgency = urgency,
+            InputSource = inputSource,
+            BodyState = bodyState,
+            Environment = environmentalState,
+            PredictiveSurprise = Math.Max(bodyPredictivePerception.Surprise, interoceptivePredictivePerception.Surprise),
+            PredictiveCue = interoceptivePredictivePerception.Surprise >= bodyPredictivePerception.Surprise
+                ? interoceptivePredictivePerception.LastCue
+                : bodyPredictivePerception.LastCue,
+            SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
+            PausedDueToSleep = false,
+            TargetInstances = liveTargetInstances.Count,
+            KnownTargetInstances = knownTargetInstances.Count,
+            LiveTargetInstances = liveTargetInstances.Count,
+            Targets = targetSummary,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            Accepted = true,
+            DispatchDeferred = true,
+            Errors = Array.Empty<string>()
+        });
+    }
+
     var dispatch = await DispatchStimulusToInstancesAsync(
         liveTargetInstances,
         instance =>
@@ -1545,15 +1733,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         state.AppendSpikeLog(
             $"Body-state input {pattern}: delivered {dispatch.DeliveredSpikes}/{dispatch.GeneratedSpikes} spikes across {liveTargetInstances.Count} targets.");
     }
-
-    var targetSummary = liveTargetInstances
-        .Select(i => new
-        {
-            i.InstanceKey,
-            Structure = i.StructureId.ToString(),
-            Hemisphere = string.IsNullOrWhiteSpace(i.Hemisphere) ? "M" : i.Hemisphere.ToUpperInvariant()
-        })
-        .ToArray();
 
     return Results.Ok(new
     {
@@ -3060,6 +3239,49 @@ static int ParseAcceptedCount(string responsePayload, int fallback)
 
 static bool ShouldAttemptSensoryInputRecovery(StructureId targetStructure) =>
     targetStructure is StructureId.V1 or StructureId.A1;
+
+static void DispatchStimulusToInstancesInBackground(
+    string label,
+    IReadOnlyList<ServiceInstance> targetInstances,
+    Func<ServiceInstance, IReadOnlyList<SpikeMessage>> buildSpikes,
+    IHttpClientFactory clientFactory,
+    SimulationState state,
+    long tick,
+    double timestampMs)
+{
+    if (targetInstances.Count == 0)
+    {
+        return;
+    }
+
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            var result = await DispatchStimulusToInstancesAsync(
+                targetInstances,
+                buildSpikes,
+                clientFactory,
+                state,
+                tick,
+                timestampMs,
+                CancellationToken.None);
+
+            state.AppendOutputLog(
+                $"{label} deferred dispatch completed: generated={result.GeneratedSpikes}, delivered={result.DeliveredSpikes}, targets={targetInstances.Count}, errors={result.Errors.Count}.");
+            if (result.DeliveredSpikes > 0)
+            {
+                state.AppendSpikeLog(
+                    $"{label}: deferred delivered {result.DeliveredSpikes}/{result.GeneratedSpikes} spikes across {targetInstances.Count} targets.");
+            }
+        }
+        catch (Exception ex)
+        {
+            state.AppendOutputLog(
+                $"{label} deferred dispatch failed: {ex.GetType().Name}: {ex.Message}");
+        }
+    }, CancellationToken.None);
+}
 
 static async Task<StimulusDispatchResult> DispatchStimulusToInstancesAsync(
     IReadOnlyList<ServiceInstance> targetInstances,

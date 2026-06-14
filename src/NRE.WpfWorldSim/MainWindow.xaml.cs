@@ -566,7 +566,7 @@ public partial class MainWindow : Window
         Log("Voxel habitat generated. This is a persistent environment, not a game loop.");
         Log("Camera: mouse drag to orbit, wheel to zoom.");
         Log("Map editor available: enable terrain paint mode in right panel.");
-        Log("Brain frame link active: avatar motor control is sourced from /api/v1/frame dispatch stream.");
+        Log("Brain frame link active: avatar motor control is sourced from /api/v1/frame polling.");
     }
 
     private void MainWindow_OnClosed(object? sender, EventArgs e)
@@ -4153,6 +4153,12 @@ public partial class MainWindow : Window
             var result = await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cue, timeout.Token);
             if (result.PausedDueToSleep)
             {
+                return true;
+            }
+
+            if (result.Accepted && result.DispatchDeferred)
+            {
+                RegisterOptionalBrainInputSuccess("environment audio");
                 return true;
             }
 

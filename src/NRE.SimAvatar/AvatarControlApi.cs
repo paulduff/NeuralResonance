@@ -59,7 +59,12 @@ public static class AvatarControlApi
     private static async Task PostBodyStateCoreAsync(HttpClient client, Uri uri, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default)
     {
         var request = AvatarBodyStateInputFactory.CreateRequest(telemetry, profile);
-        using var _ = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Body-state input failed: HTTP {(int)response.StatusCode} {message}");
+        }
     }
 
     private static async Task PostOutcomeCoreAsync(HttpClient client, Uri uri, AvatarOutcomeTelemetry telemetry, CancellationToken cancellationToken = default)

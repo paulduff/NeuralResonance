@@ -849,6 +849,108 @@ app.MapPost("/api/v1/admin/input/object", async (
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     var neuromod = state.GlobalNeuromodState;
+    if (AdminInputSource.IsAvatarSource(inputSource))
+    {
+        foreach (var stage in route)
+        {
+            var knownInstances = catalog.GetByStructureWithKnownFallback(stage.Target, hemisphereHint);
+            var liveInstances = catalog.GetByStructure(stage.Target, hemisphereHint);
+            if (knownInstances.Count == 0)
+            {
+                errors.Add($"{stage.Target}: no active instances for hemisphere {(hemisphereHint ?? "both")}");
+                targetSummaries.Add(new
+                {
+                    source = stage.Source.ToString(),
+                    target = stage.Target.ToString(),
+                    knownInstances = 0,
+                    liveInstances = 0,
+                    instances = 0,
+                    generated = 0,
+                    delivered = 0
+                });
+                routeStage++;
+                continue;
+            }
+
+            targetSummaries.Add(new
+            {
+                source = stage.Source.ToString(),
+                target = stage.Target.ToString(),
+                knownInstances = knownInstances.Count,
+                liveInstances = liveInstances.Count,
+                instances = liveInstances.Count,
+                generated = 0,
+                delivered = 0
+            });
+
+            if (liveInstances.Count > 0)
+            {
+                var stageSeed = routeStage;
+                DispatchStimulusToInstancesInBackground(
+                    $"Object input {label} -> {stage.Target}",
+                    liveInstances,
+                    instance =>
+                    {
+                        var hemisphere = instance.HemisphereNormalized;
+                        return BuildObjectStimulusSpikes(
+                            tick,
+                            timestampMs,
+                            stage.Source,
+                            stage.Target,
+                            hemisphere,
+                            objectKey,
+                            label,
+                            intensity,
+                            salience,
+                            confidence,
+                            burstCount,
+                            stageSeed,
+                            neuromod);
+                    },
+                    clientFactory,
+                    state,
+                    tick,
+                    timestampMs);
+            }
+
+            routeStage++;
+        }
+
+        var deferredMemoryTrace = encodeMemory
+            ? state.RegisterObjectObservation(
+                objectKey,
+                label,
+                hemisphereHint ?? "M",
+                salience,
+                confidence,
+                intensity,
+                0)
+            : null;
+
+        state.AppendOutputLog(
+            $"Object input accepted for deferred dispatch: key={objectKey}, label={label}, inputSource={inputSource}, routeStages={route.Count}, liveStages={targetSummaries.Count}, errors={errors.Count}, salience={salience:0.00}, confidence={confidence:0.00}.");
+        return Results.Ok(new
+        {
+            ObjectId = objectKey,
+            Label = label,
+            Salience = salience,
+            Confidence = confidence,
+            Intensity = intensity,
+            BurstCount = burstCount,
+            Hemisphere = hemisphereHint ?? "both",
+            RouteStages = route.Count,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            Targets = targetSummaries,
+            Memory = deferredMemoryTrace,
+            PredictiveSurprise = objectPredictivePerception.Surprise,
+            PredictiveCue = objectPredictivePerception.LastCue,
+            InputSource = inputSource,
+            Accepted = true,
+            DispatchDeferred = true,
+            Errors = errors
+        });
+    }
 
     foreach (var stage in route)
     {

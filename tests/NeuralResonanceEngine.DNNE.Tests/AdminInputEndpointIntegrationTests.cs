@@ -237,6 +237,35 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
+    public async Task ObjectInput_AvatarSource_Accepts_Defers_And_Stores_Memory_When_Gate_Enabled()
+    {
+        var client = _fixture.Client;
+        await SetAvatarVisionGateAsync(client, enabled: true);
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/admin/input/object",
+            new ObjectInputRequest(
+                ObjectId: "food-1",
+                Label: "food",
+                Salience: 0.82f,
+                Confidence: 0.74f,
+                Intensity: 1.0f,
+                BurstCount: 12,
+                Hemisphere: null,
+                EncodeMemory: true,
+                InputSource: "avatar_object"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = await ReadJsonAsync(response);
+        Assert.True(GetBool(doc.RootElement, "accepted"));
+        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"));
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+        Assert.True(TryGetProperty(doc.RootElement, "memory", out var memory));
+        Assert.Equal(JsonValueKind.Object, memory.ValueKind);
+    }
+
+    [Fact]
     public async Task ObjectInput_NonAvatarSource_Processes_Route_And_Returns_Errors_When_No_Instances()
     {
         var client = _fixture.Client;

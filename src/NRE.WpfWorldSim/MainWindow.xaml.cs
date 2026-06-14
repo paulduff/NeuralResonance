@@ -141,6 +141,7 @@ public partial class MainWindow : Window
     private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyStateDispatchIntervalMs = 350;
+    private const int BodyStateDispatchTimeoutMs = 1800;
     private const int DefaultObjectDispatchMaxCuesPerCycle = 1;
     private const double HungerStressEnter = 0.62;
     private const double HungerStressFull = 0.92;
@@ -6888,12 +6889,14 @@ public partial class MainWindow : Window
             var bodyInput = await DrainAvatarBodyInputAsync(token);
             if (bodyInput.HasValue)
             {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeout.CancelAfter(TimeSpan.FromMilliseconds(BodyStateDispatchTimeoutMs));
                 await AvatarControlApi.PostBodyStateAsync(
                     _sensoryInputHttpClient,
                     endpoint,
                     bodyInput.Value.Telemetry,
                     bodyInput.Value.Profile,
-                    token);
+                    timeout.Token);
                 RegisterOptionalBrainInputSuccess("body state");
             }
         }

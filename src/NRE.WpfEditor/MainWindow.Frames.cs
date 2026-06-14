@@ -6,61 +6,26 @@ using System.Windows.Threading;
 
 namespace NRE.WpfEditor;
 
-// Frame streaming and snapshot polling transport: NDJSON stream loop, fallback poll,
-// endpoint probing, fallback frame document construction, and frame URI builders.
+// Snapshot polling transport: frame document call, endpoint probing, fallback frame
+// document construction, and frame URI builders.
 // Payload processing (IngestFrameState, ProcessFramePayload, ApplyNeuronHighlights, etc.)
 // remains in MainWindow.xaml.cs because it is tightly woven with UI state.
 // Extracted from MainWindow.xaml.cs.
 public partial class MainWindow
 {
-    private void StartFrameStreaming()
+    private void StartFramePolling()
     {
-        _frameStreamTask = Task.Run(() => FrameStreamLoopAsync(_workerCts.Token));
+        _framePollTask = Task.Run(() => FramePollLoopAsync(_workerCts.Token));
     }
 
-    private async Task FrameStreamLoopAsync(CancellationToken token)
+    private async Task FramePollLoopAsync(CancellationToken token)
     {
-        var reconnectDelayMs = 300;
         while (!token.IsCancellationRequested)
         {
-            Uri? activeStreamEndpoint = null;
-            if (_streamDisabledForSession)
+            try
             {
                 await TryFallbackSnapshotPollFromWorkerAsync(token, _verifiedControlBaseUri ?? _preferredControlBaseUri);
                 await Task.Delay(FramePollOnlyLoopDelay, token);
-                continue;
-            }
-
-            if (DateTime.UtcNow < _frameStreamBackoffUntilUtc)
-            {
-                await TryFallbackSnapshotPollFromWorkerAsync(token);
-                await Task.Delay(FramePollOnlyLoopDelay, token);
-                continue;
-            }
-
-            try
-            {
-                using var resolveTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-                resolveTimeout.CancelAfter(TimeSpan.FromMilliseconds(5000));
-                var verifiedBaseUri = await ResolveVerifiedControlBaseUriAsync(resolveTimeout.Token);
-                if (verifiedBaseUri is null)
-                {
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        SetTransportStatsText("Transport stats unavailable: no verified Control Program endpoint.");
-                        SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})", appendToOutput: false);
-                    }, DispatcherPriority.Background, token);
-                    EmitFrameStreamWarning("Render transport warning: no verified Control Program endpoint; attempting fallback polling.");
-                    await TryFallbackSnapshotPollFromWorkerAsync(token);
-                    QueueHealthDiagnosticsProbe();
-                    await Task.Delay(reconnectDelayMs, token);
-                    reconnectDelayMs = Math.Min(reconnectDelayMs * 2, 3000);
-                    continue;
-                }
-
-                activeStreamEndpoint = verifiedBaseUri;
-                await StreamFramesFromEndpointAsync(verifiedBaseUri, token);
-                reconnectDelayMs = 300;
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -68,218 +33,15 @@ public partial class MainWindow
             }
             catch (Exception ex)
             {
-                _frameStreamConsecutiveFailures++;
-                var now = DateTime.UtcNow;
-                var recentlyReceivedPayload = _lastFrameStreamPayloadUtc != DateTime.MinValue &&
-                                              (now - _lastFrameStreamPayloadUtc) <= TimeSpan.FromSeconds(4);
-                var transientStreamDisconnect = recentlyReceivedPayload && ex is IOException;
-                if (!transientStreamDisconnect)
-                {
-                    NoteControlEndpointFailure();
-                }
-
+                NoteControlEndpointFailure();
                 await Dispatcher.InvokeAsync(
-                    () => SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})", appendToOutput: false),
+                    () => SetRenderStatus($"Render: unable to fetch snapshot frame (UI overruns: {_uiOverrunCount})", appendToOutput: false),
                     DispatcherPriority.Background,
                     token);
-                var reason = ex is OperationCanceledException
-                    ? "request timed out"
-                    : TrimForStatus(ex.Message, 140);
-                if (_frameStreamConsecutiveFailures >= 3 || !recentlyReceivedPayload)
-                {
-                    var endpointLabel = activeStreamEndpoint is null ? string.Empty : $" @ {activeStreamEndpoint.Authority}";
-                    EmitFrameStreamWarning($"Render transport warning: frame stream read failed{endpointLabel} ({reason}); using fallback polling.");
-                }
-                if (_frameStreamConsecutiveFailures >= FrameStreamBackoffFailureThreshold)
-                {
-                    _frameStreamBackoffUntilUtc = now + FrameStreamBackoffWindow;
-                    EmitFrameStreamWarning("Render transport warning: stream unstable; temporarily using polling-only mode.");
-                }
-
-                var isPrematureEnd = ex.ToString().Contains("ResponseEnded", StringComparison.OrdinalIgnoreCase) ||
-                                     reason.Contains("response ended prematurely", StringComparison.OrdinalIgnoreCase);
-                if (isPrematureEnd && _frameStreamConsecutiveFailures >= FrameStreamDisableThreshold && !_streamDisabledForSession)
-                {
-                    _streamDisabledForSession = true;
-                    EmitFrameStreamWarning("Render transport warning: frame stream disabled for this session after repeated premature-end failures; using polling mode.");
-                }
-
-                await TryFallbackSnapshotPollFromWorkerAsync(token, activeStreamEndpoint);
+                var reason = ex is OperationCanceledException ? "request timed out" : TrimForStatus(ex.Message, 140);
+                EmitFramePollWarning($"Render transport warning: frame poll failed ({reason}).");
                 QueueHealthDiagnosticsProbe();
-                await Task.Delay(reconnectDelayMs, token);
-                reconnectDelayMs = Math.Min(reconnectDelayMs * 2, 3000);
-            }
-        }
-    }
-
-    private async Task StreamFramesFromEndpointAsync(Uri verifiedBaseUri, CancellationToken token)
-    {
-        var streamUri = BuildFrameStreamUri(verifiedBaseUri);
-        using var request = new HttpRequestMessage(HttpMethod.Get, streamUri);
-        request.Headers.Accept.ParseAdd("application/x-ndjson");
-
-        // Apply timeout only to connection/header acquisition; do not keep this CTS alive
-        // for the full stream lifetime or it can abort healthy long-lived reads.
-        HttpResponseMessage response;
-        using (var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(token))
-        {
-            connectTimeout.CancelAfter(TimeSpan.FromMilliseconds(8000));
-            response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, connectTimeout.Token);
-        }
-
-        using (response)
-        {
-            if (!response.IsSuccessStatusCode)
-            {
-                NoteControlEndpointFailure();
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    SetTransportStatsText($"Transport stats unavailable: HTTP {(int)response.StatusCode} from {verifiedBaseUri}");
-                    SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})", appendToOutput: false);
-                }, DispatcherPriority.Background, token);
-                EmitFrameStreamWarning($"Render transport warning: frame stream endpoint returned HTTP {(int)response.StatusCode}.");
-                QueueHealthDiagnosticsProbe();
-                throw new HttpRequestException($"Frame stream endpoint returned HTTP {(int)response.StatusCode}.");
-            }
-
-            NoteControlEndpointSuccess(verifiedBaseUri);
-            await using var stream = await response.Content.ReadAsStreamAsync(token);
-            using var reader = new StreamReader(stream);
-
-            while (!token.IsCancellationRequested)
-            {
-                string? line;
-                try
-                {
-                    line = await reader.ReadLineAsync(token);
-                }
-                catch (OperationCanceledException) when (token.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                if (line is null)
-                {
-                    break;
-                }
-
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    continue;
-                }
-
-                JsonElement frame;
-                try
-                {
-                    using var frameDoc = JsonDocument.Parse(line);
-                    if (frameDoc.RootElement.ValueKind != JsonValueKind.Object)
-                    {
-                        continue;
-                    }
-
-                    frame = frameDoc.RootElement.Clone();
-                }
-                catch
-                {
-                    continue;
-                }
-
-                _frameStreamConsecutiveFailures = 0;
-                _lastFrameStreamPayloadUtc = DateTime.UtcNow;
-                _frameStreamBackoffUntilUtc = DateTime.MinValue;
-                QueueStreamFrameForUi(frame, verifiedBaseUri, token);
-            }
-
-            if (!token.IsCancellationRequested)
-            {
-                throw new IOException("Frame stream disconnected.");
-            }
-        }
-    }
-
-    private void QueueStreamFrameForUi(JsonElement frame, Uri verifiedBaseUri, CancellationToken token)
-    {
-        lock (_pendingStreamFrameGate)
-        {
-            _pendingStreamFrame = frame;
-            _pendingStreamFrameBaseUri = verifiedBaseUri;
-        }
-
-        SchedulePendingStreamFrameApply(token);
-    }
-
-    private void SchedulePendingStreamFrameApply(CancellationToken token)
-    {
-        if (Interlocked.CompareExchange(ref _streamFrameUiApplyScheduled, 1, 0) != 0)
-        {
-            return;
-        }
-
-        _ = Task.Run(async () =>
-        {
-            // Once the UI delegate runs, ProcessPendingStreamFramePayload owns the
-            // flag (it resets and may reschedule from its finally). We only reset
-            // here if the dispatch never happens, so a delay/dispatch failure
-            // can't permanently leave the flag stuck at 1.
-            var dispatched = false;
-            try
-            {
-                var delay = StreamFrameUiApplyMinInterval - (DateTime.UtcNow - _lastStreamFrameUiApplyUtc);
-                if (delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(delay, token).ConfigureAwait(false);
-                }
-
-                await Dispatcher.InvokeAsync(ProcessPendingStreamFramePayload, DispatcherPriority.Background, token);
-                dispatched = true;
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch
-            {
-                // Swallow non-cancellation errors so the scheduled flag is reset
-                // in finally rather than freezing future updates forever.
-            }
-            finally
-            {
-                if (!dispatched)
-                {
-                    Interlocked.Exchange(ref _streamFrameUiApplyScheduled, 0);
-                }
-            }
-        }, CancellationToken.None);
-    }
-
-    private void ProcessPendingStreamFramePayload()
-    {
-        JsonElement? frame;
-        Uri? verifiedBaseUri;
-        lock (_pendingStreamFrameGate)
-        {
-            frame = _pendingStreamFrame;
-            verifiedBaseUri = _pendingStreamFrameBaseUri;
-            _pendingStreamFrame = null;
-            _pendingStreamFrameBaseUri = null;
-        }
-
-        try
-        {
-            if (frame.HasValue && verifiedBaseUri is not null)
-            {
-                _lastStreamFrameUiApplyUtc = DateTime.UtcNow;
-                ProcessFramePayload(frame.Value, verifiedBaseUri);
-            }
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _streamFrameUiApplyScheduled, 0);
-            lock (_pendingStreamFrameGate)
-            {
-                if (_pendingStreamFrame.HasValue)
-                {
-                    SchedulePendingStreamFrameApply(_workerCts.Token);
-                }
+                await Task.Delay(FramePollOnlyLoopDelay, token);
             }
         }
     }
@@ -307,15 +69,15 @@ public partial class MainWindow
         }
     }
 
-    private void EmitFrameStreamWarning(string message)
+    private void EmitFramePollWarning(string message)
     {
         var now = DateTime.UtcNow;
-        if ((now - _lastFrameStreamWarningUtc) < FrameStreamWarningCooldown)
+        if ((now - _lastFramePollWarningUtc) < FramePollWarningCooldown)
         {
             return;
         }
 
-        _lastFrameStreamWarningUtc = now;
+        _lastFramePollWarningUtc = now;
         PostUi(() => AddOutputLog(message));
     }
 
@@ -355,7 +117,7 @@ public partial class MainWindow
             {
                 SetTransportStatsText("Transport stats unavailable: no verified Control Program endpoint.");
                 SetReasoningText("Reasoning telemetry unavailable: no verified Control Program endpoint.");
-                SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})");
+                SetRenderStatus($"Render: unable to fetch snapshot frame (UI overruns: {_uiOverrunCount})");
                 QueueHealthDiagnosticsProbe();
                 return;
             }
@@ -374,7 +136,7 @@ public partial class MainWindow
                 NoteControlEndpointFailure();
                 SetTransportStatsText($"Transport stats unavailable: HTTP {(int)response.StatusCode} from {verifiedBaseUri}");
                 SetReasoningText($"Reasoning telemetry unavailable: HTTP {(int)response.StatusCode} from {verifiedBaseUri}");
-                SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})");
+                SetRenderStatus($"Render: unable to fetch snapshot frame (UI overruns: {_uiOverrunCount})");
                 QueueHealthDiagnosticsProbe();
                 return;
             }
@@ -393,7 +155,7 @@ public partial class MainWindow
                 NoteControlEndpointFailure();
                 SetTransportStatsText("Transport stats unavailable: /api/v1/frame returned malformed payload.");
                 SetReasoningText("Reasoning telemetry unavailable: /api/v1/frame returned malformed payload.");
-                SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})");
+                SetRenderStatus($"Render: unable to fetch snapshot frame (UI overruns: {_uiOverrunCount})");
                 QueueHealthDiagnosticsProbe();
                 return;
             }
@@ -423,7 +185,7 @@ public partial class MainWindow
             }
 
             NoteControlEndpointFailure();
-            SetRenderStatus($"Render: unable to fetch snapshot stream (UI overruns: {_uiOverrunCount})", appendToOutput: false);
+            SetRenderStatus($"Render: unable to fetch snapshot frame (UI overruns: {_uiOverrunCount})", appendToOutput: false);
             QueueHealthDiagnosticsProbe();
         }
         finally
@@ -595,13 +357,4 @@ public partial class MainWindow
         return builder.Uri;
     }
 
-    private Uri BuildFrameStreamUri(Uri baseUri)
-    {
-        var builder = new UriBuilder(new Uri(baseUri, "/api/v1/frame/stream"));
-        var outputSince = Math.Max(0, _lastRemoteOutputLogWallClockMs);
-        var spikeSince = Math.Max(0, _lastRemoteSpikeLogWallClockMs);
-        var dispatchSince = Math.Max(0, _lastRemoteDispatchWallClockMs);
-        builder.Query = $"output_since_ms={outputSince}&spike_since_ms={spikeSince}&dispatch_since_ms={dispatchSince}&include_connectome=0&max_output_log={FrameStreamMaxOutputLog}&max_spike_log={FrameStreamMaxSpikeLog}&max_dispatch_spikes={FrameStreamMaxDispatchSpikes}&stream_interval_ms={FrameStreamRequestedIntervalMs}";
-        return builder.Uri;
-    }
 }

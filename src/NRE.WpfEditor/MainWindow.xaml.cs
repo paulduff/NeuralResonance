@@ -104,23 +104,14 @@ public partial class MainWindow : Window
     private DateTime _lastOutputMessageUtc = DateTime.MinValue;
     private readonly Dictionary<string, DateTime> _lastOutputMessageByText = new(StringComparer.Ordinal);
     private DateTime _lastFramePayloadUtc = DateTime.MinValue;
-    private DateTime _lastFrameStreamWarningUtc = DateTime.MinValue;
+    private DateTime _lastFramePollWarningUtc = DateTime.MinValue;
     private DateTime _lastFrameFallbackPollUtc = DateTime.MinValue;
-    private DateTime _lastFrameStreamPayloadUtc = DateTime.MinValue;
     private DateTime _lastFramePollFailureLogUtc = DateTime.MinValue;
-    private DateTime _frameStreamBackoffUntilUtc = DateTime.MinValue;
-    private readonly object _pendingStreamFrameGate = new();
-    private JsonElement? _pendingStreamFrame;
-    private Uri? _pendingStreamFrameBaseUri;
-    private DateTime _lastStreamFrameUiApplyUtc = DateTime.MinValue;
-    private int _frameStreamConsecutiveFailures;
     private int _framePollConsecutiveFailures;
     private bool _framePollCursorResetApplied;
-    private bool _streamDisabledForSession;
-    private int _streamFrameUiApplyScheduled;
     private Task? _controlWorkerTask;
     private Task? _renderWorkerTask;
-    private Task? _frameStreamTask;
+    private Task? _framePollTask;
     private DateTime _lastStatusBadgeRefreshUtc = DateTime.MinValue;
     private DateTime _lastTransportStatsRefreshUtc = DateTime.MinValue;
     private DateTime _lastFallbackHealthProbeUtc = DateTime.MinValue;
@@ -265,24 +256,16 @@ public partial class MainWindow : Window
     private const int DefaultWebcamFrameEdgePx = 196;
     private const int MaxOutputLogLines = 400;
     private static readonly TimeSpan ControlEndpointGraceFallbackWindow = TimeSpan.FromSeconds(8);
-    private static readonly TimeSpan FrameStreamWarningCooldown = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan FramePollWarningCooldown = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan ServiceHealthTelemetryCacheWindow = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan FrameFallbackPollInterval = TimeSpan.FromMilliseconds(450);
     private static readonly TimeSpan FramePollTimeout = TimeSpan.FromMilliseconds(12000);
     private static readonly TimeSpan FramePollFailureLogCooldown = TimeSpan.FromSeconds(6);
-    private static readonly TimeSpan FrameStreamBackoffWindow = TimeSpan.FromSeconds(14);
     private static readonly TimeSpan FramePollOnlyLoopDelay = TimeSpan.FromMilliseconds(550);
-    private static readonly TimeSpan StreamFrameUiApplyMinInterval = TimeSpan.FromMilliseconds(80);
-    private const int FrameStreamBackoffFailureThreshold = 4;
-    private const int FrameStreamDisableThreshold = 8;
     private const int FramePollCursorResetThreshold = 4;
-    private const int FrameStreamRequestedIntervalMs = 250;
     private const int FramePollMaxOutputLog = 40;
     private const int FramePollMaxSpikeLog = 40;
     private const int FramePollMaxDispatchSpikes = 1024;
-    private const int FrameStreamMaxOutputLog = 24;
-    private const int FrameStreamMaxSpikeLog = 24;
-    private const int FrameStreamMaxDispatchSpikes = 1024;
     private const int ControlEndpointFailureThreshold = 10;
     private const int SpeechDefaultMinDispatchSpikes = 12;
     private const int WebcamReadFailureWarnThreshold = 30;
@@ -375,7 +358,7 @@ public partial class MainWindow : Window
         SyncViewMenuItemStates();
         BuildBrainScene();
         StartWorkers();
-        StartFrameStreaming();
+        StartFramePolling();
         _densityDebounceTimer.Interval = TimeSpan.FromMilliseconds(220);
         _densityDebounceTimer.Tick += (_, _) =>
         {
@@ -747,7 +730,7 @@ public partial class MainWindow : Window
         SelectionModelText.Text = "Neuron Model: -";
         SelectionPlasticityText.Text = "Plasticity: -";
         SelectionMicrotubuleText.Text = "Experimental: intracellular microtubule approximation - waiting for live diagnostics";
-        TransportStatsTextBox.Text = "Waiting for /api/v1/frame/stream ...";
+        TransportStatsTextBox.Text = "Waiting for /api/v1/frame ...";
         InhabitanceTextBox.Text = "Waiting for inhabitance telemetry ...";
         ReasoningTextBox.Text = "Waiting for reasoning telemetry ...";
         ReasoningCounterfactualResultTextBox.Text = "Counterfactual result will appear here.";
@@ -1524,10 +1507,10 @@ public partial class MainWindow : Window
         }
     }
 
-    // Frame streaming transport (StartFrameStreaming, FrameStreamLoopAsync, StreamFramesFromEndpointAsync,
-    // TryFallbackSnapshotPollFromWorkerAsync, EmitFrameStreamWarning, PollSnapshotAsync,
+    // Frame polling transport (StartFramePolling, FramePollLoopAsync,
+    // TryFallbackSnapshotPollFromWorkerAsync, EmitFramePollWarning, PollSnapshotAsync,
     // ProbeFrameCapableBaseUriAsync, ProbeDiagnosticsBaseUriAsync, TryProcessEndpointFallbackFrameAsync,
-    // BuildFallbackFrameDocument, FetchJsonDocumentAsync, BuildFrameUri, BuildFrameStreamUri)
+    // BuildFallbackFrameDocument, FetchJsonDocumentAsync, BuildFrameUri)
     // moved to MainWindow.Frames.cs.
 
     private void ProcessFramePayload(JsonElement frame, Uri verifiedBaseUri)
@@ -4572,7 +4555,7 @@ public partial class MainWindow : Window
             {
                 _controlWorkerTask ?? Task.CompletedTask,
                 _renderWorkerTask ?? Task.CompletedTask,
-                _frameStreamTask ?? Task.CompletedTask,
+                _framePollTask ?? Task.CompletedTask,
                 _webcamTask ?? Task.CompletedTask,
                 _microphoneTask ?? Task.CompletedTask
             }, TimeSpan.FromSeconds(1));

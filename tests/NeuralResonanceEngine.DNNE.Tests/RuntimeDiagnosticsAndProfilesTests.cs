@@ -8,19 +8,18 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class RuntimeDiagnosticsAndProfilesTests
 {
     [Theory]
-    [InlineData("stable", 12, 250, false)]
-    [InlineData("diagnostic", 2, 80, false)]
-    [InlineData("normal", 6, 120, false)]
-    [InlineData("fast", 12, 120, false)]
-    [InlineData("headless", 30, 1000, false)]
-    [InlineData("ultra", 12, 120, false)]
-    public void Performance_Profile_Presets_Map_To_Runtime_Settings(string profile, int snapshotEvery, int frameIntervalMs, bool directStep)
+    [InlineData("stable", 12, false)]
+    [InlineData("diagnostic", 2, false)]
+    [InlineData("normal", 6, false)]
+    [InlineData("fast", 12, false)]
+    [InlineData("headless", 30, false)]
+    [InlineData("ultra", 12, false)]
+    public void Performance_Profile_Presets_Map_To_Runtime_Settings(string profile, int snapshotEvery, bool directStep)
     {
         var settings = RuntimePerformanceProfileSettings.ForProfile(profile);
 
         Assert.True(RuntimePerformanceProfileSettings.IsSupported(profile));
         Assert.Equal(snapshotEvery, settings.SnapshotEveryNTicks);
-        Assert.Equal(frameIntervalMs, settings.FrameStreamIntervalMs);
         Assert.Equal(directStep, settings.UseDirectStepFastPath);
     }
 

@@ -208,6 +208,16 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(JsonValueKind.Object, state.ValueKind);
     }
 
+    [Fact]
+    public async Task Frame_Stream_Endpoint_Is_Retired_For_OnDemand_Frames()
+    {
+        var client = _fixture.Client;
+
+        using var response = await client.GetAsync("/api/v1/frame/stream");
+
+        Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
+    }
+
     private static async Task SetAvatarVisionGateAsync(HttpClient client, bool enabled)
     {
         var response = await client.PostAsJsonAsync(

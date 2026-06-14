@@ -16,7 +16,7 @@ AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // Keep long-lived local NDJSON streams alive even when the UI briefly lags.
+    // Local WPF clients can briefly lag while reading large diagnostic responses.
     options.Limits.MinResponseDataRate = null;
     if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port) && port > 0)
     {
@@ -52,8 +52,8 @@ builder.Services.AddHttpClient("dnne")
     });
 builder.Services.AddHostedService<TickCoordinator>();
 
-// Compress JSON/NDJSON API responses (frame stream and large state payloads
-// are text-heavy and typically compress >2x). Brotli is preferred when the
+// Compress JSON API responses (frame and large state payloads are text-heavy
+// and typically compress >2x). Brotli is preferred when the
 // client offers it; gzip is the universal fallback.
 builder.Services.AddResponseCompression(options =>
 {
@@ -63,7 +63,6 @@ builder.Services.AddResponseCompression(options =>
     options.MimeTypes = new[]
     {
         "application/json",
-        "application/x-ndjson",
         "text/plain",
         "text/json"
     };
@@ -75,7 +74,6 @@ builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompress
 
 var app = builder.Build();
 app.UseResponseCompression();
-var ndjsonNewline = new byte[] { (byte)'\n' };
 const string minimalFramePayloadJson = "{\"state\":{},\"connectomeReport\":null,\"latestSnapshot\":null,\"outputLog\":[],\"spikeLog\":[],\"dispatchSpikes\":[]}";
 
 app.Use(async (context, next) =>
@@ -227,120 +225,13 @@ app.MapGet("/api/v1/frame", (HttpRequest request, SimulationState state, Snapsho
         return Results.Text(minimalFramePayloadJson, "application/json");
     }
 });
-app.MapGet("/api/v1/frame/stream", async (HttpRequest request, HttpResponse response, SimulationState state, SnapshotStore store, RuntimePerformanceProfileState performanceProfiles, AutoProfileRuntimeState autoProfileState, FramePayloadFactory framePayloadFactory, ILoggerFactory loggerFactory, CancellationToken ct) =>
-{
-    var logger = loggerFactory.CreateLogger("FrameStreamEndpoint");
-    _ = long.TryParse(request.Query["output_since_ms"], out var outputSinceMs);
-    _ = long.TryParse(request.Query["spike_since_ms"], out var spikeSinceMs);
-    _ = long.TryParse(request.Query["dispatch_since_ms"], out var dispatchSinceMs);
-    var includeConnectome = ParseBooleanQuery(request, "include_connectome", defaultValue: true);
-    var maxOutputLog = ParseIntQuery(request, "max_output_log", 120, 0, 2000);
-    var maxSpikeLog = ParseIntQuery(request, "max_spike_log", 120, 0, 2000);
-    var maxDispatchSpikes = ParseIntQuery(request, "max_dispatch_spikes", 1200, 0, 4096);
-    var requestedIntervalMs = ParseIntQuery(request, "stream_interval_ms", 0, 0, 2000);
-    var defaultIntervalMs = Math.Clamp(performanceProfiles.GetSnapshot().FrameStreamIntervalMs, 20, 1000);
-    var intervalMs = requestedIntervalMs > 0
-        ? Math.Clamp(requestedIntervalMs, 80, 2000)
-        : defaultIntervalMs;
-
-    response.StatusCode = StatusCodes.Status200OK;
-    response.ContentType = "application/x-ndjson";
-    response.Headers.CacheControl = "no-cache, no-transform";
-    response.Headers["X-Accel-Buffering"] = "no";
-    await response.StartAsync(ct);
-
-    // Auto-profile and perf-profile rarely change. Refresh on a slow cadence instead
-    // of rebuilding every frame so the hot loop is only doing real per-frame work.
-    var autoProfileSnapshot = autoProfileState.GetSnapshot();
-    var lastSnapshotRefreshUtc = DateTime.UtcNow;
-    var snapshotRefreshInterval = TimeSpan.FromMilliseconds(500);
-
-    // Backpressure: if the client is slow, FlushAsync takes longer than the frame
-    // interval and frames pile up in OS buffers. Track consecutive slow flushes and
-    // drop the next frame when the count crosses the threshold so memory stays bounded.
-    var consecutiveSlowFlushes = 0;
-    const int slowFlushSkipThreshold = 3;
-    var flushStopwatch = new Stopwatch();
-
-    try
+app.MapGet("/api/v1/frame/stream", () => Results.Json(
+    new
     {
-        while (!ct.IsCancellationRequested)
-        {
-            if ((DateTime.UtcNow - lastSnapshotRefreshUtc) >= snapshotRefreshInterval)
-            {
-                autoProfileSnapshot = autoProfileState.GetSnapshot();
-                lastSnapshotRefreshUtc = DateTime.UtcNow;
-            }
-
-            if (consecutiveSlowFlushes >= slowFlushSkipThreshold)
-            {
-                consecutiveSlowFlushes = 0;
-                await Task.Delay(intervalMs, ct);
-                continue;
-            }
-
-            try
-            {
-                var frame = framePayloadFactory.Create(
-                    state,
-                    store,
-                    autoProfileSnapshot,
-                    outputSinceMs,
-                    spikeSinceMs,
-                    dispatchSinceMs,
-                    includeConnectome,
-                    maxOutputLog,
-                    maxSpikeLog,
-                    maxDispatchSpikes,
-                    out var nextOutputSinceMs,
-                    out var nextSpikeSinceMs,
-                    out var nextDispatchSinceMs);
-                outputSinceMs = nextOutputSinceMs;
-                spikeSinceMs = nextSpikeSinceMs;
-                dispatchSinceMs = nextDispatchSinceMs;
-
-                // Serialize directly into the response PipeWriter so we avoid the
-                // per-frame byte[] from SerializeToUtf8Bytes, and append the trailing
-                // newline before a single async flush.
-                var bodyWriter = response.BodyWriter;
-                using (var jsonWriter = new System.Text.Json.Utf8JsonWriter(bodyWriter, new JsonWriterOptions { SkipValidation = true }))
-                {
-                    JsonSerializer.Serialize(jsonWriter, frame, DnneJsonContext.Default.FramePayload);
-                }
-                ndjsonNewline.AsSpan().CopyTo(bodyWriter.GetSpan(ndjsonNewline.Length));
-                bodyWriter.Advance(ndjsonNewline.Length);
-                flushStopwatch.Restart();
-                await bodyWriter.FlushAsync(ct);
-                flushStopwatch.Stop();
-                if (flushStopwatch.ElapsedMilliseconds > intervalMs)
-                {
-                    consecutiveSlowFlushes++;
-                }
-                else
-                {
-                    consecutiveSlowFlushes = 0;
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException and not IOException)
-            {
-                logger.LogWarning(ex, "Frame stream payload generation failed; emitting fallback payload.");
-                await response.WriteAsync(minimalFramePayloadJson, ct);
-                await response.Body.WriteAsync(ndjsonNewline, ct);
-                await response.Body.FlushAsync(ct);
-            }
-
-            await Task.Delay(intervalMs, ct);
-        }
-    }
-    catch (OperationCanceledException)
-    {
-        // client disconnected or shutdown.
-    }
-    catch (IOException)
-    {
-        // client disconnected mid-stream.
-    }
-});
+        Error = "Frame streaming disabled.",
+        Detail = "Telemetry frames are generated on demand. Poll /api/v1/frame instead."
+    },
+    statusCode: StatusCodes.Status410Gone));
 app.MapPost("/api/v1/admin/restart-sim", (SimulationState state) =>
 {
     var generation = state.RequestSimulationRestart();
@@ -3492,7 +3383,6 @@ internal sealed record RuntimePerformanceProfileSettings(
     int TopQueryEveryNTicks,
     int MaxTopQueriesPerTick,
     int SnapshotEveryNTicks,
-    int FrameStreamIntervalMs,
     bool UseDirectStepFastPath)
 {
     public const string SupportedProfileList = "stable, diagnostic, normal, fast, headless";
@@ -3524,7 +3414,6 @@ internal sealed record RuntimePerformanceProfileSettings(
         var topQueryEveryNTicks = Math.Max(1, configuration.GetValue<int>("TopQueryEveryNTicks", 6));
         var maxTopQueriesPerTick = Math.Clamp(configuration.GetValue<int>("MaxTopQueriesPerTick", 10), 1, 256);
         var snapshotEveryNTicks = Math.Max(1, configuration.GetValue<int>("SnapshotEveryNTicks", 10));
-        var frameStreamIntervalMs = Math.Clamp(configuration.GetValue<int>("FrameStreamIntervalMs", 100), 20, 1000);
         var useDirectStepFastPath = configuration.GetValue<bool>("UseDirectStepFastPath", true);
 
         return new RuntimePerformanceProfileSettings(
@@ -3540,7 +3429,6 @@ internal sealed record RuntimePerformanceProfileSettings(
             topQueryEveryNTicks,
             maxTopQueriesPerTick,
             snapshotEveryNTicks,
-            frameStreamIntervalMs,
             useDirectStepFastPath);
     }
 
@@ -3562,7 +3450,6 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 24,
                 MaxTopQueriesPerTick: 1,
                 SnapshotEveryNTicks: 12,
-                FrameStreamIntervalMs: 250,
                 UseDirectStepFastPath: false);
         }
 
@@ -3581,7 +3468,6 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 2,
                 MaxTopQueriesPerTick: 18,
                 SnapshotEveryNTicks: 2,
-                FrameStreamIntervalMs: 80,
                 UseDirectStepFastPath: false);
         }
 
@@ -3601,7 +3487,6 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 18,
                 MaxTopQueriesPerTick: 2,
                 SnapshotEveryNTicks: 12,
-                FrameStreamIntervalMs: 120,
                 UseDirectStepFastPath: false);
         }
 
@@ -3620,7 +3505,6 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 48,
                 MaxTopQueriesPerTick: 1,
                 SnapshotEveryNTicks: 30,
-                FrameStreamIntervalMs: 1000,
                 UseDirectStepFastPath: false);
         }
 
@@ -3637,7 +3521,6 @@ internal sealed record RuntimePerformanceProfileSettings(
             TopQueryEveryNTicks: 8,
             MaxTopQueriesPerTick: 8,
             SnapshotEveryNTicks: 6,
-            FrameStreamIntervalMs: 120,
             UseDirectStepFastPath: false);
     }
 }

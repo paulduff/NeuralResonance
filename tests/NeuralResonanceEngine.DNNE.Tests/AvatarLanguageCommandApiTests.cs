@@ -1,10 +1,41 @@
 using System.Text.Json;
+using System.Net;
+using System.Net.Http;
+using NeuralResonanceEngine.Shared.Contracts;
 using NRE.SimAvatar;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
 public sealed class AvatarLanguageCommandApiTests
 {
+    [Fact]
+    public void Frame_Path_Uses_The_Control_Program_Incremental_Dispatch_Contract()
+    {
+        var path = AvatarControlApi.GetFramePath(1234, includeConnectome: false);
+
+        Assert.Equal("/api/v1/frame?dispatch_since_ms=1234&include_connectome=false", path);
+    }
+
+    [Fact]
+    public void Control_Plane_Secret_Uses_A_Constant_Time_Comparison()
+    {
+        Assert.True(NreControlPlaneSecurity.IsAuthorized("correct-secret", "correct-secret"));
+        Assert.False(NreControlPlaneSecurity.IsAuthorized("wrong-secret", "correct-secret"));
+        Assert.False(NreControlPlaneSecurity.IsAuthorized(null, "correct-secret"));
+    }
+
+    [Fact]
+    public async Task Outcome_Post_Throws_When_Control_Program_Rejects_The_Request()
+    {
+        using var client = new HttpClient(new StaticResponseHandler(HttpStatusCode.BadRequest, "invalid outcome"));
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            AvatarControlApi.PostOutcomeAsync(client, new Uri("http://localhost:5080"), new AvatarOutcomeTelemetry()));
+
+        Assert.Contains("HTTP 400", error.Message);
+        Assert.Contains("invalid outcome", error.Message);
+    }
+
     [Fact]
     public void Parse_Language_Command_Result_Reads_Intent_And_Narration()
     {
@@ -82,5 +113,14 @@ public sealed class AvatarLanguageCommandApiTests
         Assert.Equal(21, narration.Sequence);
         Assert.Equal(900, narration.LastUpdatedTick);
         Assert.Equal("language.move_forward", narration.Source);
+    }
+
+    private sealed class StaticResponseHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(body)
+            });
     }
 }

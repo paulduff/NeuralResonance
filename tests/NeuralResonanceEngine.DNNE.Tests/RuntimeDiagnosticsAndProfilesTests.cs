@@ -8,12 +8,12 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class RuntimeDiagnosticsAndProfilesTests
 {
     [Theory]
-    [InlineData("stable", 12, false)]
-    [InlineData("diagnostic", 2, false)]
-    [InlineData("normal", 6, false)]
-    [InlineData("fast", 12, false)]
-    [InlineData("headless", 30, false)]
-    [InlineData("ultra", 12, false)]
+    [InlineData("stable", 12, true)]
+    [InlineData("diagnostic", 2, true)]
+    [InlineData("normal", 6, true)]
+    [InlineData("fast", 12, true)]
+    [InlineData("headless", 30, true)]
+    [InlineData("ultra", 12, true)]
     public void Performance_Profile_Presets_Map_To_Runtime_Settings(string profile, int snapshotEvery, bool directStep)
     {
         var settings = RuntimePerformanceProfileSettings.ForProfile(profile);

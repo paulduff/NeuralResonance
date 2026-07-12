@@ -20,6 +20,18 @@
   <Folder Name="/Structures/A1/">
     <Project Path="Structures/A1/NeuralResonanceEngine.Structures.A1.csproj" />
   </Folder>
+  <Folder Name="/Structures/Cochlea/">
+    <Project Path="Structures/Cochlea/NeuralResonanceEngine.Structures.Cochlea.csproj" />
+  </Folder>
+  <Folder Name="/Structures/CochlearNucleus/">
+    <Project Path="Structures/CochlearNucleus/NeuralResonanceEngine.Structures.CochlearNucleus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SuperiorOlive/">
+    <Project Path="Structures/SuperiorOlive/NeuralResonanceEngine.Structures.SuperiorOlive.csproj" />
+  </Folder>
+  <Folder Name="/Structures/InferiorColliculus/">
+    <Project Path="Structures/InferiorColliculus/NeuralResonanceEngine.Structures.InferiorColliculus.csproj" />
+  </Folder>
   <Folder Name="/Structures/ACC/">
     <Project Path="Structures/ACC/NeuralResonanceEngine.Structures.ACC.csproj" />
   </Folder>
@@ -83,6 +95,15 @@
   <Folder Name="/Structures/S1/">
     <Project Path="Structures/S1/NeuralResonanceEngine.Structures.S1.csproj" />
   </Folder>
+  <Folder Name="/Structures/VestibularNuclei/">
+    <Project Path="Structures/VestibularNuclei/NeuralResonanceEngine.Structures.VestibularNuclei.csproj" />
+  </Folder>
+  <Folder Name="/Structures/NucleusTractusSolitarius/">
+    <Project Path="Structures/NucleusTractusSolitarius/NeuralResonanceEngine.Structures.NucleusTractusSolitarius.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SpinalCordMotor/">
+    <Project Path="Structures/SpinalCordMotor/NeuralResonanceEngine.Structures.SpinalCordMotor.csproj" />
+  </Folder>
   <Folder Name="/Structures/SMA/">
     <Project Path="Structures/SMA/NeuralResonanceEngine.Structures.SMA.csproj" />
   </Folder>
@@ -116,6 +137,9 @@
   <Folder Name="/Structures/V1/">
     <Project Path="Structures/V1/NeuralResonanceEngine.Structures.V1.csproj" />
   </Folder>
+  <Folder Name="/Structures/Retina/">
+    <Project Path="Structures/Retina/NeuralResonanceEngine.Structures.Retina.csproj" />
+  </Folder>
   <Folder Name="/Structures/VTA/">
     <Project Path="Structures/VTA/NeuralResonanceEngine.Structures.VTA.csproj" />
   </Folder>
@@ -125,11 +149,17 @@
   <Folder Name="/Structures/Hypothalamus/">
     <Project Path="Structures/Hypothalamus/NeuralResonanceEngine.Structures.Hypothalamus.csproj" />
   </Folder>
+  <Folder Name="/Structures/PeriaqueductalGray/">
+    <Project Path="Structures/PeriaqueductalGray/NeuralResonanceEngine.Structures.PeriaqueductalGray.csproj" />
+  </Folder>
   <Folder Name="/Structures/Pons/">
     <Project Path="Structures/Pons/NeuralResonanceEngine.Structures.Pons.csproj" />
   </Folder>
   <Folder Name="/Structures/Medulla/">
     <Project Path="Structures/Medulla/NeuralResonanceEngine.Structures.Medulla.csproj" />
+  </Folder>
+  <Folder Name="/Structures/ReticularFormation/">
+    <Project Path="Structures/ReticularFormation/NeuralResonanceEngine.Structures.ReticularFormation.csproj" />
   </Folder>
   <Folder Name="/Structures/Insula/">
     <Project Path="Structures/Insula/NeuralResonanceEngine.Structures.Insula.csproj" />

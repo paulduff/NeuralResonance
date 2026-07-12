@@ -44,10 +44,12 @@ public static class NreHttpClientFactory
             AutomaticDecompression = DecompressionMethods.Brotli | DecompressionMethods.GZip
         };
 
-        return new HttpClient(handler, disposeHandler: true)
+        var client = new HttpClient(handler, disposeHandler: true)
         {
             Timeout = options.RequestTimeout
         };
+        NreControlPlaneSecurity.ApplyClientAuthentication(client);
+        return client;
     }
 }
 

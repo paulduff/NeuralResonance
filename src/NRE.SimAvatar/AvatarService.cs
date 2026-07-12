@@ -7,23 +7,23 @@ public sealed class AvatarService : IDisposable
     private readonly AvatarNervousSystemOptions _options;
     private readonly AvatarServiceClockOptions _clockOptions;
     private readonly AvatarNervousSystem _nervousSystem;
-    private readonly BlockingCollection<IAvatarServiceCommand> _commands = new(new ConcurrentQueue<IAvatarServiceCommand>());
-    private readonly ConcurrentQueue<AvatarNervousSystemSignal> _publishedSignals = new();
-    private readonly ConcurrentQueue<AvatarAuditoryCue> _publishedAuditoryInputs = new();
-    private readonly ConcurrentQueue<AvatarAudioOutput> _publishedAudioOutputs = new();
-    private readonly ConcurrentQueue<AvatarBodyStateInput> _publishedBodyInputs = new();
-    private readonly ConcurrentQueue<AvatarOutcomeTelemetry> _publishedOutcomes = new();
-    private readonly ConcurrentQueue<AvatarObjectObservation> _publishedObjectObservations = new();
-    private readonly ConcurrentQueue<AvatarSightFrame> _publishedSightOutputs = new();
-    private readonly ConcurrentQueue<AvatarActionOutput> _publishedActionOutputs = new();
-    private readonly ConcurrentQueue<AvatarAttentionOutput> _publishedAttentionOutputs = new();
-    private readonly ConcurrentQueue<AvatarAudioOutput> _publishedVoiceOutputs = new();
-    private readonly ConcurrentQueue<AvatarGestureOutput> _publishedGestureOutputs = new();
-    private readonly ConcurrentQueue<AvatarArousalOutput> _publishedArousalOutputs = new();
-    private readonly ConcurrentQueue<AvatarBodySoundOutput> _publishedBodySoundOutputs = new();
-    private readonly ConcurrentQueue<AvatarNeedsRhythmState> _publishedNeedsRhythmStates = new();
-    private readonly ConcurrentQueue<AvatarReflexOutput> _publishedReflexOutputs = new();
-    private readonly ConcurrentQueue<AvatarAffectiveWeather> _publishedAffectiveWeather = new();
+    private readonly BlockingCollection<IAvatarServiceCommand> _commands = new(new ConcurrentQueue<IAvatarServiceCommand>(), MaxPendingCommands);
+    private readonly BoundedOutputQueue<AvatarNervousSystemSignal> _publishedSignals = new(MaxPublishedSignals);
+    private readonly BoundedOutputQueue<AvatarAuditoryCue> _publishedAuditoryInputs = new(MaxPublishedAuditoryInputs);
+    private readonly BoundedOutputQueue<AvatarAudioOutput> _publishedAudioOutputs = new(MaxPublishedAudioOutputs);
+    private readonly BoundedOutputQueue<AvatarBodyStateInput> _publishedBodyInputs = new(MaxPublishedBodyInputs);
+    private readonly BoundedOutputQueue<AvatarOutcomeTelemetry> _publishedOutcomes = new(MaxPublishedOutcomes);
+    private readonly BoundedOutputQueue<AvatarObjectObservation> _publishedObjectObservations = new(MaxPublishedObjectObservations);
+    private readonly BoundedOutputQueue<AvatarSightFrame> _publishedSightOutputs = new(MaxPublishedSightOutputs);
+    private readonly BoundedOutputQueue<AvatarActionOutput> _publishedActionOutputs = new(MaxPublishedActionOutputs);
+    private readonly BoundedOutputQueue<AvatarAttentionOutput> _publishedAttentionOutputs = new(MaxPublishedAttentionOutputs);
+    private readonly BoundedOutputQueue<AvatarAudioOutput> _publishedVoiceOutputs = new(MaxPublishedPeripheralOutputs);
+    private readonly BoundedOutputQueue<AvatarGestureOutput> _publishedGestureOutputs = new(MaxPublishedPeripheralOutputs);
+    private readonly BoundedOutputQueue<AvatarArousalOutput> _publishedArousalOutputs = new(MaxPublishedPeripheralOutputs);
+    private readonly BoundedOutputQueue<AvatarBodySoundOutput> _publishedBodySoundOutputs = new(MaxPublishedPeripheralOutputs);
+    private readonly BoundedOutputQueue<AvatarNeedsRhythmState> _publishedNeedsRhythmStates = new(MaxPublishedNeedsRhythmStates);
+    private readonly BoundedOutputQueue<AvatarReflexOutput> _publishedReflexOutputs = new(MaxPublishedPeripheralOutputs);
+    private readonly BoundedOutputQueue<AvatarAffectiveWeather> _publishedAffectiveWeather = new(MaxPublishedPeripheralOutputs);
     private readonly Thread _workerThread;
     private readonly object _signalGate = new();
     private readonly object _memoryGate = new();
@@ -31,12 +31,16 @@ public sealed class AvatarService : IDisposable
     private readonly object _bodyEventGate = new();
     private readonly object _needsRhythmGate = new();
     private readonly object _sightOutputGate = new();
+    private readonly object _sightInputGate = new();
     private readonly object _placeMemoryGate = new();
+    private readonly object _actionPublicationGate = new();
     private readonly List<AvatarBodyEvent> _bodyEventLedger = new(64);
     private readonly Dictionary<string, AvatarPlaceMemory> _placeMemories = new(StringComparer.OrdinalIgnoreCase);
     private AvatarNervousSystemSignal _latestSignal = new(0.0, 0.0, 0, 0, AvatarToolSignal.None);
     private AvatarSensationMemory _recentSensationMemory = AvatarSensationMemory.Empty;
     private AvatarSightFrame? _latestSightOutput;
+    private AvatarSightFrame? _pendingSightInput;
+    private bool _sightInputScheduled;
     private AvatarActionOutput _latestActionOutput = new(
         new AvatarMotorOutput(0.0, 0.0),
         AvatarToolSignal.None,
@@ -57,23 +61,21 @@ public sealed class AvatarService : IDisposable
     private AvatarNeedsRhythmState _latestNeedsRhythmState = AvatarNeedsRhythmState.Resting();
     private AvatarReflexOutput _latestReflexOutput = AvatarReflexOutput.None();
     private AvatarAffectiveWeather _latestAffectiveWeather = AvatarAffectiveWeather.Neutral();
-    private bool _disposed;
+    private int _disposed;
     private long _enqueuedCommands;
     private long _processedCommands;
     private long _failedCommands;
     private long _clockTicks;
     private long _lastActionConsequenceUnixMs;
     private double _clockDriveDecayOverride = double.NaN;
-    private int _publishedSightOutputCount;
-    private int _publishedActionOutputCount;
-    private int _publishedAttentionOutputCount;
-    private int _publishedVoiceOutputCount;
-    private int _publishedGestureOutputCount;
-    private int _publishedArousalOutputCount;
-    private int _publishedBodySoundOutputCount;
-    private int _publishedNeedsRhythmStateCount;
-    private int _publishedReflexOutputCount;
-    private int _publishedAffectiveWeatherCount;
+    private long _droppedCommands;
+    private const int MaxPendingCommands = 64;
+    private const int MaxPublishedSignals = 64;
+    private const int MaxPublishedAuditoryInputs = 32;
+    private const int MaxPublishedAudioOutputs = 32;
+    private const int MaxPublishedBodyInputs = 32;
+    private const int MaxPublishedOutcomes = 32;
+    private const int MaxPublishedObjectObservations = 64;
     private const int MaxPublishedSightOutputs = 3;
     private const int MaxPublishedActionOutputs = 16;
     private const int MaxPublishedAttentionOutputs = 16;
@@ -122,6 +124,14 @@ public sealed class AvatarService : IDisposable
     public long FailedCommands => Interlocked.Read(ref _failedCommands);
 
     public long ClockTicks => Interlocked.Read(ref _clockTicks);
+
+    public long DroppedCommands => Interlocked.Read(ref _droppedCommands);
+
+    public int PendingCommandCount => _commands.Count;
+
+    public int PublishedSignalCount => _publishedSignals.Count;
+
+    public int PublishedSightOutputCount => _publishedSightOutputs.Count;
 
     public AvatarSensationMemory RecentSensationMemory
     {
@@ -309,116 +319,34 @@ public sealed class AvatarService : IDisposable
         => _publishedObjectObservations.TryDequeue(out observation);
 
     public bool TryDequeueSightOutput(out AvatarSightFrame frame)
-    {
-        if (!_publishedSightOutputs.TryDequeue(out var queuedFrame))
-        {
-            frame = null!;
-            return false;
-        }
-
-        frame = queuedFrame;
-        Interlocked.Decrement(ref _publishedSightOutputCount);
-        return true;
-    }
+        => _publishedSightOutputs.TryDequeue(out frame);
 
     public bool TryDequeueActionOutput(out AvatarActionOutput output)
-    {
-        if (!_publishedActionOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedActionOutputCount);
-        return true;
-    }
+        => _publishedActionOutputs.TryDequeue(out output);
 
     public bool TryDequeueAttentionOutput(out AvatarAttentionOutput output)
-    {
-        if (!_publishedAttentionOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedAttentionOutputCount);
-        return true;
-    }
+        => _publishedAttentionOutputs.TryDequeue(out output);
 
     public bool TryDequeueVoiceOutput(out AvatarAudioOutput output)
-    {
-        if (!_publishedVoiceOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedVoiceOutputCount);
-        return true;
-    }
+        => _publishedVoiceOutputs.TryDequeue(out output);
 
     public bool TryDequeueGestureOutput(out AvatarGestureOutput output)
-    {
-        if (!_publishedGestureOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedGestureOutputCount);
-        return true;
-    }
+        => _publishedGestureOutputs.TryDequeue(out output);
 
     public bool TryDequeueArousalOutput(out AvatarArousalOutput output)
-    {
-        if (!_publishedArousalOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedArousalOutputCount);
-        return true;
-    }
+        => _publishedArousalOutputs.TryDequeue(out output);
 
     public bool TryDequeueBodySoundOutput(out AvatarBodySoundOutput output)
-    {
-        if (!_publishedBodySoundOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedBodySoundOutputCount);
-        return true;
-    }
+        => _publishedBodySoundOutputs.TryDequeue(out output);
 
     public bool TryDequeueNeedsRhythmState(out AvatarNeedsRhythmState state)
-    {
-        if (!_publishedNeedsRhythmStates.TryDequeue(out state))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedNeedsRhythmStateCount);
-        return true;
-    }
+        => _publishedNeedsRhythmStates.TryDequeue(out state);
 
     public bool TryDequeueReflexOutput(out AvatarReflexOutput output)
-    {
-        if (!_publishedReflexOutputs.TryDequeue(out output))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedReflexOutputCount);
-        return true;
-    }
+        => _publishedReflexOutputs.TryDequeue(out output);
 
     public bool TryDequeueAffectiveWeather(out AvatarAffectiveWeather weather)
-    {
-        if (!_publishedAffectiveWeather.TryDequeue(out weather))
-        {
-            return false;
-        }
-
-        Interlocked.Decrement(ref _publishedAffectiveWeatherCount);
-        return true;
-    }
+        => _publishedAffectiveWeather.TryDequeue(out weather);
 
     public void PostBrainSignals(IReadOnlyList<AvatarDispatchSpike> dispatches, AvatarNervousSystemBodyState body)
     {
@@ -475,7 +403,29 @@ public sealed class AvatarService : IDisposable
     }
 
     public void PostSightInputFrame(AvatarSightFrame frame)
-        => Post(new SightInputFrameCommand(frame));
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        frame.Validate();
+        lock (_sightInputGate)
+        {
+            _pendingSightInput = frame;
+            if (_sightInputScheduled)
+            {
+                return;
+            }
+
+            _sightInputScheduled = true;
+        }
+
+        if (!Post(FlushSightInputCommand.Instance))
+        {
+            lock (_sightInputGate)
+            {
+                _pendingSightInput = null;
+                _sightInputScheduled = false;
+            }
+        }
+    }
 
     public AvatarMotorOutput ComputeMotorOutput(
         double forwardGain = 1.0,
@@ -498,44 +448,56 @@ public sealed class AvatarService : IDisposable
         double turnGain = 1.0,
         double forwardScale = 1.0)
     {
-        var signal = LatestSignal;
-        var output = CreateActionOutput(signal, forwardGain, turnGain, forwardScale);
-        PublishActionOutput(output);
-        return output;
+        lock (_actionPublicationGate)
+        {
+            var signal = LatestSignal;
+            var output = CreateActionOutput(signal, forwardGain, turnGain, forwardScale);
+            PublishActionOutputCore(output);
+            return output;
+        }
     }
 
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         _commands.CompleteAdding();
         if (_workerThread.IsAlive)
         {
-            _workerThread.Join(TimeSpan.FromSeconds(2));
+            _workerThread.Join(TimeSpan.FromSeconds(5));
         }
 
-        _commands.Dispose();
+        if (!_workerThread.IsAlive)
+        {
+            _commands.Dispose();
+        }
     }
 
-    private void Post(IAvatarServiceCommand command)
+    private bool Post(IAvatarServiceCommand command)
     {
-        if (_disposed || _commands.IsAddingCompleted)
+        if (Volatile.Read(ref _disposed) != 0 || _commands.IsAddingCompleted)
         {
-            return;
+            return false;
         }
 
         try
         {
-            _commands.Add(command);
+            if (!_commands.TryAdd(command))
+            {
+                Interlocked.Increment(ref _droppedCommands);
+                return false;
+            }
+
             Interlocked.Increment(ref _enqueuedCommands);
+            return true;
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
         {
             // Shutdown race: safe to ignore.
+            return false;
         }
     }
 
@@ -637,6 +599,14 @@ public sealed class AvatarService : IDisposable
 
     private void PublishActionOutput(AvatarActionOutput output)
     {
+        lock (_actionPublicationGate)
+        {
+            PublishActionOutputCore(output);
+        }
+    }
+
+    private void PublishActionOutputCore(AvatarActionOutput output)
+    {
         lock (_actionOutputGate)
         {
             _latestActionOutput = output;
@@ -655,27 +625,15 @@ public sealed class AvatarService : IDisposable
         _publishedAttentionOutputs.Enqueue(output.Attention);
         if (output.Voice is AvatarAudioOutput voice)
         {
-            EnqueueBounded(_publishedVoiceOutputs, voice, ref _publishedVoiceOutputCount, MaxPublishedPeripheralOutputs);
+            _publishedVoiceOutputs.Enqueue(voice);
         }
 
-        EnqueueBounded(_publishedGestureOutputs, output.Gesture, ref _publishedGestureOutputCount, MaxPublishedPeripheralOutputs);
-        EnqueueBounded(_publishedArousalOutputs, output.Arousal, ref _publishedArousalOutputCount, MaxPublishedPeripheralOutputs);
-        EnqueueBounded(_publishedBodySoundOutputs, output.BodySound, ref _publishedBodySoundOutputCount, MaxPublishedPeripheralOutputs);
-        EnqueueBounded(_publishedNeedsRhythmStates, output.Needs, ref _publishedNeedsRhythmStateCount, MaxPublishedNeedsRhythmStates);
-        EnqueueBounded(_publishedReflexOutputs, output.Reflex, ref _publishedReflexOutputCount, MaxPublishedPeripheralOutputs);
-        EnqueueBounded(_publishedAffectiveWeather, output.Weather, ref _publishedAffectiveWeatherCount, MaxPublishedPeripheralOutputs);
-
-        var attentionCount = Interlocked.Increment(ref _publishedAttentionOutputCount);
-        while (attentionCount > MaxPublishedAttentionOutputs && _publishedAttentionOutputs.TryDequeue(out _))
-        {
-            attentionCount = Interlocked.Decrement(ref _publishedAttentionOutputCount);
-        }
-
-        var count = Interlocked.Increment(ref _publishedActionOutputCount);
-        while (count > MaxPublishedActionOutputs && _publishedActionOutputs.TryDequeue(out _))
-        {
-            count = Interlocked.Decrement(ref _publishedActionOutputCount);
-        }
+        _publishedGestureOutputs.Enqueue(output.Gesture);
+        _publishedArousalOutputs.Enqueue(output.Arousal);
+        _publishedBodySoundOutputs.Enqueue(output.BodySound);
+        _publishedNeedsRhythmStates.Enqueue(output.Needs);
+        _publishedReflexOutputs.Enqueue(output.Reflex);
+        _publishedAffectiveWeather.Enqueue(output.Weather);
     }
 
     private void AppendActionConsequenceEvents(AvatarActionOutput output)
@@ -797,20 +755,6 @@ public sealed class AvatarService : IDisposable
         }
 
         return "none";
-    }
-
-    private static void EnqueueBounded<T>(
-        ConcurrentQueue<T> queue,
-        T item,
-        ref int countField,
-        int maxCount)
-    {
-        queue.Enqueue(item);
-        var count = Interlocked.Increment(ref countField);
-        while (count > maxCount && queue.TryDequeue(out _))
-        {
-            count = Interlocked.Decrement(ref countField);
-        }
     }
 
     private AvatarActionOutput CreateActionOutput(
@@ -1179,11 +1123,6 @@ public sealed class AvatarService : IDisposable
         }
 
         _publishedSightOutputs.Enqueue(frame);
-        var count = Interlocked.Increment(ref _publishedSightOutputCount);
-        while (count > MaxPublishedSightOutputs && _publishedSightOutputs.TryDequeue(out _))
-        {
-            count = Interlocked.Decrement(ref _publishedSightOutputCount);
-        }
     }
 
     private void RememberHeardSound(AvatarAuditoryCue cue)
@@ -1380,7 +1319,7 @@ public sealed class AvatarService : IDisposable
             _latestNeedsRhythmState = updated;
         }
 
-        EnqueueBounded(_publishedNeedsRhythmStates, updated, ref _publishedNeedsRhythmStateCount, MaxPublishedNeedsRhythmStates);
+        _publishedNeedsRhythmStates.Enqueue(updated);
     }
 
     private static AvatarNeedsRhythmState ComputeNeedsRhythmTarget(
@@ -1837,18 +1776,86 @@ public sealed class AvatarService : IDisposable
         }
     }
 
-    private sealed record SightInputFrameCommand(AvatarSightFrame Frame) : IAvatarServiceCommand
+    private AvatarSightFrame? TakePendingSightInput()
     {
+        lock (_sightInputGate)
+        {
+            var frame = _pendingSightInput;
+            _pendingSightInput = null;
+            _sightInputScheduled = false;
+            return frame;
+        }
+    }
+
+    private sealed class FlushSightInputCommand : IAvatarServiceCommand
+    {
+        public static FlushSightInputCommand Instance { get; } = new();
+
         public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
         {
-            service.PublishSightOutput(Frame);
-            service.RememberSightFrame(Frame);
+            var frame = service.TakePendingSightInput();
+            if (frame is not null)
+            {
+                service.PublishSightOutput(frame);
+                service.RememberSightFrame(frame);
+            }
+
             return new AvatarNervousSystemSignal(
                 nervousSystem.LeftMotorDrive,
                 nervousSystem.RightMotorDrive,
                 nervousSystem.LastMotorDispatchCount,
                 nervousSystem.TicksWithoutMotorDispatch,
                 AvatarToolSignal.None);
+        }
+    }
+
+    private sealed class BoundedOutputQueue<T>
+    {
+        private readonly Queue<T> _items = new();
+        private readonly object _gate = new();
+        private readonly int _capacity;
+
+        public BoundedOutputQueue(int capacity)
+        {
+            _capacity = Math.Max(1, capacity);
+        }
+
+        public void Enqueue(T item)
+        {
+            lock (_gate)
+            {
+                _items.Enqueue(item);
+                while (_items.Count > _capacity)
+                {
+                    _items.Dequeue();
+                }
+            }
+        }
+
+        public bool TryDequeue(out T item)
+        {
+            lock (_gate)
+            {
+                if (_items.Count == 0)
+                {
+                    item = default!;
+                    return false;
+                }
+
+                item = _items.Dequeue();
+                return true;
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                lock (_gate)
+                {
+                    return _items.Count;
+                }
+            }
         }
     }
 }

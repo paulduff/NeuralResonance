@@ -479,7 +479,7 @@ public partial class MainWindow : Window
             var frame = await AvatarControlApi.GetJsonAsync(
                 _httpClient,
                 endpoint,
-                $"/api/v1/frame?dispatchSinceMs={_dispatchSinceMs}",
+                AvatarControlApi.GetFramePath(_dispatchSinceMs),
                 token);
             using var doc = frame.Document;
             if (!frame.IsSuccessStatusCode || doc is null)

@@ -13,6 +13,17 @@ using ProtoBuf.Grpc;
 using ProtoBuf.Grpc.Client;
 
 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+var controlSharedSecret = NreControlPlaneSecurity.ResolveSharedSecret();
+var controlListenAnyIp = string.Equals(
+    Environment.GetEnvironmentVariable("NRE_CONTROL_LISTEN_ANY_IP"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+if (controlListenAnyIp && controlSharedSecret is null)
+{
+    throw new InvalidOperationException(
+        "NRE_CONTROL_LISTEN_ANY_IP=true requires NRE_CONTROL_SHARED_SECRET to protect the control plane.");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -20,7 +31,14 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MinResponseDataRate = null;
     if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port) && port > 0)
     {
-        options.ListenAnyIP(port);
+        if (controlListenAnyIp)
+        {
+            options.ListenAnyIP(port);
+        }
+        else
+        {
+            options.ListenLocalhost(port);
+        }
     }
 });
 builder.Configuration
@@ -75,6 +93,21 @@ builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompress
 var app = builder.Build();
 app.UseResponseCompression();
 const string minimalFramePayloadJson = "{\"state\":{},\"connectomeReport\":null,\"latestSnapshot\":null,\"outputLog\":[],\"spikeLog\":[],\"dispatchSpikes\":[]}";
+
+if (controlSharedSecret is not null)
+{
+    app.Use(async (context, next) =>
+    {
+        var suppliedSecret = context.Request.Headers[NreControlPlaneSecurity.HeaderName].ToString();
+        if (!NreControlPlaneSecurity.IsAuthorized(suppliedSecret, controlSharedSecret))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        await next();
+    });
+}
 
 app.Use(async (context, next) =>
 {
@@ -3738,7 +3771,9 @@ internal sealed record RuntimePerformanceProfileSettings(
         var topQueryEveryNTicks = Math.Max(1, configuration.GetValue<int>("TopQueryEveryNTicks", 6));
         var maxTopQueriesPerTick = Math.Clamp(configuration.GetValue<int>("MaxTopQueriesPerTick", 10), 1, 256);
         var snapshotEveryNTicks = Math.Max(1, configuration.GetValue<int>("SnapshotEveryNTicks", 10));
-        var useDirectStepFastPath = configuration.GetValue<bool>("UseDirectStepFastPath", true);
+        // The direct step response is the only lossless tick contract. The old
+        // acknowledgement-plus-publish transport has been retired.
+        const bool useDirectStepFastPath = true;
 
         return new RuntimePerformanceProfileSettings(
             "normal",
@@ -3774,7 +3809,7 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 24,
                 MaxTopQueriesPerTick: 1,
                 SnapshotEveryNTicks: 12,
-                UseDirectStepFastPath: false);
+                UseDirectStepFastPath: true);
         }
 
         if (profile.Equals("diagnostic", StringComparison.OrdinalIgnoreCase))
@@ -3792,7 +3827,7 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 2,
                 MaxTopQueriesPerTick: 18,
                 SnapshotEveryNTicks: 2,
-                UseDirectStepFastPath: false);
+                UseDirectStepFastPath: true);
         }
 
         if (profile.Equals("fast", StringComparison.OrdinalIgnoreCase) ||
@@ -3811,7 +3846,7 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 18,
                 MaxTopQueriesPerTick: 2,
                 SnapshotEveryNTicks: 12,
-                UseDirectStepFastPath: false);
+                UseDirectStepFastPath: true);
         }
 
         if (profile.Equals("headless", StringComparison.OrdinalIgnoreCase))
@@ -3829,7 +3864,7 @@ internal sealed record RuntimePerformanceProfileSettings(
                 TopQueryEveryNTicks: 48,
                 MaxTopQueriesPerTick: 1,
                 SnapshotEveryNTicks: 30,
-                UseDirectStepFastPath: false);
+                UseDirectStepFastPath: true);
         }
 
         return new RuntimePerformanceProfileSettings(
@@ -3845,7 +3880,7 @@ internal sealed record RuntimePerformanceProfileSettings(
             TopQueryEveryNTicks: 8,
             MaxTopQueriesPerTick: 8,
             SnapshotEveryNTicks: 6,
-            UseDirectStepFastPath: false);
+            UseDirectStepFastPath: true);
     }
 }
 
@@ -23927,9 +23962,12 @@ internal sealed class TickCoordinator(
         CancellationToken stoppingToken)
     {
         var topQueryCount = 0;
-        if (useDirectStepFastPath)
+        if (!useDirectStepFastPath)
         {
-            var pendingSteps = activeServices.Select(async instance =>
+            logger.LogWarning("A legacy profile requested acknowledge-only ticks; using direct structure-step responses instead.");
+        }
+
+        var pendingSteps = activeServices.Select(async instance =>
             {
                 var client = clients[instance.InstanceKey];
                 var stopwatch = Stopwatch.StartNew();
@@ -23980,92 +24018,12 @@ internal sealed class TickCoordinator(
                         tickRequestSemaphore.Release();
                     }
                 }
-            });
-
-            var stepResults = await Task.WhenAll(pendingSteps);
-            var successfulSteps = stepResults.Where(x => x is not null).Select(x => x!).ToList();
-            var healthySources = successfulSteps.Select(x => x.Instance).ToList();
-            return new TickExecutionBatchResult(successfulSteps, healthySources, topQueryCount);
-        }
-
-        var pendingAcks = activeServices.Select(async instance =>
-        {
-            var client = clients[instance.InstanceKey];
-            var stopwatch = Stopwatch.StartNew();
-            var tickPermit = false;
-
-            try
-            {
-                await tickRequestSemaphore.WaitAsync(stoppingToken);
-                tickPermit = true;
-                using var ctsAck = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                ctsAck.CancelAfter(TimeSpan.FromMilliseconds(effectiveTickAckTimeoutMs));
-                using var tickResponse = await client.PostAsJsonAsync("/api/v1/structure/tick", tickSignal, ctsAck.Token);
-                tickResponse.EnsureSuccessStatusCode();
-                var ack = await tickResponse.Content.ReadFromJsonAsync<TickAck>(cancellationToken: ctsAck.Token)
-                    ?? throw new InvalidOperationException($"Missing tick ack payload from {instance.InstanceKey}");
-                serviceHealth[instance.InstanceKey].MarkSuccess(healthNowMs, stopwatch.Elapsed.TotalMilliseconds, tickSignal.Tick);
-                return new TickAckResult(instance, ack);
-            }
-            catch (Exception ex)
-            {
-                serviceHealth[instance.InstanceKey].MarkFailure(healthNowMs, tickSignal.Tick, ClassifyFailure(ex));
-                LogTickExecutionFailure(
-                    instance,
-                    tickSignal.Tick,
-                    serviceHealth,
-                    degradedModeIgnoreOffline,
-                    degradedLogEveryTicks,
-                    ex);
-                return null;
-            }
-            finally
-            {
-                if (tickPermit)
-                {
-                    tickRequestSemaphore.Release();
-                }
-            }
         });
 
-        var ackResults = await Task.WhenAll(pendingAcks);
-        var successfulAcks = ackResults.Where(x => x is not null).Select(x => x!).ToList();
-        var publishedStepsByInstance = await publishBuffer.WaitForTickAsync(
-            tickSignal.Tick,
-            successfulAcks.Select(x => x.Instance.InstanceKey).ToArray(),
-            TimeSpan.FromMilliseconds(effectiveTickPublishWaitMs),
-            TimeSpan.FromMilliseconds(effectiveTickPublishSettleMs),
-            stoppingToken);
-
-        var successfulBufferedSteps = new List<TickStepResult>(successfulAcks.Count);
-        foreach (var ackResult in successfulAcks)
-        {
-            if (publishedStepsByInstance.TryGetValue(ackResult.Instance.InstanceKey, out var publishedStep) &&
-                publishedStep.Step?.Ack is not null &&
-                publishedStep.Step.Ack.Tick == tickSignal.Tick)
-            {
-                successfulBufferedSteps.Add(new TickStepResult(ackResult.Instance, publishedStep.Step));
-            }
-            else
-            {
-                successfulBufferedSteps.Add(new TickStepResult(
-                    ackResult.Instance,
-                    new StructureStepResult(
-                        ackResult.Ack,
-                        Array.Empty<SpikeMessage>(),
-                        Array.Empty<NeuronActivity>())));
-            }
-        }
-
-        var missingPublishedCount = successfulAcks.Count - publishedStepsByInstance.Count;
-        if (missingPublishedCount > 0 && (tickSignal.Tick % degradedLogEveryTicks) == 0)
-        {
-            state.AppendOutputLog(
-                $"Tick {tickSignal.Tick}: {missingPublishedCount}/{successfulAcks.Count} step publishes missing within {effectiveTickPublishWaitMs}ms.");
-        }
-
-        var healthyBufferedSources = successfulAcks.Select(x => x.Instance).ToList();
-        return new TickExecutionBatchResult(successfulBufferedSteps, healthyBufferedSources, topQueryCount);
+        var stepResults = await Task.WhenAll(pendingSteps);
+        var successfulSteps = stepResults.Where(x => x is not null).Select(x => x!).ToList();
+        var healthySources = successfulSteps.Select(x => x.Instance).ToList();
+        return new TickExecutionBatchResult(successfulSteps, healthySources, topQueryCount);
     }
 
     private void LogTickExecutionFailure(

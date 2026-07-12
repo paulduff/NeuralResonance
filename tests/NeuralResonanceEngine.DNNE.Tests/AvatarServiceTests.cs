@@ -252,6 +252,45 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
+    public void ServiceCoalescesSightInputAndBoundsPublishedOutput()
+    {
+        using var service = CreateService();
+        for (var generation = 1; generation <= 160; generation++)
+        {
+            service.PostSightInputFrame(new AvatarSightFrame(
+                Generation: generation,
+                CaptureTimestampMs: generation,
+                Width: 1,
+                Height: 1,
+                Stride: 4,
+                Pixels: [1, 2, 3, 255],
+                PreviewHeadingDeg: 0.0));
+        }
+
+        var latest = WaitForSightOutput(service, frame => frame.Generation == 160);
+
+        Assert.Equal(160, latest.Generation);
+        Assert.InRange(service.PendingCommandCount, 0, 64);
+        Assert.InRange(service.PublishedSightOutputCount, 0, 3);
+    }
+
+    [Fact]
+    public void ServiceRejectsMalformedSightFramesBeforeTheyReachTheWorker()
+    {
+        using var service = CreateService();
+        var malformed = new AvatarSightFrame(
+            Generation: 1,
+            CaptureTimestampMs: 1,
+            Width: 1,
+            Height: 1,
+            Stride: 3,
+            Pixels: [1, 2, 3],
+            PreviewHeadingDeg: 0.0);
+
+        Assert.Throws<ArgumentException>(() => service.PostSightInputFrame(malformed));
+    }
+
+    [Fact]
     public void ServiceOwnsPersistentPlaceMemory()
     {
         using var service = CreateService();
@@ -711,20 +750,23 @@ public sealed class AvatarServiceTests
         throw new TimeoutException("Avatar service did not publish an object observation.");
     }
 
-    private static AvatarSightFrame WaitForSightOutput(AvatarService service)
+    private static AvatarSightFrame WaitForSightOutput(AvatarService service, Func<AvatarSightFrame, bool>? predicate = null)
     {
         var deadline = DateTime.UtcNow.AddSeconds(2);
         while (DateTime.UtcNow < deadline)
         {
-            if (service.TryDequeueSightOutput(out var frame))
+            while (service.TryDequeueSightOutput(out var frame))
             {
-                return frame;
+                if (predicate is null || predicate(frame))
+                {
+                    return frame;
+                }
             }
 
             Thread.Sleep(10);
         }
 
-        throw new TimeoutException("Avatar service did not publish a sight output.");
+        throw new TimeoutException("Avatar service did not publish the expected sight output.");
     }
 
     private static AvatarActionOutput WaitForActionOutput(

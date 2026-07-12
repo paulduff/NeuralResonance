@@ -12,7 +12,7 @@ internal sealed class AsyncRuntimeLogWriter : IDisposable
     private readonly BlockingCollection<string> _queue = new(new ConcurrentQueue<string>(), QueueCapacity);
     private readonly Thread _worker;
     private readonly string _path;
-    private bool _disposed;
+    private int _disposed;
 
     public AsyncRuntimeLogWriter(string path)
     {
@@ -27,19 +27,30 @@ internal sealed class AsyncRuntimeLogWriter : IDisposable
 
     public void Enqueue(string line)
     {
-        if (_disposed || _queue.IsAddingCompleted)
+        if (Volatile.Read(ref _disposed) != 0)
         {
             return;
         }
 
-        if (_queue.TryAdd(line))
+        try
         {
-            return;
-        }
+            if (_queue.IsAddingCompleted || _queue.TryAdd(line))
+            {
+                return;
+            }
 
-        // Prefer newest diagnostics over blocking the simulation loop.
-        _queue.TryTake(out _);
-        _queue.TryAdd(line);
+            // Prefer newest diagnostics over blocking the simulation loop.
+            _queue.TryTake(out _);
+            _queue.TryAdd(line);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The worker stopped and released the queue.
+        }
+        catch (InvalidOperationException)
+        {
+            // Shutdown raced with a log write.
+        }
     }
 
     private void WorkerLoop()
@@ -70,14 +81,21 @@ internal sealed class AsyncRuntimeLogWriter : IDisposable
             }
         }
 
-        while (_queue.TryTake(out var remaining))
+        try
         {
-            buffer.Add(remaining);
-            if (buffer.Count >= MaxBatchLines)
+            while (_queue.TryTake(out var remaining))
             {
-                Flush(buffer);
-                buffer.Clear();
+                buffer.Add(remaining);
+                if (buffer.Count >= MaxBatchLines)
+                {
+                    Flush(buffer);
+                    buffer.Clear();
+                }
             }
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
         }
 
         if (buffer.Count > 0)
@@ -112,18 +130,25 @@ internal sealed class AsyncRuntimeLogWriter : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
-        _queue.CompleteAdding();
+        try
+        {
+            _queue.CompleteAdding();
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
         try
         {
             if (_worker.IsAlive)
             {
-                _worker.Join(TimeSpan.FromSeconds(1));
+                _worker.Join(TimeSpan.FromSeconds(2));
             }
         }
         catch
@@ -131,6 +156,9 @@ internal sealed class AsyncRuntimeLogWriter : IDisposable
             // Best-effort shutdown.
         }
 
-        _queue.Dispose();
+        if (!_worker.IsAlive)
+        {
+            _queue.Dispose();
+        }
     }
 }

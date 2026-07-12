@@ -3,7 +3,7 @@
   "name": "DNNE distributed deployables",
   "description": "Package groups for running the control program, WPF simulators, and brain structure services across separate machines.",
   "controlBaseUrlDefault": "http://localhost:5080",
-  "listenHostDefault": "0.0.0.0",
+  "listenHostDefault": "127.0.0.1",
   "apps": {
     "control-program": {
       "project": "ControlProgram/NeuralResonanceEngine.ControlProgram.csproj",

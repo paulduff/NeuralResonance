@@ -131,16 +131,13 @@ public static class StructureHostApplication
 			return Results.Ok(new { accepted });
 		}).Accepts<byte[]>("application/octet-stream");
 
-		app.MapPost("/api/v1/structure/tick", async (TickSignal tickSignal, StructureEngine engine, StructureProfile profile, ControlPublishClient publisher, CancellationToken ct) =>
-		{
-			using var activity = StructureTelemetry.Source.StartActivity("structure.tick");
-			activity?.SetTag("structure.id", profile.StructureId.ToString());
-			activity?.SetTag("tick", tickSignal.Tick);
-			StructureStepResult step = await engine.ProcessStepAsync(tickSignal, 0, ct);
-			activity?.SetTag("spikes.outbound", step.OutboundSpikes?.Count ?? 0);
-			_ = SafePublishAsync(publisher, profile.StructureId, step);
-			return Results.Ok(step.Ack);
-		});
+		// Acknowledge-only ticks depended on a separate fire-and-forget publish path.
+		// They could report success while losing the corresponding outbound activity.
+		// Callers must use /step, which returns one coherent result for each tick.
+		app.MapPost("/api/v1/structure/tick", () => Results.Problem(
+			title: "Acknowledge-only tick transport retired.",
+			detail: "Use POST /api/v1/structure/step to receive the complete StructureStepResult.",
+			statusCode: StatusCodes.Status410Gone));
 
 		app.MapPost("/api/v1/structure/step", async (StructureStepRequest request, StructureEngine engine, CancellationToken ct) =>
 			Results.Ok(await engine.ProcessStepAsync(request.TickSignal, request.IncludeTop ? request.TopK : 0, ct)));
@@ -161,18 +158,4 @@ public static class StructureHostApplication
 		}));
 	}
 
-	private static async Task SafePublishAsync(ControlPublishClient publisher, StructureId structureId, StructureStepResult step)
-	{
-		try
-		{
-			await publisher.PublishAsync(structureId, step, CancellationToken.None);
-		}
-		catch (OperationCanceledException)
-		{
-		}
-		catch (Exception ex)
-		{
-			Console.Error.WriteLine($"[{structureId}] publish failed: {ex.GetType().Name}: {ex.Message}");
-		}
-	}
 }

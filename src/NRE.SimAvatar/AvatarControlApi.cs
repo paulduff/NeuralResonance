@@ -5,6 +5,9 @@ namespace NRE.SimAvatar;
 
 public static class AvatarControlApi
 {
+    public static string GetFramePath(long dispatchSinceMs, bool includeConnectome = true)
+        => $"/api/v1/frame?dispatch_since_ms={Math.Max(0, dispatchSinceMs)}&include_connectome={(includeConnectome ? "true" : "false")}";
+
     public const string BodyStatePath = "/api/v1/admin/input/body-state";
     public const string OutcomeInputPath = "/api/v1/admin/input/outcome";
     public const string AuditoryInputPath = "/api/v1/admin/input/auditory";
@@ -70,7 +73,12 @@ public static class AvatarControlApi
     private static async Task PostOutcomeCoreAsync(HttpClient client, Uri uri, AvatarOutcomeTelemetry telemetry, CancellationToken cancellationToken = default)
     {
         var request = AvatarOutcomeInputFactory.CreateRequest(telemetry);
-        using var _ = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"Outcome input failed: HTTP {(int)response.StatusCode} {message}");
+        }
     }
 
     private static async Task<AvatarAuditoryDispatchResult> PostAuditoryCueCoreAsync(

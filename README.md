@@ -1,13 +1,11 @@
 # Neural Resonance Engine (NRE) — Canon v2.0 (Next Notch: Regions + Waves)
 
-This solution contains:
-- **NRE.Core**: Core neuromorphic engine (pons modulation, hemispheres, corpus callosum, STP, Hebbian-lite, lateral inhibition, delayed axonal signals).
-- **NRE.Api**: ASP.NET Core API hosting the engine + a simulation loop.
-- **NRE.Blazor**: Blazor Server UI with Three.js renderer (region-tinted spikes + Vm-density clouds + corpus-callosum brightness).
+This solution contains a distributed control program, anatomy-inspired structure services, shared avatar cognition, and WPF editor, maze, and world simulators. The control program defaults to `http://localhost:5080` and can start structure services directly from their projects.
 
 ## Run
-1. Start **NRE.Api** (binds to `http://localhost:5005`, Swagger at `/swagger`).
-2. Start **NRE.Blazor** and open the site (calls the API at `http://localhost:5005`).
+1. Start `ControlProgram/NeuralResonanceEngine.ControlProgram.csproj`.
+2. Start either `src/NRE.WpfWorldSim`, `src/NRE.WpfMazeSim`, or `src/NRE.WpfEditor`.
+3. For a remote deployment, set the same `NRE_CONTROL_SHARED_SECRET` on the control program and every client, then explicitly configure the external listener with `NRE_CONTROL_LISTEN_ANY_IP=true`.
 
 ## Visualization
 - **Spikes**: particle flashes; tint encodes region (Thalamus/Hippocampus/Memory/Cortex) and base color reflects energy.

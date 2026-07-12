@@ -29,6 +29,7 @@ internal sealed class ControlPublishClient
 	private readonly string _hemisphere;
 
 	private int _publishInFlight;
+	private readonly string? _controlSharedSecret;
 
 	public ControlPublishClient()
 	{
@@ -36,6 +37,7 @@ internal sealed class ControlPublishClient
 		_publishUri = (Uri.TryCreate(environmentVariable, UriKind.Absolute, out Uri result) ? result : null);
 		_instanceKey = Environment.GetEnvironmentVariable("SERVICE_INSTANCE") ?? "M_unknown";
 		_hemisphere = Environment.GetEnvironmentVariable("HEMISPHERE") ?? "M";
+		_controlSharedSecret = NreControlPlaneSecurity.ResolveSharedSecret();
 	}
 
 	public async ValueTask PublishAsync(StructureId structureId, StructureStepResult step, CancellationToken cancellationToken)
@@ -48,7 +50,12 @@ internal sealed class ControlPublishClient
 		try
 		{
 			PublishedStepMessage payload = new PublishedStepMessage(_instanceKey, _hemisphere, structureId, step);
-			using HttpResponseMessage response = await PublishClient.PostAsJsonAsync(_publishUri, payload, cancellationToken);
+			using var request = new HttpRequestMessage(HttpMethod.Post, _publishUri)
+			{
+				Content = JsonContent.Create(payload)
+			};
+			NreControlPlaneSecurity.ApplyRequestAuthentication(request, _controlSharedSecret);
+			using HttpResponseMessage response = await PublishClient.SendAsync(request, cancellationToken);
 			_ = response.IsSuccessStatusCode;
 		}
 		catch

@@ -596,8 +596,11 @@ public partial class MainWindow : Window
             // Best-effort shutdown for background worker thread.
         }
 
-        _visionComputeCts.Dispose();
-        _visionRequestSignal.Dispose();
+        if (!_visionWorkerThread.IsAlive)
+        {
+            _visionComputeCts.Dispose();
+            _visionRequestSignal.Dispose();
+        }
         _avatarPreviewPixels = null;
         _httpClient.Dispose();
         _sensoryInputHttpClient.Dispose();
@@ -1042,6 +1045,11 @@ public partial class MainWindow : Window
         _caveEntrances = 0;
         _habitatBaseY = SeaLevel + 2;
         _collisionBoxes.Clear();
+        // Spawn placement runs while the scene is being rebuilt. The previous
+        // world's grid indexes no longer match the cleared collision list.
+        _collisionGrid = null;
+        _collisionGridDimX = 0;
+        _collisionGridDimZ = 0;
         _visionHitBoxes.Clear();
         _caveAnchors.Clear();
         _trailPoints.Clear();
@@ -1376,7 +1384,7 @@ public partial class MainWindow : Window
                 var terrainTopY = GetTerrainTopYFromHeight(height);
                 var trunkHeight = 2.2 + (placeNoise * 2.0);
                 var trunkCenterY = terrainTopY + (trunkHeight * 0.5);
-                AddVisionBlock(group, BlockKind.Wood, worldX, trunkCenterY, worldZ, 0.55, trunkHeight, 0.55);
+                AddCollisionBlock(group, BlockKind.Wood, worldX, trunkCenterY, worldZ, 0.55, trunkHeight, 0.55);
 
                 var canopyY = terrainTopY + trunkHeight + 0.7;
                 AddVisionBlock(group, BlockKind.Leaves, worldX, canopyY, worldZ, 2.2, 1.1, 2.2);
@@ -2022,8 +2030,14 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            var terrainY = GetTerrainTopYFromHeight(h);
+            if (!IsSpawnLocationClear(wx, terrainY, wz))
+            {
+                continue;
+            }
+
             worldX = wx;
-            worldY = GetTerrainTopYFromHeight(h);
+            worldY = terrainY;
             worldZ = wz;
             return true;
         }
@@ -7421,7 +7435,6 @@ public partial class MainWindow : Window
                 var strength = (int)Math.Round(BrushStrengthSlider.Value);
                 if (ApplyTerrainBrush(worldX, worldZ))
                 {
-                    RebuildWorldSceneCore();
                     EnqueueMapStimulus(worldX, worldZ, brush, radius, strength);
                     Log($"Terrain edited at ({worldX:0.0}, {worldZ:0.0}) with {brush} (r={radius}, s={strength}).");
                 }
@@ -7487,10 +7500,15 @@ public partial class MainWindow : Window
 
     private void ClearOverridesButton_OnClick(object sender, RoutedEventArgs e)
     {
+        var changedCells = _surfaceOverrides.Keys.ToArray();
         _surfaceOverrides.Clear();
         _overrideCells = 0;
         InvalidateVisionSceneSnapshot();
-        RebuildWorldSceneCore();
+        foreach (var key in changedCells)
+        {
+            UpdateTerrainCellVisual((int)(key >> 32), (int)key);
+        }
+
         Log("Surface paint overrides cleared.");
     }
 
@@ -7591,7 +7609,12 @@ public partial class MainWindow : Window
                 ref var cell = ref _heights[gx, gz];
                 var original = cell;
                 var key = MakeSurfaceKey(gx, gz);
-                var hadOverride = _surfaceOverrides.ContainsKey(key);
+                var hadOverride = _surfaceOverrides.TryGetValue(key, out var previousOverride);
+
+                if (!IsTerrainCellEditable(gx, gz))
+                {
+                    continue;
+                }
 
                 switch (brush)
                 {
@@ -7617,7 +7640,10 @@ public partial class MainWindow : Window
                         break;
                     case "Water":
                         cell = Math.Max(MinTerrainHeight, SeaLevel - 1);
-                        _surfaceOverrides[key] = BlockKind.Sand;
+                        // Water is defined by elevation. Leaving no surface override
+                        // preserves the sandy bed while every subsystem classifies
+                        // the cell as water from its height.
+                        _surfaceOverrides.Remove(key);
                         break;
                     case "Rock":
                         _surfaceOverrides[key] = BlockKind.Stone;
@@ -7627,7 +7653,17 @@ public partial class MainWindow : Window
                         break;
                 }
 
-                changed |= (cell != original) || hadOverride != _surfaceOverrides.ContainsKey(key);
+                var hasOverride = _surfaceOverrides.TryGetValue(key, out var currentOverride);
+                var cellChanged = (cell != original) ||
+                    (hadOverride != hasOverride) ||
+                    (hadOverride && hasOverride && previousOverride != currentOverride);
+                if (!cellChanged)
+                {
+                    continue;
+                }
+
+                changed = true;
+                UpdateTerrainCellVisual(gx, gz);
             }
         }
 
@@ -7638,6 +7674,32 @@ public partial class MainWindow : Window
         }
 
         return changed;
+    }
+
+    private bool IsTerrainCellEditable(int gridX, int gridZ)
+    {
+        var worldX = GridToWorld(gridX);
+        var worldZ = GridToWorld(gridZ);
+        var halfCell = BlockSize * 0.5;
+        foreach (var box in _collisionBoxes)
+        {
+            if (worldX + halfCell >= box.MinX && worldX - halfCell <= box.MaxX &&
+                worldZ + halfCell >= box.MinZ && worldZ - halfCell <= box.MaxZ)
+            {
+                return false;
+            }
+        }
+
+        var dynamicClearanceSq = 0.80 * 0.80;
+        if (DistanceSquared(_avatarX, _avatarZ, worldX, worldZ) < dynamicClearanceSq ||
+            _foodPickups.Any(p => p.Active && DistanceSquared(p.Position.X, p.Position.Z, worldX, worldZ) < dynamicClearanceSq) ||
+            _weaponPickups.Any(p => p.Active && DistanceSquared(p.Position.X, p.Position.Z, worldX, worldZ) < dynamicClearanceSq) ||
+            _predators.Any(p => DistanceSquared(p.Position.X, p.Position.Z, worldX, worldZ) < dynamicClearanceSq))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private void EnqueueMapStimulus(double worldX, double worldZ, string brush, int radius, int strength)
@@ -7804,7 +7866,7 @@ public partial class MainWindow : Window
             var frame = await AvatarControlApi.GetJsonAsync(
                 _httpClient,
                 endpoint,
-                $"/api/v1/frame?dispatch_since_ms={_dispatchSinceMs}&include_connectome=false");
+                AvatarControlApi.GetFramePath(_dispatchSinceMs, includeConnectome: false));
             using var doc = frame.Document;
             if (!frame.IsSuccessStatusCode || doc is null)
             {
@@ -8915,6 +8977,47 @@ public partial class MainWindow : Window
 
         value = double.NaN;
         return false;
+    }
+
+    private bool IsSpawnLocationClear(double worldX, double terrainY, double worldZ)
+    {
+        if (IsCollisionAt(worldX, worldZ, out _, ignoreStepHeight: true))
+        {
+            return false;
+        }
+
+        const double minimumSeparation = 1.25;
+        var minimumSeparationSq = minimumSeparation * minimumSeparation;
+        if (DistanceSquared(_avatarX, _avatarZ, worldX, worldZ) < minimumSeparationSq)
+        {
+            return false;
+        }
+
+        foreach (var pickup in _foodPickups)
+        {
+            if (pickup.Active && DistanceSquared(pickup.Position.X, pickup.Position.Z, worldX, worldZ) < minimumSeparationSq)
+            {
+                return false;
+            }
+        }
+
+        foreach (var pickup in _weaponPickups)
+        {
+            if (pickup.Active && DistanceSquared(pickup.Position.X, pickup.Position.Z, worldX, worldZ) < minimumSeparationSq)
+            {
+                return false;
+            }
+        }
+
+        foreach (var predator in _predators)
+        {
+            if (DistanceSquared(predator.Position.X, predator.Position.Z, worldX, worldZ) < minimumSeparationSq)
+            {
+                return false;
+            }
+        }
+
+        return !IsAnyCollisionNear(worldX, terrainY + AvatarFootOffset, worldZ);
     }
 
     private static int CountArrayItems(JsonElement element, params string[] propertyNames)

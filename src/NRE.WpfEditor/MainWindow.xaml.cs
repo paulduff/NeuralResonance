@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Threading.Channels;
 using System.Text.Json;
 using System.Text;
 using System.Reflection;
@@ -136,7 +137,13 @@ public partial class MainWindow : Window
     private readonly Dictionary<uint, SolidColorBrush> _statusBadgeBrushes = new();
     private readonly object _audioMetricsGate = new();
     private readonly object _webcamStimulusGate = new();
-    private readonly BlockingCollection<string> _speechQueue = new(new ConcurrentQueue<string>(), 128);
+    private readonly Channel<string> _speechQueue = Channel.CreateBounded<string>(new BoundedChannelOptions(128)
+    {
+        SingleReader = true,
+        FullMode = BoundedChannelFullMode.DropOldest
+    });
+    private readonly object _endpointStateGate = new();
+    private readonly SemaphoreSlim _endpointResolutionGate = new(1, 1);
     private readonly PaneWorker _transportStatsPaneWorker = new("NRE.Editor.Pane.TransportStats");
     private readonly PaneWorker _brainDashboardPaneWorker = new("NRE.Editor.Pane.BrainDashboard");
     private readonly PaneWorker _inhabitancePaneWorker = new("NRE.Editor.Pane.Inhabitance");
@@ -173,6 +180,9 @@ public partial class MainWindow : Window
     private bool _reasoningApplyCurriculumInFlight;
     private bool _reasoningApplyConsolidationInFlight;
     private bool _reasoningCounterfactualInFlight;
+    private int _shutdownRequested;
+    private bool _shutdownComplete;
+    private bool _shutdownInFlight;
     private int _v1RouteConsecutiveFailures;
     private int _webcamFrameEdgePx = DefaultWebcamFrameEdgePx;
     private long _webcamFrameCount;
@@ -395,7 +405,7 @@ public partial class MainWindow : Window
         Loaded += MainWindow_OnLoaded;
         BrainViewport.SizeChanged += (_, _) => ScheduleCameraAutoFit();
         InputManager.Current.PreProcessInput += InputManager_PreProcessInput;
-        Closed += MainWindow_OnClosed;
+        Closing += MainWindow_OnClosing;
         _ = Dispatcher.InvokeAsync(async () => await SafeHandlerAsync(() => RefreshAutoProfileControlsFromControlAsync(), "Refresh auto-profile controls"), DispatcherPriority.Background);
         _ = Dispatcher.InvokeAsync(async () => await SafeHandlerAsync(() => RefreshInputGatesControlsFromControlAsync(), "Refresh input gates"), DispatcherPriority.Background);
     }
@@ -1671,11 +1681,7 @@ public partial class MainWindow : Window
         _lastSpeechUtc = now;
         _lastBrainNarrationSpeechUtc = now;
         _lastSpokenPhrase = utterance;
-        if (!_speechQueue.TryAdd(utterance))
-        {
-            _speechQueue.TryTake(out _);
-            _speechQueue.TryAdd(utterance);
-        }
+        _speechQueue.Writer.TryWrite(utterance);
     }
 
     private static bool IsSpeakableBrainNarration(string utterance)
@@ -2291,7 +2297,7 @@ public partial class MainWindow : Window
     {
         if (isSleeping)
         {
-            while (_speechQueue.TryTake(out _))
+            while (_speechQueue.Reader.TryRead(out _))
             {
                 // Drain queued utterances when sleep begins.
             }
@@ -2616,13 +2622,27 @@ public partial class MainWindow : Window
 
     private void PostUi(Action action)
     {
+        if (Volatile.Read(ref _shutdownRequested) != 0 ||
+            Dispatcher.HasShutdownStarted ||
+            Dispatcher.HasShutdownFinished)
+        {
+            return;
+        }
+
         if (Dispatcher.CheckAccess())
         {
             action();
             return;
         }
 
-        _ = Dispatcher.BeginInvoke(action, DispatcherPriority.Background);
+        try
+        {
+            _ = Dispatcher.BeginInvoke(action, DispatcherPriority.Background);
+        }
+        catch (InvalidOperationException)
+        {
+            // Dispatcher shutdown raced a background status update.
+        }
     }
 
     private static Dictionary<string, ServiceHealthEntry>? ParseServiceTelemetryFromState(JsonElement stateRoot)
@@ -2712,11 +2732,11 @@ public partial class MainWindow : Window
 
     private void QueueTelemetryPaneError(string issue)
     {
-        _transportStatsPaneWorker.Post(_ => PostUi(() => SetTransportStatsText($"Transport stats unavailable: {issue}")));
-        _brainDashboardPaneWorker.Post(_ => PostUi(() => SetBrainDashboardText($"Brain dashboard unavailable: {issue}")));
-        _inhabitancePaneWorker.Post(_ => PostUi(() => SetInhabitanceText($"Inhabitance unavailable: {issue}")));
-        _circuitAuditPaneWorker.Post(_ => PostUi(() => SetCircuitAuditText($"Circuit audit unavailable: {issue}")));
-        _reasoningPaneWorker.Post(_ => PostUi(() => SetReasoningText($"Reasoning telemetry unavailable: {issue}")));
+        QueuePaneUpdate(_transportStatsPaneWorker, $"Transport stats unavailable: {issue}", SetTransportStatsText);
+        QueuePaneUpdate(_brainDashboardPaneWorker, $"Brain dashboard unavailable: {issue}", SetBrainDashboardText);
+        QueuePaneUpdate(_inhabitancePaneWorker, $"Inhabitance unavailable: {issue}", SetInhabitanceText);
+        QueuePaneUpdate(_circuitAuditPaneWorker, $"Circuit audit unavailable: {issue}", SetCircuitAuditText);
+        QueuePaneUpdate(_reasoningPaneWorker, $"Reasoning telemetry unavailable: {issue}", SetReasoningText);
     }
 
     private void QueueTelemetryPaneUpdates(JsonElement stateRoot, bool includeTransportStats = true)
@@ -2738,10 +2758,18 @@ public partial class MainWindow : Window
         Action<string> setter)
     {
         var paneRoot = stateRoot.Clone();
-        worker.Post(_ =>
+        worker.Post(async token =>
         {
             var text = formatter(paneRoot);
-            PostUi(() => setter(text));
+            await Dispatcher.InvokeAsync(() => setter(text), DispatcherPriority.Background, token);
+        });
+    }
+
+    private void QueuePaneUpdate(PaneWorker worker, string text, Action<string> setter)
+    {
+        worker.Post(async token =>
+        {
+            await Dispatcher.InvokeAsync(() => setter(text), DispatcherPriority.Background, token);
         });
     }
 
@@ -4154,7 +4182,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        while (_speechQueue.TryTake(out _))
+        while (_speechQueue.Reader.TryRead(out _))
         {
             // Drop stale utterances when speech output is disabled.
         }
@@ -4548,8 +4576,35 @@ public partial class MainWindow : Window
 
     // Viewport mouse handling, hover label, and auto-fit zoom moved to MainWindow.Camera.cs.
 
-    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    private async void MainWindow_OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        if (_shutdownComplete)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        if (_shutdownInFlight)
+        {
+            return;
+        }
+
+        _shutdownInFlight = true;
+        try
+        {
+            await ShutdownAsync();
+        }
+        finally
+        {
+            _shutdownComplete = true;
+            _shutdownInFlight = false;
+            Close();
+        }
+    }
+
+    private async Task ShutdownAsync()
+    {
+        Interlocked.Exchange(ref _shutdownRequested, 1);
         try
         {
             InputManager.Current.PreProcessInput -= InputManager_PreProcessInput;
@@ -4559,44 +4614,54 @@ public partial class MainWindow : Window
             _sleepPressureDebounceTimer.Stop();
             _autoProfileDebounceTimer.Stop();
             _sensoryHealthTimer.Stop();
-            _webcamCts?.Cancel();
-            _microphoneCts?.Cancel();
             _speechOutputEnabled = false;
-            if (!_speechQueue.IsAddingCompleted)
-            {
-                _speechQueue.CompleteAdding();
-            }
+            _speechQueue.Writer.TryComplete();
+            var webcamStopped = await StopWebcamInputAsync();
+            var microphoneStopped = await StopMicrophoneInputAsync();
             _workerCts.Cancel();
-            _inputSignal.Release();
-            Task.WaitAll(new[]
+            try
+            {
+                _inputSignal.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+            }
+
+            var workers = Task.WhenAll(new[]
             {
                 _controlWorkerTask ?? Task.CompletedTask,
                 _renderWorkerTask ?? Task.CompletedTask,
                 _framePollTask ?? Task.CompletedTask,
-                _webcamTask ?? Task.CompletedTask,
-                _microphoneTask ?? Task.CompletedTask
-            }, TimeSpan.FromSeconds(1));
-            _speechThread?.Join(TimeSpan.FromSeconds(1));
+                webcamStopped ? Task.CompletedTask : (_webcamTask ?? Task.CompletedTask),
+                microphoneStopped ? Task.CompletedTask : (_microphoneTask ?? Task.CompletedTask)
+            });
+            try
+            {
+                await workers.WaitAsync(TimeSpan.FromSeconds(5));
+                await Task.Run(() => _speechThread?.Join(TimeSpan.FromSeconds(2)));
+            }
+            catch (TimeoutException)
+            {
+                // Process shutdown will end background workers. Do not dispose
+                // shared cancellation primitives while one still owns them.
+                return;
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore shutdown race conditions.
+            Debug.WriteLine($"Editor shutdown warning: {ex}");
         }
-        finally
-        {
-            _webcamCts?.Dispose();
-            _microphoneCts?.Dispose();
-            _workerCts.Dispose();
-            _inputSignal.Dispose();
-            _speechQueue.Dispose();
-            _transportStatsPaneWorker.Dispose();
-            _brainDashboardPaneWorker.Dispose();
-            _inhabitancePaneWorker.Dispose();
-            _circuitAuditPaneWorker.Dispose();
-            _reasoningPaneWorker.Dispose();
-            _avatarService.Dispose();
-            _httpClient.Dispose();
-        }
+
+        _workerCts.Dispose();
+        _inputSignal.Dispose();
+        _endpointResolutionGate.Dispose();
+        _transportStatsPaneWorker.Dispose();
+        _brainDashboardPaneWorker.Dispose();
+        _inhabitancePaneWorker.Dispose();
+        _circuitAuditPaneWorker.Dispose();
+        _reasoningPaneWorker.Dispose();
+        _avatarService.Dispose();
+        _httpClient.Dispose();
     }
 
     private sealed class StructureVisual(

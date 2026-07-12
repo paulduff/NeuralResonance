@@ -9,7 +9,7 @@ internal sealed class PaneWorker : IDisposable
     private readonly object _gate = new();
     private readonly Thread _thread;
     private Func<CancellationToken, Task>? _pendingWork;
-    private bool _disposed;
+    private int _disposed;
 
     public PaneWorker(string name)
     {
@@ -34,18 +34,22 @@ internal sealed class PaneWorker : IDisposable
     public void Post(Func<CancellationToken, Task> work)
     {
         ArgumentNullException.ThrowIfNull(work);
-        if (_disposed || _shutdown.IsCancellationRequested)
+        if (Volatile.Read(ref _disposed) != 0 || _shutdown.IsCancellationRequested)
         {
             return;
         }
 
         lock (_gate)
         {
+            if (Volatile.Read(ref _disposed) != 0 || _shutdown.IsCancellationRequested)
+            {
+                return;
+            }
+
             // Keep only the newest pane refresh so slow telemetry cannot build a backlog.
             _pendingWork = work;
+            _signal.Set();
         }
-
-        _signal.Set();
     }
 
     private void WorkerLoop()
@@ -87,19 +91,19 @@ internal sealed class PaneWorker : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
         {
             return;
         }
 
-        _disposed = true;
         _shutdown.Cancel();
         _signal.Set();
+        var stopped = !_thread.IsAlive;
         try
         {
             if (_thread.IsAlive)
             {
-                _thread.Join(TimeSpan.FromSeconds(1));
+                stopped = _thread.Join(TimeSpan.FromSeconds(1));
             }
         }
         catch
@@ -107,7 +111,10 @@ internal sealed class PaneWorker : IDisposable
             // Best-effort shutdown.
         }
 
-        _signal.Dispose();
-        _shutdown.Dispose();
+        if (stopped)
+        {
+            _signal.Dispose();
+            _shutdown.Dispose();
+        }
     }
 }

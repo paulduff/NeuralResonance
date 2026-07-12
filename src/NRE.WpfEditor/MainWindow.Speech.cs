@@ -62,7 +62,8 @@ public partial class MainWindow
             string phrase;
             try
             {
-                if (!_speechQueue.TryTake(out phrase!, 250))
+                if (!_speechQueue.Reader.WaitToReadAsync(_workerCts.Token).AsTask().GetAwaiter().GetResult() ||
+                    !_speechQueue.Reader.TryRead(out phrase!))
                 {
                     continue;
                 }
@@ -71,7 +72,7 @@ public partial class MainWindow
             {
                 break;
             }
-            catch (InvalidOperationException)
+            catch (OperationCanceledException)
             {
                 break;
             }
@@ -196,11 +197,7 @@ public partial class MainWindow
         _lastSpeechUtc = now;
         _lastSpokenPhrase = phrase;
         _lastSpokenLanguageUtteranceSequence = _languageUtteranceSequence;
-        if (!_speechQueue.TryAdd(phrase))
-        {
-            _speechQueue.TryTake(out _);
-            _speechQueue.TryAdd(phrase);
-        }
+        _speechQueue.Writer.TryWrite(phrase);
     }
 
     private string BuildSpeechPhrase(IReadOnlyList<DispatchSpikeTrace> selectedSpikes, DateTime nowUtc, SpeechTriggerMode triggerMode)

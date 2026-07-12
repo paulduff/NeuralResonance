@@ -104,7 +104,10 @@ public partial class MainWindow
             // StopWebcamInputAsync so disposal happens only after that task awaits.
             if (_webcamCts is not null)
             {
-                await StopWebcamInputAsync();
+                if (!await StopWebcamInputAsync())
+                {
+                    return;
+                }
             }
             _webcamCts = CancellationTokenSource.CreateLinkedTokenSource(_workerCts.Token);
             var token = _webcamCts.Token;
@@ -145,49 +148,60 @@ public partial class MainWindow
         }
     }
 
-    private async Task StopWebcamInputAsync()
+    private async Task<bool> StopWebcamInputAsync()
     {
-        _webcamCts?.Cancel();
+        var cts = _webcamCts;
+        var task = _webcamTask;
+        cts?.Cancel();
 
         try
         {
-            if (_webcamTask is not null)
+            if (task is not null)
             {
-                await _webcamTask.WaitAsync(TimeSpan.FromSeconds(1));
+                await task.WaitAsync(TimeSpan.FromSeconds(5));
             }
         }
-        catch
+        catch (TimeoutException)
         {
-            // Best effort stop.
+            WebcamStatusText.Text = "Webcam: stopping (capture worker is still releasing)";
+            AddOutputLog("Webcam stop is waiting for the capture worker to release; resources remain owned until it exits.");
+            return false;
         }
-        finally
+        catch (Exception ex)
         {
-            _webcamTask = null;
-            _webcamCts?.Dispose();
-            _webcamCts = null;
-            _webcamRunning = false;
-            _webcamFrameCount = 0;
-            _webcamStimulusDroppedCount = 0;
-            _webcamStimulusSentCount = 0;
-            _webcamStimulusInFlight = false;
-            _webcamStimulusPending = false;
-            _pendingWebcamMotionSignal = 0;
-            _pendingWebcamLuminanceSignal = 0;
-            _pendingWebcamLeftSaliencySignal = 0.5;
-            _pendingWebcamRightSaliencySignal = 0.5;
-            _lastWebcamFrameUtc = DateTime.MinValue;
-            _lastWebcamPreviewUiUtc = DateTime.MinValue;
-            if (ToggleWebcamInputButton is not null)
-            {
-                ToggleWebcamInputButton.Content = "Start Webcam Input";
-            }
+            // A faulted task is complete, so its source can now be released.
+            AddOutputLog($"Webcam stopped after worker error: {ex.Message}");
+        }
 
-            WebcamStatusText.Text = $"Webcam: idle ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
-            SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
-            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
-            SetWebcamPreviewUnavailable("Avatar sight stopped");
-            AddOutputLog("Webcam input stopped.");
+        _webcamTask = null;
+        if (ReferenceEquals(_webcamCts, cts))
+        {
+            _webcamCts = null;
+            cts?.Dispose();
         }
+        _webcamRunning = false;
+        _webcamFrameCount = 0;
+        _webcamStimulusDroppedCount = 0;
+        _webcamStimulusSentCount = 0;
+        _webcamStimulusInFlight = false;
+        _webcamStimulusPending = false;
+        _pendingWebcamMotionSignal = 0;
+        _pendingWebcamLuminanceSignal = 0;
+        _pendingWebcamLeftSaliencySignal = 0.5;
+        _pendingWebcamRightSaliencySignal = 0.5;
+        _lastWebcamFrameUtc = DateTime.MinValue;
+        _lastWebcamPreviewUiUtc = DateTime.MinValue;
+        if (ToggleWebcamInputButton is not null)
+        {
+            ToggleWebcamInputButton.Content = "Start Webcam Input";
+        }
+
+        WebcamStatusText.Text = $"Webcam: idle ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
+        SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
+        SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
+        SetWebcamPreviewUnavailable("Avatar sight stopped");
+        AddOutputLog("Webcam input stopped.");
+        return true;
     }
 
     private async Task WebcamInputLoopAsync(int cameraIndex, int frameEdgePx, CancellationToken token)

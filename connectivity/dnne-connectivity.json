@@ -25,6 +25,12 @@
                                 "synapseId":  "71dd49be-c145-443f-843c-54578427b4a8",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "auditory_language_comprehension_feedforward"
+                            },
+                            {
+                                "target":  "InferiorColliculus",
+                                "synapseId":  "11111111-1111-1111-1111-111111111204",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticocollicular_feedback"
                             }
                         ]
     },
@@ -1823,6 +1829,12 @@
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1010",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "orienting_multisensory_link"
+                            },
+                            {
+                                "target":  "SuperiorOlive",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1060",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "colliculo_olivary_feedback"
                             }
                         ]
     },

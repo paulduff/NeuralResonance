@@ -200,8 +200,10 @@ public partial class MainWindow
     {
         try
         {
-            await StopWebcamInputAsync();
-            await ToggleWebcamInputAsync();
+            if (await StopWebcamInputAsync())
+            {
+                await ToggleWebcamInputAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -213,8 +215,10 @@ public partial class MainWindow
     {
         try
         {
-            await StopMicrophoneInputAsync();
-            await ToggleMicrophoneInputAsync();
+            if (await StopMicrophoneInputAsync())
+            {
+                await ToggleMicrophoneInputAsync();
+            }
         }
         catch (Exception ex)
         {

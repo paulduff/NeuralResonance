@@ -43,7 +43,10 @@ public partial class MainWindow
             // on the token observed by any in-flight loop.
             if (_microphoneCts is not null)
             {
-                await StopMicrophoneInputAsync();
+                if (!await StopMicrophoneInputAsync())
+                {
+                    return;
+                }
             }
             _microphoneCts = CancellationTokenSource.CreateLinkedTokenSource(_workerCts.Token);
             var token = _microphoneCts.Token;
@@ -72,42 +75,53 @@ public partial class MainWindow
         }
     }
 
-    private async Task StopMicrophoneInputAsync()
+    private async Task<bool> StopMicrophoneInputAsync()
     {
-        _microphoneCts?.Cancel();
+        var cts = _microphoneCts;
+        var task = _microphoneTask;
+        cts?.Cancel();
 
         try
         {
-            if (_microphoneTask is not null)
+            if (task is not null)
             {
-                await _microphoneTask.WaitAsync(TimeSpan.FromSeconds(1));
+                await task.WaitAsync(TimeSpan.FromSeconds(5));
             }
         }
-        catch
+        catch (TimeoutException)
         {
-            // Best effort stop.
+            MicrophoneStatusText.Text = "Microphone: stopping (capture worker is still releasing)";
+            AddOutputLog("Microphone stop is waiting for the capture worker to release; resources remain owned until it exits.");
+            return false;
         }
-        finally
+        catch (Exception ex)
         {
-            _microphoneTask = null;
-            _microphoneCts?.Dispose();
-            _microphoneCts = null;
-            _microphoneRunning = false;
-            _audioRmsEwma = 0;
-            _audioZcrEwma = 0;
-            _audioLevelEwma = 0;
-            _lastMicrophoneDataUtc = DateTime.MinValue;
-            _lastMicrophoneRecoveryUtc = DateTime.MinValue;
-            if (ToggleMicrophoneInputButton is not null)
-            {
-                ToggleMicrophoneInputButton.Content = "Start Microphone Input";
-            }
+            // A faulted task is complete, so its source can now be released.
+            AddOutputLog($"Microphone stopped after worker error: {ex.Message}");
+        }
 
-            MicrophoneStatusText.Text = "Microphone: idle";
-            SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
-            UpdateMicrophoneLevelMeterUi(0, isActive: false);
-            AddOutputLog("Microphone input stopped.");
+        _microphoneTask = null;
+        if (ReferenceEquals(_microphoneCts, cts))
+        {
+            _microphoneCts = null;
+            cts?.Dispose();
         }
+        _microphoneRunning = false;
+        _audioRmsEwma = 0;
+        _audioZcrEwma = 0;
+        _audioLevelEwma = 0;
+        _lastMicrophoneDataUtc = DateTime.MinValue;
+        _lastMicrophoneRecoveryUtc = DateTime.MinValue;
+        if (ToggleMicrophoneInputButton is not null)
+        {
+            ToggleMicrophoneInputButton.Content = "Start Microphone Input";
+        }
+
+        MicrophoneStatusText.Text = "Microphone: idle";
+        SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
+        UpdateMicrophoneLevelMeterUi(0, isActive: false);
+        AddOutputLog("Microphone input stopped.");
+        return true;
     }
 
     private async Task MicrophoneInputLoopAsync(int deviceIndex, CancellationToken token)

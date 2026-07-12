@@ -24,7 +24,7 @@ public partial class MainWindow
         {
             try
             {
-                await TryFallbackSnapshotPollFromWorkerAsync(token, _verifiedControlBaseUri ?? _preferredControlBaseUri);
+                await TryFallbackSnapshotPollFromWorkerAsync(token);
                 await Task.Delay(FramePollOnlyLoopDelay, token);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)

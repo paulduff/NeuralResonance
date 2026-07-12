@@ -10,100 +10,126 @@ namespace NRE.WpfEditor;
 // Extracted from MainWindow.xaml.cs.
 public partial class MainWindow
 {
-    private IEnumerable<Uri> EnumerateControlBaseUris()
+    private IReadOnlyList<Uri> EnumerateControlBaseUris()
     {
-        if (_verifiedControlBaseUri is not null)
+        Uri? verified;
+        Uri? preferred;
+        lock (_endpointStateGate)
         {
-            yield return _verifiedControlBaseUri;
+            verified = _verifiedControlBaseUri;
+            preferred = _preferredControlBaseUri;
         }
 
-        if (_preferredControlBaseUri is not null)
+        var candidates = new List<Uri>(_snapshotBaseUris.Length + 2);
+        if (verified is not null)
         {
-            if (_verifiedControlBaseUri is not null &&
-                string.Equals(_preferredControlBaseUri.AbsoluteUri, _verifiedControlBaseUri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
-            {
-                // already yielded
-            }
-            else
-            {
-            yield return _preferredControlBaseUri;
-            }
+            candidates.Add(verified);
+        }
+
+        if (preferred is not null &&
+            (verified is null || !string.Equals(preferred.AbsoluteUri, verified.AbsoluteUri, StringComparison.OrdinalIgnoreCase)))
+        {
+            candidates.Add(preferred);
         }
 
         foreach (var candidate in _snapshotBaseUris)
         {
-            if (_preferredControlBaseUri is not null &&
-                string.Equals(candidate.AbsoluteUri, _preferredControlBaseUri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+            if (preferred is not null &&
+                string.Equals(candidate.AbsoluteUri, preferred.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            if (_verifiedControlBaseUri is not null &&
-                string.Equals(candidate.AbsoluteUri, _verifiedControlBaseUri.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+            if (verified is not null &&
+                string.Equals(candidate.AbsoluteUri, verified.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            yield return candidate;
+            candidates.Add(candidate);
         }
+
+        return candidates;
     }
 
     private async Task<Uri?> ResolveVerifiedControlBaseUriAsync(CancellationToken cancellationToken)
     {
-        Uri? staleVerified = null;
-        if (_verifiedControlBaseUri is not null)
+        await _endpointResolutionGate.WaitAsync(cancellationToken);
+        try
         {
-            if ((DateTime.UtcNow - _lastVerifiedControlProbeUtc) < VerifiedControlProbeInterval)
+            Uri? verified;
+            DateTime lastProbeUtc;
+            lock (_endpointStateGate)
             {
-                _preferredControlBaseUri = _verifiedControlBaseUri;
-                return _verifiedControlBaseUri;
+                verified = _verifiedControlBaseUri;
+                lastProbeUtc = _lastVerifiedControlProbeUtc;
             }
 
-            if (await IsControlProgramEndpointAsync(_verifiedControlBaseUri, cancellationToken))
+            Uri? staleVerified = null;
+            if (verified is not null)
             {
-                NoteControlEndpointSuccess(_verifiedControlBaseUri);
-                return _verifiedControlBaseUri;
+                if ((DateTime.UtcNow - lastProbeUtc) < VerifiedControlProbeInterval)
+                {
+                    lock (_endpointStateGate)
+                    {
+                        _preferredControlBaseUri = verified;
+                    }
+                    return verified;
+                }
+
+                if (await IsControlProgramEndpointAsync(verified, cancellationToken))
+                {
+                    NoteControlEndpointSuccess(verified);
+                    return verified;
+                }
+
+                staleVerified = verified;
+                NoteControlEndpointFailure();
             }
 
-            staleVerified = _verifiedControlBaseUri;
-            NoteControlEndpointFailure();
+            foreach (var candidate in EnumerateControlBaseUris())
+            {
+                if (staleVerified is not null &&
+                    string.Equals(candidate.AbsoluteUri, staleVerified.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!await IsControlProgramEndpointAsync(candidate, cancellationToken))
+                {
+                    continue;
+                }
+
+                NoteControlEndpointSuccess(candidate);
+                return candidate;
+            }
+
+            if (staleVerified is not null)
+            {
+                var freshestDataUtc = _lastSnapshotUtc > _lastFramePayloadUtc ? _lastSnapshotUtc : _lastFramePayloadUtc;
+                if (freshestDataUtc != DateTime.MinValue &&
+                    (DateTime.UtcNow - freshestDataUtc) <= ControlEndpointGraceFallbackWindow)
+                {
+                    lock (_endpointStateGate)
+                    {
+                        _preferredControlBaseUri = staleVerified;
+                    }
+                    return staleVerified;
+                }
+            }
+
+            if (_snapshotBaseUris.Length > 0)
+            {
+                var attempted = string.Join(", ", _snapshotBaseUris.Select(u => u.Authority).Distinct(StringComparer.OrdinalIgnoreCase));
+                PostUi(() => AddOutputLog($"Control endpoint probe failed. Attempted: {attempted}"));
+            }
+
+            return null;
         }
-
-        foreach (var candidate in EnumerateControlBaseUris())
+        finally
         {
-            if (staleVerified is not null &&
-                string.Equals(candidate.AbsoluteUri, staleVerified.AbsoluteUri, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!await IsControlProgramEndpointAsync(candidate, cancellationToken))
-            {
-                continue;
-            }
-
-            NoteControlEndpointSuccess(candidate);
-            return candidate;
+            _endpointResolutionGate.Release();
         }
-
-        if (staleVerified is not null)
-        {
-            var freshestDataUtc = _lastSnapshotUtc > _lastFramePayloadUtc ? _lastSnapshotUtc : _lastFramePayloadUtc;
-            if (freshestDataUtc != DateTime.MinValue &&
-                (DateTime.UtcNow - freshestDataUtc) <= ControlEndpointGraceFallbackWindow)
-            {
-                _preferredControlBaseUri = staleVerified;
-                return staleVerified;
-            }
-        }
-
-        if (_snapshotBaseUris.Length > 0)
-        {
-            var attempted = string.Join(", ", _snapshotBaseUris.Select(u => u.Authority).Distinct(StringComparer.OrdinalIgnoreCase));
-            PostUi(() => AddOutputLog($"Control endpoint probe failed. Attempted: {attempted}"));
-        }
-
-        return null;
     }
 
     private async Task<bool> IsControlProgramEndpointAsync(Uri baseUri, CancellationToken cancellationToken)
@@ -198,22 +224,28 @@ public partial class MainWindow
 
     private void NoteControlEndpointSuccess(Uri endpoint)
     {
-        _verifiedControlBaseUri = endpoint;
-        _preferredControlBaseUri = endpoint;
-        _lastVerifiedControlProbeUtc = DateTime.UtcNow;
-        _controlEndpointFailureCount = 0;
+        lock (_endpointStateGate)
+        {
+            _verifiedControlBaseUri = endpoint;
+            _preferredControlBaseUri = endpoint;
+            _lastVerifiedControlProbeUtc = DateTime.UtcNow;
+            _controlEndpointFailureCount = 0;
+        }
     }
 
     private void NoteControlEndpointFailure()
     {
-        _controlEndpointFailureCount++;
-        if (_controlEndpointFailureCount < ControlEndpointFailureThreshold)
+        lock (_endpointStateGate)
         {
-            return;
-        }
+            _controlEndpointFailureCount++;
+            if (_controlEndpointFailureCount < ControlEndpointFailureThreshold)
+            {
+                return;
+            }
 
-        _verifiedControlBaseUri = null;
-        _lastVerifiedControlProbeUtc = DateTime.MinValue;
-        _controlEndpointFailureCount = 0;
+            _verifiedControlBaseUri = null;
+            _lastVerifiedControlProbeUtc = DateTime.MinValue;
+            _controlEndpointFailureCount = 0;
+        }
     }
 }

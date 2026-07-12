@@ -22412,10 +22412,7 @@ internal sealed class TickCoordinator(
 {
     private readonly Random _noiseRandom = new(173);
     private readonly object _noiseGate = new();
-    private readonly ConcurrentDictionary<string, int> _grpcFailureCounts = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, bool> _grpcDisabledTargets = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, bool> _httpBatchEndpointUnavailableTargets = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, bool> _httpPreferJsonBatchTargets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly TransportCapabilityCache _transportCapabilities = new();
 
     // Bidi-stream sessions for spike transport. Populated only when
     // NRE_USE_GRPC_BIDI_STREAM=1; otherwise the dictionary stays empty and the
@@ -22523,6 +22520,7 @@ internal sealed class TickCoordinator(
         AuditConnectivityCoverage(connectivity, enforceConnectivityCoverage, logger);
         AuditBiologicalSemantics(connectivity, enforceBiologicalSemantics, logger);
         var serviceInstances = BuildServiceInstances(registry, configuredInstances, configuration, logger);
+        _transportCapabilities.PruneTo(serviceInstances.Select(instance => instance.InstanceKey));
         var instancesByStructure = serviceInstances
             .GroupBy(i => i.StructureId)
             .ToDictionary(g => g.Key, g => g.ToList());
@@ -22729,7 +22727,7 @@ internal sealed class TickCoordinator(
                 var ackPressure = ackLatencyEwmaMs <= 0.0
                     ? 0.0
                     : Math.Clamp((ackLatencyEwmaMs - (tickAckTimeoutMs * 0.25)) / (tickAckTimeoutMs * 0.85), 0.0, 1.0);
-                var queuePressure = ComputeTransportQueuePressure(previousTransport);
+                var queuePressure = DispatchQueueRuntime.ComputePressure(previousTransport);
                 if (queuePressure >= 0.18)
                 {
                     autoProfileSignals.Add($"queuePressure {queuePressure:0.000}>=0.180");
@@ -22904,7 +22902,7 @@ internal sealed class TickCoordinator(
 
             var spontaneousStats = SpontaneousInjectionStats.Empty;
             var perceptionLanguageStats = PerceptionLanguageConditioningStats.Empty;
-            var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = ComputeDispatchQueueLimits(
+            var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = DispatchQueueRuntime.ComputeLimits(
                 Math.Max(96, maxDispatchConcurrency * 6),
                 Math.Max(1024, effectiveMaxSpikeDispatchTotalPerTick * 8),
                 adaptivePressure,
@@ -22913,7 +22911,7 @@ internal sealed class TickCoordinator(
                 previousTransport.DispatchQueueDroppedSpikes,
                 healthySources.Count,
                 maxGrowthScale: 3.20);
-            var dispatchBatchChunkSize = ComputeDispatchBatchChunkSize(
+            var dispatchBatchChunkSize = DispatchQueueRuntime.ComputeBatchChunkSize(
                 maxSpikesPerDispatchRequest,
                 effectiveMaxSpikeDispatchPerServicePerTick,
                 effectiveMaxSpikeDispatchTotalPerTick);
@@ -23827,10 +23825,7 @@ internal sealed class TickCoordinator(
         publishBuffer.Clear();
         await snapshotStore.ClearAsync(stoppingToken);
         state.ResetForSimulationRestart();
-        _grpcFailureCounts.Clear();
-        _grpcDisabledTargets.Clear();
-        _httpBatchEndpointUnavailableTargets.Clear();
-        _httpPreferJsonBatchTargets.Clear();
+        _transportCapabilities.Clear();
         autoHealLastRestartByInstance.Clear();
 
         try
@@ -24801,8 +24796,8 @@ internal sealed class TickCoordinator(
         var dispatchQueue = new ConcurrentDictionary<string, ConcurrentQueue<QueuedDispatchBatch>>(StringComparer.OrdinalIgnoreCase);
         var dispatchQueueMetrics = new DispatchQueueMetrics();
         var previousTransport = state.TransportStats;
-        var queuePressure = ComputeTransportQueuePressure(previousTransport);
-        var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = ComputeDispatchQueueLimits(
+        var queuePressure = DispatchQueueRuntime.ComputePressure(previousTransport);
+        var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = DispatchQueueRuntime.ComputeLimits(
             Math.Max(48, replayEngrams.Count * 4),
             Math.Max(256, replayEngrams.Count * 16),
             previousTransport.AdaptivePressure,
@@ -28777,8 +28772,8 @@ internal sealed class TickCoordinator(
         var dispatchQueue = new ConcurrentDictionary<string, ConcurrentQueue<QueuedDispatchBatch>>(StringComparer.OrdinalIgnoreCase);
         var dispatchQueueMetrics = new DispatchQueueMetrics();
         var previousTransport = state.TransportStats;
-        var queuePressure = ComputeTransportQueuePressure(previousTransport);
-        var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = ComputeDispatchQueueLimits(
+        var queuePressure = DispatchQueueRuntime.ComputePressure(previousTransport);
+        var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = DispatchQueueRuntime.ComputeLimits(
             Math.Max(64, activeServices.Count * 4),
             Math.Max(512, activeServices.Count * 24),
             previousTransport.AdaptivePressure,
@@ -30113,47 +30108,6 @@ internal sealed class TickCoordinator(
             : $"{ex.GetType().Name}: {ex.Message}";
     }
 
-    private static int ComputeDispatchBatchChunkSize(
-        int configuredChunkSize,
-        int effectivePerServiceBudget,
-        int effectivePerTickBudget)
-    {
-        var baseline = Math.Max(32, effectivePerServiceBudget * 2);
-        var cappedByTickBudget = Math.Max(32, effectivePerTickBudget / 4);
-        return Math.Clamp(Math.Min(configuredChunkSize, Math.Min(2048, Math.Max(baseline, cappedByTickBudget))), 32, 4096);
-    }
-
-    private static double ComputeTransportQueuePressure(TransportRuntimeStats transport)
-    {
-        var queuePressureSignal = transport.DispatchQueueDroppedSpikes
-                                  + (transport.DispatchQueueDispatchErrors * 24.0)
-                                  + (transport.SpontaneousDispatchErrors * 6.0);
-        var queuePressureDenominator = Math.Max(32.0, transport.DispatchQueueQueuedSpikes + transport.DispatchedSpikes + 1.0);
-        return Math.Clamp(queuePressureSignal / queuePressureDenominator, 0.0, 1.0);
-    }
-
-    private static (int MaxQueueBatches, int MaxQueueSpikes) ComputeDispatchQueueLimits(
-        int baseMaxBatches,
-        int baseMaxSpikes,
-        double adaptivePressure,
-        double queuePressure,
-        int previousDroppedBatches,
-        int previousDroppedSpikes,
-        int activityCount,
-        double maxGrowthScale)
-    {
-        var pressureScale = 1.0 + Math.Clamp((adaptivePressure * 0.55) + (queuePressure * 0.95), 0.0, 1.75);
-        var dropScale = previousDroppedBatches > 0 || previousDroppedSpikes > 0 ? 1.35 : 1.0;
-        var activityScale = activityCount <= 0
-            ? 1.0
-            : Math.Clamp(1.0 + (activityCount / 96.0), 1.0, 1.40);
-        var combinedScale = Math.Clamp(pressureScale * dropScale * activityScale, 1.0, Math.Max(1.0, maxGrowthScale));
-
-        var scaledMaxBatches = Math.Max(baseMaxBatches, (int)Math.Round(baseMaxBatches * combinedScale));
-        var scaledMaxSpikes = Math.Max(baseMaxSpikes, (int)Math.Round(baseMaxSpikes * combinedScale));
-        return (scaledMaxBatches, scaledMaxSpikes);
-    }
-
     private async Task<DispatchFlushResult> FlushQueuedDispatchBatchesAsync(
         TickSignal tickSignal,
         SimulationState state,
@@ -30178,50 +30132,13 @@ internal sealed class TickCoordinator(
         var flushedBatches = 0;
         string? lastError = null;
         var errorGate = new object();
-        var flushTargets = new List<DispatchFlushTarget>(dispatchQueueByTarget.Count);
-
-        foreach (var targetEntry in dispatchQueueByTarget)
-        {
-            var batches = ListPool<QueuedDispatchBatch>.Rent();
-            var mergedCapacity = 0;
-            while (targetEntry.Value.TryDequeue(out var item))
-            {
-                if (item.Spikes.Count > 0)
-                {
-                    batches.Add(item);
-                    mergedCapacity += item.Spikes.Count;
-                }
-            }
-
-            if (batches.Count == 0 || mergedCapacity <= 0)
-            {
-                ListPool<QueuedDispatchBatch>.Return(batches);
-                continue;
-            }
-
-            flushedBatches += batches.Count;
-            var mergedSpikes = ListPool<SpikeMessage>.Rent(mergedCapacity);
-            foreach (var batch in batches)
-            {
-                mergedSpikes.AddRange(batch.Spikes);
-            }
-
-            if (mergedSpikes.Count == 0)
-            {
-                ListPool<QueuedDispatchBatch>.Return(batches);
-                ListPool<SpikeMessage>.Return(mergedSpikes);
-                continue;
-            }
-
-            flushTargets.Add(new DispatchFlushTarget(targetEntry.Key, batches, mergedSpikes));
-        }
+        var flushTargets = DispatchQueueRuntime.DrainTargets(dispatchQueueByTarget, out flushedBatches);
 
         if (flushTargets.Count == 0)
         {
             return DispatchFlushResult.Empty;
         }
 
-        flushTargets.Sort((a, b) => b.MergedSpikes.Count.CompareTo(a.MergedSpikes.Count));
         var activeTargets = flushTargets.Count;
         var maxTargetBurstSpikes = flushTargets[0].MergedSpikes.Count;
         var flushTasks = new Task[flushTargets.Count];
@@ -30267,18 +30184,7 @@ internal sealed class TickCoordinator(
         }
         finally
         {
-            for (var i = 0; i < flushTargets.Count; i++)
-            {
-                if (flushTargets[i].SourceBatches is List<QueuedDispatchBatch> sourceBatches)
-                {
-                    ListPool<QueuedDispatchBatch>.Return(sourceBatches);
-                }
-
-                if (flushTargets[i].MergedSpikes is List<SpikeMessage> mergedSpikes)
-                {
-                    ListPool<SpikeMessage>.Return(mergedSpikes);
-                }
-            }
+            DispatchQueueRuntime.ReturnTargets(flushTargets);
         }
 
         return new DispatchFlushResult(
@@ -30450,7 +30356,8 @@ internal sealed class TickCoordinator(
             }
         }
 
-        if (_grpcDisabledTargets.TryGetValue(targetInstanceKey, out var disabled) && disabled)
+        var nowMs = Environment.TickCount64;
+        if (!_transportCapabilities.ShouldAttemptGrpc(targetInstanceKey, nowMs))
         {
             if (!useHttpSpikeTransportFallback)
             {
@@ -30469,8 +30376,7 @@ internal sealed class TickCoordinator(
                     });
                 if (grpcAck.Accepted >= spikes.Count)
                 {
-                    _grpcFailureCounts.TryRemove(targetInstanceKey, out _);
-                    _grpcDisabledTargets.TryRemove(targetInstanceKey, out _);
+                    _transportCapabilities.RecordGrpcSuccess(targetInstanceKey);
                     return spikes.Count;
                 }
 
@@ -30483,14 +30389,11 @@ internal sealed class TickCoordinator(
             catch (Exception grpcEx)
             {
                 var immediateDisable = ShouldDisableGrpcTransportImmediately(grpcEx);
-                var failures = immediateDisable
-                    ? 6
-                    : _grpcFailureCounts.AddOrUpdate(targetInstanceKey, 1, (_, count) => count + 1);
+                var failures = _transportCapabilities.RecordGrpcFailure(targetInstanceKey, immediateDisable, nowMs);
                 if (failures >= 6)
                 {
-                    _grpcDisabledTargets[targetInstanceKey] = true;
                     logger.LogWarning(
-                        "Disabling gRPC spike transport for {TargetInstance} after {FailureCount} failures. Falling back to HTTP.",
+                        "Pausing gRPC spike transport for {TargetInstance} after {FailureCount} failures; retrying after cooldown and using HTTP meanwhile.",
                         targetInstanceKey,
                         failures);
                 }
@@ -30520,8 +30423,8 @@ internal sealed class TickCoordinator(
             throw new HttpRequestException($"No HTTP client registered for {targetInstanceKey}.");
         }
 
-        var batchEndpointUnavailable = _httpBatchEndpointUnavailableTargets.TryGetValue(targetInstanceKey, out var unavailable) && unavailable;
-        var preferJsonBatch = _httpPreferJsonBatchTargets.TryGetValue(targetInstanceKey, out var preferJson) && preferJson;
+        var batchEndpointUnavailable = _transportCapabilities.IsHttpBatchEndpointUnavailable(targetInstanceKey);
+        var preferJsonBatch = _transportCapabilities.PrefersJsonBatch(targetInstanceKey);
 
         if (batchEndpointUnavailable)
         {
@@ -30549,19 +30452,18 @@ internal sealed class TickCoordinator(
                 using var dispatch = await targetClient.PostAsync("/api/v1/structure/spike-batch", body, cancellationToken);
                 if (dispatch.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed)
                 {
-                    _httpBatchEndpointUnavailableTargets[targetInstanceKey] = true;
+                    _transportCapabilities.MarkHttpBatchEndpointUnavailable(targetInstanceKey);
                     return await SendSpikesIndividuallyAsync(targetInstanceKey, targetClient, spikes, HttpSingleFallbackMode.Binary, cancellationToken);
                 }
 
                 if (dispatch.StatusCode == HttpStatusCode.UnsupportedMediaType)
                 {
-                    _httpPreferJsonBatchTargets[targetInstanceKey] = true;
+                    _transportCapabilities.MarkPreferJsonBatch(targetInstanceKey);
                 }
                 else
                 {
                     await EnsureSuccessWithDetailsAsync(dispatch, cancellationToken);
-                    _httpBatchEndpointUnavailableTargets.TryRemove(targetInstanceKey, out _);
-                    _httpPreferJsonBatchTargets.TryRemove(targetInstanceKey, out _);
+                    _transportCapabilities.MarkBinaryBatchSuccess(targetInstanceKey);
                     return spikes.Count;
                 }
             }
@@ -30569,7 +30471,7 @@ internal sealed class TickCoordinator(
             {
                 if (ShouldPreferJsonBatch(binaryDispatchEx))
                 {
-                    _httpPreferJsonBatchTargets[targetInstanceKey] = true;
+                    _transportCapabilities.MarkPreferJsonBatch(targetInstanceKey);
                 }
 
                 logger.LogDebug(
@@ -30583,13 +30485,12 @@ internal sealed class TickCoordinator(
         using var jsonDispatch = await targetClient.PostAsync("/api/v1/structure/spike-batch", jsonBody, cancellationToken);
         if (jsonDispatch.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed)
         {
-            _httpBatchEndpointUnavailableTargets[targetInstanceKey] = true;
+            _transportCapabilities.MarkHttpBatchEndpointUnavailable(targetInstanceKey);
             return await SendSpikesIndividuallyAsync(targetInstanceKey, targetClient, spikes, HttpSingleFallbackMode.Json, cancellationToken);
         }
 
         await EnsureSuccessWithDetailsAsync(jsonDispatch, cancellationToken);
-        _httpBatchEndpointUnavailableTargets.TryRemove(targetInstanceKey, out _);
-        _httpPreferJsonBatchTargets[targetInstanceKey] = true;
+        _transportCapabilities.MarkJsonBatchSuccess(targetInstanceKey);
         return spikes.Count;
     }
 
@@ -30625,7 +30526,7 @@ internal sealed class TickCoordinator(
                 catch (Exception singleBinaryEx) when (!cancellationToken.IsCancellationRequested && ShouldPreferJsonBatch(singleBinaryEx))
                 {
                     mode = HttpSingleFallbackMode.Json;
-                    _httpPreferJsonBatchTargets[targetInstanceKey] = true;
+                    _transportCapabilities.MarkPreferJsonBatch(targetInstanceKey);
                 }
             }
 

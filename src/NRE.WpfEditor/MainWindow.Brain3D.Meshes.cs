@@ -27,6 +27,41 @@ public partial class MainWindow
         root.Children.Add(new GeometryModel3D(mesh, material));
     }
 
+    private static MeshGeometry3D BuildNeuronMarkerMesh(double radius)
+    {
+        // An octahedron is sufficient at neuron-display scale: 6 vertices and 8
+        // faces instead of the 42 vertices and 60 faces in the old sphere proxy.
+        var mesh = new MeshGeometry3D();
+        mesh.Positions.Add(new Point3D(0, radius, 0));
+        mesh.Positions.Add(new Point3D(0, -radius, 0));
+        mesh.Positions.Add(new Point3D(radius, 0, 0));
+        mesh.Positions.Add(new Point3D(-radius, 0, 0));
+        mesh.Positions.Add(new Point3D(0, 0, radius));
+        mesh.Positions.Add(new Point3D(0, 0, -radius));
+
+        foreach (var point in mesh.Positions)
+        {
+            var normal = new Vector3D(point.X, point.Y, point.Z);
+            normal.Normalize();
+            mesh.Normals.Add(normal);
+            mesh.TextureCoordinates.Add(new Point(0.5 + (point.X / (radius * 2.0)), 0.5 + (point.Z / (radius * 2.0))));
+        }
+
+        var faces = new[]
+        {
+            (0, 2, 4), (0, 4, 3), (0, 3, 5), (0, 5, 2),
+            (1, 4, 2), (1, 3, 4), (1, 5, 3), (1, 2, 5)
+        };
+        foreach (var (a, b, c) in faces)
+        {
+            mesh.TriangleIndices.Add(a);
+            mesh.TriangleIndices.Add(b);
+            mesh.TriangleIndices.Add(c);
+        }
+
+        return mesh;
+    }
+
     private static void AddCorticalGyrusSurface(Model3DGroup root, string snapshotId, string hemisphere, Color baseColor)
     {
         var hemisphereSign = hemisphere == "L" ? -1.0 : 1.0;
@@ -530,19 +565,11 @@ public partial class MainWindow
 
     private static Point3D GetCorpusCallosumScaffoldPoint(double u, double v)
     {
-        var center = ApplyNonCorticalGlobalShift(
-            ApplyEncephalonOffset(
-                ShiftSuperior(
-                    ScalePointBySubcorticalRatio(MmToRender(new Point3D(0.0, 26.0, -6.0))),
-                    MmToRender(10),
-                    0.18),
-                "CorpusCallosum",
-                "M"),
-            "CorpusCallosum");
+        var center = GetCanonicalAtlasCenter("CorpusCallosum", "M");
 
-        var rx = MmToRender(34.0) * SubcorticalScaleRatio.Width;
-        var ry = MmToRender(7.0) * SubcorticalScaleRatio.Height;
-        var rz = MmToRender(32.0) * SubcorticalScaleRatio.Length;
+        var rx = MmToRender(34.0);
+        var ry = MmToRender(7.0);
+        var rz = MmToRender(32.0);
         var clampedU = Math.Clamp(u, -1.0, 1.0);
         var clampedV = Math.Clamp(v, -1.0, 1.0);
         var anteriorGenu = Math.Exp(-Math.Pow(clampedU - 0.84, 2) / 0.055);
@@ -589,19 +616,11 @@ public partial class MainWindow
     private static MeshGeometry3D BuildCorpusCallosumReferenceSurfaceMesh(int lengthSteps, int widthSteps)
     {
         var mesh = new MeshGeometry3D();
-        var center = ApplyNonCorticalGlobalShift(
-            ApplyEncephalonOffset(
-                ShiftSuperior(
-                    ScalePointBySubcorticalRatio(MmToRender(new Point3D(0.0, 26.0, -6.0))),
-                    MmToRender(10),
-                    0.18),
-                "CorpusCallosum",
-                "M"),
-            "CorpusCallosum");
+        var center = GetCanonicalAtlasCenter("CorpusCallosum", "M");
 
-        var rx = MmToRender(34.0) * SubcorticalScaleRatio.Width;
-        var ry = MmToRender(7.0) * SubcorticalScaleRatio.Height;
-        var rz = MmToRender(32.0) * SubcorticalScaleRatio.Length;
+        var rx = MmToRender(34.0);
+        var ry = MmToRender(7.0);
+        var rz = MmToRender(32.0);
 
         for (var zi = 0; zi <= lengthSteps; zi++)
         {
@@ -633,15 +652,7 @@ public partial class MainWindow
     private static MeshGeometry3D BuildCerebellarReferenceSurfaceMesh(int slices, int stacks)
     {
         var mesh = new MeshGeometry3D();
-        var center = ApplyNonCorticalGlobalShift(
-            ApplyEncephalonOffset(
-                ShiftSuperior(
-                    ScalePointBySubcorticalRatio(MmToRender(new Point3D(0.0, -39.5, -52.0))),
-                    MmToRender(20),
-                    0.08),
-                "CerebellarLobules",
-                "M"),
-            "CerebellarLobules");
+        var center = GetCanonicalAtlasCenter("CerebellarLobules", "M");
 
         for (var stack = 0; stack <= stacks; stack++)
         {
@@ -679,24 +690,8 @@ public partial class MainWindow
     private static MeshGeometry3D BuildBrainstemReferenceSurfaceMesh(int slices, int stacks)
     {
         var mesh = new MeshGeometry3D();
-        var top = ApplyNonCorticalGlobalShift(
-            ApplyEncephalonOffset(
-                ShiftSuperior(
-                    ScalePointBySubcorticalRatio(MmToRender(new Point3D(0.0, -25.5, -25.0))),
-                    MmToRender(15),
-                    0.18),
-                "Pons",
-                "M"),
-            "Pons");
-        var bottom = ApplyNonCorticalGlobalShift(
-            ApplyEncephalonOffset(
-                ShiftSuperior(
-                    ScalePointBySubcorticalRatio(MmToRender(new Point3D(0.0, -48.0, -24.0))),
-                    MmToRender(20),
-                    0.10),
-                "SpinalCordMotor",
-                "M"),
-            "SpinalCordMotor");
+        var top = GetCanonicalAtlasCenter("Pons", "M");
+        var bottom = GetCanonicalAtlasCenter("SpinalCordMotor", "M");
 
         for (var stack = 0; stack <= stacks; stack++)
         {

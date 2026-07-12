@@ -23103,7 +23103,7 @@ internal sealed class TickCoordinator(
                                 continue;
                             }
 
-                            var queued = TryQueueDispatchBatch(
+                            var queued = DispatchQueueRuntime.TryEnqueue(
                                 dispatchQueueByTarget,
                                 batch.Key,
                                 new QueuedDispatchBatch(
@@ -24869,7 +24869,7 @@ internal sealed class TickCoordinator(
                 }
 
                 generated++;
-                var queued = TryQueueDispatchBatch(
+                var queued = DispatchQueueRuntime.TryEnqueue(
                     dispatchQueue,
                     target.InstanceKey,
                     new QueuedDispatchBatch(
@@ -29084,7 +29084,7 @@ internal sealed class TickCoordinator(
                 continue;
             }
 
-            var queued = TryQueueDispatchBatch(
+            var queued = DispatchQueueRuntime.TryEnqueue(
                 dispatchQueue,
                 targetInstance.InstanceKey,
                 new QueuedDispatchBatch(
@@ -30152,54 +30152,6 @@ internal sealed class TickCoordinator(
         var scaledMaxBatches = Math.Max(baseMaxBatches, (int)Math.Round(baseMaxBatches * combinedScale));
         var scaledMaxSpikes = Math.Max(baseMaxSpikes, (int)Math.Round(baseMaxSpikes * combinedScale));
         return (scaledMaxBatches, scaledMaxSpikes);
-    }
-
-    private static void UpdatePeak(ref int peakField, int candidate)
-    {
-        while (true)
-        {
-            var current = Volatile.Read(ref peakField);
-            if (candidate <= current)
-            {
-                return;
-            }
-
-            if (Interlocked.CompareExchange(ref peakField, candidate, current) == current)
-            {
-                return;
-            }
-        }
-    }
-
-    private static bool TryQueueDispatchBatch(
-        ConcurrentDictionary<string, ConcurrentQueue<QueuedDispatchBatch>> dispatchQueueByTarget,
-        string targetInstanceKey,
-        QueuedDispatchBatch batch,
-        DispatchQueueMetrics metrics,
-        int maxQueueBatches,
-        int maxQueueSpikes)
-    {
-        if (batch.Spikes.Count == 0)
-        {
-            return false;
-        }
-
-        var queuedBatches = Interlocked.Increment(ref metrics.QueuedBatches);
-        UpdatePeak(ref metrics.PeakQueuedBatches, queuedBatches);
-        var queuedSpikes = Interlocked.Add(ref metrics.QueuedSpikes, batch.Spikes.Count);
-        UpdatePeak(ref metrics.PeakQueuedSpikes, queuedSpikes);
-        if (queuedBatches > maxQueueBatches || queuedSpikes > maxQueueSpikes)
-        {
-            Interlocked.Decrement(ref metrics.QueuedBatches);
-            Interlocked.Add(ref metrics.QueuedSpikes, -batch.Spikes.Count);
-            Interlocked.Increment(ref metrics.DroppedBatches);
-            Interlocked.Add(ref metrics.DroppedSpikes, batch.Spikes.Count);
-            return false;
-        }
-
-        var queue = dispatchQueueByTarget.GetOrAdd(targetInstanceKey, _ => new ConcurrentQueue<QueuedDispatchBatch>());
-        queue.Enqueue(batch);
-        return true;
     }
 
     private async Task<DispatchFlushResult> FlushQueuedDispatchBatchesAsync(
@@ -32033,39 +31985,6 @@ internal sealed record DopamineLearningTrace(
             FirstObservedTick = Math.Max(0, value.FirstObservedTick),
             LastObservedTick = Math.Max(0, value.LastObservedTick)
         };
-}
-
-internal sealed record QueuedDispatchBatch(
-    string SourceInstanceKey,
-    string SourceHemisphere,
-    string TargetHemisphere,
-    IReadOnlyList<SpikeMessage> Spikes,
-    string? ReplayEngramKey = null);
-
-internal sealed class DispatchQueueMetrics
-{
-    public int QueuedBatches;
-    public int QueuedSpikes;
-    public int PeakQueuedBatches;
-    public int PeakQueuedSpikes;
-    public int DroppedBatches;
-    public int DroppedSpikes;
-}
-
-internal sealed record DispatchFlushTarget(
-    string TargetInstanceKey,
-    IReadOnlyList<QueuedDispatchBatch> SourceBatches,
-    IReadOnlyList<SpikeMessage> MergedSpikes);
-
-internal sealed record DispatchFlushResult(
-    int FlushedBatches,
-    int DeliveredSpikes,
-    int DispatchErrors,
-    string? LastError,
-    int ActiveTargets,
-    int MaxTargetBurstSpikes)
-{
-    public static DispatchFlushResult Empty { get; } = new(0, 0, 0, null, 0, 0);
 }
 
 internal sealed class LanguageBackoffPolicy

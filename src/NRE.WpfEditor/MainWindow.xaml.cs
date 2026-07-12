@@ -940,11 +940,17 @@ public partial class MainWindow : Window
         brainContent.Transform = combined;
         // Keep the corpus callosum recognizable without covering the deep nuclei.
         _corpusCallosumVisual = AddCorpusCallosumPathwayScaffold(brainContent);
+        // A restrained anatomical envelope makes the distributed cortical patches
+        // read as one brain while leaving the live circuit activity visible.
+        AddAnatomicalReferenceSurfaces(brainContent);
 
         var centers = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
+        var atlasCenters = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
         var sampledWorldPointsByInstance = new Dictionary<string, List<Point3D>>(StringComparer.OrdinalIgnoreCase);
-        var neuronMesh = BuildEllipsoidMesh(new Point3D(0, 0, 0), 0.01, 0.01, 0.01, 6, 5);
-        var spikeNeuronMesh = BuildEllipsoidMesh(new Point3D(0, 0, 0), 0.01, 0.01, 0.01, 6, 5);
+        // Neural markers deliberately use a low-poly soma. This keeps the spatial
+        // sampling legible while avoiding the 60-vertex ellipsoid cost per neuron.
+        var neuronMesh = BuildNeuronMarkerMesh(0.010);
+        var spikeNeuronMesh = BuildNeuronMarkerMesh(0.013);
         TryFreeze(neuronMesh);
         TryFreeze(spikeNeuronMesh);
         var definitions = GetStructureDefinitions().ToList();
@@ -977,43 +983,21 @@ public partial class MainWindow : Window
             _displayToSnapshotId[def.DisplayName] = def.SnapshotId;
             var effectiveLayout = GetEffectiveStructureLayout(def.SnapshotId, def.Layout);
             var targetNeuronCount = GetTargetNeuronCountPerHemisphere(def.SnapshotId);
-            var applySubcorticalRatio = UsesSubcorticalSizingRatio(def.SnapshotId);
             var generatedPoints = GenerateNeuronMatrix(def, effectiveLayout, targetNeuronCount);
             var baseLocalPoints = effectiveLayout == StructureLayout.CorticalSheet
                 ? generatedPoints.ToList()
                 : generatedPoints
                     .Select(p => RotateLocalPoint(p, def.PitchDeg, def.YawDeg, def.RollDeg))
                     .ToList();
-            if (applySubcorticalRatio)
-            {
-                baseLocalPoints = baseLocalPoints
-                    .Select(ScalePointBySubcorticalRatio)
-                    .Select(p =>
-                    {
-                        var localScale = GetNonCorticalLocalScale(def.SnapshotId);
-                        return new Point3D(p.X * localScale.X, p.Y * localScale.Y, p.Z * localScale.Z);
-                    })
-                    .ToList();
-            }
 
             var hemispheres = IsBilaterallyDuplicated(def.SnapshotId) ? new[] { "L", "R" } : new[] { "M" };
             foreach (var hemi in hemispheres)
             {
                 var hemiCenter = GetHemisphereCenter(def.Center, hemi);
-                var scaledCenter = applySubcorticalRatio ? ScalePointBySubcorticalRatio(hemiCenter) : hemiCenter;
                 var center = effectiveLayout == StructureLayout.CorticalSheet
                     ? GetCorticalHemisphereCenter(hemi)
-                    : scaledCenter;
+                    : hemiCenter;
                 center = GetEnforcedAtlasCenter(def.SnapshotId, hemi, center, effectiveLayout);
-                if (effectiveLayout != StructureLayout.CorticalSheet)
-                {
-                    center = ShiftSuperior(center, def.RadiusY, GetNonCorticalShiftFraction(def.SnapshotId));
-                }
-                center = ApplyEncephalonOffset(center, def.SnapshotId, hemi);
-                if (effectiveLayout != StructureLayout.CorticalSheet)
-                {
-                    center = ApplyNonCorticalGlobalShift(center, def.SnapshotId);
-                }
                 var instanceId = $"{hemi}_{def.SnapshotId}";
                 var orientedLocalPoints = baseLocalPoints;
                 var renderBaseColor = uniqueStructureColors[def.SnapshotId];
@@ -1042,6 +1026,7 @@ public partial class MainWindow : Window
 
                 var anchor = ComputeAnchorPoint(center, displayLocalPoints);
                 centers[instanceId] = anchor;
+                atlasCenters[instanceId] = center;
                 _structureAnchorPoints[instanceId] = anchor;
                 var sampledPoints = SampleWorldPoints(displayLocalPoints, center, 40);
                 sampledWorldPointsByInstance[instanceId] = sampledPoints;
@@ -1164,7 +1149,7 @@ public partial class MainWindow : Window
         root.Children.Add(brainContent);
         BrainViewport.Children.Add(new ModelVisual3D { Content = root });
         ScheduleCameraAutoFit();
-        ReportAnatomicalValidation(sampledWorldPointsByInstance, centers, layoutBySnapshotId);
+        ReportAnatomicalValidation(sampledWorldPointsByInstance, atlasCenters, layoutBySnapshotId);
         SetRenderStatus($"Render: scene rebuilt ({_structureVisuals.Count} structures, {_pathwayVisuals.Count} pathways)");
         if (missingSnapshotIds.Count > 0)
         {
@@ -1220,7 +1205,7 @@ public partial class MainWindow : Window
                     }
                 }
             }
-            else
+            else if (ShouldBeInsideCerebralEnvelope(snapshotId))
             {
                 foreach (var sample in samples)
                 {
@@ -1261,9 +1246,29 @@ public partial class MainWindow : Window
             }
         }
 
+        var atlasCenterChecks = 0;
+        var atlasCenterDrift = 0;
+        foreach (var (instanceId, center) in centers)
+        {
+            if (!TrySplitInstanceId(instanceId, out var hemisphere, out var snapshotId) ||
+                !layoutBySnapshotId.TryGetValue(snapshotId, out var layout) ||
+                layout == StructureLayout.CorticalSheet ||
+                !TryGetSubcorticalAtlasCenterMm(snapshotId, out _))
+            {
+                continue;
+            }
+
+            atlasCenterChecks++;
+            var expected = GetCanonicalAtlasCenter(snapshotId, hemisphere);
+            if ((center - expected).Length > MmToRender(0.25))
+            {
+                atlasCenterDrift++;
+            }
+        }
+
         var corticalOffShellRatio = corticalSamples > 0 ? (corticalOffShell / (double)corticalSamples) : 0.0;
         var nonCorticalOutsideRatio = nonCorticalSamples > 0 ? (nonCorticalOutsideEnvelope / (double)nonCorticalSamples) : 0.0;
-        var status = (corticalOffShellRatio <= 0.08 && nonCorticalOutsideRatio <= 0.08 && bilateralMisalignment == 0)
+        var status = (corticalOffShellRatio <= 0.08 && nonCorticalOutsideRatio <= 0.08 && bilateralMisalignment == 0 && atlasCenterDrift == 0)
             ? "OK"
             : "WARN";
 
@@ -1271,7 +1276,19 @@ public partial class MainWindow : Window
             $"Render anatomy validation ({status}): cortical off-shell {corticalOffShell}/{Math.Max(1, corticalSamples)} " +
             $"({corticalOffShellRatio:P1}), non-cortical out-of-envelope {nonCorticalOutsideEnvelope}/{Math.Max(1, nonCorticalSamples)} " +
             $"({nonCorticalOutsideRatio:P1}), mirror mismatches {bilateralMisalignment}/{Math.Max(1, bilateralPairs)}, " +
-            $"cortical instances {corticalInstances}.");
+            $"atlas centre drift {atlasCenterDrift}/{Math.Max(1, atlasCenterChecks)}, cortical instances {corticalInstances}.");
+    }
+
+    private static bool ShouldBeInsideCerebralEnvelope(string snapshotId)
+    {
+        return snapshotId switch
+        {
+            "Retina" or "Cochlea" or "OlfactoryBulb" or
+            "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" or
+            "Pons" or "Medulla" or "SpinalCordMotor" or "ReticularFormation" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or
+            "CochlearNucleus" or "SuperiorOlive" or "VestibularNuclei" or "NucleusTractusSolitarius" => false,
+            _ => true
+        };
     }
 
     private static void AddAnatomicalReferenceSurfaces(Model3DGroup brainContent)
@@ -1279,25 +1296,25 @@ public partial class MainWindow : Window
         AddReferenceMesh(
             brainContent,
             BuildCorticalReferenceSurfaceMesh(-1.0, 54, 30),
-            Color.FromArgb(14, 126, 160, 210),
-            Color.FromArgb(4, 190, 220, 255));
+            Color.FromArgb(38, 192, 126, 150),
+            Color.FromArgb(8, 244, 186, 202));
         AddReferenceMesh(
             brainContent,
             BuildCorticalReferenceSurfaceMesh(1.0, 54, 30),
-            Color.FromArgb(14, 126, 160, 210),
-            Color.FromArgb(4, 190, 220, 255));
+            Color.FromArgb(38, 192, 126, 150),
+            Color.FromArgb(8, 244, 186, 202));
         // The callosum is rendered as its own structure; an extra translucent
         // scaffold reads as an overlay across basal/thalamic structures.
         AddReferenceMesh(
             brainContent,
             BuildCerebellarReferenceSurfaceMesh(40, 20),
-            Color.FromArgb(18, 150, 142, 210),
-            Color.FromArgb(5, 205, 198, 255));
+            Color.FromArgb(44, 174, 112, 136),
+            Color.FromArgb(10, 232, 174, 194));
         AddReferenceMesh(
             brainContent,
             BuildBrainstemReferenceSurfaceMesh(18, 28),
-            Color.FromArgb(18, 188, 142, 110),
-            Color.FromArgb(5, 255, 210, 166));
+            Color.FromArgb(48, 176, 104, 88),
+            Color.FromArgb(10, 246, 174, 142));
     }
 
     // Static mesh-builder helpers extracted to MainWindow.Brain3D.Meshes.cs.

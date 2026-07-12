@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
-internal sealed class StructureEngine : IStructureHost, IDisposable
+public sealed class StructureEngine : IStructureHost, IDisposable
 {
 	private readonly StructureProfile _profile;
 
@@ -15,9 +15,11 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly ICircuitKernel _kernel;
 
-	private readonly ConcurrentQueue<SpikeEnvelope> _feedForward = new ConcurrentQueue<SpikeEnvelope>();
+	// Delivery time is independent of arrival order. A priority queue prevents a
+	// long-delay spike from blocking a later spike that is already due.
+	private readonly PriorityQueue<SpikeEnvelope, double> _feedForward = new PriorityQueue<SpikeEnvelope, double>();
 
-	private readonly ConcurrentQueue<SpikeEnvelope> _feedback = new ConcurrentQueue<SpikeEnvelope>();
+	private readonly PriorityQueue<SpikeEnvelope, double> _feedback = new PriorityQueue<SpikeEnvelope, double>();
 
 	private readonly ConcurrentQueue<SpikeMessage> _outbound = new ConcurrentQueue<SpikeMessage>();
 
@@ -37,6 +39,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 	private readonly Dictionary<(string sourceId, StructureId target, string targetNeuronId, NTEnum nt, bool isFeedback), SynapseState> _outboundSynapseLookup = new();
 
 	private readonly object _stateGate = new object();
+
+	private readonly object _inboundQueueGate = new object();
 
 	// Dedicated gate for the diagnostic top-N scratch buffers so concurrent /top
 	// callers do not race on _topRates/_topIds without blocking /tick.
@@ -62,6 +66,8 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 
 	private float _meanActivityTrace;
 
+	private long _lastProcessedTick = -1;
+
 	public StructureEngine(StructureProfile profile)
 	{
 		_profile = profile;
@@ -86,17 +92,40 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 
 	public ValueTask EnqueueSpikeAsync(SpikeMessage message, CancellationToken cancellationToken = default(CancellationToken))
 	{
+		ArgumentNullException.ThrowIfNull(message);
+		cancellationToken.ThrowIfCancellationRequested();
+		if (!SpikeProtocol.validate_spike(message, out string validationError))
+		{
+			throw new ArgumentException(validationError, nameof(message));
+		}
+
+		if (message.TargetStructure != _profile.StructureId)
+		{
+			throw new InvalidOperationException(
+				$"Spike target {message.TargetStructure} does not match receiving structure {_profile.StructureId}.");
+		}
+
 		int num = ComputeConductionDelayMs(message);
 		SpikeEnvelope item = new SpikeEnvelope(message, message.TimestampMs + (double)num);
-		if (message.IsFeedback)
+		lock (_inboundQueueGate)
 		{
-			_feedback.Enqueue(item);
-			Interlocked.Increment(ref _feedbackDepth);
-		}
-		else
-		{
-			_feedForward.Enqueue(item);
-			Interlocked.Increment(ref _feedForwardDepth);
+			var queueDepth = _feedForward.Count + _feedback.Count;
+			var capacity = Math.Clamp(_profile.MaxInboundQueueDepth, 1, 65_536);
+			if (queueDepth >= capacity)
+			{
+				throw new StructureIngressOverloadException(_profile.StructureId, capacity);
+			}
+
+			if (message.IsFeedback)
+			{
+				_feedback.Enqueue(item, item.DeliverAtTimestampMs);
+				Interlocked.Increment(ref _feedbackDepth);
+			}
+			else
+			{
+				_feedForward.Enqueue(item, item.DeliverAtTimestampMs);
+				Interlocked.Increment(ref _feedForwardDepth);
+			}
 		}
 		Interlocked.Increment(ref _spikeInCount);
 		return ValueTask.CompletedTask;
@@ -104,8 +133,14 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 
 	public ValueTask<TickAck> ProcessTickAsync(TickSignal tickSignal, CancellationToken cancellationToken = default(CancellationToken))
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		lock (_stateGate)
 		{
+			if (tickSignal.Tick <= _lastProcessedTick)
+			{
+				throw new StructureTickSequenceException(_profile.StructureId, tickSignal.Tick, _lastProcessedTick);
+			}
+
 			ProcessDueQueue(_feedForward, tickSignal, isFeedback: false);
 			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
 			int num = 0;
@@ -185,36 +220,50 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
 			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
 			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition);
+			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
 	}
 
-	public async ValueTask<StructureStepResult> ProcessStepAsync(TickSignal tickSignal, int topK, CancellationToken cancellationToken = default(CancellationToken))
+	public ValueTask<StructureStepResult> ProcessStepAsync(TickSignal tickSignal, int topK, CancellationToken cancellationToken = default(CancellationToken))
 	{
-		TickAck ack = await ProcessTickAsync(tickSignal, cancellationToken);
-		IReadOnlyList<SpikeMessage> spikes = await DrainOutboundSpikesAsync(cancellationToken);
-		IReadOnlyList<NeuronActivity> top = Array.Empty<NeuronActivity>();
-		if (topK > 0)
+		cancellationToken.ThrowIfCancellationRequested();
+		lock (_stateGate)
 		{
-			top = await GetTopActiveNeuronsAsync(Math.Clamp(topK, 1, 100), cancellationToken);
+			// Monitor is re-entrant, so ProcessTickAsync retains one tick/drain
+			// transaction without exposing outbound spikes to a concurrent /drain.
+			TickAck ack = ProcessTickAsync(tickSignal, cancellationToken).GetAwaiter().GetResult();
+			IReadOnlyList<SpikeMessage> spikes = DrainOutboundSpikesUnsafe();
+			IReadOnlyList<NeuronActivity> top = Array.Empty<NeuronActivity>();
+			if (topK > 0)
+			{
+				top = GetTopActiveNeuronsAsync(Math.Clamp(topK, 1, 100), cancellationToken).GetAwaiter().GetResult();
+			}
+			return ValueTask.FromResult(new StructureStepResult(ack, spikes, top));
 		}
-		return new StructureStepResult(ack, spikes, top);
 	}
 
 	public ValueTask<IReadOnlyList<SpikeMessage>> DrainOutboundSpikesAsync(CancellationToken cancellationToken = default(CancellationToken))
 	{
-		// _outbound is a ConcurrentQueue; no _stateGate needed. Removing the lock
-		// lets HTTP /drain calls run while a tick is still computing on _stateGate.
+		cancellationToken.ThrowIfCancellationRequested();
+		lock (_stateGate)
+		{
+			return ValueTask.FromResult(DrainOutboundSpikesUnsafe());
+		}
+	}
+
+	private IReadOnlyList<SpikeMessage> DrainOutboundSpikesUnsafe()
+	{
 		if (_outbound.IsEmpty)
 		{
-			return ValueTask.FromResult((IReadOnlyList<SpikeMessage>)Array.Empty<SpikeMessage>());
+			return Array.Empty<SpikeMessage>();
 		}
 		List<SpikeMessage> list = new List<SpikeMessage>(32);
 		while (_outbound.TryDequeue(out SpikeMessage? result))
 		{
 			list.Add(result);
 		}
-		return ValueTask.FromResult((IReadOnlyList<SpikeMessage>)list);
+		return list;
 	}
 
 	public ValueTask<IReadOnlyList<NeuronActivity>> GetTopActiveNeuronsAsync(int topK, CancellationToken cancellationToken = default(CancellationToken))
@@ -258,13 +307,15 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 		}
 	}
 
-	private void ProcessDueQueue(ConcurrentQueue<SpikeEnvelope> queue, TickSignal tickSignal, bool isFeedback)
+	private void ProcessDueQueue(PriorityQueue<SpikeEnvelope, double> queue, TickSignal tickSignal, bool isFeedback)
 	{
-		SpikeEnvelope result;
-		while (queue.TryPeek(out result) && result.DeliverAtTimestampMs <= tickSignal.TimestampMs)
+		List<SpikeEnvelope>? due = null;
+		lock (_inboundQueueGate)
 		{
-			if (queue.TryDequeue(out SpikeEnvelope result2))
+			while (queue.TryPeek(out _, out double deliverAtTimestampMs) && deliverAtTimestampMs <= tickSignal.TimestampMs)
 			{
+				due ??= new List<SpikeEnvelope>();
+				due.Add(queue.Dequeue());
 				if (isFeedback)
 				{
 					Interlocked.Decrement(ref _feedbackDepth);
@@ -273,10 +324,19 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 				{
 					Interlocked.Decrement(ref _feedForwardDepth);
 				}
-				ModelNeuron modelNeuron = SelectInboundNeuron(result2.Message);
-				modelNeuron.Integrate(result2.Message, tickSignal.TickDurationMs);
-				ApplyPlasticity(result2.Message, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
 			}
+		}
+
+		if (due == null)
+		{
+			return;
+		}
+
+		foreach (SpikeEnvelope envelope in due)
+		{
+			ModelNeuron modelNeuron = SelectInboundNeuron(envelope.Message);
+			modelNeuron.Integrate(envelope.Message, tickSignal.TickDurationMs);
+			ApplyPlasticity(envelope.Message, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
 		}
 	}
 
@@ -445,8 +505,10 @@ internal sealed class StructureEngine : IStructureHost, IDisposable
 	{
 		AppDomain.CurrentDomain.ProcessExit -= _onProcessExit;
 		Console.CancelKeyPress -= _onCancelKeyPress;
-		SaveSynapseState();
-		_synapseStore.Dispose();
+		lock (_stateGate)
+		{
+			_synapseStore.SaveAndDispose(_inboundSynapses, _outboundSynapses);
+		}
 	}
 
 	private static BrainRhythm SelectDominantRhythm(StructureId structureId)

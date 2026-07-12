@@ -14,7 +14,7 @@ using NeuralResonanceEngine.Shared.Contracts;
 using ProtoBuf;
 using ProtoBuf.Grpc.Server;
 
-internal static class StructureHostApplication
+public static class StructureHostApplication
 {
 	public static void Run(string[] args, StructureProfile profile)
 	{

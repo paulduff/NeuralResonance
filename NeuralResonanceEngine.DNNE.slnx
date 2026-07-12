@@ -14,7 +14,9 @@
     <Project Path="src/NRE.WpfWorldSim/NRE.WpfWorldSim.csproj" />
     <Project Path="src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
   </Folder>
-  <Folder Name="/Structures/" />
+  <Folder Name="/Structures/">
+    <Project Path="Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
+  </Folder>
   <Folder Name="/Structures/A1/">
     <Project Path="Structures/A1/NeuralResonanceEngine.Structures.A1.csproj" />
   </Folder>

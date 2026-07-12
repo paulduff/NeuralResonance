@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>NeuralResonanceEngine.Structures.Runtime</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.Structures.Runtime</RootNamespace>
+    <OutputType>Library</OutputType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="_SharedRuntime\*.cs" />
+    <!-- The circuit catalogue is identical across structure hosts; compile it once. -->
+    <Compile Include="M1\StructureCircuitProfile.cs" Link="StructureCircuitProfile.cs" />
+  </ItemGroup>
+</Project>

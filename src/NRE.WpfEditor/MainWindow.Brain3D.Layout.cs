@@ -219,8 +219,9 @@ public partial class MainWindow
 
     private static (double ThMin, double ThMax, double PhMin, double PhMax, double PieceAx, double PieceAy, double RidgePhase, double FoldScale, double GyrusCenter, double GyrusWidth) GetCorticalPatch(string snapshotId)
     {
-        // Non-overlapping cortical lobe sectors to create fitted "jigsaw" cortex partitions.
-        return snapshotId switch
+        // Patch extents provide visual area; their centres are derived from the
+        // canonical cortical atlas rather than an independent angular map.
+        var template = snapshotId switch
         {
             "Pfc" => (0.56, 1.74, -0.20, 1.36, 0.74, 0.68, 0.12, 1.08, 0.55, 0.60),
             "OrbitofrontalCortex" => (0.42, 1.40, -0.88, 0.18, 0.72, 0.56, 0.24, 1.04, 0.25, 0.54),
@@ -247,6 +248,45 @@ public partial class MainWindow
             "RetrosplenialCortex" => (-0.72, 0.18, 0.40, 1.22, 0.56, 0.62, 2.98, 0.96, 0.24, 0.46),
             _ => (-0.60, 0.40, -0.30, 0.70, 0.52, 0.52, 0.0, 1.0, 0.0, 0.95)
         };
+
+        return AnchorCorticalPatchToAtlas(snapshotId, template);
+    }
+
+    private static (double ThMin, double ThMax, double PhMin, double PhMax, double PieceAx, double PieceAy, double RidgePhase, double FoldScale, double GyrusCenter, double GyrusWidth) AnchorCorticalPatchToAtlas(
+        string snapshotId,
+        (double ThMin, double ThMax, double PhMin, double PhMax, double PieceAx, double PieceAy, double RidgePhase, double FoldScale, double GyrusCenter, double GyrusWidth) template)
+    {
+        var anchor = ScalePointByCortexRatio(GetCorticalStructureAnchor(snapshotId, "R"));
+        var unrolled = UnrotateCorticalShellFromMidlineAroundZ(anchor, 1.0);
+        var radius = Math.Sqrt((unrolled.X * unrolled.X) + (unrolled.Y * unrolled.Y) + (unrolled.Z * unrolled.Z));
+        var theta = radius < 1e-6 ? 0.0 : Math.Atan2(unrolled.Z, Math.Abs(unrolled.X));
+        var phi = radius < 1e-6 ? 0.0 : Math.Asin(Math.Clamp(unrolled.Y / radius, -1.0, 1.0));
+        var extentScale = snapshotId switch
+        {
+            // V1 and V2 are adjacent fields, not two broad coincident sheets.
+            "V1" or "V2" => 0.34,
+            "Pfc" => 0.58,
+            "BrocaBa44Ba45" => 0.62,
+            _ => 0.72
+        };
+        var halfTheta = (template.ThMax - template.ThMin) * extentScale * 0.5;
+        var halfPhi = (template.PhMax - template.PhMin) * extentScale * 0.5;
+        const double thetaMin = -2.30;
+        const double thetaMax = 1.72;
+        const double phiMin = -1.00;
+        const double phiMax = 1.32;
+
+        return (
+            Math.Clamp(theta - halfTheta, thetaMin, thetaMax),
+            Math.Clamp(theta + halfTheta, thetaMin, thetaMax),
+            Math.Clamp(phi - halfPhi, phiMin, phiMax),
+            Math.Clamp(phi + halfPhi, phiMin, phiMax),
+            template.PieceAx,
+            template.PieceAy,
+            template.RidgePhase,
+            template.FoldScale,
+            template.GyrusCenter,
+            template.GyrusWidth);
     }
 
     private static CorticalGyrusProfile GetCorticalGyrusProfile(string snapshotId)
@@ -603,14 +643,26 @@ public partial class MainWindow
             return fallback;
         }
 
+        return GetCanonicalAtlasCenter(snapshotId, hemisphere);
+    }
+
+    // The atlas is stored in physical millimetres. Rendering is a single uniform
+    // conversion; no display-only translations or per-structure scale corrections
+    // are applied to positions.
+    private static Point3D GetCanonicalAtlasCenter(string snapshotId, string hemisphere)
+    {
+        if (!TryGetSubcorticalAtlasCenterMm(snapshotId, out var atlasMm))
+        {
+            return new Point3D();
+        }
+
         var x = atlasMm.X;
         if (IsBilaterallyDuplicated(snapshotId) && (hemisphere == "L" || hemisphere == "R"))
         {
-            x = Math.Abs(atlasMm.X) * (hemisphere == "L" ? -1.0 : 1.0);
+            x = Math.Abs(x) * (hemisphere == "L" ? -1.0 : 1.0);
         }
 
-        var atlasRender = MmToRender(new Point3D(x, atlasMm.Y, atlasMm.Z));
-        return ScalePointBySubcorticalRatio(atlasRender);
+        return MmToRender(new Point3D(x, atlasMm.Y, atlasMm.Z));
     }
 
     private static bool TryGetSubcorticalAtlasCenterMm(string snapshotId, out Point3D centerMm)
@@ -675,11 +727,12 @@ public partial class MainWindow
             "LocusCoeruleus" => new Point3D(6.0, -18.0, -26.0),
             "RapheNuclei" => new Point3D(0.0, -19.0, -25.0),
             "SpinalCordMotor" => new Point3D(0.0, -50.0, -24.0),
+            "ArcuateFasciculus" => new Point3D(42.0, 20.0, -8.0),
 
             // Sensory peripheral anchors
             "OlfactoryBulb" => new Point3D(7.0, 10.0, 28.0),
-            "Retina" => new Point3D(24.0, 14.0, 44.0),
-            "Cochlea" => new Point3D(34.0, -16.0, -6.0),
+            "Retina" => new Point3D(72.0, 8.0, 52.0),
+            "Cochlea" => new Point3D(60.0, -22.0, 8.0),
             _ => default
         };
 
@@ -728,10 +781,21 @@ public partial class MainWindow
             "S1" => new Point3D(34, 42, -2),
             "Ppc" => new Point3D(30, 48, -28),
             "V1" => new Point3D(18, 24, -62),
+            "V2" => new Point3D(26, 26, -54),
+            "V4" => new Point3D(44, 18, -42),
+            "Mt" => new Point3D(52, 12, -34),
             "A1" => new Point3D(50, 12, -20),
             "TemporalAssociation" => new Point3D(58, 6, -28),
+            "WernickePstgPsts" => new Point3D(56, 14, -24),
+            "SupramarginalAngular" => new Point3D(46, 28, -30),
             "Acc" => new Point3D(8, 38, 18),
             "EntorhinalCortex" => new Point3D(22, -12, -22),
+            "ParahippocampalCortex" => new Point3D(30, -2, -20),
+            "PerirhinalCortex" => new Point3D(38, 2, -18),
+            "BrocaBa44Ba45" => new Point3D(52, 18, 20),
+            "PremotorCortex" => new Point3D(28, 48, 20),
+            "PosteriorCingulate" => new Point3D(12, 44, -18),
+            "RetrosplenialCortex" => new Point3D(16, 40, -24),
             _ => new Point3D(26, 30, 0)
         };
 
@@ -1036,10 +1100,9 @@ public partial class MainWindow
         const double targetLengthMm = 167.0;
         const double targetWidthMm = 93.0;
 
-        // Requested swap: apply H ratio on width axis, and W ratio on height axis.
         return (
-            targetHeightMm / referenceWidthMm,
-            targetWidthMm / referenceHeightMm,
+            targetWidthMm / referenceWidthMm,
+            targetHeightMm / referenceHeightMm,
             targetLengthMm / referenceLengthMm
         );
     }

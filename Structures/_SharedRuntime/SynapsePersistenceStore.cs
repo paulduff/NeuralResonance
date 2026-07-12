@@ -127,6 +127,29 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_lastSaveTimestampMs = CurrentMilliseconds();
 	}
 
+	public void SaveAndDispose(Dictionary<Guid, SynapseState> inboundSynapses, Dictionary<string, SynapseState> outboundSynapses)
+	{
+		if (Interlocked.Exchange(ref _disposed, 1) != 0)
+		{
+			return;
+		}
+
+		// Let the single writer finish its latest coalesced snapshot before writing
+		// the final state. Writing first allowed a stale queued snapshot to overwrite
+		// the last synchronous save during shutdown.
+		_writeQueue.Writer.TryComplete();
+		try
+		{
+			_writerTask.GetAwaiter().GetResult();
+		}
+		catch (OperationCanceledException)
+		{
+		}
+
+		Save(inboundSynapses, outboundSynapses);
+		_writerCts.Dispose();
+	}
+
 	private SynapseStoreSnapshot BuildSnapshot(
 		Dictionary<Guid, SynapseState> inboundSynapses,
 		Dictionary<string, SynapseState> outboundSynapses) =>
@@ -194,15 +217,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_writeQueue.Writer.TryComplete();
 		try
 		{
-			_writerTask.Wait(TimeSpan.FromSeconds(10));
+			_writerTask.GetAwaiter().GetResult();
 		}
-		catch (AggregateException)
+		catch (OperationCanceledException)
 		{
-		}
-
-		if (!_writerTask.IsCompleted)
-		{
-			_writerCts.Cancel();
 		}
 
 		_writerCts.Dispose();

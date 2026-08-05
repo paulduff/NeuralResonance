@@ -102,6 +102,144 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.Contains("payload", GetString(body.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task DyadCandidate_Handler_Rejects_An_Unsupported_Contract_Version()
+    {
+        var state = CreateState();
+
+        var result = DyadLanguageRoutes.PostCandidate(
+            CreateDyadRequest(protocolVersion: "dyad.language-candidate.v0"),
+            state);
+        var (status, body) = await ExecuteJsonResultAsync(result);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, status);
+        Assert.NotNull(body);
+        Assert.Contains("protocolVersion", GetString(body.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(state.GetDyadLanguageCandidateReviews(8));
+    }
+
+    [Fact]
+    public void DyadCandidate_Handler_Records_A_Grounded_Review_Without_Changing_Language_Intent()
+    {
+        var state = CreateState();
+        var languageIntentBefore = state.GetLanguageIntentSnapshot();
+
+        var result = DyadLanguageRoutes.PostCandidate(CreateDyadRequest(), state);
+        var value = Assert.IsAssignableFrom<IValueHttpResult>(result).Value;
+        var response = Assert.IsType<DyadLanguageCandidateResponse>(value);
+
+        Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Decision);
+        Assert.Equal(languageIntentBefore, state.GetLanguageIntentSnapshot());
+        Assert.False(response.Grounding.IsSleeping);
+        Assert.Contains("workspace", response.DecisionReason, StringComparison.OrdinalIgnoreCase);
+
+        var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
+        Assert.Equal("entity-25m-bpe-v1", audit.Proposal.EntityVersion);
+        Assert.Equal("hello from Entity", audit.Proposal.CandidateText);
+        Assert.Equal(response.Decision, audit.Decision);
+        Assert.NotEmpty(response.Grounding.MemoryExcerpts);
+        Assert.Equal("prefrontal-working-memory", response.Grounding.MemoryExcerpts[0].MemorySystem);
+    }
+
+    [Fact]
+    public async Task DyadCandidate_Handler_Rejects_A_Prompt_Fingerprint_Mismatch()
+    {
+        var state = CreateState();
+        var invalid = CreateDyadRequest() with { PromptFingerprint = "sha256:wrong" };
+
+        var (status, body) = await ExecuteJsonResultAsync(DyadLanguageRoutes.PostCandidate(invalid, state));
+
+        Assert.Equal(StatusCodes.Status400BadRequest, status);
+        Assert.Contains("fingerprint", GetString(body!.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(state.GetDyadLanguageCandidateReviews(8));
+    }
+
+    [Fact]
+    public void DyadCandidate_Handler_Is_Idempotent_Per_Session_Turn()
+    {
+        var state = CreateState();
+        var request = CreateDyadRequest();
+
+        var first = Assert.IsType<DyadLanguageCandidateResponse>(
+            Assert.IsAssignableFrom<IValueHttpResult>(DyadLanguageRoutes.PostCandidate(request, state)).Value);
+        var second = Assert.IsType<DyadLanguageCandidateResponse>(
+            Assert.IsAssignableFrom<IValueHttpResult>(DyadLanguageRoutes.PostCandidate(request, state)).Value);
+
+        Assert.Equal(first.ReviewSequence, second.ReviewSequence);
+        Assert.Single(state.GetDyadLanguageCandidateReviews(8));
+    }
+
+    [Fact]
+    public async Task DyadEntityGeneration_Handler_Uses_Dnne_Narration_When_Entity_Is_Unavailable()
+    {
+        var state = CreateState();
+        var entityClient = new StubEntityLanguageClient(EntityLanguageCandidateResult.Unavailable("test outage"));
+
+        var result = await DyadLanguageGenerationRoutes.PostGenerate(
+            CreateDyadGenerationRequest(),
+            state,
+            entityClient,
+            CancellationToken.None);
+        var response = Assert.IsType<DyadEntityGenerationResponse>(
+            Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
+
+        Assert.True(response.UsedFallback);
+        Assert.False(response.EntityAvailable);
+        Assert.False(response.Emitted);
+        Assert.Equal("dnne-deferred", response.Origin);
+        Assert.Empty(response.Text);
+        Assert.Equal("I am watching and waiting.", response.CandidateText);
+        Assert.Null(response.Review);
+        Assert.Empty(state.GetDyadLanguageCandidateReviews(8));
+    }
+
+    [Fact]
+    public async Task DyadEntityGeneration_Handler_Reviews_An_Entity_Candidate_Without_Issuing_An_Action()
+    {
+        var state = CreateState();
+        var languageIntentBefore = state.GetLanguageIntentSnapshot();
+        var entityClient = new StubEntityLanguageClient(new EntityLanguageCandidateResult(
+            true,
+            "test candidate",
+            "I am observing the current state.",
+            "entity-test; architecture=Mlp; tokenizer=Bpe",
+            "tokens=80;temperature=0.20;topK=8;seed=1337",
+            new[] { "test://knowledge" }));
+
+        var result = await DyadLanguageGenerationRoutes.PostGenerate(
+            CreateDyadGenerationRequest(),
+            state,
+            entityClient,
+            CancellationToken.None);
+        var response = Assert.IsType<DyadEntityGenerationResponse>(
+            Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
+
+        Assert.False(response.UsedFallback);
+        Assert.True(response.EntityAvailable);
+        Assert.NotNull(response.Review);
+        Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Review.Decision);
+        Assert.Equal(languageIntentBefore, state.GetLanguageIntentSnapshot());
+
+        var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
+        Assert.Contains("You are Entity, the language component of Dyad.", audit.Proposal.PromptText);
+        Assert.Contains("Verified DNNE communication intent", audit.Proposal.PromptText);
+        Assert.Contains("prefrontal-working-memory", audit.Proposal.PromptText);
+        Assert.Equal("I am observing the current state.", audit.Proposal.CandidateText);
+    }
+
+    [Fact]
+    public void DyadCandidate_Contract_Cannot_Express_Motor_Reward_Or_Memory_Writes()
+    {
+        var propertyNames = typeof(DyadLanguageCandidateRequest)
+            .GetProperties()
+            .Select(property => property.Name);
+
+        Assert.DoesNotContain(propertyNames, name => name.Contains("motor", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(propertyNames, name => name.Contains("reward", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(propertyNames, name => name.Contains("memory", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(propertyNames, name => name.Contains("action", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static SimulationState CreateState()
     {
         var state = new SimulationState();
@@ -120,6 +258,33 @@ public sealed class AdminRouteHandlerUnitTests
             rewardPredictionError: 0.0f,
             attention: new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f));
         return state;
+    }
+
+    private static DyadLanguageCandidateRequest CreateDyadRequest(string protocolVersion = DyadLanguageContract.ProtocolVersion)
+        => new(
+            ProtocolVersion: protocolVersion,
+            SessionId: "test-session",
+            TurnId: "turn-001",
+            EntityVersion: "entity-25m-bpe-v1",
+            EntityConfiguration: "temperature=0.2;topK=8",
+            PromptFingerprint: DyadLanguageContract.CreatePromptFingerprint("Produce a short grounded test response."),
+            PromptText: "Produce a short grounded test response.",
+            CandidateKind: "utterance",
+            CandidateText: "hello from Entity",
+            SourceReferences: new[] { "test://source" });
+
+    private static DyadEntityGenerationRequest CreateDyadGenerationRequest()
+        => new(
+            ProtocolVersion: DyadLanguageContract.ProtocolVersion,
+            SessionId: "test-session",
+            TurnId: "turn-entity-001",
+            CandidateKind: "utterance",
+            Purpose: "state reflection");
+
+    private sealed class StubEntityLanguageClient(EntityLanguageCandidateResult result) : IEntityLanguageClient
+    {
+        public Task<EntityLanguageCandidateResult> GenerateAsync(DyadEntityPromptSnapshot prompt, CancellationToken cancellationToken)
+            => Task.FromResult(result);
     }
 
     private static Task<(int StatusCode, JsonDocument? Body)> ExecuteJsonResultAsync(IResult result)

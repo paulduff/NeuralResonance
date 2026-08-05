@@ -343,6 +343,9 @@ public sealed class SpikeBatchEnvelope
 {
     [ProtoMember(1)]
     public List<SpikeMessage> Spikes { get; set; } = [];
+
+    [ProtoMember(2)]
+    public string BatchId { get; set; } = string.Empty;
 }
 
 [ProtoContract]
@@ -353,6 +356,9 @@ public sealed class SpikeBatchAck
 
     [ProtoMember(2)]
     public string Error { get; set; } = string.Empty;
+
+    [ProtoMember(3)]
+    public string BatchId { get; set; } = string.Empty;
 }
 
 public interface IStructureSpikeTransport
@@ -368,9 +374,16 @@ public interface IStructureSpikeTransport
 public interface IStructureHost
 {
     ValueTask EnqueueSpikeAsync(SpikeMessage message, CancellationToken cancellationToken = default);
+    ValueTask<int> EnqueueSpikeBatchAsync(IReadOnlyList<SpikeMessage> messages, CancellationToken cancellationToken = default);
     ValueTask<TickAck> ProcessTickAsync(TickSignal tickSignal, CancellationToken cancellationToken = default);
     ValueTask<IReadOnlyList<SpikeMessage>> DrainOutboundSpikesAsync(CancellationToken cancellationToken = default);
     ValueTask<IReadOnlyList<NeuronActivity>> GetTopActiveNeuronsAsync(int topK, CancellationToken cancellationToken = default);
+}
+
+public static class StructureTransportLimits
+{
+    public const int MaxSpikeBatchCount = 4096;
+    public const int MaxSpikeBatchBytes = 4 * 1024 * 1024;
 }
 
 public interface ISnapshotSink

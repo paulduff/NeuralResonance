@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -9,8 +10,8 @@ using NeuralResonanceEngine.Protocol;
 
 internal sealed class SynapsePersistenceStore : IDisposable
 {
-	private const int SaveEveryMutationCount = 128;
-	private const double SaveEveryMs = 5000.0;
+	private const int DefaultSaveEveryMutationCount = 4096;
+	private const double DefaultSaveEveryMs = 10000.0;
 
 	private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
 	{
@@ -18,9 +19,12 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	};
 
 	private readonly StructureId _structureId;
+	private readonly string _instanceKey;
 	private readonly string _path;
+	private readonly int _saveEveryMutationCount;
+	private readonly double _saveEveryMs;
 	private int _pendingMutations;
-	private double _lastSaveTimestampMs;
+	private long _lastSaveTimestamp;
 
 	// Off-lock async writer. Snapshot construction happens on the tick-loop thread
 	// (which holds the dictionary lock), and the resulting frozen snapshot is handed
@@ -40,7 +44,11 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	public SynapsePersistenceStore(StructureId structureId)
 	{
 		_structureId = structureId;
-		_path = ResolvePath(structureId);
+		_instanceKey = ResolveInstanceKey(structureId);
+		_path = ResolvePath(_instanceKey);
+		_saveEveryMutationCount = ResolvePositiveInt("NRE_SYNAPSE_SAVE_MUTATIONS", DefaultSaveEveryMutationCount, 64, 1_000_000);
+		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 1000.0, 300_000.0);
+		_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		_writerTask = Task.Run(WriterLoopAsync);
 	}
 
@@ -55,7 +63,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		{
 			string json = File.ReadAllText(_path);
 			SynapseStoreSnapshot? snapshot = JsonSerializer.Deserialize<SynapseStoreSnapshot>(json, JsonOptions);
-			if (snapshot == null || snapshot.StructureId != _structureId)
+			if (snapshot == null || snapshot.StructureId != _structureId ||
+				(!string.IsNullOrWhiteSpace(snapshot.InstanceKey) && !string.Equals(snapshot.InstanceKey, _instanceKey, StringComparison.OrdinalIgnoreCase)))
 			{
 				return;
 			}
@@ -80,7 +89,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				outboundSynapses[entry.Key] = entry.ToSynapseState();
 			}
 
-			_lastSaveTimestampMs = CurrentMilliseconds();
+			_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		}
 		catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
 		{
@@ -97,13 +106,13 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		// Hot path: called once per inbound and once per outbound spike. Skip the
 		// CurrentMilliseconds() syscall and the snapshot copy until the mutation gate
 		// fires or we periodically sample the time gate every 64 mutations.
-		if (_pendingMutations < SaveEveryMutationCount && (_pendingMutations & 0x3F) != 0)
+		if (_pendingMutations < _saveEveryMutationCount && (_pendingMutations & 0xFF) != 0)
 		{
 			return;
 		}
 
-		double nowMs = CurrentMilliseconds();
-		if (_pendingMutations < SaveEveryMutationCount && nowMs - _lastSaveTimestampMs < SaveEveryMs)
+		long now = Stopwatch.GetTimestamp();
+		if (_pendingMutations < _saveEveryMutationCount && Stopwatch.GetElapsedTime(_lastSaveTimestamp, now).TotalMilliseconds < _saveEveryMs)
 		{
 			return;
 		}
@@ -113,7 +122,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		var snapshot = BuildSnapshot(inboundSynapses, outboundSynapses);
 		_writeQueue.Writer.TryWrite(snapshot);
 		_pendingMutations = 0;
-		_lastSaveTimestampMs = nowMs;
+		_lastSaveTimestamp = now;
 	}
 
 	public void Save(Dictionary<Guid, SynapseState> inboundSynapses, Dictionary<string, SynapseState> outboundSynapses)
@@ -124,7 +133,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		var snapshot = BuildSnapshot(inboundSynapses, outboundSynapses);
 		WriteSnapshot(snapshot);
 		_pendingMutations = 0;
-		_lastSaveTimestampMs = CurrentMilliseconds();
+		_lastSaveTimestamp = Stopwatch.GetTimestamp();
 	}
 
 	public void SaveAndDispose(Dictionary<Guid, SynapseState> inboundSynapses, Dictionary<string, SynapseState> outboundSynapses)
@@ -156,6 +165,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		new SynapseStoreSnapshot
 		{
 			StructureId = _structureId,
+			InstanceKey = _instanceKey,
 			SavedAtUtc = DateTimeOffset.UtcNow,
 			Inbound = CreateInboundEntries(inboundSynapses),
 			Outbound = CreateOutboundEntries(outboundSynapses)
@@ -248,7 +258,21 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		return entries;
 	}
 
-	private static string ResolvePath(StructureId structureId)
+	private static string ResolveInstanceKey(StructureId structureId)
+	{
+		string? configured = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+		if (!string.IsNullOrWhiteSpace(configured))
+		{
+			return configured.Trim();
+		}
+
+		string? hemisphere = Environment.GetEnvironmentVariable("HEMISPHERE");
+		return string.IsNullOrWhiteSpace(hemisphere)
+			? structureId.ToString()
+			: $"{structureId}_{hemisphere.Trim().ToUpperInvariant()}";
+	}
+
+	private static string ResolvePath(string instanceKey)
 	{
 		string? configuredDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
 		string root = !string.IsNullOrWhiteSpace(configuredDirectory)
@@ -258,14 +282,26 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				"NeuralResonanceEngine",
 				"synapses");
 
-		return Path.Combine(root, $"{structureId}.synapses.json");
+		var invalid = Path.GetInvalidFileNameChars();
+		var safeInstanceKey = string.Concat(instanceKey.Select(character => invalid.Contains(character) ? '_' : character));
+		return Path.Combine(root, $"{safeInstanceKey}.synapses.json");
 	}
 
-	private static double CurrentMilliseconds() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+	private static int ResolvePositiveInt(string name, int fallback, int minimum, int maximum) =>
+		int.TryParse(Environment.GetEnvironmentVariable(name), out var parsed)
+			? Math.Clamp(parsed, minimum, maximum)
+			: fallback;
+
+	private static double ResolvePositiveDouble(string name, double fallback, double minimum, double maximum) =>
+		double.TryParse(Environment.GetEnvironmentVariable(name), out var parsed) && double.IsFinite(parsed)
+			? Math.Clamp(parsed, minimum, maximum)
+			: fallback;
 
 	private sealed class SynapseStoreSnapshot
 	{
 		public StructureId StructureId { get; set; }
+
+		public string InstanceKey { get; set; } = string.Empty;
 
 		public DateTimeOffset SavedAtUtc { get; set; }
 
@@ -300,6 +336,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 		public static SynapseStoreEntry FromSynapseState(string? key, SynapseState synapse)
 		{
+			synapse.Stabilize();
 			return new SynapseStoreEntry
 			{
 				Key = key,
@@ -318,16 +355,18 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 		public SynapseState ToSynapseState()
 		{
-			return new SynapseState(SynapseId, Neurotransmitter, Math.Clamp(VesicleQuanta, 0.05f, 5f))
+			var synapse = new SynapseState(SynapseId, Neurotransmitter, PlasticityRules.ClampQuanta(VesicleQuanta))
 			{
 				PreTrace = PreTrace,
 				PostTrace = PostTrace,
-				ThetaM = Math.Clamp(ThetaM, 0.001f, 10f),
-				EligibilityTrace = Math.Clamp(EligibilityTrace, -1f, 1f),
-				SynapticTagTrace = Math.Clamp(SynapticTagTrace, -1f, 1f),
-				LastUpdateTimestampMs = Math.Max(0.0, LastUpdateTimestampMs),
+				ThetaM = ThetaM,
+				EligibilityTrace = EligibilityTrace,
+				SynapticTagTrace = SynapticTagTrace,
+				LastUpdateTimestampMs = LastUpdateTimestampMs,
 				LastTargetNeuronIndex = LastTargetNeuronIndex
 			};
+			synapse.Stabilize();
+			return synapse;
 		}
 	}
 }

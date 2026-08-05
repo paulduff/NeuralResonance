@@ -14,10 +14,10 @@ public sealed class NeuromodState
     {
         return new NeuromodState
         {
-            DopamineLevel = Math.Clamp(state.DopamineLevel, 0f, 1f),
-            SerotoninLevel = Math.Clamp(state.SerotoninLevel, 0f, 1f),
-            AcetylcholineLevel = Math.Clamp(state.AcetylcholineLevel, 0f, 1f),
-            NorepinephrineLevel = Math.Clamp(state.NorepinephrineLevel, 0f, 1f)
+            DopamineLevel = ClampFiniteUnit(state.DopamineLevel),
+            SerotoninLevel = ClampFiniteUnit(state.SerotoninLevel),
+            AcetylcholineLevel = ClampFiniteUnit(state.AcetylcholineLevel),
+            NorepinephrineLevel = ClampFiniteUnit(state.NorepinephrineLevel)
         };
     }
 
@@ -28,9 +28,12 @@ public sealed class NeuromodState
     /// </summary>
     public static void ClampInPlace(NeuromodState state)
     {
-        state.DopamineLevel = Math.Clamp(state.DopamineLevel, 0f, 1f);
-        state.SerotoninLevel = Math.Clamp(state.SerotoninLevel, 0f, 1f);
-        state.AcetylcholineLevel = Math.Clamp(state.AcetylcholineLevel, 0f, 1f);
-        state.NorepinephrineLevel = Math.Clamp(state.NorepinephrineLevel, 0f, 1f);
+        state.DopamineLevel = ClampFiniteUnit(state.DopamineLevel);
+        state.SerotoninLevel = ClampFiniteUnit(state.SerotoninLevel);
+        state.AcetylcholineLevel = ClampFiniteUnit(state.AcetylcholineLevel);
+        state.NorepinephrineLevel = ClampFiniteUnit(state.NorepinephrineLevel);
     }
+
+    private static float ClampFiniteUnit(float value) =>
+        float.IsFinite(value) ? Math.Clamp(value, 0f, 1f) : 0f;
 }

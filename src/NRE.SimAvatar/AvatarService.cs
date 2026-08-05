@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace NRE.SimAvatar;
 
@@ -505,14 +506,15 @@ public sealed class AvatarService : IDisposable
     {
         var clockEnabled = _clockOptions.Enabled && _clockOptions.TickIntervalMs > 0;
         var tickInterval = TimeSpan.FromMilliseconds(Math.Clamp(_clockOptions.TickIntervalMs, 5, 5000));
-        var nextTickUtc = DateTime.UtcNow + tickInterval;
+        var clock = Stopwatch.StartNew();
+        var nextTick = clock.Elapsed + tickInterval;
 
         while (!_commands.IsCompleted)
         {
             var timeoutMs = Timeout.Infinite;
             if (clockEnabled)
             {
-                var wait = nextTickUtc - DateTime.UtcNow;
+                var wait = nextTick - clock.Elapsed;
                 timeoutMs = Math.Max(1, (int)wait.TotalMilliseconds);
             }
 
@@ -526,8 +528,8 @@ public sealed class AvatarService : IDisposable
                 continue;
             }
 
-            var nowUtc = DateTime.UtcNow;
-            if (nowUtc < nextTickUtc)
+            var now = clock.Elapsed;
+            if (now < nextTick)
             {
                 continue;
             }
@@ -535,9 +537,9 @@ public sealed class AvatarService : IDisposable
             ExecuteClockTick();
             do
             {
-                nextTickUtc += tickInterval;
+                nextTick += tickInterval;
             }
-            while (nextTickUtc <= nowUtc);
+            while (nextTick <= now);
         }
     }
 

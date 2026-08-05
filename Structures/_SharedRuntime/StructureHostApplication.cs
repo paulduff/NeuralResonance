@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 using ProtoBuf;
@@ -18,12 +20,28 @@ public static class StructureHostApplication
 {
 	public static void Run(string[] args, StructureProfile profile)
 	{
+		var sharedSecret = NreStructureSecurity.ResolveSharedSecret();
+		var listenAnyIp = NreStructureSecurity.ResolveListenAnyIp();
+		if (listenAnyIp && sharedSecret is null)
+		{
+			throw new InvalidOperationException(
+				$"{NreStructureSecurity.ListenAnyIpEnvironmentVariable}=true requires {NreStructureSecurity.SharedSecretEnvironmentVariable}.");
+		}
+
 		WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 		builder.WebHost.ConfigureKestrel(options =>
 		{
+			options.Limits.MaxRequestBodySize = StructureTransportLimits.MaxSpikeBatchBytes;
 			if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port))
 			{
-				options.ListenAnyIP(port, listen => listen.Protocols = HttpProtocols.Http1AndHttp2);
+				if (listenAnyIp)
+				{
+					options.ListenAnyIP(port, listen => listen.Protocols = HttpProtocols.Http1AndHttp2);
+				}
+				else
+				{
+					options.ListenLocalhost(port, listen => listen.Protocols = HttpProtocols.Http1AndHttp2);
+				}
 			}
 		});
 
@@ -38,8 +56,7 @@ public static class StructureHostApplication
 		// set in the environment, every request must carry the same value in the
 		// `X-NRE-Auth` header or it is rejected with 401. Off by default to preserve
 		// the existing localhost-only contract.
-		var sharedSecret = Environment.GetEnvironmentVariable("NRE_STRUCTURE_SHARED_SECRET");
-		if (!string.IsNullOrWhiteSpace(sharedSecret))
+		if (sharedSecret is not null)
 		{
 			app.Use(async (context, next) =>
 			{
@@ -49,8 +66,8 @@ public static class StructureHostApplication
 					return;
 				}
 
-				if (!context.Request.Headers.TryGetValue("X-NRE-Auth", out var header)
-					|| !string.Equals(header.ToString(), sharedSecret, StringComparison.Ordinal))
+				if (!context.Request.Headers.TryGetValue(NreStructureSecurity.HeaderName, out var header)
+					|| !NreStructureSecurity.IsAuthorized(header.ToString(), sharedSecret))
 				{
 					context.Response.StatusCode = StatusCodes.Status401Unauthorized;
 					return;
@@ -69,66 +86,91 @@ public static class StructureHostApplication
 	{
 		app.MapPost("/api/v1/structure/spike", async (HttpRequest request, StructureEngine engine, StructureProfile profile, CancellationToken ct) =>
 		{
-			using var activity = StructureTelemetry.Source.StartActivity("spike.receive");
-			activity?.SetTag("structure.id", profile.StructureId.ToString());
-			SpikeMessage spike = await SpikeProtocol.receive_spike(request.Body, ct);
-			if (spike == null)
+			try
 			{
-				activity?.SetStatus(ActivityStatusCode.Error, "Spike payload missing");
-				return Results.BadRequest("Spike payload missing");
-			}
+				if (RequestIsTooLarge(request))
+				{
+					return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+				}
 
-			await engine.EnqueueSpikeAsync(spike, ct);
-			return Results.Accepted();
+				using var activity = StructureTelemetry.Source.StartActivity("spike.receive");
+				activity?.SetTag("structure.id", profile.StructureId.ToString());
+				SpikeMessage spike = await SpikeProtocol.receive_spike(request.Body, ct);
+				if (spike == null)
+				{
+					activity?.SetStatus(ActivityStatusCode.Error, "Spike payload missing");
+					return Results.BadRequest("Spike payload missing");
+				}
+
+				await engine.EnqueueSpikeAsync(spike, ct);
+				return Results.Accepted();
+			}
+			catch (StructureIngressOverloadException ex)
+			{
+				return Results.Problem(ex.Message, statusCode: StatusCodes.Status429TooManyRequests);
+			}
+			catch (Exception ex) when (IsInvalidSpikePayload(ex))
+			{
+				return Results.BadRequest($"Invalid spike payload: {ex.Message}");
+			}
 		}).Accepts<byte[]>("application/octet-stream");
 
 		app.MapPost("/api/v1/structure/spike-batch", async (HttpRequest request, StructureEngine engine, CancellationToken ct) =>
 		{
-			if (request.HasJsonContentType())
+			if (RequestIsTooLarge(request))
 			{
-				List<SpikeMessage>? spikes = await request.ReadFromJsonAsync(
-					StructureJsonContext.Default.ListSpikeMessage,
-					ct);
+				return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+			}
+
+			try
+			{
+				List<SpikeMessage>? spikes;
+				if (request.HasJsonContentType())
+				{
+					spikes = await request.ReadFromJsonAsync(
+						StructureJsonContext.Default.ListSpikeMessage,
+						ct);
+				}
+				else
+				{
+					await using MemoryStream buffered = await ReadBoundedBodyAsync(request.Body, ct);
+					spikes = new List<SpikeMessage>();
+					while (buffered.Position < buffered.Length)
+					{
+						SpikeMessage spike = Serializer.DeserializeWithLengthPrefix<SpikeMessage>(buffered, PrefixStyle.Base128);
+						if (spike == null)
+						{
+							break;
+						}
+
+						spikes.Add(spike);
+						if (spikes.Count > StructureTransportLimits.MaxSpikeBatchCount)
+						{
+							return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+						}
+					}
+				}
+
 				if (spikes == null || spikes.Count == 0)
 				{
 					return Results.BadRequest("Spike batch payload missing");
 				}
-
-				int acceptedJson = 0;
-				foreach (SpikeMessage spike in spikes)
+				if (spikes.Count > StructureTransportLimits.MaxSpikeBatchCount)
 				{
-					if (spike != null)
-					{
-						await engine.EnqueueSpikeAsync(spike, ct);
-						acceptedJson++;
-					}
+					return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 				}
 
-				return Results.Ok(new { accepted = acceptedJson });
+				int accepted = await engine.EnqueueSpikeBatchAsync(spikes, ct);
+				return Results.Ok(new { accepted });
 			}
-
-			await using MemoryStream buffered = new MemoryStream();
-			await request.Body.CopyToAsync(buffered, ct);
-			if (buffered.Length == 0)
+			catch (StructureIngressOverloadException ex)
 			{
-				return Results.BadRequest("Spike batch payload missing");
+				return Results.Problem(ex.Message, statusCode: StatusCodes.Status429TooManyRequests);
 			}
-
-			buffered.Position = 0L;
-			int accepted = 0;
-			while (buffered.Position < buffered.Length)
+			catch (Exception ex) when (IsInvalidSpikePayload(ex))
 			{
-				SpikeMessage spike = Serializer.DeserializeWithLengthPrefix<SpikeMessage>(buffered, PrefixStyle.Base128);
-				if (spike == null)
-				{
-					break;
-				}
-
-				await engine.EnqueueSpikeAsync(spike, ct);
-				accepted++;
+				return Results.BadRequest($"Invalid spike batch payload: {ex.Message}");
 			}
-
-			return Results.Ok(new { accepted });
 		}).Accepts<byte[]>("application/octet-stream");
 
 		// Acknowledge-only ticks depended on a separate fire-and-forget publish path.
@@ -142,8 +184,20 @@ public static class StructureHostApplication
 		app.MapPost("/api/v1/structure/step", async (StructureStepRequest request, StructureEngine engine, CancellationToken ct) =>
 			Results.Ok(await engine.ProcessStepAsync(request.TickSignal, request.IncludeTop ? request.TopK : 0, ct)));
 
-		app.MapPost("/api/v1/structure/drain", async (StructureEngine engine, CancellationToken ct) =>
-			Results.Ok(await engine.DrainOutboundSpikesAsync(ct)));
+		app.MapPost("/api/v1/structure/drain", () => Results.Problem(
+			title: "Independent drain transport retired.",
+			detail: "Use POST /api/v1/structure/step so a concurrent caller cannot steal outbound spikes.",
+			statusCode: StatusCodes.Status410Gone));
+
+		app.MapPost("/api/v1/structure/shutdown", (IHostApplicationLifetime lifetime) =>
+		{
+			_ = Task.Run(async () =>
+			{
+				await Task.Delay(100).ConfigureAwait(false);
+				lifetime.StopApplication();
+			});
+			return Results.Accepted();
+		});
 
 		app.MapGet("/api/v1/structure/top", async (int count, StructureEngine engine, CancellationToken ct) =>
 			Results.Ok(await engine.GetTopActiveNeuronsAsync(Math.Clamp(count, 1, 100), ct)));
@@ -156,6 +210,48 @@ public static class StructureHostApplication
 			microtubuleMode = IntracellularMicrotubuleState.NormalizeMode(Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE")),
 			microtubuleLabel = "Experimental: intracellular microtubule approximation"
 		}));
+	}
+
+	private static bool RequestIsTooLarge(HttpRequest request) =>
+		request.ContentLength is > StructureTransportLimits.MaxSpikeBatchBytes;
+
+	private static bool IsInvalidSpikePayload(Exception exception) => exception is
+		ArgumentException or
+		InvalidOperationException or
+		InvalidDataException or
+		EndOfStreamException or
+		System.Text.Json.JsonException or
+		ProtoException;
+
+	private static async Task<MemoryStream> ReadBoundedBodyAsync(Stream body, CancellationToken cancellationToken)
+	{
+		var output = new MemoryStream();
+		byte[] buffer = ArrayPool<byte>.Shared.Rent(64 * 1024);
+		try
+		{
+			while (true)
+			{
+				int read = await body.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+				if (read == 0)
+				{
+					output.Position = 0;
+					return output;
+				}
+				if (output.Length + read > StructureTransportLimits.MaxSpikeBatchBytes)
+				{
+					output.Dispose();
+					throw new Microsoft.AspNetCore.Http.BadHttpRequestException(
+						"Spike batch body exceeds the configured limit.",
+						StatusCodes.Status413PayloadTooLarge);
+				}
+
+				await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+			}
+		}
+		finally
+		{
+			ArrayPool<byte>.Shared.Return(buffer);
+		}
 	}
 
 }

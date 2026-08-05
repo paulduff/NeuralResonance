@@ -132,6 +132,11 @@ if ([string]::IsNullOrWhiteSpace($LogRoot)) {
     $LogRoot = Join-Path $DeployableRoot 'logs'
 }
 
+$listenIsLoopback = $ListenHost -in @('localhost', '127.0.0.1', '::1')
+if (-not $listenIsLoopback -and [string]::IsNullOrWhiteSpace($SharedSecret)) {
+    throw 'A SharedSecret is required when ListenHost is not loopback.'
+}
+
 $runRoot = Join-Path $DeployableRoot 'run'
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
@@ -165,6 +170,10 @@ if (-not $NoStructures -and $deployable.Structures) {
             }
             if (-not [string]::IsNullOrWhiteSpace($SharedSecret)) {
                 $envVars['NRE_STRUCTURE_SHARED_SECRET'] = $SharedSecret
+                $envVars['NRE_CONTROL_SHARED_SECRET'] = $SharedSecret
+            }
+            if (-not $listenIsLoopback) {
+                $envVars['NRE_STRUCTURE_LISTEN_ANY_IP'] = 'true'
             }
 
             $process = Start-DnneProcess `
@@ -183,7 +192,7 @@ if (-not $NoStructures -and $deployable.Structures) {
                     Pid = $process.Id
                     Port = $instance.Port
                     Hemisphere = $instance.Hemisphere
-                    StartedAt = [DateTimeOffset]::UtcNow.ToString('o')
+                    StartedAt = ([DateTimeOffset]$process.StartTime.ToUniversalTime()).ToString('o')
                 }
             }
         }
@@ -197,6 +206,10 @@ if (-not $NoApps -and $deployable.Apps) {
             NRE_CONTROL_ENDPOINTS = $ControlBaseUrl
             CONTROLPROGRAM_BASE_URL = $ControlBaseUrl
         }
+        if (-not [string]::IsNullOrWhiteSpace($SharedSecret)) {
+            $envVars['NRE_STRUCTURE_SHARED_SECRET'] = $SharedSecret
+            $envVars['NRE_CONTROL_SHARED_SECRET'] = $SharedSecret
+        }
         if ($app.Role -eq 'control') {
             $controlPort = ([Uri]$ControlBaseUrl).Port
             $envVars['PORT'] = $controlPort
@@ -204,6 +217,9 @@ if (-not $NoApps -and $deployable.Apps) {
             $envVars['SnapshotEndpoint'] = $snapshotUrl
             $envVars['ControlPublishUrl'] = $publishUrl
             $envVars['StructureProcessHost__AutoStartEnabled'] = 'false'
+            if (-not $listenIsLoopback) {
+                $envVars['NRE_CONTROL_LISTEN_ANY_IP'] = 'true'
+            }
         }
 
         $process = Start-DnneProcess `
@@ -222,7 +238,7 @@ if (-not $NoApps -and $deployable.Apps) {
                 Pid = $process.Id
                 Port = $null
                 Hemisphere = $null
-                StartedAt = [DateTimeOffset]::UtcNow.ToString('o')
+                StartedAt = ([DateTimeOffset]$process.StartTime.ToUniversalTime()).ToString('o')
             }
         }
     }

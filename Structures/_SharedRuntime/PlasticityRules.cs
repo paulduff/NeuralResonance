@@ -118,6 +118,6 @@ internal static class PlasticityRules
 
 	public static float ClampQuanta(float quanta)
 	{
-		return Math.Clamp(quanta, MinQuanta, MaxQuanta);
+		return float.IsFinite(quanta) ? Math.Clamp(quanta, MinQuanta, MaxQuanta) : 1f;
 	}
 }

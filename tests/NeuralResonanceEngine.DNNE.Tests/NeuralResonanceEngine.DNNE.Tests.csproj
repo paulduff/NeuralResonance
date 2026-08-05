@@ -19,10 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Structures\_SharedRuntime\IntracellularMicrotubuleState.cs" Link="SharedRuntime\IntracellularMicrotubuleState.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\..\Benchmarks\NeuralResonanceEngine.EmbodiedBenchmarks\NeuralResonanceEngine.EmbodiedBenchmarks.csproj" />
     <ProjectReference Include="..\..\ControlProgram\NeuralResonanceEngine.ControlProgram.csproj" />
     <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
     <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />

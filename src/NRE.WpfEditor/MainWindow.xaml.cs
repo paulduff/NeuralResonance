@@ -30,8 +30,6 @@ namespace NRE.WpfEditor;
 
 public partial class MainWindow : Window
 {
-    private static readonly (double Width, double Height, double Length) CortexShellRatio = ComputeCortexShellRatio();
-    private static readonly (double Width, double Height, double Length) SubcorticalScaleRatio = ComputeSubcorticalScaleRatio();
     private const double CorticalShellMedialRollDeg = 0.0;
     private static readonly double CorticalShellMedialRollCos = Math.Cos(CorticalShellMedialRollDeg * (Math.PI / 180.0));
     private static readonly double CorticalShellMedialRollSin = Math.Sin(CorticalShellMedialRollDeg * (Math.PI / 180.0));
@@ -63,17 +61,21 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, Point3D> _structureAnchorPoints = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<Point3D> _cameraFitSamplePoints = [];
     private readonly HashSet<SolidColorBrush> _activeSpikeNeuronBrushes = [];
+    private readonly List<SolidColorBrush> _expiredSpikeNeuronBrushes = new(256);
     private readonly List<PathwayVisual> _activePathwayVisuals = new(512);
     private CorpusCallosumVisual? _corpusCallosumVisual;
     private IReadOnlyList<PathwayDefinition>? _pathwayDefinitionsCache;
 
     private DateTime _animationStartUtc;
     private DateTime _lastSnapshotUtc = DateTime.MinValue;
+    private DateTime _lastInspectorRefreshUtc = DateTime.MinValue;
     private bool _isSnapshotPolling;
     private bool _isDragging;
     private bool _presetTransformsLocked = true;
     private bool _isApplyingPresetView;
     private bool _suppressViewMenuEvents;
+    private bool _anatomyDisplayMode = true;
+    private bool _displayModeControlsReady;
     private Point _lastMousePosition;
     private const double BaseSceneScale = 1.35;
     private const double MinSceneZoom = 0.18;
@@ -363,6 +365,7 @@ public partial class MainWindow : Window
         _httpClient.Timeout = Timeout.InfiniteTimeSpan;
         _visualInputClient = new VisualInputDispatchClient(_httpClient);
         InitializeComponent();
+        _displayModeControlsReady = true;
         BuildDockContent();
         ApplyDefaultPanelVisibility();
         SyncViewMenuItemStates();
@@ -696,7 +699,9 @@ public partial class MainWindow : Window
     {
         var groups = new[]
         {
-            (Name: "Telencephalon - Neocortex", Nodes: new[] { "V1", "V2", "V4", "MT", "A1", "S1", "PFC", "Premotor Cortex", "Orbitofrontal Cortex", "Insula", "PPC", "Temporal Association", "Posterior Cingulate", "Retrosplenial Cortex", "Broca (BA44/45)", "Wernicke (pSTG/pSTS)", "Supramarginal/Angular", "Arcuate Fasciculus", "SMA", "M1" }),
+            (Name: "Neocortex - Visual and Sensory", Nodes: new[] { "V1", "V2", "V3", "V4", "MT", "A1", "Auditory Association", "S1", "S2", "Insula" }),
+            (Name: "Neocortex - Frontal and Motor", Nodes: new[] { "PFC", "Dorsomedial PFC", "Ventromedial PFC", "Orbitofrontal Cortex", "Frontal Eye Fields", "Broca (BA44/45)", "Premotor Cortex", "SMA", "M1", "ACC", "Midcingulate Cortex" }),
+            (Name: "Neocortex - Temporal and Parietal", Nodes: new[] { "Wernicke (pSTG/pSTS)", "Supramarginal/Angular", "Temporoparietal Junction", "PPC", "Precuneus", "Temporal Association", "Inferotemporal Cortex", "Fusiform Gyrus", "Temporal Pole", "Posterior Cingulate", "Retrosplenial Cortex", "Arcuate Fasciculus" }),
             (Name: "Telencephalon - Medial Temporal", Nodes: new[] { "EC", "DG", "CA3", "CA2", "CA1", "Subiculum", "Presubiculum", "Parasubiculum", "Parahippocampal Cortex", "Perirhinal Cortex", "Olfactory Bulb" }),
             (Name: "Telencephalon - Commissural/Basal/Limbic", Nodes: new[] { "Corpus Callosum", "Striatum", "Nucleus Accumbens", "Globus Pallidus", "Ventral Pallidum", "GPe", "GPi", "Amygdala", "ACC", "Basal Forebrain" }),
             (Name: "Peripheral Sensory Interface", Nodes: new[] { "Retina", "Cochlea" }),
@@ -731,7 +736,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            RefreshSelectedStructureInspector();
+            RefreshSelectedStructureInspector(force: true);
             AddSpikeLog($"Inspector focused on {nodeMeta.DisplayName}");
         };
         StructuresTree.MouseDoubleClick += async (_, _) => await TryRestartSelectedOffStructureAsync();
@@ -770,12 +775,20 @@ public partial class MainWindow : Window
         SetRenderStatus("Render: initializing 3D scene");
     }
 
-    private void RefreshSelectedStructureInspector()
+    private void RefreshSelectedStructureInspector(bool force = false)
     {
         if (StructuresTree.SelectedItem is not TreeViewItem item || item.Tag is not StructureTreeNode nodeMeta)
         {
             return;
         }
+
+        var now = DateTime.UtcNow;
+        if (!force && (now - _lastInspectorRefreshUtc) < TimeSpan.FromMilliseconds(250))
+        {
+            return;
+        }
+
+        _lastInspectorRefreshUtc = now;
 
         var displayName = nodeMeta.DisplayName;
         var snapshotId = nodeMeta.SnapshotId;
@@ -787,15 +800,33 @@ public partial class MainWindow : Window
             SelectionNameText.Text = $"Structure: {displayName} ({snapshotId})";
             SelectionModelText.Text = $"Neuron Model: {visual.NeuronModel}";
             SelectionPlasticityText.Text = $"Plasticity: {visual.Plasticity}. Firing: {avgRate:0.0} Hz";
-            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(visual.Microtubules, visual.BodySchema, visual.BasalGanglia, visual.Cerebellar, visual.VestibuloReticular, visual.SuperiorColliculus, visual.HippocampalSpatial, visual.SalienceAffect, visual.PrefrontalWorkingMemory, visual.ThalamicAttentionGate, visual.HypothalamicHomeostasis, visual.SleepWakeArousal, visual.DescendingDefense, visual.DopamineReward, visual.SeptohippocampalTheta, visual.SpinalProprioceptive, visual.OlfactoryLimbicMemory, visual.AuditoryLanguageMotor, visual.VisualObjectRecognition, snapshotId);
+            SelectionMicrotubuleText.Text = BuildAtlasInspectorText(snapshotId) + Environment.NewLine +
+                BuildStructureDiagnosticsInspectorText(visual.Microtubules, visual.BodySchema, visual.BasalGanglia, visual.Cerebellar, visual.VestibuloReticular, visual.SuperiorColliculus, visual.HippocampalSpatial, visual.SalienceAffect, visual.PrefrontalWorkingMemory, visual.ThalamicAttentionGate, visual.HypothalamicHomeostasis, visual.SleepWakeArousal, visual.DescendingDefense, visual.DopamineReward, visual.SeptohippocampalTheta, visual.SpinalProprioceptive, visual.OlfactoryLimbicMemory, visual.AuditoryLanguageMotor, visual.VisualObjectRecognition, snapshotId);
         }
         else
         {
             SelectionNameText.Text = $"Structure: {displayName}";
             SelectionModelText.Text = "Neuron Model: -";
             SelectionPlasticityText.Text = "Plasticity: -";
-            SelectionMicrotubuleText.Text = BuildStructureDiagnosticsInspectorText(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, snapshotId);
+            SelectionMicrotubuleText.Text = BuildAtlasInspectorText(snapshotId) + Environment.NewLine +
+                BuildStructureDiagnosticsInspectorText(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, snapshotId);
         }
+    }
+
+    private static string BuildAtlasInspectorText(string snapshotId)
+    {
+        if (!SubcorticalAtlasProfiles.TryGetValue(snapshotId, out var profile))
+        {
+            return "Atlas geometry: cortical surface registration";
+        }
+
+        static string FormatGeometry(string label, AtlasGeometry geometry) =>
+            $"{label} centre {geometry.CenterMm.X:0.0}, {geometry.CenterMm.Y:0.0}, {geometry.CenterMm.Z:0.0} mm; " +
+            $"extent {geometry.DimensionsMm.X:0.0} x {geometry.DimensionsMm.Y:0.0} x {geometry.DimensionsMm.Z:0.0} mm";
+
+        return profile.IsMidline
+            ? $"Atlas geometry: {FormatGeometry("M", profile.Left)}. Source: {profile.Left.Source}."
+            : $"Atlas geometry: {FormatGeometry("L", profile.Left)}; {FormatGeometry("R", profile.Right)}. Source: {profile.Left.Source}.";
     }
 
     private FrameworkElement BuildStructureHeader(string displayName, string snapshotId)
@@ -866,6 +897,7 @@ public partial class MainWindow : Window
         "Olfactory Bulb" => "OlfactoryBulb",
         "Corpus Callosum" => "CorpusCallosum",
         "V2" => "V2",
+        "V3" => "V3",
         "V4" => "V4",
         "MT" => "Mt",
         "TRN" => "Trn",
@@ -891,16 +923,27 @@ public partial class MainWindow : Window
         "Parasubiculum" => "Parasubiculum",
         "Parahippocampal Cortex" => "ParahippocampalCortex",
         "Perirhinal Cortex" => "PerirhinalCortex",
+        "Auditory Association" => "AuditoryAssociationCortex",
+        "S2" => "SecondarySomatosensoryCortex",
         "Wernicke (pSTG/pSTS)" => "WernickePstgPsts",
         "Supramarginal/Angular" => "SupramarginalAngular",
+        "Temporoparietal Junction" => "TemporoparietalJunction",
+        "Precuneus" => "Precuneus",
         "Arcuate Fasciculus" => "ArcuateFasciculus",
         "Broca (BA44/45)" => "BrocaBa44Ba45",
         "PFC" => "Pfc",
+        "Dorsomedial PFC" => "DorsomedialPrefrontalCortex",
+        "Ventromedial PFC" => "VentromedialPrefrontalCortex",
+        "Frontal Eye Fields" => "FrontalEyeFields",
         "Premotor Cortex" => "PremotorCortex",
         "Orbitofrontal Cortex" => "OrbitofrontalCortex",
         "Insula" => "Insula",
         "Posterior Cingulate" => "PosteriorCingulate",
         "Retrosplenial Cortex" => "RetrosplenialCortex",
+        "Inferotemporal Cortex" => "InferotemporalCortex",
+        "Fusiform Gyrus" => "FusiformGyrus",
+        "Temporal Pole" => "TemporalPole",
+        "Midcingulate Cortex" => "MidcingulateCortex",
         "Nucleus Accumbens" => "NucleusAccumbens",
         "Ventral Pallidum" => "VentralPallidum",
         "GPe" => "GPe",
@@ -923,8 +966,26 @@ public partial class MainWindow : Window
         _ => displayName.Replace(" ", string.Empty, StringComparison.Ordinal)
     };
 
+    private void BrainDisplayMode_OnChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton radio || radio.Tag is not string mode)
+        {
+            return;
+        }
+
+        _anatomyDisplayMode = mode.Equals("Anatomy", StringComparison.OrdinalIgnoreCase);
+        if (!_displayModeControlsReady)
+        {
+            return;
+        }
+
+        BuildBrainScene();
+        AddOutputLog($"Brain display mode: {(_anatomyDisplayMode ? "Anatomy" : "Circuit")}");
+    }
+
     private void BuildBrainScene()
     {
+        var sceneBuildTimer = Stopwatch.StartNew();
         BrainViewport.Children.Clear();
         _structureVisuals.Clear();
         _structureVisualsByBaseId.Clear();
@@ -937,9 +998,10 @@ public partial class MainWindow : Window
         _corpusCallosumVisual = null;
 
         var root = new Model3DGroup();
-        root.Children.Add(new AmbientLight(Color.FromRgb(62, 76, 112)));
-        root.Children.Add(new DirectionalLight(Color.FromRgb(184, 208, 255), new Vector3D(-1.2, -1.1, -1.0)));
-        root.Children.Add(new DirectionalLight(Color.FromRgb(110, 136, 204), new Vector3D(1.1, 0.6, -0.4)));
+        root.Children.Add(new AmbientLight(Color.FromRgb(52, 50, 62)));
+        root.Children.Add(new DirectionalLight(Color.FromRgb(255, 226, 216), new Vector3D(-1.0, -1.15, -1.35)));
+        root.Children.Add(new DirectionalLight(Color.FromRgb(112, 146, 210), new Vector3D(1.15, 0.35, -0.20)));
+        root.Children.Add(new DirectionalLight(Color.FromRgb(150, 178, 236), new Vector3D(0.10, 0.80, 1.35)));
 
         var brainContent = new Model3DGroup();
         var combined = new Transform3DGroup();
@@ -949,18 +1011,22 @@ public partial class MainWindow : Window
         combined.Children.Add(new RotateTransform3D(_yawRotation));
         brainContent.Transform = combined;
         // Keep the corpus callosum recognizable without covering the deep nuclei.
-        _corpusCallosumVisual = AddCorpusCallosumPathwayScaffold(brainContent);
+        _corpusCallosumVisual = _anatomyDisplayMode
+            ? null
+            : AddCorpusCallosumPathwayScaffold(brainContent);
         // A restrained anatomical envelope makes the distributed cortical patches
         // read as one brain while leaving the live circuit activity visible.
-        AddAnatomicalReferenceSurfaces(brainContent);
+        AddAnatomicalReferenceSurfaces(brainContent, _anatomyDisplayMode);
 
         var centers = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
         var atlasCenters = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
+        var atlasGeometryByInstance = new Dictionary<string, AtlasGeometry>(StringComparer.OrdinalIgnoreCase);
+        var renderedDimensionsByInstance = new Dictionary<string, Vector3D>(StringComparer.OrdinalIgnoreCase);
         var sampledWorldPointsByInstance = new Dictionary<string, List<Point3D>>(StringComparer.OrdinalIgnoreCase);
         // Neural markers deliberately use a low-poly soma. This keeps the spatial
         // sampling legible while avoiding the 60-vertex ellipsoid cost per neuron.
-        var neuronMesh = BuildNeuronMarkerMesh(0.010);
-        var spikeNeuronMesh = BuildNeuronMarkerMesh(0.013);
+        var neuronMesh = BuildNeuronMarkerMesh(0.0065);
+        var spikeNeuronMesh = BuildNeuronMarkerMesh(0.010);
         TryFreeze(neuronMesh);
         TryFreeze(spikeNeuronMesh);
         var definitions = GetStructureDefinitions().ToList();
@@ -993,32 +1059,66 @@ public partial class MainWindow : Window
             _displayToSnapshotId[def.DisplayName] = def.SnapshotId;
             var effectiveLayout = GetEffectiveStructureLayout(def.SnapshotId, def.Layout);
             var targetNeuronCount = GetTargetNeuronCountPerHemisphere(def.SnapshotId);
-            var generatedPoints = GenerateNeuronMatrix(def, effectiveLayout, targetNeuronCount);
-            var baseLocalPoints = effectiveLayout == StructureLayout.CorticalSheet
-                ? generatedPoints.ToList()
-                : generatedPoints
-                    .Select(p => RotateLocalPoint(p, def.PitchDeg, def.YawDeg, def.RollDeg))
-                    .ToList();
-
             var hemispheres = IsBilaterallyDuplicated(def.SnapshotId) ? new[] { "L", "R" } : new[] { "M" };
+            var localPointSets = new Dictionary<(double X, double Y, double Z, double Pitch, double Yaw, double Roll), List<Point3D>>();
             foreach (var hemi in hemispheres)
             {
-                var hemiCenter = GetHemisphereCenter(def.Center, hemi);
+                var instanceDefinition = effectiveLayout == StructureLayout.CorticalSheet
+                    ? def
+                    : ApplySubcorticalAtlasGeometry(def, hemi);
+                var pointSetKey = (
+                    instanceDefinition.RadiusX,
+                    instanceDefinition.RadiusY,
+                    instanceDefinition.RadiusZ,
+                    instanceDefinition.PitchDeg,
+                    instanceDefinition.YawDeg,
+                    instanceDefinition.RollDeg);
+                if (!localPointSets.TryGetValue(pointSetKey, out var baseLocalPoints))
+                {
+                    var generatedPoints = GenerateNeuronMatrix(instanceDefinition, effectiveLayout, targetNeuronCount);
+                    baseLocalPoints = effectiveLayout == StructureLayout.CorticalSheet
+                        ? generatedPoints.ToList()
+                        : generatedPoints
+                            .Select(p => RotateLocalPoint(
+                                p,
+                                instanceDefinition.PitchDeg,
+                                instanceDefinition.YawDeg,
+                                instanceDefinition.RollDeg))
+                            .ToList();
+                    localPointSets[pointSetKey] = baseLocalPoints;
+                }
+
+                var hemiCenter = GetHemisphereCenter(instanceDefinition.Center, hemi);
                 var center = effectiveLayout == StructureLayout.CorticalSheet
                     ? GetCorticalHemisphereCenter(hemi)
                     : hemiCenter;
                 center = GetEnforcedAtlasCenter(def.SnapshotId, hemi, center, effectiveLayout);
                 var instanceId = $"{hemi}_{def.SnapshotId}";
                 var orientedLocalPoints = baseLocalPoints;
+                AtlasGeometry? atlasGeometry = null;
+                if (TryGetSubcorticalAtlasGeometry(def.SnapshotId, hemi, out var measuredGeometry))
+                {
+                    atlasGeometry = measuredGeometry;
+                    atlasGeometryByInstance[instanceId] = measuredGeometry;
+                }
                 var renderBaseColor = uniqueStructureColors[def.SnapshotId];
-                var renderStructure = !string.Equals(def.SnapshotId, "CorpusCallosum", StringComparison.OrdinalIgnoreCase);
+                var renderStructure = !_anatomyDisplayMode &&
+                                      !string.Equals(def.SnapshotId, "CorpusCallosum", StringComparison.OrdinalIgnoreCase) &&
+                                      !IsPeripheralSensoryStructure(def.SnapshotId);
 
                 var baseDim = ScaleColor(renderBaseColor, 0.22);
-                var diffuse = new SolidColorBrush(baseDim);
-                var emissive = new SolidColorBrush(Color.FromArgb(18, baseDim.R, baseDim.G, baseDim.B));
+                var diffuse = new SolidColorBrush(baseDim)
+                {
+                    Opacity = effectiveLayout == StructureLayout.CorticalSheet ? 0.075 : 0.12
+                };
+                var emissive = new SolidColorBrush(Color.FromRgb(baseDim.R, baseDim.G, baseDim.B))
+                {
+                    Opacity = effectiveLayout == StructureLayout.CorticalSheet ? 0.018 : 0.030
+                };
                 var material = new MaterialGroup();
                 material.Children.Add(new DiffuseMaterial(diffuse));
                 material.Children.Add(new EmissiveMaterial(emissive));
+                material.Children.Add(NeuralStructureSpecularMaterial);
 
                 var cluster = new Model3DGroup();
                 var displayLocalPoints = orientedLocalPoints
@@ -1037,6 +1137,14 @@ public partial class MainWindow : Window
                 var anchor = ComputeAnchorPoint(center, displayLocalPoints);
                 centers[instanceId] = anchor;
                 atlasCenters[instanceId] = center;
+                if (displayLocalPoints.Count > 0)
+                {
+                    var localBounds = ComputeLocalBounds(displayLocalPoints);
+                    renderedDimensionsByInstance[instanceId] = new Vector3D(
+                        localBounds.MaxX - localBounds.MinX,
+                        localBounds.MaxY - localBounds.MinY,
+                        localBounds.MaxZ - localBounds.MinZ);
+                }
                 _structureAnchorPoints[instanceId] = anchor;
                 var sampledPoints = SampleWorldPoints(displayLocalPoints, center, 40);
                 sampledWorldPointsByInstance[instanceId] = sampledPoints;
@@ -1048,11 +1156,16 @@ public partial class MainWindow : Window
                     {
                         AddCorticalGyrusSurface(cluster, def.SnapshotId, hemi, renderBaseColor);
                         AddHomuncularCorticalBands(cluster, def.SnapshotId, hemi);
-                        AddParietalBodySchemaFields(cluster, def.SnapshotId, hemi);
                     }
                     else
                     {
-                        AddDeepCircuitReferenceSurfaces(cluster, def.SnapshotId, hemi, renderBaseColor, displayLocalPoints);
+                        AddDeepCircuitReferenceSurfaces(
+                            cluster,
+                            def.SnapshotId,
+                            hemi,
+                            renderBaseColor,
+                            displayLocalPoints,
+                            atlasGeometry);
                     }
 
                     foreach (var batchedNeuronMesh in BuildRepeatedMeshes(neuronMesh, displayLocalPoints, maxCentersPerMesh: 1000))
@@ -1156,11 +1269,22 @@ public partial class MainWindow : Window
             }
         }
 
+        // Draw sulci after circuit parcels so the anatomical boundaries remain
+        // legible in both Anatomy and Circuit display modes.
+        AddAnatomicalLandmarks(brainContent);
         root.Children.Add(brainContent);
         BrainViewport.Children.Add(new ModelVisual3D { Content = root });
         ScheduleCameraAutoFit();
-        ReportAnatomicalValidation(sampledWorldPointsByInstance, atlasCenters, layoutBySnapshotId);
-        SetRenderStatus($"Render: scene rebuilt ({_structureVisuals.Count} structures, {_pathwayVisuals.Count} pathways)");
+        ReportAnatomicalValidation(
+            sampledWorldPointsByInstance,
+            atlasCenters,
+            atlasGeometryByInstance,
+            renderedDimensionsByInstance,
+            layoutBySnapshotId);
+        sceneBuildTimer.Stop();
+        SetRenderStatus(
+            $"Render: scene rebuilt in {sceneBuildTimer.ElapsedMilliseconds:N0} ms " +
+            $"({_structureVisuals.Count} structures, {_pathwayVisuals.Count} pathways)");
         if (missingSnapshotIds.Count > 0)
         {
             AddOutputLog($"Render: added {missingSnapshotIds.Count} fallback structure visuals for missing definitions ({string.Join(", ", missingSnapshotIds)})");
@@ -1178,6 +1302,8 @@ public partial class MainWindow : Window
     private void ReportAnatomicalValidation(
         IReadOnlyDictionary<string, List<Point3D>> sampledWorldPointsByInstance,
         IReadOnlyDictionary<string, Point3D> centers,
+        IReadOnlyDictionary<string, AtlasGeometry> atlasGeometryByInstance,
+        IReadOnlyDictionary<string, Vector3D> renderedDimensionsByInstance,
         IReadOnlyDictionary<string, StructureLayout> layoutBySnapshotId)
     {
         if (sampledWorldPointsByInstance.Count == 0)
@@ -1185,7 +1311,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        const double corticalShellTolerance = 0.165;
+        // Sulcal depth, gyral crown relief, and cortical thickness together can
+        // legitimately depart from the smooth reference shell by roughly 16 mm.
+        var corticalShellTolerance = MmToRender(16.0);
         const double nonCorticalEnvelopeTolerance = 0.205;
 
         var corticalInstances = 0;
@@ -1238,6 +1366,14 @@ public partial class MainWindow : Window
         var bilateralMisalignment = 0;
         foreach (var snapshotId in layoutBySnapshotId.Keys)
         {
+            if (layoutBySnapshotId[snapshotId] == StructureLayout.CorticalSheet ||
+                SubcorticalAtlasProfiles.ContainsKey(snapshotId))
+            {
+                // Cortical clusters are centred on the shared origin, while atlas
+                // nuclei are validated against their measured asymmetric centres.
+                continue;
+            }
+
             var leftKey = $"L_{snapshotId}";
             var rightKey = $"R_{snapshotId}";
             if (!centers.TryGetValue(leftKey, out var leftCenter) || !centers.TryGetValue(rightKey, out var rightCenter))
@@ -1276,9 +1412,36 @@ public partial class MainWindow : Window
             }
         }
 
+        var atlasExtentChecks = 0;
+        var atlasExtentOverflow = 0;
+        foreach (var (instanceId, geometry) in atlasGeometryByInstance)
+        {
+            if (!renderedDimensionsByInstance.TryGetValue(instanceId, out var renderedDimensions))
+            {
+                continue;
+            }
+
+            atlasExtentChecks++;
+            var expected = new Vector3D(
+                MmToRender(geometry.DimensionsMm.X),
+                MmToRender(geometry.DimensionsMm.Y),
+                MmToRender(geometry.DimensionsMm.Z));
+            var tolerance = MmToRender(1.0);
+            if (renderedDimensions.X > expected.X + tolerance ||
+                renderedDimensions.Y > expected.Y + tolerance ||
+                renderedDimensions.Z > expected.Z + tolerance)
+            {
+                atlasExtentOverflow++;
+            }
+        }
+
         var corticalOffShellRatio = corticalSamples > 0 ? (corticalOffShell / (double)corticalSamples) : 0.0;
         var nonCorticalOutsideRatio = nonCorticalSamples > 0 ? (nonCorticalOutsideEnvelope / (double)nonCorticalSamples) : 0.0;
-        var status = (corticalOffShellRatio <= 0.08 && nonCorticalOutsideRatio <= 0.08 && bilateralMisalignment == 0 && atlasCenterDrift == 0)
+        var status = (corticalOffShellRatio <= 0.08 &&
+                      nonCorticalOutsideRatio <= 0.08 &&
+                      bilateralMisalignment == 0 &&
+                      atlasCenterDrift == 0 &&
+                      atlasExtentOverflow == 0)
             ? "OK"
             : "WARN";
 
@@ -1286,7 +1449,9 @@ public partial class MainWindow : Window
             $"Render anatomy validation ({status}): cortical off-shell {corticalOffShell}/{Math.Max(1, corticalSamples)} " +
             $"({corticalOffShellRatio:P1}), non-cortical out-of-envelope {nonCorticalOutsideEnvelope}/{Math.Max(1, nonCorticalSamples)} " +
             $"({nonCorticalOutsideRatio:P1}), mirror mismatches {bilateralMisalignment}/{Math.Max(1, bilateralPairs)}, " +
-            $"atlas centre drift {atlasCenterDrift}/{Math.Max(1, atlasCenterChecks)}, cortical instances {corticalInstances}.");
+            $"atlas centre drift {atlasCenterDrift}/{Math.Max(1, atlasCenterChecks)}, " +
+            $"atlas extent overflow {atlasExtentOverflow}/{Math.Max(1, atlasExtentChecks)}, cortical instances {corticalInstances}. " +
+            $"Profiles: {string.Join(", ", atlasGeometryByInstance.Values.Select(g => g.Source).Distinct(StringComparer.Ordinal).OrderBy(v => v, StringComparer.Ordinal))}.");
     }
 
     private static bool ShouldBeInsideCerebralEnvelope(string snapshotId)
@@ -1301,30 +1466,47 @@ public partial class MainWindow : Window
         };
     }
 
-    private static void AddAnatomicalReferenceSurfaces(Model3DGroup brainContent)
+    private static bool IsPeripheralSensoryStructure(string snapshotId)
+        => snapshotId is "Retina" or "Cochlea";
+
+    private static void AddAnatomicalReferenceSurfaces(Model3DGroup brainContent, bool anatomyDisplayMode)
     {
+        var cortexDiffuse = anatomyDisplayMode
+            ? Color.FromArgb(236, 184, 128, 138)
+            : Color.FromArgb(132, 118, 106, 122);
+        var cortexEmissive = anatomyDisplayMode
+            ? Color.FromArgb(10, 236, 170, 180)
+            : Color.FromArgb(12, 236, 170, 180);
+        var cerebellumDiffuse = anatomyDisplayMode
+            ? Color.FromArgb(230, 168, 108, 120)
+            : Color.FromArgb(92, 158, 102, 114);
+        var brainstemDiffuse = anatomyDisplayMode
+            ? Color.FromArgb(232, 176, 126, 106)
+            : Color.FromArgb(96, 166, 116, 98);
+
         AddReferenceMesh(
             brainContent,
-            BuildCorticalReferenceSurfaceMesh(-1.0, 54, 30),
-            Color.FromArgb(38, 192, 126, 150),
-            Color.FromArgb(8, 244, 186, 202));
+            BuildCorticalReferenceSurfaceMesh(-1.0, 72, 40),
+            cortexDiffuse,
+            cortexEmissive);
         AddReferenceMesh(
             brainContent,
-            BuildCorticalReferenceSurfaceMesh(1.0, 54, 30),
-            Color.FromArgb(38, 192, 126, 150),
-            Color.FromArgb(8, 244, 186, 202));
+            BuildCorticalReferenceSurfaceMesh(1.0, 72, 40),
+            cortexDiffuse,
+            cortexEmissive);
         // The callosum is rendered as its own structure; an extra translucent
         // scaffold reads as an overlay across basal/thalamic structures.
         AddReferenceMesh(
             brainContent,
-            BuildCerebellarReferenceSurfaceMesh(40, 20),
-            Color.FromArgb(44, 174, 112, 136),
-            Color.FromArgb(10, 232, 174, 194));
+            BuildCerebellarReferenceSurfaceMesh(48, 24),
+            cerebellumDiffuse,
+            Color.FromArgb(16, 226, 156, 170));
         AddReferenceMesh(
             brainContent,
-            BuildBrainstemReferenceSurfaceMesh(18, 28),
-            Color.FromArgb(48, 176, 104, 88),
-            Color.FromArgb(10, 246, 174, 142));
+            BuildBrainstemReferenceSurfaceMesh(24, 32),
+            brainstemDiffuse,
+            Color.FromArgb(14, 236, 172, 142));
+
     }
 
     // Static mesh-builder helpers extracted to MainWindow.Brain3D.Meshes.cs.
@@ -1473,7 +1655,8 @@ public partial class MainWindow : Window
         // per second across 70 structures, so a slow fade accumulates a permanent
         // sea of bright dots. Short fade + dispatch-only lighting keeps the
         // visualization legible: each spike is a clear quick flash.
-        foreach (var brush in _activeSpikeNeuronBrushes.ToArray())
+        _expiredSpikeNeuronBrushes.Clear();
+        foreach (var brush in _activeSpikeNeuronBrushes)
         {
             var current = brush.Color;
             var decayedAlpha = (byte)Math.Max(0, current.A * 0.55);
@@ -1481,12 +1664,17 @@ public partial class MainWindow : Window
             {
                 brush.Color = Color.FromArgb(0, current.R, current.G, current.B);
                 brush.Opacity = 0.0;
-                _activeSpikeNeuronBrushes.Remove(brush);
+                _expiredSpikeNeuronBrushes.Add(brush);
                 continue;
             }
 
             brush.Color = Color.FromArgb(decayedAlpha, current.R, current.G, current.B);
             brush.Opacity = decayedAlpha / 255.0;
+        }
+
+        for (var i = 0; i < _expiredSpikeNeuronBrushes.Count; i++)
+        {
+            _activeSpikeNeuronBrushes.Remove(_expiredSpikeNeuronBrushes[i]);
         }
 
         for (var p = _activePathwayVisuals.Count - 1; p >= 0; p--)
@@ -2031,10 +2219,6 @@ public partial class MainWindow : Window
 
             dispatchIdsByStructure.TryGetValue(state.StructureId, out var dispatchNeuronIds);
             var realNeuronIds = BuildFrameNeuronIdList(dispatchNeuronIds, state.TopNeuronIds);
-            var dispatchSet = dispatchNeuronIds is { Count: > 0 }
-                ? new HashSet<string>(dispatchNeuronIds, StringComparer.Ordinal)
-                : null;
-
             if (realNeuronIds.Count > 0)
             {
                 structuresWithNeuronSpikes++;
@@ -2069,7 +2253,7 @@ public partial class MainWindow : Window
                     ops.Add(new NeuronHighlightOp(
                         visual.SpikeNeuronBrushes[idx],
                         visual.SpikeColor,
-                        dispatchSet?.Contains(neuronId) ?? false));
+                        dispatchNeuronIds?.Contains(neuronId) ?? false));
                 }
             }
         }
@@ -2133,6 +2317,7 @@ public partial class MainWindow : Window
             LogUnmatchedSpikeNeuronOnce(unmatched.StructureId, unmatched.Hemisphere, unmatched.NeuronId, unmatched.Reason);
         }
 
+        var litAnyBrush = false;
         foreach (var op in prepared.Ops)
         {
             if (!op.IsDispatchSpike)
@@ -2146,6 +2331,11 @@ public partial class MainWindow : Window
             _activeSpikeNeuronBrushes.Add(brush);
             brush.Color = Color.FromArgb(255, op.SpikeColor.R, op.SpikeColor.G, op.SpikeColor.B);
             brush.Opacity = 1.0;
+            litAnyBrush = true;
+        }
+
+        if (litAnyBrush)
+        {
             MarkVisualDirty();
         }
 
@@ -2391,7 +2581,6 @@ public partial class MainWindow : Window
 
     private static IEnumerable<string> FilterNeuronIdsForHemisphere(IEnumerable<string> neuronIds, string hemisphere)
     {
-        var hemiPrefix = $"{hemisphere}:";
         foreach (var neuronId in neuronIds)
         {
             if (string.IsNullOrWhiteSpace(neuronId))
@@ -2427,10 +2616,6 @@ public partial class MainWindow : Window
                      ShouldAssignUnscopedNeuronToHemisphere(neuronId[(colon + 1)..], hemisphere))
             {
                 yield return $"{hemisphere}:{neuronId[(colon + 1)..]}";
-            }
-            else if (neuronId.StartsWith(hemiPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                yield return neuronId;
             }
         }
     }

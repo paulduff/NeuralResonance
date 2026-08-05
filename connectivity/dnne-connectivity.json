@@ -9,6 +9,12 @@
                                 "projectionType":  "auditory_association"
                             },
                             {
+                                "target":  "AuditoryAssociationCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221501",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "complex_auditory_feedforward"
+                            },
+                            {
                                 "target":  "Ppc",
                                 "synapseId":  "11111111-1111-1111-1111-111111111202",
                                 "neurotransmitter":  "GLUTAMATE",
@@ -42,6 +48,12 @@
                                 "synapseId":  "11111111-1111-1111-1111-111111112901",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "error_to_control"
+                            },
+                            {
+                                "target":  "MidcingulateCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221502",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "conflict_to_effort_control"
                             },
                             {
                                 "target":  "LocusCoeruleus",
@@ -793,6 +805,24 @@
                                 "projectionType":  "frontoparietal_loop"
                             },
                             {
+                                "target":  "DorsomedialPrefrontalCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221503",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "executive_policy_coordination"
+                            },
+                            {
+                                "target":  "VentromedialPrefrontalCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221504",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "executive_value_coordination"
+                            },
+                            {
+                                "target":  "FrontalEyeFields",
+                                "synapseId":  "22222222-2222-2222-2222-222222221505",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "executive_visual_orientation"
+                            },
+                            {
                                 "target":  "Sma",
                                 "synapseId":  "11111111-1111-1111-1111-111111112002",
                                 "neurotransmitter":  "GLUTAMATE",
@@ -921,12 +951,18 @@
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "corticoreticular_attention"
                             },
-                            {
-                                "target":  "Pfc",
-                                "synapseId":  "11111111-1111-1111-1111-111111112101",
-                                "neurotransmitter":  "GLUTAMATE",
-                                "projectionType":  "frontoparietal_loop"
-                            },
+                        {
+                            "target":  "Pfc",
+                            "synapseId":  "11111111-1111-1111-1111-111111112101",
+                            "neurotransmitter":  "GLUTAMATE",
+                            "projectionType":  "frontoparietal_loop"
+                        },
+                        {
+                            "target":  "TemporoparietalJunction",
+                            "synapseId":  "22222222-2222-2222-2222-222222221510",
+                            "neurotransmitter":  "GLUTAMATE",
+                            "projectionType":  "parietal_context_reorientation"
+                        },
                             {
                                 "target":  "Sma",
                                 "synapseId":  "11111111-1111-1111-1111-111111112102",
@@ -1070,6 +1106,12 @@
                                 "synapseId":  "11111111-1111-1111-1111-111111111301",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "somatosensory_integration"
+                            },
+                            {
+                                "target":  "SecondarySomatosensoryCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221506",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "somatosensory_association_feedforward"
                             },
                             {
                                 "target":  "M1",
@@ -1304,6 +1346,12 @@
                                 "projectionType":  "semantic_to_control"
                             },
                             {
+                                "target":  "TemporalPole",
+                                "synapseId":  "22222222-2222-2222-2222-222222221507",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "semantic_to_anterior_temporal_hub"
+                            },
+                            {
                                 "target":  "EntorhinalCortex",
                                 "synapseId":  "11111111-1111-1111-1111-111111112202",
                                 "neurotransmitter":  "GLUTAMATE",
@@ -1468,6 +1516,12 @@
                                 "projectionType":  "visual_ventral_progression"
                             },
                             {
+                                "target":  "V3",
+                                "synapseId":  "22222222-2222-2222-2222-222222221508",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "intermediate_visual_feedforward"
+                            },
+                            {
                                 "target":  "Mt",
                                 "synapseId":  "7485a3b3-6ac1-4fb1-9890-fe31ee8b8679",
                                 "neurotransmitter":  "GLUTAMATE",
@@ -1489,6 +1543,12 @@
                                 "synapseId":  "cbc4b638-acbf-462c-97ad-7aeafb75d419",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "object_feature_integration"
+                            },
+                            {
+                                "target":  "InferotemporalCortex",
+                                "synapseId":  "22222222-2222-2222-2222-222222221509",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "ventral_object_feedforward"
                             },
                             {
                                 "target":  "PerirhinalCortex",
@@ -1963,6 +2023,102 @@
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "spinal_state_feedback"
                             }
+                        ]
+    },
+    {
+        "source":  "V3",
+        "connections":  [
+                            { "target": "V4", "synapseId": "22222222-2222-2222-2222-222222220301", "neurotransmitter": "GLUTAMATE", "projectionType": "intermediate_visual_form" },
+                            { "target": "Mt", "synapseId": "22222222-2222-2222-2222-222222220302", "neurotransmitter": "GLUTAMATE", "projectionType": "dynamic_form_motion" },
+                            { "target": "V2", "synapseId": "22222222-2222-2222-2222-222222220303", "neurotransmitter": "GLUTAMATE", "projectionType": "extrastriate_feedback" }
+                        ]
+    },
+    {
+        "source":  "AuditoryAssociationCortex",
+        "connections":  [
+                            { "target": "WernickePstgPsts", "synapseId": "22222222-2222-2222-2222-222222220401", "neurotransmitter": "GLUTAMATE", "projectionType": "auditory_object_to_language" },
+                            { "target": "TemporalAssociation", "synapseId": "22222222-2222-2222-2222-222222220402", "neurotransmitter": "GLUTAMATE", "projectionType": "auditory_semantic_binding" },
+                            { "target": "A1", "synapseId": "22222222-2222-2222-2222-222222220403", "neurotransmitter": "GLUTAMATE", "projectionType": "auditory_predictive_feedback" }
+                        ]
+    },
+    {
+        "source":  "SecondarySomatosensoryCortex",
+        "connections":  [
+                            { "target": "Insula", "synapseId": "22222222-2222-2222-2222-222222220501", "neurotransmitter": "GLUTAMATE", "projectionType": "somatic_interoceptive_binding" },
+                            { "target": "Ppc", "synapseId": "22222222-2222-2222-2222-222222220502", "neurotransmitter": "GLUTAMATE", "projectionType": "tactile_object_integration" },
+                            { "target": "S1", "synapseId": "22222222-2222-2222-2222-222222220503", "neurotransmitter": "GLUTAMATE", "projectionType": "somatosensory_feedback" }
+                        ]
+    },
+    {
+        "source":  "InferotemporalCortex",
+        "connections":  [
+                            { "target": "FusiformGyrus", "synapseId": "22222222-2222-2222-2222-222222220601", "neurotransmitter": "GLUTAMATE", "projectionType": "object_category_specialization" },
+                            { "target": "TemporalAssociation", "synapseId": "22222222-2222-2222-2222-222222220602", "neurotransmitter": "GLUTAMATE", "projectionType": "visual_object_semantics" },
+                            { "target": "V3", "synapseId": "22222222-2222-2222-2222-222222220603", "neurotransmitter": "GLUTAMATE", "projectionType": "ventral_visual_feedback" }
+                        ]
+    },
+    {
+        "source":  "FusiformGyrus",
+        "connections":  [
+                            { "target": "InferotemporalCortex", "synapseId": "22222222-2222-2222-2222-222222220701", "neurotransmitter": "GLUTAMATE", "projectionType": "category_object_recurrence" },
+                            { "target": "TemporalAssociation", "synapseId": "22222222-2222-2222-2222-222222220702", "neurotransmitter": "GLUTAMATE", "projectionType": "category_semantic_binding" },
+                            { "target": "TemporalPole", "synapseId": "22222222-2222-2222-2222-222222220703", "neurotransmitter": "GLUTAMATE", "projectionType": "identity_context_binding" }
+                        ]
+    },
+    {
+        "source":  "TemporalPole",
+        "connections":  [
+                            { "target": "VentromedialPrefrontalCortex", "synapseId": "22222222-2222-2222-2222-222222220801", "neurotransmitter": "GLUTAMATE", "projectionType": "social_value_context" },
+                            { "target": "Amygdala", "synapseId": "22222222-2222-2222-2222-222222220802", "neurotransmitter": "GLUTAMATE", "projectionType": "semantic_affective_context" },
+                            { "target": "AuditoryAssociationCortex", "synapseId": "22222222-2222-2222-2222-222222220803", "neurotransmitter": "GLUTAMATE", "projectionType": "person_voice_prediction" }
+                        ]
+    },
+    {
+        "source":  "TemporoparietalJunction",
+        "connections":  [
+                            { "target": "Pfc", "synapseId": "22222222-2222-2222-2222-222222220901", "neurotransmitter": "GLUTAMATE", "projectionType": "context_reorientation" },
+                            { "target": "Precuneus", "synapseId": "22222222-2222-2222-2222-222222220902", "neurotransmitter": "GLUTAMATE", "projectionType": "perspective_self_location" },
+                            { "target": "SecondarySomatosensoryCortex", "synapseId": "22222222-2222-2222-2222-222222220903", "neurotransmitter": "GLUTAMATE", "projectionType": "agency_body_context" }
+                        ]
+    },
+    {
+        "source":  "Precuneus",
+        "connections":  [
+                            { "target": "PosteriorCingulate", "synapseId": "22222222-2222-2222-2222-222222221001", "neurotransmitter": "GLUTAMATE", "projectionType": "episodic_self_context" },
+                            { "target": "RetrosplenialCortex", "synapseId": "22222222-2222-2222-2222-222222221002", "neurotransmitter": "GLUTAMATE", "projectionType": "scene_reference_transform" },
+                            { "target": "TemporoparietalJunction", "synapseId": "22222222-2222-2222-2222-222222221003", "neurotransmitter": "GLUTAMATE", "projectionType": "self_other_perspective" }
+                        ]
+    },
+    {
+        "source":  "MidcingulateCortex",
+        "connections":  [
+                            { "target": "Acc", "synapseId": "22222222-2222-2222-2222-222222221101", "neurotransmitter": "GLUTAMATE", "projectionType": "effort_conflict_feedback" },
+                            { "target": "PremotorCortex", "synapseId": "22222222-2222-2222-2222-222222221102", "neurotransmitter": "GLUTAMATE", "projectionType": "motivated_action_drive" },
+                            { "target": "DorsomedialPrefrontalCortex", "synapseId": "22222222-2222-2222-2222-222222221103", "neurotransmitter": "GLUTAMATE", "projectionType": "uncertainty_policy_feedback" }
+                        ]
+    },
+    {
+        "source":  "DorsomedialPrefrontalCortex",
+        "connections":  [
+                            { "target": "Pfc", "synapseId": "22222222-2222-2222-2222-222222221201", "neurotransmitter": "GLUTAMATE", "projectionType": "policy_to_executive_control" },
+                            { "target": "MidcingulateCortex", "synapseId": "22222222-2222-2222-2222-222222221202", "neurotransmitter": "GLUTAMATE", "projectionType": "goal_effort_monitoring" },
+                            { "target": "FrontalEyeFields", "synapseId": "22222222-2222-2222-2222-222222221203", "neurotransmitter": "GLUTAMATE", "projectionType": "executive_attention_orientation" }
+                        ]
+    },
+    {
+        "source":  "VentromedialPrefrontalCortex",
+        "connections":  [
+                            { "target": "OrbitofrontalCortex", "synapseId": "22222222-2222-2222-2222-222222221301", "neurotransmitter": "GLUTAMATE", "projectionType": "integrated_value_feedback" },
+                            { "target": "Amygdala", "synapseId": "22222222-2222-2222-2222-222222221302", "neurotransmitter": "GLUTAMATE", "projectionType": "affective_regulation" },
+                            { "target": "NucleusAccumbens", "synapseId": "22222222-2222-2222-2222-222222221303", "neurotransmitter": "GLUTAMATE", "projectionType": "value_to_motivation" }
+                        ]
+    },
+    {
+        "source":  "FrontalEyeFields",
+        "connections":  [
+                            { "target": "SuperiorColliculus", "synapseId": "22222222-2222-2222-2222-222222221401", "neurotransmitter": "GLUTAMATE", "projectionType": "cortical_saccade_command" },
+                            { "target": "Ppc", "synapseId": "22222222-2222-2222-2222-222222221402", "neurotransmitter": "GLUTAMATE", "projectionType": "spatial_attention_reentry" },
+                            { "target": "PremotorCortex", "synapseId": "22222222-2222-2222-2222-222222221403", "neurotransmitter": "GLUTAMATE", "projectionType": "gaze_action_coordination" }
                         ]
     }
 ]

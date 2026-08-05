@@ -1,6 +1,7 @@
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
+[Collection(NeuralResonanceEngine.DNNE.Tests.EnvironmentVariableTestCollection.Name)]
 public sealed class StructureEngineDeterminismTests
 {
     private static readonly object EnvironmentGate = new();
@@ -29,6 +30,77 @@ public sealed class StructureEngineDeterminismTests
             Assert.Throws<StructureIngressOverloadException>(() =>
                 engine.EnqueueSpikeAsync(CreateSpike(timestampMs: 1, feedback: false)).GetAwaiter().GetResult());
         });
+    }
+
+    [Fact]
+    public void BatchAdmissionIsAtomicWhenCapacityIsInsufficient()
+    {
+        WithEngine(2, engine =>
+        {
+            engine.EnqueueSpikeAsync(CreateSpike(timestampMs: 0, feedback: false)).GetAwaiter().GetResult();
+            var rejected = new[]
+            {
+                CreateSpike(timestampMs: 1, feedback: false),
+                CreateSpike(timestampMs: 2, feedback: false)
+            };
+
+            Assert.Throws<StructureIngressOverloadException>(() =>
+                engine.EnqueueSpikeBatchAsync(rejected).GetAwaiter().GetResult());
+
+            // If the rejected batch had committed a prefix, this would overflow.
+            engine.EnqueueSpikeAsync(rejected[0]).GetAwaiter().GetResult();
+        });
+    }
+
+    [Fact]
+    public void RetriedMessageIdIsAcknowledgedWithoutBeingQueuedTwice()
+    {
+        WithEngine(1, engine =>
+        {
+            var spike = CreateSpike(timestampMs: 0, feedback: false);
+            engine.EnqueueSpikeAsync(spike).GetAwaiter().GetResult();
+
+            Assert.Equal(1, engine.EnqueueSpikeBatchAsync(new[] { spike }).GetAwaiter().GetResult());
+            var ack = engine.ProcessTickAsync(CreateTick(tick: 1, timestampMs: 100)).GetAwaiter().GetResult();
+            Assert.Equal(1, ack.SpikeInCount);
+        });
+    }
+
+    [Fact]
+    public void HemisphereInstancesUseDifferentSynapseFiles()
+    {
+        lock (EnvironmentGate)
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "nre-engine-tests", Guid.NewGuid().ToString("N"));
+            var previousDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+            var previousInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+            try
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
+                foreach (var instance in new[] { "PFC_L", "PFC_R" })
+                {
+                    Environment.SetEnvironmentVariable("SERVICE_INSTANCE", instance);
+                    using var engine = new StructureEngine(new StructureProfile(
+                        StructureId.Pfc,
+                        "LIF",
+                        "STDP",
+                        "test profile",
+                        new DelayWindow(2, 2)));
+                }
+
+                Assert.True(File.Exists(Path.Combine(directory, "PFC_L.synapses.json")));
+                Assert.True(File.Exists(Path.Combine(directory, "PFC_R.synapses.json")));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", previousDirectory);
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", previousInstance);
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
     }
 
     [Fact]

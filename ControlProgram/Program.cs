@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using Grpc.Net.Client;
+using NeuralResonanceEngine.ControlProgram.Services;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 using ProtoBuf.Grpc;
@@ -43,7 +44,8 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 builder.Configuration
     .AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true, reloadOnChange: true)
-    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, $"appsettings.{builder.Environment.EnvironmentName}.json"), optional: true, reloadOnChange: true);
+    .AddJsonFile(Path.Combine(AppContext.BaseDirectory, $"appsettings.{builder.Environment.EnvironmentName}.json"), optional: true, reloadOnChange: true)
+    .AddCommandLine(args);
 builder.Services.AddSingleton<SimulationState>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
@@ -56,8 +58,10 @@ builder.Services.AddSingleton<LanguageBackoffPolicy>();
 builder.Services.AddSingleton<DialogueTurnManager>();
 builder.Services.AddSingleton<AdminInputRestartGate>();
 builder.Services.AddSingleton<FramePayloadFactory>();
+builder.Services.AddSingleton<HippocampalNavigationSessionManager>();
 builder.Services.AddSingleton<InputIngressRuntime>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
+builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
     {
@@ -68,6 +72,12 @@ builder.Services.AddHttpClient("dnne")
         MaxConnectionsPerServer = 512,
         AutomaticDecompression = DecompressionMethods.None
     });
+builder.Services.AddHttpClient<IEntityLanguageClient, EntityLanguageClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<EntityLanguageBridgeOptions>();
+    client.BaseAddress = options.ApiBaseUri;
+    client.Timeout = options.Timeout;
+});
 builder.Services.AddHostedService<TickCoordinator>();
 
 // Compress JSON API responses (frame and large state payloads are text-heavy
@@ -222,6 +232,10 @@ app.MapGet("/api/v1/biological-teaching-loop", (SimulationState state) => Result
 app.MapGet("/api/v1/circuit-health", (SimulationState state, int? maxWarnings) => Results.Ok(state.GetCircuitHealthPanelSnapshot(maxWarnings ?? 96)));
 app.MapAdminReasoningRoutes();
 app.MapAdminTelemetryRoutes();
+app.MapSurvivalBenchmarkRoutes();
+app.MapDyadLanguageRoutes();
+app.MapDyadLanguageGenerationRoutes();
+app.MapNavigationRoutes();
 app.MapGet("/api/v1/frame", (HttpRequest request, SimulationState state, SnapshotStore store, AutoProfileRuntimeState autoProfileState, FramePayloadFactory framePayloadFactory, ILoggerFactory loggerFactory) =>
 {
     var logger = loggerFactory.CreateLogger("FrameEndpoint");
@@ -4028,6 +4042,7 @@ internal sealed class SimulationState
     private readonly Queue<RuntimeLogEntry> _outputLog = new();
     private readonly Queue<RuntimeLogEntry> _spikeLog = new();
     private readonly Queue<DispatchedSpikeTrace> _dispatchSpikeTrace = new();
+    private readonly Queue<DyadLanguageCandidateAuditRecord> _dyadLanguageCandidateReviews = new();
     private readonly Dictionary<StructureId, int> _dispatchLifetimeOut = new();
     private readonly Dictionary<StructureId, int> _dispatchLifetimeIn = new();
     private readonly Dictionary<StructureId, long> _dispatchLastOutTick = new();
@@ -4060,6 +4075,7 @@ internal sealed class SimulationState
     private IReadOnlyList<RelationalSchema>? _cachedRelationalSchemas;
     private const int MaxRuntimeLogEntries = 500;
     private const int MaxDispatchTraceEntries = 20000;
+    private const int MaxDyadLanguageCandidateReviews = 256;
     private const int MaxPopulationDispatchTracePerBatch = 96;
     private const int MaxObjectMemoryEntries = 2048;
     private const int MaxWorldModelTransitions = 2048;
@@ -4511,6 +4527,246 @@ internal sealed class SimulationState
         {
             return CognitiveLanguageWorkspace;
         }
+    }
+
+    public DyadLanguageCandidateResponse ReviewDyadLanguageCandidate(DyadLanguageCandidateProposal proposal)
+    {
+        ArgumentNullException.ThrowIfNull(proposal);
+
+        lock (_gate)
+        {
+            var existing = _dyadLanguageCandidateReviews.LastOrDefault(record =>
+                string.Equals(record.Proposal.SessionId, proposal.SessionId, StringComparison.Ordinal) &&
+                string.Equals(record.Proposal.TurnId, proposal.TurnId, StringComparison.Ordinal));
+            if (existing is not null)
+            {
+                var sameProposal = string.Equals(existing.Proposal.PromptFingerprint, proposal.PromptFingerprint, StringComparison.Ordinal) &&
+                                   string.Equals(existing.Proposal.CandidateText, proposal.CandidateText, StringComparison.Ordinal) &&
+                                   string.Equals(existing.Proposal.CandidateKind, proposal.CandidateKind, StringComparison.Ordinal);
+                return new DyadLanguageCandidateResponse(
+                    DyadLanguageContract.ProtocolVersion,
+                    proposal.SessionId,
+                    proposal.TurnId,
+                    sameProposal ? existing.Decision : DyadLanguageCandidateDecision.Deferred,
+                    sameProposal ? existing.DecisionReason : "A different candidate already exists for this session and turn; conflicting replay was rejected.",
+                    existing.Grounding,
+                    existing.ReviewSequence,
+                    existing.ReviewedAtUtc);
+            }
+
+            var grounding = BuildDyadLanguageGroundingSnapshotLocked();
+
+            var (decision, reason) = ResolveDyadLanguageCandidateDecision(grounding);
+            var reviewedAtUtc = DateTimeOffset.UtcNow;
+            var reviewSequence = _dyadLanguageCandidateReviews.Count == 0
+                ? 1L
+                : _dyadLanguageCandidateReviews.Last().ReviewSequence + 1L;
+            var response = new DyadLanguageCandidateResponse(
+                DyadLanguageContract.ProtocolVersion,
+                proposal.SessionId,
+                proposal.TurnId,
+                decision,
+                reason,
+                grounding,
+                reviewSequence,
+                reviewedAtUtc);
+
+            _dyadLanguageCandidateReviews.Enqueue(new DyadLanguageCandidateAuditRecord(
+                reviewSequence,
+                reviewedAtUtc,
+                proposal,
+                decision,
+                reason,
+                grounding));
+            while (_dyadLanguageCandidateReviews.Count > MaxDyadLanguageCandidateReviews)
+            {
+                _dyadLanguageCandidateReviews.Dequeue();
+            }
+
+            return response;
+        }
+    }
+
+    public DyadEntityPromptSnapshot CreateDyadEntityPrompt(DyadEntityGenerationParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+
+        lock (_gate)
+        {
+            var grounding = BuildDyadLanguageGroundingSnapshotLocked();
+            var prompt = string.Join('\n',
+            [
+                "You are Entity, the language component of Dyad.",
+                "Produce one short language candidate for DNNE review. Treat the following as bounded internal reports, not proof of external events.",
+                "Do not prescribe motor actions, reward changes, memory writes, or unobserved world facts.",
+                $"Requested candidate kind: {parameters.CandidateKind}.",
+                $"Requested purpose: {parameters.Purpose}.",
+                $"Verified DNNE tick: {grounding.Tick}.",
+                $"Goal: {grounding.BoundGoalKey}; focus: {grounding.SemanticFocus}; need: {grounding.NeedState}; affect: {grounding.AffectiveState}.",
+                $"Language workspace: active={grounding.WorkspaceActive}; confidence={grounding.WorkspaceConfidence:0.00}; working-memory={grounding.WorkingMemoryStability:0.00}.",
+                $"Attention: language={grounding.LanguageAttention:0.00}; confidence={grounding.AttentionConfidence:0.00}.",
+                $"Speech gate: mode={grounding.SpeechMode}; eligible={grounding.SpeechEligible}; confidence={grounding.SpeechConfidence:0.00}.",
+                $"Verified DNNE communication intent (expression only; not a motor directive): active={grounding.CommunicationIntent.Active}; intent={grounding.CommunicationIntent.Intent}; mood={grounding.CommunicationIntent.Mood}; subject={grounding.CommunicationIntent.Subject}; strength={grounding.CommunicationIntent.Strength:0.00}; evidence={grounding.CommunicationIntent.Evidence}.",
+                "Verified DNNE memory excerpts (bounded internal reports, not proof of external events):",
+                ..grounding.MemoryExcerpts.Select(excerpt =>
+                    $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})"),
+                $"DNNE evidence label: {grounding.Evidence}."
+            ]);
+            if (prompt.Length > DyadLanguageContract.MaxPromptLength)
+            {
+                prompt = prompt[..DyadLanguageContract.MaxPromptLength];
+            }
+
+            return new DyadEntityPromptSnapshot(
+                prompt,
+                DyadLanguageContract.CreatePromptFingerprint(prompt),
+                BrainNarration.Utterance,
+                grounding);
+        }
+    }
+
+    public IReadOnlyList<DyadLanguageCandidateAuditRecord> GetDyadLanguageCandidateReviews(int limit)
+    {
+        var boundedLimit = Math.Clamp(limit, 1, MaxDyadLanguageCandidateReviews);
+        lock (_gate)
+        {
+            return _dyadLanguageCandidateReviews
+                .TakeLast(boundedLimit)
+                .Reverse()
+                .ToArray();
+        }
+    }
+
+    private static (DyadLanguageCandidateDecision Decision, string Reason) ResolveDyadLanguageCandidateDecision(
+        DyadLanguageGroundingSnapshot grounding)
+    {
+        if (grounding.IsSleeping)
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE is sleeping; the candidate remains available for later review.");
+        }
+
+        if (!grounding.WorkspaceActive)
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE has no active cognitive language workspace for this turn.");
+        }
+
+        if (grounding.WorkspaceConfidence < 0.40f)
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's cognitive language workspace confidence is below the review threshold.");
+        }
+
+        if (grounding.LanguageAttention < 0.12f || grounding.AttentionConfidence < 0.20f)
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's attention system has not independently prioritised language for this turn.");
+        }
+
+        if (!grounding.SpeechEligible || !string.Equals(grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase))
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's independent speech gate is closed; no utterance is emitted.");
+        }
+
+        return (
+            DyadLanguageCandidateDecision.AcceptedForEmission,
+            "DNNE's independent workspace, attention, and speech gates accept this reviewed candidate for emission; this is not a motor or memory operation.");
+    }
+
+    private DyadLanguageGroundingSnapshot BuildDyadLanguageGroundingSnapshotLocked()
+    {
+        var workspace = CognitiveLanguageWorkspace;
+        var speech = SpeechIntention;
+        var communicationIntent = BuildDyadCommunicationIntentLocked();
+        return new DyadLanguageGroundingSnapshot(
+            Tick,
+            SleepMemory.IsSleeping,
+            workspace.Active,
+            workspace.Confidence,
+            workspace.WorkingMemoryStability,
+            workspace.BoundGoalKey,
+            workspace.SemanticFocus,
+            workspace.NeedState,
+            workspace.AffectiveState,
+            AttentionState.Language,
+            AttentionState.FocusConfidence,
+            speech.Mode,
+            speech.SpokenEligible,
+            speech.Confidence,
+            speech.ReleaseGate,
+            speech.Suppression,
+            workspace.Evidence,
+            BuildDyadVerifiedMemoryExcerptsLocked(),
+            communicationIntent);
+    }
+
+    private IReadOnlyList<DyadVerifiedMemoryExcerpt> BuildDyadVerifiedMemoryExcerptsLocked()
+    {
+        var workingMemory = PrefrontalWorkingMemory;
+        var excerpts = new List<DyadVerifiedMemoryExcerpt>(4)
+        {
+            new(
+                "prefrontal-working-memory",
+                $"Task={SummarizeDyadLanguageText(workingMemory.CurrentTaskSet, 96)}; question={SummarizeDyadLanguageText(workingMemory.CurrentQuestion, 160)}; plan={SummarizeDyadLanguageText(workingMemory.CurrentPlan, 128)}.",
+                workingMemory.Confidence,
+                workingMemory.LastUpdatedTick,
+                SummarizeDyadLanguageText(workingMemory.Evidence, 160))
+        };
+
+        if (EpisodicMemory.Count > 0)
+        {
+            excerpts.Add(new DyadVerifiedMemoryExcerpt(
+                "episodic-memory",
+                SummarizeDyadLanguageText(EpisodicMemory.BestRecallSummary, 220),
+                EpisodicMemory.RecallConfidence,
+                EpisodicMemory.LastUpdatedTick,
+                $"event={SummarizeDyadLanguageText(EpisodicMemory.LastEventType, 72)}; hippocampal-binding={EpisodicMemory.HippocampalBinding:0.00}"));
+        }
+
+        if (SemanticMemory.Count > 0)
+        {
+            excerpts.Add(new DyadVerifiedMemoryExcerpt(
+                "semantic-memory",
+                $"Concept={SummarizeDyadLanguageText(SemanticMemory.DominantConceptKey, 96)}; meaning={SummarizeDyadLanguageText(SemanticMemory.DominantMeaning, 220)}.",
+                SemanticMemory.SemanticConfidence,
+                SemanticMemory.LastUpdatedTick,
+                $"category={SummarizeDyadLanguageText(SemanticMemory.ActiveCategory, 72)}; pfc-control={SemanticMemory.PfcConceptControl:0.00}"));
+        }
+
+        if (PlaceMemory.Count > 0)
+        {
+            excerpts.Add(new DyadVerifiedMemoryExcerpt(
+                "place-memory",
+                $"Place={SummarizeDyadLanguageText(PlaceMemory.ActiveLabel, 120)}; recall={SummarizeDyadLanguageText(PlaceMemory.BestRecallSummary, 180)}.",
+                PlaceMemory.Confidence,
+                PlaceMemory.LastUpdatedTick,
+                $"safety={PlaceMemory.Safety:0.00}; threat={PlaceMemory.Threat:0.00}; category={SummarizeDyadLanguageText(PlaceMemory.ActiveCategory, 72)}"));
+        }
+
+        return excerpts;
+    }
+
+    private DyadCommunicationIntentSnapshot BuildDyadCommunicationIntentLocked()
+    {
+        var languageIntent = LanguageIntent;
+        var innerSpeech = InnerSpeechLoop;
+        var workspace = CognitiveLanguageWorkspace;
+        return new DyadCommunicationIntentSnapshot(
+            languageIntent.Active || innerSpeech.Active || SpeechIntention.SpokenEligible,
+            SummarizeDyadLanguageText(languageIntent.Intent, 96),
+            SummarizeDyadLanguageText(languageIntent.Mood, 96),
+            SummarizeDyadLanguageText(languageIntent.Subject, 120),
+            Math.Max(languageIntent.Strength, innerSpeech.Confidence),
+            SummarizeDyadLanguageText(
+                innerSpeech.Active ? innerSpeech.Evidence : workspace.Evidence,
+                160));
+    }
+
+    private static string SummarizeDyadLanguageText(string? value, int maximumLength)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value)
+            ? "none"
+            : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return normalized.Length <= maximumLength
+            ? normalized
+            : normalized[..Math.Max(1, maximumLength - 3)] + "...";
     }
 
     public InnerSpeechLoopRuntime GetInnerSpeechLoopSnapshot()
@@ -14103,8 +14359,9 @@ internal sealed class SimulationState
             : !string.IsNullOrWhiteSpace(PrefrontalWorkingMemory.SelectedAction)
             ? PrefrontalWorkingMemory.SelectedAction
             : GlobalWorkspace.BoundActionKey;
-        var why = BuildNarrativeSelfReason(need, goal, action);
-        var statement = BuildNarrativeSelfStatement(bodyFeeling, need, goal, action, why);
+        var actionNeed = ResolveNarrativeActionNeed(action, goal);
+        var why = BuildNarrativeSelfReason(actionNeed ?? need);
+        var statement = BuildNarrativeSelfStatement(bodyFeeling, need, action, actionNeed, why);
         var narrativeCircuitEvidence = ResolveNarrativeSelfCircuitEvidenceLocked(tick);
         var active = narrativeCircuitEvidence > 0.10f && (GlobalWorkspace.Active || PrefrontalWorkingMemory.Active || IntentionalActionLoop.Active || GoalIntent.Active || interoception > 0.34f || autobiographical > 0.34f);
         var confidence = Clamp01((interoception * 0.16f) + (agency * 0.18f) + (selfContinuity * 0.22f) + (languageBinding * 0.16f) + (GlobalWorkspace.Confidence * 0.18f) + (IntentionalActionLoop.Confidence * 0.10f));
@@ -14170,7 +14427,7 @@ internal sealed class SimulationState
         return EmotionState.DominantEmotion == "neutral" ? "settled" : EmotionState.DominantEmotion;
     }
 
-    private string BuildNarrativeSelfReason(string need, string goal, string action)
+    private string BuildNarrativeSelfReason(string need)
         => need switch
         {
             "safety" => WorldLearningMap.MostDangerousKey == "none" ? "danger is salient now" : $"I remember danger at {WorldLearningMap.MostDangerousKey}",
@@ -14182,7 +14439,12 @@ internal sealed class SimulationState
             _ => GlobalWorkspace.Active ? $"the shared workspace is focused on {GlobalWorkspace.BroadcastFocus}" : "I am observing"
         };
 
-    private static string BuildNarrativeSelfStatement(string bodyFeeling, string need, string goal, string action, string why)
+    internal static string BuildNarrativeSelfStatement(
+        string bodyFeeling,
+        string need,
+        string action,
+        string? actionNeed,
+        string why)
     {
         if (bodyFeeling == "asleep")
         {
@@ -14192,7 +14454,44 @@ internal sealed class SimulationState
         var normalizedAction = string.IsNullOrWhiteSpace(action) ? "idle" : action;
         var readableNeed = NeedToReadable(need);
         var readableAction = ActionKeyToReadable(normalizedAction);
+        if (!string.IsNullOrWhiteSpace(actionNeed) && !NarrativeNeedsAreCompatible(need, actionNeed))
+        {
+            return $"I feel {bodyFeeling}; I need {readableNeed}; my current plan is still {readableAction} because {why}.";
+        }
+
         return $"I feel {bodyFeeling}; I need {readableNeed}; I am {readableAction} because {why}.";
+    }
+
+    internal static string? ResolveNarrativeActionNeed(string action, string goal)
+    {
+        foreach (var candidate in new[] { action, goal })
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                continue;
+            }
+
+            var normalized = candidate.Replace("_", string.Empty, StringComparison.Ordinal).ToLowerInvariant();
+            if (normalized.Contains("findfood", StringComparison.Ordinal) || normalized.Contains("seekfood", StringComparison.Ordinal)) return "food";
+            if (normalized.Contains("findshelter", StringComparison.Ordinal) || normalized.Contains("seekshelter", StringComparison.Ordinal)) return "shelter";
+            if (normalized.Contains("rest", StringComparison.Ordinal)) return "energy";
+            if (normalized.Contains("avoid", StringComparison.Ordinal) || normalized.Contains("protectbody", StringComparison.Ordinal) || normalized.Contains("seekweapon", StringComparison.Ordinal)) return "safety";
+            if (normalized.Contains("recoverbalance", StringComparison.Ordinal)) return "balance";
+            if (normalized.Contains("explore", StringComparison.Ordinal)) return "learning";
+        }
+
+        return null;
+    }
+
+    private static bool NarrativeNeedsAreCompatible(string need, string actionNeed)
+    {
+        if (string.Equals(need, actionNeed, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return (need, actionNeed) is ("shelter", "energy") or ("energy", "shelter") or
+            ("body", "safety") or ("safety", "body");
     }
 
     private static string NeedToReadable(string need) => need switch
@@ -17643,6 +17942,7 @@ internal sealed class SimulationState
             _dispatchLifetimeIn.Clear();
             _dispatchLastOutTick.Clear();
             _dispatchLastInTick.Clear();
+            _dyadLanguageCandidateReviews.Clear();
             InvalidateCompositeSnapshotCachesLocked();
             _worldModelHasPreviousObservation = false;
             _worldModelPendingActionKey = "idle";
@@ -19732,7 +20032,15 @@ internal sealed class SimulationState
     private static float Clamp01(float value) => Math.Clamp(value, 0.0f, 1.0f);
     private static float ClampSigned01(float value) => Math.Clamp(value, -1.0f, 1.0f);
 
-    public object ToDiagnostics(AutoProfileSettings? autoProfile = null) => new
+    public object ToDiagnostics(AutoProfileSettings? autoProfile = null)
+    {
+        lock (_gate)
+        {
+            return BuildDiagnosticsLocked(autoProfile);
+        }
+    }
+
+    private object BuildDiagnosticsLocked(AutoProfileSettings? autoProfile) => new
     {
         Tick,
         SimulationClockMs,
@@ -20203,7 +20511,7 @@ internal sealed class SimulationState
         LastSnapshotWallClockUnixMs,
         PerformanceProfileName,
         OscillationPhases,
-        ServiceCount = ServiceRegistry.Count,
+        ServiceCount = GetExpectedServiceCountLocked(),
         ServiceTelemetry = ServiceTelemetry.ToDictionary(
             kvp => kvp.Key.ToString(),
             kvp => new
@@ -20394,7 +20702,7 @@ internal sealed class SimulationState
             LastSnapshotTick,
             LastSnapshotSimulationMs,
             LastSnapshotWallClockUnixMs,
-            ServiceCount = ServiceRegistry.Count,
+            ServiceCount = GetExpectedServiceCountLocked(),
             NonOkCount = nonOkEntries.Count,
             NonOkDetails = nonOkDetails,
             TelemetryStale = telemetryStale
@@ -20430,7 +20738,8 @@ internal sealed class SimulationState
         var generated = TransportStats.GeneratedSpikes;
         var routed = TransportStats.RoutedSpikes;
         var delivered = TransportStats.DeliveredSpikes;
-        var pipelineMonotonic = generated >= routed && routed >= delivered;
+        var pipelineMonotonic = generated >= 0 && routed >= 0 && delivered >= 0 &&
+            (delivered == 0 || routed > 0 || TransportStats.DispatchQueueFlushedBatches > 0);
         var queueHealthy = TransportStats.DispatchQueueDroppedBatches == 0 && TransportStats.DispatchQueueDispatchErrors == 0;
         var servicesHealthy = nonOkCount <= nonOkLimit;
         var sleepBiologyBounds = SleepMemory.AtpBudget >= 0f && SleepMemory.AtpBudget <= SleepMemory.MaxAtpBudget + 0.001f;
@@ -20456,7 +20765,7 @@ internal sealed class SimulationState
         {
             Tick,
             SimulationClockMs,
-            ServiceCount = ServiceRegistry.Count,
+            ServiceCount = GetExpectedServiceCountLocked(),
             NonOkCount = nonOkCount,
             LastSnapshotTick,
             SnapshotAgeTicks = hasSnapshot ? snapshotAgeTicks : -1,
@@ -20853,10 +21162,28 @@ internal sealed class SimulationState
     {
         lock (_gate)
         {
-            var totalServices = ServiceRegistry.Count == 0 ? ServiceTelemetry.Count : ServiceRegistry.Count;
+            var totalServices = GetExpectedServiceCountLocked();
             var nonOkServices = GetNonOkServiceEntriesLocked().Count;
             return (totalServices, nonOkServices);
         }
+    }
+
+    private int GetExpectedServiceCountLocked()
+    {
+        var expected = 0;
+        foreach (var structure in ServiceRegistry.Keys)
+        {
+            if (!ServiceTelemetry.TryGetValue(structure, out var telemetry) ||
+                !ServiceTelemetryAggregation.IsAbsent(telemetry))
+            {
+                expected++;
+            }
+        }
+
+        expected += ServiceTelemetry.Count(pair =>
+            !ServiceRegistry.ContainsKey(pair.Key) &&
+            !ServiceTelemetryAggregation.IsAbsent(pair.Value));
+        return expected;
     }
 
     private List<(StructureId Structure, string Status, string Error)> GetNonOkServiceEntriesLocked()
@@ -20872,6 +21199,11 @@ internal sealed class SimulationState
             }
 
             var status = string.IsNullOrWhiteSpace(telemetry.LastStatus) ? "UNKNOWN" : telemetry.LastStatus;
+            if (ServiceTelemetryAggregation.IsAbsent(telemetry))
+            {
+                continue;
+            }
+
             if (!string.Equals(status, "OK", StringComparison.OrdinalIgnoreCase))
             {
                 nonOk.Add((pair.Key, status, string.IsNullOrWhiteSpace(telemetry.LastError) ? string.Empty : telemetry.LastError));
@@ -20886,6 +21218,11 @@ internal sealed class SimulationState
             }
 
             var status = string.IsNullOrWhiteSpace(telemetryEntry.Value.LastStatus) ? "UNKNOWN" : telemetryEntry.Value.LastStatus;
+            if (ServiceTelemetryAggregation.IsAbsent(telemetryEntry.Value))
+            {
+                continue;
+            }
+
             if (!string.Equals(status, "OK", StringComparison.OrdinalIgnoreCase))
             {
                 nonOk.Add((telemetryEntry.Key, status, string.IsNullOrWhiteSpace(telemetryEntry.Value.LastError) ? string.Empty : telemetryEntry.Value.LastError));
@@ -22214,46 +22551,77 @@ internal sealed class SimulationState
 internal sealed class SnapshotStore : ISnapshotSink, IAsyncDisposable
 {
     private readonly ConcurrentQueue<BrainSnapshot> _snapshots = new();
-    private readonly int _maxInMemorySnapshots = 1024;
-    private readonly string _storePath = Path.Combine(AppContext.BaseDirectory, "snapshots.ndjson");
+    private readonly int _maxInMemorySnapshots;
+    private readonly string _storePath;
+    private readonly long _maxFileBytes;
+    private readonly int _retainedFiles;
+    private readonly int _flushEvery;
     private readonly SemaphoreSlim _writeGate = new(1, 1);
-    private readonly FileStream _writeStream;
-    private readonly StreamWriter _writeWriter;
+    private FileStream _writeStream;
+    private StreamWriter _writeWriter;
     private BrainSnapshot? _latest;
     private int _pendingWritesSinceFlush;
+    private int _snapshotCount;
+    private int _disposed;
 
-    public SnapshotStore()
+    public SnapshotStore(IConfiguration configuration)
     {
+        _maxInMemorySnapshots = Math.Clamp(configuration.GetValue<int>("SnapshotStore:MaxInMemorySnapshots", 1024), 32, 32_768);
+        _maxFileBytes = Math.Clamp(configuration.GetValue<long>("SnapshotStore:MaxFileBytes", 256L * 1024 * 1024), 1024 * 1024, 16L * 1024 * 1024 * 1024);
+        _retainedFiles = Math.Clamp(configuration.GetValue<int>("SnapshotStore:RetainedFiles", 4), 1, 32);
+        _flushEvery = Math.Clamp(configuration.GetValue<int>("SnapshotStore:FlushEvery", 20), 1, 1000);
+        var configuredPath = configuration["SnapshotStore:Path"];
+        _storePath = string.IsNullOrWhiteSpace(configuredPath)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "NeuralResonanceEngine",
+                "snapshots",
+                "snapshots.ndjson")
+            : Path.GetFullPath(configuredPath);
         Directory.CreateDirectory(Path.GetDirectoryName(_storePath) ?? AppContext.BaseDirectory);
-        _writeStream = new FileStream(
+        (_writeStream, _writeWriter) = OpenWriters();
+    }
+
+    private (FileStream Stream, StreamWriter Writer) OpenWriters()
+    {
+        var stream = new FileStream(
             _storePath,
             FileMode.Append,
             FileAccess.Write,
             FileShare.ReadWrite,
             bufferSize: 64 * 1024,
             useAsync: true);
-        _writeWriter = new StreamWriter(_writeStream);
+        var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), 64 * 1024, leaveOpen: true);
+        return (stream, writer);
     }
 
     public async ValueTask AppendAsync(BrainSnapshot snapshot, CancellationToken cancellationToken = default)
     {
-        _snapshots.Enqueue(snapshot);
-        Volatile.Write(ref _latest, snapshot);
-        while (_snapshots.Count > _maxInMemorySnapshots && _snapshots.TryDequeue(out _))
-        {
-            // Keep in-memory queue bounded to avoid huge payloads and UI parse overruns.
-        }
-
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         var line = JsonSerializer.Serialize(snapshot, DnneJsonContext.Default.BrainSnapshot);
         await _writeGate.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (_writeStream.Length >= _maxFileBytes)
+            {
+                await RotateAsync();
+            }
             await _writeWriter.WriteLineAsync(line);
             _pendingWritesSinceFlush++;
-            if (_pendingWritesSinceFlush >= 20)
+            if (_pendingWritesSinceFlush >= _flushEvery)
             {
-                await _writeWriter.FlushAsync(cancellationToken);
+                await _writeWriter.FlushAsync(CancellationToken.None);
                 _pendingWritesSinceFlush = 0;
+            }
+
+            _snapshots.Enqueue(snapshot);
+            Volatile.Write(ref _latest, snapshot);
+            Interlocked.Increment(ref _snapshotCount);
+            while (Volatile.Read(ref _snapshotCount) > _maxInMemorySnapshots && _snapshots.TryDequeue(out _))
+            {
+                Interlocked.Decrement(ref _snapshotCount);
             }
         }
         finally
@@ -22267,18 +22635,35 @@ internal sealed class SnapshotStore : ISnapshotSink, IAsyncDisposable
 
     public async ValueTask ClearAsync(CancellationToken cancellationToken = default)
     {
-        while (_snapshots.TryDequeue(out _))
-        {
-            // Clear in-memory buffer.
-        }
-
-        Volatile.Write(ref _latest, null);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await _writeGate.WaitAsync(cancellationToken);
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            await CloseWritersAsync();
+            try
+            {
+                File.WriteAllText(_storePath, string.Empty);
+                for (var index = 1; index <= _retainedFiles; index++)
+                {
+                    File.Delete($"{_storePath}.{index}");
+                }
+            }
+            finally
+            {
+                (_writeStream, _writeWriter) = OpenWriters();
+            }
+
             await _writeWriter.WriteLineAsync($"{{\"event\":\"simulation_restart\",\"utc_ms\":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}}}");
-            await _writeWriter.FlushAsync(cancellationToken);
+            await _writeWriter.FlushAsync(CancellationToken.None);
             _pendingWritesSinceFlush = 0;
+
+            while (_snapshots.TryDequeue(out _))
+            {
+                Interlocked.Decrement(ref _snapshotCount);
+            }
+            Interlocked.Exchange(ref _snapshotCount, 0);
+            Volatile.Write(ref _latest, null);
         }
         finally
         {
@@ -22286,25 +22671,56 @@ internal sealed class SnapshotStore : ISnapshotSink, IAsyncDisposable
         }
     }
 
+    private async Task RotateAsync()
+    {
+        await CloseWritersAsync();
+        try
+        {
+            File.Delete($"{_storePath}.{_retainedFiles}");
+            for (var index = _retainedFiles - 1; index >= 1; index--)
+            {
+                var source = $"{_storePath}.{index}";
+                if (File.Exists(source))
+                {
+                    File.Move(source, $"{_storePath}.{index + 1}", overwrite: true);
+                }
+            }
+            if (File.Exists(_storePath))
+            {
+                File.Move(_storePath, $"{_storePath}.1", overwrite: true);
+            }
+        }
+        finally
+        {
+            (_writeStream, _writeWriter) = OpenWriters();
+        }
+        _pendingWritesSinceFlush = 0;
+    }
+
+    private async ValueTask CloseWritersAsync()
+    {
+        await _writeWriter.FlushAsync(CancellationToken.None);
+        _writeWriter.Dispose();
+        await _writeStream.DisposeAsync();
+    }
+
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         await _writeGate.WaitAsync();
         try
         {
-            if (_pendingWritesSinceFlush > 0)
-            {
-                await _writeWriter.FlushAsync();
-                _pendingWritesSinceFlush = 0;
-            }
+            await CloseWritersAsync();
+            _pendingWritesSinceFlush = 0;
         }
         finally
         {
             _writeGate.Release();
         }
-
-        _writeWriter.Dispose();
-        await _writeStream.DisposeAsync();
-        _writeGate.Dispose();
     }
 }
 
@@ -22928,8 +23344,9 @@ internal sealed class TickCoordinator(
                 var successfulSteps = tickExecution.SuccessfulSteps;
                 var healthySources = tickExecution.HealthySources;
 
+                var confirmedLiveServices = SelectConfirmedLiveServices(serviceInstances, serviceHealth, healthNowMs);
                 lastLiveCatalogInstanceCount = UpdateLiveInstanceCatalog(
-                    availableServices,
+                    confirmedLiveServices,
                     runtimeCatalog,
                     state,
                     serviceInstances.Count,
@@ -23372,11 +23789,7 @@ internal sealed class TickCoordinator(
                     telemetry.Add(serviceHealth[instanceKey].CreateTelemetry(healthNowMs));
                 }
 
-                var worst = telemetry
-                    .OrderByDescending(t => t.ConsecutiveFailures)
-                    .ThenByDescending(t => !string.Equals(t.LastStatus, "OK", StringComparison.OrdinalIgnoreCase))
-                    .First();
-                state.UpdateServiceTelemetry(structureId, worst);
+                state.UpdateServiceTelemetry(structureId, ServiceTelemetryAggregation.Aggregate(telemetry));
             }
 
             var (_, nonOkServiceCount) = state.GetServiceHealthCounts();
@@ -23737,17 +24150,11 @@ internal sealed class TickCoordinator(
         // When NRE_STRUCTURE_SHARED_SECRET is set, attach the header so structure
         // services accept our requests. The same env var on the structure side
         // enables the matching auth middleware.
-        var sharedSecret = Environment.GetEnvironmentVariable("NRE_STRUCTURE_SHARED_SECRET");
-
         foreach (var instance in serviceInstances)
         {
             clients[instance.InstanceKey].BaseAddress = instance.Endpoint;
             clients[instance.InstanceKey].Timeout = Timeout.InfiniteTimeSpan;
-            if (!string.IsNullOrWhiteSpace(sharedSecret))
-            {
-                clients[instance.InstanceKey].DefaultRequestHeaders.Remove("X-NRE-Auth");
-                clients[instance.InstanceKey].DefaultRequestHeaders.Add("X-NRE-Auth", sharedSecret);
-            }
+            NreStructureSecurity.ApplyClientAuthentication(clients[instance.InstanceKey]);
             if (!useGrpcSpikeTransport || !CanRegisterGrpcSpikeTransport(instance.Endpoint))
             {
                 continue;
@@ -23755,16 +24162,9 @@ internal sealed class TickCoordinator(
 
             var grpcChannel = GrpcChannel.ForAddress(instance.Endpoint, new GrpcChannelOptions
             {
-                HttpHandler = new SocketsHttpHandler
-                {
-                    UseProxy = false,
-                    ConnectTimeout = TimeSpan.FromMilliseconds(800),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(10),
-                    MaxConnectionsPerServer = 256,
-                    EnableMultipleHttp2Connections = true,
-                    AutomaticDecompression = DecompressionMethods.None
-                }
+                // Reuse the authenticated target client. A separate handler here
+                // silently dropped X-NRE-Auth from every gRPC request.
+                HttpClient = clients[instance.InstanceKey]
             });
 
             grpcChannels[instance.InstanceKey] = grpcChannel;
@@ -24084,6 +24484,16 @@ internal sealed class TickCoordinator(
 
         return liveInstancesForCatalog.Count;
     }
+
+    private static List<ServiceInstance> SelectConfirmedLiveServices(
+        IReadOnlyList<ServiceInstance> serviceInstances,
+        IReadOnlyDictionary<string, ServiceHealth> serviceHealth,
+        double nowMs)
+        => serviceInstances
+            .Where(instance =>
+                serviceHealth.TryGetValue(instance.InstanceKey, out var health) &&
+                string.Equals(health.CreateTelemetry(nowMs).LastStatus, "OK", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
     private static TickParticipantSelection SelectTickParticipants(
         IReadOnlyList<ServiceInstance> availableServices,
@@ -24467,18 +24877,19 @@ internal sealed class TickCoordinator(
         Dictionary<string, IStructureSpikeTransport> GrpcSpikeTransports,
         Dictionary<string, ServiceHealth> ServiceHealth);
 
-    // Long-lived bidirectional gRPC stream of spike batches for a single target.
-    // Producers enqueue batches via WriteAsync; a background pump consumes the
-    // channel and writes batches into the stream, reconnecting on transient
-    // failure. ACKs from the stream are consumed for liveness/diagnostics.
+    // Long-lived bidirectional gRPC stream for one target. A producer completes
+    // only after the target ACKs its batch. The one in-flight batch survives a
+    // reconnect and can be resent safely because structure ingress is idempotent.
     private sealed class GrpcSpikeStreamSession : IAsyncDisposable
     {
         private readonly IStructureSpikeTransport _transport;
         private readonly string _targetInstanceKey;
         private readonly ILogger _logger;
-        private readonly Channel<SpikeBatchEnvelope> _outboundChannel;
+        private readonly Channel<PendingSpikeBatch> _outboundChannel;
+        private readonly object _currentGate = new();
         private readonly CancellationTokenSource _cts = new();
         private readonly Task _pumpTask;
+        private PendingSpikeBatch? _current;
         private int _disposed;
 
         public GrpcSpikeStreamSession(IStructureSpikeTransport transport, string targetInstanceKey, ILogger logger)
@@ -24486,7 +24897,7 @@ internal sealed class TickCoordinator(
             _transport = transport;
             _targetInstanceKey = targetInstanceKey;
             _logger = logger;
-            _outboundChannel = Channel.CreateBounded<SpikeBatchEnvelope>(
+            _outboundChannel = Channel.CreateBounded<PendingSpikeBatch>(
                 new BoundedChannelOptions(64)
                 {
                     SingleReader = true,
@@ -24496,14 +24907,17 @@ internal sealed class TickCoordinator(
             _pumpTask = Task.Run(() => PumpAsync(_cts.Token));
         }
 
-        public async ValueTask<bool> TryEnqueueAsync(SpikeBatchEnvelope batch, CancellationToken cancellationToken)
+        public async ValueTask<SpikeBatchAck> SendAsync(SpikeBatchEnvelope batch, CancellationToken cancellationToken)
         {
-            if (!await _outboundChannel.Writer.WaitToWriteAsync(cancellationToken).ConfigureAwait(false))
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (string.IsNullOrWhiteSpace(batch.BatchId))
             {
-                return false;
+                batch.BatchId = Guid.NewGuid().ToString("N");
             }
-            cancellationToken.ThrowIfCancellationRequested();
-            return _outboundChannel.Writer.TryWrite(batch);
+
+            var pending = new PendingSpikeBatch(batch);
+            await _outboundChannel.Writer.WriteAsync(pending, cancellationToken).ConfigureAwait(false);
+            return await pending.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private async Task PumpAsync(CancellationToken cancellationToken)
@@ -24517,15 +24931,39 @@ internal sealed class TickCoordinator(
                 try
                 {
                     using var callCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    var ackStream = _transport.StreamSpikeBatchesAsync(
-                        ReadOutboundAsync(callCts.Token),
-                        new CallContext(new Grpc.Core.CallOptions(cancellationToken: callCts.Token)));
-                    await foreach (var ack in ackStream.WithCancellation(callCts.Token).ConfigureAwait(false))
+                    try
                     {
-                        // ACKs are consumed for liveness; per-batch delivery is fire-and-forget
-                        // from the producer's perspective. Tracking accepted counts is left
-                        // to the transport-stats path which reads from the snapshot store.
-                        _ = ack;
+                        var ackStream = _transport.StreamSpikeBatchesAsync(
+                            ReadOutboundAsync(callCts.Token),
+                            new CallContext(new Grpc.Core.CallOptions(cancellationToken: callCts.Token)));
+                        await foreach (var ack in ackStream.WithCancellation(callCts.Token).ConfigureAwait(false))
+                        {
+                            PendingSpikeBatch? current;
+                            lock (_currentGate)
+                            {
+                                current = _current;
+                            }
+
+                            if (current is null || !string.Equals(current.Envelope.BatchId, ack.BatchId, StringComparison.Ordinal))
+                            {
+                                throw new InvalidDataException(
+                                    $"Spike stream ACK mismatch for {_targetInstanceKey}: expected '{current?.Envelope.BatchId}', received '{ack.BatchId}'.");
+                            }
+
+                            current.Completion.TrySetResult(ack);
+                        }
+
+                        lock (_currentGate)
+                        {
+                            if (_current is not null && !_current.Completion.Task.IsCompleted)
+                            {
+                                throw new IOException($"Spike stream for {_targetInstanceKey} closed before ACK.");
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        callCts.Cancel();
                     }
                     backoffMs = 250;
                 }
@@ -24552,9 +24990,33 @@ internal sealed class TickCoordinator(
         private async IAsyncEnumerable<SpikeBatchEnvelope> ReadOutboundAsync(
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            await foreach (var batch in _outboundChannel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            while (!cancellationToken.IsCancellationRequested)
             {
-                yield return batch;
+                PendingSpikeBatch? pending;
+                lock (_currentGate)
+                {
+                    pending = _current;
+                }
+
+                if (pending is null)
+                {
+                    pending = await _outboundChannel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                    lock (_currentGate)
+                    {
+                        _current ??= pending;
+                        pending = _current;
+                    }
+                }
+
+                yield return pending.Envelope;
+                await pending.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                lock (_currentGate)
+                {
+                    if (ReferenceEquals(_current, pending))
+                    {
+                        _current = null;
+                    }
+                }
             }
         }
 
@@ -24573,7 +25035,25 @@ internal sealed class TickCoordinator(
             catch
             {
             }
+
+            var stopped = new OperationCanceledException($"Spike stream session for {_targetInstanceKey} stopped.");
+            lock (_currentGate)
+            {
+                _current?.Completion.TrySetException(stopped);
+                _current = null;
+            }
+            while (_outboundChannel.Reader.TryRead(out var pending))
+            {
+                pending.Completion.TrySetException(stopped);
+            }
             _cts.Dispose();
+        }
+
+        private sealed class PendingSpikeBatch(SpikeBatchEnvelope envelope)
+        {
+            public SpikeBatchEnvelope Envelope { get; } = envelope;
+            public TaskCompletionSource<SpikeBatchAck> Completion { get; } =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
     }
 
@@ -30287,22 +30767,40 @@ internal sealed class TickCoordinator(
             return 0;
         }
 
-        // Streaming path (opt-in via NRE_USE_GRPC_BIDI_STREAM). Enqueue success is
-        // treated as "delivered" since the pump task is responsible for actual
-        // transmission. On enqueue failure or absence of a session, fall through
-        // to the existing unary gRPC / HTTP chain.
+        if (spikes.Count > StructureTransportLimits.MaxSpikeBatchCount)
+        {
+            var delivered = 0;
+            for (var offset = 0; offset < spikes.Count; offset += StructureTransportLimits.MaxSpikeBatchCount)
+            {
+                var count = Math.Min(StructureTransportLimits.MaxSpikeBatchCount, spikes.Count - offset);
+                delivered += await SendSpikeBatchToTargetAsync(
+                    targetInstanceKey,
+                    spikes.Skip(offset).Take(count).ToArray(),
+                    grpcSpikeTransports,
+                    httpClients,
+                    useHttpSpikeTransportFallback,
+                    cancellationToken).ConfigureAwait(false);
+            }
+            return delivered;
+        }
+
+        // Streaming path (opt-in via NRE_USE_GRPC_BIDI_STREAM). Delivery is counted
+        // only after the target acknowledges the complete batch.
         if (_streamSessions.TryGetValue(targetInstanceKey, out var streamSession))
         {
             try
             {
                 var spikeList = spikes as List<SpikeMessage> ?? spikes.ToList();
-                var enqueued = await streamSession.TryEnqueueAsync(
-                    new SpikeBatchEnvelope { Spikes = spikeList },
+                var ack = await streamSession.SendAsync(
+                    new SpikeBatchEnvelope { Spikes = spikeList, BatchId = Guid.NewGuid().ToString("N") },
                     cancellationToken);
-                if (enqueued)
+                if (ack.Accepted == spikes.Count && string.IsNullOrWhiteSpace(ack.Error))
                 {
                     return spikes.Count;
                 }
+
+                throw new HttpRequestException(
+                    $"Spike stream accepted {ack.Accepted}/{spikes.Count} spikes for {targetInstanceKey}. {ack.Error}");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -30330,9 +30828,11 @@ internal sealed class TickCoordinator(
                 var grpcAck = await grpcSpikeTransport.PushSpikeBatchAsync(
                     new SpikeBatchEnvelope
                     {
-                        Spikes = spikeList
-                    });
-                if (grpcAck.Accepted >= spikes.Count)
+                        Spikes = spikeList,
+                        BatchId = Guid.NewGuid().ToString("N")
+                    },
+                    new CallContext(new Grpc.Core.CallOptions(cancellationToken: cancellationToken)));
+                if (grpcAck.Accepted == spikes.Count && string.IsNullOrWhiteSpace(grpcAck.Error))
                 {
                     _transportCapabilities.RecordGrpcSuccess(targetInstanceKey);
                     return spikes.Count;
@@ -30736,7 +31236,10 @@ internal sealed class TickCoordinator(
                 {
                     _timeoutFailureCount++;
                 }
-                var backoffMs = Math.Min(5000, 100 * Math.Pow(2, _failureCount));
+                var maxBackoffMs = _successCount == 0 && _failureCount >= ServiceTelemetryAggregation.AbsentFailureThreshold
+                    ? 30_000
+                    : 5_000;
+                var backoffMs = Math.Min(maxBackoffMs, 100 * Math.Pow(2, _failureCount));
                 NextRetryTimestampMs = nowMs + backoffMs;
                 _lastStatus = "DEGRADED";
                 _lastError = error;
@@ -30827,6 +31330,54 @@ internal sealed record ServiceRuntimeTelemetry(
     int Latency250To500MsCount,
     int Latency500To1000MsCount,
     int LatencyGte1000MsCount);
+
+internal static class ServiceTelemetryAggregation
+{
+    internal const string AbsentStatus = "ABSENT";
+    internal const int AbsentFailureThreshold = 8;
+
+    internal static ServiceRuntimeTelemetry Aggregate(IReadOnlyList<ServiceRuntimeTelemetry> instances)
+    {
+        ArgumentNullException.ThrowIfNull(instances);
+        if (instances.Count == 0)
+        {
+            throw new ArgumentException("At least one service instance is required.", nameof(instances));
+        }
+
+        var healthy = instances
+            .Where(telemetry => string.Equals(telemetry.LastStatus, "OK", StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(telemetry => telemetry.LastUpdateTimestampMs)
+            .ThenByDescending(telemetry => telemetry.SuccessCount)
+            .FirstOrDefault();
+        if (healthy is not null)
+        {
+            return healthy;
+        }
+
+        if (instances.All(IsNeverDiscovered))
+        {
+            var latest = instances.OrderByDescending(telemetry => telemetry.LastUpdateTimestampMs).First();
+            return latest with
+            {
+                LastStatus = AbsentStatus,
+                LastError = "No deployed instance was discovered after bounded startup probes."
+            };
+        }
+
+        return instances
+            .OrderByDescending(telemetry => telemetry.ConsecutiveFailures)
+            .ThenByDescending(telemetry => !string.Equals(telemetry.LastStatus, "OK", StringComparison.OrdinalIgnoreCase))
+            .First();
+    }
+
+    internal static bool IsAbsent(ServiceRuntimeTelemetry telemetry)
+        => string.Equals(telemetry.LastStatus, AbsentStatus, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNeverDiscovered(ServiceRuntimeTelemetry telemetry)
+        => telemetry.SuccessCount == 0 &&
+           telemetry.AttemptCount >= AbsentFailureThreshold &&
+           telemetry.ConsecutiveFailures >= AbsentFailureThreshold;
+}
 
 internal sealed record TransportRuntimeStats(
     long Tick,
@@ -37455,9 +38006,9 @@ internal sealed class RuntimeInstanceCatalog
 
 
 
-internal sealed class StructureProcessSupervisor(IConfiguration configuration, ILogger<StructureProcessSupervisor> logger) : IDisposable
+internal sealed class StructureProcessSupervisor(IConfiguration configuration, ILogger<StructureProcessSupervisor> logger) : IAsyncDisposable
 {
-    private readonly Dictionary<string, Process> _spawnedByInstance = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ManagedStructureProcess> _spawnedByInstance = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _gate = new();
     private static readonly ConcurrentDictionary<string, object> BuildLocks = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HttpClient HealthProbeClient = new(new SocketsHttpHandler
@@ -37548,7 +38099,19 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         [StructureId.VentralPallidum] = "VentralPallidum",
         [StructureId.Habenula] = "Habenula",
         [StructureId.MotorThalamus] = "MotorThalamus",
-        [StructureId.SuperiorColliculus] = "SuperiorColliculus"
+        [StructureId.SuperiorColliculus] = "SuperiorColliculus",
+        [StructureId.V3] = "V3",
+        [StructureId.AuditoryAssociationCortex] = "AuditoryAssociationCortex",
+        [StructureId.SecondarySomatosensoryCortex] = "SecondarySomatosensoryCortex",
+        [StructureId.InferotemporalCortex] = "InferotemporalCortex",
+        [StructureId.FusiformGyrus] = "FusiformGyrus",
+        [StructureId.TemporalPole] = "TemporalPole",
+        [StructureId.TemporoparietalJunction] = "TemporoparietalJunction",
+        [StructureId.Precuneus] = "Precuneus",
+        [StructureId.MidcingulateCortex] = "MidcingulateCortex",
+        [StructureId.DorsomedialPrefrontalCortex] = "DorsomedialPrefrontalCortex",
+        [StructureId.VentromedialPrefrontalCortex] = "VentromedialPrefrontalCortex",
+        [StructureId.FrontalEyeFields] = "FrontalEyeFields"
     };
 
     public async Task<RestartServiceResult> EnsureServicesOnlineAsync(IReadOnlyList<ServiceInstance> instances, int tickTimeoutMs, CancellationToken cancellationToken)
@@ -37623,15 +38186,16 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
                 CancellationToken = cancellationToken,
                 MaxDegreeOfParallelism = launchParallelism
             },
-            (pair, _) =>
+            async (pair, loopCancellationToken) =>
             {
                 if (!TryResolveProjectPath(root, pair.StructureId, out var projectPath))
                 {
                     logger.LogWarning("Structure autostart: unable to resolve project path for {ServiceInstance}.", pair.InstanceKey);
                     launchMessages.TryAdd(pair.InstanceKey, "project path not found");
-                    return ValueTask.CompletedTask;
+                    return;
                 }
 
+                await StopTrackedProcessAsync(pair.InstanceKey, loopCancellationToken).ConfigureAwait(false);
                 var started = TryLaunch(pair, projectPath);
                 if (!started)
                 {
@@ -37643,7 +38207,6 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
                     launchedKeys.TryAdd(pair.InstanceKey, 0);
                 }
 
-                return ValueTask.CompletedTask;
             });
 
         var deadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(startupTimeoutMs);
@@ -37766,7 +38329,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
                     return;
                 }
 
-                StopTrackedProcess(instance.InstanceKey);
+                await StopTrackedProcessAsync(instance.InstanceKey, ct).ConfigureAwait(false);
                 var started = TryLaunch(instance, projectPath);
                 if (!started)
                 {
@@ -37797,14 +38360,15 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         {
             var projectDir = Path.GetDirectoryName(projectPath) ?? ".";
             var assemblyName = GetProjectAssemblyName(projectPath);
-            var dllPath = Path.Combine(projectDir, "bin", "Debug", "net8.0", $"{assemblyName}.dll");
+            var buildConfiguration = NormalizeBuildConfiguration(configuration["StructureProcessHost:Configuration"]);
+            var dllPath = Path.Combine(projectDir, "bin", buildConfiguration, "net8.0", $"{assemblyName}.dll");
             if (ShouldRefreshProjectOutput(projectPath, dllPath))
             {
                 var buildLock = BuildLocks.GetOrAdd(projectPath, _ => new object());
                 lock (buildLock)
                 {
                     if (ShouldRefreshProjectOutput(projectPath, dllPath) &&
-                        !TryBuildProject(projectPath, dllPath, instance))
+                        !TryBuildProject(projectPath, dllPath, instance, buildConfiguration))
                     {
                         return false;
                     }
@@ -37818,7 +38382,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             }
             else
             {
-                startInfo = new ProcessStartInfo("dotnet", $"run --project \"{projectPath}\" --no-launch-profile");
+                startInfo = new ProcessStartInfo("dotnet", $"run --project \"{projectPath}\" -c {buildConfiguration} --no-launch-profile");
             }
 
             startInfo.WorkingDirectory = projectDir;
@@ -37864,11 +38428,15 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             {
                 if (_spawnedByInstance.TryGetValue(instance.InstanceKey, out var previous))
                 {
-                    TryTerminateProcess(previous);
-                    _spawnedByInstance.Remove(instance.InstanceKey);
+                    logger.LogWarning(
+                        "Structure autostart: refused duplicate launch for {ServiceInstance}; tracked process {ProcessId} remains authoritative.",
+                        instance.InstanceKey,
+                        previous.Process.Id);
+                    TryTerminateProcess(process);
+                    return false;
                 }
 
-                _spawnedByInstance[instance.InstanceKey] = process;
+                _spawnedByInstance[instance.InstanceKey] = new ManagedStructureProcess(process, instance.Endpoint);
             }
 
             logger.LogInformation("Structure autostart: launched {ServiceInstance} at {Endpoint}.", instance.InstanceKey, instance.Endpoint);
@@ -37907,7 +38475,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         });
     }
 
-    private bool TryBuildProject(string projectPath, string dllPath, ServiceInstance instance)
+    private bool TryBuildProject(string projectPath, string dllPath, ServiceInstance instance, string buildConfiguration)
     {
         var projectDir = Path.GetDirectoryName(projectPath) ?? ".";
         var timeoutMs = Math.Clamp(configuration.GetValue<int>("StructureProcessHost:BuildTimeoutMs", 120000), 10000, 600000);
@@ -37917,7 +38485,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         {
             logger.LogInformation("Structure autostart: refreshing stale output for {ServiceInstance}.", instance.InstanceKey);
             using var process = new Process();
-            process.StartInfo = new ProcessStartInfo("dotnet", $"build \"{projectPath}\" -c Debug --nologo --verbosity minimal")
+            process.StartInfo = new ProcessStartInfo("dotnet", $"build \"{projectPath}\" -c {buildConfiguration} --nologo --verbosity minimal")
             {
                 WorkingDirectory = projectDir,
                 UseShellExecute = false,
@@ -38111,12 +38679,12 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         return false;
     }
 
-    private void StopTrackedProcess(string instanceKey)
+    private async Task StopTrackedProcessAsync(string instanceKey, CancellationToken cancellationToken)
     {
-        Process? process;
+        ManagedStructureProcess? managed;
         lock (_gate)
         {
-            if (!_spawnedByInstance.TryGetValue(instanceKey, out process))
+            if (!_spawnedByInstance.TryGetValue(instanceKey, out managed))
             {
                 return;
             }
@@ -38124,10 +38692,51 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             _spawnedByInstance.Remove(instanceKey);
         }
 
-        TryTerminateProcess(process);
+        await StopManagedProcessAsync(managed, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void TryTerminateProcess(Process? process)
+    private static async Task StopManagedProcessAsync(ManagedStructureProcess managed, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (managed.Process.HasExited)
+            {
+                return;
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(managed.Endpoint, "/api/v1/structure/shutdown"));
+            NreStructureSecurity.ApplyRequestAuthentication(request, NreStructureSecurity.ResolveSharedSecret());
+            using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            requestTimeout.CancelAfter(TimeSpan.FromSeconds(2));
+            try
+            {
+                using var response = await HealthProbeClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    requestTimeout.Token).ConfigureAwait(false);
+            }
+            catch
+            {
+                // The host may already be exiting or may predate the shutdown endpoint.
+            }
+
+            using var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            try
+            {
+                await managed.Process.WaitForExitAsync(exitTimeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                TryTerminateProcess(managed.Process, dispose: false);
+            }
+        }
+        finally
+        {
+            managed.Process.Dispose();
+        }
+    }
+
+    private static void TryTerminateProcess(Process? process, bool dispose = true)
     {
         if (process is null)
         {
@@ -38147,7 +38756,10 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         }
         finally
         {
-            process.Dispose();
+            if (dispose)
+            {
+                process.Dispose();
+            }
         }
     }
 
@@ -38215,9 +38827,9 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         return AppContext.BaseDirectory;
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        List<Process> processes;
+        List<ManagedStructureProcess> processes;
         lock (_gate)
         {
             processes = _spawnedByInstance.Values.ToList();
@@ -38226,9 +38838,14 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
 
         foreach (var process in processes)
         {
-            TryTerminateProcess(process);
+            await StopManagedProcessAsync(process, CancellationToken.None).ConfigureAwait(false);
         }
     }
+
+    private static string NormalizeBuildConfiguration(string? configured) =>
+        string.Equals(configured, "Debug", StringComparison.OrdinalIgnoreCase) ? "Debug" : "Release";
+
+    private sealed record ManagedStructureProcess(Process Process, Uri Endpoint);
 
     private static bool IsLocallyManagedEndpoint(Uri endpoint)
     {

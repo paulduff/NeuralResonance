@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>NeuralResonanceEngine.CorticalBenchmarks</AssemblyName>
+    <RootNamespace>NeuralResonanceEngine.CorticalBenchmarks</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\Structures\NeuralResonanceEngine.Structures.Runtime.csproj" />
+  </ItemGroup>
+</Project>

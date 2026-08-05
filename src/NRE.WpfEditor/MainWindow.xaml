@@ -10,6 +10,38 @@
         Height="900"
         Width="1400"
         Background="#0B1321">
+    <Window.Resources>
+        <Style x:Key="DisplayModeSegmentStyle" TargetType="{x:Type RadioButton}">
+            <Setter Property="Foreground" Value="#AFC0E8" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RadioButton}">
+                        <Border x:Name="SegmentBorder"
+                                Padding="10,5"
+                                Background="#0D1629"
+                                BorderBrush="#334264"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SegmentBorder" Property="Background" Value="#315E82" />
+                                <Setter TargetName="SegmentBorder" Property="BorderBrush" Value="#74B6DB" />
+                                <Setter Property="Foreground" Value="#F4F8FF" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="SegmentBorder" Property="BorderBrush" Value="#6D8DBA" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="#111A2E" BorderBrush="#24304E" BorderThickness="0,0,0,1">
             <Grid Margin="12,10">
@@ -831,6 +863,24 @@
                                               CanContentScroll="False">
                                 <StackPanel>
                                     <TextBlock Text="Simulation Controls" Foreground="#DDE6FF" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,10,0,4" Text="Display Mode" Foreground="#B9C8ED" />
+                                    <UniformGrid Columns="2">
+                                        <RadioButton x:Name="AnatomyDisplayModeRadio"
+                                                     Margin="0,0,3,0"
+                                                     GroupName="BrainDisplayMode"
+                                                     Style="{StaticResource DisplayModeSegmentStyle}"
+                                                     Tag="Anatomy"
+                                                     IsChecked="True"
+                                                     Checked="BrainDisplayMode_OnChecked"
+                                                     Content="Anatomy" />
+                                        <RadioButton x:Name="CircuitDisplayModeRadio"
+                                                     Margin="3,0,0,0"
+                                                     GroupName="BrainDisplayMode"
+                                                     Style="{StaticResource DisplayModeSegmentStyle}"
+                                                     Tag="Circuit"
+                                                     Checked="BrainDisplayMode_OnChecked"
+                                                     Content="Circuit" />
+                                    </UniformGrid>
                                     <TextBlock Margin="0,10,0,4" Text="Display Sample / Hemisphere" Foreground="#B9C8ED" />
                                     <Grid>
                                         <Grid.ColumnDefinitions>

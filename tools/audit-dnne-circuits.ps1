@@ -23,8 +23,8 @@ function Get-ProjectMap {
 
 function Get-ProfileName([string]$structure) {
     switch ($structure) {
-        { $_ -in @('Pfc','BrocaBa44Ba45','WernickePstgPsts','SupramarginalAngular','OrbitofrontalCortex','Insula','Ppc','TemporalAssociation','PremotorCortex','ParahippocampalCortex','PerirhinalCortex','PosteriorCingulate','RetrosplenialCortex','Acc','M1','Sma') } { return 'cortical-association/motor' }
-        { $_ -in @('V1','V2','V4','Mt','A1','S1','EntorhinalCortex','CorpusCallosum') } { return 'primary-sensory/callosal' }
+        { $_ -in @('Pfc','DorsomedialPrefrontalCortex','VentromedialPrefrontalCortex','FrontalEyeFields','BrocaBa44Ba45','WernickePstgPsts','SupramarginalAngular','OrbitofrontalCortex','Insula','Ppc','TemporalAssociation','InferotemporalCortex','FusiformGyrus','TemporalPole','TemporoparietalJunction','Precuneus','MidcingulateCortex','PremotorCortex','ParahippocampalCortex','PerirhinalCortex','PosteriorCingulate','RetrosplenialCortex','Acc','M1','Sma') } { return 'cortical-association/motor' }
+        { $_ -in @('V1','V2','V3','V4','Mt','A1','AuditoryAssociationCortex','S1','SecondarySomatosensoryCortex','EntorhinalCortex','CorpusCallosum') } { return 'primary-sensory/callosal' }
         { $_ -in @('Thalamus','MotorThalamus','Trn','Pulvinar','MediodorsalThalamus','IntralaminarThalamus') } { return 'thalamic' }
         { $_ -in @('CerebellarGranule','CerebellarVermis','CerebellarLobules','PurkinjeCellLayer','DeepCerebellarNuclei','InferiorOlive','Pons') } { return 'cerebellar/pontine' }
         { $_ -in @('Retina') } { return 'retinal' }
@@ -43,7 +43,7 @@ function Get-ProfileName([string]$structure) {
 
 $structureIds = @(Get-StructureIds)
 $projectMap = Get-ProjectMap
-$projectDirs = @(Get-ChildItem 'Structures' -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'StructureCircuitProfile.cs') } | ForEach-Object { $_.Name })
+$projectDirs = @(Get-ChildItem 'Structures' -Directory | Where-Object { Get-ChildItem $_.FullName -Filter '*.csproj' -File | Select-Object -First 1 } | ForEach-Object { $_.Name })
 $connectome = Get-Content 'connectivity/dnne-connectivity.json' -Raw | ConvertFrom-Json | ForEach-Object { $_ }
 
 $outbound = @{}

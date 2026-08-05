@@ -10,11 +10,21 @@ namespace NRE.WpfEditor;
 //   HippocampalArc, CerebellarSheet, BrainstemColumn, OlfactoryBulbShell, NucleusBlock)
 // - Cortical patch/gyrus profiles, surface points, normals, shell warping
 // - Atlas / encephalon coordinate transforms (mm to render units, hemisphere centers,
-//   subcortical scaling, encephalon offsets, superior shifts)
+//   cortical shell registration, and measured deep-structure placement)
 // - Structure and pathway definitions used by the renderer
 // Extracted from MainWindow.xaml.cs.
 public partial class MainWindow
 {
+    // Representative adult cerebral envelope in millimetres. Keeping these
+    // dimensions in physical units prevents display-axis changes from silently
+    // distorting the anatomy.
+    private const double CortexMidlineGapMm = 1.5;
+    private const double CortexHalfWidthMm = 68.5;
+    private const double CortexHalfHeightMm = 46.5;
+    private const double CortexAnteriorRadiusMm = 86.0;
+    private const double CortexPosteriorRadiusMm = 81.0;
+    private const double CortexVerticalCenterMm = 4.0;
+
     private IEnumerable<Point3D> GenerateNeuronMatrix(StructureDefinition def, StructureLayout effectiveLayout, int targetCount)
     {
         var baseCount = Math.Max(1, def.GridX * def.GridY * def.GridZ);
@@ -55,7 +65,17 @@ public partial class MainWindow
                     var local = ApplyLayout(effectiveLayout, lx, ly, lz, x, y, z, gridX, gridY, gridZ, def);
                     if (local.HasValue)
                     {
-                        points.Add(local.Value);
+                        var point = local.Value;
+                        if (effectiveLayout != StructureLayout.CorticalSheet)
+                        {
+                            // Atlas dimensions are full physical extents, not loose
+                            // display hints. Keep every sampled neuron inside them.
+                            point = new Point3D(
+                                Math.Clamp(point.X, -def.RadiusX * 0.5, def.RadiusX * 0.5),
+                                Math.Clamp(point.Y, -def.RadiusY * 0.5, def.RadiusY * 0.5),
+                                Math.Clamp(point.Z, -def.RadiusZ * 0.5, def.RadiusZ * 0.5));
+                        }
+                        points.Add(point);
                     }
                 }
             }
@@ -117,7 +137,9 @@ public partial class MainWindow
         var along = Math.Clamp((u * 0.992) + (jitter.X * 0.008), 0.0, 1.0);
         var width = Math.Clamp((w * 0.990) + (0.006 * Math.Sin(u * Math.PI * 1.2)) + (jitter.Z * 0.010), 0.0, 1.0);
         var lamina = ((v - 0.5) * MmToRender(3.9)) + (jitter.Y * MmToRender(0.24));
-        return BuildCorticalGyrusPoint(def.SnapshotId, along, width, lamina, jitter, 1.0);
+        return TryBuildCorticalTerritoryPoint(def.SnapshotId, along, width, lamina, jitter, 1.0, out var point)
+            ? point
+            : null;
     }
 
     private static Point3D BuildCorticalGyrusPoint(
@@ -128,41 +150,24 @@ public partial class MainWindow
         Vector3D jitter,
         double hemisphereSign)
     {
-        var patch = GetCorticalPatch(snapshotId);
-        var profile = GetCorticalGyrusProfile(snapshotId);
-        var thetaSpan = Math.Max(0.001, patch.ThMax - patch.ThMin);
-        var phiSpan = Math.Max(0.001, patch.PhMax - patch.PhMin);
-        var u = Math.Clamp(along, 0.0, 1.0);
-        var cross = ((Math.Clamp(width, 0.0, 1.0) - 0.5) * 2.0) + (jitter.Z * 0.018);
-        cross = Math.Clamp(cross, -1.0, 1.0);
+        if (TryBuildCorticalTerritoryPoint(
+                snapshotId,
+                along,
+                width,
+                laminaDepth,
+                jitter,
+                hemisphereSign,
+                out var point))
+        {
+            return point;
+        }
 
-        var center = Math.Clamp(profile.Center, 0.08, 0.92);
-        var centerPhi =
-            patch.PhMin +
-            (phiSpan * center) +
-            (Math.Sin((u * Math.PI * 2.0 * profile.Waves) + patch.RidgePhase) * phiSpan * profile.WaveAmplitude) +
-            (Math.Sin((u * Math.PI * ((profile.Waves * 1.35) + 1.0)) - (patch.RidgePhase * 0.7)) * phiSpan * profile.WaveAmplitude * 0.32);
-        var edgeEase = 1.0 - Math.Pow(Math.Abs(cross), 1.75);
-        var thetaSkew = profile.ThetaSkew * cross * Math.Sin(u * Math.PI);
-        var theta = patch.ThMin + (thetaSpan * Math.Clamp(u + thetaSkew, 0.0, 1.0));
-        var phi = Math.Clamp(
-            centerPhi + (cross * phiSpan * profile.HalfWidth),
-            patch.PhMin + (phiSpan * 0.025),
-            patch.PhMax - (phiSpan * 0.025));
-
-        var surface = BuildCorticalSurfacePoint(theta, phi, hemisphereSign);
-        var normal = GetCorticalShellNormal(surface, hemisphereSign < 0 ? "L" : "R");
-        var crown = MmToRender(profile.CrownLiftMm) * Math.Clamp(edgeEase, 0.0, 1.0);
-        var sulcus = MmToRender(profile.SulcusDepthMm) * Math.Pow(Math.Abs(cross), 2.15);
-        var fold = MmToRender(profile.FoldReliefMm) *
-            Math.Sin((u * Math.PI * 2.0 * (profile.Waves + 0.75)) + (cross * Math.PI * 0.8) + patch.RidgePhase) *
-            (0.25 + (0.75 * Math.Clamp(edgeEase, 0.0, 1.0)));
-        var depth = laminaDepth + crown - sulcus + fold;
-
-        return new Point3D(
-            surface.X + (normal.X * depth),
-            surface.Y + (normal.Y * depth),
-            surface.Z + (normal.Z * depth));
+        return BuildCorticalTerritoryPointUnchecked(
+            snapshotId,
+            (Math.Clamp(along, 0.0, 1.0) - 0.5) * 2.0,
+            0.0,
+            laminaDepth,
+            hemisphereSign);
     }
 
     private static (bool InsideTube, double TubeBulge, double SulcusDepth) ComputeCorticalGyrusTubeField(
@@ -256,11 +261,9 @@ public partial class MainWindow
         string snapshotId,
         (double ThMin, double ThMax, double PhMin, double PhMax, double PieceAx, double PieceAy, double RidgePhase, double FoldScale, double GyrusCenter, double GyrusWidth) template)
     {
-        var anchor = ScalePointByCortexRatio(GetCorticalStructureAnchor(snapshotId, "R"));
+        var anchor = GetCorticalStructureAnchor(snapshotId, "R");
         var unrolled = UnrotateCorticalShellFromMidlineAroundZ(anchor, 1.0);
-        var radius = Math.Sqrt((unrolled.X * unrolled.X) + (unrolled.Y * unrolled.Y) + (unrolled.Z * unrolled.Z));
-        var theta = radius < 1e-6 ? 0.0 : Math.Atan2(unrolled.Z, Math.Abs(unrolled.X));
-        var phi = radius < 1e-6 ? 0.0 : Math.Asin(Math.Clamp(unrolled.Y / radius, -1.0, 1.0));
+        var (theta, phi) = GetCorticalSurfaceParameters(unrolled);
         var extentScale = snapshotId switch
         {
             // V1 and V2 are adjacent fields, not two broad coincident sheets.
@@ -271,8 +274,12 @@ public partial class MainWindow
         };
         var halfTheta = (template.ThMax - template.ThMin) * extentScale * 0.5;
         var halfPhi = (template.PhMax - template.PhMin) * extentScale * 0.5;
-        const double thetaMin = -2.30;
-        const double thetaMax = 1.72;
+        // A hemisphere occupies one lateral half of the ellipsoid. Extending
+        // theta beyond +/- pi/2 changes the sign of cos(theta); the old shell
+        // then folded those vertices back with Abs(x), producing the tall,
+        // doubled posterior outline visible in the reference screenshots.
+        const double thetaMin = -1.52;
+        const double thetaMax = 1.52;
         const double phiMin = -1.00;
         const double phiMax = 1.32;
 
@@ -333,11 +340,13 @@ public partial class MainWindow
     {
         var t = gx / (double)Math.Max(1, maxX - 1);
         var theta = (t - 0.5) * Math.PI * 0.9;
-        var radius = (def.RadiusX * 0.28) + (y * 0.12);
-        var arcX = Math.Cos(theta) * radius;
-        var arcZ = Math.Sin(theta) * radius;
-        var lamina = ((gy / (double)Math.Max(1, maxY - 1)) - 0.5) * def.RadiusY * 0.30;
-        return new Point3D(arcX, lamina, arcZ + (z * 0.10));
+        var radius = (def.RadiusX * 0.42) + (y * 0.10);
+        // The mean cosine over this arc is approximately 0.70. Removing it
+        // keeps the subfield centroid on its measured atlas coordinate.
+        var arcX = (Math.Cos(theta) - 0.70) * radius;
+        var arcZ = Math.Sin(theta) * def.RadiusZ * 0.46;
+        var lamina = ((gy / (double)Math.Max(1, maxY - 1)) - 0.5) * def.RadiusY * 0.40;
+        return new Point3D(arcX, lamina, arcZ + (z * 0.08));
     }
 
     private static Point3D? CerebellarSheet(double x, double y, double z, int gx, int gy, int gz, int maxX, int maxY, int maxZ, StructureDefinition def)
@@ -638,12 +647,12 @@ public partial class MainWindow
             return fallback;
         }
 
-        if (!TryGetSubcorticalAtlasCenterMm(snapshotId, out var atlasMm))
+        if (!TryGetSubcorticalAtlasGeometry(snapshotId, hemisphere, out var geometry))
         {
             return fallback;
         }
 
-        return GetCanonicalAtlasCenter(snapshotId, hemisphere);
+        return MmToRender(geometry.CenterMm);
     }
 
     // The atlas is stored in physical millimetres. Rendering is a single uniform
@@ -651,92 +660,24 @@ public partial class MainWindow
     // are applied to positions.
     private static Point3D GetCanonicalAtlasCenter(string snapshotId, string hemisphere)
     {
-        if (!TryGetSubcorticalAtlasCenterMm(snapshotId, out var atlasMm))
+        if (!TryGetSubcorticalAtlasGeometry(snapshotId, hemisphere, out var geometry))
         {
             return new Point3D();
         }
 
-        var x = atlasMm.X;
-        if (IsBilaterallyDuplicated(snapshotId) && (hemisphere == "L" || hemisphere == "R"))
-        {
-            x = Math.Abs(x) * (hemisphere == "L" ? -1.0 : 1.0);
-        }
-
-        return MmToRender(new Point3D(x, atlasMm.Y, atlasMm.Z));
+        return MmToRender(geometry.CenterMm);
     }
 
     private static bool TryGetSubcorticalAtlasCenterMm(string snapshotId, out Point3D centerMm)
     {
-        centerMm = snapshotId switch
+        if (!TryGetSubcorticalAtlasGeometry(snapshotId, "R", out var geometry))
         {
-            // Forebrain / commissural
-            "CorpusCallosum" => new Point3D(0.0, 31.5, -4.0),
-            "Striatum" => new Point3D(26.0, 5.6, 1.0),
-            "NucleusAccumbens" => new Point3D(18.0, -0.4, 12.0),
-            "GlobusPallidus" => new Point3D(19.0, 4.0, -4.5),
-            "VentralPallidum" => new Point3D(17.0, -1.2, 3.5),
-            "GPe" => new Point3D(20.0, 4.6, -6.5),
-            "GPi" => new Point3D(16.0, 4.2, -6.5),
-            "Amygdala" => new Point3D(28.0, -4.8, -12.0),
-            "BasalForebrain" => new Point3D(13.0, 0.4, 8.0),
+            centerMm = default;
+            return false;
+        }
 
-            // Diencephalon
-            "Thalamus" => new Point3D(12.5, 5.4, -7.5),
-            "MotorThalamus" => new Point3D(13.2, 6.2, -9.5),
-            "Trn" => new Point3D(14.2, 6.0, -8.8),
-            "Pulvinar" => new Point3D(14.4, 7.2, -19.0),
-            "MediodorsalThalamus" => new Point3D(7.0, 8.0, -4.0),
-            "IntralaminarThalamus" => new Point3D(4.0, 6.2, -7.0),
-            "Hypothalamus" => new Point3D(5.0, -2.0, 3.0),
-            "Habenula" => new Point3D(3.0, 11.0, -3.0),
-            "Stn" => new Point3D(9.0, 5.0, -10.0),
-
-            // Mesencephalon
-            "SuperiorColliculus" => new Point3D(6.0, 16.0, -21.0),
-            "InferiorColliculus" => new Point3D(6.0, 12.0, -25.0),
-            "PeriaqueductalGray" => new Point3D(0.0, 10.0, -19.0),
-            "Snr" => new Point3D(8.0, 2.0, -14.0),
-            "Snc" => new Point3D(7.0, 1.0, -16.0),
-            "Vta" => new Point3D(5.0, -14.0, -20.0),
-
-            // Medial temporal subcortical arch
-            "DentateGyrus" => new Point3D(24.0, -8.5, -22.0),
-            "CA3" => new Point3D(25.0, -7.5, -20.0),
-            "CA2" => new Point3D(26.0, -6.5, -19.0),
-            "CA1" => new Point3D(27.0, -5.5, -17.0),
-            "Subiculum" => new Point3D(28.0, -5.5, -15.0),
-            "Presubiculum" => new Point3D(29.0, -4.5, -14.0),
-            "Parasubiculum" => new Point3D(30.0, -4.5, -13.0),
-
-            // Metencephalon / cerebellum
-            "CerebellarGranule" => new Point3D(0.0, -48.0, -44.0),
-            "PurkinjeCellLayer" => new Point3D(0.0, -47.0, -44.0),
-            "CerebellarVermis" => new Point3D(0.0, -48.0, -42.0),
-            "CerebellarLobules" => new Point3D(0.0, -49.0, -46.0),
-            "DeepCerebellarNuclei" => new Point3D(10.0, -43.0, -40.0),
-            "Pons" => new Point3D(0.0, -27.0, -26.0),
-            "CochlearNucleus" => new Point3D(10.0, -18.0, -24.0),
-            "SuperiorOlive" => new Point3D(8.0, -20.0, -20.0),
-            "VestibularNuclei" => new Point3D(9.0, -22.0, -22.0),
-
-            // Myelencephalon / lower brainstem
-            "NucleusTractusSolitarius" => new Point3D(4.0, -26.0, -24.0),
-            "ReticularFormation" => new Point3D(0.0, -24.0, -24.0),
-            "InferiorOlive" => new Point3D(4.0, -36.0, -28.0),
-            "Medulla" => new Point3D(0.0, -34.0, -28.0),
-            "LocusCoeruleus" => new Point3D(6.0, -18.0, -26.0),
-            "RapheNuclei" => new Point3D(0.0, -19.0, -25.0),
-            "SpinalCordMotor" => new Point3D(0.0, -50.0, -24.0),
-            "ArcuateFasciculus" => new Point3D(42.0, 20.0, -8.0),
-
-            // Sensory peripheral anchors
-            "OlfactoryBulb" => new Point3D(7.0, 10.0, 28.0),
-            "Retina" => new Point3D(72.0, 8.0, 52.0),
-            "Cochlea" => new Point3D(60.0, -22.0, 8.0),
-            _ => default
-        };
-
-        return centerMm != default;
+        centerMm = geometry.CenterMm;
+        return true;
     }
 
     private static Point3D ComputeAnchorPoint(Point3D center, IReadOnlyList<Point3D> localPoints)
@@ -774,28 +715,40 @@ public partial class MainWindow
         var mm = snapshotId switch
         {
             "Pfc" => new Point3D(42, 38, 34),
-            "OrbitofrontalCortex" => new Point3D(38, 22, 44),
-            "Insula" => new Point3D(52, 18, -6),
+            "DorsomedialPrefrontalCortex" => new Point3D(12, 50, 34),
+            "VentromedialPrefrontalCortex" => new Point3D(12, -4, 38),
+            "FrontalEyeFields" => new Point3D(32, 50, 20),
+            "OrbitofrontalCortex" => new Point3D(38, -12, 44),
+            "Insula" => new Point3D(40, 4, 0),
             "Sma" => new Point3D(12, 52, 26),
             "M1" => new Point3D(34, 38, 14),
             "S1" => new Point3D(34, 42, -2),
             "Ppc" => new Point3D(30, 48, -28),
             "V1" => new Point3D(18, 24, -62),
             "V2" => new Point3D(26, 26, -54),
+            "V3" => new Point3D(34, 24, -48),
             "V4" => new Point3D(44, 18, -42),
             "Mt" => new Point3D(52, 12, -34),
             "A1" => new Point3D(50, 12, -20),
+            "AuditoryAssociationCortex" => new Point3D(56, 8, -12),
+            "SecondarySomatosensoryCortex" => new Point3D(52, 16, -6),
             "TemporalAssociation" => new Point3D(58, 6, -28),
+            "InferotemporalCortex" => new Point3D(50, -4, -32),
+            "FusiformGyrus" => new Point3D(38, -12, -34),
+            "TemporalPole" => new Point3D(50, -8, 30),
             "WernickePstgPsts" => new Point3D(56, 14, -24),
             "SupramarginalAngular" => new Point3D(46, 28, -30),
+            "TemporoparietalJunction" => new Point3D(54, 26, -24),
+            "Precuneus" => new Point3D(10, 48, -28),
             "Acc" => new Point3D(8, 38, 18),
+            "MidcingulateCortex" => new Point3D(8, 42, -2),
             "EntorhinalCortex" => new Point3D(22, -12, -22),
             "ParahippocampalCortex" => new Point3D(30, -2, -20),
             "PerirhinalCortex" => new Point3D(38, 2, -18),
             "BrocaBa44Ba45" => new Point3D(52, 18, 20),
             "PremotorCortex" => new Point3D(28, 48, 20),
-            "PosteriorCingulate" => new Point3D(12, 44, -18),
-            "RetrosplenialCortex" => new Point3D(16, 40, -24),
+            "PosteriorCingulate" => new Point3D(6, 30, -48),
+            "RetrosplenialCortex" => new Point3D(6, 12, -52),
             _ => new Point3D(26, 30, 0)
         };
 
@@ -888,38 +841,15 @@ public partial class MainWindow
     {
         var signX = hemisphere == "L" ? -1.0 : 1.0;
         var unrolled = UnrotateCorticalShellFromMidlineAroundZ(p, signX);
-        var x = Math.Abs(unrolled.X);
-        var y = unrolled.Y;
-        var z = unrolled.Z;
-
-        var radius = Math.Sqrt((x * x) + (y * y) + (z * z));
-        if (radius < 1e-6)
-        {
-            radius = 1.0;
-        }
-
-        var theta = Math.Atan2(z, x);                  // anterior(+x) to posterior(-x)
-        var phi = Math.Asin(Math.Clamp(y / radius, -1.0, 1.0)); // superior(+y) to inferior(-y)
-        var surface = BuildCorticalSurfacePoint(theta, phi, signX);
-
-        // Longitudinal fissure notch near the midline.
-        var fissurePush = 0.06 * Math.Exp(-(surface.Z * surface.Z) / 0.22) * (0.7 + Math.Max(0.0, surface.Y));
-        return new Point3D(surface.X + (signX * fissurePush), surface.Y, surface.Z);
+        var (theta, phi) = GetCorticalSurfaceParameters(unrolled);
+        return BuildCorticalSurfacePoint(theta, phi, signX);
     }
 
     private static Vector3D GetCorticalShellNormal(Point3D p, string hemisphere)
     {
         var signX = hemisphere == "L" ? -1.0 : 1.0;
-        var x = Math.Abs(p.X);
-        var z = p.Z;
-        var radial = Math.Sqrt((x * x) + (p.Y * p.Y) + (z * z));
-        if (radial < 1e-6)
-        {
-            return new Vector3D(signX, 0, 0);
-        }
-
-        var theta = Math.Atan2(z, x);
-        var phi = Math.Asin(Math.Clamp(p.Y / radial, -1.0, 1.0));
+        var unrolled = UnrotateCorticalShellFromMidlineAroundZ(p, signX);
+        var (theta, phi) = GetCorticalSurfaceParameters(unrolled);
         const double eps = 0.012;
         var c = BuildCorticalSurfacePoint(theta, phi, signX);
         var t = BuildCorticalSurfacePoint(theta + eps, phi, signX);
@@ -941,129 +871,98 @@ public partial class MainWindow
 
     private static Point3D BuildCorticalSurfacePoint(double theta, double phi, double hemisphereSign)
     {
-        const double baseRx = 1.54;
-        const double baseRy = 1.08;
-        const double baseRz = 1.46;
+        theta = Math.Clamp(theta, -Math.PI / 2.0, Math.PI / 2.0);
+        phi = Math.Clamp(phi, -Math.PI / 2.0, Math.PI / 2.0);
 
-        var superior = Math.Clamp(Math.Sin(phi), 0.0, 1.0);
-        var inferior = Math.Clamp(-Math.Sin(phi), 0.0, 1.0);
-        var sx = Math.Cos(phi) * Math.Cos(theta);
-        var sy = Math.Sin(phi);
-        var sz = Math.Cos(phi) * Math.Sin(theta);
-        var anterior = Math.Clamp(sz, 0.0, 1.0);
-        var posterior = Math.Clamp(-sz, 0.0, 1.0);
-        var posteriorLongitudinal = posterior;
+        var cosPhi = Math.Cos(phi);
+        var lateral = Math.Max(0.0, cosPhi * Math.Cos(theta));
+        var vertical = Math.Sin(phi);
+        var longitudinal = cosPhi * Math.Sin(theta);
+        var anterior = Math.Max(0.0, longitudinal);
+        var posterior = Math.Max(0.0, -longitudinal);
+        var superior = Math.Max(0.0, vertical);
+        var inferior = Math.Max(0.0, -vertical);
+        var lateralShoulder = Math.Pow(lateral, 0.72);
 
-        static double Bell(double value, double center, double width) =>
-            Math.Exp(-Math.Pow(value - center, 2) / Math.Max(0.001, width));
+        static double Bell(double value, double center, double variance) =>
+            Math.Exp(-Math.Pow(value - center, 2.0) / Math.Max(0.001, variance));
 
-        var lateral = Math.Abs(sx);
-        var medialWeight = Math.Pow(1.0 - lateral, 2.0);
-        var lowerLobe = inferior * Bell(phi, -0.70, 0.22);
-        var temporalLobe = Bell(phi, -0.52, 0.26) * (0.25 + (0.75 * lateral)) * (0.35 + (0.65 * inferior)) * (1.0 - (0.55 * anterior));
-        var frontalShelf = anterior * inferior * Bell(phi, -0.60, 0.34);
-        var parietalCrown = superior * (0.50 + (0.35 * Bell(theta, -0.15, 0.75)));
-        var occipitalRound = posteriorLongitudinal * Bell(phi, -0.02, 0.85);
-        var posteriorCap = posterior * (0.55 + (0.45 * Bell(phi, 0.00, 0.95)));
-        var superiorCap = Math.Pow(superior, 1.7);
-        var superiorShoulder = Math.Pow(superior, 2.2) * (0.35 + (0.65 * Bell(theta, 0.0, 1.2)));
-        var frontalShelfGuide = frontalShelf * (0.45 + (0.95 * lateral));
-        var temporalSlopeGuide = temporalLobe * (0.35 + (0.85 * lateral));
-        var inferiorPosteriorSideWall = Math.Pow(posterior, 0.82) *
-                                        Math.Pow(inferior, 0.92) *
-                                        Math.Pow(lateral, 0.74) *
-                                        Bell(phi, -0.72, 0.46);
+        // The cerebrum is not a scaled sphere. These restrained lobar terms are
+        // taken from the bundled anterior, lateral, and superior references.
+        var frontalLobe = Math.Pow(anterior, 1.18);
+        var parietalCrown = Bell(longitudinal, -0.08, 0.24) * Math.Pow(superior, 1.15);
+        var temporalLobe =
+            Bell(longitudinal, 0.04, 0.40) *
+            Bell(vertical, -0.48, 0.22) *
+            (0.28 + (0.72 * lateralShoulder));
+        var temporalPole =
+            Bell(longitudinal, 0.55, 0.12) *
+            Bell(vertical, -0.34, 0.16) *
+            (0.34 + (0.66 * lateralShoulder));
+        var occipitalLobe = Math.Pow(posterior, 1.15);
 
-        // Frontal reference outline: two round hemispheres with a clear vertical
-        // fissure, lower temporal shelves, and a flatter ventral margin.
-        var verticalProfile =
-            0.62 +
-            (0.30 * Bell(sy, 0.10, 0.78)) +
-            (0.3128 * superiorShoulder) +
-            (0.12 * Bell(sy, -0.52, 0.16)) -
-            (0.08 * Math.Pow(inferior, 1.7)) -
-            (0.30 * superior);
-        var outlineScallop =
-            1.0 +
-            (0.018 * Math.Sin((phi * 6.0) + (theta * 1.4))) +
-            (0.012 * Math.Sin((theta * 5.0) - (phi * 2.0)));
-        var xRaw = lateral * baseRx * verticalProfile * outlineScallop * (1.0 + (0.017 * temporalLobe) + (0.48 * frontalShelfGuide) + (0.1088 * posteriorCap) + (0.068 * occipitalRound) + (0.3264 * superiorShoulder) + (0.24 * inferiorPosteriorSideWall));
-        var midlineGap = (0.125 + (0.045 * superior) + (0.035 * anterior) + (0.020 * frontalShelf)) * medialWeight * (1.0 - (0.20 * inferior));
-        var x = hemisphereSign * Math.Max(xRaw, midlineGap) * CortexShellRatio.Width;
+        var widthRadiusMm = CortexHalfWidthMm *
+            (1.0 + (0.035 * frontalLobe) + (0.115 * temporalLobe) + (0.045 * temporalPole) - (0.060 * occipitalLobe));
+        var xMm = hemisphereSign * (CortexMidlineGapMm + (lateral * widthRadiusMm));
 
-        var yProfile =
-            (sy * baseRy * (0.96 + (0.04 * parietalCrown) - (0.10 * inferior))) +
-            (0.010 * superior) -
-            (0.060 * lowerLobe) -
-            (0.055 * temporalSlopeGuide) +
-            (0.1885 * frontalShelf) +
-            (0.667 * frontalShelfGuide) -
-            (0.040 * superiorCap);
-        var y = yProfile * CortexShellRatio.Height;
+        var yMm = CortexVerticalCenterMm + (vertical * CortexHalfHeightMm);
+        yMm += 3.6 * frontalLobe * (0.30 + (0.70 * superior));
+        yMm += 2.4 * parietalCrown;
+        yMm -= 12.5 * temporalLobe;
+        yMm -= 3.0 * temporalPole;
+        yMm -= 1.8 * Math.Pow(superior, 4.0);
+        yMm += 1.4 * Math.Pow(inferior, 5.0);
 
-        // Lateral reference outline: rounded frontal/occipital poles with a
-        // distinct lower temporal lobe instead of a football-like ellipse.
-        var depthScale =
-            0.94 +
-            (0.0112455 * anterior) +
-            (0.014994 * posteriorCap) +
-            (0.019992 * occipitalRound) +
-            (0.068 * temporalLobe) +
-            (0.0097461 * frontalShelfGuide);
-        var z =
-            (sz * baseRz * depthScale * CortexShellRatio.Length) +
-            ((0.0097461 * anterior) - (0.00441 * posteriorLongitudinal) + (0.028 * temporalLobe) + (0.0089964 * frontalShelfGuide)) * CortexShellRatio.Length;
-
-        var posteriorEdgeFlatten = Math.Pow(posterior, 1.25) * (0.45 + (0.55 * Bell(phi, -0.02, 0.95))) * (1.0 - (0.58 * lateral));
-        var superiorEdgeFlatten = Math.Pow(superior, 1.75) * (1.0 - (0.45 * lateral));
-        var anteriorEdgeFlatten = Math.Pow(anterior, 1.25) * (0.45 + (0.55 * Bell(phi, -0.02, 0.95))) * (1.0 - (0.58 * lateral));
-        var lateralEdgeFlatten = Math.Pow(lateral, 1.65) * (0.35 + (0.65 * Bell(phi, -0.02, 0.95))) * (0.45 + (0.55 * Math.Max(anterior, posterior)));
-        var temporalLateralFlatten = temporalLobe * Math.Pow(lateral, 1.55) * (0.60 + (0.40 * inferior));
-        var lowerPosteriorWallFlatten = Math.Pow(posterior, 0.95) * Math.Pow(inferior, 1.10) * (0.62 + (0.38 * lateral)) * (0.55 + (0.45 * Bell(phi, -0.58, 0.38)));
-        var temporalWallFlatten = Math.Pow(posterior, 0.70) * Math.Pow(inferior, 0.90) * Math.Pow(lateral, 0.85) * (0.45 + (0.55 * temporalLobe));
-        z -= 0.12 * anteriorEdgeFlatten * CortexShellRatio.Length;
-        z += 0.275 * posteriorEdgeFlatten * CortexShellRatio.Length;
-        z += 0.36 * lowerPosteriorWallFlatten * CortexShellRatio.Length;
-        var lowerPosteriorPlaneZ = -0.68 * baseRz * CortexShellRatio.Length;
-        if (z < lowerPosteriorPlaneZ)
+        // Form the orbitofrontal shelf without flattening the whole ventral
+        // surface. The temporal lobe remains lower and posterior to this shelf.
+        var orbitalShelf = frontalLobe * Math.Pow(inferior, 1.10) * (0.28 + (0.72 * lateralShoulder));
+        if (orbitalShelf > 0.01)
         {
-            z += (lowerPosteriorPlaneZ - z) * Math.Clamp(0.99 * lowerPosteriorWallFlatten, 0.0, 0.98);
+            var shelfTargetMm = -27.0 - (3.0 * lateralShoulder);
+            var shelfBlend = Math.Clamp(orbitalShelf * 0.64, 0.0, 0.62);
+            yMm = (yMm * (1.0 - shelfBlend)) + (shelfTargetMm * shelfBlend);
         }
 
-        y -= 0.15 * superiorEdgeFlatten * CortexShellRatio.Height;
-        x *= 1.0 - (0.052 * posteriorEdgeFlatten) - (0.05625 * superiorEdgeFlatten) - (0.18 * lateralEdgeFlatten) - (0.10 * temporalLateralFlatten) - (0.14 * lowerPosteriorWallFlatten) - (0.18 * temporalWallFlatten);
-        x *= 1.0 + (0.18 * inferiorPosteriorSideWall);
+        var longitudinalRadiusMm = longitudinal >= 0.0
+            ? CortexAnteriorRadiusMm
+            : CortexPosteriorRadiusMm;
+        var zMm = longitudinal * longitudinalRadiusMm;
+        zMm += 1.8 * frontalLobe;
+        zMm -= 1.2 * occipitalLobe;
+        zMm += 2.6 * temporalLobe;
+        zMm += 4.4 * temporalPole;
 
-        // Front-view silhouette guides from the annotated reference image.
-        var frontalShelfContour = Math.Pow(anterior, 0.70) * Math.Pow(inferior, 0.92) * (0.38 + (0.62 * lateral)) * Bell(phi, -0.55, 0.34);
-        if (frontalShelfContour > 0.01)
-        {
-            var shelfTargetY = CortexShellRatio.Height * (-0.23 - (0.44 * (1.0 - lateral)) + (0.10 * medialWeight));
-            var shelfBlend = Math.Clamp(1.18 * frontalShelfContour, 0.0, 0.96);
-            y = (y * (1.0 - shelfBlend)) + (shelfTargetY * shelfBlend);
-        }
+        // The lateral (Sylvian) fissure separates the superior temporal gyrus
+        // from frontal and parietal cortex. Its posterior end sits higher than
+        // the anterior end, matching the bundled lateral anatomy reference.
+        var normalizedLongitudinal = Math.Clamp((longitudinal + 0.72) / 1.42, 0.0, 1.0);
+        var sylvianVertical = 0.07 - (0.27 * normalizedLongitudinal);
+        var sylvianFissure =
+            Bell(vertical, sylvianVertical, 0.0065) *
+            Bell(longitudinal, 0.02, 0.46) *
+            Math.Pow(lateralShoulder, 1.35);
+        xMm = hemisphereSign * Math.Max(
+            CortexMidlineGapMm,
+            Math.Abs(xMm) - (3.2 * sylvianFissure));
+        yMm -= 1.2 * sylvianFissure;
 
-        var temporalPosteriorContour = Math.Pow(inferior, 0.90) * Math.Pow(0.45 + (0.55 * posterior), 1.10) * (0.42 + (0.58 * lateral)) * Bell(phi, -0.74, 0.42);
-        if (temporalPosteriorContour > 0.01)
-        {
-            var lowerArc = Math.Exp(-Math.Pow(lateral - 0.64, 2) / 0.12);
-            var medialRise = Math.Pow(1.0 - lateral, 2.2);
-            var temporalTargetY = CortexShellRatio.Height * (-0.42 - (0.44 * lowerArc) + (0.20 * medialRise));
-            var temporalBlend = Math.Clamp(1.20 * temporalPosteriorContour, 0.0, 0.98);
-            y = (y * (1.0 - temporalBlend)) + (temporalTargetY * temporalBlend);
+        return RotateCorticalShellTowardMidlineAroundZ(
+            MmToRender(new Point3D(xMm, yMm, zMm)),
+            hemisphereSign);
+    }
 
-            var sideWallTarget = CortexShellRatio.Width * (1.14 + (0.06 * inferior) + (0.05 * posterior));
-            var sideMagnitude = Math.Abs(x);
-            var sideWallBlend = Math.Clamp(0.72 * temporalPosteriorContour * Math.Pow(lateral, 0.42), 0.0, 0.82);
-            var adjustedMagnitude = (sideMagnitude * (1.0 - sideWallBlend)) + (sideWallTarget * sideWallBlend);
-            x = Math.CopySign(adjustedMagnitude, x);
-        }
-
-        var sylvianBand = Bell(phi, -0.14, 0.05) * Math.Pow(lateral, 1.35) * (0.45 + (0.35 * anterior));
-        y -= 0.035 * sylvianBand * CortexShellRatio.Height;
-        x *= 1.0 - (0.010 * sylvianBand);
-
-        return RotateCorticalShellTowardMidlineAroundZ(new Point3D(x, y, z), hemisphereSign);
+    private static (double Theta, double Phi) GetCorticalSurfaceParameters(Point3D renderPoint)
+    {
+        var xMm = Math.Max(0.0, (Math.Abs(renderPoint.X) / AtlasMmToRender) - CortexMidlineGapMm);
+        var yMm = (renderPoint.Y / AtlasMmToRender) - CortexVerticalCenterMm;
+        var zMm = renderPoint.Z / AtlasMmToRender;
+        var xNorm = xMm / CortexHalfWidthMm;
+        var yNorm = yMm / CortexHalfHeightMm;
+        var zNorm = zMm / (zMm >= 0.0 ? CortexAnteriorRadiusMm : CortexPosteriorRadiusMm);
+        var equatorial = Math.Sqrt((xNorm * xNorm) + (zNorm * zNorm));
+        return (
+            Math.Atan2(zNorm, Math.Max(0.0001, xNorm)),
+            Math.Atan2(yNorm, Math.Max(0.0001, equatorial)));
     }
 
     private static Point3D RotateCorticalShellTowardMidlineAroundZ(Point3D p, double hemisphereSign)
@@ -1082,59 +981,6 @@ public partial class MainWindow
         var x = (p.X * CorticalShellMedialRollCos) + (p.Y * signedSin);
         var y = (-p.X * signedSin) + (p.Y * CorticalShellMedialRollCos);
         return new Point3D(x, y, p.Z);
-    }
-
-    private static (double Width, double Height, double Length) ComputeCortexShellRatio()
-    {
-        // Reference dimensions from the current shell basis (before ratioing), in mm.
-        const double baseRx = 1.56;
-        const double baseRy = 1.02;
-        const double baseRz = 1.34;
-        var referenceWidthMm = (baseRx * 2.0) / AtlasMmToRender;
-        var referenceHeightMm = (baseRy * 2.0) / AtlasMmToRender;
-        var referenceLengthMm = (baseRz * 2.0) / AtlasMmToRender;
-
-        // Target average brain dimensions supplied by user (mm):
-        // h = 140, l = 167, w = 93.
-        const double targetHeightMm = 140.0;
-        const double targetLengthMm = 167.0;
-        const double targetWidthMm = 93.0;
-
-        return (
-            targetWidthMm / referenceWidthMm,
-            targetHeightMm / referenceHeightMm,
-            targetLengthMm / referenceLengthMm
-        );
-    }
-
-    private static (double Width, double Height, double Length) ComputeSubcorticalScaleRatio()
-    {
-        // Keep non-cortical structures aligned to the cortical envelope while
-        // avoiding full AP stretching that can detach deep nuclei from the shell.
-        const double widthBlend = 0.70;
-        const double heightBlend = 0.74;
-        const double lengthBlend = 0.60;
-        return (
-            1.0 + ((CortexShellRatio.Width - 1.0) * widthBlend),
-            1.0 + ((CortexShellRatio.Height - 1.0) * heightBlend),
-            1.0 + ((CortexShellRatio.Length - 1.0) * lengthBlend)
-        );
-    }
-
-    private static Point3D ScalePointByCortexRatio(Point3D p)
-    {
-        return new Point3D(
-            p.X * CortexShellRatio.Width,
-            p.Y * CortexShellRatio.Height,
-            p.Z * CortexShellRatio.Length);
-    }
-
-    private static Point3D ScalePointBySubcorticalRatio(Point3D p)
-    {
-        return new Point3D(
-            p.X * SubcorticalScaleRatio.Width,
-            p.Y * SubcorticalScaleRatio.Height,
-            p.Z * SubcorticalScaleRatio.Length);
     }
 
     private static Vector3D GetNonCorticalLocalScale(string snapshotId)
@@ -1497,6 +1343,7 @@ public partial class MainWindow
             "CorpusCallosum" => false,
             "ReticularFormation" => false,
             "PeriaqueductalGray" => false,
+            "RapheNuclei" => false,
             "CerebellarGranule" => false,
             "CerebellarVermis" => false,
             "CerebellarLobules" => false,
@@ -2140,11 +1987,17 @@ public partial class MainWindow
         {
             "V1" => true,
             "V2" => true,
+            "V3" => true,
             "V4" => true,
             "Mt" => true,
             "A1" => true,
+            "AuditoryAssociationCortex" => true,
             "S1" => true,
+            "SecondarySomatosensoryCortex" => true,
             "Pfc" => true,
+            "DorsomedialPrefrontalCortex" => true,
+            "VentromedialPrefrontalCortex" => true,
+            "FrontalEyeFields" => true,
             "BrocaBa44Ba45" => true,
             "WernickePstgPsts" => true,
             "SupramarginalAngular" => true,
@@ -2153,6 +2006,12 @@ public partial class MainWindow
             "Insula" => true,
             "Ppc" => true,
             "TemporalAssociation" => true,
+            "InferotemporalCortex" => true,
+            "FusiformGyrus" => true,
+            "TemporalPole" => true,
+            "TemporoparietalJunction" => true,
+            "Precuneus" => true,
+            "MidcingulateCortex" => true,
             "ParahippocampalCortex" => true,
             "PerirhinalCortex" => true,
             "PosteriorCingulate" => true,
@@ -2316,11 +2175,17 @@ public partial class MainWindow
             ["CerebellarLobules"] = 160,
             ["V1"] = 220,
             ["V2"] = 200,
+            ["V3"] = 145,
             ["V4"] = 120,
             ["Mt"] = 95,
             ["A1"] = 80,
+            ["AuditoryAssociationCortex"] = 105,
             ["S1"] = 180,
+            ["SecondarySomatosensoryCortex"] = 75,
             ["Pfc"] = 320,
+            ["DorsomedialPrefrontalCortex"] = 95,
+            ["VentromedialPrefrontalCortex"] = 90,
+            ["FrontalEyeFields"] = 55,
             ["BrocaBa44Ba45"] = 90,
             ["WernickePstgPsts"] = 95,
             ["SupramarginalAngular"] = 110,
@@ -2330,6 +2195,12 @@ public partial class MainWindow
             ["Insula"] = 30,
             ["Ppc"] = 170,
             ["TemporalAssociation"] = 210,
+            ["InferotemporalCortex"] = 145,
+            ["FusiformGyrus"] = 90,
+            ["TemporalPole"] = 70,
+            ["TemporoparietalJunction"] = 80,
+            ["Precuneus"] = 110,
+            ["MidcingulateCortex"] = 65,
             ["ParahippocampalCortex"] = 90,
             ["PerirhinalCortex"] = 85,
             ["PosteriorCingulate"] = 70,
@@ -2396,13 +2267,17 @@ public partial class MainWindow
 
     private IEnumerable<StructureDefinition> GetStructureDefinitions() => new[]
     {
-        // Centers and radii are in approximate anatomical millimeters, converted through one global scale.
+        // Cortical entries are initial layout definitions. Non-cortical centres,
+        // extents, and orientations are replaced by per-hemisphere atlas profiles.
         new StructureDefinition("V1","V1",MmToRender(new Point3D(18,24,-62)),Color.FromRgb(128,168,248),"Izhikevich","BCM",StructureLayout.CorticalSheet,12,6,4,MmToRender(26),MmToRender(14),MmToRender(12),10,-25,4),
         new StructureDefinition("V2","V2",MmToRender(new Point3D(26,26,-54)),Color.FromRgb(120,176,244),"Izhikevich","BCM+STDP",StructureLayout.CorticalSheet,11,6,4,MmToRender(24),MmToRender(13),MmToRender(11),8,-18,4),
+        new StructureDefinition("V3","V3",MmToRender(new Point3D(34,24,-48)),Color.FromRgb(118,184,238),"Izhikevich","BCM+STDP",StructureLayout.CorticalSheet,10,6,4,MmToRender(22),MmToRender(12),MmToRender(10),7,-13,3),
         new StructureDefinition("V4","V4",MmToRender(new Point3D(44,18,-42)),Color.FromRgb(128,188,242),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(22),MmToRender(12),MmToRender(10),6,-8,2),
         new StructureDefinition("MT","Mt",MmToRender(new Point3D(52,12,-34)),Color.FromRgb(112,198,236),"Izhikevich","STDP",StructureLayout.CorticalSheet,10,6,4,MmToRender(22),MmToRender(12),MmToRender(10),6,30,-6),
         new StructureDefinition("A1","A1",MmToRender(new Point3D(50,12,-20)),Color.FromRgb(126,192,238),"Izhikevich","STDP",StructureLayout.CorticalSheet,10,6,4,MmToRender(24),MmToRender(14),MmToRender(12),6,-40,-8),
+        new StructureDefinition("Auditory Association","AuditoryAssociationCortex",MmToRender(new Point3D(56,8,-12)),Color.FromRgb(106,198,224),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(24),MmToRender(12),MmToRender(10),4,-34,-7),
         new StructureDefinition("S1","S1",MmToRender(new Point3D(34,42,-2)),Color.FromRgb(120,212,210),"LIF","STDP",StructureLayout.CorticalSheet,11,6,4,MmToRender(26),MmToRender(14),MmToRender(12),-6,-10,5),
+        new StructureDefinition("S2","SecondarySomatosensoryCortex",MmToRender(new Point3D(52,16,-6)),Color.FromRgb(96,204,176),"LIF","STDP",StructureLayout.CorticalSheet,9,5,4,MmToRender(20),MmToRender(11),MmToRender(9),-3,6,-5),
         new StructureDefinition("Retina","Retina",MmToRender(new Point3D(72,8,52)),Color.FromRgb(238,154,126),"HH","BCM",StructureLayout.NucleusBlock,7,6,6,MmToRender(8),MmToRender(6),MmToRender(6),0,0,0),
         new StructureDefinition("Cochlea","Cochlea",MmToRender(new Point3D(60,-22,8)),Color.FromRgb(234,176,122),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(9),MmToRender(7),MmToRender(7),0,0,0),
         new StructureDefinition("Olfactory Bulb","OlfactoryBulb",MmToRender(new Point3D(6,20,14)),Color.FromRgb(240,170,122),"Izhikevich","STDP",StructureLayout.OlfactoryBulbShell,10,9,9,MmToRender(10),MmToRender(8),MmToRender(9),0,0,0),
@@ -2430,6 +2305,9 @@ public partial class MainWindow
             new StructureDefinition("Perirhinal Cortex","PerirhinalCortex",MmToRender(new Point3D(38,2,-18)),Color.FromRgb(130,202,230),"Izhikevich","SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(18),MmToRender(10),MmToRender(10),3,38,-4),
 
         new StructureDefinition("PFC","Pfc",MmToRender(new Point3D(42,38,34)),Color.FromRgb(143,160,250),"Izhikevich","DopamineModulatedSTDP",StructureLayout.CorticalSheet,12,6,4,MmToRender(28),MmToRender(16),MmToRender(14),8,28,-4),
+        new StructureDefinition("Dorsomedial PFC","DorsomedialPrefrontalCortex",MmToRender(new Point3D(12,50,34)),Color.FromRgb(160,150,232),"Izhikevich","DopamineModulatedSTDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(20),MmToRender(12),MmToRender(10),5,18,0),
+        new StructureDefinition("Ventromedial PFC","VentromedialPrefrontalCortex",MmToRender(new Point3D(12,-4,38)),Color.FromRgb(224,154,126),"Izhikevich","DopamineModulatedSTDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(20),MmToRender(11),MmToRender(10),5,12,-2),
+        new StructureDefinition("Frontal Eye Fields","FrontalEyeFields",MmToRender(new Point3D(32,50,20)),Color.FromRgb(120,202,150),"Izhikevich","STDP",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(11),MmToRender(9),2,8,0),
         new StructureDefinition("Broca (BA44/45)","BrocaBa44Ba45",MmToRender(new Point3D(52,18,20)),Color.FromRgb(148,174,252),"Izhikevich","DopamineModulatedSTDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(22),MmToRender(12),MmToRender(11),4,36,-4),
         new StructureDefinition("Wernicke (pSTG/pSTS)","WernickePstgPsts",MmToRender(new Point3D(56,14,-24)),Color.FromRgb(108,206,236),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(24),MmToRender(13),MmToRender(11),4,46,-8),
         new StructureDefinition("Supramarginal/Angular","SupramarginalAngular",MmToRender(new Point3D(46,28,-30)),Color.FromRgb(126,214,242),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(22),MmToRender(12),MmToRender(11),2,32,-4),
@@ -2439,6 +2317,12 @@ public partial class MainWindow
         new StructureDefinition("Insula","Insula",MmToRender(new Point3D(52,18,-6)),Color.FromRgb(102,184,238),"Izhikevich","DopamineModulatedSTDP",StructureLayout.CorticalSheet,8,5,4,MmToRender(16),MmToRender(11),MmToRender(10),2,8,2),
         new StructureDefinition("PPC","Ppc",MmToRender(new Point3D(30,48,-28)),Color.FromRgb(110,190,244),"LIF","STDP",StructureLayout.CorticalSheet,11,6,4,MmToRender(26),MmToRender(15),MmToRender(12),-4,10,0),
         new StructureDefinition("Temporal Association","TemporalAssociation",MmToRender(new Point3D(58,6,-28)),Color.FromRgb(122,224,214),"Izhikevich","STDP",StructureLayout.CorticalSheet,10,6,4,MmToRender(24),MmToRender(14),MmToRender(12),2,45,-6),
+        new StructureDefinition("Inferotemporal Cortex","InferotemporalCortex",MmToRender(new Point3D(50,-4,-32)),Color.FromRgb(86,186,206),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,10,6,4,MmToRender(24),MmToRender(12),MmToRender(10),2,42,-8),
+        new StructureDefinition("Fusiform Gyrus","FusiformGyrus",MmToRender(new Point3D(38,-12,-34)),Color.FromRgb(232,170,102),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(22),MmToRender(10),MmToRender(10),2,38,-8),
+        new StructureDefinition("Temporal Pole","TemporalPole",MmToRender(new Point3D(50,-8,30)),Color.FromRgb(222,132,160),"Izhikevich","DopamineModulatedSTDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(20),MmToRender(12),MmToRender(11),3,28,-5),
+        new StructureDefinition("Temporoparietal Junction","TemporoparietalJunction",MmToRender(new Point3D(54,26,-24)),Color.FromRgb(106,200,164),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(20),MmToRender(12),MmToRender(10),1,26,-2),
+        new StructureDefinition("Precuneus","Precuneus",MmToRender(new Point3D(10,48,-28)),Color.FromRgb(178,162,226),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,9,5,4,MmToRender(22),MmToRender(13),MmToRender(10),5,8,0),
+        new StructureDefinition("Midcingulate Cortex","MidcingulateCortex",MmToRender(new Point3D(8,42,-2)),Color.FromRgb(220,126,188),"Izhikevich","DopamineModulatedSTDP",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(10),MmToRender(9),6,16,1),
         new StructureDefinition("Posterior Cingulate","PosteriorCingulate",MmToRender(new Point3D(12,44,-18)),Color.FromRgb(176,188,242),"Izhikevich","STDP+SynapticTaggingCapture",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(11),MmToRender(10),8,8,0),
         new StructureDefinition("Retrosplenial Cortex","RetrosplenialCortex",MmToRender(new Point3D(16,40,-24)),Color.FromRgb(162,198,236),"Izhikevich","SynapticTaggingCapture",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(11),MmToRender(10),6,4,0),
 

@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Benchmarks/">
+    <Project Path="Benchmarks/NeuralResonanceEngine.CorticalBenchmarks/NeuralResonanceEngine.CorticalBenchmarks.csproj" />
+    <Project Path="Benchmarks/NeuralResonanceEngine.EmbodiedBenchmarks/NeuralResonanceEngine.EmbodiedBenchmarks.csproj" />
+  </Folder>
   <Folder Name="/ControlProgram/">
     <Project Path="ControlProgram/NeuralResonanceEngine.ControlProgram.csproj" />
   </Folder>
@@ -235,6 +239,42 @@
   </Folder>
   <Folder Name="/Structures/SuperiorColliculus/">
     <Project Path="Structures/SuperiorColliculus/NeuralResonanceEngine.Structures.SuperiorColliculus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/V3/">
+    <Project Path="Structures/V3/NeuralResonanceEngine.Structures.V3.csproj" />
+  </Folder>
+  <Folder Name="/Structures/AuditoryAssociationCortex/">
+    <Project Path="Structures/AuditoryAssociationCortex/NeuralResonanceEngine.Structures.AuditoryAssociationCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/SecondarySomatosensoryCortex/">
+    <Project Path="Structures/SecondarySomatosensoryCortex/NeuralResonanceEngine.Structures.SecondarySomatosensoryCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/InferotemporalCortex/">
+    <Project Path="Structures/InferotemporalCortex/NeuralResonanceEngine.Structures.InferotemporalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/FusiformGyrus/">
+    <Project Path="Structures/FusiformGyrus/NeuralResonanceEngine.Structures.FusiformGyrus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/TemporalPole/">
+    <Project Path="Structures/TemporalPole/NeuralResonanceEngine.Structures.TemporalPole.csproj" />
+  </Folder>
+  <Folder Name="/Structures/TemporoparietalJunction/">
+    <Project Path="Structures/TemporoparietalJunction/NeuralResonanceEngine.Structures.TemporoparietalJunction.csproj" />
+  </Folder>
+  <Folder Name="/Structures/Precuneus/">
+    <Project Path="Structures/Precuneus/NeuralResonanceEngine.Structures.Precuneus.csproj" />
+  </Folder>
+  <Folder Name="/Structures/MidcingulateCortex/">
+    <Project Path="Structures/MidcingulateCortex/NeuralResonanceEngine.Structures.MidcingulateCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/DorsomedialPrefrontalCortex/">
+    <Project Path="Structures/DorsomedialPrefrontalCortex/NeuralResonanceEngine.Structures.DorsomedialPrefrontalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/VentromedialPrefrontalCortex/">
+    <Project Path="Structures/VentromedialPrefrontalCortex/NeuralResonanceEngine.Structures.VentromedialPrefrontalCortex.csproj" />
+  </Folder>
+  <Folder Name="/Structures/FrontalEyeFields/">
+    <Project Path="Structures/FrontalEyeFields/NeuralResonanceEngine.Structures.FrontalEyeFields.csproj" />
   </Folder>
   <Folder Name="/Structures/WernickePstgPsts/">
     <Project Path="Structures/WernickePstgPsts/NeuralResonanceEngine.Structures.WernickePstgPsts.csproj" />

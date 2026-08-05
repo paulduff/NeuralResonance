@@ -75,9 +75,9 @@ public static class SpikeProtocol
             return false;
         }
 
-        if (message.TimestampMs < 0)
+        if (!double.IsFinite(message.TimestampMs) || message.TimestampMs < 0)
         {
-            error = "timestamp_ms must be >= 0";
+            error = "timestamp_ms must be finite and >= 0";
             return false;
         }
 
@@ -87,15 +87,15 @@ public static class SpikeProtocol
             return false;
         }
 
-        if (message.VesicleQuanta <= 0)
+        if (!float.IsFinite(message.VesicleQuanta) || message.VesicleQuanta <= 0)
         {
-            error = "vesicle_quanta must be > 0";
+            error = "vesicle_quanta must be finite and > 0";
             return false;
         }
 
-        if (message.ReuptakeRate <= 0)
+        if (!float.IsFinite(message.ReuptakeRate) || message.ReuptakeRate <= 0)
         {
-            error = "reuptake_rate must be > 0";
+            error = "reuptake_rate must be finite and > 0";
             return false;
         }
 

@@ -7,6 +7,7 @@ using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
+[Collection(ControlProgramIntegrationTestCollection.Name)]
 public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlProgramProcessFixture>
 {
     private readonly ControlProgramProcessFixture _fixture;

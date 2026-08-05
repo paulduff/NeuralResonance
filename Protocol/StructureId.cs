@@ -75,5 +75,17 @@ public enum StructureId
     VentralPallidum,
     Habenula,
     MotorThalamus,
-    SuperiorColliculus
+    SuperiorColliculus,
+    V3,
+    AuditoryAssociationCortex,
+    SecondarySomatosensoryCortex,
+    InferotemporalCortex,
+    FusiformGyrus,
+    TemporalPole,
+    TemporoparietalJunction,
+    Precuneus,
+    MidcingulateCortex,
+    DorsomedialPrefrontalCortex,
+    VentromedialPrefrontalCortex,
+    FrontalEyeFields
 }

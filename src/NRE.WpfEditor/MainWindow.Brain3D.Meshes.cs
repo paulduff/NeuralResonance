@@ -9,6 +9,9 @@ namespace NRE.WpfEditor;
 // Extracted from MainWindow.xaml.cs to consolidate geometry construction.
 public partial class MainWindow
 {
+    private static readonly SpecularMaterial NeuralStructureSpecularMaterial =
+        CreateFrozenSpecularMaterial(Color.FromRgb(214, 224, 242), 0.18, 38.0);
+
     private static void AddReferenceMesh(Model3DGroup root, MeshGeometry3D mesh, Color diffuseColor, Color emissiveColor)
     {
         if (mesh.Positions.Count == 0)
@@ -17,14 +20,44 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var diffuse = new SolidColorBrush(diffuseColor) { Opacity = diffuseColor.A / 255.0 };
-        var emissive = new SolidColorBrush(emissiveColor) { Opacity = emissiveColor.A / 255.0 };
+        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.22, 44.0);
+        root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
+    }
+
+    private static MaterialGroup CreateFrozenSurfaceMaterial(
+        Color diffuseColor,
+        Color emissiveColor,
+        double specularOpacity,
+        double specularPower)
+    {
+        // Keep alpha in one place. Using both an ARGB brush and Brush.Opacity
+        // multiplies transparency and made the anatomical shell almost disappear.
+        var diffuse = new SolidColorBrush(Color.FromRgb(diffuseColor.R, diffuseColor.G, diffuseColor.B))
+        {
+            Opacity = diffuseColor.A / 255.0
+        };
+        var emissive = new SolidColorBrush(Color.FromRgb(emissiveColor.R, emissiveColor.G, emissiveColor.B))
+        {
+            Opacity = emissiveColor.A / 255.0
+        };
         diffuse.Freeze();
         emissive.Freeze();
+
         var material = new MaterialGroup();
         material.Children.Add(new DiffuseMaterial(diffuse));
         material.Children.Add(new EmissiveMaterial(emissive));
-        root.Children.Add(new GeometryModel3D(mesh, material));
+        material.Children.Add(CreateFrozenSpecularMaterial(Color.FromRgb(246, 224, 224), specularOpacity, specularPower));
+        TryFreeze(material);
+        return material;
+    }
+
+    private static SpecularMaterial CreateFrozenSpecularMaterial(Color color, double opacity, double power)
+    {
+        var brush = new SolidColorBrush(color) { Opacity = Math.Clamp(opacity, 0.0, 1.0) };
+        brush.Freeze();
+        var material = new SpecularMaterial(brush, Math.Max(1.0, power));
+        material.Freeze();
+        return material;
     }
 
     private static MeshGeometry3D BuildNeuronMarkerMesh(double radius)
@@ -65,7 +98,7 @@ public partial class MainWindow
     private static void AddCorticalGyrusSurface(Model3DGroup root, string snapshotId, string hemisphere, Color baseColor)
     {
         var hemisphereSign = hemisphere == "L" ? -1.0 : 1.0;
-        var mesh = BuildCorticalGyrusSurfaceMesh(snapshotId, hemisphereSign, 44, 10);
+        var mesh = BuildCorticalGyrusSurfaceMesh(snapshotId, hemisphereSign, 48, 10);
         if (mesh.Positions.Count == 0)
         {
             return;
@@ -74,13 +107,11 @@ public partial class MainWindow
         TryFreeze(mesh);
         var diffuseBase = BrightenPreserveHue(baseColor, 0.24);
         var emissiveBase = BrightenPreserveHue(baseColor, 0.70);
-        var diffuse = new SolidColorBrush(Color.FromArgb(88, diffuseBase.R, diffuseBase.G, diffuseBase.B)) { Opacity = 0.34 };
-        var emissive = new SolidColorBrush(Color.FromArgb(38, emissiveBase.R, emissiveBase.G, emissiveBase.B)) { Opacity = 0.15 };
-        diffuse.Freeze();
-        emissive.Freeze();
-        var material = new MaterialGroup();
-        material.Children.Add(new DiffuseMaterial(diffuse));
-        material.Children.Add(new EmissiveMaterial(emissive));
+        var material = CreateFrozenSurfaceMaterial(
+            Color.FromArgb(142, diffuseBase.R, diffuseBase.G, diffuseBase.B),
+            Color.FromArgb(18, emissiveBase.R, emissiveBase.G, emissiveBase.B),
+            0.10,
+            34.0);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
@@ -161,14 +192,17 @@ public partial class MainWindow
         string snapshotId,
         string hemisphere,
         Color baseColor,
-        IReadOnlyList<Point3D> localPoints)
+        IReadOnlyList<Point3D> localPoints,
+        AtlasGeometry? atlasGeometry)
     {
         if (localPoints.Count == 0)
         {
             return;
         }
 
-        var bounds = ComputeLocalBounds(localPoints);
+        var bounds = atlasGeometry is null
+            ? ComputeLocalBounds(localPoints)
+            : BuildAtlasLocalBounds(atlasGeometry);
         var diffuseColor = Color.FromArgb(68, BrightenPreserveHue(baseColor, 0.40).R, BrightenPreserveHue(baseColor, 0.40).G, BrightenPreserveHue(baseColor, 0.40).B);
         var emissiveColor = Color.FromArgb(24, BrightenPreserveHue(baseColor, 0.70).R, BrightenPreserveHue(baseColor, 0.70).G, BrightenPreserveHue(baseColor, 0.70).B);
         var lineColor = Color.FromArgb(110, BrightenPreserveHue(baseColor, 0.82).R, BrightenPreserveHue(baseColor, 0.82).G, BrightenPreserveHue(baseColor, 0.82).B);
@@ -182,13 +216,21 @@ public partial class MainWindow
 
         if (IsBasalGangliaGuide(snapshotId))
         {
-            AddGuideMesh(root, BuildBasalGangliaGuideMesh(bounds, snapshotId), diffuseColor, emissiveColor);
+            AddGuideMesh(root, BuildBasalGangliaGuideMesh(bounds, snapshotId, hemisphere), diffuseColor, emissiveColor);
             AddBasalGangliaGuideLines(root, bounds, snapshotId, lineColor, hemisphere);
             return;
         }
 
         if (IsCerebellarGuide(snapshotId))
         {
+            // Granule, Purkinje, and lobular records are functional layers of
+            // one cerebellum, not three nested organs. The shared anatomical
+            // reference shell and folia already show the outer envelope.
+            if (snapshotId is "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarLobules")
+            {
+                return;
+            }
+
             AddGuideMesh(root, BuildCerebellarLocalGuideMesh(bounds, snapshotId), diffuseColor, emissiveColor);
             AddCerebellarFoliaLines(root, bounds, snapshotId, lineColor);
             return;
@@ -198,7 +240,10 @@ public partial class MainWindow
         {
             AddGuideMesh(root, BuildBrainstemLocalGuideMesh(bounds, snapshotId), diffuseColor, emissiveColor);
             AddBrainstemGuideLines(root, bounds, snapshotId, lineColor);
+            return;
         }
+
+        AddGuideMesh(root, BuildGenericSubcorticalGuideMesh(bounds, snapshotId), diffuseColor, emissiveColor);
     }
 
     private static void AddGuideMesh(Model3DGroup root, MeshGeometry3D mesh, Color diffuseColor, Color emissiveColor)
@@ -209,13 +254,7 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var diffuse = new SolidColorBrush(diffuseColor) { Opacity = diffuseColor.A / 255.0 };
-        var emissive = new SolidColorBrush(emissiveColor) { Opacity = emissiveColor.A / 255.0 };
-        diffuse.Freeze();
-        emissive.Freeze();
-        var material = new MaterialGroup();
-        material.Children.Add(new DiffuseMaterial(diffuse));
-        material.Children.Add(new EmissiveMaterial(emissive));
+        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.15, 28.0);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
@@ -228,21 +267,19 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var brush = new SolidColorBrush(color) { Opacity = color.A / 255.0 };
-        brush.Freeze();
-        var material = new MaterialGroup();
-        material.Children.Add(new DiffuseMaterial(brush));
-        material.Children.Add(new EmissiveMaterial(brush));
-        root.Children.Add(new GeometryModel3D(mesh, material));
+        var material = CreateFrozenSurfaceMaterial(color, Color.FromArgb((byte)Math.Min(40, (int)color.A), color.R, color.G, color.B), 0.08, 18.0);
+        root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
     private static MeshGeometry3D BuildThalamicGuideMesh(LocalBounds b, string snapshotId)
     {
-        var rx = b.RadiusX * (snapshotId.Equals("Trn", StringComparison.OrdinalIgnoreCase) ? 1.10 : 0.94);
-        var ry = b.RadiusY * (snapshotId.Equals("Trn", StringComparison.OrdinalIgnoreCase) ? 0.76 : 0.88);
-        var rz = b.RadiusZ * (snapshotId.Equals("Pulvinar", StringComparison.OrdinalIgnoreCase) ? 1.04 : 0.88);
-        var center = new Point3D(b.Center.X, b.Center.Y + (b.RadiusY * 0.04), b.Center.Z);
-        return BuildEllipsoidMesh(center, Math.Max(0.004, rx), Math.Max(0.004, ry), Math.Max(0.004, rz), 20, 10);
+        return BuildEllipsoidMesh(
+            b.Center,
+            Math.Max(0.004, b.RadiusX),
+            Math.Max(0.004, b.RadiusY),
+            Math.Max(0.004, b.RadiusZ),
+            24,
+            12);
     }
 
     private static void AddThalamicRelayLines(Model3DGroup root, LocalBounds b, Color color)
@@ -257,12 +294,64 @@ public partial class MainWindow
         AddGuideTube(root, new Point3D(b.Center.X, b.Center.Y - b.RadiusY * 0.70, b.Center.Z), new Point3D(b.Center.X, b.Center.Y + b.RadiusY * 0.74, b.Center.Z), radius, color);
     }
 
-    private static MeshGeometry3D BuildBasalGangliaGuideMesh(LocalBounds b, string snapshotId)
+    private static MeshGeometry3D BuildBasalGangliaGuideMesh(LocalBounds b, string snapshotId, string hemisphere)
     {
-        var rx = b.RadiusX * (snapshotId.Equals("Striatum", StringComparison.OrdinalIgnoreCase) ? 1.02 : 0.86);
-        var ry = b.RadiusY * (snapshotId.Equals("Striatum", StringComparison.OrdinalIgnoreCase) ? 0.82 : 0.58);
-        var rz = b.RadiusZ * (snapshotId.Equals("Stn", StringComparison.OrdinalIgnoreCase) ? 0.62 : 0.82);
-        return BuildEllipsoidMesh(b.Center, Math.Max(0.004, rx), Math.Max(0.004, ry), Math.Max(0.004, rz), 18, 8);
+        if (snapshotId.Equals("Striatum", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildStriatalGuideMesh(hemisphere);
+        }
+
+        return BuildEllipsoidMesh(
+            b.Center,
+            Math.Max(0.004, b.RadiusX),
+            Math.Max(0.004, b.RadiusY),
+            Math.Max(0.004, b.RadiusZ),
+            22,
+            11);
+    }
+
+    private static MeshGeometry3D BuildStriatalGuideMesh(string hemisphere)
+    {
+        var mesh = new MeshGeometry3D();
+        var left = hemisphere.Equals("L", StringComparison.OrdinalIgnoreCase);
+        var side = left ? -1.0 : 1.0;
+
+        // Putamen centroid and extents measured independently inside the CIT168
+        // striatal envelope. Coordinates are local to the combined striatum.
+        var putamenCenter = new Point3D(
+            MmToRender(left ? -4.93 : 4.99),
+            MmToRender(left ? -3.38 : -3.53),
+            MmToRender(-2.91));
+        AppendMesh(
+            mesh,
+            BuildEllipsoidMesh(
+                putamenCenter,
+                MmToRender(9.8),
+                MmToRender(left ? 15.05 : 14.0),
+                MmToRender(left ? 21.7 : 21.35),
+                24,
+                12));
+
+        // The caudate is a C-shaped nucleus, not the second half of an oval.
+        // Overlapping low-poly lobules preserve that course while remaining one
+        // frozen mesh and therefore one WPF draw model.
+        const int segments = 11;
+        for (var i = 0; i < segments; i++)
+        {
+            var t = i / (double)(segments - 1);
+            var angle = t * Math.PI;
+            var localCenter = new Point3D(
+                MmToRender((-side * 5.6) - (side * 3.0 * Math.Sin(angle))),
+                MmToRender(4.0 + (5.0 * Math.Cos(angle)) - (3.0 * t)),
+                MmToRender(28.0 - (52.0 * t)));
+            var headWeight = 1.0 - t;
+            var radiusX = MmToRender(2.8 + (2.6 * headWeight));
+            var radiusY = MmToRender(3.0 + (3.8 * headWeight));
+            var radiusZ = MmToRender(3.8 + (2.2 * headWeight));
+            AppendMesh(mesh, BuildEllipsoidMesh(localCenter, radiusX, radiusY, radiusZ, 14, 7));
+        }
+
+        return mesh;
     }
 
     private static void AddBasalGangliaGuideLines(Model3DGroup root, LocalBounds b, string snapshotId, Color color, string hemisphere)
@@ -392,6 +481,38 @@ public partial class MainWindow
         }
     }
 
+    private static MeshGeometry3D BuildGenericSubcorticalGuideMesh(LocalBounds bounds, string snapshotId)
+    {
+        var stacks = snapshotId is "Habenula" or "LocusCoeruleus" ? 8 : 11;
+        var slices = snapshotId is "Habenula" or "LocusCoeruleus" ? 16 : 22;
+        return BuildEllipsoidMesh(
+            bounds.Center,
+            Math.Max(0.004, bounds.RadiusX),
+            Math.Max(0.004, bounds.RadiusY),
+            Math.Max(0.004, bounds.RadiusZ),
+            slices,
+            stacks);
+    }
+
+    private static LocalBounds BuildAtlasLocalBounds(AtlasGeometry geometry)
+    {
+        var radiusX = Math.Max(0.001, MmToRender(geometry.DimensionsMm.X) * 0.5);
+        var radiusY = Math.Max(0.001, MmToRender(geometry.DimensionsMm.Y) * 0.5);
+        var radiusZ = Math.Max(0.001, MmToRender(geometry.DimensionsMm.Z) * 0.5);
+        var center = new Point3D();
+        return new LocalBounds(
+            -radiusX,
+            radiusX,
+            -radiusY,
+            radiusY,
+            -radiusZ,
+            radiusZ,
+            center,
+            radiusX,
+            radiusY,
+            radiusZ);
+    }
+
     private static LocalBounds ComputeLocalBounds(IReadOnlyList<Point3D> points)
     {
         var minX = points[0].X;
@@ -460,13 +581,23 @@ public partial class MainWindow
         var seed = $"homunculus_{snapshotId}_{alongStart:0.00}";
         for (var row = 0; row < rows; row++)
         {
-            var width = rows <= 1 ? 0.5 : 0.30 + (0.40 * row / (double)(rows - 1));
+            // M1/S1 somatotopy runs inferior-to-superior along the precentral
+            // and postcentral strips. Rows span the narrow AP width of the gyrus.
+            var localTheta = rows <= 1
+                ? 0.0
+                : -0.58 + (1.16 * row / (double)(rows - 1));
             for (var col = 0; col < columns; col++)
             {
                 var t = columns <= 1 ? 0.5 : col / (double)(columns - 1);
                 var along = alongStart + ((alongEnd - alongStart) * t);
-                var jitter = DeterministicJitter(col, row, 0, seed);
-                var point = BuildCorticalGyrusPoint(snapshotId, along, width, MmToRender(1.90), jitter * 0.35, hemisphereSign);
+                var localPhi = -0.92 + (1.84 * along);
+                var jitter = DeterministicJitter(col, row, 0, seed) * 0.012;
+                var point = BuildCorticalTerritoryPointUnchecked(
+                    snapshotId,
+                    localTheta + jitter.X,
+                    localPhi + jitter.Z,
+                    MmToRender(0.55),
+                    hemisphereSign);
                 var normal = GetCorticalShellNormal(point, hemisphereSign < 0 ? "L" : "R");
                 mesh.Positions.Add(point);
                 mesh.Normals.Add(normal);
@@ -484,46 +615,7 @@ public partial class MainWindow
 
     private static MeshGeometry3D BuildCorticalGyrusSurfaceMesh(string snapshotId, double hemisphereSign, int columns, int rows)
     {
-        var mesh = new MeshGeometry3D();
-        var profile = GetCorticalGyrusProfile(snapshotId);
-        var seed = $"gyrus_surface_{snapshotId}";
-        for (var row = 0; row < rows; row++)
-        {
-            var width = rows <= 1 ? 0.5 : row / (double)(rows - 1);
-            for (var col = 0; col < columns; col++)
-            {
-                var along = columns <= 1 ? 0.5 : col / (double)(columns - 1);
-                var jitter = DeterministicJitter(col, row, 0, seed);
-                var point = BuildCorticalGyrusPoint(snapshotId, along, width, MmToRender(1.15), jitter, hemisphereSign);
-                var normal = GetCorticalShellNormal(point, hemisphereSign < 0 ? "L" : "R");
-                mesh.Positions.Add(point);
-                mesh.Normals.Add(normal);
-                mesh.TextureCoordinates.Add(new Point(along, width));
-            }
-        }
-
-        AddGridTriangles(mesh, columns, rows);
-
-        // A light medial ridge prevents broad patches from reading as a flat plate.
-        var medialCrownMm = profile.CrownLiftMm * 0.35;
-        if (medialCrownMm > 0.001)
-        {
-            for (var col = 0; col < columns; col++)
-            {
-                var idx = (rows / 2 * columns) + col;
-                if (idx >= 0 && idx < mesh.Positions.Count)
-                {
-                    var point = mesh.Positions[idx];
-                    var normal = mesh.Normals[idx];
-                    mesh.Positions[idx] = new Point3D(
-                        point.X + (normal.X * MmToRender(medialCrownMm)),
-                        point.Y + (normal.Y * MmToRender(medialCrownMm)),
-                        point.Z + (normal.Z * MmToRender(medialCrownMm)));
-                }
-            }
-        }
-
-        return mesh;
+        return BuildCorticalTerritorySurfaceMesh(snapshotId, hemisphereSign, columns, rows);
     }
 
     private static CorpusCallosumVisual AddCorpusCallosumPathwayScaffold(Model3DGroup root)
@@ -535,7 +627,7 @@ public partial class MainWindow
         material.Children.Add(new DiffuseMaterial(diffuse));
         material.Children.Add(new EmissiveMaterial(emissive));
 
-        var group = new Model3DGroup();
+        var combinedMesh = new MeshGeometry3D();
         var lateralLanes = new[] { -0.74, -0.42, -0.14, 0.14, 0.42, 0.74 };
         const int segmentCount = 13;
         for (var segment = 0; segment < segmentCount; segment++)
@@ -550,14 +642,15 @@ public partial class MainWindow
                 var mesh = BuildTubeMesh(p0, p1, MmToRender(0.95), 6);
                 if (mesh.Positions.Count > 0)
                 {
-                    group.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
+                    AppendMesh(combinedMesh, mesh);
                 }
             }
         }
 
-        if (group.Children.Count > 0)
+        if (combinedMesh.Positions.Count > 0)
         {
-            root.Children.Add(group);
+            TryFreeze(combinedMesh);
+            root.Children.Add(new GeometryModel3D(combinedMesh, material) { BackMaterial = material });
         }
 
         return new CorpusCallosumVisual(baseColor, diffuse, emissive);
@@ -590,10 +683,10 @@ public partial class MainWindow
     private static MeshGeometry3D BuildCorticalReferenceSurfaceMesh(double hemisphereSign, int thetaSteps, int phiSteps)
     {
         var mesh = new MeshGeometry3D();
-        const double thetaMin = -2.32;
-        const double thetaMax = 1.74;
-        const double phiMin = -1.02;
-        const double phiMax = 1.34;
+        const double thetaMin = -1.52;
+        const double thetaMax = 1.52;
+        const double phiMin = -1.52;
+        const double phiMax = 1.52;
 
         for (var p = 0; p <= phiSteps; p++)
         {
@@ -601,15 +694,269 @@ public partial class MainWindow
             for (var t = 0; t <= thetaSteps; t++)
             {
                 var theta = thetaMin + ((thetaMax - thetaMin) * (t / (double)thetaSteps));
-                var point = BuildCorticalSurfacePoint(theta, phi, hemisphereSign);
-                var normal = GetCorticalShellNormal(point, hemisphereSign < 0 ? "L" : "R");
+                var point = BuildFoldedCorticalReferencePoint(
+                    theta,
+                    phi,
+                    hemisphereSign,
+                    t / (double)thetaSteps,
+                    p / (double)phiSteps);
                 mesh.Positions.Add(point);
-                mesh.Normals.Add(normal);
                 mesh.TextureCoordinates.Add(new Point(t / (double)thetaSteps, p / (double)phiSteps));
             }
         }
 
         AddGridTriangles(mesh, thetaSteps + 1, phiSteps + 1);
+        CalculateSmoothNormals(mesh, hemisphereSign);
+        return mesh;
+    }
+
+    private static Point3D BuildFoldedCorticalReferencePoint(
+        double theta,
+        double phi,
+        double hemisphereSign,
+        double normalizedTheta,
+        double normalizedPhi)
+    {
+        var surface = BuildCorticalSurfacePoint(theta, phi, hemisphereSign);
+        var normal = GetCorticalShellNormal(surface, hemisphereSign < 0 ? "L" : "R");
+
+        static double SmoothStep(double value)
+        {
+            var t = Math.Clamp(value, 0.0, 1.0);
+            return t * t * (3.0 - (2.0 * t));
+        }
+
+        var edgeFade =
+            SmoothStep(Math.Min(normalizedTheta, 1.0 - normalizedTheta) / 0.08) *
+            SmoothStep(Math.Min(normalizedPhi, 1.0 - normalizedPhi) / 0.10);
+        var lateralVisibility = Math.Clamp(Math.Abs(surface.X) / Math.Max(0.001, MmToRender(38.0)), 0.28, 1.0);
+        var primary = Math.Sin((theta * 9.2) + (phi * 5.1) + (hemisphereSign * 0.35));
+        var secondary = Math.Sin((theta * 15.7) - (phi * 8.4) + 1.15);
+        var tertiary = Math.Sin((theta * 24.3) + (phi * 13.1) - (hemisphereSign * 0.70));
+        var reliefMm = ((primary * 2.25) + (secondary * 1.05) + (tertiary * 0.48)) *
+                       (0.48 + (0.52 * lateralVisibility)) * edgeFade;
+
+        // Major sulci are impressed into the shell; separate dark landmark
+        // meshes trace them above the surface so they remain visible at a glance.
+        var centralSulcus = Math.Exp(-Math.Pow(theta + (0.03 * Math.Sin(phi * 2.2)), 2) / 0.010) *
+                            Math.Clamp((phi + 0.12) / 0.95, 0.0, 1.0);
+        var sylvianProgress = Math.Clamp((theta + 1.16) / 1.92, 0.0, 1.0);
+        var sylvianPhi = 0.08 - (0.28 * sylvianProgress) + (0.025 * Math.Sin(sylvianProgress * Math.PI * 2.0));
+        var sylvianFissure = Math.Exp(-Math.Pow(phi - sylvianPhi, 2) / 0.0045) *
+                              Math.Clamp((theta + 1.30) / 0.24, 0.0, 1.0) *
+                              Math.Clamp((0.88 - theta) / 0.18, 0.0, 1.0);
+        var parietoOccipital = Math.Exp(-Math.Pow(theta + 1.20 - (0.06 * Math.Sin(phi * 2.0)), 2) / 0.014) *
+                                 Math.Clamp((phi - 0.20) / 0.90, 0.0, 1.0);
+        reliefMm -= (centralSulcus * 2.8) + (sylvianFissure * 2.5) + (parietoOccipital * 2.0);
+
+        var depth = MmToRender(reliefMm);
+        return new Point3D(
+            surface.X + (normal.X * depth),
+            surface.Y + (normal.Y * depth),
+            surface.Z + (normal.Z * depth));
+    }
+
+    private static void AddAnatomicalLandmarks(Model3DGroup root)
+    {
+        var corticalLandmarks = new MeshGeometry3D();
+        AppendMesh(corticalLandmarks, BuildCorticalLandmarkMesh(-1.0));
+        AppendMesh(corticalLandmarks, BuildCorticalLandmarkMesh(1.0));
+        AddLandmarkMesh(
+            root,
+            corticalLandmarks,
+            Color.FromArgb(172, 73, 42, 52),
+            Color.FromArgb(18, 210, 116, 132));
+
+        AddLandmarkMesh(
+            root,
+            BuildCerebellarFoliaLandmarkMesh(),
+            Color.FromArgb(152, 68, 39, 47),
+            Color.FromArgb(14, 196, 104, 120));
+
+        AddLandmarkMesh(
+            root,
+            BuildBrainstemBoundaryLandmarkMesh(),
+            Color.FromArgb(142, 78, 47, 37),
+            Color.FromArgb(12, 204, 126, 94));
+    }
+
+    private static void AddLandmarkMesh(Model3DGroup root, MeshGeometry3D mesh, Color diffuseColor, Color emissiveColor)
+    {
+        if (mesh.Positions.Count == 0)
+        {
+            return;
+        }
+
+        TryFreeze(mesh);
+        var diffuse = new SolidColorBrush(Color.FromRgb(diffuseColor.R, diffuseColor.G, diffuseColor.B))
+        {
+            Opacity = diffuseColor.A / 255.0
+        };
+        var emissive = new SolidColorBrush(Color.FromRgb(emissiveColor.R, emissiveColor.G, emissiveColor.B))
+        {
+            Opacity = emissiveColor.A / 255.0
+        };
+        diffuse.Freeze();
+        emissive.Freeze();
+        var material = new MaterialGroup();
+        material.Children.Add(new DiffuseMaterial(diffuse));
+        material.Children.Add(new EmissiveMaterial(emissive));
+        TryFreeze(material);
+        root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
+    }
+
+    private static MeshGeometry3D BuildCorticalLandmarkMesh(double hemisphereSign)
+    {
+        var mesh = new MeshGeometry3D();
+        const int samples = 38;
+        var radius = MmToRender(0.62);
+
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            samples,
+            radius,
+            static s =>
+            {
+                var phi = -0.02 + (1.24 * s);
+                var theta = -0.01 - (0.10 * Math.Sin(s * Math.PI)) + (0.025 * Math.Sin(s * Math.PI * 3.0));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            samples,
+            radius,
+            static s =>
+            {
+                var theta = -1.16 + (1.92 * s);
+                var phi = 0.08 - (0.28 * s) + (0.025 * Math.Sin(s * Math.PI * 2.0));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            34,
+            radius * 0.72,
+            static s =>
+            {
+                var theta = -1.04 + (1.76 * s);
+                var phi = -0.31 - (0.09 * s) + (0.022 * Math.Sin((s * Math.PI * 2.2) + 0.4));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            32,
+            radius * 0.66,
+            static s =>
+            {
+                var theta = -0.94 + (1.54 * s);
+                var phi = -0.58 - (0.06 * s) + (0.018 * Math.Sin((s * Math.PI * 2.0) - 0.3));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            28,
+            radius * 0.88,
+            static s =>
+            {
+                var phi = 0.30 + (0.84 * s);
+                var theta = -1.21 + (0.075 * Math.Sin(s * Math.PI * 1.35));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            30,
+            radius * 0.82,
+            static s =>
+            {
+                var theta = -1.48 + (0.50 * s);
+                var phi = 0.16 + (0.09 * Math.Sin(s * Math.PI));
+                return (theta, phi);
+            });
+
+        return mesh;
+    }
+
+    private static void AppendCorticalLandmarkCurve(
+        MeshGeometry3D destination,
+        double hemisphereSign,
+        int samples,
+        double radius,
+        Func<double, (double Theta, double Phi)> curve)
+    {
+        Point3D? previous = null;
+        for (var i = 0; i <= samples; i++)
+        {
+            var s = i / (double)samples;
+            var (theta, phi) = curve(s);
+            var point = BuildFoldedCorticalReferencePoint(
+                theta,
+                phi,
+                hemisphereSign,
+                Math.Clamp((theta + 1.52) / 3.04, 0.0, 1.0),
+                Math.Clamp((phi + 1.02) / 2.36, 0.0, 1.0));
+            var shell = BuildCorticalSurfacePoint(theta, phi, hemisphereSign);
+            var normal = GetCorticalShellNormal(shell, hemisphereSign < 0 ? "L" : "R");
+            point = new Point3D(
+                point.X + (normal.X * MmToRender(0.20)),
+                point.Y + (normal.Y * MmToRender(0.20)),
+                point.Z + (normal.Z * MmToRender(0.20)));
+
+            if (previous is Point3D start)
+            {
+                AppendMesh(destination, BuildTubeMesh(start, point, radius, 6));
+            }
+
+            previous = point;
+        }
+    }
+
+    private static MeshGeometry3D BuildCerebellarFoliaLandmarkMesh()
+    {
+        var mesh = new MeshGeometry3D();
+        const int slices = 44;
+        for (var band = 1; band <= 12; band++)
+        {
+            var phi = -1.20 + (band * (2.30 / 13.0));
+            Point3D? previous = null;
+            for (var slice = 0; slice <= slices; slice++)
+            {
+                var theta = slice * Math.PI * 2.0 / slices;
+                var point = BuildCerebellarReferencePoint(theta, phi);
+                if (previous is Point3D start)
+                {
+                    AppendMesh(mesh, BuildTubeMesh(start, point, MmToRender(0.42), 5));
+                }
+                previous = point;
+            }
+        }
+
+        return mesh;
+    }
+
+    private static MeshGeometry3D BuildBrainstemBoundaryLandmarkMesh()
+    {
+        var mesh = new MeshGeometry3D();
+        const int slices = 30;
+        foreach (var v in new[] { 0.36, 0.68 })
+        {
+            Point3D? previous = null;
+            for (var slice = 0; slice <= slices; slice++)
+            {
+                var theta = slice * Math.PI * 2.0 / slices;
+                var point = BuildBrainstemReferencePoint(theta, v);
+                if (previous is Point3D start)
+                {
+                    AppendMesh(mesh, BuildTubeMesh(start, point, MmToRender(0.38), 5));
+                }
+                previous = point;
+            }
+        }
+
         return mesh;
     }
 
@@ -617,10 +964,10 @@ public partial class MainWindow
     {
         var mesh = new MeshGeometry3D();
         var center = GetCanonicalAtlasCenter("CorpusCallosum", "M");
-
-        var rx = MmToRender(34.0);
-        var ry = MmToRender(7.0);
-        var rz = MmToRender(32.0);
+        TryGetSubcorticalAtlasGeometry("CorpusCallosum", "M", out var atlasGeometry);
+        var rx = MmToRender(atlasGeometry?.DimensionsMm.X * 0.5 ?? 34.0);
+        var ry = MmToRender(atlasGeometry?.DimensionsMm.Y * 0.5 ?? 7.0);
+        var rz = MmToRender(atlasGeometry?.DimensionsMm.Z * 0.5 ?? 39.0);
 
         for (var zi = 0; zi <= lengthSteps; zi++)
         {
@@ -652,7 +999,6 @@ public partial class MainWindow
     private static MeshGeometry3D BuildCerebellarReferenceSurfaceMesh(int slices, int stacks)
     {
         var mesh = new MeshGeometry3D();
-        var center = GetCanonicalAtlasCenter("CerebellarLobules", "M");
 
         for (var stack = 0; stack <= stacks; stack++)
         {
@@ -666,11 +1012,7 @@ public partial class MainWindow
                 var vertical = Math.Sin(phi);
                 var depth = Math.Sin(theta) * Math.Cos(phi);
                 var vermisRidge = 0.10 * Math.Exp(-(lateral * lateral) / 0.045) * (0.55 + (0.45 * Math.Max(0.0, depth)));
-                var folia = Math.Sin((vertical + 0.62) * Math.PI * 13.0) * 0.018 * (0.45 + (0.55 * Math.Max(0.0, depth)));
-                var p = new Point3D(
-                    center.X + (lateral * MmToRender(48)),
-                    center.Y + (vertical * MmToRender(19)) + (vermisRidge * MmToRender(18)),
-                    center.Z + (depth * MmToRender(29)) + folia);
+                var p = BuildCerebellarReferencePoint(theta, phi);
                 mesh.Positions.Add(p);
                 var n = new Vector3D(lateral, vertical + vermisRidge, depth);
                 if (n.Length < 1e-6)
@@ -687,28 +1029,38 @@ public partial class MainWindow
         return mesh;
     }
 
+    private static Point3D BuildCerebellarReferencePoint(double theta, double phi)
+    {
+        var center = GetCanonicalAtlasCenter("CerebellarLobules", "M");
+        TryGetSubcorticalAtlasGeometry("CerebellarLobules", "M", out var atlasGeometry);
+        // AAL label bounds include sparse extreme voxels. A slightly inset
+        // envelope better represents the visible cerebellar surface while the
+        // functional samples retain their full atlas coordinates.
+        var radiusX = MmToRender(atlasGeometry?.DimensionsMm.X * 0.46 ?? 56.0);
+        var radiusY = MmToRender(atlasGeometry?.DimensionsMm.Y * 0.44 ?? 28.0);
+        var radiusZ = MmToRender(atlasGeometry?.DimensionsMm.Z * 0.44 ?? 31.0);
+        var lateral = Math.Cos(theta) * Math.Cos(phi);
+        var vertical = Math.Sin(phi);
+        var depth = Math.Sin(theta) * Math.Cos(phi);
+        var vermisRidge = 0.10 * Math.Exp(-(lateral * lateral) / 0.045) * (0.55 + (0.45 * Math.Max(0.0, depth)));
+        var folia = Math.Sin((vertical + 0.62) * Math.PI * 13.0) * MmToRender(0.72) * (0.45 + (0.55 * Math.Max(0.0, depth)));
+        return new Point3D(
+            center.X + (lateral * radiusX),
+            center.Y + (vertical * radiusY * 0.94) + (vermisRidge * radiusY * 0.16),
+            center.Z + (depth * radiusZ) + folia);
+    }
+
     private static MeshGeometry3D BuildBrainstemReferenceSurfaceMesh(int slices, int stacks)
     {
         var mesh = new MeshGeometry3D();
-        var top = GetCanonicalAtlasCenter("Pons", "M");
-        var bottom = GetCanonicalAtlasCenter("SpinalCordMotor", "M");
-
         for (var stack = 0; stack <= stacks; stack++)
         {
             var v = stack / (double)stacks;
-            var center = LerpPoint(top, bottom, v);
-            var pontineBulge = Math.Exp(-Math.Pow(v - 0.22, 2) / 0.025);
-            var medullaTaper = 1.0 - (0.34 * v);
-            var rx = MmToRender(7.2) * medullaTaper * (1.0 + (0.55 * pontineBulge));
-            var rz = MmToRender(6.6) * medullaTaper * (1.0 + (0.42 * pontineBulge));
             for (var slice = 0; slice <= slices; slice++)
             {
                 var u = slice / (double)slices;
                 var theta = u * Math.PI * 2.0;
-                var p = new Point3D(
-                    center.X + (Math.Cos(theta) * rx),
-                    center.Y,
-                    center.Z + (Math.Sin(theta) * rz) + (MmToRender(2.0) * pontineBulge));
+                var p = BuildBrainstemReferencePoint(theta, v);
                 mesh.Positions.Add(p);
                 var normal = new Vector3D(Math.Cos(theta), 0.08, Math.Sin(theta));
                 normal.Normalize();
@@ -719,6 +1071,21 @@ public partial class MainWindow
 
         AddGridTriangles(mesh, slices + 1, stacks + 1);
         return mesh;
+    }
+
+    private static Point3D BuildBrainstemReferencePoint(double theta, double v)
+    {
+        var top = GetCanonicalAtlasCenter("Pons", "M");
+        var bottom = GetCanonicalAtlasCenter("SpinalCordMotor", "M");
+        var center = LerpPoint(top, bottom, v);
+        var pontineBulge = Math.Exp(-Math.Pow(v - 0.22, 2) / 0.025);
+        var medullaTaper = 1.0 - (0.34 * v);
+        var rx = MmToRender(7.2) * medullaTaper * (1.0 + (0.55 * pontineBulge));
+        var rz = MmToRender(6.6) * medullaTaper * (1.0 + (0.42 * pontineBulge));
+        return new Point3D(
+            center.X + (Math.Cos(theta) * rx),
+            center.Y,
+            center.Z + (Math.Sin(theta) * rz) + (MmToRender(2.0) * pontineBulge));
     }
 
     private static void AddGridTriangles(MeshGeometry3D mesh, int columns, int rows)
@@ -734,6 +1101,76 @@ public partial class MainWindow
                 mesh.TriangleIndices.Add(i0); mesh.TriangleIndices.Add(i2); mesh.TriangleIndices.Add(i1);
                 mesh.TriangleIndices.Add(i1); mesh.TriangleIndices.Add(i2); mesh.TriangleIndices.Add(i3);
             }
+        }
+    }
+
+    private static void CalculateSmoothNormals(MeshGeometry3D mesh, double hemisphereSign)
+    {
+        var accumulated = new Vector3D[mesh.Positions.Count];
+        for (var i = 0; i + 2 < mesh.TriangleIndices.Count; i += 3)
+        {
+            var i0 = mesh.TriangleIndices[i];
+            var i1 = mesh.TriangleIndices[i + 1];
+            var i2 = mesh.TriangleIndices[i + 2];
+            var normal = Vector3D.CrossProduct(mesh.Positions[i1] - mesh.Positions[i0], mesh.Positions[i2] - mesh.Positions[i0]);
+            if (normal.LengthSquared <= 1e-12)
+            {
+                continue;
+            }
+
+            accumulated[i0] += normal;
+            accumulated[i1] += normal;
+            accumulated[i2] += normal;
+        }
+
+        mesh.Normals.Clear();
+        for (var i = 0; i < accumulated.Length; i++)
+        {
+            var normal = accumulated[i];
+            if (normal.LengthSquared <= 1e-12)
+            {
+                normal = new Vector3D(hemisphereSign, 0.0, 0.0);
+            }
+            else
+            {
+                normal.Normalize();
+                var radial = new Vector3D(mesh.Positions[i].X, mesh.Positions[i].Y, mesh.Positions[i].Z);
+                if (Vector3D.DotProduct(normal, radial) < 0.0)
+                {
+                    normal *= -1.0;
+                }
+            }
+
+            mesh.Normals.Add(normal);
+        }
+    }
+
+    private static void AppendMesh(MeshGeometry3D destination, MeshGeometry3D source)
+    {
+        if (source.Positions.Count == 0)
+        {
+            return;
+        }
+
+        var offset = destination.Positions.Count;
+        var hasNormals = source.Normals.Count == source.Positions.Count;
+        var hasTextureCoordinates = source.TextureCoordinates.Count == source.Positions.Count;
+        for (var i = 0; i < source.Positions.Count; i++)
+        {
+            destination.Positions.Add(source.Positions[i]);
+            if (hasNormals)
+            {
+                destination.Normals.Add(source.Normals[i]);
+            }
+            if (hasTextureCoordinates)
+            {
+                destination.TextureCoordinates.Add(source.TextureCoordinates[i]);
+            }
+        }
+
+        for (var i = 0; i < source.TriangleIndices.Count; i++)
+        {
+            destination.TriangleIndices.Add(offset + source.TriangleIndices[i]);
         }
     }
 
@@ -842,9 +1279,16 @@ public partial class MainWindow
     }
 
     private static MeshGeometry3D BuildRepeatedMesh(MeshGeometry3D sourceMesh, IReadOnlyList<Point3D> centers)
+        => BuildRepeatedMesh(sourceMesh, centers, 0, centers.Count);
+
+    private static MeshGeometry3D BuildRepeatedMesh(
+        MeshGeometry3D sourceMesh,
+        IReadOnlyList<Point3D> centers,
+        int centerOffset,
+        int centerCount)
     {
         var mesh = new MeshGeometry3D();
-        if (sourceMesh.Positions.Count == 0 || centers.Count == 0)
+        if (sourceMesh.Positions.Count == 0 || centerCount <= 0)
         {
             return mesh;
         }
@@ -853,8 +1297,10 @@ public partial class MainWindow
         var hasNormals = sourceMesh.Normals.Count == sourcePositionCount;
         var hasTextureCoordinates = sourceMesh.TextureCoordinates.Count == sourcePositionCount;
 
-        foreach (var center in centers)
+        var centerEnd = Math.Min(centers.Count, centerOffset + centerCount);
+        for (var centerIndex = centerOffset; centerIndex < centerEnd; centerIndex++)
         {
+            var center = centers[centerIndex];
             var offset = mesh.Positions.Count;
             for (var i = 0; i < sourcePositionCount; i++)
             {
@@ -891,13 +1337,7 @@ public partial class MainWindow
         for (var offset = 0; offset < centers.Count; offset += chunkSize)
         {
             var count = Math.Min(chunkSize, centers.Count - offset);
-            var chunk = new List<Point3D>(count);
-            for (var i = 0; i < count; i++)
-            {
-                chunk.Add(centers[offset + i]);
-            }
-
-            yield return BuildRepeatedMesh(sourceMesh, chunk);
+            yield return BuildRepeatedMesh(sourceMesh, centers, offset, count);
         }
     }
 

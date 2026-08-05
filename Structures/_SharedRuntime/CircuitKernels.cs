@@ -27,12 +27,42 @@ internal static class CircuitKernelFactory
 
 	private static readonly ICircuitKernel Cortical = new CorticalAssociationCircuitKernel();
 
+	private static readonly ICircuitKernel VisualAssociation = new VisualAssociationCircuitKernel();
+
+	private static readonly ICircuitKernel AuditoryAssociation = new AuditoryAssociationCircuitKernel();
+
+	private static readonly ICircuitKernel SomatosensoryAssociation = new SomatosensoryAssociationCircuitKernel();
+
+	private static readonly ICircuitKernel SelfContext = new SelfContextCircuitKernel();
+
+	private static readonly ICircuitKernel ExecutiveControl = new ExecutiveControlCircuitKernel();
+
 	private static readonly ICircuitKernel HomuncularSensorimotor = new HomuncularSensorimotorCircuitKernel();
 
 	private static readonly ICircuitKernel PosteriorParietalBodySchema = new PosteriorParietalBodySchemaCircuitKernel();
 
 	public static ICircuitKernel For(StructureId structureId)
 	{
+		if (IsVisualAssociation(structureId))
+		{
+			return VisualAssociation;
+		}
+		if (structureId == StructureId.AuditoryAssociationCortex)
+		{
+			return AuditoryAssociation;
+		}
+		if (structureId == StructureId.SecondarySomatosensoryCortex)
+		{
+			return SomatosensoryAssociation;
+		}
+		if (IsSelfContext(structureId))
+		{
+			return SelfContext;
+		}
+		if (IsExecutiveControl(structureId))
+		{
+			return ExecutiveControl;
+		}
 		if (IsHomuncularSensorimotor(structureId))
 		{
 			return HomuncularSensorimotor;
@@ -194,6 +224,18 @@ internal static class CircuitKernelFactory
 	{
 		return id == StructureId.Ppc;
 	}
+
+	private static bool IsVisualAssociation(StructureId id)
+		=> id is StructureId.V3 or StructureId.InferotemporalCortex or StructureId.FusiformGyrus;
+
+	private static bool IsSelfContext(StructureId id)
+		=> id is StructureId.TemporalPole or StructureId.TemporoparietalJunction or StructureId.Precuneus;
+
+	private static bool IsExecutiveControl(StructureId id)
+		=> id is StructureId.MidcingulateCortex
+			or StructureId.DorsomedialPrefrontalCortex
+			or StructureId.VentromedialPrefrontalCortex
+			or StructureId.FrontalEyeFields;
 }
 
 internal abstract class CircuitKernelBase : ICircuitKernel
@@ -553,6 +595,378 @@ internal sealed class CorticalAssociationCircuitKernel : CircuitKernelBase
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
 		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 6, targetStructure, targetStructure, 89);
+	}
+}
+
+internal sealed class VisualAssociationCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+
+		return circuit.StructureId switch
+		{
+			StructureId.V3 => TopographicMap.ProjectGrid(
+				sourceIndex,
+				neuronCount,
+				32,
+				32,
+				message.SourceStructure,
+				message.TargetStructure,
+				message.IsFeedback ? 103 : 97),
+			StructureId.InferotemporalCortex => TopographicMap.ProjectChannel(
+				sourceIndex + VisualInputLane(message.SourceStructure) * 97,
+				neuronCount,
+				12,
+				8,
+				message.SourceStructure,
+				message.TargetStructure,
+				107),
+			StructureId.FusiformGyrus => TopographicMap.ProjectChannel(
+				sourceIndex + ExpertiseInputLane(message.SourceStructure) * 131,
+				neuronCount,
+				8,
+				12,
+				message.SourceStructure,
+				message.TargetStructure,
+				109),
+			_ => base.ResolveInboundNeuronIndex(message, neuronCount, circuit)
+		};
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		int targetCount = Math.Max(16, circuit.TargetMapModulo);
+		return circuit.StructureId switch
+		{
+			StructureId.V3 => TopographicMap.ProjectGrid(source.Index, targetCount, 32, 32, circuit.StructureId, targetStructure, 113),
+			StructureId.InferotemporalCortex => TopographicMap.ProjectChannel(source.Index, targetCount, 12, 8, circuit.StructureId, targetStructure, 127),
+			StructureId.FusiformGyrus => TopographicMap.ProjectChannel(source.Index, targetCount, 8, 12, circuit.StructureId, targetStructure, 131),
+			_ => base.ResolveOutboundTargetIndex(source, targetStructure, circuit)
+		};
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	{
+		float attention = Math.Max(
+			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
+			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+		return isFeedback || (sourceStructure == StructureId.FusiformGyrus && attention > 0.48f)
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static int VisualInputLane(StructureId source)
+		=> source switch
+		{
+			StructureId.V3 or StructureId.V4 => 0,
+			StructureId.Mt => 1,
+			StructureId.Pulvinar or StructureId.Thalamus => 2,
+			StructureId.TemporalAssociation or StructureId.PerirhinalCortex => 3,
+			StructureId.Pfc => 4,
+			_ => 5
+		};
+
+	private static int ExpertiseInputLane(StructureId source)
+		=> source switch
+		{
+			StructureId.InferotemporalCortex or StructureId.V4 => 0,
+			StructureId.TemporalAssociation or StructureId.TemporalPole => 1,
+			StructureId.AuditoryAssociationCortex => 2,
+			StructureId.Pfc or StructureId.DorsomedialPrefrontalCortex => 3,
+			_ => 4
+		};
+}
+
+internal sealed class AuditoryAssociationCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int streamOffset = message.SourceStructure switch
+		{
+			StructureId.A1 or StructureId.InferiorColliculus => 0,
+			StructureId.TemporalPole or StructureId.TemporalAssociation => 211,
+			StructureId.WernickePstgPsts => 421,
+			_ => 631
+		};
+		return TopographicMap.ProjectChannel(
+			sourceIndex + streamOffset,
+			neuronCount,
+			32,
+			8,
+			message.SourceStructure,
+			message.TargetStructure,
+			137);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+		=> TopographicMap.ProjectChannel(
+			source.Index,
+			Math.Max(16, circuit.TargetMapModulo),
+			32,
+			8,
+			circuit.StructureId,
+			targetStructure,
+			139);
+
+	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	{
+		float auditoryAttention = Math.Max(
+			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
+			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+		return isFeedback || auditoryAttention > 0.52f
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+}
+
+internal sealed class SomatosensoryAssociationCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int bodyLane = ResolveBodyLane(message.SourceNeuronId, message.TargetNeuronId, sourceIndex);
+		return ProjectBodyLane(sourceIndex, neuronCount, bodyLane, message.IsFeedback ? 151 : 149);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		int bodyLane = ResolveBodyLane(source.Id, string.Empty, source.Index);
+		return ProjectBodyLane(source.Index, Math.Max(16, circuit.TargetMapModulo), bodyLane, 157);
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+		=> isFeedback || tickSignal.GlobalNeuromodState.NorepinephrineLevel > 0.58f
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+
+	private static int ResolveBodyLane(string sourceNeuronId, string targetNeuronId, int sourceIndex)
+	{
+		string text = $"{sourceNeuronId} {targetNeuronId}";
+		if (MentionsAny(text, "face", "head", "eye", "mouth", "jaw", "tongue"))
+		{
+			return 0;
+		}
+		if (MentionsAny(text, "hand", "arm", "finger", "grasp", "reach", "texture"))
+		{
+			return 1;
+		}
+		if (MentionsAny(text, "trunk", "body", "torso", "pressure", "pain", "contact"))
+		{
+			return 2;
+		}
+		if (MentionsAny(text, "leg", "foot", "walk", "run", "stride"))
+		{
+			return 3;
+		}
+		return PositiveMod(sourceIndex, 4);
+	}
+
+	private static int ProjectBodyLane(int sourceIndex, int targetCount, int lane, int salt)
+	{
+		int laneCount = 4;
+		int laneSpan = Math.Max(1, targetCount / laneCount);
+		int local = PositiveMod(sourceIndex + HashCode.Combine(sourceIndex, salt), laneSpan);
+		return Math.Clamp(lane * laneSpan + local, 0, Math.Max(0, targetCount - 1));
+	}
+
+	private static bool MentionsAny(string text, params string[] terms)
+	{
+		foreach (string term in terms)
+		{
+			if (text.Contains(term, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+internal sealed class SelfContextCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int lane = ResolveContextLane(message.SourceStructure);
+		int structureOffset = circuit.StructureId switch
+		{
+			StructureId.TemporalPole => 0,
+			StructureId.TemporoparietalJunction => 3,
+			StructureId.Precuneus => 6,
+			_ => 1
+		};
+		return TopographicMap.ProjectChannel(
+			sourceIndex + (lane + structureOffset) * 173,
+			neuronCount,
+			8,
+			12,
+			message.SourceStructure,
+			message.TargetStructure,
+			163);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+		=> TopographicMap.ProjectChannel(
+			source.Index + ResolveContextLane(targetStructure) * 179,
+			Math.Max(16, circuit.TargetMapModulo),
+			8,
+			12,
+			circuit.StructureId,
+			targetStructure,
+			167);
+
+	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	{
+		float bindingGain = Math.Max(
+			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
+			tickSignal.GlobalNeuromodState.DopamineLevel);
+		return isFeedback || bindingGain > 0.55f
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static int ResolveContextLane(StructureId source)
+		=> source switch
+		{
+			StructureId.SecondarySomatosensoryCortex or StructureId.S1 or StructureId.Ppc => 0,
+			StructureId.PosteriorCingulate or StructureId.RetrosplenialCortex or StructureId.EntorhinalCortex or StructureId.CA1 => 1,
+			StructureId.Amygdala or StructureId.Insula or StructureId.VentromedialPrefrontalCortex => 2,
+			StructureId.TemporalAssociation or StructureId.FusiformGyrus or StructureId.AuditoryAssociationCortex => 3,
+			StructureId.Pfc or StructureId.DorsomedialPrefrontalCortex => 4,
+			_ => 5
+		};
+}
+
+internal sealed class ExecutiveControlCircuitKernel : CircuitKernelBase
+{
+	private const int ControlLaneCount = 6;
+
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int lane = ResolveControlLane(message.SourceStructure);
+
+		if (circuit.StructureId == StructureId.FrontalEyeFields)
+		{
+			return TopographicMap.ProjectGrid(
+				sourceIndex + lane * 37,
+				neuronCount,
+				32,
+				32,
+				message.SourceStructure,
+				message.TargetStructure,
+				message.IsFeedback ? 191 : 181);
+		}
+
+		return ProjectControlLane(
+			sourceIndex,
+			neuronCount,
+			lane,
+			message.SourceStructure,
+			message.TargetStructure,
+			message.IsFeedback ? 197 : 193);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		int targetCount = Math.Max(16, circuit.TargetMapModulo);
+		return circuit.StructureId == StructureId.FrontalEyeFields
+			? TopographicMap.ProjectGrid(source.Index, targetCount, 32, 32, circuit.StructureId, targetStructure, 199)
+			: ProjectControlLane(
+				source.Index,
+				targetCount,
+				ResolveControlLane(targetStructure),
+				circuit.StructureId,
+				targetStructure,
+				211);
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	{
+		if (isFeedback)
+		{
+			return SpikeTypeEnum.BURST;
+		}
+
+		float attention = Math.Max(
+			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
+			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+		if (sourceStructure == StructureId.FrontalEyeFields && attention > 0.40f)
+		{
+			return SpikeTypeEnum.BURST;
+		}
+		if (sourceStructure == StructureId.MidcingulateCortex && MathF.Abs(tickSignal.RewardPredictionError) > 0.22f)
+		{
+			return SpikeTypeEnum.BURST;
+		}
+		if (sourceStructure is StructureId.DorsomedialPrefrontalCortex or StructureId.VentromedialPrefrontalCortex
+			&& tickSignal.GlobalNeuromodState.DopamineLevel > 0.48f)
+		{
+			return SpikeTypeEnum.BURST;
+		}
+		return SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static int ResolveControlLane(StructureId source)
+		=> source switch
+		{
+			StructureId.Pfc or StructureId.DorsomedialPrefrontalCortex => 0,
+			StructureId.Acc or StructureId.MidcingulateCortex => 1,
+			StructureId.OrbitofrontalCortex or StructureId.VentromedialPrefrontalCortex or StructureId.Amygdala => 2,
+			StructureId.Striatum or StructureId.NucleusAccumbens or StructureId.MediodorsalThalamus => 3,
+			StructureId.Ppc or StructureId.Pulvinar or StructureId.SuperiorColliculus or StructureId.FrontalEyeFields => 4,
+			_ => 5
+		};
+
+	private static int ProjectControlLane(
+		int sourceIndex,
+		int targetCount,
+		int lane,
+		StructureId source,
+		StructureId target,
+		int salt)
+	{
+		int safeCount = Math.Max(1, targetCount);
+		int safeLane = Math.Clamp(lane, 0, ControlLaneCount - 1);
+		int laneStart = safeLane * safeCount / ControlLaneCount;
+		int laneEnd = (safeLane + 1) * safeCount / ControlLaneCount;
+		int laneSpan = Math.Max(1, laneEnd - laneStart);
+		int localIndex = TopographicMap.ProjectChannel(
+			sourceIndex,
+			laneSpan,
+			4,
+			4,
+			source,
+			target,
+			salt);
+		return Math.Min(safeCount - 1, laneStart + localIndex);
 	}
 }
 

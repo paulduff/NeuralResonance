@@ -68,17 +68,29 @@ internal sealed class StructureCircuitProfile
 		{
 		case StructureId.V1:
 		case StructureId.V2:
+		case StructureId.V3:
 		case StructureId.V4:
 		case StructureId.Mt:
 		case StructureId.A1:
 		case StructureId.S1:
+		case StructureId.AuditoryAssociationCortex:
+		case StructureId.SecondarySomatosensoryCortex:
 		case StructureId.Pfc:
+		case StructureId.DorsomedialPrefrontalCortex:
+		case StructureId.VentromedialPrefrontalCortex:
+		case StructureId.FrontalEyeFields:
 		case StructureId.BrocaBa44Ba45:
 		case StructureId.WernickePstgPsts:
 		case StructureId.OrbitofrontalCortex:
 		case StructureId.Insula:
 		case StructureId.Ppc:
 		case StructureId.TemporalAssociation:
+		case StructureId.InferotemporalCortex:
+		case StructureId.FusiformGyrus:
+		case StructureId.TemporalPole:
+		case StructureId.TemporoparietalJunction:
+		case StructureId.Precuneus:
+		case StructureId.MidcingulateCortex:
 		case StructureId.PremotorCortex:
 		case StructureId.ParahippocampalCortex:
 		case StructureId.PerirhinalCortex:
@@ -177,14 +189,20 @@ internal sealed class StructureCircuitProfile
 		case StructureId.V1:
 			return StructureId.V2;
 		case StructureId.V2:
+			return StructureId.V3;
+		case StructureId.V3:
 			return StructureId.V4;
 		case StructureId.V4:
 			return StructureId.TemporalAssociation;
 		case StructureId.Mt:
 			return StructureId.Ppc;
 		case StructureId.A1:
-			return StructureId.TemporalAssociation;
+			return StructureId.AuditoryAssociationCortex;
+		case StructureId.AuditoryAssociationCortex:
+			return StructureId.WernickePstgPsts;
 		case StructureId.S1:
+			return StructureId.SecondarySomatosensoryCortex;
+		case StructureId.SecondarySomatosensoryCortex:
 			return StructureId.Ppc;
 		case StructureId.OlfactoryBulb:
 			return StructureId.TemporalAssociation;
@@ -220,10 +238,26 @@ internal sealed class StructureCircuitProfile
 		case StructureId.Pfc:
 		case StructureId.OrbitofrontalCortex:
 			return StructureId.Ppc;
+		case StructureId.DorsomedialPrefrontalCortex:
+			return StructureId.Pfc;
+		case StructureId.VentromedialPrefrontalCortex:
+			return StructureId.OrbitofrontalCortex;
+		case StructureId.FrontalEyeFields:
+			return StructureId.SuperiorColliculus;
 		case StructureId.Ppc:
 			return StructureId.Pfc;
 		case StructureId.TemporalAssociation:
 			return StructureId.Pfc;
+		case StructureId.InferotemporalCortex:
+		case StructureId.FusiformGyrus:
+			return StructureId.TemporalAssociation;
+		case StructureId.TemporalPole:
+		case StructureId.TemporoparietalJunction:
+			return StructureId.Pfc;
+		case StructureId.Precuneus:
+			return StructureId.PosteriorCingulate;
+		case StructureId.MidcingulateCortex:
+			return StructureId.Acc;
 		case StructureId.BrocaBa44Ba45:
 			return StructureId.Sma;
 		case StructureId.WernickePstgPsts:

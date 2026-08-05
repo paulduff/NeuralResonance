@@ -42,6 +42,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly object _inboundQueueGate = new object();
 
+	private readonly HashSet<Guid> _recentMessageIds = new();
+
+	private readonly Queue<Guid> _recentMessageIdOrder = new();
+
+	private readonly int _recentMessageIdCapacity;
+
 	// Dedicated gate for the diagnostic top-N scratch buffers so concurrent /top
 	// callers do not race on _topRates/_topIds without blocking /tick.
 	private readonly object _topGate = new object();
@@ -76,6 +82,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		_neurons = (from i in Enumerable.Range(0, _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
 		_feedbackDelayWindow = profile.FeedbackDelay;
+		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId);
 		_synapseStore.Load(_inboundSynapses, _outboundSynapses);
 		// Capture the handlers as fields so they can be unsubscribed in Dispose.
@@ -93,7 +100,79 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	public ValueTask EnqueueSpikeAsync(SpikeMessage message, CancellationToken cancellationToken = default(CancellationToken))
 	{
 		ArgumentNullException.ThrowIfNull(message);
+		return EnqueueSingleSpikeAsync(message, cancellationToken);
+	}
+
+	private async ValueTask EnqueueSingleSpikeAsync(SpikeMessage message, CancellationToken cancellationToken)
+	{
+		await EnqueueSpikeBatchAsync(new[] { message }, cancellationToken).ConfigureAwait(false);
+	}
+
+	public ValueTask<int> EnqueueSpikeBatchAsync(IReadOnlyList<SpikeMessage> messages, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(messages);
 		cancellationToken.ThrowIfCancellationRequested();
+		if (messages.Count == 0)
+		{
+			throw new ArgumentException("Spike batch must contain at least one spike.", nameof(messages));
+		}
+		if (messages.Count > StructureTransportLimits.MaxSpikeBatchCount)
+		{
+			throw new ArgumentOutOfRangeException(nameof(messages), $"Spike batch exceeds the {StructureTransportLimits.MaxSpikeBatchCount} item limit.");
+		}
+
+		foreach (SpikeMessage message in messages)
+		{
+			ArgumentNullException.ThrowIfNull(message);
+			ValidateInboundSpike(message);
+		}
+
+		lock (_inboundQueueGate)
+		{
+			var queueDepth = _feedForward.Count + _feedback.Count;
+			var capacity = Math.Clamp(_profile.MaxInboundQueueDepth, 1, 65_536);
+			var pendingIds = new HashSet<Guid>();
+			var newMessages = new List<SpikeMessage>(messages.Count);
+			foreach (SpikeMessage message in messages)
+			{
+				if (!_recentMessageIds.Contains(message.MessageId) && pendingIds.Add(message.MessageId))
+				{
+					newMessages.Add(message);
+				}
+			}
+
+			if (queueDepth + newMessages.Count > capacity)
+			{
+				throw new StructureIngressOverloadException(_profile.StructureId, capacity);
+			}
+
+			foreach (SpikeMessage message in newMessages)
+			{
+				int conductionDelayMs = ComputeConductionDelayMs(message);
+				var item = new SpikeEnvelope(message, message.TimestampMs + conductionDelayMs);
+				if (message.IsFeedback)
+				{
+					_feedback.Enqueue(item, item.DeliverAtTimestampMs);
+					Interlocked.Increment(ref _feedbackDepth);
+				}
+				else
+				{
+					_feedForward.Enqueue(item, item.DeliverAtTimestampMs);
+					Interlocked.Increment(ref _feedForwardDepth);
+				}
+
+				RememberMessageId(message.MessageId);
+			}
+
+			Interlocked.Add(ref _spikeInCount, newMessages.Count);
+		}
+
+		// A retry of an already committed batch is a successful idempotent delivery.
+		return ValueTask.FromResult(messages.Count);
+	}
+
+	private void ValidateInboundSpike(SpikeMessage message)
+	{
 		if (!SpikeProtocol.validate_spike(message, out string validationError))
 		{
 			throw new ArgumentException(validationError, nameof(message));
@@ -104,31 +183,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			throw new InvalidOperationException(
 				$"Spike target {message.TargetStructure} does not match receiving structure {_profile.StructureId}.");
 		}
+	}
 
-		int num = ComputeConductionDelayMs(message);
-		SpikeEnvelope item = new SpikeEnvelope(message, message.TimestampMs + (double)num);
-		lock (_inboundQueueGate)
+	private void RememberMessageId(Guid messageId)
+	{
+		_recentMessageIds.Add(messageId);
+		_recentMessageIdOrder.Enqueue(messageId);
+		while (_recentMessageIdOrder.Count > _recentMessageIdCapacity)
 		{
-			var queueDepth = _feedForward.Count + _feedback.Count;
-			var capacity = Math.Clamp(_profile.MaxInboundQueueDepth, 1, 65_536);
-			if (queueDepth >= capacity)
-			{
-				throw new StructureIngressOverloadException(_profile.StructureId, capacity);
-			}
-
-			if (message.IsFeedback)
-			{
-				_feedback.Enqueue(item, item.DeliverAtTimestampMs);
-				Interlocked.Increment(ref _feedbackDepth);
-			}
-			else
-			{
-				_feedForward.Enqueue(item, item.DeliverAtTimestampMs);
-				Interlocked.Increment(ref _feedForwardDepth);
-			}
+			_recentMessageIds.Remove(_recentMessageIdOrder.Dequeue());
 		}
-		Interlocked.Increment(ref _spikeInCount);
-		return ValueTask.CompletedTask;
 	}
 
 	public ValueTask<TickAck> ProcessTickAsync(TickSignal tickSignal, CancellationToken cancellationToken = default(CancellationToken))
@@ -334,9 +398,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		foreach (SpikeEnvelope envelope in due)
 		{
-			ModelNeuron modelNeuron = SelectInboundNeuron(envelope.Message);
-			modelNeuron.Integrate(envelope.Message, tickSignal.TickDurationMs);
-			ApplyPlasticity(envelope.Message, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
+			SpikeMessage message = envelope.Message;
+			ModelNeuron modelNeuron = SelectInboundNeuron(message);
+			SynapseState synapse = GetOrCreateInboundSynapse(message);
+			SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
+			modelNeuron.Integrate(effectiveMessage, tickSignal.TickDurationMs);
+			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
 		}
 	}
 
@@ -351,13 +418,62 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		return _kernel.ResolveInboundNeuronIndex(message, _neurons.Length, _circuit);
 	}
 
-	private void ApplyPlasticity(SpikeMessage message, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float rewardPredictionError)
+	private SynapseState GetOrCreateInboundSynapse(SpikeMessage message)
 	{
 		if (!_inboundSynapses.TryGetValue(message.SynapseId, out SynapseState value))
 		{
 			value = new SynapseState(message.SynapseId, message.Neurotransmitter, Math.Clamp(message.VesicleQuanta, 0.05f, 5f));
 			_inboundSynapses[message.SynapseId] = value;
 		}
+		return value;
+	}
+
+	private static SpikeMessage ApplyLearnedInboundStrength(SpikeMessage message, SynapseState synapse)
+	{
+		synapse.Stabilize();
+		float effectiveQuanta = CombineInboundSynapticStrength(message.VesicleQuanta, synapse.VesicleQuanta);
+		if (MathF.Abs(effectiveQuanta - message.VesicleQuanta) < 0.000001f)
+		{
+			return message;
+		}
+
+		return new SpikeMessage
+		{
+			MessageId = message.MessageId,
+			TimestampMs = message.TimestampMs,
+			SourceStructure = message.SourceStructure,
+			TargetStructure = message.TargetStructure,
+			SourceNeuronId = message.SourceNeuronId,
+			TargetNeuronId = message.TargetNeuronId,
+			SynapseId = message.SynapseId,
+			Neurotransmitter = message.Neurotransmitter,
+			VesicleQuanta = effectiveQuanta,
+			ReuptakeRate = message.ReuptakeRate,
+			SpikeType = message.SpikeType,
+			IsFeedback = message.IsFeedback,
+			ModulationContext = message.ModulationContext
+		};
+	}
+
+	internal static float CombineInboundSynapticStrength(float presynapticQuanta, float learnedPostsynapticQuanta)
+	{
+		float presynaptic = PlasticityRules.ClampQuanta(presynapticQuanta);
+		float postsynaptic = PlasticityRules.ClampQuanta(learnedPostsynapticQuanta);
+		return Math.Clamp(MathF.Sqrt(presynaptic * postsynaptic), 0.05f, 5f);
+	}
+
+	internal float GetInboundSynapseStrength(Guid synapseId)
+	{
+		lock (_stateGate)
+		{
+			return _inboundSynapses.TryGetValue(synapseId, out SynapseState? synapse)
+				? synapse.VesicleQuanta
+				: 0f;
+		}
+	}
+
+	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float rewardPredictionError)
+	{
 		double num = Math.Max(0.0, timestampMs - value.LastUpdateTimestampMs);
 		float traceDelta = UpdateTraceState(value, num, 1f, postsynActivity, message.Neurotransmitter, microtubuleTracePersistenceSupport);
 		value.ThetaM = PlasticityRules.UpdateBcmTheta(value.ThetaM, postsynActivity, num);
@@ -366,6 +482,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		bool climbingCoincident = _profile.StructureId == StructureId.PurkinjeCellLayer && (message.SourceStructure == StructureId.InferiorOlive || message.SpikeType == SpikeTypeEnum.COMPLEX);
 		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, rewardPredictionError, climbingCoincident);
 		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
+		value.Stabilize();
 		PersistSynapses(timestampMs);
 	}
 
@@ -433,6 +550,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		var lookupKey = (source.Id, target, targetNeuronId, neurotransmitter, isFeedback);
 		if (_outboundSynapseLookup.TryGetValue(lookupKey, out SynapseState? cached))
 		{
+			cached.Stabilize();
 			return cached;
 		}
 
@@ -442,6 +560,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		string key = source.Id + "|" + target + "|" + targetNeuronId + "|" + neurotransmitter + "|" + (isFeedback ? "F" : "N");
 		if (_outboundSynapses.TryGetValue(key, out SynapseState? loaded))
 		{
+			loaded.Stabilize();
 			_outboundSynapseLookup[lookupKey] = loaded;
 			return loaded;
 		}
@@ -460,6 +579,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
 		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError, tickSignal.TimestampMs);
 		synapseState.VesicleQuanta = PlasticityRules.ClampQuanta(synapseState.VesicleQuanta + outboundDelta);
+		synapseState.Stabilize();
 		PersistSynapses(tickSignal.TimestampMs);
 		SpikeMessage spikeMessage = new SpikeMessage();
 		spikeMessage.MessageId = Guid.NewGuid();

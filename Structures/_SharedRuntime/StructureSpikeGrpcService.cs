@@ -15,22 +15,28 @@ internal sealed class StructureSpikeGrpcService(StructureEngine engine) : IStruc
 			return new SpikeBatchAck
 			{
 				Accepted = 0,
-				Error = "empty_batch"
+				Error = "empty_batch",
+				BatchId = request?.BatchId ?? string.Empty
 			};
 		}
-		int accepted = 0;
-		foreach (SpikeMessage spike in request.Spikes)
+		if (request.Spikes.Count > StructureTransportLimits.MaxSpikeBatchCount)
 		{
-			if (spike != null)
-			{
-				await engine.EnqueueSpikeAsync(spike, context.CancellationToken);
-				accepted++;
-			}
+			return new SpikeBatchAck { Accepted = 0, Error = "batch_too_large", BatchId = request.BatchId };
 		}
-		return new SpikeBatchAck
+
+		try
 		{
-			Accepted = accepted
-		};
+			int accepted = await engine.EnqueueSpikeBatchAsync(request.Spikes, context.CancellationToken).ConfigureAwait(false);
+			return new SpikeBatchAck { Accepted = accepted, BatchId = request.BatchId };
+		}
+		catch (StructureIngressOverloadException ex)
+		{
+			return new SpikeBatchAck { Accepted = 0, Error = ex.Message, BatchId = request.BatchId };
+		}
+		catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+		{
+			return new SpikeBatchAck { Accepted = 0, Error = $"invalid_batch:{ex.Message}", BatchId = request.BatchId };
+		}
 	}
 
 	public async IAsyncEnumerable<SpikeBatchAck> StreamSpikeBatchesAsync(
@@ -41,20 +47,31 @@ internal sealed class StructureSpikeGrpcService(StructureEngine engine) : IStruc
 		{
 			if (batch?.Spikes == null || batch.Spikes.Count == 0)
 			{
-				yield return new SpikeBatchAck { Accepted = 0, Error = "empty_batch" };
+				yield return new SpikeBatchAck { Accepted = 0, Error = "empty_batch", BatchId = batch?.BatchId ?? string.Empty };
 				continue;
 			}
 
-			int accepted = 0;
-			foreach (var spike in batch.Spikes)
+			if (batch.Spikes.Count > StructureTransportLimits.MaxSpikeBatchCount)
 			{
-				if (spike != null)
-				{
-					await engine.EnqueueSpikeAsync(spike, context.CancellationToken).ConfigureAwait(false);
-					accepted++;
-				}
+				yield return new SpikeBatchAck { Accepted = 0, Error = "batch_too_large", BatchId = batch.BatchId };
+				continue;
 			}
-			yield return new SpikeBatchAck { Accepted = accepted };
+
+			SpikeBatchAck ack;
+			try
+			{
+				int accepted = await engine.EnqueueSpikeBatchAsync(batch.Spikes, context.CancellationToken).ConfigureAwait(false);
+				ack = new SpikeBatchAck { Accepted = accepted, BatchId = batch.BatchId };
+			}
+			catch (StructureIngressOverloadException ex)
+			{
+				ack = new SpikeBatchAck { Accepted = 0, Error = ex.Message, BatchId = batch.BatchId };
+			}
+			catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+			{
+				ack = new SpikeBatchAck { Accepted = 0, Error = $"invalid_batch:{ex.Message}", BatchId = batch.BatchId };
+			}
+			yield return ack;
 		}
 	}
 }

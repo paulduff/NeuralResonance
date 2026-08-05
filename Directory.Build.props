@@ -24,4 +24,9 @@
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
   </PropertyGroup>
+  <PropertyGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('NeuralResonanceEngine.Structures.'))">
+    <!-- A deployable brain can host well over one hundred small structure
+         processes. Workstation GC avoids reserving a server heap per process. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
 </Project>

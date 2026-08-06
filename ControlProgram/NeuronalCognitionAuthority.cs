@@ -3,8 +3,8 @@ internal sealed record NeuronalCognitionDomainAuthority(
     bool CircuitObserved,
     bool NeuronalAvailable,
     bool NeuronalActive,
-    bool LegacyTelemetryOnly,
-    bool LegacyCanAuthorize,
+    bool ReadOnlyDecoder,
+    bool DecoderCanAuthorize,
     string AuthoritativeEndpoint,
     string Evidence);
 
@@ -119,8 +119,8 @@ internal sealed class NeuronalCognitionAuthorityRuntime
             observed,
             available,
             active,
-            LegacyTelemetryOnly: true,
-            LegacyCanAuthorize: false,
+            ReadOnlyDecoder: true,
+            DecoderCanAuthorize: false,
             endpoint,
             evidence);
 

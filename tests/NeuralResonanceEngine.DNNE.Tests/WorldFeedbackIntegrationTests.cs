@@ -80,15 +80,6 @@ public sealed class WorldFeedbackIntegrationTests
             tickDurationMs: 1.0,
             registry: new Dictionary<StructureId, string>(),
             connectivity: new Dictionary<StructureId, List<SynapticConnection>>());
-        state.UpdateNeuromod(
-            new NeuromodState
-            {
-                DopamineLevel = 0.5f,
-                SerotoninLevel = 0.5f,
-                AcetylcholineLevel = 0.5f,
-                NorepinephrineLevel = 0.5f
-            },
-            rewardPredictionError: 0.0f);
         return state;
     }
 }

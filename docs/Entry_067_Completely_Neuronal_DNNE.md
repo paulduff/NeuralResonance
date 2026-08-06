@@ -221,7 +221,13 @@ Acceptance requires all cognition-authority checks to pass with symbolic cogniti
 
 #### Implemented authority boundary
 
-Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-authority` reports perception, memory, attention/workspace, sleep/consolidation, language grounding, affect/valuation, action selection, and motor output as separate domains. Every corresponding central record is `LegacyTelemetry`, and every domain reports `LegacyCanAuthorize=false`. `/api/v1/state` repeats the global authority flags so clients cannot mistake the large compatibility snapshot for a control surface.
+Rung 8 now makes neuronal-only cognition authority explicit.
+`/api/v1/cognition-authority` reports perception, memory,
+attention/workspace, sleep/consolidation, language grounding,
+affect/valuation, action selection, and motor output as separate domains.
+Every domain is a read-only decoder of neuronal evidence and reports that it
+cannot authorize behavior. `/api/v1/state` repeats the global authority flags
+so clients cannot mistake a diagnostic snapshot for a control surface.
 
 The final semantic actuation paths have been removed from the runtime:
 
@@ -279,7 +285,18 @@ checkpoint state are gone. Editor cognition, language, embodiment, and motor
 panes now report the neuronal decoders already measured during the live tick,
 and the synthetic brain-narration speech bridge has been removed.
 
-This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
+Entry 087 deletes the scalar body-schema, interoception, pain-policy,
+body-presence, biological-attention, limbic/emotion, cerebellar, and global
+neuromodulation overlays. Their routes and checkpoint fields are gone.
+Functional diagnostics now use measured activity in the relevant neuronal
+structures, and externally generated sensory spikes carry no host-authored
+modulation context.
+
+Physical body and environmental measurements, clocks, metabolism, checkpoint
+serialization, curriculum, and human-readable audit summaries remain as
+substrate or inspection infrastructure. They cannot authorize cognition or
+motor output. Further deletion must distinguish genuine physiology and
+instrumentation from obsolete compatibility state.
 
 No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.
 

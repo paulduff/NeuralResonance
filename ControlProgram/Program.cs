@@ -200,17 +200,6 @@ app.MapGet("/api/v1/startup-health", (SimulationState state, int? maxNonOkDetail
 app.MapGet("/api/v1/validation", (SimulationState state, int? maxSnapshotAgeTicks, int? maxNonOkServices) =>
     Results.Ok(state.GetValidationSnapshot(maxSnapshotAgeTicks ?? 20, maxNonOkServices ?? 2)));
 app.MapGet("/api/v1/service-health", (SimulationState state) => Results.Ok(state.GetServiceHealthSnapshot()));
-app.MapGet("/api/v1/body-schema", (SimulationState state) => Results.Ok(state.GetBodySchemaSnapshot()));
-app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeValuation = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
-    State = state.GetInteroceptiveCoreSnapshot()
-}));
-app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
-app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.GetBodyPresenceSnapshot()));
-app.MapGet("/api/v1/cerebellum", (SimulationState state) => Results.Ok(state.GetCerebellumSnapshot()));
 app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
 {
     Control = control.GetSnapshot(),
@@ -572,7 +561,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
 
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     if (AdminInputSource.IsAvatarSource(inputSource))
     {
         DispatchStimulusToInstancesInBackground(
@@ -593,8 +581,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
                     hemisphere,
                     pattern,
                     (float)(intensity * sensoryGain),
-                    Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
-                    neuromod);
+                    Math.Max(1, (int)Math.Round(burstCount * sensoryGain)));
             },
             clientFactory,
             state,
@@ -647,8 +634,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
                 hemisphere,
                 pattern,
                 (float)(intensity * sensoryGain),
-                Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
-                neuromod);
+                Math.Max(1, (int)Math.Round(burstCount * sensoryGain)));
         },
         clientFactory,
         state,
@@ -708,8 +694,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
                             hemisphere,
                             pattern,
                             (float)(intensity * sensoryGain),
-                            Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
-                            neuromod);
+                            Math.Max(1, (int)Math.Round(burstCount * sensoryGain)));
                     },
                     clientFactory,
                     state,
@@ -988,7 +973,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
 
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     if (AdminInputSource.IsAvatarSource(inputSource))
     {
         DispatchStimulusToInstancesInBackground(
@@ -1005,8 +989,7 @@ app.MapPost("/api/v1/admin/input/auditory", async (
                     hemisphere,
                     pattern,
                     intensity,
-                    burstCount,
-                    neuromod);
+                    burstCount);
             },
             clientFactory,
             state,
@@ -1052,8 +1035,7 @@ app.MapPost("/api/v1/admin/input/auditory", async (
                 hemisphere,
                 pattern,
                 intensity,
-                burstCount,
-                neuromod);
+                burstCount);
         },
         clientFactory,
         state,
@@ -1109,8 +1091,7 @@ app.MapPost("/api/v1/admin/input/auditory", async (
                             hemisphere,
                             pattern,
                             intensity,
-                            burstCount,
-                            neuromod);
+                            burstCount);
                     },
                     clientFactory,
                     state,
@@ -1254,7 +1235,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
 
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     var dispatch = await DispatchStimulusToInstancesAsync(
         liveTargetInstances,
         instance =>
@@ -1269,8 +1249,7 @@ app.MapPost("/api/v1/admin/input/collision", async (
                 pattern,
                 intensity,
                 burstCount,
-                isFeedback,
-                neuromod);
+                isFeedback);
         },
         clientFactory,
         state,
@@ -1492,7 +1471,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
 
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     var targetSummary = liveTargetInstances
         .Select(i => new
         {
@@ -1519,8 +1497,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
                     pattern,
                     intensity,
                     burstCount,
-                    isFeedback,
-                    neuromod);
+                    isFeedback);
             },
             clientFactory,
             state,
@@ -1580,8 +1557,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
                 pattern,
                 intensity,
                 burstCount,
-                isFeedback,
-                neuromod);
+                isFeedback);
         },
         clientFactory,
         state,
@@ -1774,7 +1750,6 @@ app.MapPost("/api/v1/admin/input/outcome", async (
 
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     var sourceStructure = aversive > appetitive
         ? StructureId.Habenula
         : StructureId.NucleusTractusSolitarius;
@@ -1802,8 +1777,7 @@ app.MapPost("/api/v1/admin/input/outcome", async (
                 pattern,
                 Math.Clamp(targetIntensity, 0.10f, 3.50f),
                 burstCount,
-                isFeedback: true,
-                neuromod);
+                isFeedback: true);
         },
         clientFactory,
         state,
@@ -2028,7 +2002,6 @@ app.MapPost("/api/v1/admin/input/language", async (
     }
 
     var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
     var generatedSpikes = 0;
     var deliveredSpikes = 0;
     var deliveredByTarget = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -2043,8 +2016,7 @@ app.MapPost("/api/v1/admin/input/language", async (
             mode,
             brainTokens,
             intensity,
-            burstPerToken,
-            neuromod);
+            burstPerToken);
 
         Interlocked.Add(ref generatedSpikes, spikes.Count);
 
@@ -2120,11 +2092,6 @@ app.MapPost("/api/v1/admin/input/language", async (
         PhonemeTokens = lexicalization.PhonemeTokens,
         NeuronalLanguageGrounding = state.GetNeuronalLanguageGroundingSnapshot(),
         Dialogue = dialogue,
-        MotorIntentTargets = 0,
-        MotorIntentGeneratedSpikes = 0,
-        MotorIntentDeliveredSpikes = 0,
-        MotorIntentAuthority = "LegacyTelemetry",
-        MotorIntentCanAuthorize = false,
         CreatedLexemes = lexicalization.CreatedLexemes,
         ReusedLexemes = lexicalization.ReusedLexemes,
         GeneratedSpikes = generatedSpikes,
@@ -2281,8 +2248,7 @@ static List<SpikeMessage> BuildVisualStimulusSpikes(
     string hemisphere,
     string pattern,
     float intensity,
-    int burstCount,
-    NeuromodState neuromod)
+    int burstCount)
 {
     var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "stimulus" : pattern;
     var patternSeed = Math.Abs(patternLabel.GetHashCode(StringComparison.Ordinal));
@@ -2310,7 +2276,7 @@ static List<SpikeMessage> BuildVisualStimulusSpikes(
             ReuptakeRate = reuptake,
             SpikeType = spikeType,
             IsFeedback = false,
-            ModulationContext = NeuromodState.Clamp(neuromod)
+            ModulationContext = null
         });
     }
 
@@ -2333,8 +2299,7 @@ static List<SpikeMessage> BuildAuditoryStimulusSpikes(
     string hemisphere,
     string pattern,
     float intensity,
-    int burstCount,
-    NeuromodState neuromod)
+    int burstCount)
 {
     var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "auditory" : pattern;
     var patternSeed = Math.Abs(patternLabel.GetHashCode(StringComparison.Ordinal));
@@ -2362,7 +2327,7 @@ static List<SpikeMessage> BuildAuditoryStimulusSpikes(
             ReuptakeRate = reuptake,
             SpikeType = spikeType,
             IsFeedback = false,
-            ModulationContext = NeuromodState.Clamp(neuromod)
+            ModulationContext = null
         });
     }
 
@@ -2378,8 +2343,7 @@ static List<SpikeMessage> BuildCollisionStimulusSpikes(
     string pattern,
     float intensity,
     int burstCount,
-    bool isFeedback,
-    NeuromodState neuromod)
+    bool isFeedback)
 {
     var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "collision" : pattern.Trim();
     var patternToken = Regex.Replace(patternLabel, "[^A-Za-z0-9]+", "_");
@@ -2411,7 +2375,7 @@ static List<SpikeMessage> BuildCollisionStimulusSpikes(
             ReuptakeRate = reuptake,
             SpikeType = spikeType,
             IsFeedback = isFeedback,
-            ModulationContext = NeuromodState.Clamp(neuromod)
+            ModulationContext = null
         });
     }
 
@@ -2426,11 +2390,10 @@ static List<SpikeMessage> BuildLanguageStimulusSpikes(
     string mode,
     IReadOnlyList<string> tokens,
     float intensity,
-    int burstPerToken,
-    NeuromodState neuromod)
+    int burstPerToken)
 {
     var spikes = new List<SpikeMessage>(tokens.Count * burstPerToken);
-    var modeGain = ComputeLanguageModeNeuromodGain(mode, neuromod);
+    const float modeGain = 1f;
     for (var tokenIndex = 0; tokenIndex < tokens.Count; tokenIndex++)
     {
         var token = tokens[tokenIndex];
@@ -2457,27 +2420,12 @@ static List<SpikeMessage> BuildLanguageStimulusSpikes(
                 ReuptakeRate = reuptake,
                 SpikeType = spikeType,
                 IsFeedback = false,
-                ModulationContext = NeuromodState.Clamp(neuromod)
+                ModulationContext = null
             });
         }
     }
 
     return spikes;
-}
-
-static float ComputeLanguageModeNeuromodGain(string mode, NeuromodState neuromod)
-{
-    var m = string.IsNullOrWhiteSpace(mode) ? "repetition" : mode.Trim().ToLowerInvariant();
-    var gain = m switch
-    {
-        "comprehension" => 0.85f + (0.35f * neuromod.AcetylcholineLevel) + (0.15f * neuromod.NorepinephrineLevel),
-        "production" => 0.88f + (0.28f * neuromod.DopamineLevel) + (0.14f * neuromod.NorepinephrineLevel),
-        "prosody" => 0.86f + (0.24f * neuromod.SerotoninLevel) + (0.18f * neuromod.NorepinephrineLevel) + (0.12f * neuromod.DopamineLevel),
-        "emergent" => 0.84f + (0.26f * neuromod.DopamineLevel) + (0.20f * neuromod.AcetylcholineLevel) + (0.16f * neuromod.NorepinephrineLevel),
-        "english" => 0.92f + (0.32f * neuromod.AcetylcholineLevel) + (0.12f * neuromod.NorepinephrineLevel) + (0.08f * neuromod.DopamineLevel),
-        _ => 0.90f + (0.20f * neuromod.AcetylcholineLevel) + (0.12f * neuromod.DopamineLevel)
-    };
-    return Math.Clamp(gain, 0.55f, 1.75f);
 }
 
 static SpikeTypeEnum ResolveLanguageSpikeType(string mode, string token, int burstIndex)
@@ -3350,7 +3298,6 @@ internal sealed class SimulationState
 
     public double SimulationClockMs { get; private set; }
     public double TickDurationMs { get; private set; } = 1.0;
-    public NeuromodState GlobalNeuromodState { get; private set; } = new();
     public Dictionary<StructureId, string> ServiceRegistry { get; } = new();
     public Dictionary<StructureId, List<SynapticConnection>> ConnectivityMap { get; } = new();
     public Dictionary<BrainRhythm, double> OscillationPhases { get; } = new()
@@ -3362,7 +3309,6 @@ internal sealed class SimulationState
         [BrainRhythm.GAMMA] = 0
     };
 
-    public float RewardPredictionError { get; private set; }
     public long Tick { get; private set; }
     public long LastSnapshotTick { get; private set; }
     public double LastSnapshotSimulationMs { get; private set; }
@@ -3376,15 +3322,7 @@ internal sealed class SimulationState
     public EnvironmentalStateRuntime EnvironmentalState { get; private set; } = EnvironmentalStateRuntime.Default;
     public OutcomeStateRuntime OutcomeState { get; private set; } = OutcomeStateRuntime.Default;
     public BodyStateRuntime BodyState { get; private set; } = BodyStateRuntime.Default;
-    public BodySchemaRuntime BodySchema { get; private set; } = BodySchemaRuntime.Default;
-    public InteroceptiveCoreRuntime InteroceptiveCore { get; private set; } = InteroceptiveCoreRuntime.Default;
-    public PainProtectionRuntime PainProtection { get; private set; } = PainProtectionRuntime.Default;
-    public BodyPresenceRuntime BodyPresence { get; private set; } = BodyPresenceRuntime.Default;
     public NeuronalVisualAttentionDecision VisualAttention { get; private set; } = NeuronalVisualAttentionDecision.Unavailable;
-    public BiologicalAttentionRuntime AttentionState { get; private set; } = BiologicalAttentionRuntime.Default;
-    public LimbicRuntimeState LimbicState { get; private set; } = LimbicRuntimeState.Default;
-    public EmotionRuntimeState EmotionState { get; private set; } = EmotionRuntimeState.Default;
-    public CerebellumRuntime Cerebellum { get; private set; } = CerebellumRuntime.Default;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
     public NeuronalLanguageGroundingDecision NeuronalLanguageGrounding { get; private set; } = NeuronalLanguageGroundingDecision.Unavailable;
     public NeuronalPerceptDecision NeuronalPerception { get; private set; } = NeuronalPerceptDecision.Unavailable;
@@ -3444,36 +3382,6 @@ internal sealed class SimulationState
                 metabolicWakeReserve);
         }
     }
-
-    public void UpdateNeuromod(NeuromodState neuromodState, float rewardPredictionError)
-    {
-        lock (_gate)
-        {
-            var clamped = NeuromodState.Clamp(neuromodState);
-            GlobalNeuromodState = ApplySleepStateNeuromod(clamped, SleepMemory);
-            RewardPredictionError = rewardPredictionError;
-        }
-    }
-
-    public void UpdateLimbicState(LimbicRuntimeState limbicState)
-    {
-        lock (_gate)
-        {
-            LimbicState = limbicState;
-        }
-    }
-
-    public void UpdateEmotionState(EmotionRuntimeState emotionState)
-    {
-        lock (_gate)
-        {
-            EmotionState = EmotionRuntimeState.Normalize(emotionState);
-        }
-    }
-
-
-
-
 
     public DyadLanguageCandidateResponse ReviewDyadLanguageCandidate(DyadLanguageCandidateProposal proposal)
     {
@@ -4003,60 +3911,6 @@ internal sealed class SimulationState
     }
 
 
-    public object GetLimbicSnapshot()
-    {
-        lock (_gate)
-        {
-            var currentNeuromod = NeuromodState.Clamp(GlobalNeuromodState);
-            var limbic = LimbicState ?? LimbicRuntimeState.Default;
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                Stage = limbic.Stage,
-                Drives = new
-                {
-                    limbic.Salience,
-                    limbic.Threat,
-                    limbic.InteroceptiveDrive,
-                    limbic.AversiveDrive,
-                    limbic.HippocampalContext,
-                    limbic.ExpectedReward,
-                    limbic.ObservedReward,
-                    limbic.Valence,
-                    limbic.RewardPredictionError
-                },
-                Neuromod = new
-                {
-                    Current = new
-                    {
-                        currentNeuromod.DopamineLevel,
-                        currentNeuromod.SerotoninLevel,
-                        currentNeuromod.AcetylcholineLevel,
-                        currentNeuromod.NorepinephrineLevel
-                    },
-                    Targets = new
-                    {
-                        limbic.DopamineTarget,
-                        limbic.SerotoninTarget,
-                        limbic.AcetylcholineTarget,
-                        limbic.NorepinephrineTarget
-                    },
-                    DeltaToTarget = new
-                    {
-                        Dopamine = limbic.DopamineTarget - currentNeuromod.DopamineLevel,
-                        Serotonin = limbic.SerotoninTarget - currentNeuromod.SerotoninLevel,
-                        Acetylcholine = limbic.AcetylcholineTarget - currentNeuromod.AcetylcholineLevel,
-                        Norepinephrine = limbic.NorepinephrineTarget - currentNeuromod.NorepinephrineLevel
-                    }
-                },
-                limbic.LastUpdatedTick
-            };
-        }
-    }
-
-
-
     public object GetProsodyTelemetrySnapshot()
     {
         lock (_gate)
@@ -4079,9 +3933,6 @@ internal sealed class SimulationState
 
     private object BuildProsodyTelemetrySnapshotLocked()
     {
-        var currentNeuromod = NeuromodState.Clamp(GlobalNeuromodState);
-        var limbic = LimbicState ?? LimbicRuntimeState.Default;
-
         var prosodyModeStates = TransportStats.LanguageBackoffModeStates
             .Where(state => string.Equals(state.Mode, "prosody", StringComparison.OrdinalIgnoreCase))
             .Select(state => new
@@ -4156,21 +4007,16 @@ internal sealed class SimulationState
                 SleepMemory.WakeTicks,
                 SleepMemory.MinWakeTicks
             },
-            Limbic = new
+            NeuronalAffect = new
             {
-                limbic.Stage,
-                limbic.Salience,
-                limbic.Threat,
-                limbic.Valence,
-                limbic.RewardPredictionError,
-                limbic.LastUpdatedTick
-            },
-            Neuromod = new
-            {
-                currentNeuromod.DopamineLevel,
-                currentNeuromod.SerotoninLevel,
-                currentNeuromod.AcetylcholineLevel,
-                currentNeuromod.NorepinephrineLevel
+                Authority = NeuronalAffectValuationDecision.Authority,
+                NeuronalAffectValuation.Available,
+                NeuronalAffectValuation.Active,
+                NeuronalAffectValuation.DominantChannel,
+                NeuronalAffectValuation.PositiveValence,
+                NeuronalAffectValuation.NegativeValence,
+                NeuronalAffectValuation.Arousal,
+                NeuronalAffectValuation.Confidence
             },
             LanguageBridge = new
             {
@@ -4192,59 +4038,6 @@ internal sealed class SimulationState
         };
     }
 
-
-
-    public BodySchemaRuntime GetBodySchemaSnapshot()
-    {
-        lock (_gate)
-        {
-            UpdateBodySchemaLocked(Tick);
-            UpdateInteroceptiveCoreLocked(Tick);
-            return BodySchema;
-        }
-    }
-
-    public InteroceptiveCoreRuntime GetInteroceptiveCoreSnapshot()
-    {
-        lock (_gate)
-        {
-            UpdateBodySchemaLocked(Tick);
-            UpdateInteroceptiveCoreLocked(Tick);
-            UpdatePainProtectionLocked(Tick);
-            return InteroceptiveCore;
-        }
-    }
-
-    public PainProtectionRuntime GetPainProtectionSnapshot()
-    {
-        lock (_gate)
-        {
-            UpdateBodySchemaLocked(Tick);
-            UpdateInteroceptiveCoreLocked(Tick);
-            UpdatePainProtectionLocked(Tick);
-            return PainProtection;
-        }
-    }
-
-    public BodyPresenceRuntime GetBodyPresenceSnapshot()
-    {
-        lock (_gate)
-        {
-            UpdateBodySchemaLocked(Tick);
-            UpdateInteroceptiveCoreLocked(Tick);
-            UpdatePainProtectionLocked(Tick);
-            UpdateBodyPresenceLocked(Tick);
-            return BodyPresence;
-        }
-    }
-
-    public CerebellumRuntime GetCerebellumSnapshot()
-    {
-        lock (_gate)
-        {
-            return Cerebellum;
-        }
-    }
 
 
     public object GetCurriculumSnapshot()
@@ -4323,7 +4116,7 @@ internal sealed class SimulationState
     {
         if (_dispatchSpikeTrace.Count == 0 || structures.Length == 0)
         {
-            return ResolveGlobalCircuitFallback();
+            return 0f;
         }
 
         var windowStart = Math.Max(0, tick - 16);
@@ -4348,464 +4141,6 @@ internal sealed class SimulationState
 
         return Clamp01(count / 36f);
     }
-
-    private float ResolveGlobalCircuitFallback()
-        => 0f;
-
-    private static float ApplyCircuitGate(float value, float circuitEvidence)
-        => Clamp01(value * (0.40f + (0.60f * Clamp01(circuitEvidence))));
-
-
-
-    private float ResolveCerebellarCircuitEvidenceLocked(
-        long tick,
-        int recentInputSpikes,
-        int recentOutputSpikes,
-        bool bodyFresh,
-        float motion,
-        float turn,
-        float contact)
-    {
-        var recent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.CerebellarGranule,
-            StructureId.CerebellarVermis,
-            StructureId.CerebellarLobules,
-            StructureId.PurkinjeCellLayer,
-            StructureId.DeepCerebellarNuclei,
-            StructureId.InferiorOlive,
-            StructureId.VestibularNuclei,
-            StructureId.S1,
-            StructureId.MotorThalamus,
-            StructureId.PremotorCortex,
-            StructureId.M1);
-        var integrated = Clamp01(
-            (recentInputSpikes / 28f * 0.18f) +
-            (recentOutputSpikes / 28f * 0.14f) +
-            (bodyFresh ? 0.30f : 0f) +
-            (motion * 0.18f) +
-            (turn * 0.18f) +
-            (contact * 0.16f) +
-            (BodySchema.ProprioceptiveConfidence * 0.10f) +
-            ((float)NeuronalMotor.MotorCircuitCoverage * 0.08f));
-        return Clamp01(Math.Max(recent, integrated));
-    }
-
-    private float ResolveEmotionCircuitEvidenceLocked(long tick)
-    {
-        var recent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.Amygdala,
-            StructureId.Insula,
-            StructureId.Acc,
-            StructureId.Hypothalamus,
-            StructureId.OrbitofrontalCortex,
-            StructureId.Pfc,
-            StructureId.NucleusAccumbens,
-            StructureId.Vta,
-            StructureId.Habenula,
-            StructureId.LocusCoeruleus,
-            StructureId.RapheNuclei);
-        var integrated = Clamp01(
-            (LimbicState.Salience * 0.16f) +
-            (LimbicState.Threat * 0.14f) +
-            (LimbicState.AversiveDrive * 0.12f) +
-            (InteroceptiveCore.AccUrgency * 0.10f) +
-            (AttentionState.Salience * 0.10f) +
-            (GlobalNeuromodState.NorepinephrineLevel * 0.10f) +
-            (GlobalNeuromodState.DopamineLevel * 0.08f) +
-            (GlobalNeuromodState.SerotoninLevel * 0.08f) +
-            (Math.Max(EnvironmentalState.InShelter, EnvironmentalState.ShelterSafety) * 0.08f) +
-            (EnvironmentalState.LastInputTick >= 0 && tick - EnvironmentalState.LastInputTick <= 2400 ? 0.08f : 0f) +
-            (ResolveGlobalCircuitFallback() * 0.04f));
-        return Clamp01(Math.Max(recent, integrated));
-    }
-
-
-
-
-    private void UpdateBodySchemaLocked(long tick)
-    {
-        var bodyFresh = BodyState.LastInputTick >= 0 && tick - BodyState.LastInputTick <= 1200;
-        var environmentFresh = EnvironmentalState.LastInputTick >= 0 && tick - EnvironmentalState.LastInputTick <= 2400;
-        var motion = bodyFresh ? Clamp01(Math.Abs(BodyState.ForwardVelocity) / 3.0f) : 0f;
-        var turn = bodyFresh ? Clamp01(Math.Abs(BodyState.TurnRateDeg) / 300f) : 0f;
-        var contact = bodyFresh ? Clamp01(BodyState.ContactLevel) : 0f;
-        var directionalTouch = bodyFresh
-            ? Clamp01(Math.Max(BodyState.TactileFront, Math.Max(BodyState.TactileLeft, BodyState.TactileRight)))
-            : 0f;
-        var sideImbalance = bodyFresh ? Clamp01(Math.Abs(BodyState.TactileLeft - BodyState.TactileRight)) : 0f;
-        var pain = bodyFresh ? Clamp01(BodyState.PainLevel) : 0f;
-        var motorConflict = bodyFresh
-            ? Clamp01(Math.Max(BodyState.MotorAsymmetry, Math.Max(contact * 0.72f, (directionalTouch * 0.44f) + (sideImbalance * 0.28f))))
-            : 0f;
-        var motorDrive = bodyFresh ? Clamp01((BodyState.LeftMotorDrive + BodyState.RightMotorDrive) / 2.0f) : 0f;
-        var pressure = Clamp01(SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure));
-        var fatigue = Clamp01((pressure * 0.48f) + (LimbicState.TiredDrive * 0.34f) + ((1.0f - SleepMemory.AtpBudget / Math.Max(0.0001f, SleepMemory.MaxAtpBudget)) * 0.18f));
-        var healthDeficit = environmentFresh ? Clamp01(1f - EnvironmentalState.Health) : 0f;
-        var hunger = environmentFresh ? Clamp01(Math.Max(EnvironmentalState.Hunger, LimbicState.InteroceptiveDrive)) : Clamp01(LimbicState.InteroceptiveDrive);
-        var shelterExposure = environmentFresh
-            ? Clamp01((1f - Math.Max(EnvironmentalState.InShelter, EnvironmentalState.ShelterSafety)) * Math.Max(EnvironmentalState.Darkness, EnvironmentalState.ShelterNeed))
-            : 0f;
-        var damage = Clamp01((healthDeficit * 0.70f) + (contact * 0.18f) + (pain * 0.12f));
-        var postureStability = Clamp01(1f - ((contact * 0.24f) + (directionalTouch * 0.08f) + (motorConflict * 0.22f) + (turn * 0.16f) + (damage * 0.18f) + (fatigue * 0.12f)));
-        var proprioceptiveConfidence = Clamp01((bodyFresh ? 0.54f : 0.08f) + (AttentionState.Somatosensory * 0.18f) + (Cerebellum.MotorSmoothing * 0.14f) + ((1f - Math.Max(contact, sideImbalance * 0.6f)) * 0.14f));
-        var balanceConfidence = Clamp01((postureStability * 0.54f) + (proprioceptiveConfidence * 0.24f) + (Cerebellum.LearnedCorrection * 0.14f) + ((1f - Cerebellum.BalanceError) * 0.08f));
-        var movementEffort = Clamp01((motion * 0.24f) + (turn * 0.18f) + (motorDrive * 0.20f) + (contact * 0.14f) + (BodyState.Urgency * 0.08f) + (fatigue * 0.10f) + (motorConflict * 0.06f));
-        var bodyOwnership = Clamp01((proprioceptiveConfidence * 0.48f) + (AttentionState.Somatosensory * 0.18f) + (AttentionState.Interoceptive * 0.14f) + ((1f - motorConflict) * 0.10f) + ((1f - damage) * 0.10f));
-        var carriedItemState = InferCarriedItemStateLocked();
-        var bodyCircuitEvidence = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.S1,
-            StructureId.Ppc,
-            StructureId.Insula,
-            StructureId.VestibularNuclei,
-            StructureId.CerebellarVermis,
-            StructureId.DeepCerebellarNuclei);
-
-        BodySchema = BodySchemaRuntime.Normalize(new BodySchemaRuntime(
-            PostureStability: ApplyCircuitGate(postureStability, bodyCircuitEvidence),
-            BalanceConfidence: ApplyCircuitGate(balanceConfidence, bodyCircuitEvidence),
-            MovementEffort: ApplyCircuitGate(movementEffort, bodyCircuitEvidence),
-            Fatigue: fatigue,
-            Damage: damage,
-            Hunger: hunger,
-            CarryLoad: 0f,
-            CarriedItemState: carriedItemState,
-            ProprioceptiveConfidence: ApplyCircuitGate(proprioceptiveConfidence, bodyCircuitEvidence),
-            MotorConflict: motorConflict,
-            ShelterExposure: shelterExposure,
-            BodyOwnership: ApplyCircuitGate(bodyOwnership, bodyCircuitEvidence),
-            LastUpdatedTick: tick));
-    }
-
-    private void UpdateInteroceptiveCoreLocked(long tick)
-    {
-        var bodyFresh = BodyState.LastInputTick >= 0 && tick - BodyState.LastInputTick <= 1200;
-        var environmentFresh = EnvironmentalState.LastInputTick >= 0 && tick - EnvironmentalState.LastInputTick <= 2400;
-        var pressureNorm = Clamp01(SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure));
-        var atpDeficit = Clamp01(1f - (SleepMemory.AtpBudget / Math.Max(0.0001f, SleepMemory.MaxAtpBudget)));
-        var hungerDrive = Clamp01(Math.Max(Math.Max(EnvironmentalState.Hunger, BodySchema.Hunger), LimbicState.InteroceptiveDrive));
-        var fatigueDrive = Clamp01(Math.Max(Math.Max(pressureNorm, BodySchema.Fatigue), LimbicState.TiredDrive));
-        var painDrive = bodyFresh
-            ? Clamp01(Math.Max(BodyState.PainLevel, Math.Max(BodyState.ContactLevel * 0.42f, BodySchema.Damage)))
-            : Clamp01(BodySchema.Damage);
-        var damageDrive = environmentFresh
-            ? Clamp01(Math.Max(1f - EnvironmentalState.Health, BodySchema.Damage))
-            : Clamp01(BodySchema.Damage);
-        var shelterDrive = environmentFresh
-            ? Clamp01(Math.Max(EnvironmentalState.ShelterNeed, BodySchema.ShelterExposure))
-            : Clamp01(BodySchema.ShelterExposure);
-        var balanceDrive = Clamp01(Math.Max(BodySchema.MotorConflict, 1f - BodySchema.BalanceConfidence));
-        var threatDrive = Clamp01(Math.Max(EnvironmentalState.PredatorThreat, LimbicState.Threat));
-        var tactileLoad = bodyFresh
-            ? Clamp01(Math.Max(BodyState.ContactLevel, Math.Max(BodyState.TactileGround, Math.Max(BodyState.TactileFront, Math.Max(BodyState.TactileLeft, BodyState.TactileRight)))))
-            : 0f;
-        var ntsInput = Clamp01(
-            (hungerDrive * 0.18f) +
-            (fatigueDrive * 0.18f) +
-            (painDrive * 0.20f) +
-            (tactileLoad * 0.14f) +
-            (damageDrive * 0.16f) +
-            (atpDeficit * 0.14f));
-        var hypothalamicDrive = Clamp01(
-            (hungerDrive * 0.30f) +
-            (fatigueDrive * 0.26f) +
-            (shelterDrive * 0.18f) +
-            (pressureNorm * 0.14f) +
-            (threatDrive * 0.12f));
-        var homeostaticError = Clamp01(
-            (hungerDrive * 0.22f) +
-            (fatigueDrive * 0.20f) +
-            (painDrive * 0.18f) +
-            (damageDrive * 0.16f) +
-            (shelterDrive * 0.12f) +
-            (balanceDrive * 0.12f));
-        var insulaBodyFeeling = Clamp01(
-            (ntsInput * 0.30f) +
-            (hypothalamicDrive * 0.24f) +
-            (AttentionState.Interoceptive * 0.18f) +
-            (BodySchema.BodyOwnership * 0.14f) +
-            (LimbicState.InteroceptiveDrive * 0.14f));
-        var accUrgency = Clamp01(
-            (homeostaticError * 0.36f) +
-            (GetRecentStructureSpikeSupportLocked(tick, StructureId.Acc, StructureId.Pfc) * 0.18f) +
-            (EmotionState.Urgency * 0.16f) +
-            (threatDrive * 0.14f) +
-            (balanceDrive * 0.10f) +
-            (painDrive * 0.06f));
-        var arousal = Clamp01(
-            (GlobalNeuromodState.NorepinephrineLevel * 0.24f) +
-            (GlobalNeuromodState.AcetylcholineLevel * 0.18f) +
-            (accUrgency * 0.22f) +
-            (homeostaticError * 0.18f) +
-            (threatDrive * 0.18f));
-        var valence = ClampSigned01(
-            (OutcomeState.AppetitiveRelief * 0.24f) +
-            (EnvironmentalState.InShelter * 0.14f) +
-            (LimbicState.ObservedReward * 0.12f) -
-            (homeostaticError * 0.30f) -
-            (painDrive * 0.14f) -
-            (threatDrive * 0.12f));
-        var (dominantNeed, feltState, dominantScore) = ResolveInteroceptiveNeed(
-            hungerDrive,
-            fatigueDrive,
-            painDrive,
-            damageDrive,
-            shelterDrive,
-            balanceDrive,
-            threatDrive);
-        var interoceptiveCircuitEvidence = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.NucleusTractusSolitarius,
-            StructureId.Hypothalamus,
-            StructureId.Insula,
-            StructureId.Acc,
-            StructureId.Amygdala);
-        var active = interoceptiveCircuitEvidence > 0.10f && (dominantScore > 0.22f || homeostaticError > 0.26f || insulaBodyFeeling > 0.30f);
-        var sequence = string.Equals(InteroceptiveCore.DominantNeed, dominantNeed, StringComparison.OrdinalIgnoreCase) &&
-                       string.Equals(InteroceptiveCore.FeltState, feltState, StringComparison.OrdinalIgnoreCase)
-            ? InteroceptiveCore.Sequence
-            : InteroceptiveCore.Sequence + 1;
-
-        InteroceptiveCore = InteroceptiveCoreRuntime.Normalize(new InteroceptiveCoreRuntime(
-            Active: active,
-            DominantNeed: dominantNeed,
-            FeltState: feltState,
-            NucleusTractusSolitariusInput: ntsInput,
-            HypothalamicDrive: hypothalamicDrive,
-            InsulaBodyFeeling: insulaBodyFeeling,
-            AccUrgency: accUrgency,
-            HomeostaticError: homeostaticError,
-            EnergyDeficit: Clamp01((pressureNorm * 0.58f) + (atpDeficit * 0.42f)),
-            HungerDrive: hungerDrive,
-            FatigueDrive: fatigueDrive,
-            PainDrive: painDrive,
-            DamageDrive: damageDrive,
-            ShelterDrive: shelterDrive,
-            Arousal: arousal,
-            Valence: valence,
-            Confidence: ApplyCircuitGate(Clamp01((insulaBodyFeeling * 0.32f) + (hypothalamicDrive * 0.22f) + (BodySchema.BodyOwnership * 0.18f) + (AttentionState.Interoceptive * 0.16f) + (active ? 0.12f : 0f)), interoceptiveCircuitEvidence),
-            Evidence: $"NTS={ntsInput:0.00}; hypothalamus={hypothalamicDrive:0.00}; insula={insulaBodyFeeling:0.00}; ACC={accUrgency:0.00}; need={dominantNeed}; circuit={interoceptiveCircuitEvidence:0.00}",
-            LastUpdatedTick: tick,
-            Sequence: sequence));
-    }
-
-    private static (string DominantNeed, string FeltState, float Score) ResolveInteroceptiveNeed(
-        float hungerDrive,
-        float fatigueDrive,
-        float painDrive,
-        float damageDrive,
-        float shelterDrive,
-        float balanceDrive,
-        float threatDrive)
-    {
-        var need = "regulation";
-        var state = "settled";
-        var score = 0.12f;
-        SelectInteroceptiveNeed("food", "hungry", hungerDrive, ref need, ref state, ref score);
-        SelectInteroceptiveNeed("energy", "tired", fatigueDrive, ref need, ref state, ref score);
-        SelectInteroceptiveNeed("body_integrity", "hurt", Math.Max(painDrive, damageDrive), ref need, ref state, ref score);
-        SelectInteroceptiveNeed("shelter", "exposed", shelterDrive, ref need, ref state, ref score);
-        SelectInteroceptiveNeed("balance", "unsteady", balanceDrive, ref need, ref state, ref score);
-        SelectInteroceptiveNeed("safety", "threatened", threatDrive, ref need, ref state, ref score);
-        return (need, state, score);
-    }
-
-    private static void SelectInteroceptiveNeed(
-        string candidateNeed,
-        string candidateState,
-        float candidateScore,
-        ref string bestNeed,
-        ref string bestState,
-        ref float bestScore)
-    {
-        if (candidateScore <= bestScore)
-        {
-            return;
-        }
-
-        bestNeed = candidateNeed;
-        bestState = candidateState;
-        bestScore = candidateScore;
-    }
-
-    private void UpdatePainProtectionLocked(long tick)
-    {
-        var bodyFresh = BodyState.LastInputTick >= 0 && tick - BodyState.LastInputTick <= 1200;
-        var outcomeFresh = OutcomeState.LastInputTick >= 0 && tick - OutcomeState.LastInputTick <= 1600;
-        var environmentFresh = EnvironmentalState.LastInputTick >= 0 && tick - EnvironmentalState.LastInputTick <= 2400;
-        var contact = bodyFresh ? Clamp01(BodyState.ContactLevel) : 0f;
-        var tactileFront = bodyFresh ? Clamp01(BodyState.TactileFront) : 0f;
-        var tactileSide = bodyFresh ? Clamp01(Math.Max(BodyState.TactileLeft, BodyState.TactileRight)) : 0f;
-        var acutePain = bodyFresh ? Clamp01(BodyState.PainLevel) : 0f;
-        var outcomePain = outcomeFresh ? Clamp01(OutcomeState.PainLevel) : 0f;
-        var outcomeDamage = outcomeFresh ? Clamp01(OutcomeState.DamageLevel) : 0f;
-        var healthDamage = environmentFresh ? Clamp01(1f - EnvironmentalState.Health) : 0f;
-        var nociception = Clamp01(Math.Max(Math.Max(acutePain, outcomePain), Math.Max(contact * 0.38f, InteroceptiveCore.PainDrive)));
-        var damageRisk = Clamp01(Math.Max(Math.Max(BodySchema.Damage, InteroceptiveCore.DamageDrive), Math.Max(healthDamage, outcomeDamage)));
-        var threatCoupling = Clamp01(Math.Max(Math.Max(EnvironmentalState.PredatorThreat, LimbicState.Threat), EmotionState.Anxiety));
-        var withdrawal = Clamp01((nociception * 0.44f) + (contact * 0.22f) + (tactileFront * 0.18f) + (tactileSide * 0.10f) + (BodyState.Urgency * 0.06f));
-        var guarding = Clamp01((damageRisk * 0.34f) + (nociception * 0.28f) + (BodySchema.MotorConflict * 0.14f) + (InteroceptiveCore.AccUrgency * 0.12f) + (threatCoupling * 0.12f));
-        var immobilization = Clamp01((damageRisk * 0.38f) + (nociception * 0.20f) + (BodySchema.Fatigue * 0.18f) + ((1f - BodySchema.BalanceConfidence) * 0.14f) + (SleepMemory.IsSleeping ? 0.10f : 0f));
-        var analgesiaGate = Clamp01((nociception * 0.34f) + (threatCoupling * 0.22f) + (GlobalNeuromodState.SerotoninLevel * 0.16f) + (GlobalNeuromodState.NorepinephrineLevel * 0.14f) + (OutcomeState.SafetyRelief * 0.14f));
-        var somatosensoryBias = Clamp01((nociception * 0.34f) + (contact * 0.22f) + (AttentionState.Somatosensory * 0.20f) + (AttentionState.Interoceptive * 0.16f) + (tactileSide * 0.08f));
-        var accUrgency = Clamp01((InteroceptiveCore.AccUrgency * 0.28f) + (withdrawal * 0.24f) + (guarding * 0.22f) + (damageRisk * 0.16f) + (threatCoupling * 0.10f));
-        var protectionDrive = Clamp01(Math.Max(Math.Max(withdrawal, guarding), Math.Max(immobilization, damageRisk)));
-        var reflexState = ResolvePainProtectionState(nociception, damageRisk, withdrawal, guarding, immobilization);
-        var motorDirective = ResolvePainProtectionMotorDirective(reflexState);
-        var protectionCircuitEvidence = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.S1,
-            StructureId.Insula,
-            StructureId.Acc,
-            StructureId.PeriaqueductalGray,
-            StructureId.SpinalCordMotor);
-        var active = protectionCircuitEvidence > 0.10f && (protectionDrive > 0.26f || nociception > 0.24f || damageRisk > 0.24f);
-        var sequence = string.Equals(PainProtection.ReflexState, reflexState, StringComparison.OrdinalIgnoreCase) &&
-                       Math.Abs(PainProtection.ProtectionDrive - protectionDrive) < 0.03f
-            ? PainProtection.Sequence
-            : PainProtection.Sequence + 1;
-
-        PainProtection = PainProtectionRuntime.Normalize(new PainProtectionRuntime(
-            Active: active,
-            ReflexState: reflexState,
-            ProtectiveActionKey: active ? "goal.ProtectBody" : "idle",
-            MotorDirective: motorDirective,
-            Nociception: nociception,
-            DamageRisk: damageRisk,
-            Withdrawal: withdrawal,
-            Guarding: guarding,
-            Immobilization: immobilization,
-            AnalgesiaGate: analgesiaGate,
-            SomatosensoryBias: somatosensoryBias,
-            AccUrgency: accUrgency,
-            ProtectionDrive: protectionDrive,
-            Confidence: ApplyCircuitGate(Clamp01((protectionDrive * 0.32f) + (somatosensoryBias * 0.22f) + (InteroceptiveCore.Confidence * 0.18f) + (BodySchema.BodyOwnership * 0.14f) + (active ? 0.14f : 0f)), protectionCircuitEvidence),
-            Evidence: $"nociception={nociception:0.00}; damage={damageRisk:0.00}; withdrawal={withdrawal:0.00}; guarding={guarding:0.00}; PAG={analgesiaGate:0.00}; circuit={protectionCircuitEvidence:0.00}",
-            LastUpdatedTick: tick,
-            Sequence: sequence));
-    }
-
-    private void UpdateBodyPresenceLocked(long tick)
-    {
-        var somaticCircuitEvidence = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.S1,
-            StructureId.Ppc,
-            StructureId.Insula,
-            StructureId.VestibularNuclei,
-            StructureId.CerebellarVermis);
-        var bodyMap = Clamp01(
-            (BodySchema.BodyOwnership * 0.26f) +
-            (BodySchema.ProprioceptiveConfidence * 0.20f) +
-            (BodySchema.BalanceConfidence * 0.16f) +
-            (AttentionState.Somatosensory * 0.14f) +
-            (somaticCircuitEvidence * 0.14f) +
-            ((1f - BodySchema.MotorConflict) * 0.10f));
-        var interoceptiveAnchor = Clamp01(
-            (InteroceptiveCore.InsulaBodyFeeling * 0.28f) +
-            (InteroceptiveCore.HypothalamicDrive * 0.18f) +
-            (InteroceptiveCore.Confidence * 0.18f) +
-            (AttentionState.Interoceptive * 0.16f) +
-            ((1f - InteroceptiveCore.HomeostaticError) * 0.10f) +
-            (somaticCircuitEvidence * 0.10f));
-        var tactileGrounding = Clamp01(
-            (BodySchema.ProprioceptiveConfidence * 0.24f) +
-            (BodySchema.BalanceConfidence * 0.20f) +
-            (somaticCircuitEvidence * 0.16f) +
-            (PainProtection.SomatosensoryBias * 0.14f) +
-            ((1f - BodySchema.ShelterExposure) * 0.14f) +
-            ((1f - BodySchema.Damage) * 0.12f));
-        var protectiveBoundary = Clamp01(
-            (PainProtection.ProtectionDrive * 0.26f) +
-            (PainProtection.Confidence * 0.22f) +
-            (InteroceptiveCore.AccUrgency * 0.18f) +
-            (BodySchema.BodyOwnership * 0.16f) +
-            ((1f - BodySchema.Damage) * 0.10f) +
-            ((1f - BodySchema.MotorConflict) * 0.08f));
-        var vestibularConfidence = Clamp01(
-            (BodySchema.BalanceConfidence * 0.38f) +
-            (BodySchema.PostureStability * 0.26f) +
-            (Cerebellum.MotorSmoothing * 0.14f) +
-            (Cerebellum.TimingPrediction * 0.10f) +
-            ((1f - Cerebellum.BalanceError) * 0.12f));
-        var presence = Clamp01(
-            (bodyMap * 0.24f) +
-            (interoceptiveAnchor * 0.22f) +
-            (tactileGrounding * 0.18f) +
-            (vestibularConfidence * 0.16f) +
-            (somaticCircuitEvidence * 0.12f) +
-            (protectiveBoundary * 0.08f));
-        var active = somaticCircuitEvidence > 0.10f &&
-            (presence > 0.18f || InteroceptiveCore.Active || PainProtection.Active);
-        var feltSummary = BuildBodyPresenceSummary(bodyMap, interoceptiveAnchor, tactileGrounding, protectiveBoundary, vestibularConfidence);
-        var sequence = string.Equals(BodyPresence.FeltSummary, feltSummary, StringComparison.OrdinalIgnoreCase)
-            ? BodyPresence.Sequence
-            : BodyPresence.Sequence + 1;
-
-        BodyPresence = BodyPresenceRuntime.Normalize(new BodyPresenceRuntime(
-            Active: active,
-            FeltSummary: feltSummary,
-            DominantNeed: InteroceptiveCore.DominantNeed,
-            FeltState: InteroceptiveCore.FeltState,
-            BodyMap: bodyMap,
-            InteroceptiveAnchor: interoceptiveAnchor,
-            TactileGrounding: tactileGrounding,
-            ProtectiveBoundary: protectiveBoundary,
-            VestibularConfidence: vestibularConfidence,
-            Presence: presence,
-            Confidence: Clamp01((presence * 0.42f) + (BodySchema.BodyOwnership * 0.22f) + (InteroceptiveCore.Confidence * 0.18f) + (somaticCircuitEvidence * 0.18f)),
-            Evidence: $"bodyMap={bodyMap:0.00}; interoception={interoceptiveAnchor:0.00}; tactile={tactileGrounding:0.00}; protection={protectiveBoundary:0.00}; vestibular={vestibularConfidence:0.00}",
-            LastUpdatedTick: tick,
-            Sequence: sequence));
-    }
-
-    private static string BuildBodyPresenceSummary(
-        float bodyMap,
-        float interoceptiveAnchor,
-        float tactileGrounding,
-        float protectiveBoundary,
-        float vestibularConfidence)
-    {
-        var anchor = interoceptiveAnchor >= 0.45f ? "strong internal body signal" : "quiet internal body signal";
-        var balance = vestibularConfidence >= 0.58f ? "stable balance" : "uncertain balance";
-        var boundary = protectiveBoundary >= 0.45f ? "protective boundary active" : "protective boundary quiet";
-        return $"Embodied presence: {anchor}, body map {bodyMap:0.00}, tactile grounding {tactileGrounding:0.00}, {balance}, {boundary}.";
-    }
-
-    private static string ResolvePainProtectionState(float nociception, float damageRisk, float withdrawal, float guarding, float immobilization)
-    {
-        if (immobilization > 0.62f && damageRisk > 0.46f)
-        {
-            return "immobilize";
-        }
-
-        if (withdrawal > 0.56f && nociception > 0.34f)
-        {
-            return "withdraw";
-        }
-
-        if (guarding > 0.40f || damageRisk > 0.34f)
-        {
-            return "guard";
-        }
-
-        return nociception > 0.22f ? "monitor_pain" : "quiet";
-    }
-
-    private static string ResolvePainProtectionMotorDirective(string reflexState)
-        => reflexState switch
-        {
-            "immobilize" => "motor_immobilize_protect",
-            "withdraw" => "motor_withdraw_from_pain",
-            "guard" => "motor_guard_body",
-            "monitor_pain" => "motor_slow_protect",
-            _ => "motor_idle"
-        };
-
-    private string InferCarriedItemStateLocked()
-        => "none";
 
 
 
@@ -5154,7 +4489,6 @@ internal sealed class SimulationState
                 Health = Math.Clamp(environmentalHealth + ((1f - environmentalHealth) * 0.002f), 0f, 1f),
                 ShelterSafety = environmentalShelterSafety * 0.996f
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
 
             return new SleepTransitionResult(
                 runtime.IsSleeping,
@@ -5194,7 +4528,6 @@ internal sealed class SimulationState
                 MinWakeTicks = minWakeTicks,
                 WakeInertiaTicksRemaining = wakeInertiaTicksRemaining
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
             runtime = SleepMemory;
             return true;
         }
@@ -5218,7 +4551,6 @@ internal sealed class SimulationState
             {
                 SleepPressureEnterThreshold = threshold
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
             runtime = SleepMemory;
             return true;
         }
@@ -5349,7 +4681,6 @@ internal sealed class SimulationState
                 RightMotorDrive: right,
                 MotorAsymmetry: asymmetry,
                 LastInputTick: Tick);
-            UpdateBodySchemaLocked(Tick);
             return BodyState;
         }
     }
@@ -5383,7 +4714,6 @@ internal sealed class SimulationState
             }
 
             SleepMemory = ApplySleepProfile(SleepMemory, PerformanceProfileName);
-            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
         }
     }
 
@@ -5431,15 +4761,7 @@ internal sealed class SimulationState
             EnvironmentalState = EnvironmentalStateRuntime.Default;
             OutcomeState = OutcomeStateRuntime.Default;
             BodyState = BodyStateRuntime.Default;
-            BodySchema = BodySchemaRuntime.Default;
-            InteroceptiveCore = InteroceptiveCoreRuntime.Default;
-            PainProtection = PainProtectionRuntime.Default;
-            BodyPresence = BodyPresenceRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
-            AttentionState = BiologicalAttentionRuntime.Default;
-            LimbicState = LimbicRuntimeState.Default;
-            EmotionState = EmotionRuntimeState.Default;
-            Cerebellum = CerebellumRuntime.Default;
             Curriculum = CurriculumRuntime.Default;
             TransportStats = TransportRuntimeStats.Empty;
             ServiceTelemetry.Clear();
@@ -5861,14 +5183,6 @@ internal sealed class SimulationState
     }
 
 
-    private static bool IsCerebellarAuditStructure(StructureId structure)
-        => structure is StructureId.CerebellarGranule
-            or StructureId.CerebellarVermis
-            or StructureId.CerebellarLobules
-            or StructureId.PurkinjeCellLayer
-            or StructureId.DeepCerebellarNuclei
-            or StructureId.InferiorOlive;
-
     private string InferActiveSensorySourceLocked()
     {
         var windowStart = Math.Max(0, Tick - 250);
@@ -5929,17 +5243,44 @@ internal sealed class SimulationState
     private IReadOnlyList<FunctionalCircuitSupportEntry> BuildFunctionalCircuitSupportSnapshotLocked()
     {
         var tick = Tick;
-        var bodyFresh = BodyState.LastInputTick >= 0 && tick - BodyState.LastInputTick <= 1200;
-        var cerebellarMotion = Clamp01(Math.Abs(BodyState.ForwardVelocity) / 3f);
-        var cerebellarTurn = Clamp01(Math.Abs(BodyState.TurnRateDeg) / 300f);
-        var cerebellarSupport = ResolveCerebellarCircuitEvidenceLocked(
+        var bodySchemaSupport = GetRecentStructureSpikeSupportLocked(
             tick,
-            Cerebellum.RecentInputSpikes,
-            Cerebellum.RecentOutputSpikes,
-            bodyFresh,
-            cerebellarMotion,
-            cerebellarTurn,
-            Clamp01(BodyState.ContactLevel));
+            StructureId.S1,
+            StructureId.Ppc,
+            StructureId.Insula,
+            StructureId.VestibularNuclei,
+            StructureId.CerebellarVermis);
+        var interoceptiveSupport = GetRecentStructureSpikeSupportLocked(
+            tick,
+            StructureId.NucleusTractusSolitarius,
+            StructureId.Hypothalamus,
+            StructureId.Insula,
+            StructureId.Acc,
+            StructureId.Amygdala);
+        var affectSupport = GetRecentStructureSpikeSupportLocked(
+            tick,
+            StructureId.Amygdala,
+            StructureId.Insula,
+            StructureId.Acc,
+            StructureId.Hypothalamus,
+            StructureId.OrbitofrontalCortex,
+            StructureId.NucleusAccumbens,
+            StructureId.Vta,
+            StructureId.Habenula,
+            StructureId.LocusCoeruleus,
+            StructureId.RapheNuclei);
+        var cerebellarSupport = GetRecentStructureSpikeSupportLocked(
+            tick,
+            StructureId.CerebellarGranule,
+            StructureId.CerebellarVermis,
+            StructureId.CerebellarLobules,
+            StructureId.PurkinjeCellLayer,
+            StructureId.DeepCerebellarNuclei,
+            StructureId.InferiorOlive,
+            StructureId.VestibularNuclei,
+            StructureId.MotorThalamus,
+            StructureId.PremotorCortex,
+            StructureId.M1);
 
         return
         [
@@ -5979,8 +5320,8 @@ internal sealed class SimulationState
             BuildFunctionalCircuitSupportEntry(
                 "body_schema",
                 "Body schema",
-                BodySchema.LastUpdatedTick > 0 && tick - BodySchema.LastUpdatedTick <= 1600,
-                GetRecentStructureSpikeSupportLocked(tick, StructureId.S1, StructureId.Ppc, StructureId.Insula, StructureId.VestibularNuclei, StructureId.CerebellarVermis),
+                bodySchemaSupport > 0f,
+                bodySchemaSupport,
                 "S1/PPC/insula/vestibular/cerebellar body ownership loop",
                 StructureId.S1,
                 StructureId.Ppc,
@@ -5995,8 +5336,8 @@ internal sealed class SimulationState
             BuildFunctionalCircuitSupportEntry(
                 "interoception",
                 "Interoception and need state",
-                InteroceptiveCore.Active,
-                GetRecentStructureSpikeSupportLocked(tick, StructureId.NucleusTractusSolitarius, StructureId.Hypothalamus, StructureId.Insula, StructureId.Acc, StructureId.Amygdala),
+                interoceptiveSupport > 0f,
+                interoceptiveSupport,
                 "NTS/hypothalamus/insula/ACC/amygdala homeostatic loop",
                 StructureId.NucleusTractusSolitarius,
                 StructureId.Hypothalamus,
@@ -6011,8 +5352,8 @@ internal sealed class SimulationState
             BuildFunctionalCircuitSupportEntry(
                 "emotion",
                 "Emotion and affect",
-                EmotionState.LastUpdatedTick > 0 && tick - EmotionState.LastUpdatedTick <= 1600,
-                ResolveEmotionCircuitEvidenceLocked(tick),
+                NeuronalAffectValuation.Active,
+                Math.Max(affectSupport, Clamp01((float)NeuronalAffectValuation.Confidence)),
                 "amygdala/insula/ACC/hypothalamus/OFC neuromodulatory affect loop",
                 StructureId.Amygdala,
                 StructureId.Insula,
@@ -6049,7 +5390,7 @@ internal sealed class SimulationState
             BuildFunctionalCircuitSupportEntry(
                 "cerebellar_prediction",
                 "Cerebellar timing and correction",
-                Cerebellum.LastUpdatedTick > 0 && tick - Cerebellum.LastUpdatedTick <= 1600,
+                cerebellarSupport > 0f,
                 cerebellarSupport,
                 "granule/Purkinje/deep nuclei/inferior olive loop with vestibular and motor cortex",
                 StructureId.CerebellarGranule,
@@ -6518,16 +5859,6 @@ internal sealed class SimulationState
             return $"received input spikes in the last 1200 ticks; last input tick {lastInputTick}";
         }
 
-        if (IsCerebellarAuditStructure(structure) && Cerebellum.LastUpdatedTick > 0)
-        {
-            return $"cerebellar runtime updated at tick {Cerebellum.LastUpdatedTick}";
-        }
-
-        if (structure is StructureId.S1 or StructureId.VestibularNuclei && BodySchema.LastUpdatedTick > 0)
-        {
-            return $"body schema updated at tick {BodySchema.LastUpdatedTick}";
-        }
-
         return "no recent activation evidence";
     }
 
@@ -6599,7 +5930,7 @@ internal sealed class SimulationState
         }
 
         if ((structure is StructureId.Thalamus or StructureId.MotorThalamus or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.IntralaminarThalamus) &&
-            AttentionState.TrnInhibition > 0.72f)
+            NeuronalAttentionWorkspace.DistractorSuppression > 0.72)
         {
             return true;
         }
@@ -6758,7 +6089,6 @@ internal sealed class SimulationState
         },
         SimulationClockMs,
         TickDurationMs,
-        GlobalNeuromodState,
         AutoProfile = autoProfile ?? AutoProfileSettings.Default,
         InputGates,
           BodyState = new
@@ -6771,11 +6101,6 @@ internal sealed class SimulationState
               BodyState.MotorAsymmetry,
               BodyState.LastInputTick
           },
-          BodySchema,
-          InteroceptiveCore,
-          PainProtection,
-          BodyPresence,
-          Cerebellum,
           EnvironmentalState = new
           {
               EnvironmentalState.Darkness,
@@ -6848,41 +6173,6 @@ internal sealed class SimulationState
             CanAcceptAttentionOverrides = false,
             LegacyWinnerEnabled = false
         },
-        LimbicState = new
-        {
-            LimbicState.Stage,
-            LimbicState.Salience,
-            LimbicState.Threat,
-            LimbicState.InteroceptiveDrive,
-            LimbicState.AversiveDrive,
-            LimbicState.ExpectedReward,
-            LimbicState.ObservedReward,
-            LimbicState.HippocampalContext,
-            LimbicState.Valence,
-            LimbicState.RewardPredictionError,
-            LimbicState.DopamineTarget,
-            LimbicState.SerotoninTarget,
-            LimbicState.AcetylcholineTarget,
-            LimbicState.NorepinephrineTarget,
-            LimbicState.LastUpdatedTick
-        },
-        EmotionState = new
-        {
-            EmotionState.DominantEmotion,
-            EmotionState.Anxiety,
-            EmotionState.Confidence,
-            EmotionState.Safety,
-            EmotionState.Frustration,
-            EmotionState.Curiosity,
-            EmotionState.Comfort,
-            EmotionState.Urgency,
-            EmotionState.Arousal,
-            EmotionState.Valence,
-            EmotionState.Stability,
-            EmotionState.LastUpdatedTick,
-            EmotionState.LastSwitchTick,
-            EmotionState.HoldTicksRemaining
-        },
         NeuronalMotor,
         NeuronalLanguageGrounding,
         NeuronalPerception,
@@ -6895,7 +6185,6 @@ internal sealed class SimulationState
         ConsolidationTelemetry = BuildConsolidationTelemetrySnapshot(),
         CircuitAudit = GetCachedCircuitAuditSnapshot(),
         ProsodyTelemetry = GetProsodyTelemetrySnapshot(),
-        RewardPredictionError,
         LastSnapshotTick,
         LastSnapshotSimulationMs,
         LastSnapshotWallClockUnixMs,
@@ -7273,40 +6562,6 @@ internal sealed class SimulationState
         };
     }
 
-    public EmotionRuntimeState GetEmotionRuntime()
-    {
-        lock (_gate)
-        {
-            return EmotionState;
-        }
-    }
-
-    public object GetEmotionSnapshot()
-    {
-        lock (_gate)
-        {
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                EmotionState.DominantEmotion,
-                EmotionState.Anxiety,
-                EmotionState.Confidence,
-                EmotionState.Safety,
-                EmotionState.Frustration,
-                EmotionState.Curiosity,
-                EmotionState.Comfort,
-                EmotionState.Urgency,
-                EmotionState.Arousal,
-                EmotionState.Valence,
-                EmotionState.Stability,
-                EmotionState.LastUpdatedTick,
-                EmotionState.LastSwitchTick,
-                EmotionState.HoldTicksRemaining
-            };
-        }
-    }
-
     public object GetBiologicalConnectomeReport()
     {
         lock (_gate)
@@ -7631,18 +6886,9 @@ internal sealed class SimulationState
                 Tick = Tick,
                 SimulationClockMs = SimulationClockMs,
                 TickDurationMs = TickDurationMs,
-                GlobalNeuromodState = NeuromodState.Clamp(GlobalNeuromodState),
-                RewardPredictionError = RewardPredictionError,
                 PerformanceProfileName = string.IsNullOrWhiteSpace(PerformanceProfileName) ? "normal" : PerformanceProfileName,
                 InputGates = InputGates,
                 SleepMemory = SleepMemory,
-                BodySchema = BodySchema,
-                InteroceptiveCore = InteroceptiveCore,
-                PainProtection = PainProtection,
-                BodyPresence = BodyPresence,
-                LimbicState = LimbicState,
-                EmotionState = EmotionState,
-                Cerebellum = Cerebellum,
                 Curriculum = Curriculum,
                 LastSnapshotTick = LastSnapshotTick,
                 LastSnapshotSimulationMs = LastSnapshotSimulationMs,
@@ -7742,27 +6988,10 @@ internal sealed class SimulationState
 
             InputGates = InputGateRuntime.Normalize(document.InputGates ?? InputGateRuntime.Default);
             var importedSleepMemory = document.SleepMemory ?? SleepMemoryRuntime.Default;
-            var importedBodySchema = document.BodySchema ?? BodySchemaRuntime.Default;
-            var importedInteroceptiveCore = document.InteroceptiveCore ?? InteroceptiveCoreRuntime.Default;
-            var importedPainProtection = document.PainProtection ?? PainProtectionRuntime.Default;
-            var importedBodyPresence = document.BodyPresence ?? BodyPresenceRuntime.Default;
-            var importedLimbicState = document.LimbicState ?? LimbicRuntimeState.Default;
-            var importedEmotionState = document.EmotionState ?? EmotionRuntimeState.Default;
-            var importedCerebellum = document.Cerebellum ?? CerebellumRuntime.Default;
             var importedCurriculum = document.Curriculum ?? CurriculumRuntime.Default;
-            var importedNeuromod = document.GlobalNeuromodState ?? new NeuromodState();
 
             SleepMemory = ApplySleepProfile(importedSleepMemory, profileName);
-            BodySchema = BodySchemaRuntime.Normalize(importedBodySchema);
-            InteroceptiveCore = InteroceptiveCoreRuntime.Normalize(importedInteroceptiveCore);
-            PainProtection = PainProtectionRuntime.Normalize(importedPainProtection);
-            BodyPresence = BodyPresenceRuntime.Normalize(importedBodyPresence);
-            LimbicState = importedLimbicState;
-            EmotionState = EmotionRuntimeState.Normalize(importedEmotionState);
-            Cerebellum = CerebellumRuntime.Normalize(importedCerebellum);
             RestoreCurriculumFromSnapshot(importedCurriculum);
-            GlobalNeuromodState = ApplySleepStateNeuromod(NeuromodState.Clamp(importedNeuromod), SleepMemory);
-            RewardPredictionError = document.RewardPredictionError;
 
             LastSnapshotTick = Math.Max(0, document.LastSnapshotTick);
             LastSnapshotSimulationMs = Math.Max(0, document.LastSnapshotSimulationMs);
@@ -8036,32 +7265,6 @@ internal sealed class SimulationState
         return "misc";
     }
 
-    private static NeuromodState ApplySleepStateNeuromod(NeuromodState baseline, SleepMemoryRuntime sleepMemory)
-    {
-        if (!sleepMemory.IsSleeping)
-        {
-            return baseline;
-        }
-
-        var stage = sleepMemory.SleepTicks < (sleepMemory.MinSleepTicks / 2)
-            ? SleepReplayStage.EarlyHippocampal
-            : SleepReplayStage.LateCorticalConsolidation;
-
-        var dopamineTarget = stage == SleepReplayStage.EarlyHippocampal ? 0.20f : 0.14f;
-        var serotoninTarget = stage == SleepReplayStage.EarlyHippocampal ? 0.82f : 0.88f;
-        var acetylcholineTarget = stage == SleepReplayStage.EarlyHippocampal ? 0.12f : 0.08f;
-        var norepinephrineTarget = stage == SleepReplayStage.EarlyHippocampal ? 0.10f : 0.06f;
-        var blend = stage == SleepReplayStage.EarlyHippocampal ? 0.82f : 0.92f;
-
-        return NeuromodState.Clamp(new NeuromodState
-        {
-            DopamineLevel = Lerp(baseline.DopamineLevel, dopamineTarget, blend),
-            SerotoninLevel = Lerp(baseline.SerotoninLevel, serotoninTarget, blend),
-            AcetylcholineLevel = Lerp(baseline.AcetylcholineLevel, acetylcholineTarget, blend),
-            NorepinephrineLevel = Lerp(baseline.NorepinephrineLevel, norepinephrineTarget, blend)
-        });
-    }
-
     private static float MoveTowards(float value, float target, float maxDelta)
     {
         var delta = target - value;
@@ -8125,8 +7328,6 @@ internal sealed class SimulationState
         };
     }
 
-
-    private static float Lerp(float a, float b, float t) => a + ((b - a) * t);
 
     private void AppendLog(Queue<RuntimeLogEntry> queue, string message)
     {
@@ -14173,8 +13374,7 @@ internal sealed class TickCoordinator(
                 mode,
                 tokens,
                 intensity,
-                burstPerToken,
-                tickSignal.GlobalNeuromodState);
+                burstPerToken);
             if (spikes.Count == 0)
             {
                 continue;
@@ -14522,11 +13722,10 @@ internal sealed class TickCoordinator(
         string mode,
         IReadOnlyList<string> tokens,
         float intensity,
-        int burstPerToken,
-        NeuromodState neuromod)
+        int burstPerToken)
     {
         var spikes = new List<SpikeMessage>(tokens.Count * burstPerToken);
-        var modeGain = ComputeLanguageModeNeuromodGain(mode, neuromod);
+        const float modeGain = 1f;
         for (var tokenIndex = 0; tokenIndex < tokens.Count; tokenIndex++)
         {
             var token = tokens[tokenIndex];
@@ -14553,27 +13752,12 @@ internal sealed class TickCoordinator(
                     ReuptakeRate = reuptake,
                     SpikeType = spikeType,
                     IsFeedback = false,
-                    ModulationContext = NeuromodState.Clamp(neuromod)
+                    ModulationContext = null
                 });
             }
         }
 
         return spikes;
-    }
-
-    private static float ComputeLanguageModeNeuromodGain(string mode, NeuromodState neuromod)
-    {
-        var m = string.IsNullOrWhiteSpace(mode) ? "repetition" : mode.Trim().ToLowerInvariant();
-        var gain = m switch
-        {
-            "comprehension" => 0.85f + (0.35f * neuromod.AcetylcholineLevel) + (0.15f * neuromod.NorepinephrineLevel),
-            "production" => 0.88f + (0.28f * neuromod.DopamineLevel) + (0.14f * neuromod.NorepinephrineLevel),
-            "prosody" => 0.86f + (0.24f * neuromod.SerotoninLevel) + (0.18f * neuromod.NorepinephrineLevel) + (0.12f * neuromod.DopamineLevel),
-            "emergent" => 0.84f + (0.26f * neuromod.DopamineLevel) + (0.20f * neuromod.AcetylcholineLevel) + (0.16f * neuromod.NorepinephrineLevel),
-            "english" => 0.92f + (0.32f * neuromod.AcetylcholineLevel) + (0.12f * neuromod.NorepinephrineLevel) + (0.08f * neuromod.DopamineLevel),
-            _ => 0.90f + (0.20f * neuromod.AcetylcholineLevel) + (0.12f * neuromod.DopamineLevel)
-        };
-        return Math.Clamp(gain, 0.55f, 1.75f);
     }
 
     private static SpikeTypeEnum ResolveLanguageSpikeType(string mode, string token, int burstIndex)
@@ -15048,442 +14232,8 @@ internal sealed class TickCoordinator(
             ReuptakeRate = GetReuptakeRateForNt(route.Neurotransmitter),
             SpikeType = spikeType,
             IsFeedback = isFeedback,
-            ModulationContext = tickSignal.GlobalNeuromodState
+            ModulationContext = null
         };
-    }
-
-    private static AttentionVector ComputeTrnDrivenAttentionBias(
-        IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        AttentionVector previous)
-    {
-        if (snapshots.Count == 0)
-        {
-            return previous;
-        }
-
-        var firingByStructure = snapshots
-            .GroupBy(s => s.StructureId)
-            .ToDictionary(g => g.Key, g => g.Average(x => x.MeanFiringRateHz));
-
-        static float GetRate(IReadOnlyDictionary<StructureId, float> rates, StructureId id)
-            => rates.TryGetValue(id, out var value) ? Math.Clamp(value, 0f, 120f) : 0f;
-
-        static float GetPathwayVolume(
-            IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> pathways,
-            StructureId source,
-            params StructureId[] targets)
-        {
-            var total = 0;
-            foreach (var entry in pathways)
-            {
-                if (entry.Key.Source != source)
-                {
-                    continue;
-                }
-
-                for (var i = 0; i < targets.Length; i++)
-                {
-                    if (entry.Key.Target == targets[i])
-                    {
-                        total += entry.Value;
-                        break;
-                    }
-                }
-            }
-
-            return total;
-        }
-
-        var visualDrive =
-            (0.55f * (GetRate(firingByStructure, StructureId.V1) + GetRate(firingByStructure, StructureId.V2) + GetRate(firingByStructure, StructureId.V4) + GetRate(firingByStructure, StructureId.Mt))) +
-            (0.08f * GetPathwayVolume(activePathways, StructureId.Thalamus, StructureId.V1, StructureId.V2, StructureId.V4, StructureId.Mt)) +
-            (0.05f * GetPathwayVolume(activePathways, StructureId.Pulvinar, StructureId.V2, StructureId.V4, StructureId.Mt));
-
-        var auditoryDrive =
-            (0.62f * (GetRate(firingByStructure, StructureId.A1) + GetRate(firingByStructure, StructureId.WernickePstgPsts))) +
-            (0.09f * GetPathwayVolume(activePathways, StructureId.Thalamus, StructureId.A1)) +
-            (0.05f * GetPathwayVolume(activePathways, StructureId.MediodorsalThalamus, StructureId.WernickePstgPsts, StructureId.BrocaBa44Ba45));
-
-        var somatosensoryDrive =
-            (0.58f * (GetRate(firingByStructure, StructureId.S1) + GetRate(firingByStructure, StructureId.Ppc))) +
-            (0.09f * GetPathwayVolume(activePathways, StructureId.Thalamus, StructureId.S1, StructureId.Ppc)) +
-            (0.04f * GetPathwayVolume(activePathways, StructureId.MotorThalamus, StructureId.M1, StructureId.Sma));
-
-        var interoceptiveDrive =
-            (0.52f * (GetRate(firingByStructure, StructureId.Insula) + GetRate(firingByStructure, StructureId.Amygdala) + GetRate(firingByStructure, StructureId.Acc) + GetRate(firingByStructure, StructureId.Hypothalamus))) +
-            (0.07f * GetPathwayVolume(activePathways, StructureId.MediodorsalThalamus, StructureId.Insula, StructureId.Acc, StructureId.Pfc)) +
-            (0.04f * GetPathwayVolume(activePathways, StructureId.Thalamus, StructureId.Insula, StructureId.Acc));
-
-        var drives = new[] { visualDrive, auditoryDrive, somatosensoryDrive, interoceptiveDrive };
-        var trnActivity = GetRate(firingByStructure, StructureId.Trn);
-        var trnGate = Math.Clamp(trnActivity / 35f, 0f, 1f);
-        var dominantIndex = 0;
-        var dominantValue = drives[0];
-        for (var i = 1; i < drives.Length; i++)
-        {
-            if (drives[i] > dominantValue)
-            {
-                dominantValue = drives[i];
-                dominantIndex = i;
-            }
-        }
-
-        for (var i = 0; i < drives.Length; i++)
-        {
-            var gateScale = i == dominantIndex
-                ? (1f + (0.45f * trnGate))
-                : (1f - (0.24f * trnGate));
-            drives[i] = Math.Max(0.05f, drives[i] * gateScale);
-        }
-
-        var sum = drives[0] + drives[1] + drives[2] + drives[3];
-        if (sum <= 0.0001f)
-        {
-            return previous;
-        }
-
-        var targetVisual = drives[0] / sum;
-        var targetAuditory = drives[1] / sum;
-        var targetSomatosensory = drives[2] / sum;
-        var targetInteroceptive = drives[3] / sum;
-
-        const float alpha = 0.22f;
-        var blendedVisual = ((1f - alpha) * previous.Visual) + (alpha * targetVisual);
-        var blendedAuditory = ((1f - alpha) * previous.Auditory) + (alpha * targetAuditory);
-        var blendedSomatosensory = ((1f - alpha) * previous.Somatosensory) + (alpha * targetSomatosensory);
-        var blendedInteroceptive = ((1f - alpha) * previous.Interoceptive) + (alpha * targetInteroceptive);
-
-        var blendedSum = blendedVisual + blendedAuditory + blendedSomatosensory + blendedInteroceptive;
-        if (blendedSum <= 0.0001f)
-        {
-            return previous;
-        }
-
-        return new AttentionVector(
-            blendedVisual / blendedSum,
-            blendedAuditory / blendedSum,
-            blendedSomatosensory / blendedSum,
-            blendedInteroceptive / blendedSum);
-    }
-    private static LimbicRuntimeState ComputeLimbicRuntimeState(
-        TickSignal tickSignal,
-        IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        LimbicRuntimeState previous,
-        SleepMemoryRuntime sleepRuntime,
-        EnvironmentalStateRuntime environmental,
-        OutcomeStateRuntime outcome)
-    {
-        static float Clamp01(float value) => Math.Clamp(value, 0f, 1f);
-        static float ClampSigned(float value) => Math.Clamp(value, -1f, 1f);
-        static float HzToUnit(float hz, float scale = 65f) => Clamp01(hz / Math.Max(1f, scale));
-
-        var firingByStructure = snapshots
-            .GroupBy(s => s.StructureId)
-            .ToDictionary(g => g.Key, g => Math.Max(0f, g.Average(x => x.MeanFiringRateHz)));
-
-        float GetRate(StructureId id) => firingByStructure.TryGetValue(id, out var value) ? value : 0f;
-
-        var maxPathVolume = activePathways.Count == 0 ? 1 : Math.Max(1, activePathways.Values.Max());
-        float GetPathwayDrive(StructureId source, NTEnum? nt, params StructureId[] targets)
-        {
-            if (targets.Length == 0)
-            {
-                return 0f;
-            }
-
-            var targetSet = new HashSet<StructureId>(targets);
-            var total = 0;
-            foreach (var pathway in activePathways)
-            {
-                if (pathway.Key.Source != source)
-                {
-                    continue;
-                }
-
-                if (nt.HasValue && pathway.Key.Nt != nt.Value)
-                {
-                    continue;
-                }
-
-                if (!targetSet.Contains(pathway.Key.Target))
-                {
-                    continue;
-                }
-
-                total += pathway.Value;
-            }
-
-            var denom = (float)(maxPathVolume * Math.Max(1, targets.Length));
-            return Clamp01(total / Math.Max(1f, denom));
-        }
-
-        var amygdala = HzToUnit(GetRate(StructureId.Amygdala));
-        var acc = HzToUnit(GetRate(StructureId.Acc));
-        var insula = HzToUnit(GetRate(StructureId.Insula));
-        var hypothalamus = HzToUnit(GetRate(StructureId.Hypothalamus));
-        var ofc = HzToUnit(GetRate(StructureId.OrbitofrontalCortex));
-        var pfc = HzToUnit(GetRate(StructureId.Pfc));
-        var na = HzToUnit(GetRate(StructureId.NucleusAccumbens));
-        var vp = HzToUnit(GetRate(StructureId.VentralPallidum));
-        var vta = HzToUnit(GetRate(StructureId.Vta));
-        var snc = HzToUnit(GetRate(StructureId.Snc));
-        var habenula = HzToUnit(GetRate(StructureId.Habenula));
-        var raphe = HzToUnit(GetRate(StructureId.RapheNuclei));
-        var lc = HzToUnit(GetRate(StructureId.LocusCoeruleus));
-        var basalForebrain = HzToUnit(GetRate(StructureId.BasalForebrain));
-        var ca1 = HzToUnit(GetRate(StructureId.CA1));
-        var subiculum = HzToUnit(GetRate(StructureId.Subiculum));
-        var ec = HzToUnit(GetRate(StructureId.EntorhinalCortex));
-
-        var amygdalaSalienceFlow = GetPathwayDrive(
-            StructureId.Amygdala,
-            NTEnum.GLUTAMATE,
-            StructureId.Acc,
-            StructureId.Insula,
-            StructureId.Hypothalamus);
-        var habenulaAversiveFlow = GetPathwayDrive(
-            StructureId.Habenula,
-            NTEnum.GABA,
-            StructureId.Vta,
-            StructureId.Snc);
-        var rewardFlow = GetPathwayDrive(
-            StructureId.Vta,
-            NTEnum.DOPAMINE,
-            StructureId.NucleusAccumbens,
-            StructureId.Pfc,
-            StructureId.OrbitofrontalCortex);
-        var accErrorFlow = GetPathwayDrive(
-            StructureId.Acc,
-            null,
-            StructureId.Pfc,
-            StructureId.OrbitofrontalCortex,
-            StructureId.Hypothalamus);
-        var environmentalFresh = environmental.LastInputTick >= 0 && tickSignal.Tick - environmental.LastInputTick <= 240;
-        var environmentalDarkness = environmentalFresh ? Clamp01(environmental.Darkness) : 0f;
-        var environmentalShelterNeed = environmentalFresh ? Clamp01(environmental.ShelterNeed) : 0f;
-        var environmentalAnxiety = environmentalFresh ? Clamp01(environmental.Anxiety) : 0f;
-        var environmentalHunger = environmentalFresh ? Clamp01(environmental.Hunger) : 0f;
-        var environmentalPredatorThreat = environmentalFresh ? Clamp01(environmental.PredatorThreat) : 0f;
-        var environmentalInShelter = environmentalFresh ? Clamp01(environmental.InShelter) : 0f;
-        var environmentalHealth = environmentalFresh ? Clamp01(environmental.Health) : 1f;
-        var environmentalShelterSafety = environmentalFresh ? Clamp01(environmental.ShelterSafety) : 0f;
-        var environmentalSafety = Clamp01(Math.Max(environmentalInShelter, environmentalShelterSafety));
-        var environmentalExposure = Clamp01(1f - environmentalSafety);
-        var environmentalHealthDeficit = Clamp01(1f - environmentalHealth);
-        var worldThreatSignal = Clamp01((0.72f * environmentalPredatorThreat * environmentalExposure) + (0.28f * environmentalAnxiety));
-        var worldShelterDrive = Clamp01((0.55f * environmentalShelterNeed) + (0.30f * environmentalDarkness * environmentalExposure) + (0.15f * worldThreatSignal));
-        var outcomeFresh = outcome.LastInputTick >= 0 && tickSignal.Tick - outcome.LastInputTick <= 240;
-        var satietyRelief = outcomeFresh ? Clamp01(outcome.SatietyRelief) : 0f;
-        var safetyRelief = outcomeFresh ? Clamp01(outcome.SafetyRelief) : 0f;
-        var painOutcome = outcomeFresh ? Clamp01(outcome.PainLevel) : 0f;
-        var damageOutcome = outcomeFresh ? Clamp01(outcome.DamageLevel) : 0f;
-        var shelterComfort = outcomeFresh ? Clamp01(outcome.ShelterComfort) : 0f;
-        var progressOutcome = outcomeFresh ? Clamp01(outcome.Progress) : 0f;
-        var effortCost = outcomeFresh ? Clamp01(outcome.EffortCost) : 0f;
-        var noveltyOutcome = outcomeFresh ? Clamp01(outcome.Novelty) : 0f;
-        var socialApproval = outcomeFresh ? Clamp01(outcome.SocialApproval) : 0f;
-        var appetitiveOutcome = outcomeFresh ? Clamp01(outcome.AppetitiveRelief) : 0f;
-        var aversiveOutcome = outcomeFresh ? Clamp01(outcome.AversiveOutcome) : 0f;
-
-        var salience = Clamp01(
-            (0.30f * amygdala) +
-            (0.22f * acc) +
-            (0.18f * insula) +
-            (0.14f * lc) +
-            (0.10f * basalForebrain) +
-            (0.06f * amygdalaSalienceFlow) +
-            (0.10f * worldThreatSignal) +
-            (0.05f * environmentalHunger));
-
-        var rawThreat = Clamp01(
-            (0.43f * amygdala) +
-            (0.21f * hypothalamus) +
-            (0.14f * insula) +
-            (0.11f * habenula) +
-            (0.07f * accErrorFlow) +
-            (0.04f * amygdalaSalienceFlow) +
-            (0.12f * environmentalAnxiety) +
-            (0.05f * environmentalDarkness * environmentalExposure) +
-            (0.28f * worldThreatSignal) +
-            (0.08f * environmentalHealthDeficit) +
-            (0.12f * aversiveOutcome));
-
-        var interoceptiveDrive = Clamp01(
-            (0.44f * insula) +
-            (0.36f * hypothalamus) +
-            (0.14f * acc) +
-            (0.06f * raphe) +
-            (0.08f * environmentalShelterNeed) +
-            (0.28f * environmentalHunger) +
-            (0.16f * environmentalHealthDeficit) +
-            (0.10f * worldShelterDrive) +
-            (0.12f * painOutcome) +
-            (0.08f * damageOutcome));
-
-        var hippocampalContext = Clamp01((ca1 + subiculum + ec) / 3f);
-
-        var expectedReward = Clamp01(
-            (0.40f * ofc) +
-            (0.22f * pfc) +
-            (0.21f * na) +
-            (0.10f * vp) +
-            (0.07f * hippocampalContext) +
-            (0.08f * environmentalSafety) +
-            (0.04f * (1f - environmentalHunger)) +
-            (0.08f * progressOutcome));
-
-        var observedReward = Clamp01(
-            (0.38f * vta) +
-            (0.32f * snc) +
-            (0.18f * na) +
-            (0.12f * rewardFlow) +
-            (0.10f * environmentalSafety) +
-            (0.04f * (1f - environmentalHunger)) +
-            (0.24f * satietyRelief) +
-            (0.22f * safetyRelief) +
-            (0.15f * shelterComfort) +
-            (0.13f * progressOutcome) +
-            (0.07f * noveltyOutcome) +
-            (0.05f * socialApproval));
-
-        var rawAversiveDrive = Clamp01(
-            (0.44f * habenula) +
-            (0.27f * amygdala) +
-            (0.13f * acc) +
-            (0.16f * habenulaAversiveFlow) +
-            (0.13f * environmentalAnxiety) +
-            (0.05f * environmentalDarkness * environmentalExposure) +
-            (0.22f * worldThreatSignal) +
-            (0.14f * environmentalHunger) +
-            (0.14f * environmentalHealthDeficit) +
-            (0.24f * painOutcome) +
-            (0.20f * damageOutcome) +
-            (0.12f * effortCost) +
-            (0.10f * aversiveOutcome));
-
-        // Fight-or-flight dynamics use asymmetric kinetics:
-        // engage quickly when threat rises, recover gradually to avoid jittery stage flips.
-        var previousThreat = Clamp01(previous.Threat);
-        var previousAversive = Clamp01(previous.AversiveDrive);
-        var threatRiseAlpha = sleepRuntime.IsSleeping ? 0.05f : 0.24f;
-        var threatFallAlpha = sleepRuntime.IsSleeping ? 0.02f : 0.08f;
-        var aversiveRiseAlpha = sleepRuntime.IsSleeping ? 0.05f : 0.20f;
-        var aversiveFallAlpha = sleepRuntime.IsSleeping ? 0.02f : 0.07f;
-        var threatRecoveryGate = Clamp01(0.30f + (0.50f * (1f - rawAversiveDrive)) + (0.20f * Math.Max(0f, previous.Valence)));
-        var aversiveRecoveryGate = Clamp01(0.28f + (0.44f * (1f - rawThreat)) + (0.28f * Math.Max(0f, previous.Valence)));
-        var threat = rawThreat >= previousThreat
-            ? previousThreat + (threatRiseAlpha * (rawThreat - previousThreat))
-            : previousThreat + ((threatFallAlpha * threatRecoveryGate) * (rawThreat - previousThreat));
-        var aversiveDrive = rawAversiveDrive >= previousAversive
-            ? previousAversive + (aversiveRiseAlpha * (rawAversiveDrive - previousAversive))
-            : previousAversive + ((aversiveFallAlpha * aversiveRecoveryGate) * (rawAversiveDrive - previousAversive));
-        threat = Clamp01(threat);
-        aversiveDrive = Clamp01(aversiveDrive);
-
-        var sleepPressureNorm = Clamp01(sleepRuntime.SleepPressure / Math.Max(0.0001f, sleepRuntime.MaxSleepPressure));
-        var atpNorm = Clamp01(sleepRuntime.AtpBudget / Math.Max(0.0001f, sleepRuntime.MaxAtpBudget));
-        var atpDeficit = Clamp01(1f - atpNorm);
-        var tiredDriveRaw = Clamp01(
-            (0.48f * sleepPressureNorm) +
-            (0.30f * atpDeficit) +
-            (0.12f * interoceptiveDrive) +
-            (0.06f * (1f - expectedReward)) +
-            (0.04f * aversiveDrive) +
-            (0.14f * environmentalDarkness) +
-            (0.08f * environmentalShelterNeed) +
-            (0.07f * worldShelterDrive));
-        var previousTired = Clamp01(previous.TiredDrive);
-        var tiredRiseAlpha = sleepRuntime.IsSleeping ? 0.04f : 0.13f;
-        var tiredFallAlpha = sleepRuntime.IsSleeping ? 0.02f : 0.08f;
-        var tiredDrive = tiredDriveRaw >= previousTired
-            ? previousTired + (tiredRiseAlpha * (tiredDriveRaw - previousTired))
-            : previousTired + (tiredFallAlpha * (tiredDriveRaw - previousTired));
-        tiredDrive = Clamp01(tiredDrive);
-
-        var valenceRaw = (0.62f * observedReward) + (0.18f * expectedReward) + (0.16f * appetitiveOutcome) - (0.55f * threat) - (0.45f * aversiveDrive) - (0.12f * aversiveOutcome);
-        var valence = ClampSigned(valenceRaw);
-        var rpeRaw = (observedReward - expectedReward) + (0.28f * appetitiveOutcome) - (0.42f * aversiveDrive) - (0.30f * aversiveOutcome) + (0.12f * hippocampalContext);
-        var rewardPredictionError = ClampSigned((0.68f * previous.RewardPredictionError) + (0.32f * rpeRaw));
-
-        // Wake drives phasic neuromodulation; sleep dampens noradrenergic/cholinergic tone.
-        var sleepDamping = sleepRuntime.IsSleeping ? 0.70f : 1.0f;
-        var fightOrFlightDrive = Clamp01(
-            (0.60f * threat) +
-            (0.24f * aversiveDrive) +
-            (0.16f * salience));
-        var highThreatQuadratic = fightOrFlightDrive * fightOrFlightDrive;
-        var dopamineTarget = Clamp01(
-            0.18f +
-            (0.36f * observedReward) +
-            (0.24f * Math.Max(0f, rewardPredictionError)) +
-            (0.10f * expectedReward) -
-            (0.24f * aversiveDrive) -
-            (0.12f * threat) -
-            (0.22f * highThreatQuadratic) -
-            (0.18f * tiredDrive));
-        var serotoninTarget = Clamp01(
-            0.22f +
-            (0.30f * interoceptiveDrive) +
-            (0.18f * (1f - Math.Max(0f, valence))) +
-            (0.14f * aversiveDrive) +
-            (0.14f * raphe) +
-            (0.10f * tiredDrive) +
-            (sleepRuntime.IsSleeping ? 0.08f : 0f));
-        var acetylcholineTarget = Clamp01(
-            (0.10f + (0.40f * salience) + (0.23f * hippocampalContext) + (0.15f * basalForebrain) - (0.12f * tiredDrive)) * sleepDamping);
-        var norepinephrineTarget = Clamp01(
-            (0.10f + (0.48f * threat) + (0.24f * salience) + (0.16f * lc) + (0.14f * highThreatQuadratic) + (0.08f * tiredDrive * (1f - threat))) * sleepDamping);
-
-        var kinetics = sleepRuntime.IsSleeping ? 0.06f : 0.14f;
-        var previousNeuromod = previous.NeuromodState ?? new NeuromodState();
-        var neuromod = NeuromodState.Clamp(new NeuromodState
-        {
-            DopamineLevel = ((1f - kinetics) * previousNeuromod.DopamineLevel) + (kinetics * dopamineTarget),
-            SerotoninLevel = ((1f - kinetics) * previousNeuromod.SerotoninLevel) + (kinetics * serotoninTarget),
-            AcetylcholineLevel = ((1f - kinetics) * previousNeuromod.AcetylcholineLevel) + (kinetics * acetylcholineTarget),
-            NorepinephrineLevel = ((1f - kinetics) * previousNeuromod.NorepinephrineLevel) + (kinetics * norepinephrineTarget)
-        });
-
-        var wasTired = string.Equals(previous.Stage, "tired", StringComparison.OrdinalIgnoreCase);
-        var tiredEnterThreshold = 0.68f;
-        var tiredExitThreshold = 0.54f;
-        var tiredQualified = wasTired
-            ? tiredDrive >= tiredExitThreshold
-            : tiredDrive >= tiredEnterThreshold;
-        var shelterTiredQualified = worldShelterDrive >= 0.58f &&
-            environmentalSafety < 0.40f &&
-            tiredDrive >= 0.50f;
-
-        var stage = sleepRuntime.IsSleeping
-            ? "sleep"
-            : fightOrFlightDrive >= 0.72f
-                ? "fight_or_flight"
-                : tiredQualified || shelterTiredQualified
-                    ? "tired"
-                    : (threat >= 0.38f || salience >= 0.44f)
-                        ? "alert"
-                        : "awake";
-
-        return new LimbicRuntimeState(
-            Stage: stage,
-            Salience: salience,
-            Threat: threat,
-            TiredDrive: tiredDrive,
-            InteroceptiveDrive: interoceptiveDrive,
-            AversiveDrive: aversiveDrive,
-            ExpectedReward: expectedReward,
-            ObservedReward: observedReward,
-            HippocampalContext: hippocampalContext,
-            Valence: valence,
-            RewardPredictionError: rewardPredictionError,
-            DopamineTarget: dopamineTarget,
-            SerotoninTarget: serotoninTarget,
-            AcetylcholineTarget: acetylcholineTarget,
-            NorepinephrineTarget: norepinephrineTarget,
-            NeuromodState: neuromod,
-            LastUpdatedTick: tickSignal.Tick);
     }
 
     private static double GetAttentionWeightForStructure(StructureId structureId, AttentionVector attention)
@@ -16732,316 +15482,6 @@ internal sealed record BodyStateRuntime(
         LastInputTick: long.MinValue);
 }
 
-
-internal sealed record BodySchemaRuntime(
-    float PostureStability,
-    float BalanceConfidence,
-    float MovementEffort,
-    float Fatigue,
-    float Damage,
-    float Hunger,
-    float CarryLoad,
-    string CarriedItemState,
-    float ProprioceptiveConfidence,
-    float MotorConflict,
-    float ShelterExposure,
-    float BodyOwnership,
-    long LastUpdatedTick)
-{
-    public static BodySchemaRuntime Default { get; } = new(
-        PostureStability: 1f,
-        BalanceConfidence: 1f,
-        MovementEffort: 0f,
-        Fatigue: 0f,
-        Damage: 0f,
-        Hunger: 0f,
-        CarryLoad: 0f,
-        CarriedItemState: "none",
-        ProprioceptiveConfidence: 0f,
-        MotorConflict: 0f,
-        ShelterExposure: 0f,
-        BodyOwnership: 0f,
-        LastUpdatedTick: 0);
-
-    public static BodySchemaRuntime Normalize(BodySchemaRuntime value)
-        => value with
-        {
-            PostureStability = Math.Clamp(value.PostureStability, 0f, 1f),
-            BalanceConfidence = Math.Clamp(value.BalanceConfidence, 0f, 1f),
-            MovementEffort = Math.Clamp(value.MovementEffort, 0f, 1f),
-            Fatigue = Math.Clamp(value.Fatigue, 0f, 1f),
-            Damage = Math.Clamp(value.Damage, 0f, 1f),
-            Hunger = Math.Clamp(value.Hunger, 0f, 1f),
-            CarryLoad = Math.Clamp(value.CarryLoad, 0f, 1f),
-            CarriedItemState = string.IsNullOrWhiteSpace(value.CarriedItemState) ? "none" : value.CarriedItemState.Trim(),
-            ProprioceptiveConfidence = Math.Clamp(value.ProprioceptiveConfidence, 0f, 1f),
-            MotorConflict = Math.Clamp(value.MotorConflict, 0f, 1f),
-            ShelterExposure = Math.Clamp(value.ShelterExposure, 0f, 1f),
-            BodyOwnership = Math.Clamp(value.BodyOwnership, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick)
-        };
-}
-
-internal sealed record InteroceptiveCoreRuntime(
-    bool Active,
-    string DominantNeed,
-    string FeltState,
-    float NucleusTractusSolitariusInput,
-    float HypothalamicDrive,
-    float InsulaBodyFeeling,
-    float AccUrgency,
-    float HomeostaticError,
-    float EnergyDeficit,
-    float HungerDrive,
-    float FatigueDrive,
-    float PainDrive,
-    float DamageDrive,
-    float ShelterDrive,
-    float Arousal,
-    float Valence,
-    float Confidence,
-    string Evidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static InteroceptiveCoreRuntime Default { get; } = new(
-        Active: false,
-        DominantNeed: "regulation",
-        FeltState: "settled",
-        NucleusTractusSolitariusInput: 0f,
-        HypothalamicDrive: 0f,
-        InsulaBodyFeeling: 0.10f,
-        AccUrgency: 0f,
-        HomeostaticError: 0f,
-        EnergyDeficit: 0f,
-        HungerDrive: 0f,
-        FatigueDrive: 0f,
-        PainDrive: 0f,
-        DamageDrive: 0f,
-        ShelterDrive: 0f,
-        Arousal: 0f,
-        Valence: 0f,
-        Confidence: 0.15f,
-        Evidence: "quiet body regulation",
-        LastUpdatedTick: 0,
-        Sequence: 0);
-
-    public static InteroceptiveCoreRuntime Normalize(InteroceptiveCoreRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            DominantNeed = NormalizeInteroceptiveText(value.DominantNeed, Default.DominantNeed),
-            FeltState = NormalizeInteroceptiveText(value.FeltState, Default.FeltState),
-            NucleusTractusSolitariusInput = Math.Clamp(value.NucleusTractusSolitariusInput, 0f, 1f),
-            HypothalamicDrive = Math.Clamp(value.HypothalamicDrive, 0f, 1f),
-            InsulaBodyFeeling = Math.Clamp(value.InsulaBodyFeeling, 0f, 1f),
-            AccUrgency = Math.Clamp(value.AccUrgency, 0f, 1f),
-            HomeostaticError = Math.Clamp(value.HomeostaticError, 0f, 1f),
-            EnergyDeficit = Math.Clamp(value.EnergyDeficit, 0f, 1f),
-            HungerDrive = Math.Clamp(value.HungerDrive, 0f, 1f),
-            FatigueDrive = Math.Clamp(value.FatigueDrive, 0f, 1f),
-            PainDrive = Math.Clamp(value.PainDrive, 0f, 1f),
-            DamageDrive = Math.Clamp(value.DamageDrive, 0f, 1f),
-            ShelterDrive = Math.Clamp(value.ShelterDrive, 0f, 1f),
-            Arousal = Math.Clamp(value.Arousal, 0f, 1f),
-            Valence = Math.Clamp(value.Valence, -1f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Evidence = NormalizeInteroceptiveText(value.Evidence, Default.Evidence),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
-
-    private static string NormalizeInteroceptiveText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record PainProtectionRuntime(
-    bool Active,
-    string ReflexState,
-    string ProtectiveActionKey,
-    string MotorDirective,
-    float Nociception,
-    float DamageRisk,
-    float Withdrawal,
-    float Guarding,
-    float Immobilization,
-    float AnalgesiaGate,
-    float SomatosensoryBias,
-    float AccUrgency,
-    float ProtectionDrive,
-    float Confidence,
-    string Evidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static PainProtectionRuntime Default { get; } = new(
-        Active: false,
-        ReflexState: "quiet",
-        ProtectiveActionKey: "idle",
-        MotorDirective: "motor_idle",
-        Nociception: 0f,
-        DamageRisk: 0f,
-        Withdrawal: 0f,
-        Guarding: 0f,
-        Immobilization: 0f,
-        AnalgesiaGate: 0f,
-        SomatosensoryBias: 0f,
-        AccUrgency: 0f,
-        ProtectionDrive: 0f,
-        Confidence: 0.15f,
-        Evidence: "quiet nociceptive monitoring",
-        LastUpdatedTick: 0,
-        Sequence: 0);
-
-    public static PainProtectionRuntime Normalize(PainProtectionRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            ReflexState = NormalizePainText(value.ReflexState, "quiet"),
-            ProtectiveActionKey = NormalizePainText(value.ProtectiveActionKey, "idle"),
-            MotorDirective = NormalizePainText(value.MotorDirective, "motor_idle"),
-            Nociception = Math.Clamp(value.Nociception, 0f, 1f),
-            DamageRisk = Math.Clamp(value.DamageRisk, 0f, 1f),
-            Withdrawal = Math.Clamp(value.Withdrawal, 0f, 1f),
-            Guarding = Math.Clamp(value.Guarding, 0f, 1f),
-            Immobilization = Math.Clamp(value.Immobilization, 0f, 1f),
-            AnalgesiaGate = Math.Clamp(value.AnalgesiaGate, 0f, 1f),
-            SomatosensoryBias = Math.Clamp(value.SomatosensoryBias, 0f, 1f),
-            AccUrgency = Math.Clamp(value.AccUrgency, 0f, 1f),
-            ProtectionDrive = Math.Clamp(value.ProtectionDrive, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Evidence = NormalizePainText(value.Evidence, Default.Evidence),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
-
-    private static string NormalizePainText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record BodyPresenceRuntime(
-    bool Active,
-    string FeltSummary,
-    string DominantNeed,
-    string FeltState,
-    float BodyMap,
-    float InteroceptiveAnchor,
-    float TactileGrounding,
-    float ProtectiveBoundary,
-    float VestibularConfidence,
-    float Presence,
-    float Confidence,
-    string Evidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static BodyPresenceRuntime Default { get; } = new(
-        Active: false,
-        FeltSummary: "Embodied presence is quiet.",
-        DominantNeed: "regulation",
-        FeltState: "settled",
-        BodyMap: 0f,
-        InteroceptiveAnchor: 0f,
-        TactileGrounding: 0f,
-        ProtectiveBoundary: 0f,
-        VestibularConfidence: 0f,
-        Presence: 0f,
-        Confidence: 0.15f,
-        Evidence: "quiet embodied monitoring",
-        LastUpdatedTick: 0,
-        Sequence: 0);
-
-    public static BodyPresenceRuntime Normalize(BodyPresenceRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            FeltSummary = NormalizeBodyPresenceText(value.FeltSummary, Default.FeltSummary),
-            DominantNeed = NormalizeBodyPresenceText(value.DominantNeed, "regulation"),
-            FeltState = NormalizeBodyPresenceText(value.FeltState, "settled"),
-            BodyMap = Math.Clamp(value.BodyMap, 0f, 1f),
-            InteroceptiveAnchor = Math.Clamp(value.InteroceptiveAnchor, 0f, 1f),
-            TactileGrounding = Math.Clamp(value.TactileGrounding, 0f, 1f),
-            ProtectiveBoundary = Math.Clamp(value.ProtectiveBoundary, 0f, 1f),
-            VestibularConfidence = Math.Clamp(value.VestibularConfidence, 0f, 1f),
-            Presence = Math.Clamp(value.Presence, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Evidence = NormalizeBodyPresenceText(value.Evidence, Default.Evidence),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
-
-    private static string NormalizeBodyPresenceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record CerebellumRuntime(
-    float TimingPrediction,
-    float MotorSmoothing,
-    float BalanceError,
-    float PredictionError,
-    float LearnedCorrection,
-    float VermisDrive,
-    float LobuleDrive,
-    float PurkinjeInhibition,
-    float DeepNucleiOutput,
-    float InferiorOliveTeaching,
-    int RecentInputSpikes,
-    int RecentOutputSpikes,
-    long LastSpikeTick,
-    long LastUpdatedTick)
-{
-    public static CerebellumRuntime Default { get; } = new(
-        TimingPrediction: 0f,
-        MotorSmoothing: 0f,
-        BalanceError: 0f,
-        PredictionError: 0f,
-        LearnedCorrection: 0f,
-        VermisDrive: 0f,
-        LobuleDrive: 0f,
-        PurkinjeInhibition: 0f,
-        DeepNucleiOutput: 0f,
-        InferiorOliveTeaching: 0f,
-        RecentInputSpikes: 0,
-        RecentOutputSpikes: 0,
-        LastSpikeTick: long.MinValue,
-        LastUpdatedTick: 0);
-
-    public static CerebellumRuntime Normalize(CerebellumRuntime value)
-        => value with
-        {
-            TimingPrediction = Math.Clamp(value.TimingPrediction, 0f, 1f),
-            MotorSmoothing = Math.Clamp(value.MotorSmoothing, 0f, 1f),
-            BalanceError = Math.Clamp(value.BalanceError, 0f, 1f),
-            PredictionError = Math.Clamp(value.PredictionError, 0f, 1f),
-            LearnedCorrection = Math.Clamp(value.LearnedCorrection, 0f, 1f),
-            VermisDrive = Math.Clamp(value.VermisDrive, 0f, 1f),
-            LobuleDrive = Math.Clamp(value.LobuleDrive, 0f, 1f),
-            PurkinjeInhibition = Math.Clamp(value.PurkinjeInhibition, 0f, 1f),
-            DeepNucleiOutput = Math.Clamp(value.DeepNucleiOutput, 0f, 1f),
-            InferiorOliveTeaching = Math.Clamp(value.InferiorOliveTeaching, 0f, 1f),
-            RecentInputSpikes = Math.Max(0, value.RecentInputSpikes),
-            RecentOutputSpikes = Math.Max(0, value.RecentOutputSpikes),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick)
-        };
-}
 
 internal enum SleepReplayStage
 {
@@ -18490,19 +16930,10 @@ internal sealed class NetworkStateDocument
     public long Tick { get; set; }
     public double SimulationClockMs { get; set; }
     public double TickDurationMs { get; set; } = 1.0;
-    public NeuromodState GlobalNeuromodState { get; set; } = new();
     public Dictionary<string, double> OscillationPhases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    public float RewardPredictionError { get; set; }
     public string PerformanceProfileName { get; set; } = "normal";
     public InputGateRuntime? InputGates { get; set; } = InputGateRuntime.Default;
     public SleepMemoryRuntime SleepMemory { get; set; } = SleepMemoryRuntime.Default;
-    public BodySchemaRuntime? BodySchema { get; set; } = BodySchemaRuntime.Default;
-    public InteroceptiveCoreRuntime? InteroceptiveCore { get; set; } = InteroceptiveCoreRuntime.Default;
-    public PainProtectionRuntime? PainProtection { get; set; } = PainProtectionRuntime.Default;
-    public BodyPresenceRuntime? BodyPresence { get; set; } = BodyPresenceRuntime.Default;
-    public LimbicRuntimeState LimbicState { get; set; } = LimbicRuntimeState.Default;
-    public EmotionRuntimeState? EmotionState { get; set; } = EmotionRuntimeState.Default;
-    public CerebellumRuntime? Cerebellum { get; set; } = CerebellumRuntime.Default;
     public CurriculumRuntime Curriculum { get; set; } = CurriculumRuntime.Default;
     public long LastSnapshotTick { get; set; }
     public double LastSnapshotSimulationMs { get; set; }
@@ -18655,62 +17086,6 @@ internal sealed record EnglishLexeme(
 
 
 
-internal sealed record EmotionRuntimeState(
-    string DominantEmotion,
-    float Anxiety,
-    float Confidence,
-    float Safety,
-    float Frustration,
-    float Curiosity,
-    float Comfort,
-    float Urgency,
-    float Arousal,
-    float Valence,
-    float Stability,
-    long LastUpdatedTick,
-    long LastSwitchTick,
-    int HoldTicksRemaining)
-{
-    public static EmotionRuntimeState Default { get; } = new(
-        DominantEmotion: "neutral",
-        Anxiety: 0.10f,
-        Confidence: 0.28f,
-        Safety: 0.35f,
-        Frustration: 0.05f,
-        Curiosity: 0.22f,
-        Comfort: 0.24f,
-        Urgency: 0.08f,
-        Arousal: 0.18f,
-        Valence: 0.0f,
-        Stability: 0.35f,
-        LastUpdatedTick: 0,
-        LastSwitchTick: 0,
-        HoldTicksRemaining: 0);
-
-    public static EmotionRuntimeState Normalize(EmotionRuntimeState value)
-    {
-        var dominant = string.IsNullOrWhiteSpace(value.DominantEmotion)
-            ? "neutral"
-            : value.DominantEmotion.Trim().ToLowerInvariant();
-        return value with
-        {
-            DominantEmotion = dominant,
-            Anxiety = Math.Clamp(value.Anxiety, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Safety = Math.Clamp(value.Safety, 0f, 1f),
-            Frustration = Math.Clamp(value.Frustration, 0f, 1f),
-            Curiosity = Math.Clamp(value.Curiosity, 0f, 1f),
-            Comfort = Math.Clamp(value.Comfort, 0f, 1f),
-            Urgency = Math.Clamp(value.Urgency, 0f, 1f),
-            Arousal = Math.Clamp(value.Arousal, 0f, 1f),
-            Valence = Math.Clamp(value.Valence, -1f, 1f),
-            Stability = Math.Clamp(value.Stability, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            LastSwitchTick = Math.Max(0, value.LastSwitchTick),
-            HoldTicksRemaining = Math.Max(0, value.HoldTicksRemaining)
-        };
-    }
-}
 internal static class EnglishLanguageLexicon
 {
     private static readonly IReadOnlyDictionary<string, EnglishLexeme> Lexicon =
@@ -18951,162 +17326,6 @@ internal static class EnglishLanguageLexicon
         };
         return phoneme.Length > 0;
     }
-}
-internal sealed record BiologicalAttentionRuntime(
-    float Visual,
-    float Auditory,
-    float Somatosensory,
-    float Interoceptive,
-    float Language,
-    float Memory,
-    float Motor,
-    string DominantChannel,
-    float FocusConfidence,
-    float Salience,
-    float ThalamicRelayGain,
-    float TrnInhibition,
-    float BasalForebrainGain,
-    AttentionVector SensoryBias,
-    long LastSwitchTick,
-    int HoldTicksRemaining)
-{
-    public static BiologicalAttentionRuntime Default { get; } = new(
-        Visual: 0.34f,
-        Auditory: 0.14f,
-        Somatosensory: 0.16f,
-        Interoceptive: 0.20f,
-        Language: 0.12f,
-        Memory: 0.18f,
-        Motor: 0.18f,
-        DominantChannel: "visual",
-        FocusConfidence: 0.34f,
-        Salience: 0.36f,
-        ThalamicRelayGain: 0.62f,
-        TrnInhibition: 0.16f,
-        BasalForebrainGain: 0.46f,
-        SensoryBias: new AttentionVector(0.42f, 0.16f, 0.16f, 0.26f),
-        LastSwitchTick: 0,
-        HoldTicksRemaining: 0);
-
-    public static BiologicalAttentionRuntime Normalize(BiologicalAttentionRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        var sensoryBias = ClampAttentionVectorLocal(value.SensoryBias);
-        var dominant = string.IsNullOrWhiteSpace(value.DominantChannel)
-            ? ResolveDominantChannel(value.Visual, value.Auditory, value.Somatosensory, value.Interoceptive, value.Language, value.Memory, value.Motor)
-            : value.DominantChannel.Trim().ToLowerInvariant();
-
-        return value with
-        {
-            Visual = Math.Clamp(value.Visual, 0f, 1f),
-            Auditory = Math.Clamp(value.Auditory, 0f, 1f),
-            Somatosensory = Math.Clamp(value.Somatosensory, 0f, 1f),
-            Interoceptive = Math.Clamp(value.Interoceptive, 0f, 1f),
-            Language = Math.Clamp(value.Language, 0f, 1f),
-            Memory = Math.Clamp(value.Memory, 0f, 1f),
-            Motor = Math.Clamp(value.Motor, 0f, 1f),
-            DominantChannel = dominant,
-            FocusConfidence = Math.Clamp(value.FocusConfidence, 0f, 1f),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            ThalamicRelayGain = Math.Clamp(value.ThalamicRelayGain, 0f, 1f),
-            TrnInhibition = Math.Clamp(value.TrnInhibition, 0f, 1f),
-            BasalForebrainGain = Math.Clamp(value.BasalForebrainGain, 0f, 1f),
-            SensoryBias = sensoryBias,
-            LastSwitchTick = Math.Max(0, value.LastSwitchTick),
-            HoldTicksRemaining = Math.Max(0, value.HoldTicksRemaining)
-        };
-    }
-
-    private static AttentionVector ClampAttentionVectorLocal(AttentionVector? attention)
-    {
-        if (attention is null)
-        {
-            return Default.SensoryBias;
-        }
-
-        var visual = Math.Clamp(attention.Visual, 0f, 1f);
-        var auditory = Math.Clamp(attention.Auditory, 0f, 1f);
-        var somatosensory = Math.Clamp(attention.Somatosensory, 0f, 1f);
-        var interoceptive = Math.Clamp(attention.Interoceptive, 0f, 1f);
-        var sum = visual + auditory + somatosensory + interoceptive;
-        if (sum <= 0.0001f)
-        {
-            return Default.SensoryBias;
-        }
-
-        return new AttentionVector(
-            visual / sum,
-            auditory / sum,
-            somatosensory / sum,
-            interoceptive / sum);
-    }
-
-    private static string ResolveDominantChannel(
-        float visual,
-        float auditory,
-        float somatosensory,
-        float interoceptive,
-        float language,
-        float memory,
-        float motor)
-    {
-        (string Channel, float Value) best = ("visual", visual);
-        if (auditory > best.Value) best = ("auditory", auditory);
-        if (somatosensory > best.Value) best = ("somatosensory", somatosensory);
-        if (interoceptive > best.Value) best = ("interoceptive", interoceptive);
-        if (language > best.Value) best = ("language", language);
-        if (memory > best.Value) best = ("memory", memory);
-        if (motor > best.Value) best = ("motor", motor);
-        return best.Item1;
-    }
-}
-internal sealed record LimbicRuntimeState(
-    string Stage,
-    float Salience,
-    float Threat,
-    float TiredDrive,
-    float InteroceptiveDrive,
-    float AversiveDrive,
-    float ExpectedReward,
-    float ObservedReward,
-    float HippocampalContext,
-    float Valence,
-    float RewardPredictionError,
-    float DopamineTarget,
-    float SerotoninTarget,
-    float AcetylcholineTarget,
-    float NorepinephrineTarget,
-    NeuromodState NeuromodState,
-    long LastUpdatedTick)
-{
-    public static LimbicRuntimeState Default { get; } = new(
-        Stage: "awake",
-        Salience: 0.34f,
-        Threat: 0.06f,
-        TiredDrive: 0.08f,
-        InteroceptiveDrive: 0.18f,
-        AversiveDrive: 0.04f,
-        ExpectedReward: 0.42f,
-        ObservedReward: 0.40f,
-        HippocampalContext: 0.34f,
-        Valence: 0.08f,
-        RewardPredictionError: 0.0f,
-        DopamineTarget: 0.46f,
-        SerotoninTarget: 0.42f,
-        AcetylcholineTarget: 0.50f,
-        NorepinephrineTarget: 0.32f,
-        NeuromodState: new NeuromodState
-        {
-            DopamineLevel = 0.46f,
-            SerotoninLevel = 0.42f,
-            AcetylcholineLevel = 0.50f,
-            NorepinephrineLevel = 0.32f
-        },
-        LastUpdatedTick: 0);
 }
 internal sealed record SleepMemoryRuntime(
     bool IsSleeping,

@@ -32,8 +32,8 @@ public sealed class NeuronalCognitionAuthorityTests
         Assert.Equal(10, snapshot.Domains.Count);
         Assert.All(snapshot.Domains, static domain =>
         {
-            Assert.True(domain.LegacyTelemetryOnly);
-            Assert.False(domain.LegacyCanAuthorize);
+            Assert.True(domain.ReadOnlyDecoder);
+            Assert.False(domain.DecoderCanAuthorize);
         });
     }
 
@@ -119,7 +119,15 @@ public sealed class NeuronalCognitionAuthorityTests
             "SleepDreamDigestRuntime",
             "BrainNarrationRuntime",
             "SpeechIntentionRuntime",
-            "MemoryControlSettings"
+            "MemoryControlSettings",
+            "BodySchemaRuntime",
+            "InteroceptiveCoreRuntime",
+            "PainProtectionRuntime",
+            "BodyPresenceRuntime",
+            "BiologicalAttentionRuntime",
+            "LimbicRuntimeState",
+            "EmotionRuntimeState",
+            "CerebellumRuntime"
         ];
 
         Assert.All(retiredTypes, typeName => Assert.Null(assembly.GetType(typeName)));

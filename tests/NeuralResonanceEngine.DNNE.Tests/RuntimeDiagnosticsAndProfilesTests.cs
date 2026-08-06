@@ -66,9 +66,8 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
 
         Assert.False(state.SleepMemory.IsSleeping);
         Assert.InRange(state.SleepMemory.SleepPressure, 0.0f, 0.20f);
-        Assert.InRange(state.LimbicState.NeuromodState.DopamineLevel, 0.40f, 0.55f);
-        Assert.InRange(state.LimbicState.NeuromodState.AcetylcholineLevel, 0.45f, 0.60f);
-        Assert.InRange(state.LimbicState.Threat, 0.0f, 0.10f);
+        Assert.False(state.NeuronalAffectValuation.Available);
+        Assert.False(state.NeuronalAttentionWorkspace.Available);
     }
 
     [Fact]
@@ -286,16 +285,17 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Null(typeof(NetworkStateDocument).GetProperty("ConsciousnessRhythm"));
         Assert.Null(typeof(NetworkStateDocument).GetProperty("GlobalWorkspace"));
 
-        var updateNeuromod = Assert.Single(
-            typeof(SimulationState).GetMethods(),
-            static method => method.Name == "UpdateNeuromod");
-        Assert.Equal(2, updateNeuromod.GetParameters().Length);
+        Assert.Null(typeof(SimulationState).GetMethod("UpdateNeuromod", allMethods));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("GlobalNeuromodState"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("RewardPredictionError"));
 
         using var document = SerializeDiagnostics(new SimulationState());
         Assert.False(TryGetProperty(document.RootElement, "attentionState", out _));
         Assert.False(TryGetProperty(document.RootElement, "prefrontalWorkingMemory", out _));
         Assert.False(TryGetProperty(document.RootElement, "consciousnessRhythm", out _));
         Assert.False(TryGetProperty(document.RootElement, "globalWorkspace", out _));
+        Assert.False(TryGetProperty(document.RootElement, "globalNeuromodState", out _));
+        Assert.False(TryGetProperty(document.RootElement, "rewardPredictionError", out _));
     }
 
 

@@ -164,11 +164,11 @@ Acceptance requires state-dependent replay, improved delayed recall, reduced onl
 
 Rung 6 now separates homeostatic chemistry from sleep authority. ATP reserve and accumulated sleep pressure remain non-neuronal metabolic substrate, but they enter the relevant populations as bounded intrinsic excitatory and inhibitory current. They no longer directly choose a sleep transition whenever neuronal circuit evidence is present.
 
-Three anonymous state populations represent wake, NREM, and REM. The read-only controller decoder combines measured hypothalamic sleep drive, reticular/LC/basal-forebrain/intralaminar wake activity, pontine REM activity, thalamic-TRN spindle synchrony, cortical slow-wave activity, and hippocampal replay gating. A partially observed circuit holds the previous state and forbids replay; it cannot silently restore the threshold state machine.
+Three anonymous state populations represent wake, NREM, and REM. The read-only controller decoder combines measured hypothalamic sleep drive, reticular/LC/basal-forebrain/intralaminar wake activity, pontine REM activity, thalamic-TRN spindle synchrony, cortical slow-wave activity, and hippocampal replay gating. A partially observed circuit has no authority and forbids replay; it cannot silently restore a threshold state machine or preserve sleep through host state.
 
 Replay uses the same eight numeric ensembles as perception and synaptic memory. CA3/CA1 bursts nominate an ensemble, both TRN and thalamus must supply spindle coupling, and cortical slow-wave/echo activity supplies consolidation evidence. The transport replay path then filters engrams by numeric neuronal population membership. It does not rank action names, goals, categories, dream themes, or other semantic fields.
 
-The former dream-consolidation path is retained as `LegacyTelemetry`. Under neuronal authority it cannot reinforce action dictionaries, world-map records, semantic concepts, autobiographical summaries, or cerebellar scalar state. Authoritative consolidation occurs through replay spikes and the persisted synaptic plasticity implemented in rung 4. `/api/v1/neuronal-sleep-consolidation` exposes the authoritative state; the sleep-memory admin endpoint configures metabolic substrate only.
+The former dream-consolidation path and conventional replay stores have been deleted. Authoritative consolidation occurs through replay spikes and the persisted synaptic plasticity implemented in rung 4. `/api/v1/neuronal-sleep-consolidation` exposes the authoritative state. `/api/v1/admin/metabolic-physiology` is read-only and reports only ATP, homeostatic pressure, and timing observations.
 
 The existing structure sizes remain adequate for this first slice. State structures provide hundreds of cells per state role, while each replay structure provides dozens of cells per ensemble. Population resizing is reserved for measured lane starvation, unstable state separation, or replay capacity limits.
 
@@ -292,6 +292,12 @@ Functional diagnostics now use measured activity in the relevant neuronal
 structures, and externally generated sensory spikes carry no host-authored
 modulation context.
 
+Entry 088 deletes the host sleep-memory controller, global sleep scaling,
+central replay staging, body-level motor vetoes, and client-side sensory pause
+protocol. ATP and homeostatic pressure remain a read-only physiological
+transducer. Only the distributed neuronal sleep decoder can report wake,
+NREM, REM, or replay, and an incomplete decoder has no fallback authority.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or
@@ -320,7 +326,7 @@ The first implemented slice adds:
 - confidence and circuit-coverage telemetry;
 - population-coded avatar events that contain direction and polarity but no goal/action labels;
 - shared integration in both rendered worlds;
-- sleep and low-confidence motor suppression;
+- low-confidence motor suppression, with sleep-related atonia required to emerge from the neuronal motor circuit;
 - unit and causal tests, including proof that the decoder has no symbolic-action input.
 
 The symbolic motor path, runtime mode switch, and old mode-qualification executable have been removed. Historical reports remain as provenance, but they cannot affect a running brain.
@@ -329,7 +335,7 @@ The symbolic motor path, runtime mode switch, and old mode-qualification executa
 
 - Only numeric population codes can actuate the body.
 - Bilateral circuit coverage and confidence must clear configured thresholds.
-- Sleep silences descending output.
+- Sleep-related motor atonia must be expressed by neuronal inhibition; no host sleep flag may silence descending output.
 - Semantic motor and tool identifiers are rejected even if emitted by retained diagnostic code.
 - No administrative endpoint or configuration value can restore legacy motor authority.
 - Success, survival, learning speed, generalization, and causal integrity are the leading embodied measures.

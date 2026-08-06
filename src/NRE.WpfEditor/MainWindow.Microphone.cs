@@ -322,17 +322,6 @@ public partial class MainWindow
 
     private async Task PushMicrophoneStimulusAsync(double rmsSignal, double zcrSignal, CancellationToken token)
     {
-        if (_isSimulationSleeping)
-        {
-            PostUi(() =>
-            {
-                var levelPercent = ComputeMicrophoneLevelPercent(rmsSignal);
-                MicrophoneStatusText.Text = $"Microphone: paused during sleep | lvl={levelPercent:0}%";
-                UpdateMicrophoneLevelMeterUi(levelPercent, isActive: _microphoneRunning);
-            });
-            return;
-        }
-
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         cts.CancelAfter(TimeSpan.FromMilliseconds(1900));
         var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
@@ -380,14 +369,6 @@ public partial class MainWindow
         var result = await auditoryTask;
         PostUi(() =>
         {
-            if (result.PausedDueToSleep || (languageResult?.PausedDueToSleep ?? false))
-            {
-                var pausedLevel = ComputeMicrophoneLevelPercent(rmsSignal);
-                MicrophoneStatusText.Text = $"Microphone: paused during sleep | lvl={pausedLevel:0}%";
-                UpdateMicrophoneLevelMeterUi(pausedLevel, isActive: _microphoneRunning);
-                return;
-            }
-
             var languageDelivered = languageResult?.Delivered ?? 0;
             var levelPercent = ComputeMicrophoneLevelPercent(rmsSignal);
             var recoveryLabel = result.RecoveryAttempted
@@ -465,7 +446,6 @@ public partial class MainWindow
         var recoveryRestarted = 0;
         var recoveryHealthy = 0;
         var recoveryRetriedInstances = 0;
-        var pausedDueToSleep = false;
         try
         {
             using var doc = JsonDocument.Parse(payload);
@@ -478,7 +458,6 @@ public partial class MainWindow
                 recoveryRestarted = GetInt(doc.RootElement, "recoveryRestarted");
                 recoveryHealthy = GetInt(doc.RootElement, "recoveryHealthy");
                 recoveryRetriedInstances = GetInt(doc.RootElement, "recoveryRetriedInstances");
-                pausedDueToSleep = GetBool(doc.RootElement, "pausedDueToSleep");
             }
         }
         catch
@@ -494,8 +473,7 @@ public partial class MainWindow
             recoveryAttempted,
             recoveryRestarted,
             recoveryHealthy,
-            recoveryRetriedInstances,
-            pausedDueToSleep);
+            recoveryRetriedInstances);
     }
 
     private static string ResolveMicrophonePattern(double rmsSignal, double zcrSignal)

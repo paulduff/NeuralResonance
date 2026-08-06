@@ -724,7 +724,6 @@ public sealed class AvatarServiceTests
             ContactBurstWeight: 6.0);
 
     private static AvatarNervousSystemBodyState AwakeBody { get; } = new(
-        IsSleeping: false,
         Hunger: 0.2,
         Threat: 0.1,
         Health: 1.0,

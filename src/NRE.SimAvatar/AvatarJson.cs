@@ -193,42 +193,24 @@ public static class AvatarJson
 
     public static bool IsSleepingState(JsonElement stateElement)
     {
-        if (TryGetProperty(stateElement, "sleepMemory", out var sleepMemory) &&
-            sleepMemory.ValueKind == JsonValueKind.Object &&
-            TryGetProperty(sleepMemory, "isSleeping", out var sleepingFlag))
+        if (!TryGetProperty(stateElement, "neuronalSleepConsolidation", out var neuronalSleep) ||
+            neuronalSleep.ValueKind != JsonValueKind.Object ||
+            !GetBool(neuronalSleep, "available") ||
+            !GetBool(neuronalSleep, "stateActive"))
         {
-            if (sleepingFlag.ValueKind == JsonValueKind.True)
-            {
-                return true;
-            }
-
-            if (sleepingFlag.ValueKind == JsonValueKind.String &&
-                bool.TryParse(sleepingFlag.GetString(), out var parsedFlag))
-            {
-                return parsedFlag;
-            }
+            return false;
         }
 
-        if (TryGetProperty(stateElement, "sleep", out var sleepObject) &&
-            sleepObject.ValueKind == JsonValueKind.Object &&
-            TryGetProperty(sleepObject, "isSleeping", out var sleepIsSleeping))
+        if (TryGetProperty(neuronalSleep, "state", out var stateValue) &&
+            stateValue.ValueKind == JsonValueKind.Number &&
+            stateValue.TryGetInt32(out var stateCode))
         {
-            if (sleepIsSleeping.ValueKind == JsonValueKind.True)
-            {
-                return true;
-            }
-
-            if (sleepIsSleeping.ValueKind == JsonValueKind.String &&
-                bool.TryParse(sleepIsSleeping.GetString(), out var parsedSleep))
-            {
-                return parsedSleep;
-            }
+            return stateCode is 1 or 2;
         }
 
-        var sleepState = GetString(stateElement, "sleepState", "sleep_state");
-        return sleepState.Equals("sleep", StringComparison.OrdinalIgnoreCase) ||
-               sleepState.Equals("sleeping", StringComparison.OrdinalIgnoreCase) ||
-               sleepState.Equals("asleep", StringComparison.OrdinalIgnoreCase);
+        var state = GetString(neuronalSleep, "state");
+        return state.Equals("nrem", StringComparison.OrdinalIgnoreCase) ||
+               state.Equals("rem", StringComparison.OrdinalIgnoreCase);
     }
 
     public static string ParseAnyStructureId(JsonElement element, params string[] propertyNames)

@@ -67,12 +67,6 @@ public sealed class AvatarNervousSystem
         ArgumentNullException.ThrowIfNull(dispatches);
 
         var tool = AvatarToolSignal.None;
-        if (body.IsSleeping)
-        {
-            ResetMotor();
-            return CurrentSignal(tool);
-        }
-
         var left = LeftMotorDrive;
         var right = RightMotorDrive;
         var motorSummary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref left, ref right, _options.Kinematics);

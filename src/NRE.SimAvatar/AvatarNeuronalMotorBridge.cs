@@ -4,7 +4,6 @@ namespace NRE.SimAvatar;
 
 public sealed record AvatarNeuronalMotorState(
     bool Active,
-    bool Sleeping,
     long Tick,
     long Sequence,
     double LeftDrive,
@@ -15,7 +14,6 @@ public sealed record AvatarNeuronalMotorState(
 {
     public static AvatarNeuronalMotorState UnavailableDefault { get; } = new(
         Active: false,
-        Sleeping: false,
         Tick: 0,
         Sequence: 0,
         LeftDrive: 0.0,
@@ -45,7 +43,6 @@ public static class AvatarNeuronalMotorBridge
         var result = FilterNonNeuronalMotorTraffic(originalDispatches);
 
         if (neuronalState.Tick <= lastNeuronalTick ||
-            neuronalState.Sleeping ||
             !neuronalState.Active ||
             neuronalState.Confidence < neuronalState.MinimumOutputConfidence)
         {
@@ -68,7 +65,6 @@ public static class AvatarNeuronalMotorBridge
 
         return new AvatarNeuronalMotorState(
             Active: AvatarJson.GetBool(motor, "active"),
-            Sleeping: AvatarJson.GetBool(motor, "sleeping"),
             Tick: Math.Max(0, AvatarJson.GetLong(motor, "tick")),
             Sequence: Math.Max(0, AvatarJson.GetLong(motor, "sequence")),
             LeftDrive: Math.Clamp(AvatarJson.GetDouble(motor, "leftDrive"), -1.0, 1.0),

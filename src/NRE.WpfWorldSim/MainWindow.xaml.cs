@@ -728,17 +728,9 @@ public partial class MainWindow : Window
                 new AvatarLanguageCommand(commandText),
                 timeout.Token);
 
-            if (result.PausedDueToSleep)
-            {
-                EnglishCommandStatusText.Text = "Command: brain is asleep; language paused.";
-                Log($"English command paused during sleep: \"{TrimForLog(commandText, 80)}\".");
-            }
-            else
-            {
-                var directive = string.IsNullOrWhiteSpace(result.MotorDirective) ? "motor_idle" : result.MotorDirective;
-                EnglishCommandStatusText.Text = $"Command: {directive}, spikes {result.DeliveredSpikes}/{result.GeneratedSpikes}";
-                Log($"English command accepted: \"{TrimForLog(commandText, 80)}\" -> {directive}.");
-            }
+            var directive = string.IsNullOrWhiteSpace(result.MotorDirective) ? "motor_idle" : result.MotorDirective;
+            EnglishCommandStatusText.Text = $"Command: {directive}, spikes {result.DeliveredSpikes}/{result.GeneratedSpikes}";
+            Log($"English command accepted: \"{TrimForLog(commandText, 80)}\" -> {directive}.");
 
             ApplyBrainNarration(result.Narration, forceLog: true);
         }
@@ -2632,20 +2624,11 @@ public partial class MainWindow : Window
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
         var escapingThreat = false;
 
-        if (_sleepState)
-        {
-            // Sleep gates motor output at the body level: no translation/turn when asleep.
-            forwardSpeed = 0.0;
-            turnRateDeg = 0.0;
-            _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
-        }
-
         var strafeSpeed = 0.0;
         var isTranslating = Math.Abs(forwardSpeed) > 0.08 || Math.Abs(strafeSpeed) > 0.08;
         var forceBodyTurn = escapingThreat || isTranslating;
         var bodyTurnRateDeg = forceBodyTurn ? turnRateDeg : 0.0;
-        UpdateAvatarHeadYaw(dt, turnRateDeg, returnToForward: isTranslating || escapingThreat || _sleepState);
+        UpdateAvatarHeadYaw(dt, turnRateDeg, returnToForward: isTranslating || escapingThreat);
 
         var previousX = _avatarX;
         var previousZ = _avatarZ;
@@ -3915,7 +3898,6 @@ public partial class MainWindow : Window
             ? 0.0
             : Math.Clamp((1.0 - (nearestWeapon.Distance / 22.0)) * (0.45 + (0.85 * weaponNeed) + (0.35 * threatSaliency)), 0.0, 1.0);
         var shelterMotivation = Math.Clamp(
-            (_sleepState ? 1.0 : 0.0) +
             (_limbicTiredDrive * 0.62) +
             (_environmentSleepPressure * 0.52) +
             (_environmentShelterNeed * 0.78),
@@ -4028,12 +4010,6 @@ public partial class MainWindow : Window
             ? "Object recognition: none salient"
             : $"Object recognition: {FormatRecognizedCueSummary(cues)}";
         UpdateRecognizedCueLines(cues);
-
-        if (_sleepState)
-        {
-            _objectDispatchBackoff.Reset();
-            return;
-        }
 
         if (cues.Count == 0 || _objectDispatchInFlight)
         {
@@ -4168,11 +4144,6 @@ public partial class MainWindow : Window
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(EnvironmentAudioDispatchTimeoutMs));
             var result = await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cue, timeout.Token);
-            if (result.PausedDueToSleep)
-            {
-                return true;
-            }
-
             if (result.Accepted && result.DispatchDeferred)
             {
                 RegisterOptionalBrainInputSuccess("environment audio");
@@ -4320,18 +4291,16 @@ public partial class MainWindow : Window
             }
         }
 
-        if (_sleepState ||
-            _limbicTiredDrive >= 0.46 ||
+        if (_limbicTiredDrive >= 0.46 ||
             _environmentShelterNeed >= 0.16 ||
             nearestShelter.Distance < (_shelterRadius * 4.5))
         {
             var proximity = nearestShelter.Distance <= 0.01
                 ? 1.0
                 : Math.Clamp(1.0 - (nearestShelter.Distance / Math.Max(1.0, _shelterRadius * 4.5)), 0.0, 1.0);
-            var sleepBias = _sleepState ? 0.28 : 0.0;
             var tiredBias = _limbicTiredDrive * 0.16;
             var darknessBias = (_environmentShelterNeed * 0.30) + (_environmentSleepPressure * 0.18);
-            var salience = Math.Clamp((proximity * 0.70) + sleepBias + tiredBias + darknessBias, 0.05, 1.0);
+            var salience = Math.Clamp((proximity * 0.70) + tiredBias + darknessBias, 0.05, 1.0);
             cues.Add(new RecognizedObjectCue(
                 ObjectId: BuildObjectId("shelter", nearestShelter.Position),
                 Label: "shelter",
@@ -5666,13 +5635,6 @@ public partial class MainWindow : Window
 
     private async Task DispatchAvatarVisionAsync(AvatarVisualSignal visualSignal, CancellationToken token)
     {
-        if (_sleepState)
-        {
-            _visionDispatchBackoff.Reset();
-            _visionDispatchInFlight = false;
-            return;
-        }
-
         var request = visualSignal.ToVisualInputRequest(
             targetStructure: StructureId.V1.ToString(),
             sourceStructure: StructureId.Retina.ToString());
@@ -6231,7 +6193,6 @@ public partial class MainWindow : Window
     private void ApplyMotorDispatch(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
         var body = new AvatarNervousSystemBodyState(
-            _sleepState,
             _hunger,
             _threat,
             _health,
@@ -6868,9 +6829,7 @@ public partial class MainWindow : Window
             var frontTouch = Math.Clamp(Math.Max(_collisionPulse, _lastFrontProximity), 0.0, 1.0);
             var leftTouch = Math.Clamp(Math.Max(_collisionPulse * 0.35, _lastLeftProximity), 0.0, 1.0);
             var rightTouch = Math.Clamp(Math.Max(_collisionPulse * 0.35, _lastRightProximity), 0.0, 1.0);
-            var groundTouch = !_sleepState
-                ? Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed * 0.72), 0.0, 1.0)
-                : 0.0;
+            var groundTouch = Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed * 0.72), 0.0, 1.0);
             if (TryClassifyCurrentTerrain(out var currentSurface) && currentSurface == BlockKind.Water)
             {
                 groundTouch = Math.Max(groundTouch, 0.58);
@@ -7020,7 +6979,7 @@ public partial class MainWindow : Window
                 Hemisphere: null));
         }
 
-        if (!_sleepState && movement > 0.05 && TryClassifyCurrentTerrain(out var surfaceKind))
+        if (movement > 0.05 && TryClassifyCurrentTerrain(out var surfaceKind))
         {
             var pattern = surfaceKind switch
             {
@@ -8026,7 +7985,7 @@ public partial class MainWindow : Window
         };
         if (_sleepState)
         {
-            BrainStateText.Text += " (sleep-gated motor)";
+            BrainStateText.Text += " (neuronal sleep state)";
         }
 
         _lastTelemetrySuccessUtc = DateTime.UtcNow;
@@ -8149,14 +8108,6 @@ public partial class MainWindow : Window
         var nowMs = Environment.TickCount64;
         if (_objectMemoryInFlight || nowMs < _nextObjectMemoryPollMs)
         {
-            return;
-        }
-
-        if (_sleepState)
-        {
-            _nextObjectMemoryPollMs = nowMs + ObjectMemoryPollIntervalMs;
-            ObjectMemoryStatusText.Text = "Object memory: paused while brain sleeps";
-            _objectMemoryBackoff.Reset();
             return;
         }
 
@@ -8871,7 +8822,7 @@ public partial class MainWindow : Window
     {
         if (_sleepState)
         {
-            return "sleep gate";
+            return "neuronal sleep observed";
         }
 
         if (!double.IsNaN(gate) && gate < 0.18)

@@ -356,53 +356,15 @@ app.MapPost("/api/v1/admin/auto-profile", (
         Settings = settings
     });
 });
-app.MapGet("/api/v1/admin/sleep-memory", (SimulationState state) =>
+app.MapGet("/api/v1/admin/metabolic-physiology", (SimulationState state) =>
 {
     return Results.Ok(new
     {
-        Authority = "HomeostaticSubstrateConfiguration",
+        Role = "ReadOnlyPhysiologicalTransducer",
         CanAuthorizeSleepState = false,
-        AuthoritativeEndpoint = "/api/v1/neuronal-sleep-consolidation",
-        State = state.GetSleepMemorySnapshot()
-    });
-});
-app.MapPost("/api/v1/admin/sleep-memory", (SleepMemoryControlRequest request, SimulationState state) =>
-{
-    if (request is null || (request.MinWakeTicks is null && request.SleepPressureEnterThreshold is null))
-    {
-        return Results.BadRequest(new
-        {
-            Error = "At least one setting is required: MinWakeTicks or SleepPressureEnterThreshold."
-        });
-    }
-
-    SleepMemoryRuntime runtime;
-    string? error;
-    if (request.MinWakeTicks is not null &&
-        !state.TrySetMinWakeTicks(request.MinWakeTicks.Value, out runtime, out error))
-    {
-        return Results.BadRequest(new
-        {
-            Error = error ?? "Unable to apply sleep memory control."
-        });
-    }
-
-    if (request.SleepPressureEnterThreshold is not null &&
-        !state.TrySetSleepPressureEnterThreshold(request.SleepPressureEnterThreshold.Value, out runtime, out error))
-    {
-        return Results.BadRequest(new
-        {
-            Error = error ?? "Unable to apply sleep memory control."
-        });
-    }
-
-    runtime = state.GetSleepMemoryRuntime();
-    state.AppendOutputLog(
-        $"Sleep memory control updated: minWakeTicks={runtime.MinWakeTicks}, sleepPressureEnterThreshold={runtime.SleepPressureEnterThreshold:0.000}.");
-    return Results.Ok(new
-    {
-        Applied = true,
-        SleepMemory = state.GetSleepMemorySnapshot()
+        CanGateNeuralTraffic = false,
+        NeuronalAuthorityEndpoint = "/api/v1/neuronal-sleep-consolidation",
+        State = state.GetMetabolicPhysiologySnapshot()
     });
 });
 app.MapAdminInputControlRoutes();
@@ -528,34 +490,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
             {
                 $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
             }
-        });
-    }
-
-    if (state.GetSleepMemoryRuntime().IsSleeping)
-    {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            TargetInstances = liveTargetInstances.Count,
-            KnownTargetInstances = knownTargetInstances.Count,
-            LiveTargetInstances = liveTargetInstances.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            RecoveryAttempted = false,
-            RecoveryRestarted = 0,
-            RecoveryHealthy = 0,
-            RecoveryRetriedInstances = 0,
-            AttentionFocusField = visualAttention.FocusedField,
-            AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
-            AttentionFocusConfidence = visualAttention.FocusConfidence,
-            AttentionAppliedHemisphere = hemisphereHint ?? "both",
-            PausedDueToSleep = true,
-            SleepState = "sleeping",
-            Errors = Array.Empty<string>()
         });
     }
 
@@ -808,31 +742,6 @@ app.MapPost("/api/v1/admin/input/object", (
         });
     }
 
-    if (state.GetSleepMemoryRuntime().IsSleeping)
-    {
-        state.AppendOutputLog(
-            $"Object input paused by sleep gate: key={objectKey}, label={label}, inputSource={inputSource}.");
-        return Results.Ok(new
-        {
-            ObjectId = objectKey,
-            Label = label,
-            Salience = salience,
-            Confidence = confidence,
-            Intensity = intensity,
-            BurstCount = burstCount,
-            Hemisphere = "both",
-            RouteStages = 0,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Targets = Array.Empty<object>(),
-            Memory = (object?)null,
-            PausedDueToSleep = true,
-            SleepState = "sleeping",
-            InputSource = inputSource,
-            Errors = Array.Empty<string>()
-        });
-    }
-
     var perceptSnapshot = neuronalPerception.GetSnapshot();
     var annotationAccepted = neuronalPerception.TryAttachLanguageAnnotation(
         objectKey,
@@ -948,29 +857,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
         });
     }
 
-    if (state.GetSleepMemoryRuntime().IsSleeping)
-    {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            TargetInstances = targetInstances.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            RecoveryAttempted = false,
-            RecoveryRestarted = 0,
-            RecoveryHealthy = 0,
-            RecoveryRetriedInstances = 0,
-            PausedDueToSleep = true,
-            SleepState = "sleeping",
-            InputSource = inputSource,
-            Errors = Array.Empty<string>()
-        });
-    }
-
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     if (AdminInputSource.IsAvatarSource(inputSource))
@@ -1014,7 +900,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             RecoveryRestarted = 0,
             RecoveryHealthy = 0,
             RecoveryRetriedInstances = 0,
-            PausedDueToSleep = false,
             InputSource = inputSource,
             Accepted = true,
             DispatchDeferred = true,
@@ -1212,27 +1097,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
         });
     }
 
-    if (state.GetSleepMemoryRuntime().IsSleeping)
-    {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            IsFeedback = isFeedback,
-            TargetInstances = liveTargetInstances.Count,
-            KnownTargetInstances = knownTargetInstances.Count,
-            LiveTargetInstances = liveTargetInstances.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            PausedDueToSleep = true,
-            SleepState = "sleeping",
-            Errors = Array.Empty<string>()
-        });
-    }
-
     var tick = state.Tick;
     var timestampMs = state.SimulationClockMs;
     var dispatch = await DispatchStimulusToInstancesAsync(
@@ -1377,13 +1241,10 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         inShelter,
         health,
         shelterSafety);
-    var sleepState = state.GetSleepMemoryRuntime();
-    if (sleepState.IsSleeping)
-    {
-        intensity = Math.Max(0.10f, intensity * 0.28f);
-        burstCount = Math.Min(burstCount, 8);
-    }
-
+    var neuronalSleep = state.NeuronalSleepConsolidation;
+    var neuronalSleepActive = neuronalSleep.Available &&
+        neuronalSleep.StateActive &&
+        neuronalSleep.State != NeuronalSleepState.Wake;
     var cerebellarTargets = includeCerebellar
         ? ResolveBodyStateCerebellarTargets(contactLevel, turnSignal, motorAsymmetry)
         : Array.Empty<StructureId>();
@@ -1452,8 +1313,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             InputSource = inputSource,
             BodyState = bodyState,
             Environment = environmentalState,
-            SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
-            PausedDueToSleep = false,
+            SleepState = neuronalSleepActive ? "sleeping" : "awake",
             TargetInstances = 0,
             KnownTargetInstances = knownTargetInstances.Count,
             LiveTargetInstances = 0,
@@ -1505,7 +1365,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             timestampMs);
 
         state.AppendOutputLog(
-            $"Body-state input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, inputSource={inputSource}, sleep={sleepState.IsSleeping}.");
+            $"Body-state input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, inputSource={inputSource}, neuronalSleep={neuronalSleepActive}.");
         return Results.Ok(new
         {
             Pattern = pattern,
@@ -1529,8 +1389,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             InputSource = inputSource,
             BodyState = bodyState,
             Environment = environmentalState,
-            SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
-            PausedDueToSleep = false,
+            SleepState = neuronalSleepActive ? "sleeping" : "awake",
             TargetInstances = liveTargetInstances.Count,
             KnownTargetInstances = knownTargetInstances.Count,
             LiveTargetInstances = liveTargetInstances.Count,
@@ -1566,7 +1425,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         ct);
 
     state.AppendOutputLog(
-        $"Body-state input injected: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, generated={dispatch.GeneratedSpikes}, delivered={dispatch.DeliveredSpikes}, inputSource={inputSource}, sleep={sleepState.IsSleeping}, errors={dispatch.Errors.Count}.");
+        $"Body-state input injected: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, generated={dispatch.GeneratedSpikes}, delivered={dispatch.DeliveredSpikes}, inputSource={inputSource}, neuronalSleep={neuronalSleepActive}, errors={dispatch.Errors.Count}.");
     if (dispatch.DeliveredSpikes > 0)
     {
         state.AppendSpikeLog(
@@ -1596,8 +1455,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         InputSource = inputSource,
         BodyState = bodyState,
         Environment = environmentalState,
-        SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
-        PausedDueToSleep = false,
+        SleepState = neuronalSleepActive ? "sleeping" : "awake",
         TargetInstances = liveTargetInstances.Count,
         KnownTargetInstances = knownTargetInstances.Count,
         LiveTargetInstances = liveTargetInstances.Count,
@@ -1911,36 +1769,6 @@ app.MapPost("/api/v1/admin/input/language", async (
     var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(1.0f), 0.2f, 3.0f);
     var burstPerToken = Math.Clamp(request.BurstPerToken.GetValueOrDefault(8), 2, 48);
 
-    if (state.GetSleepMemoryRuntime().IsSleeping)
-    {
-        var pausedDialogue = dialogueTurns.ObservePaused(text, mode, state.Tick, "sleeping");
-        return Results.Ok(new
-        {
-            Text = text,
-            Mode = mode,
-            TokenCount = 0,
-            SourceTokenCount = 0,
-            NoveltyBias = noveltyBias,
-            Intensity = intensity,
-            BurstPerToken = burstPerToken,
-            TargetInstances = 0,
-            GeneratedUtterance = text,
-            SurfaceTokens = Array.Empty<string>(),
-            PhonemeTokens = Array.Empty<string>(),
-            CreatedLexemes = 0,
-            ReusedLexemes = 0,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            NeuronalLanguageGrounding = state.GetNeuronalLanguageGroundingSnapshot(),
-            Backoff = backoffPolicy.GetSnapshot(12),
-            Dialogue = pausedDialogue,
-            DeliveredByTarget = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
-            PausedDueToSleep = true,
-            SleepState = "sleeping",
-            Errors = Array.Empty<string>()
-        });
-    }
-
     var semanticTokens = TokenizeLanguageInput(text);
     var requestedTokenCount = Math.Clamp(request.TokenCount.GetValueOrDefault(6), 1, 24);
     if (semanticTokens.Length == 0 && string.Equals(mode, "emergent", StringComparison.OrdinalIgnoreCase))
@@ -2098,8 +1926,11 @@ app.MapPost("/api/v1/admin/input/language", async (
         DeliveredSpikes = deliveredSpikes,
         Backoff = backoffPolicy.GetSnapshot(12),
         DeliveredByTarget = deliveredByTarget.OrderBy(kv => kv.Key).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
-        PausedDueToSleep = false,
-        SleepState = "awake",
+        SleepState = state.NeuronalSleepConsolidation.Available &&
+            state.NeuronalSleepConsolidation.StateActive &&
+            state.NeuronalSleepConsolidation.State != NeuronalSleepState.Wake
+                ? "sleeping"
+                : "awake",
         Errors = errors
     });
 });
@@ -3283,15 +3114,8 @@ internal sealed class SimulationState
     private const int MaxIssuedDyadPrompts = 256;
     private static readonly TimeSpan IssuedDyadPromptLifetime = TimeSpan.FromMinutes(10);
     private const int MaxPopulationDispatchTracePerBatch = 96;
-    private const float WakeDutyEmaAlpha = 0.010f;
-    private const float WakeDurationEwmaAlpha = 0.20f;
-    private const float SleepDurationEwmaAlpha = 0.20f;
-    private const float SleepHomeostasisReferenceIntervalMs = 20_000f;
-    private const float MinSleepHomeostasisRateScale = 0.000001f;
-    private const float MinAdaptiveAwakeDrainScale = 0.30f;
-    private const float MaxAdaptiveAwakeDrainScale = 1.25f;
-    private const float MinAdaptiveSleepRecoveryScale = 0.70f;
-    private const float MaxAdaptiveSleepRecoveryScale = 2.60f;
+    private const float MetabolicReferenceIntervalMs = 20_000f;
+    private const float MinMetabolicRateScale = 0.000001f;
     private long _restartGeneration;
     private int _curriculumStageIndex;
     private long _curriculumLastStageTransitionTick;
@@ -3317,7 +3141,7 @@ internal sealed class SimulationState
     public long TotalSpontaneousDelivered { get; private set; }
     public long TotalSpontaneousDispatchErrors { get; private set; }
     public string PerformanceProfileName { get; private set; } = "normal";
-    public SleepMemoryRuntime SleepMemory { get; private set; } = SleepMemoryRuntime.Default;
+    public MetabolicPhysiologyRuntime MetabolicPhysiology { get; private set; } = MetabolicPhysiologyRuntime.Default;
     public InputGateRuntime InputGates { get; private set; } = InputGateRuntime.Default;
     public EnvironmentalStateRuntime EnvironmentalState { get; private set; } = EnvironmentalStateRuntime.Default;
     public OutcomeStateRuntime OutcomeState { get; private set; } = OutcomeStateRuntime.Default;
@@ -3360,11 +3184,11 @@ internal sealed class SimulationState
             AdvancePhase(BrainRhythm.BETA, 20.0);
             AdvancePhase(BrainRhythm.GAMMA, 40.0);
             var atpReserve = Math.Clamp(
-                SleepMemory.AtpBudget / Math.Max(0.0001f, SleepMemory.MaxAtpBudget),
+                MetabolicPhysiology.AtpBudget / Math.Max(0.0001f, MetabolicPhysiology.MaxAtpBudget),
                 0f,
                 1f);
             var pressure = Math.Clamp(
-                SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure),
+                MetabolicPhysiology.HomeostaticPressure / Math.Max(0.0001f, MetabolicPhysiology.MaxHomeostaticPressure),
                 0f,
                 1f);
             var homeostaticSleepDrive = Math.Clamp((pressure * 0.58f) + ((1f - atpReserve) * 0.42f), 0f, 1f);
@@ -3776,49 +3600,24 @@ internal sealed class SimulationState
         return GetCachedCircuitAuditSnapshot(clamped);
     }
 
-    public object GetSleepMemorySnapshot()
+    public object GetMetabolicPhysiologySnapshot()
     {
         lock (_gate)
         {
             return new
             {
-                SleepMemory.IsSleeping,
-                SleepMemory.AtpBudget,
-                SleepMemory.MaxAtpBudget,
-                SleepMemory.SleepPressure,
-                SleepMemory.MaxSleepPressure,
-                SleepMemory.SleepEnterThreshold,
-                SleepMemory.SleepExitThreshold,
-                SleepMemory.SleepPressureEnterThreshold,
-                SleepMemory.SleepPressureExitThreshold,
-                SleepMemory.SleepTicks,
-                SleepMemory.WakeTicks,
-                SleepMemory.MinSleepTicks,
-                SleepMemory.MinWakeTicks,
-                SleepMemory.WakeInertiaTicksRemaining,
-                SleepMemory.SleepEpisodes,
-                SleepMemory.TargetWakeDutyCycle,
-                SleepMemory.ObservedWakeDutyCycle,
-                SleepMemory.AdaptiveAwakeDrainScale,
-                SleepMemory.AdaptiveSleepRecoveryScale,
-                SleepMemory.ShortWakeThresholdTicks,
-                SleepMemory.LastWakeDurationTicks,
-                SleepMemory.LastSleepDurationTicks,
-                SleepMemory.WakeDurationEwmaTicks,
-                SleepMemory.SleepDurationEwmaTicks,
-                SleepMemory.ConsecutiveShortWakeEpisodes,
-                SleepMemory.ShortWakeAlerts,
-                SleepMemory.SleepExitBlockedTicks,
-                SleepMemory.SleepExitBlockedAlerts,
-                SleepMemory.LastAlert,
-                SleepMemory.LastAlertTick,
-                SleepMemory.LastTransitionTick,
-                SleepMemory.NeuronalAuthorityActive,
-                SleepMemory.NeuronalStateChannel,
-                SleepMemory.NeuronalReplayActive,
-                SleepMemory.NeuronalReplayEnsemble,
-                StructureLocalSynapticMemory = true,
-                StructureLocalSleepReplay = true
+                MetabolicPhysiology.NeuronalSleepObserved,
+                MetabolicPhysiology.AtpBudget,
+                MetabolicPhysiology.MaxAtpBudget,
+                MetabolicPhysiology.HomeostaticPressure,
+                MetabolicPhysiology.MaxHomeostaticPressure,
+                MetabolicPhysiology.SleepTicks,
+                MetabolicPhysiology.WakeTicks,
+                MetabolicPhysiology.SleepEpisodes,
+                MetabolicPhysiology.LastTransitionTick,
+                Role = "ReadOnlyPhysiologicalTransducer",
+                CanAuthorizeSleepState = false,
+                CanGateNeuralTraffic = false
             };
         }
     }
@@ -3893,11 +3692,11 @@ internal sealed class SimulationState
         }
     }
 
-    public SleepMemoryRuntime GetSleepMemoryRuntime()
+    public MetabolicPhysiologyRuntime GetMetabolicPhysiologyRuntime()
     {
         lock (_gate)
         {
-            return SleepMemory;
+            return MetabolicPhysiology;
         }
     }
 
@@ -4000,12 +3799,17 @@ internal sealed class SimulationState
             SimulationClockMs,
             Sleep = new
             {
-                SleepMemory.IsSleeping,
-                SleepMemory.SleepPressure,
-                SleepMemory.AtpBudget,
-                SleepMemory.SleepTicks,
-                SleepMemory.WakeTicks,
-                SleepMemory.MinWakeTicks
+                Authority = NeuronalSleepConsolidationDecision.Authority,
+                NeuronalSleepConsolidation.Available,
+                NeuronalSleepConsolidation.StateActive,
+                NeuronalSleepConsolidation.State,
+                NeuronalSleepConsolidation.ReplayActive,
+                NeuronalSleepConsolidation.ReplayEnsemble,
+                MetabolicPhysiology.NeuronalSleepObserved,
+                MetabolicPhysiology.HomeostaticPressure,
+                MetabolicPhysiology.AtpBudget,
+                MetabolicPhysiology.SleepTicks,
+                MetabolicPhysiology.WakeTicks
             },
             NeuronalAffect = new
             {
@@ -4171,10 +3975,10 @@ internal sealed class SimulationState
         return turnLeft ? "motor_turn_left" : "motor_turn_right";
     }
 
-    internal static float ResolveSleepHomeostasisRateScale(double tickDurationMs)
+    internal static float ResolveMetabolicRateScale(double tickDurationMs)
         => (float)Math.Clamp(
-            tickDurationMs / SleepHomeostasisReferenceIntervalMs,
-            MinSleepHomeostasisRateScale,
+            tickDurationMs / MetabolicReferenceIntervalMs,
+            MinMetabolicRateScale,
             4.0);
 
 
@@ -4263,296 +4067,69 @@ internal sealed class SimulationState
         };
     }
 
-    public SleepTransitionResult AdvanceSleepHomeostasis(
-        SleepTickInput input,
+    public MetabolicTransitionResult AdvanceMetabolicPhysiology(
+        MetabolicTickInput input,
         NeuronalSleepConsolidationDecision neuronalDecision)
     {
         lock (_gate)
         {
             ArgumentNullException.ThrowIfNull(neuronalDecision);
-            var runtime = SleepMemory;
-            var neuronalCircuitObserved = neuronalDecision.CircuitObserved;
-            var neuronalAuthorityAvailable = neuronalDecision.Available && neuronalDecision.StateActive;
-            var neuronalTargetSleeping = neuronalAuthorityAvailable && neuronalDecision.State != NeuronalSleepState.Wake;
-            var homeostasisRateScale = Math.Clamp(input.HomeostasisRateScale, MinSleepHomeostasisRateScale, 4.0f);
-            var wakeDutyAlpha = 1f - MathF.Pow(1f - WakeDutyEmaAlpha, homeostasisRateScale);
+
+            var runtime = MetabolicPhysiology;
+            var rateScale = Math.Clamp(input.HomeostasisRateScale, MinMetabolicRateScale, 4.0f);
+            var neuronalSleepObserved =
+                neuronalDecision.Available &&
+                neuronalDecision.StateActive &&
+                neuronalDecision.State != NeuronalSleepState.Wake;
+            var enteredSleep = neuronalSleepObserved && !runtime.NeuronalSleepObserved;
+            var exitedSleep = !neuronalSleepObserved && runtime.NeuronalSleepObserved;
             var atp = runtime.AtpBudget;
-            var maxSleepPressure = Math.Max(0.1f, runtime.MaxSleepPressure);
-            var sleepPressure = Math.Clamp(runtime.SleepPressure, 0f, maxSleepPressure);
-            var sleepPressureEnterThreshold = Math.Clamp(runtime.SleepPressureEnterThreshold, 0.05f, maxSleepPressure);
-            var sleepPressureExitThreshold = Math.Clamp(runtime.SleepPressureExitThreshold, 0f, sleepPressureEnterThreshold);
-            var enteredSleep = false;
-            var exitedSleep = false;
-            var sleepTicks = runtime.SleepTicks;
-            var wakeTicks = runtime.WakeTicks;
-            var observedWakeDuty = Math.Clamp(runtime.ObservedWakeDutyCycle, 0f, 1f);
-            var targetWakeDuty = Math.Clamp(runtime.TargetWakeDutyCycle, 0.45f, 0.90f);
-            var adaptiveAwakeDrainScale = Math.Clamp(runtime.AdaptiveAwakeDrainScale, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-            var adaptiveSleepRecoveryScale = Math.Clamp(runtime.AdaptiveSleepRecoveryScale, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale);
-            var shortWakeThresholdTicks = Math.Max(20, runtime.ShortWakeThresholdTicks);
-            var minWakeTicks = Math.Max(20, runtime.MinWakeTicks);
-            var wakeInertiaTicksRemaining = Math.Max(0, runtime.WakeInertiaTicksRemaining);
-            var lastWakeDurationTicks = runtime.LastWakeDurationTicks;
-            var lastSleepDurationTicks = runtime.LastSleepDurationTicks;
-            var wakeDurationEwmaTicks = runtime.WakeDurationEwmaTicks;
-            var sleepDurationEwmaTicks = runtime.SleepDurationEwmaTicks;
-            var consecutiveShortWakeEpisodes = runtime.ConsecutiveShortWakeEpisodes;
-            var shortWakeAlerts = runtime.ShortWakeAlerts;
-            var sleepExitBlockedTicks = runtime.SleepExitBlockedTicks;
-            var sleepExitBlockedAlerts = runtime.SleepExitBlockedAlerts;
-            var lastAlert = runtime.LastAlert;
-            var lastAlertTick = runtime.LastAlertTick;
-            var environmental = EnvironmentalState;
-            var environmentalFresh = environmental.LastInputTick >= 0 && Tick - environmental.LastInputTick <= 240;
-            var environmentalDarkness = environmentalFresh ? Math.Clamp(environmental.Darkness, 0f, 1f) : 0f;
-            var environmentalShelterNeed = environmentalFresh ? Math.Clamp(environmental.ShelterNeed, 0f, 1f) : 0f;
-            var environmentalAnxiety = environmentalFresh ? Math.Clamp(environmental.Anxiety, 0f, 1f) : 0f;
-            var environmentalHunger = environmentalFresh ? Math.Clamp(environmental.Hunger, 0f, 1f) : 0f;
-            var environmentalPredatorThreat = environmentalFresh ? Math.Clamp(environmental.PredatorThreat, 0f, 1f) : 0f;
-            var environmentalInShelter = environmentalFresh ? Math.Clamp(environmental.InShelter, 0f, 1f) : 0f;
-            var environmentalHealth = environmentalFresh ? Math.Clamp(environmental.Health, 0f, 1f) : 1f;
-            var environmentalShelterSafety = environmentalFresh ? Math.Clamp(environmental.ShelterSafety, 0f, 1f) : 0f;
-            var environmentalSafety = Math.Clamp(Math.Max(environmentalInShelter, environmentalShelterSafety), 0f, 1f);
-            var environmentalExposure = 1f - environmentalSafety;
-            var environmentalHealthDeficit = 1f - environmentalHealth;
-            var dangerWakeHold = Math.Clamp(environmentalPredatorThreat * environmentalExposure, 0f, 1f);
-            var shelterSeekingWakeHold = Math.Clamp(
-                environmentalExposure *
-                Math.Max(environmentalShelterNeed, environmentalDarkness * 0.72f) *
-                (0.58f + (environmentalAnxiety * 0.28f) + (environmentalHealthDeficit * 0.14f)),
-                0f,
-                1f);
+            var pressure = runtime.HomeostaticPressure;
+            var sleepTicks = neuronalSleepObserved ? runtime.SleepTicks + 1 : 0;
+            var wakeTicks = neuronalSleepObserved ? 0 : runtime.WakeTicks + 1;
 
-            if (runtime.IsSleeping)
+            if (neuronalSleepObserved)
             {
-                var baseRecovery = runtime.SleepRecoveryPerTick * adaptiveSleepRecoveryScale * homeostasisRateScale;
-                // Keep ATP recovery robust during replay: replay should tax recovery,
-                // but not collapse it to near-zero for long stretches.
-                var replayPenaltyRaw = input.NeuronalReplaySpikes * runtime.NeuronalReplayEnergyPenaltyPerSpike * homeostasisRateScale;
-                var replayPenaltyCap = baseRecovery * 0.55f;
-                var replayPenalty = Math.Min(replayPenaltyRaw, replayPenaltyCap);
-                var minRecoveryFloor = baseRecovery * 0.45f;
-                var recovery = Math.Max(minRecoveryFloor, baseRecovery - replayPenalty);
-                atp = Math.Min(runtime.MaxAtpBudget, atp + recovery);
-                var pressureRecovery = Math.Max(
-                    0f,
-                    (runtime.SleepPressureRecoveryPerTick - (input.NeuronalReplaySpikes * runtime.NeuronalReplayPressurePenaltyPerSpike)) * homeostasisRateScale);
-                sleepPressure = Math.Max(0f, sleepPressure - pressureRecovery);
-                sleepTicks++;
-                wakeTicks = 0;
-                wakeInertiaTicksRemaining = 0;
-                observedWakeDuty = (1.0f - wakeDutyAlpha) * observedWakeDuty;
-
-                if (sleepTicks >= runtime.MinSleepTicks &&
-                    (atp < runtime.SleepExitThreshold || sleepPressure > sleepPressureExitThreshold))
-                {
-                    sleepExitBlockedTicks++;
-                    if (sleepExitBlockedTicks >= runtime.MinSleepTicks &&
-                        (sleepExitBlockedTicks % runtime.MinSleepTicks) == 0)
-                    {
-                        sleepExitBlockedAlerts++;
-                        adaptiveSleepRecoveryScale = Math.Clamp(adaptiveSleepRecoveryScale + 0.05f, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale);
-                        adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale - 0.02f, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                        lastAlert = $"Sleep exit blocked at tick {Tick}: ATP={atp:0.000}, pressure={sleepPressure:0.000}/{sleepPressureExitThreshold:0.000}, blockedTicks={sleepExitBlockedTicks}, recoveryScale={adaptiveSleepRecoveryScale:0.000}, awakeDrainScale={adaptiveAwakeDrainScale:0.000}.";
-                        lastAlertTick = Tick;
-                        AppendLog(_outputLog, lastAlert);
-                    }
-                }
-                else
-                {
-                    sleepExitBlockedTicks = 0;
-                }
+                atp += runtime.SleepRecoveryPerTick * rateScale;
+                pressure -= runtime.SleepPressureRecoveryPerTick * rateScale;
             }
             else
             {
-                var drain = runtime.AwakeBaseDrain
-                    + (input.DispatchedSpikes * runtime.DispatchDrainPerSpike)
-                    + (input.DrainedSpikes * runtime.InboundDrainPerSpike)
-                    + (input.ActivePathways * runtime.ActivePathwayDrain)
-                    + (input.SpontaneousGenerated * runtime.SpontaneousDrainPerEvent);
-                drain *= adaptiveAwakeDrainScale * homeostasisRateScale;
-                var inWakeInertiaPhase = wakeInertiaTicksRemaining > 0;
-                if (inWakeInertiaPhase)
-                {
-                    // Wake inertia phase dampens energy drain to avoid immediate sleep relapse.
-                    var inertiaProgress = 1.0f - (wakeInertiaTicksRemaining / (float)Math.Max(1, minWakeTicks));
-                    var inertiaDrainScale = Math.Clamp(0.40f + (0.55f * inertiaProgress), 0.40f, 0.95f);
-                    drain *= inertiaDrainScale;
-                    wakeInertiaTicksRemaining = Math.Max(0, wakeInertiaTicksRemaining - 1);
-                }
-                atp = Math.Max(0f, atp - Math.Max(0f, drain));
-                var pressureRise = runtime.WakePressureBasePerTick
-                    + (input.DispatchedSpikes * runtime.WakePressurePerDispatchSpike)
-                    + (input.DrainedSpikes * runtime.WakePressurePerInboundSpike)
-                    + (input.ActivePathways * runtime.WakePressurePerActivePathway)
-                    + (input.SpontaneousGenerated * runtime.WakePressurePerSpontaneousEvent)
-                    + (environmentalDarkness * runtime.WakePressureBasePerTick * (0.85f + (0.55f * environmentalSafety) - (0.35f * dangerWakeHold)))
-                    + (environmentalShelterNeed * runtime.WakePressureBasePerTick * 0.65f)
-                    + (environmentalHunger * runtime.WakePressureBasePerTick * 0.30f)
-                    + (environmentalHealthDeficit * runtime.WakePressureBasePerTick * 0.20f)
-                    + (environmentalAnxiety * runtime.WakePressureBasePerTick * 0.20f);
-                if (inWakeInertiaPhase)
-                {
-                    // Cooldown should primarily preserve wake continuity, so pressure ramps slower here.
-                    pressureRise *= 0.18f;
-                }
-                pressureRise *= homeostasisRateScale;
-                sleepPressure = Math.Min(maxSleepPressure, sleepPressure + Math.Max(0f, pressureRise));
-                wakeTicks++;
-                sleepTicks = 0;
-                sleepExitBlockedTicks = 0;
-                observedWakeDuty = ((1.0f - wakeDutyAlpha) * observedWakeDuty) + wakeDutyAlpha;
-            }
+                var drain =
+                    runtime.AwakeBaseDrain +
+                    (input.GeneratedSpikes * runtime.GeneratedSpikeDrain) +
+                    (input.DrainedSpikes * runtime.InboundDrainPerSpike) +
+                    (input.ActivePathways * runtime.ActivePathwayDrain) +
+                    (input.SpontaneousGenerated * runtime.SpontaneousDrainPerEvent);
+                var pressureRise =
+                    runtime.WakePressureBasePerTick +
+                    (input.GeneratedSpikes * runtime.WakePressurePerGeneratedSpike) +
+                    (input.DrainedSpikes * runtime.WakePressurePerInboundSpike) +
+                    (input.ActivePathways * runtime.WakePressurePerActivePathway) +
+                    (input.SpontaneousGenerated * runtime.WakePressurePerSpontaneousEvent);
 
-            atp = Math.Clamp(atp, 0f, runtime.MaxAtpBudget);
-            sleepPressure = Math.Clamp(sleepPressure, 0f, maxSleepPressure);
-
-            var unsafeToSleep = (dangerWakeHold > 0.45f || shelterSeekingWakeHold > 0.46f) &&
-                environmentalSafety < 0.40f &&
-                atp > (runtime.SleepEnterThreshold * 0.55f);
-            var unsafeArousalFromSleep = runtime.IsSleeping &&
-                sleepTicks >= Math.Min(runtime.MinSleepTicks, 30) &&
-                environmentalSafety < 0.35f &&
-                atp > (runtime.SleepEnterThreshold * 0.65f) &&
-                (dangerWakeHold > 0.35f || shelterSeekingWakeHold > 0.62f);
-
-            if (neuronalAuthorityAvailable && !runtime.IsSleeping && neuronalTargetSleeping)
-            {
-                enteredSleep = true;
-                lastWakeDurationTicks = Math.Max(1, wakeTicks);
-                wakeDurationEwmaTicks = wakeDurationEwmaTicks <= 0f
-                    ? lastWakeDurationTicks
-                    : ((1.0f - WakeDurationEwmaAlpha) * wakeDurationEwmaTicks) + (WakeDurationEwmaAlpha * lastWakeDurationTicks);
-                wakeTicks = 0;
-                sleepTicks = 0;
-                wakeInertiaTicksRemaining = 0;
-            }
-            else if (neuronalAuthorityAvailable && runtime.IsSleeping && !neuronalTargetSleeping)
-            {
-                exitedSleep = true;
-                lastSleepDurationTicks = Math.Max(1, sleepTicks);
-                sleepDurationEwmaTicks = sleepDurationEwmaTicks <= 0f
-                    ? lastSleepDurationTicks
-                    : ((1.0f - SleepDurationEwmaAlpha) * sleepDurationEwmaTicks) + (SleepDurationEwmaAlpha * lastSleepDurationTicks);
-                sleepTicks = 0;
-                wakeTicks = 0;
-                sleepExitBlockedTicks = 0;
-                var wakeReserve = (runtime.MaxAtpBudget - runtime.SleepExitThreshold) * 0.25f;
-                atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
-                wakeInertiaTicksRemaining = minWakeTicks;
+                atp -= Math.Max(0f, drain) * rateScale;
+                pressure += Math.Max(0f, pressureRise) * rateScale;
             }
 
             runtime = runtime with
             {
-                IsSleeping = enteredSleep ? true : exitedSleep ? false : runtime.IsSleeping,
-                AtpBudget = atp,
-                SleepPressure = sleepPressure,
-                MaxSleepPressure = maxSleepPressure,
-                SleepPressureEnterThreshold = sleepPressureEnterThreshold,
-                SleepPressureExitThreshold = sleepPressureExitThreshold,
+                NeuronalSleepObserved = neuronalSleepObserved,
+                AtpBudget = Math.Clamp(atp, 0f, runtime.MaxAtpBudget),
+                HomeostaticPressure = Math.Clamp(pressure, 0f, runtime.MaxHomeostaticPressure),
                 SleepTicks = sleepTicks,
                 WakeTicks = wakeTicks,
-                MinWakeTicks = minWakeTicks,
-                WakeInertiaTicksRemaining = Math.Max(0, wakeInertiaTicksRemaining),
-                ObservedWakeDutyCycle = Math.Clamp(observedWakeDuty, 0f, 1f),
-                AdaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale),
-                AdaptiveSleepRecoveryScale = Math.Clamp(adaptiveSleepRecoveryScale, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale),
-                LastWakeDurationTicks = lastWakeDurationTicks,
-                LastSleepDurationTicks = lastSleepDurationTicks,
-                WakeDurationEwmaTicks = Math.Max(0f, wakeDurationEwmaTicks),
-                SleepDurationEwmaTicks = Math.Max(0f, sleepDurationEwmaTicks),
-                ConsecutiveShortWakeEpisodes = Math.Max(0, consecutiveShortWakeEpisodes),
-                ShortWakeAlerts = Math.Max(0, shortWakeAlerts),
-                SleepExitBlockedTicks = Math.Max(0, sleepExitBlockedTicks),
-                SleepExitBlockedAlerts = Math.Max(0, sleepExitBlockedAlerts),
-                LastAlert = lastAlert,
-                LastAlertTick = lastAlertTick,
                 SleepEpisodes = runtime.SleepEpisodes + (enteredSleep ? 1 : 0),
-                LastTransitionTick = (enteredSleep || exitedSleep) ? Tick : runtime.LastTransitionTick,
-                NeuronalAuthorityActive = neuronalCircuitObserved,
-                NeuronalStateChannel = neuronalAuthorityAvailable ? (int)neuronalDecision.State : runtime.NeuronalStateChannel,
-                NeuronalReplayActive = neuronalAuthorityAvailable && neuronalDecision.ReplayActive,
-                NeuronalReplayEnsemble = neuronalAuthorityAvailable && neuronalDecision.ReplayActive
-                    ? neuronalDecision.ReplayEnsemble
-                    : -1
+                LastTransitionTick = enteredSleep || exitedSleep ? Tick : runtime.LastTransitionTick
             };
+            MetabolicPhysiology = runtime;
 
-            SleepMemory = runtime;
-            EnvironmentalState = environmental with
-            {
-                Darkness = environmentalDarkness * 0.995f,
-                ShelterNeed = environmentalShelterNeed * 0.992f,
-                Anxiety = environmentalAnxiety * 0.990f,
-                Hunger = environmentalHunger * 0.998f,
-                PredatorThreat = environmentalPredatorThreat * 0.985f,
-                InShelter = environmentalInShelter * 0.996f,
-                Health = Math.Clamp(environmentalHealth + ((1f - environmentalHealth) * 0.002f), 0f, 1f),
-                ShelterSafety = environmentalShelterSafety * 0.996f
-            };
-
-            return new SleepTransitionResult(
-                runtime.IsSleeping,
+            return new MetabolicTransitionResult(
+                runtime.NeuronalSleepObserved,
                 enteredSleep,
                 exitedSleep,
                 runtime.AtpBudget,
                 runtime.SleepTicks);
-        }
-    }
-
-
-    public bool TrySetMinWakeTicks(int minWakeTicks, out SleepMemoryRuntime runtime, out string? error)
-    {
-        lock (_gate)
-        {
-            error = null;
-            if (minWakeTicks is < 20 or > 5000)
-            {
-                runtime = SleepMemory;
-                error = "MinWakeTicks must be between 20 and 5000.";
-                return false;
-            }
-
-            var wakeInertiaTicksRemaining = SleepMemory.WakeInertiaTicksRemaining;
-            if (SleepMemory.IsSleeping)
-            {
-                wakeInertiaTicksRemaining = 0;
-            }
-            else
-            {
-                var wakeDeficit = Math.Max(0, minWakeTicks - SleepMemory.WakeTicks);
-                wakeInertiaTicksRemaining = Math.Max(wakeInertiaTicksRemaining, wakeDeficit);
-            }
-
-            SleepMemory = SleepMemory with
-            {
-                MinWakeTicks = minWakeTicks,
-                WakeInertiaTicksRemaining = wakeInertiaTicksRemaining
-            };
-            runtime = SleepMemory;
-            return true;
-        }
-    }
-
-    public bool TrySetSleepPressureEnterThreshold(float threshold, out SleepMemoryRuntime runtime, out string? error)
-    {
-        lock (_gate)
-        {
-            error = null;
-            var maxPressure = Math.Max(0.1f, SleepMemory.MaxSleepPressure);
-            var minThreshold = Math.Max(0.05f, SleepMemory.SleepPressureExitThreshold + 0.01f);
-            if (threshold < minThreshold || threshold > maxPressure)
-            {
-                runtime = SleepMemory;
-                error = $"SleepPressureEnterThreshold must be between {minThreshold:0.000} and {maxPressure:0.000}.";
-                return false;
-            }
-
-            SleepMemory = SleepMemory with
-            {
-                SleepPressureEnterThreshold = threshold
-            };
-            runtime = SleepMemory;
-            return true;
         }
     }
 
@@ -4713,7 +4290,7 @@ internal sealed class SimulationState
                 PerformanceProfileName = profileName.Trim();
             }
 
-            SleepMemory = ApplySleepProfile(SleepMemory, PerformanceProfileName);
+            MetabolicPhysiology = NormalizeMetabolicPhysiology(MetabolicPhysiology);
         }
     }
 
@@ -4757,7 +4334,7 @@ internal sealed class SimulationState
             TotalSpontaneousGenerated = 0;
             TotalSpontaneousDelivered = 0;
             TotalSpontaneousDispatchErrors = 0;
-            SleepMemory = SleepMemoryRuntime.Default;
+            MetabolicPhysiology = MetabolicPhysiologyRuntime.Default;
             EnvironmentalState = EnvironmentalStateRuntime.Default;
             OutcomeState = OutcomeStateRuntime.Default;
             BodyState = BodyStateRuntime.Default;
@@ -5125,14 +4702,18 @@ internal sealed class SimulationState
     {
         return new
         {
-            Authority = "DistributedNeuronal",
-            StructureLocalSynapticMemory = true,
-            StructureLocalSleepReplay = true,
-            IsSleeping = SleepMemory.IsSleeping,
-            SleepMemory.NeuronalAuthorityActive,
-            SleepMemory.NeuronalStateChannel,
-            SleepMemory.NeuronalReplayActive,
-            SleepMemory.NeuronalReplayEnsemble
+            Authority = NeuronalSleepConsolidationDecision.Authority,
+            NeuronalSleepConsolidation.CircuitObserved,
+            NeuronalSleepConsolidation.Available,
+            NeuronalSleepConsolidation.StateActive,
+            NeuronalSleepConsolidation.State,
+            NeuronalSleepConsolidation.StateConfidence,
+            NeuronalSleepConsolidation.ReplayActive,
+            NeuronalSleepConsolidation.ReplayEnsemble,
+            NeuronalSleepConsolidation.ReplayStrength,
+            NeuronalSleepConsolidation.SpindleCoupling,
+            NeuronalSleepConsolidation.SlowWaveCoupling,
+            NeuronalSleepConsolidation.CorticalConsolidationGain
         };
     }
 
@@ -5156,10 +4737,14 @@ internal sealed class SimulationState
                 Authority = "MeasuredNeuronalDecoders",
                 Sleep = new
                 {
-                    SleepMemory.IsSleeping,
-                    SleepMemory.SleepPressure,
-                    SleepMemory.WakeInertiaTicksRemaining,
-                    Authority = "DistributedNeuronalSleepCircuit"
+                    Authority = NeuronalSleepConsolidationDecision.Authority,
+                    NeuronalSleepConsolidation.Available,
+                    NeuronalSleepConsolidation.StateActive,
+                    NeuronalSleepConsolidation.State,
+                    NeuronalSleepConsolidation.StateConfidence,
+                    NeuronalSleepConsolidation.ReplayActive,
+                    MetabolicPhysiology.AtpBudget,
+                    MetabolicPhysiology.HomeostaticPressure
                 },
                 Body = BodyState,
                 Sensory = new
@@ -5536,7 +5121,6 @@ internal sealed class SimulationState
             var serviceBackoffCount = 0;
             var serviceUnhealthyCount = 0;
             var serviceUnknownCount = 0;
-            var sleepInhibitedCount = 0;
             var inhibitedCount = 0;
             var warningCount = 0;
             var noticeCount = 0;
@@ -5570,7 +5154,6 @@ internal sealed class SimulationState
                 var outputSummary = DescribeCircuitOutputs(structure);
                 var activationReason = ResolveCircuitActivationReason(structure, inboundSpikes, outboundSpikes, lastInputTick, lastOutputTick);
                 var inhibited = IsCircuitCurrentlyInhibited(structure);
-                var sleepInhibited = SleepMemory.IsSleeping && IsMotorOrLanguageCircuit(structure);
                 var serviceHealth = ClassifyCircuitServiceStatus(serviceStatus, hasRegisteredService, hasTelemetry, Tick);
                 var silenceCause = ResolveCircuitSilenceCause(
                     structure,
@@ -5655,12 +5238,7 @@ internal sealed class SimulationState
                     }
                 }
 
-                if (silent && sleepInhibited)
-                {
-                    sleepInhibitedCount++;
-                    issueList.Add("sleep inhibited");
-                }
-                else if (silent && inhibited)
+                if (silent && inhibited)
                 {
                     inhibitedCount++;
                     issueList.Add("inhibited");
@@ -5777,7 +5355,6 @@ internal sealed class SimulationState
                     ServiceBackoffCount = serviceBackoffCount,
                     ServiceUnhealthyCount = serviceUnhealthyCount,
                     ServiceUnknownCount = serviceUnknownCount,
-                    SleepInhibitedCount = sleepInhibitedCount,
                     InhibitedCount = inhibitedCount,
                     FunctionCount = functionSupport.Count,
                     ActiveFunctionCount = activeFunctionCount,
@@ -5894,11 +5471,6 @@ internal sealed class SimulationState
             return $"service unavailable: {serviceStatus}";
         }
 
-        if (SleepMemory.IsSleeping && IsMotorOrLanguageCircuit(structure))
-        {
-            return "sleep inhibition";
-        }
-
         if (IsCircuitCurrentlyInhibited(structure))
         {
             return "inhibition";
@@ -5924,11 +5496,6 @@ internal sealed class SimulationState
 
     private bool IsCircuitCurrentlyInhibited(StructureId structure)
     {
-        if (SleepMemory.IsSleeping && IsMotorOrLanguageCircuit(structure))
-        {
-            return true;
-        }
-
         if ((structure is StructureId.Thalamus or StructureId.MotorThalamus or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.IntralaminarThalamus) &&
             NeuronalAttentionWorkspace.DistractorSuppression > 0.72)
         {
@@ -6115,44 +5682,18 @@ internal sealed class SimulationState
           },
           OutcomeState,
           Curriculum,
-          SleepMemory = new
+          MetabolicPhysiology = new
         {
-            SleepMemory.IsSleeping,
-            SleepMemory.AtpBudget,
-            SleepMemory.MaxAtpBudget,
-            SleepMemory.SleepPressure,
-            SleepMemory.MaxSleepPressure,
-            SleepMemory.SleepEnterThreshold,
-            SleepMemory.SleepExitThreshold,
-            SleepMemory.SleepPressureEnterThreshold,
-            SleepMemory.SleepPressureExitThreshold,
-            SleepMemory.SleepTicks,
-            SleepMemory.WakeTicks,
-            SleepMemory.MinSleepTicks,
-            SleepMemory.MinWakeTicks,
-            SleepMemory.WakeInertiaTicksRemaining,
-            SleepMemory.SleepEpisodes,
-            SleepMemory.TargetWakeDutyCycle,
-            SleepMemory.ObservedWakeDutyCycle,
-            SleepMemory.AdaptiveAwakeDrainScale,
-            SleepMemory.AdaptiveSleepRecoveryScale,
-            SleepMemory.ShortWakeThresholdTicks,
-            SleepMemory.LastWakeDurationTicks,
-            SleepMemory.LastSleepDurationTicks,
-            SleepMemory.WakeDurationEwmaTicks,
-            SleepMemory.SleepDurationEwmaTicks,
-            SleepMemory.ConsecutiveShortWakeEpisodes,
-            SleepMemory.ShortWakeAlerts,
-            SleepMemory.SleepExitBlockedTicks,
-            SleepMemory.SleepExitBlockedAlerts,
-            SleepMemory.LastAlert,
-            SleepMemory.LastAlertTick,
-            SleepMemory.LastTransitionTick,
-            StructureLocalSynapticMemory = true,
-            StructureLocalSleepReplay = true,
-            SleepMemory.NeuronalAuthorityActive,
-            SleepMemory.NeuronalReplayActive,
-            SleepMemory.NeuronalReplayEnsemble
+            MetabolicPhysiology.NeuronalSleepObserved,
+            MetabolicPhysiology.AtpBudget,
+            MetabolicPhysiology.MaxAtpBudget,
+            MetabolicPhysiology.HomeostaticPressure,
+            MetabolicPhysiology.MaxHomeostaticPressure,
+            MetabolicPhysiology.SleepTicks,
+            MetabolicPhysiology.WakeTicks,
+            MetabolicPhysiology.SleepEpisodes,
+            MetabolicPhysiology.LastTransitionTick,
+            Role = "ReadOnlyPhysiologicalTransducer"
         },
         VisualAttention = new
         {
@@ -6268,9 +5809,6 @@ internal sealed class SimulationState
             TransportStats.TickWallP95Ms,
             TransportStats.TickWallP99Ms,
             TransportStats.DegradeSignal,
-            TransportStats.SleepReplayStage,
-            TransportStats.SleepInhibitoryScale,
-            TransportStats.SleepExcitatoryScale,
             TransportStats.PerceptionLanguageGenerated,
             TransportStats.PerceptionLanguageDelivered,
             TransportStats.PerceptionLanguageDispatchErrors,
@@ -6416,7 +5954,7 @@ internal sealed class SimulationState
             (delivered == 0 || routed > 0 || TransportStats.DispatchQueueFlushedBatches > 0);
         var queueHealthy = TransportStats.DispatchQueueDroppedBatches == 0 && TransportStats.DispatchQueueDispatchErrors == 0;
         var servicesHealthy = nonOkCount <= nonOkLimit;
-        var sleepBiologyBounds = SleepMemory.AtpBudget >= 0f && SleepMemory.AtpBudget <= SleepMemory.MaxAtpBudget + 0.001f;
+        var sleepBiologyBounds = MetabolicPhysiology.AtpBudget >= 0f && MetabolicPhysiology.AtpBudget <= MetabolicPhysiology.MaxAtpBudget + 0.001f;
         var connectomeCoverage = biological.MissingAsSource.Length == 0 && biological.MissingAsTarget.Length == 0;
         var neurotransmitterCoverage = biological.MissingNeurotransmitters.Length == 0;
         var requiredPathwayCoverage = biological.RequiredPathways.Values.All(v => v);
@@ -6482,11 +6020,13 @@ internal sealed class SimulationState
             },
             Sleep = new
             {
-                SleepMemory.IsSleeping,
-                SleepMemory.AtpBudget,
-                SleepMemory.SleepPressure,
-                SleepMemory.WakeTicks,
-                SleepMemory.SleepTicks
+                Authority = NeuronalSleepConsolidationDecision.Authority,
+                NeuronalSleepConsolidation.State,
+                NeuronalSleepConsolidation.ReplayActive,
+                MetabolicPhysiology.AtpBudget,
+                MetabolicPhysiology.HomeostaticPressure,
+                MetabolicPhysiology.WakeTicks,
+                MetabolicPhysiology.SleepTicks
             }
         };
     }
@@ -6888,7 +6428,7 @@ internal sealed class SimulationState
                 TickDurationMs = TickDurationMs,
                 PerformanceProfileName = string.IsNullOrWhiteSpace(PerformanceProfileName) ? "normal" : PerformanceProfileName,
                 InputGates = InputGates,
-                SleepMemory = SleepMemory,
+                MetabolicPhysiology = MetabolicPhysiology,
                 Curriculum = Curriculum,
                 LastSnapshotTick = LastSnapshotTick,
                 LastSnapshotSimulationMs = LastSnapshotSimulationMs,
@@ -6987,10 +6527,10 @@ internal sealed class SimulationState
             PerformanceProfileName = profileName;
 
             InputGates = InputGateRuntime.Normalize(document.InputGates ?? InputGateRuntime.Default);
-            var importedSleepMemory = document.SleepMemory ?? SleepMemoryRuntime.Default;
+            var importedMetabolicPhysiology = document.MetabolicPhysiology ?? MetabolicPhysiologyRuntime.Default;
             var importedCurriculum = document.Curriculum ?? CurriculumRuntime.Default;
 
-            SleepMemory = ApplySleepProfile(importedSleepMemory, profileName);
+            MetabolicPhysiology = NormalizeMetabolicPhysiology(importedMetabolicPhysiology);
             RestoreCurriculumFromSnapshot(importedCurriculum);
 
             LastSnapshotTick = Math.Max(0, document.LastSnapshotTick);
@@ -7101,6 +6641,17 @@ internal sealed class SimulationState
                     importReport.MigrationSteps.Add("v1->v2");
                     break;
                 }
+                case 2:
+                {
+                    document.MetabolicPhysiology = MetabolicPhysiologyRuntime.Default;
+                    document.SchemaVersion = 3;
+                    importReport.Migrated = true;
+                    importReport.MigrationSteps.Add("v2->v3");
+                    importReport.DefaultsApplied.Add("metabolicPhysiology");
+                    importReport.Warnings.Add(
+                        "Legacy sleep-memory overlay state was discarded; neuronal sleep circuits now hold sole authority.");
+                    break;
+                }
                 default:
                     error = $"No migration path from schema version {document.SchemaVersion} to {NetworkStateDocument.CurrentSchemaVersion}.";
                     return false;
@@ -7143,7 +6694,7 @@ internal sealed class SimulationState
     private static string BuildNetworkStateFingerprint(long tick, double simulationClockMs, int serviceCount, int projectionCount, long exportedAtUnixMs)
     {
         var sim = double.IsFinite(simulationClockMs) ? simulationClockMs : 0.0;
-        return $"dnne-v2:{Math.Max(0, tick)}:{sim:0.000}:{Math.Max(0, serviceCount)}:{Math.Max(0, projectionCount)}:{Math.Max(0, exportedAtUnixMs)}";
+        return $"dnne-v3:{Math.Max(0, tick)}:{sim:0.000}:{Math.Max(0, serviceCount)}:{Math.Max(0, projectionCount)}:{Math.Max(0, exportedAtUnixMs)}";
     }
 
     private sealed record BiologicalValidationMetrics(
@@ -7276,57 +6827,19 @@ internal sealed class SimulationState
         return value + (Math.Sign(delta) * Math.Max(0f, maxDelta));
     }
 
-    private static SleepMemoryRuntime ApplySleepProfile(SleepMemoryRuntime runtime, string profileName)
-    {
-        if (string.Equals(profileName, "ultra", StringComparison.OrdinalIgnoreCase))
+    private static MetabolicPhysiologyRuntime NormalizeMetabolicPhysiology(MetabolicPhysiologyRuntime runtime)
+        => runtime with
         {
-            var tuned = runtime with
-            {
-                    SleepEnterThreshold = 0.19f,
-                SleepExitThreshold = 0.72f,
-                AwakeBaseDrain = 0.0011f,
-                DispatchDrainPerSpike = 0.00009f,
-                InboundDrainPerSpike = 0.00006f,
-                ActivePathwayDrain = 0.00008f,
-                SpontaneousDrainPerEvent = 0.00010f,
-                SleepRecoveryPerTick = 0.0088f,
-                MinSleepTicks = 140,
-                    TargetWakeDutyCycle = 0.74f,
-                ShortWakeThresholdTicks = 90,
-                    MinWakeTicks = 280
-            };
-            return tuned with
-            {
-                AtpBudget = Math.Clamp(tuned.AtpBudget, 0f, tuned.MaxAtpBudget),
-                ObservedWakeDutyCycle = Math.Clamp(tuned.ObservedWakeDutyCycle, 0f, 1f),
-                AdaptiveAwakeDrainScale = Math.Clamp(tuned.AdaptiveAwakeDrainScale, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale),
-                AdaptiveSleepRecoveryScale = Math.Clamp(tuned.AdaptiveSleepRecoveryScale, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale)
-            };
-        }
-
-        var normal = runtime with
-        {
-            SleepEnterThreshold = 0.22f,
-            SleepExitThreshold = 0.70f,
-            AwakeBaseDrain = 0.0009f,
-            DispatchDrainPerSpike = 0.00007f,
-            InboundDrainPerSpike = 0.00005f,
-            ActivePathwayDrain = 0.00006f,
-            SpontaneousDrainPerEvent = 0.00008f,
-            SleepRecoveryPerTick = 0.0062f,
-            MinSleepTicks = 130,
-            TargetWakeDutyCycle = 0.70f,
-            ShortWakeThresholdTicks = 80,
-            MinWakeTicks = 220
+            AtpBudget = Math.Clamp(runtime.AtpBudget, 0f, Math.Max(0.0001f, runtime.MaxAtpBudget)),
+            HomeostaticPressure = Math.Clamp(
+                runtime.HomeostaticPressure,
+                0f,
+                Math.Max(0.0001f, runtime.MaxHomeostaticPressure)),
+            SleepTicks = Math.Max(0, runtime.SleepTicks),
+            WakeTicks = Math.Max(0, runtime.WakeTicks),
+            SleepEpisodes = Math.Max(0, runtime.SleepEpisodes),
+            LastTransitionTick = Math.Max(0, runtime.LastTransitionTick)
         };
-        return normal with
-        {
-            AtpBudget = Math.Clamp(normal.AtpBudget, 0f, normal.MaxAtpBudget),
-            ObservedWakeDutyCycle = Math.Clamp(normal.ObservedWakeDutyCycle, 0f, 1f),
-            AdaptiveAwakeDrainScale = Math.Clamp(normal.AdaptiveAwakeDrainScale, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale),
-            AdaptiveSleepRecoveryScale = Math.Clamp(normal.AdaptiveSleepRecoveryScale, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale)
-        };
-    }
 
 
     private void AppendLog(Queue<RuntimeLogEntry> queue, string message)
@@ -7965,8 +7478,6 @@ internal sealed class TickCoordinator(
 
                 var tickSignal = state.AdvanceClockAndCreateTickSignal();
                 var healthNowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                var sleepRuntimeAtTickStart = state.GetSleepMemoryRuntime();
-                var sleepReplayStage = ResolveSleepReplayStage(sleepRuntimeAtTickStart);
                 var activePathways = new ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int>();
                 var snapshots = new List<StructureSnapshot>();
                 var availableServices = serviceInstances.Where(i => serviceHealth[i.InstanceKey].CanAttempt(healthNowMs)).ToList();
@@ -8292,28 +7803,17 @@ internal sealed class TickCoordinator(
                         var spikeTargetsCerebellarInput = IsCerebellarInputTarget(spike.TargetStructure);
                         foreach (var route in ResolveRoutes(candidates, spike))
                         {
-                            if (sleepRuntimeAtTickStart.IsSleeping &&
-                                IsMotorSleepSuppressedRoute(spike.SourceStructure, route.Target))
-                            {
-                                continue;
-                            }
-
                             // Motor-command copies to cerebellar inputs are delivered as attenuated
                             // efference copies on the feedback channel (forward model), preserving
                             // the behavior of the former dedicated efference-copy path.
-                            var asEfferenceCopy = !sleepRuntimeAtTickStart.IsSleeping
-                                && IsMotorOutputStructure(spike.SourceStructure)
+                            var asEfferenceCopy = IsMotorOutputStructure(spike.SourceStructure)
                                 && IsCerebellarInputTarget(route.Target)
                                 && !spikeTargetsCerebellarInput;
                             var builtSpike = asEfferenceCopy
                                 ? BuildCerebellarEfferenceCopySpike(spike, route)
                                 : RewriteSpikeForRoute(spike, route);
 
-                            var routedSpike = ApplySleepInhibitoryGating(
-                                builtSpike,
-                                sleepRuntimeAtTickStart,
-                                sleepReplayStage,
-                                isReplay: false);
+                            var routedSpike = builtSpike;
                             var routeKey = (route.Target, route.ProjectionType ?? string.Empty);
                             if (!targetResolutionCache.TryGetValue(routeKey, out var targetInstances))
                             {
@@ -8531,7 +8031,6 @@ internal sealed class TickCoordinator(
             var neuronalMotor = NeuronalMotorPopulationDecoder.Decode(
                 tickSignal.Tick,
                 neuronalMotorPopulation,
-                sleepRuntimeAtTickStart.IsSleeping,
                 neuronalControl,
                 previousNeuronalMotor);
             state.UpdateNeuronalMotor(neuronalMotor);
@@ -8561,7 +8060,7 @@ internal sealed class TickCoordinator(
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(neuronalAttention);
             var spontaneousSpikingEnabled = state.IsSpontaneousSpikingEnabled();
-            if (!sleepRuntimeAtTickStart.IsSleeping && IsTransportSilent(previousTransport))
+            if (IsTransportSilent(previousTransport))
             {
                 spontaneousGateStarvationTicks++;
             }
@@ -8580,7 +8079,7 @@ internal sealed class TickCoordinator(
                 spontaneousGateStarvationTicks = 0;
             }
 
-            if (spontaneousSpikingEnabled && !sleepRuntimeAtTickStart.IsSleeping)
+            if (spontaneousSpikingEnabled)
             {
                 spontaneousStats = await InjectSpontaneousSpikesAsync(
                     tickSignal,
@@ -8606,7 +8105,6 @@ internal sealed class TickCoordinator(
             }
 
             if (perceptionLanguageBridgeEnabled &&
-                !sleepRuntimeAtTickStart.IsSleeping &&
                 (tickSignal.Tick - lastPerceptionLanguageTick) >= perceptionLanguageCooldownTicks)
             {
                 perceptionLanguageStats = await InjectPerceptionLanguageConditioningAsync(
@@ -8695,7 +8193,7 @@ internal sealed class TickCoordinator(
                     $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, pathways={activePathways.Count}");
             }
 
-            var sleepTransition = state.AdvanceSleepHomeostasis(new SleepTickInput(
+            var metabolicTransition = state.AdvanceMetabolicPhysiology(new MetabolicTickInput(
                 DrainedSpikes: drainedSpikeCount,
                 // Metabolic ATP drain tracks neural FIRING (spikes generated), not the
                 // transport-layer delivery count. Axonal fan-out replicates each generated
@@ -8703,25 +8201,24 @@ internal sealed class TickCoordinator(
                 // mean out-degree; feeding it here drained energy ~out-degree-x too fast and
                 // forced near-perpetual sleep (frozen avatar). generatedSpikeCount is
                 // invariant to fan-out and matches the pre-fan-out dispatched count.
-                DispatchedSpikes: generatedSpikeCount,
+                GeneratedSpikes: generatedSpikeCount,
                 ActivePathways: activePathways.Count,
                 SpontaneousGenerated: spontaneousStats.Generated,
-                NeuronalReplaySpikes: 0,
                 // Neural spikes update at millisecond scale; ATP and sleep pressure do not.
                 // Integrate homeostatic chemistry against a slow reference interval so a
                 // faster neural clock cannot compress a wake/sleep cycle into minutes.
-                HomeostasisRateScale: SimulationState.ResolveSleepHomeostasisRateScale(tickSignal.TickDurationMs)),
+                HomeostasisRateScale: SimulationState.ResolveMetabolicRateScale(tickSignal.TickDurationMs)),
                 neuronalSleep);
 
-            if (sleepTransition.EnteredSleep)
+            if (metabolicTransition.EnteredSleep)
             {
                 state.AppendOutputLog(
-                    $"Sleep entered at tick {tickSignal.Tick}: ATP={sleepTransition.AtpBudget:0.000}; authority=neuronal.");
+                    $"Neuronal sleep observed at tick {tickSignal.Tick}: ATP={metabolicTransition.AtpBudget:0.000}.");
             }
-            else if (sleepTransition.ExitedSleep)
+            else if (metabolicTransition.ExitedSleep)
             {
                 state.AppendOutputLog(
-                    $"Sleep exited at tick {tickSignal.Tick}: ATP={sleepTransition.AtpBudget:0.000}, sleepTicks={sleepTransition.SleepTicks}.");
+                    $"Neuronal wake observed at tick {tickSignal.Tick}: ATP={metabolicTransition.AtpBudget:0.000}, sleepTicks={metabolicTransition.SleepTicks}.");
             }
 
             var instanceTelemetryNow = new List<ServiceRuntimeTelemetry>(serviceInstances.Count);
@@ -8752,11 +8249,6 @@ internal sealed class TickCoordinator(
             var ackLatencyEwmaSummaryMs = ackLatencyEwmaCount == 0
                 ? 0.0
                 : ackLatencyEwmaTotalMs / ackLatencyEwmaCount;
-            var sleepReplayStageLabel = sleepRuntimeAtTickStart.IsSleeping
-                ? (sleepReplayStage == SleepReplayStage.EarlyHippocampal ? "early_hippocampal" : "late_cortical")
-                : "awake";
-            var sleepInhibitoryScale = ComputeSleepInhibitoryScale(sleepRuntimeAtTickStart, sleepReplayStage, isReplay: false);
-            var sleepExcitatoryScale = ComputeSleepExcitatoryScale(sleepRuntimeAtTickStart, sleepReplayStage, isReplay: false);
             tickWallStopwatch.Stop();
             var tickWallMs = tickWallStopwatch.Elapsed.TotalMilliseconds;
             tickWallSamples.Enqueue(tickWallMs);
@@ -8834,9 +8326,6 @@ internal sealed class TickCoordinator(
                 tickWallP95Ms,
                 tickWallP99Ms,
                 degradeSignalLabel,
-                sleepReplayStageLabel,
-                sleepInhibitoryScale,
-                sleepExcitatoryScale,
                 perceptionLanguageStats.Generated,
                 perceptionLanguageStats.Delivered,
                 perceptionLanguageStats.DispatchErrors,
@@ -9575,95 +9064,6 @@ internal sealed class TickCoordinator(
         bool Throttled);
 
 
-    private static SleepReplayStage ResolveSleepReplayStage(SleepMemoryRuntime sleep)
-    {
-        if (!sleep.IsSleeping || sleep.SleepTicks <= 0)
-        {
-            return SleepReplayStage.EarlyHippocampal;
-        }
-
-        return sleep.SleepTicks < (sleep.MinSleepTicks / 2)
-            ? SleepReplayStage.EarlyHippocampal
-            : SleepReplayStage.LateCorticalConsolidation;
-    }
-
-    private static SpikeMessage ApplySleepInhibitoryGating(
-        SpikeMessage spike,
-        SleepMemoryRuntime sleep,
-        SleepReplayStage replayStage,
-        bool isReplay)
-    {
-        if (!sleep.IsSleeping)
-        {
-            return spike;
-        }
-
-        var inhibitoryScale = ComputeSleepInhibitoryScale(sleep, replayStage, isReplay);
-        var excitatoryScale = ComputeSleepExcitatoryScale(sleep, replayStage, isReplay);
-        var inhibitoryBias = replayStage == SleepReplayStage.EarlyHippocampal ? 0.38f : 0.52f;
-
-        var adjustedQuanta = spike.Neurotransmitter switch
-        {
-            NTEnum.GABA => spike.VesicleQuanta * inhibitoryScale,
-            NTEnum.GLUTAMATE => spike.VesicleQuanta * excitatoryScale,
-            NTEnum.ACETYLCHOLINE => spike.VesicleQuanta * Math.Clamp(excitatoryScale * 0.92f, 0.18f, 1.0f),
-            NTEnum.DOPAMINE => spike.VesicleQuanta * Math.Clamp(excitatoryScale * 0.90f, 0.15f, 1.0f),
-            NTEnum.NOREPINEPHRINE => spike.VesicleQuanta * Math.Clamp(excitatoryScale * 0.88f, 0.14f, 1.0f),
-            NTEnum.SEROTONIN => spike.VesicleQuanta * Math.Clamp(0.85f + (inhibitoryBias * 0.10f), 0.70f, 1.05f),
-            _ => spike.VesicleQuanta
-        };
-
-        return new SpikeMessage
-        {
-            MessageId = spike.MessageId,
-            TimestampMs = spike.TimestampMs,
-            SourceStructure = spike.SourceStructure,
-            TargetStructure = spike.TargetStructure,
-            SourceNeuronId = spike.SourceNeuronId,
-            TargetNeuronId = spike.TargetNeuronId,
-            SynapseId = spike.SynapseId,
-            Neurotransmitter = spike.Neurotransmitter,
-            VesicleQuanta = Math.Clamp(adjustedQuanta, 0.05f, 16.0f),
-            ReuptakeRate = Math.Clamp(
-                spike.ReuptakeRate * (spike.Neurotransmitter == NTEnum.GABA ? 0.90f : 1.08f),
-                0.5f,
-                120f),
-            SpikeType = spike.SpikeType,
-            IsFeedback = spike.IsFeedback,
-            ModulationContext = spike.ModulationContext
-        };
-    }
-
-    private static float ComputeSleepInhibitoryScale(
-        SleepMemoryRuntime sleep,
-        SleepReplayStage replayStage,
-        bool isReplay)
-    {
-        if (!sleep.IsSleeping)
-        {
-            return 1.0f;
-        }
-
-        var inhibitoryBias = replayStage == SleepReplayStage.EarlyHippocampal ? 0.38f : 0.52f;
-        var replayBias = isReplay ? 0.14f : 0.0f;
-        return Math.Clamp(1.10f + inhibitoryBias + replayBias, 1.0f, 2.0f);
-    }
-
-    private static float ComputeSleepExcitatoryScale(
-        SleepMemoryRuntime sleep,
-        SleepReplayStage replayStage,
-        bool isReplay)
-    {
-        if (!sleep.IsSleeping)
-        {
-            return 1.0f;
-        }
-
-        var inhibitoryBias = replayStage == SleepReplayStage.EarlyHippocampal ? 0.38f : 0.52f;
-        var replayBias = isReplay ? 0.14f : 0.0f;
-        return Math.Clamp(1.0f - ((inhibitoryBias * 0.62f) + replayBias), 0.20f, 1.0f);
-    }
-
     private static string NormalizeHemisphere(string? hemisphere)
     {
         if (string.IsNullOrWhiteSpace(hemisphere))
@@ -9959,9 +9359,6 @@ internal sealed class TickCoordinator(
 
         return start < text.Length - 1 && int.TryParse(text[(start + 1)..], out index);
     }
-
-    private static bool IsMotorSleepSuppressedRoute(StructureId source, StructureId target)
-        => IsMotorOutputStructure(source) || target == StructureId.SpinalCordMotor;
 
     private static bool IsMotorOutputStructure(StructureId structure)
         => structure is StructureId.PremotorCortex
@@ -15291,9 +14688,6 @@ internal sealed record TransportRuntimeStats(
     double TickWallP95Ms,
     double TickWallP99Ms,
     string DegradeSignal,
-    string SleepReplayStage,
-    double SleepInhibitoryScale,
-    double SleepExcitatoryScale,
     int PerceptionLanguageGenerated,
     int PerceptionLanguageDelivered,
     int PerceptionLanguageDispatchErrors,
@@ -15358,9 +14752,6 @@ internal sealed record TransportRuntimeStats(
         TickWallP95Ms: 0.0,
         TickWallP99Ms: 0.0,
         DegradeSignal: "none",
-        SleepReplayStage: "awake",
-        SleepInhibitoryScale: 1.0,
-        SleepExcitatoryScale: 1.0,
         PerceptionLanguageGenerated: 0,
         PerceptionLanguageDelivered: 0,
         PerceptionLanguageDispatchErrors: 0,
@@ -15384,16 +14775,15 @@ internal sealed record SpontaneousInjectionStats(int Generated, int Delivered, i
     public static SpontaneousInjectionStats Empty { get; } = new(0, 0, 0, null);
 }
 
-internal sealed record SleepTickInput(
+internal sealed record MetabolicTickInput(
     int DrainedSpikes,
-    int DispatchedSpikes,
+    int GeneratedSpikes,
     int ActivePathways,
     int SpontaneousGenerated,
-    int NeuronalReplaySpikes,
     float HomeostasisRateScale = 1.0f);
 
-internal sealed record SleepTransitionResult(
-    bool IsSleeping,
+internal sealed record MetabolicTransitionResult(
+    bool NeuronalSleepObserved,
     bool EnteredSleep,
     bool ExitedSleep,
     float AtpBudget,
@@ -15482,12 +14872,6 @@ internal sealed record BodyStateRuntime(
         LastInputTick: long.MinValue);
 }
 
-
-internal enum SleepReplayStage
-{
-    EarlyHippocampal,
-    LateCorticalConsolidation
-}
 
 
 internal sealed record DispatchedSpikeTrace(
@@ -16786,7 +16170,6 @@ internal sealed record AutoProfileControlRequest(
     double? RecoveryAckLatencyMs,
     long? RecoverySnapshotAgeTicks,
     int? RecoveryConsecutiveTicks);
-internal sealed record SleepMemoryControlRequest(int? MinWakeTicks, float? SleepPressureEnterThreshold);
 internal sealed record AuditoryInputRequest(string? Pattern, float? Intensity, int? BurstCount, string? TargetStructure, string? SourceStructure, string? Hemisphere, string? InputSource);
 internal sealed record CollisionInputRequest(
     string? Pattern,
@@ -16921,7 +16304,7 @@ internal sealed class NetworkImportReport
 }
 internal sealed class NetworkStateDocument
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public long ExportedAtUnixMs { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -16933,7 +16316,7 @@ internal sealed class NetworkStateDocument
     public Dictionary<string, double> OscillationPhases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string PerformanceProfileName { get; set; } = "normal";
     public InputGateRuntime? InputGates { get; set; } = InputGateRuntime.Default;
-    public SleepMemoryRuntime SleepMemory { get; set; } = SleepMemoryRuntime.Default;
+    public MetabolicPhysiologyRuntime? MetabolicPhysiology { get; set; } = MetabolicPhysiologyRuntime.Default;
     public CurriculumRuntime Curriculum { get; set; } = CurriculumRuntime.Default;
     public long LastSnapshotTick { get; set; }
     public double LastSnapshotSimulationMs { get; set; }
@@ -17327,101 +16710,49 @@ internal static class EnglishLanguageLexicon
         return phoneme.Length > 0;
     }
 }
-internal sealed record SleepMemoryRuntime(
-    bool IsSleeping,
+internal sealed record MetabolicPhysiologyRuntime(
+    bool NeuronalSleepObserved,
     float AtpBudget,
     float MaxAtpBudget,
-    float SleepPressure,
-    float MaxSleepPressure,
-    float SleepEnterThreshold,
-    float SleepExitThreshold,
-    float SleepPressureEnterThreshold,
-    float SleepPressureExitThreshold,
+    float HomeostaticPressure,
+    float MaxHomeostaticPressure,
     float WakePressureBasePerTick,
-    float WakePressurePerDispatchSpike,
+    float WakePressurePerGeneratedSpike,
     float WakePressurePerInboundSpike,
     float WakePressurePerActivePathway,
     float WakePressurePerSpontaneousEvent,
     float SleepPressureRecoveryPerTick,
-    float NeuronalReplayPressurePenaltyPerSpike,
     float AwakeBaseDrain,
-    float DispatchDrainPerSpike,
+    float GeneratedSpikeDrain,
     float InboundDrainPerSpike,
     float ActivePathwayDrain,
     float SpontaneousDrainPerEvent,
     float SleepRecoveryPerTick,
-    float NeuronalReplayEnergyPenaltyPerSpike,
-    int MinSleepTicks,
-    int MinWakeTicks,
     int SleepTicks,
     int WakeTicks,
-    int WakeInertiaTicksRemaining,
-    float TargetWakeDutyCycle,
-    float ObservedWakeDutyCycle,
-    float AdaptiveAwakeDrainScale,
-    float AdaptiveSleepRecoveryScale,
-    int ShortWakeThresholdTicks,
-    int LastWakeDurationTicks,
-    int LastSleepDurationTicks,
-    float WakeDurationEwmaTicks,
-    float SleepDurationEwmaTicks,
-    int ConsecutiveShortWakeEpisodes,
-    int ShortWakeAlerts,
-    int SleepExitBlockedTicks,
-    int SleepExitBlockedAlerts,
-    string LastAlert,
-    long LastAlertTick,
     long SleepEpisodes,
-    long LastTransitionTick,
-    bool NeuronalAuthorityActive = false,
-    int NeuronalStateChannel = 0,
-    bool NeuronalReplayActive = false,
-    int NeuronalReplayEnsemble = -1)
+    long LastTransitionTick)
 {
-    public static SleepMemoryRuntime Default { get; } = new(
-        IsSleeping: false,
+    public static MetabolicPhysiologyRuntime Default { get; } = new(
+        NeuronalSleepObserved: false,
         AtpBudget: 1.0f,
         MaxAtpBudget: 1.0f,
-        SleepPressure: 0.12f,
-        MaxSleepPressure: 1.0f,
-        SleepEnterThreshold: 0.22f,
-        SleepExitThreshold: 0.70f,
-        SleepPressureEnterThreshold: 0.68f,
-        SleepPressureExitThreshold: 0.20f,
+        HomeostaticPressure: 0.12f,
+        MaxHomeostaticPressure: 1.0f,
         WakePressureBasePerTick: 0.0012f,
-        WakePressurePerDispatchSpike: 0.000030f,
+        WakePressurePerGeneratedSpike: 0.000030f,
         WakePressurePerInboundSpike: 0.000025f,
         WakePressurePerActivePathway: 0.000050f,
         WakePressurePerSpontaneousEvent: 0.000080f,
         SleepPressureRecoveryPerTick: 0.0055f,
-        NeuronalReplayPressurePenaltyPerSpike: 0.000010f,
         AwakeBaseDrain: 0.0009f,
-        DispatchDrainPerSpike: 0.00007f,
+        GeneratedSpikeDrain: 0.00007f,
         InboundDrainPerSpike: 0.00005f,
         ActivePathwayDrain: 0.00006f,
         SpontaneousDrainPerEvent: 0.00008f,
         SleepRecoveryPerTick: 0.0062f,
-        NeuronalReplayEnergyPenaltyPerSpike: 0.00005f,
-        MinSleepTicks: 130,
-        MinWakeTicks: 220,
         SleepTicks: 0,
         WakeTicks: 0,
-        WakeInertiaTicksRemaining: 0,
-        TargetWakeDutyCycle: 0.70f,
-        ObservedWakeDutyCycle: 0.70f,
-        AdaptiveAwakeDrainScale: 1.0f,
-        AdaptiveSleepRecoveryScale: 1.0f,
-        ShortWakeThresholdTicks: 80,
-        LastWakeDurationTicks: 0,
-        LastSleepDurationTicks: 0,
-        WakeDurationEwmaTicks: 0.0f,
-        SleepDurationEwmaTicks: 0.0f,
-        ConsecutiveShortWakeEpisodes: 0,
-        ShortWakeAlerts: 0,
-        SleepExitBlockedTicks: 0,
-        SleepExitBlockedAlerts: 0,
-        LastAlert: string.Empty,
-        LastAlertTick: 0,
         SleepEpisodes: 0,
         LastTransitionTick: 0);
 }

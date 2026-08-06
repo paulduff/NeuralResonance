@@ -40,8 +40,6 @@ public partial class MainWindow : Window
     private readonly ScaleTransform3D _sceneScale = new(1.35, 1.35, 1.35);
     private readonly DispatcherTimer _densityDebounceTimer = new();
     private readonly DispatcherTimer _cameraFitDebounceTimer = new();
-    private readonly DispatcherTimer _minWakeDebounceTimer = new();
-    private readonly DispatcherTimer _sleepPressureDebounceTimer = new();
     private readonly DispatcherTimer _autoProfileDebounceTimer = new();
     private readonly DispatcherTimer _sensoryHealthTimer = new();
     private readonly ConcurrentQueue<InputDelta> _inputQueue = new();
@@ -97,8 +95,6 @@ public partial class MainWindow : Window
     private static readonly TimeSpan IdleRenderInterval = TimeSpan.FromMilliseconds(250.0);
     private int _displayNeuronGridEdge = 36;
     private int _displayNeuronsPerHemisphereBudget = 36 * 36 * 36;
-    private int _minWakeTicks = 220;
-    private float _sleepPressureEnterThreshold = 0.68f;
     private string _lastRenderStatus = string.Empty;
     private string _lastServiceHealthSummary = string.Empty;
     private string _pendingServiceHealthSummary = string.Empty;
@@ -153,12 +149,8 @@ public partial class MainWindow : Window
     private readonly PaneWorker _reasoningPaneWorker = new("NRE.Editor.Pane.Reasoning");
     private bool _simRestartInFlight;
     private bool _perfProfileSwitchInFlight;
-    private bool _minWakeUpdateInFlight;
-    private bool _sleepPressureUpdateInFlight;
     private bool _autoProfileUpdateInFlight;
     private bool _inputGatesUpdateInFlight;
-    private bool _suppressMinWakeSliderEvents;
-    private bool _suppressSleepPressureSliderEvents;
     private bool _suppressAutoProfileControlEvents;
     private bool _suppressInputGatesControlEvents;
     private bool _webcamInputInFlight;
@@ -167,7 +159,6 @@ public partial class MainWindow : Window
     private bool _speechOutputEnabled = true;
     private bool _suppressSpeechUiEvents;
     private bool _microphoneLanguageRouteAvailable = true;
-    private volatile bool _isSimulationSleeping;
     private string _visualAttentionFocusField = "neutral";
     private string _visualAttentionFocusHemisphere = "M";
     private double _visualAttentionFocusConfidence;
@@ -189,8 +180,6 @@ public partial class MainWindow : Window
     private long _webcamStimulusSentCount;
     private DateTime _lastSimRestartUtc = DateTime.MinValue;
     private DateTime _lastPerfProfileSwitchUtc = DateTime.MinValue;
-    private DateTime _lastMinWakeUpdateUtc = DateTime.MinValue;
-    private DateTime _lastSleepPressureUpdateUtc = DateTime.MinValue;
     private DateTime _lastAutoProfileUpdateUtc = DateTime.MinValue;
     private DateTime _lastInputGatesUpdateUtc = DateTime.MinValue;
     private DateTime _lastWebcamStimulusUtc = DateTime.MinValue;
@@ -237,8 +226,6 @@ public partial class MainWindow : Window
     private static readonly TimeSpan StructureRestartCooldown = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan SimulationRestartCooldown = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan PerfProfileSwitchCooldown = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan MinWakeUpdateCooldown = TimeSpan.FromMilliseconds(350);
-    private static readonly TimeSpan SleepPressureUpdateCooldown = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan AutoProfileUpdateCooldown = TimeSpan.FromMilliseconds(650);
     private static readonly TimeSpan InputGatesUpdateCooldown = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan WebcamStimulusInterval = TimeSpan.FromMilliseconds(220);
@@ -378,18 +365,6 @@ public partial class MainWindow : Window
             _cameraFitDebounceTimer.Stop();
             ApplyAutoFitCamera();
         };
-        _minWakeDebounceTimer.Interval = TimeSpan.FromMilliseconds(280);
-        _minWakeDebounceTimer.Tick += async (_, _) =>
-        {
-            _minWakeDebounceTimer.Stop();
-            await ApplyMinWakeTicksAsync(_minWakeTicks);
-        };
-        _sleepPressureDebounceTimer.Interval = TimeSpan.FromMilliseconds(280);
-        _sleepPressureDebounceTimer.Tick += async (_, _) =>
-        {
-            _sleepPressureDebounceTimer.Stop();
-            await ApplySleepPressureEnterThresholdAsync(_sleepPressureEnterThreshold);
-        };
         _autoProfileDebounceTimer.Interval = TimeSpan.FromMilliseconds(380);
         _autoProfileDebounceTimer.Tick += async (_, _) =>
         {
@@ -499,7 +474,6 @@ public partial class MainWindow : Window
             _lastRemoteSpikeLogWallClockMs = 0;
             _lastRemoteDispatchWallClockMs = 0;
             await RefreshTransportStatsPanelAsync(baseUri);
-            await RefreshSleepMemoryControlsFromControlAsync(baseUri);
             await RefreshAutoProfileControlsFromControlAsync(baseUri);
             await RefreshInputGatesControlsFromControlAsync(baseUri);
         }
@@ -745,8 +719,6 @@ public partial class MainWindow : Window
         ApplyPresetTransformLock(LockPresetTransformsCheckBox?.IsChecked ?? true);
         NeuronBudgetSlider.Value = _displayNeuronGridEdge;
         NeuronBudgetText.Text = FormatNeuronBudgetLabel(_displayNeuronGridEdge);
-        SetMinWakeTicksUi(_minWakeTicks, syncedFromRuntime: false);
-        SetSleepPressureEnterUi(_sleepPressureEnterThreshold, syncedFromRuntime: false);
         UpdateAutoProfileControlLabels();
         AutoProfileStatusText.Text = "Auto profile: awaiting runtime settings";
         SetInputGatesControlsUi(new InputGateControlSettings(AvatarVisionEnabled: true, SpontaneousSpikingEnabled: true), syncedFromRuntime: false);
@@ -1767,14 +1739,6 @@ public partial class MainWindow : Window
         var transportStatsBaseText = "Transport stats unavailable: /api/v1/frame missing state payload.";
         if (TryGetProperty(frame, "state", out var stateElement) && stateElement.ValueKind == JsonValueKind.Object)
         {
-            var previousSleepState = _isSimulationSleeping;
-            _isSimulationSleeping = ParseSimulationSleepState(stateElement);
-            if (previousSleepState != _isSimulationSleeping)
-            {
-                ApplySleepInputPauseState(_isSimulationSleeping);
-            }
-
-            SyncMinWakeTicksFromState(stateElement);
             SyncAutoProfileFromState(stateElement);
             SyncInputGatesFromState(stateElement);
             transportStatsBaseText = FormatTransportStats(stateElement);
@@ -2432,24 +2396,6 @@ public partial class MainWindow : Window
         int StructuresWithNeuronSpikes,
         int VisibleNeuronHighlights,
         int UnmatchedNeuronIds);
-
-    private static bool ParseSimulationSleepState(JsonElement stateElement)
-    {
-        if (!TryGetProperty(stateElement, "sleepMemory", out var sleepMemory) ||
-            sleepMemory.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-
-        if (!TryGetProperty(sleepMemory, "isSleeping", out var isSleeping) ||
-            isSleeping.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-        {
-            return false;
-        }
-
-        return isSleeping.GetBoolean();
-    }
-
     private void UpdateVisualAttentionReticleFromState(JsonElement stateElement)
     {
         if (!TryGetProperty(stateElement, "visualAttention", out var attention) ||
@@ -2473,55 +2419,6 @@ public partial class MainWindow : Window
         _visualAttentionFocusConfidence = Math.Clamp(GetDouble(attention, "focusConfidence"), 0.0, 1.0);
         UpdateWebcamAttentionReticle();
     }
-
-    private void ApplySleepInputPauseState(bool isSleeping)
-    {
-        if (isSleeping)
-        {
-            while (_speechQueue.Reader.TryRead(out _))
-            {
-                // Drain queued utterances when sleep begins.
-            }
-
-            if (_webcamRunning)
-            {
-                WebcamStatusText.Text = $"Webcam: paused during sleep ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
-            }
-
-            if (_microphoneRunning)
-            {
-                MicrophoneStatusText.Text = "Microphone: paused during sleep";
-            }
-
-            if (LanguageInputStatusText is not null)
-            {
-                LanguageInputStatusText.Text = "Language: paused during sleep";
-            }
-
-            UpdateSpeechStatusText("Speech: paused during sleep");
-            AddOutputLog("Sleep gating active: webcam, microphone, and speech output paused.");
-            return;
-        }
-
-        if (_webcamRunning)
-        {
-            WebcamStatusText.Text = $"Webcam: running (camera active, {_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
-        }
-
-        if (_microphoneRunning)
-        {
-            MicrophoneStatusText.Text = "Microphone: running (resumed)";
-        }
-
-        if (LanguageInputStatusText is not null)
-        {
-            LanguageInputStatusText.Text = "Language: resumed";
-        }
-
-        UpdateSpeechStatusText(_speechOutputEnabled ? "Speech: listening for activity" : "Speech: disabled");
-        AddOutputLog("Sleep gating cleared: webcam, microphone, and speech output resumed.");
-    }
-
     private static TransportSpikePipeline ParseTransportSpikePipeline(JsonElement root)
     {
         if (!TryGetProperty(root, "transportStats", out var transport) || transport.ValueKind != JsonValueKind.Object)
@@ -4245,51 +4142,6 @@ public partial class MainWindow : Window
         _densityDebounceTimer.Stop();
         _densityDebounceTimer.Start();
     }
-
-    private void MinWakeTicksSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressMinWakeSliderEvents)
-        {
-            return;
-        }
-
-        _minWakeTicks = (int)Math.Round(e.NewValue);
-        if (MinWakeTicksText is not null)
-        {
-            MinWakeTicksText.Text = _minWakeTicks.ToString();
-        }
-
-        if (!IsLoaded)
-        {
-            return;
-        }
-
-        _minWakeDebounceTimer.Stop();
-        _minWakeDebounceTimer.Start();
-    }
-
-    private void SleepPressureEnterSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_suppressSleepPressureSliderEvents)
-        {
-            return;
-        }
-
-        _sleepPressureEnterThreshold = (float)e.NewValue;
-        if (SleepPressureEnterText is not null)
-        {
-            SleepPressureEnterText.Text = _sleepPressureEnterThreshold.ToString("0.00");
-        }
-
-        if (!IsLoaded)
-        {
-            return;
-        }
-
-        _sleepPressureDebounceTimer.Stop();
-        _sleepPressureDebounceTimer.Start();
-    }
-
     private void AutoProfileControl_OnChanged(object sender, RoutedEventArgs e)
     {
         if (_suppressAutoProfileControlEvents)
@@ -4557,13 +4409,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_isSimulationSleeping)
-        {
-            LanguageInputStatusText.Text = "Language: paused during sleep";
-            AddOutputLog("Language input paused: simulation is sleeping.");
-            return;
-        }
-
         _languageInputInFlight = true;
         _lastLanguageInputUtc = DateTime.UtcNow;
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(3500));
@@ -4591,13 +4436,6 @@ public partial class MainWindow : Window
                 intensity,
                 burstPerToken,
                 cts.Token);
-
-            if (result.PausedDueToSleep)
-            {
-                LanguageInputStatusText.Text = "Language: paused during sleep";
-                AddOutputLog("Language input paused by ControlProgram sleep gate.");
-                return;
-            }
 
             var grammarSuffix = string.IsNullOrWhiteSpace(result.GrammarIntent)
                 ? string.Empty
@@ -4694,7 +4532,6 @@ public partial class MainWindow : Window
         var targetCount = 0;
         var resolvedMode = mode;
         var generatedUtterance = text;
-        var pausedDueToSleep = false;
         var brainTokenCount = 0;
         var grammarIntent = string.Empty;
         var grammarMood = string.Empty;
@@ -4719,7 +4556,6 @@ public partial class MainWindow : Window
                 {
                     generatedUtterance = responseUtterance;
                 }
-                pausedDueToSleep = GetBool(doc.RootElement, "pausedDueToSleep");
                 if (TryGetProperty(doc.RootElement, "grammar", out var grammar) && grammar.ValueKind == JsonValueKind.Object)
                 {
                     grammarIntent = GetString(grammar, "intent");
@@ -4745,7 +4581,6 @@ public partial class MainWindow : Window
             delivered,
             targetCount,
             generatedUtterance,
-            pausedDueToSleep,
             grammarIntent,
             grammarMood);
     }
@@ -4786,8 +4621,6 @@ public partial class MainWindow : Window
             InputManager.Current.PreProcessInput -= InputManager_PreProcessInput;
             _densityDebounceTimer.Stop();
             _cameraFitDebounceTimer.Stop();
-            _minWakeDebounceTimer.Stop();
-            _sleepPressureDebounceTimer.Stop();
             _autoProfileDebounceTimer.Stop();
             _sensoryHealthTimer.Stop();
             _speechOutputEnabled = false;
@@ -5156,7 +4989,6 @@ private sealed record VisualStimulusDispatchResult(
     int RecoveryRestarted,
     int RecoveryHealthy,
     int RecoveryRetriedInstances,
-    bool PausedDueToSleep,
     string? FocusField,
     string? FocusHemisphere,
     float FocusConfidence);
@@ -5168,8 +5000,7 @@ private sealed record AuditoryStimulusDispatchResult(
     bool RecoveryAttempted,
     int RecoveryRestarted,
     int RecoveryHealthy,
-    int RecoveryRetriedInstances,
-    bool PausedDueToSleep);
+    int RecoveryRetriedInstances);
 private sealed record LanguageStimulusDispatchResult(
     string Mode,
     int TokenCount,
@@ -5178,7 +5009,6 @@ private sealed record LanguageStimulusDispatchResult(
     int Delivered,
     int TargetCount,
     string Utterance,
-    bool PausedDueToSleep,
     string GrammarIntent,
     string GrammarMood);
 private sealed record FrameSpikeMetrics(

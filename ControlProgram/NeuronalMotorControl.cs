@@ -131,7 +131,6 @@ internal sealed class NeuronalMotorControlState
 
 internal sealed record NeuronalMotorRuntime(
     bool Active,
-    bool Sleeping,
     long Tick,
     long Sequence,
     double LeftDrive,
@@ -154,7 +153,6 @@ internal sealed record NeuronalMotorRuntime(
 {
     public static NeuronalMotorRuntime Default { get; } = new(
         Active: false,
-        Sleeping: false,
         Tick: 0,
         Sequence: 0,
         LeftDrive: 0.0,
@@ -193,7 +191,6 @@ internal static class NeuronalMotorPopulationDecoder
     public static NeuronalMotorRuntime Decode(
         long tick,
         IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        bool sleeping,
         NeuronalMotorControlSnapshot control,
         NeuronalMotorRuntime previous)
     {
@@ -299,17 +296,17 @@ internal static class NeuronalMotorPopulationDecoder
 
         var supportGain = 0.75 + (cerebellarSupport * 0.15) + (posturalSupport * 0.10);
         var actionDecision = NeuronalActionSelectionDecoder.Decode(snapshots);
-        var unshapedLeft = sleeping ? 0.0 : Math.Clamp(leftPopulation * effectiveGate * supportGain, 0.0, 1.0);
-        var unshapedRight = sleeping ? 0.0 : Math.Clamp(rightPopulation * effectiveGate * supportGain, 0.0, 1.0);
+        var unshapedLeft = Math.Clamp(leftPopulation * effectiveGate * supportGain, 0.0, 1.0);
+        var unshapedRight = Math.Clamp(rightPopulation * effectiveGate * supportGain, 0.0, 1.0);
         var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(
             actionDecision,
             unshapedLeft,
             unshapedRight);
-        var rawLeft = sleeping ? 0.0 : shaped.Left;
-        var rawRight = sleeping ? 0.0 : shaped.Right;
+        var rawLeft = shaped.Left;
+        var rawRight = shaped.Right;
         var alpha = settings.SmoothingAlpha;
-        var leftDrive = sleeping ? 0.0 : Lerp(previous.LeftDrive, rawLeft, alpha);
-        var rightDrive = sleeping ? 0.0 : Lerp(previous.RightDrive, rawRight, alpha);
+        var leftDrive = Lerp(previous.LeftDrive, rawLeft, alpha);
+        var rightDrive = Lerp(previous.RightDrive, rawRight, alpha);
         var signalStrength = Math.Max(Math.Abs(leftDrive), Math.Abs(rightDrive));
 
         var supportCoverage = ((cerebellar.Length > 0 ? 1.0 : 0.0) + (postural.Length > 0 ? 1.0 : 0.0)) * 0.5;
@@ -328,8 +325,7 @@ internal static class NeuronalMotorPopulationDecoder
             : Lerp(previous.ConfidenceEma, confidence, MetricsAlpha);
         var actionAuthorityReady = !actionDecision.Available ||
             (actionDecision.Active && actionDecision.Confidence >= settings.MinimumOutputConfidence);
-        var active = !sleeping &&
-            actionAuthorityReady &&
+        var active = actionAuthorityReady &&
             motorCoverage >= settings.MinimumCircuitCoverage &&
             confidence >= settings.MinimumOutputConfidence &&
             signalStrength >= 0.01;
@@ -338,7 +334,6 @@ internal static class NeuronalMotorPopulationDecoder
         var turnDrive = Math.Clamp(rightDrive - leftDrive, -1.0, 1.0);
         return new NeuronalMotorRuntime(
             Active: active,
-            Sleeping: sleeping,
             Tick: tick,
             Sequence: previous.Sequence + 1,
             LeftDrive: leftDrive,

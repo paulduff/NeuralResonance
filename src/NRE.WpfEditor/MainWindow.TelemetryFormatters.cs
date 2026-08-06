@@ -488,10 +488,9 @@ public partial class MainWindow
         var cerebellarOutput = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentOutputSpikes") : 0;
         var cerebellarLastTick = cerebellum.ValueKind == JsonValueKind.Object ? GetLong(cerebellum, "lastSpikeTick") : long.MinValue;
         var consolidationAuthority = consolidation.ValueKind == JsonValueKind.Object ? GetString(consolidation, "authority") : "-";
-        var synapticMemory = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "structureLocalSynapticMemory");
-        var localReplay = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "structureLocalSleepReplay");
-        var neuronalReplayActive = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "neuronalReplayActive");
-        var neuronalReplayEnsemble = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "neuronalReplayEnsemble") : -1;
+        var sleepCircuitObserved = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "circuitObserved");
+        var neuronalReplayActive = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "replayActive");
+        var neuronalReplayEnsemble = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replayEnsemble") : -1;
 
         return string.Join(Environment.NewLine, new[]
         {
@@ -516,8 +515,8 @@ public partial class MainWindow
             $"  Last cerebellar spike tick: {(cerebellarLastTick > 0 ? cerebellarLastTick.ToString() : "n/a")}",
             string.Empty,
             "Neuronal memory consolidation:",
-            $"  Authority: {BlankAsDash(consolidationAuthority)} | structure-local synaptic memory: {(synapticMemory ? "active" : "unavailable")}",
-            $"  Structure-local sleep replay: {(localReplay ? "active" : "unavailable")} | neuronal replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
+            $"  Authority: {BlankAsDash(consolidationAuthority)} | circuit {(sleepCircuitObserved ? "observed" : "not observed")}",
+            $"  Replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
             string.Empty,
             "Language:",
             $"  Intent: {BlankAsDash(intent)} | command: {BlankAsDash(commandKey)} | directive: {BlankAsDash(motorDirective)} | strength: {languageStrength:0.000}",
@@ -828,15 +827,15 @@ public partial class MainWindow
         var atpBudget = 0.0;
         if (TryGetProperty(payload, "sleep", out var sleep) && sleep.ValueKind == JsonValueKind.Object)
         {
-            sleeping = GetBool(sleep, "isSleeping");
-            sleepPressure = GetDouble(sleep, "sleepPressure");
+            sleeping = GetBool(sleep, "neuronalSleepObserved");
+            sleepPressure = GetDouble(sleep, "homeostaticPressure");
             atpBudget = GetDouble(sleep, "atpBudget");
         }
-        else if (TryGetProperty(root, "sleepMemory", out var sleepMemory) && sleepMemory.ValueKind == JsonValueKind.Object)
+        else if (TryGetProperty(root, "metabolicPhysiology", out var physiology) && physiology.ValueKind == JsonValueKind.Object)
         {
-            sleeping = GetBool(sleepMemory, "isSleeping");
-            sleepPressure = GetDouble(sleepMemory, "sleepPressure");
-            atpBudget = GetDouble(sleepMemory, "atpBudget");
+            sleeping = GetBool(physiology, "neuronalSleepObserved");
+            sleepPressure = GetDouble(physiology, "homeostaticPressure");
+            atpBudget = GetDouble(physiology, "atpBudget");
         }
 
         var stage = "-";
@@ -1281,60 +1280,40 @@ public partial class MainWindow
 
         var sleepStateLabel = "awake";
         var atpBudget = 0.0;
+        var homeostaticPressure = 0.0;
         var wakeTicks = 0;
-        var minWakeTicks = 0;
-        var sleepPressureEnterThreshold = 0.0;
-        var wakeInertiaTicksRemaining = 0;
-        var targetWakeDuty = 0.0;
-        var observedWakeDuty = 0.0;
-        var adaptiveAwakeDrainScale = 1.0;
-        var adaptiveSleepRecoveryScale = 1.0;
-        var shortWakeThresholdTicks = 0;
-        var lastWakeDurationTicks = 0;
-        var lastSleepDurationTicks = 0;
-        var wakeDurationEwmaTicks = 0.0;
-        var sleepDurationEwmaTicks = 0.0;
-        var consecutiveShortWakeEpisodes = 0;
-        var shortWakeAlerts = 0;
-        var sleepExitBlockedTicks = 0;
-        var sleepExitBlockedAlerts = 0;
-        var lastAlert = string.Empty;
-        var lastAlertTick = 0L;
-        var neuronalAuthorityActive = false;
-        var neuronalStateChannel = 0;
+        var sleepTicks = 0;
+        var neuronalCircuitObserved = false;
+        var neuronalState = "Wake";
+        var neuronalStateConfidence = 0.0;
         var neuronalReplayActive = false;
         var neuronalReplayEnsemble = -1;
-        if (TryGetProperty(root, "sleepMemory", out var sleepMemory) && sleepMemory.ValueKind == JsonValueKind.Object)
+        if (TryGetProperty(root, "metabolicPhysiology", out var physiology) && physiology.ValueKind == JsonValueKind.Object)
         {
-            if (TryGetProperty(sleepMemory, "isSleeping", out var isSleepingProp) && isSleepingProp.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                sleepStateLabel = isSleepingProp.GetBoolean() ? "sleeping" : "awake";
-            }
+            sleepStateLabel = GetBool(physiology, "neuronalSleepObserved") ? "sleeping" : "awake";
+            atpBudget = GetDouble(physiology, "atpBudget");
+            homeostaticPressure = GetDouble(physiology, "homeostaticPressure");
+            wakeTicks = GetInt(physiology, "wakeTicks");
+            sleepTicks = GetInt(physiology, "sleepTicks");
+        }
 
-            atpBudget = GetDouble(sleepMemory, "atpBudget");
-            wakeTicks = GetInt(sleepMemory, "wakeTicks");
-            minWakeTicks = GetInt(sleepMemory, "minWakeTicks");
-            sleepPressureEnterThreshold = GetDouble(sleepMemory, "sleepPressureEnterThreshold");
-            wakeInertiaTicksRemaining = GetInt(sleepMemory, "wakeInertiaTicksRemaining");
-            targetWakeDuty = GetDouble(sleepMemory, "targetWakeDutyCycle");
-            observedWakeDuty = GetDouble(sleepMemory, "observedWakeDutyCycle");
-            adaptiveAwakeDrainScale = GetDouble(sleepMemory, "adaptiveAwakeDrainScale");
-            adaptiveSleepRecoveryScale = GetDouble(sleepMemory, "adaptiveSleepRecoveryScale");
-            shortWakeThresholdTicks = GetInt(sleepMemory, "shortWakeThresholdTicks");
-            lastWakeDurationTicks = GetInt(sleepMemory, "lastWakeDurationTicks");
-            lastSleepDurationTicks = GetInt(sleepMemory, "lastSleepDurationTicks");
-            wakeDurationEwmaTicks = GetDouble(sleepMemory, "wakeDurationEwmaTicks");
-            sleepDurationEwmaTicks = GetDouble(sleepMemory, "sleepDurationEwmaTicks");
-            consecutiveShortWakeEpisodes = GetInt(sleepMemory, "consecutiveShortWakeEpisodes");
-            shortWakeAlerts = GetInt(sleepMemory, "shortWakeAlerts");
-            sleepExitBlockedTicks = GetInt(sleepMemory, "sleepExitBlockedTicks");
-            sleepExitBlockedAlerts = GetInt(sleepMemory, "sleepExitBlockedAlerts");
-            lastAlert = GetString(sleepMemory, "lastAlert");
-            lastAlertTick = GetLong(sleepMemory, "lastAlertTick");
-            neuronalAuthorityActive = GetBool(sleepMemory, "neuronalAuthorityActive");
-            neuronalStateChannel = GetInt(sleepMemory, "neuronalStateChannel");
-            neuronalReplayActive = GetBool(sleepMemory, "neuronalReplayActive");
-            neuronalReplayEnsemble = GetInt(sleepMemory, "neuronalReplayEnsemble");
+        if (TryGetProperty(root, "neuronalSleepConsolidation", out var neuronalSleep) &&
+            neuronalSleep.ValueKind == JsonValueKind.Object)
+        {
+            neuronalCircuitObserved = GetBool(neuronalSleep, "circuitObserved");
+            neuronalState = GetString(neuronalSleep, "state");
+            if (string.IsNullOrWhiteSpace(neuronalState))
+            {
+                neuronalState = GetInt(neuronalSleep, "state") switch
+                {
+                    1 => "Nrem",
+                    2 => "Rem",
+                    _ => "Wake"
+                };
+            }
+            neuronalStateConfidence = GetDouble(neuronalSleep, "stateConfidence");
+            neuronalReplayActive = GetBool(neuronalSleep, "replayActive");
+            neuronalReplayEnsemble = GetInt(neuronalSleep, "replayEnsemble");
         }
 
         return string.Join(Environment.NewLine, new[]
@@ -1346,16 +1325,11 @@ public partial class MainWindow
             $"Last snapshot: {snapshotStatus}",
             $"Snapshot age: {snapshotAgeStatus}",
             string.Empty,
-            "Sleep and neuronal memory:",
-            $"  State: {sleepStateLabel} | ATP: {atpBudget:0.000}",
-            $"  Wake duty: observed {observedWakeDuty:0.000} / target {targetWakeDuty:0.000} | wakeTicks: {wakeTicks}",
-            $"  Wake guardrails: min awake {minWakeTicks} ticks | sleep pressure enter {sleepPressureEnterThreshold:0.000} | wake inertia remaining {wakeInertiaTicksRemaining} ticks",
-            $"  Adaptive scales: awake drain {adaptiveAwakeDrainScale:0.000} | sleep recovery {adaptiveSleepRecoveryScale:0.000}",
-            $"  Durations (ticks): last wake {lastWakeDurationTicks}, last sleep {lastSleepDurationTicks}, wake EWMA {wakeDurationEwmaTicks:0.0}, sleep EWMA {sleepDurationEwmaTicks:0.0}",
-            $"  Alerts: short wake {shortWakeAlerts} (consecutive {consecutiveShortWakeEpisodes}, threshold {shortWakeThresholdTicks}) | blocked exit {sleepExitBlockedAlerts} (ticks {sleepExitBlockedTicks})",
-            $"  Last alert: {(string.IsNullOrWhiteSpace(lastAlert) ? "-" : $"{lastAlert} @ tick {lastAlertTick}")}",
-            $"  Neuronal authority: {(neuronalAuthorityActive ? "active" : "not observed")} | state channel {neuronalStateChannel}",
-            $"  Structure-local replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
+            "Neuronal sleep and metabolic physiology:",
+            $"  Neuronal state: {neuronalState} ({neuronalStateConfidence:0.000}) | circuit {(neuronalCircuitObserved ? "observed" : "not observed")}",
+            $"  Physiology: {sleepStateLabel} | ATP {atpBudget:0.000} | pressure {homeostaticPressure:0.000}",
+            $"  Observed duration: wake {wakeTicks} ticks | sleep {sleepTicks} ticks",
+            $"  Neuronal replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
             string.Empty,
             "Transport (last tick):",
             $"  Active services: {activeServices}",

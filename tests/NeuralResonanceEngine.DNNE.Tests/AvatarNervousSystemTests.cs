@@ -59,20 +59,23 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
-    public void InterpretBrainSignalsGatesMotorAndRejectsSemanticToolSignalDuringSleep()
+    public void AvatarBodyLayerContainsNoHostSleepGate()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("Sma", "L", 100, "tool_forward")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:excitatory:1:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:1:0")
         };
 
-        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody with { IsSleeping = true });
+        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
 
-        Assert.Equal(0, signal.LeftMotorDrive);
-        Assert.Equal(0, signal.RightMotorDrive);
-        Assert.Equal(0, signal.MotorEvents);
-        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
+        Assert.DoesNotContain(
+            typeof(AvatarNervousSystemBodyState).GetProperties(),
+            property => property.Name == "IsSleeping");
+        Assert.Equal(2, signal.MotorEvents);
+        Assert.True(signal.LeftMotorDrive > 0);
+        Assert.True(signal.RightMotorDrive > 0);
     }
 
     [Fact]
@@ -134,7 +137,6 @@ public sealed class AvatarNervousSystemTests
     }
 
     private static AvatarNervousSystemBodyState AwakeBody { get; } = new(
-        IsSleeping: false,
         Hunger: 0.2,
         Threat: 0.1,
         Health: 1.0,

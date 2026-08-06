@@ -38,24 +38,24 @@ public sealed class NeuronalCognitionAuthorityTests
     }
 
     [Fact]
-    public void ProductionSleepPathCannotUseThresholdFallback()
+    public void MetabolicPhysiologyCannotAuthorizeSleepWithoutNeuronalDecision()
     {
         var state = CreateState();
-        SleepTransitionResult transition = default!;
+        MetabolicTransitionResult transition = default!;
         for (var i = 0; i < 1024; i++)
         {
             state.AdvanceClockAndCreateTickSignal();
-            transition = state.AdvanceSleepHomeostasis(
+            transition = state.AdvanceMetabolicPhysiology(
                 HighLoadTick(),
                 NeuronalSleepConsolidationDecision.Unavailable);
         }
 
-        var sleep = state.GetSleepMemoryRuntime();
-        Assert.False(transition.IsSleeping);
+        var physiology = state.GetMetabolicPhysiologyRuntime();
+        Assert.False(transition.NeuronalSleepObserved);
         Assert.False(transition.EnteredSleep);
-        Assert.Equal(0, sleep.SleepEpisodes);
-        Assert.True(sleep.AtpBudget <= sleep.SleepEnterThreshold ||
-                    sleep.SleepPressure >= sleep.SleepPressureEnterThreshold);
+        Assert.Equal(0, physiology.SleepEpisodes);
+        Assert.Equal(0.0f, physiology.AtpBudget);
+        Assert.Equal(physiology.MaxHomeostaticPressure, physiology.HomeostaticPressure);
     }
 
     [Fact]
@@ -127,7 +127,9 @@ public sealed class NeuronalCognitionAuthorityTests
             "BiologicalAttentionRuntime",
             "LimbicRuntimeState",
             "EmotionRuntimeState",
-            "CerebellumRuntime"
+            "CerebellumRuntime",
+            "SleepMemoryRuntime",
+            "SleepReplayStage"
         ];
 
         Assert.All(retiredTypes, typeName => Assert.Null(assembly.GetType(typeName)));
@@ -152,13 +154,12 @@ public sealed class NeuronalCognitionAuthorityTests
         Assert.DoesNotContain("DispatchIntentionalActionMotorSpikesAsync", methodNames);
     }
 
-    private static SleepTickInput HighLoadTick()
+    private static MetabolicTickInput HighLoadTick()
         => new(
             DrainedSpikes: 80,
-            DispatchedSpikes: 80,
+            GeneratedSpikes: 80,
             ActivePathways: 20,
-            SpontaneousGenerated: 2,
-            NeuronalReplaySpikes: 0);
+            SpontaneousGenerated: 2);
 
     private static SimulationState CreateState()
     {

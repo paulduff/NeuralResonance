@@ -15,7 +15,6 @@ public sealed record AvatarLanguageCommandResult(
     int DeliveredSpikes,
     int TargetInstances,
     string Utterance,
-    bool PausedDueToSleep,
     string GrammarIntent,
     string GrammarMood,
     string CommandKey,

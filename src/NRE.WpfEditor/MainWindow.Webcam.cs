@@ -353,15 +353,6 @@ public partial class MainWindow
         double rightSaliency,
         CancellationToken token)
     {
-        if (_isSimulationSleeping)
-        {
-            PostUi(() =>
-            {
-                WebcamStatusText.Text = $"Webcam: paused during sleep ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
-            });
-            return;
-        }
-
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         cts.CancelAfter(TimeSpan.FromMilliseconds(1500));
         var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
@@ -379,26 +370,17 @@ public partial class MainWindow
 
         var visualSignal = AvatarVisualSignalFactory.FromWebcam(motionSignal, luminanceSignal, leftSaliency, rightSaliency);
         var result = await SendVisualStimulusAsync(baseUri, visualSignal, cts.Token);
-        if (!result.PausedDueToSleep)
+        if (result.Delivered > 0)
         {
-            if (result.Delivered > 0)
-            {
-                NoteVisualRouteDispatchSuccess();
-            }
-            else
-            {
-                await NoteVisualRouteDispatchFailureAsync($"delivered=0 generated={result.Generated} targets={result.TargetCount}", token);
-            }
+            NoteVisualRouteDispatchSuccess();
+        }
+        else
+        {
+            await NoteVisualRouteDispatchFailureAsync($"delivered=0 generated={result.Generated} targets={result.TargetCount}", token);
         }
 
         PostUi(() =>
         {
-            if (result.PausedDueToSleep)
-            {
-                WebcamStatusText.Text = $"Webcam: paused during sleep ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
-                return;
-            }
-
             var recoveryLabel = result.RecoveryAttempted
                 ? $" rec={result.RecoveryHealthy}/{Math.Max(result.RecoveryRestarted, result.RecoveryRetriedInstances)}"
                 : string.Empty;
@@ -766,7 +748,6 @@ public partial class MainWindow
             response.RecoveryRestarted,
             response.RecoveryHealthy,
             response.RecoveryRetriedInstances,
-            response.PausedDueToSleep,
             response.AttentionFocusField,
             response.AttentionFocusHemisphere,
             response.AttentionFocusConfidence);

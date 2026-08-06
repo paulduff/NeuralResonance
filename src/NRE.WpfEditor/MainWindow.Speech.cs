@@ -82,11 +82,6 @@ public partial class MainWindow
                 continue;
             }
 
-            if (_isSimulationSleeping)
-            {
-                continue;
-            }
-
             if (!TrySpeakTextViaSapi(voiceType, voice, phrase, out var error))
             {
                 if (!loggedUnavailable)
@@ -148,7 +143,7 @@ public partial class MainWindow
 
     private void TryQueueSpeechFromLanguageDispatch(IReadOnlyList<DispatchSpikeTrace> dispatchSpikes)
     {
-        if (!_speechOutputEnabled || _isSimulationSleeping || dispatchSpikes.Count == 0)
+        if (!_speechOutputEnabled || dispatchSpikes.Count == 0)
         {
             return;
         }

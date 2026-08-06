@@ -68,13 +68,15 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
-    public void SleepSilencesDecodedMotorOutput()
+    public void DecoderHasNoHostSleepVeto()
     {
-        var runtime = Decode(CreateMotorCircuit(20.0f, 20.0f), sleeping: true);
+        var decode = typeof(NeuronalMotorPopulationDecoder)
+            .GetMethods()
+            .Single(method => method.Name == nameof(NeuronalMotorPopulationDecoder.Decode));
+        var runtime = Decode(CreateMotorCircuit(20.0f, 20.0f));
 
-        Assert.False(runtime.Active);
-        Assert.Equal(0.0, runtime.LeftDrive);
-        Assert.Equal(0.0, runtime.RightDrive);
+        Assert.DoesNotContain(decode.GetParameters(), parameter => parameter.ParameterType == typeof(bool));
+        Assert.True(runtime.Active);
     }
 
     [Fact]
@@ -165,13 +167,10 @@ public sealed class NeuronalMotorControlTests
         Assert.Equal(2, summary.MotorEvents);
     }
 
-    private static NeuronalMotorRuntime Decode(
-        IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        bool sleeping = false)
+    private static NeuronalMotorRuntime Decode(IReadOnlyList<InstanceStructureSnapshot> snapshots)
         => NeuronalMotorPopulationDecoder.Decode(
             tick: 1,
             snapshots,
-            sleeping,
             new NeuronalMotorControlSnapshot(CreateSettings()),
             NeuronalMotorRuntime.Default);
 

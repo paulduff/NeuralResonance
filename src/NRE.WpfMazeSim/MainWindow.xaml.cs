@@ -170,7 +170,6 @@ public partial class MainWindow : Window
     private long _lastTick;
     private long _dispatchSinceMs;
     private long _lastNeuronalMotorTick = -1;
-    private bool _sleepState;
     private bool _brainPollInFlight;
     private bool _navigationPollInFlight;
     private bool _connectedOnce;
@@ -558,12 +557,10 @@ public partial class MainWindow : Window
                 UpdateLimbicFromState(stateElement);
                 UpdateObjectMemoryFromState(stateElement);
                 UpdateBrainNarrationFromState(stateElement);
-                _sleepState = IsSleepingState(stateElement);
             }
             else
             {
                 SetObjectMemoryText("Object memory unavailable: /api/v1/frame missing state payload.");
-                _sleepState = false;
             }
 
             var dispatches = ParseDispatchSpikes(root, out var maxWallClockMs);
@@ -633,10 +630,9 @@ public partial class MainWindow : Window
         {
             var visualDispatch = await SendAvatarVisualStimulusAsync(endpoint, analysis, token);
             var objectDispatch = await SendAvatarObjectStimuliAsync(endpoint, token);
-            var sleepSuffix = visualDispatch.PausedDueToSleep ? " (sleep paused)" : string.Empty;
             SetVisionInputStatus(
                 $"Visual input: gen={visualDispatch.Generated} del={visualDispatch.Delivered} tgt={visualDispatch.TargetCount} | " +
-                $"obj={objectDispatch.Delivered}/{objectDispatch.Generated} vis={objectDispatch.VisibleObjects} err={objectDispatch.Errors}{sleepSuffix}");
+                $"obj={objectDispatch.Delivered}/{objectDispatch.Generated} vis={objectDispatch.VisibleObjects} err={objectDispatch.Errors}");
         }
         catch (OperationCanceledException)
         {
@@ -1141,8 +1137,7 @@ public partial class MainWindow : Window
         return new VisualStimulusDispatchResult(
             response.GeneratedSpikes,
             response.DeliveredSpikes,
-            response.TargetInstances,
-            response.PausedDueToSleep);
+            response.TargetInstances);
     }
 
     private async Task<ObjectStimulusDispatchResult> SendAvatarObjectStimuliAsync(Uri baseUri, CancellationToken token)
@@ -1549,7 +1544,6 @@ public partial class MainWindow : Window
     private void ApplyMotorDispatch(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
         var body = new AvatarNervousSystemBodyState(
-            _sleepState,
             _limbicInteroceptiveDrive,
             _limbicThreat,
             _health / 100.0,
@@ -1634,16 +1628,6 @@ public partial class MainWindow : Window
             forwardGain: ForwardGainSlider.Value,
             turnGain: TurnGainSlider.Value);
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
-
-        if (_sleepState)
-        {
-            // Hard motor gate while sleeping: no locomotion/turning from simulator side.
-            forwardSpeed = 0.0;
-            turnRateDeg = 0.0;
-            _avatarHeadYawDeg = 0.0;
-            _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
-        }
 
         var movingForward = forwardSpeed > 0.08;
         var translating = Math.Abs(forwardSpeed) > 0.08;
@@ -1988,12 +1972,6 @@ public partial class MainWindow : Window
 
     private async Task PollSpatialNavigationAsync(Uri endpoint, CancellationToken token)
     {
-        if (_sleepState)
-        {
-            StopSpatialNavigation("Navigation: sleeping; motor gate closed");
-            return;
-        }
-
         var (row, column) = WorldToGrid(_avatarX, _avatarZ);
         var (goalRow, goalColumn) = WorldToGrid(_goalWorld.X, _goalWorld.Y);
         int headingQuarter = NavigationCoordinateFrame.HeadingQuarterFromDegrees(_avatarHeadingDeg);
@@ -2208,13 +2186,6 @@ public partial class MainWindow : Window
             using var doc = JsonDocument.Parse(payload);
             var delivered = GetInt(doc.RootElement, "deliveredSpikes");
             var generated = GetInt(doc.RootElement, "generatedSpikes");
-            var paused = GetBool(doc.RootElement, "pausedDueToSleep");
-            if (paused)
-            {
-                Log("Collision orienting paused during sleep.");
-                return;
-            }
-
             if (delivered <= 0)
             {
                 Log($"Collision orienting injected but not delivered ({generated}/0).");
@@ -2311,9 +2282,7 @@ public partial class MainWindow : Window
             var frontTouch = Math.Clamp(Math.Max(_lastFrontProximity, wall * 0.35), 0.0, 1.0);
             var leftTouch = Math.Clamp(_lastLeftProximity, 0.0, 1.0);
             var rightTouch = Math.Clamp(_lastRightProximity, 0.0, 1.0);
-            var groundTouch = !_sleepState
-                ? Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed * 0.70), 0.0, 1.0)
-                : 0.0;
+            var groundTouch = Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed * 0.70), 0.0, 1.0);
             var hazardProximity = EstimateNearestHazardAudioProximity(CellSize * 4.5);
             var urgency = Math.Clamp((ComputeUrgentRunScale() - 1.0) / (MazeRunSpeedMultiplier - 1.0), 0.0, 1.0);
             var telemetry = new AvatarBodyTelemetry(
@@ -2468,7 +2437,7 @@ public partial class MainWindow : Window
                 Hemisphere: null));
         }
 
-        if (!_sleepState && movement > 0.05)
+        if (movement > 0.05)
         {
             cues.Add(new AvatarAuditoryCue(
                 Pattern: _lastWallProximity > 0.52 ? "AvatarFootstepMazeNarrowEcho" : "AvatarFootstepMazeFloor",
@@ -3426,7 +3395,6 @@ public partial class MainWindow : Window
         _recentWallImpactTicks.Clear();
         _collisionStimulusInFlight = false;
         _bodyStimulusInFlight = false;
-        _sleepState = false;
         _lastBodyStateDispatchMs = 0;
         _respawnWorld = _startWorld;
         _totalDistanceTravelled = 0.0;
@@ -3455,7 +3423,6 @@ public partial class MainWindow : Window
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
         _navigationResetPending = true;
         _lastNavigationDirective = "motor_stop";
-        _sleepState = false;
         SetConnectionStatus(AvatarControlStatusText.Reconnecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Connection cursor reset. Polling frame stream from dispatch origin.");
     }
@@ -3533,17 +3500,9 @@ public partial class MainWindow : Window
                 new AvatarLanguageCommand(commandText),
                 timeout.Token);
 
-            if (result.PausedDueToSleep)
-            {
-                EnglishCommandStatusText.Text = "Command: brain is asleep; language paused.";
-                Log($"English command paused during sleep: \"{TrimForLog(commandText, 80)}\".");
-            }
-            else
-            {
-                var directive = string.IsNullOrWhiteSpace(result.MotorDirective) ? "motor_idle" : result.MotorDirective;
-                EnglishCommandStatusText.Text = $"Command: {directive}, spikes {result.DeliveredSpikes}/{result.GeneratedSpikes}";
-                Log($"English command accepted: \"{TrimForLog(commandText, 80)}\" -> {directive}.");
-            }
+            var directive = string.IsNullOrWhiteSpace(result.MotorDirective) ? "motor_idle" : result.MotorDirective;
+            EnglishCommandStatusText.Text = $"Command: {directive}, spikes {result.DeliveredSpikes}/{result.GeneratedSpikes}";
+            Log($"English command accepted: \"{TrimForLog(commandText, 80)}\" -> {directive}.");
 
             ApplyBrainNarration(result.Narration, forceLog: true);
         }
@@ -3858,7 +3817,6 @@ public partial class MainWindow : Window
     private static int GetInt(JsonElement element, params string[] names) => AvatarJson.GetInt(element, names);
     private static double GetDouble(JsonElement element, params string[] names) => AvatarJson.GetDouble(element, names);
     private static bool GetBool(JsonElement element, params string[] names) => AvatarJson.GetBool(element, names);
-    private static bool IsSleepingState(JsonElement stateElement) => AvatarJson.IsSleepingState(stateElement);
     private static string NormalizeHemisphere(string value) => AvatarJson.NormalizeHemisphere(value);
 
     private static double NormalizeRadians(double value)
@@ -3903,7 +3861,7 @@ public partial class MainWindow : Window
     private readonly record struct VisionSprite(Point World, Color Color, double SizeScale);
     private readonly record struct WallBounds(double XMin, double XMax, double ZMin, double ZMax);
     private readonly record struct LearningSample(long Tick, int Score);
-    private readonly record struct VisualStimulusDispatchResult(int Generated, int Delivered, int TargetCount, bool PausedDueToSleep);
+    private readonly record struct VisualStimulusDispatchResult(int Generated, int Delivered, int TargetCount);
     private readonly record struct ObjectStimulusDispatchResult(int Generated, int Delivered, int VisibleObjects, int Errors);
     private readonly record struct ObjectObservation(
         string ObjectId,

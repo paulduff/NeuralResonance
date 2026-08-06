@@ -60,12 +60,13 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
-    public void Runtime_Defaults_Start_In_Healthy_Awake_Baseline()
+    public void Runtime_Defaults_Start_With_Neutral_Physiology_And_No_Neuronal_Sleep_Decision()
     {
         var state = new SimulationState();
 
-        Assert.False(state.SleepMemory.IsSleeping);
-        Assert.InRange(state.SleepMemory.SleepPressure, 0.0f, 0.20f);
+        Assert.False(state.MetabolicPhysiology.NeuronalSleepObserved);
+        Assert.InRange(state.MetabolicPhysiology.HomeostaticPressure, 0.0f, 0.20f);
+        Assert.False(state.NeuronalSleepConsolidation.Available);
         Assert.False(state.NeuronalAffectValuation.Available);
         Assert.False(state.NeuronalAttentionWorkspace.Available);
     }

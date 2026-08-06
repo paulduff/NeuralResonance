@@ -17,6 +17,21 @@ public sealed class AvatarLanguageCommandApiTests
     }
 
     [Fact]
+    public void Sleep_State_Uses_Only_The_Neuronal_Decoder()
+    {
+        using var neuronal = JsonDocument.Parse(
+            """{"neuronalSleepConsolidation":{"available":true,"stateActive":true,"state":1}}""");
+        using var neuronalString = JsonDocument.Parse(
+            """{"neuronalSleepConsolidation":{"available":true,"stateActive":true,"state":"Rem"}}""");
+        using var legacy = JsonDocument.Parse(
+            """{"sleepMemory":{"isSleeping":true},"sleepState":"sleeping"}""");
+
+        Assert.True(AvatarJson.IsSleepingState(neuronal.RootElement));
+        Assert.True(AvatarJson.IsSleepingState(neuronalString.RootElement));
+        Assert.False(AvatarJson.IsSleepingState(legacy.RootElement));
+    }
+
+    [Fact]
     public void Control_Plane_Secret_Uses_A_Constant_Time_Comparison()
     {
         Assert.True(NreControlPlaneSecurity.IsAuthorized("correct-secret", "correct-secret"));
@@ -49,7 +64,6 @@ public sealed class AvatarLanguageCommandApiTests
               "deliveredSpikes": 37,
               "targetInstances": 4,
               "generatedUtterance": "find shelter",
-              "pausedDueToSleep": false,
               "grammar": {
                 "intent": "survival_statement",
                 "mood": "imperative"
@@ -77,7 +91,6 @@ public sealed class AvatarLanguageCommandApiTests
         Assert.Equal(37, result.DeliveredSpikes);
         Assert.Equal(4, result.TargetInstances);
         Assert.Equal("find shelter", result.Utterance);
-        Assert.False(result.PausedDueToSleep);
         Assert.Equal("survival_statement", result.GrammarIntent);
         Assert.Equal("imperative", result.GrammarMood);
         Assert.Equal("language.seek_shelter", result.CommandKey);

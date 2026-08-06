@@ -155,7 +155,6 @@ public sealed class VisualInputDispatchClient
         var recoveryRestarted = 0;
         var recoveryHealthy = 0;
         var recoveryRetriedInstances = 0;
-        var pausedDueToSleep = false;
         string? focusField = null;
         string? focusHemisphere = null;
         var focusConfidence = 0f;
@@ -174,7 +173,6 @@ public sealed class VisualInputDispatchClient
                 recoveryRestarted = GetInt(doc.RootElement, "recoveryRestarted");
                 recoveryHealthy = GetInt(doc.RootElement, "recoveryHealthy");
                 recoveryRetriedInstances = GetInt(doc.RootElement, "recoveryRetriedInstances");
-                pausedDueToSleep = GetBool(doc.RootElement, "pausedDueToSleep");
                 focusField = GetString(doc.RootElement, "attentionFocusField");
                 focusHemisphere = GetString(doc.RootElement, "attentionFocusHemisphere");
                 focusConfidence = GetSingle(doc.RootElement, "attentionFocusConfidence");
@@ -195,7 +193,6 @@ public sealed class VisualInputDispatchClient
             recoveryRestarted,
             recoveryHealthy,
             recoveryRetriedInstances,
-            pausedDueToSleep,
             focusField,
             focusHemisphere,
             focusConfidence,
@@ -224,7 +221,6 @@ public sealed class VisualInputDispatchClient
             RecoveryRestarted: left.RecoveryRestarted + right.RecoveryRestarted,
             RecoveryHealthy: left.RecoveryHealthy + right.RecoveryHealthy,
             RecoveryRetriedInstances: left.RecoveryRetriedInstances + right.RecoveryRetriedInstances,
-            PausedDueToSleep: left.PausedDueToSleep && right.PausedDueToSleep,
             AttentionFocusField: focus.AttentionFocusField,
             AttentionFocusHemisphere: focus.AttentionFocusHemisphere,
             AttentionFocusConfidence: Math.Max(left.AttentionFocusConfidence, right.AttentionFocusConfidence),
@@ -355,7 +351,6 @@ public sealed record VisualInputDispatchResponse(
     int RecoveryRestarted,
     int RecoveryHealthy,
     int RecoveryRetriedInstances,
-    bool PausedDueToSleep,
     string? AttentionFocusField,
     string? AttentionFocusHemisphere,
     float AttentionFocusConfidence,

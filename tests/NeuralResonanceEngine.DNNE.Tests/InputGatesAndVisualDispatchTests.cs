@@ -101,7 +101,7 @@ public sealed class InputGatesAndVisualDispatchTests
             return hemisphere switch
             {
                 null => JsonResponse(HttpStatusCode.NotFound, """{"error":"No active service instances found for V1 (both)." }"""),
-                "L" => JsonResponse(HttpStatusCode.OK, """{"generatedSpikes":5,"deliveredSpikes":4,"targetInstances":1,"pausedDueToSleep":false}"""),
+                "L" => JsonResponse(HttpStatusCode.OK, """{"generatedSpikes":5,"deliveredSpikes":4,"targetInstances":1}"""),
                 "R" => JsonResponse(HttpStatusCode.ServiceUnavailable, """{"error":"instance unhealthy"}"""),
                 _ => JsonResponse(HttpStatusCode.BadRequest, """{"error":"unexpected hemisphere"}""")
             };

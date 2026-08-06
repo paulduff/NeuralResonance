@@ -126,13 +126,6 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
 
         var payload = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(payload);
-        if (GetBool(doc.RootElement, "pausedDueToSleep"))
-        {
-            Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-            Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-            return;
-        }
-
         Assert.True(GetBool(doc.RootElement, "accepted"), payload);
         Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), payload);
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
@@ -162,13 +155,6 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         using var doc = JsonDocument.Parse(audioPayload);
         Assert.False(TryGetProperty(doc.RootElement, "predictiveSurprise", out _));
         Assert.False(TryGetProperty(doc.RootElement, "predictiveCue", out _));
-        if (GetBool(doc.RootElement, "pausedDueToSleep"))
-        {
-            Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-            Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-            return;
-        }
-
         Assert.True(GetBool(doc.RootElement, "accepted"), audioPayload);
         Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), audioPayload);
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));

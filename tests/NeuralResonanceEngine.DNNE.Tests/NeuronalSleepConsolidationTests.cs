@@ -75,25 +75,24 @@ public sealed class NeuronalSleepConsolidationTests
     }
 
     [Fact]
-    public void IncompleteObservedCircuitCannotFallBackToCentralThresholdAuthority()
+    public void IncompleteObservedCircuitCannotHoldSleepThroughHostFallback()
     {
         var state = new SimulationState();
         state.AdvanceClockAndCreateTickSignal();
         var nrem = NeuronalSleepConsolidationDecoder.Decode(CreateNremCircuit(1));
-        var entered = state.AdvanceSleepHomeostasis(IdleTick(), nrem);
+        var entered = state.AdvanceMetabolicPhysiology(IdleTick(), nrem);
         var incomplete = NeuronalSleepConsolidationDecoder.Decode([
             CreateNremCircuit(1).Single(static snapshot => snapshot.StructureId == StructureId.Hypothalamus)
         ]);
-        var held = state.AdvanceSleepHomeostasis(IdleTick(), incomplete);
+        var released = state.AdvanceMetabolicPhysiology(IdleTick(), incomplete);
 
         Assert.True(entered.EnteredSleep);
-        Assert.True(entered.IsSleeping);
+        Assert.True(entered.NeuronalSleepObserved);
         Assert.True(incomplete.CircuitObserved);
         Assert.False(incomplete.Available);
-        Assert.True(held.IsSleeping);
-        Assert.False(held.ExitedSleep);
-        Assert.True(state.GetSleepMemoryRuntime().NeuronalAuthorityActive);
-        Assert.False(state.GetSleepMemoryRuntime().NeuronalReplayActive);
+        Assert.False(released.NeuronalSleepObserved);
+        Assert.True(released.ExitedSleep);
+        Assert.False(state.GetMetabolicPhysiologyRuntime().NeuronalSleepObserved);
     }
 
     [Fact]
@@ -131,21 +130,24 @@ public sealed class NeuronalSleepConsolidationTests
             Assert.DoesNotContain(retiredMethod, methodNames);
         }
 
-        var sleepOverloads = typeof(SimulationState)
+        Assert.DoesNotContain(
+            typeof(SimulationState).GetMethods(),
+            static method => method.Name == "AdvanceSleepHomeostasis");
+
+        var physiologyOverloads = typeof(SimulationState)
             .GetMethods()
-            .Where(static method => method.Name == nameof(SimulationState.AdvanceSleepHomeostasis))
+            .Where(static method => method.Name == nameof(SimulationState.AdvanceMetabolicPhysiology))
             .ToArray();
-        Assert.Single(sleepOverloads);
-        Assert.Equal(2, sleepOverloads[0].GetParameters().Length);
+        Assert.Single(physiologyOverloads);
+        Assert.Equal(2, physiologyOverloads[0].GetParameters().Length);
     }
 
-    private static SleepTickInput IdleTick()
+    private static MetabolicTickInput IdleTick()
         => new(
             DrainedSpikes: 0,
-            DispatchedSpikes: 0,
+            GeneratedSpikes: 0,
             ActivePathways: 0,
-            SpontaneousGenerated: 0,
-            NeuronalReplaySpikes: 0);
+            SpontaneousGenerated: 0);
 
     private static IReadOnlyList<InstanceStructureSnapshot> CreateNremCircuit(
         int selectedEnsemble,

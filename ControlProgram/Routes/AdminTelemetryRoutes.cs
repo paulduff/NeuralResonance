@@ -123,9 +123,6 @@ internal static class AdminTelemetryRoutes
                 tickWallP95Ms = transport.TickWallP95Ms,
                 tickWallP99Ms = transport.TickWallP99Ms,
                 degradeSignal = transport.DegradeSignal,
-                sleepReplayStage = transport.SleepReplayStage,
-                sleepInhibitoryScale = transport.SleepInhibitoryScale,
-                sleepExcitatoryScale = transport.SleepExcitatoryScale,
                 perceptionLanguageGenerated = transport.PerceptionLanguageGenerated,
                 perceptionLanguageDelivered = transport.PerceptionLanguageDelivered,
                 perceptionLanguageDispatchErrors = transport.PerceptionLanguageDispatchErrors

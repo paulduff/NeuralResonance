@@ -317,6 +317,18 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     [InlineData("/api/v1/prefrontal-working-memory")]
     [InlineData("/api/v1/consciousness-rhythm")]
     [InlineData("/api/v1/global-workspace")]
+    [InlineData("/api/v1/narration")]
+    [InlineData("/api/v1/speech-intention")]
+    [InlineData("/api/v1/cognitive-language-workspace")]
+    [InlineData("/api/v1/inner-speech-loop")]
+    [InlineData("/api/v1/intentional-action-loop")]
+    [InlineData("/api/v1/self-monitoring-loop")]
+    [InlineData("/api/v1/autobiographical-self")]
+    [InlineData("/api/v1/autobiographical-continuity")]
+    [InlineData("/api/v1/narrative-self-model")]
+    [InlineData("/api/v1/identity-boundary")]
+    [InlineData("/api/v1/room-state")]
+    [InlineData("/api/v1/inhabitance")]
     public async Task Legacy_Cognition_Endpoints_Are_Removed(string path)
     {
         using var response = await _fixture.Client.GetAsync(path);

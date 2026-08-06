@@ -222,41 +222,6 @@ app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.
 app.MapGet("/api/v1/embodied-attention", (SimulationState state) => Results.Ok(state.GetEmbodiedAttentionSpotlightSnapshot()));
 app.MapGet("/api/v1/place-memory", (SimulationState state, int? max) => Results.Ok(state.GetPlaceMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/cerebellum", (SimulationState state) => Results.Ok(state.GetCerebellumSnapshot()));
-app.MapGet("/api/v1/narration", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeLanguage = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
-    State = state.GetBrainNarrationSnapshot()
-}));
-app.MapGet("/api/v1/speech-intention", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeLanguage = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
-    State = state.GetSpeechIntentionSnapshot()
-}));
-app.MapGet("/api/v1/cognitive-language-workspace", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeLanguage = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
-    State = state.GetCognitiveLanguageWorkspaceSnapshot()
-}));
-app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeLanguage = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
-    State = state.GetInnerSpeechLoopSnapshot()
-}));
-app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeAction = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
-    State = state.GetIntentionalActionLoopSnapshot()
-}));
 app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
 {
     Control = control.GetSnapshot(),
@@ -280,16 +245,9 @@ app.MapGet("/api/v1/neuronal-executive", (NeuronalExecutiveRuntime executive) =>
     Results.Ok(executive.GetSnapshot()));
 app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cognitionAuthority) =>
     Results.Ok(cognitionAuthority.GetSnapshot()));
-app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok(state.GetSelfMonitoringLoopSnapshot()));
 // /api/v1/active-inference: route was registered but GetActiveInferenceSnapshot()
 // is not implemented on SimulationState and no client references this URL. Removed
 // so the engine can build/start; reintroduce alongside a real snapshot method if needed.
-app.MapGet("/api/v1/autobiographical-self", (SimulationState state) => Results.Ok(state.GetAutobiographicalSelfSnapshot()));
-app.MapGet("/api/v1/autobiographical-continuity", (SimulationState state) => Results.Ok(state.GetAutobiographicalContinuitySnapshot()));
-app.MapGet("/api/v1/narrative-self-model", (SimulationState state) => Results.Ok(state.GetNarrativeSelfModelSnapshot()));
-app.MapGet("/api/v1/identity-boundary", (SimulationState state) => Results.Ok(state.GetIdentityBoundarySnapshot()));
-app.MapGet("/api/v1/room-state", (SimulationState state) => Results.Ok(state.GetRoomStateSnapshot()));
-app.MapGet("/api/v1/inhabitance", (SimulationState state) => Results.Ok(state.GetInhabitanceSnapshot()));
 app.MapGet("/api/v1/episodic-memory", (SimulationState state, int? max) => Results.Ok(state.GetEpisodicMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/unified-event-memory", (SimulationState state, int? max) => Results.Ok(state.GetUnifiedEventMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/semantic-memory", (SimulationState state, int? max) => Results.Ok(state.GetSemanticMemorySnapshot(max ?? 32)));
@@ -304,7 +262,6 @@ app.MapGet("/api/v1/biological-teaching-loop", (SimulationState state) => Result
 app.MapGet("/api/v1/circuit-health", (SimulationState state, int? maxWarnings) => Results.Ok(state.GetCircuitHealthPanelSnapshot(maxWarnings ?? 96)));
 app.MapAdminReasoningRoutes();
 app.MapAdminTelemetryRoutes();
-app.MapSurvivalBenchmarkRoutes();
 app.MapDyadLanguageRoutes();
 app.MapDyadLanguageGenerationRoutes();
 app.MapNavigationRoutes();
@@ -6484,58 +6441,6 @@ internal sealed class SimulationState
             return true;
         }
     }
-
-    // Offline checkpoint/benchmark compatibility only. Production ticks never
-    // invoke this scalar cognition harness.
-    public void ObserveCognitiveRuntime(
-        long tick,
-        int dispatchedSpikes,
-        int activePathwayCount,
-        float rewardPredictionError,
-        (StructureId Source, StructureId Target, NTEnum Nt)? dominantPathway)
-    {
-        lock (_gate)
-        {
-            ApplyConsolidationDecayLocked();
-              ObserveWorldModelTransitionLocked(
-                  tick,
-                  dispatchedSpikes,
-                  activePathwayCount,
-                  rewardPredictionError,
-              dominantPathway);
-              UpdateBodySchemaLocked(tick);
-              UpdateInteroceptiveCoreLocked(tick);
-              UpdatePainProtectionLocked(tick);
-              UpdateBodyPresenceLocked(tick);
-              UpdateCerebellumRuntimeLocked(tick, dispatchedSpikes, activePathwayCount, rewardPredictionError);
-              ObserveActionOutcomeLocked(tick, rewardPredictionError);
-              UpsertCurrentPlaceLearningLocked(tick);
-              RefreshWorldLearningMapSnapshotLocked(tick);
-              RefreshPersistentPerceptsLocked(tick);
-              UpdateSemanticMemoryLocked(tick);
-              UpdateAutobiographicalSelfLocked(tick);
-              UpdateAutobiographicalContinuityLocked(tick);
-              UpdatePlanningWorkspaceLocked(tick);
-              RefreshPersistentPerceptsLocked(tick);
-              UpdatePredictiveSensorySimulationLocked(tick);
-              UpdateEmotionStateLocked(tick);
-              UpdatePainProtectionLocked(tick);
-              UpdateBodyPresenceLocked(tick);
-              UpdateCognitiveLanguageWorkspaceLocked(tick);
-              UpdateInnerSpeechLoopLocked(tick);
-              UpdateIntentionalActionLoopLocked(tick);
-              UpdateSelfMonitoringLoopLocked(tick);
-              UpdateEmbodiedAttentionSpotlightLocked(tick);
-              UpdateNarrativeSelfModelLocked(tick);
-              UpdateIdentityBoundaryLocked(tick);
-              UpdateRoomStateLocked(tick);
-              CaptureUnifiedEventMemoryLocked(tick, rewardPredictionError, dominantPathway);
-              RefreshEpisodicMemorySnapshotLocked(tick);
-              UpdateBrainNarrationLocked(tick);
-              UpdateCurriculumLocked(tick, dispatchedSpikes, activePathwayCount, rewardPredictionError);
-          }
-      }
-
     private bool TryResolveCounterfactualActionKey(WorldModelCounterfactualRequest request, out string actionKey, out string reason)
     {
         actionKey = string.Empty;

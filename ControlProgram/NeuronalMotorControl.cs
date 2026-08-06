@@ -166,6 +166,7 @@ internal sealed class NeuronalMotorPopulationWindow
 
     private static bool IsRelevant(InstanceStructureSnapshot snapshot)
         => MotorStructures.Contains(snapshot.StructureId) ||
+           snapshot.ActionSelectionDiagnostics is not null ||
            snapshot.BasalGangliaDiagnostics is not null ||
            snapshot.CerebellarDiagnostics is not null ||
            snapshot.VestibuloReticularDiagnostics is not null;
@@ -255,7 +256,11 @@ internal sealed record NeuronalMotorRuntime(
     bool PromotionReady,
     double MinimumOutputConfidence,
     int MaxPopulationEventsPerSide,
-    string Evidence)
+    string Evidence,
+    int SelectedActionChannel = -1,
+    double ActionSelectionConfidence = 0.0,
+    double ActionCircuitCoverage = 0.0,
+    double ActionSelectionMargin = 0.0)
 {
     public static NeuronalMotorRuntime Default { get; } = new(
         Mode: NeuronalMotorModes.Shadow,
@@ -284,7 +289,11 @@ internal sealed record NeuronalMotorRuntime(
         PromotionReady: false,
         MinimumOutputConfidence: 0.45,
         MaxPopulationEventsPerSide: 12,
-        Evidence: "waiting for bilateral neuronal motor populations");
+        Evidence: "waiting for bilateral neuronal motor populations",
+        SelectedActionChannel: -1,
+        ActionSelectionConfidence: 0.0,
+        ActionCircuitCoverage: 0.0,
+        ActionSelectionMargin: 0.0);
 }
 
 internal static class NeuronalMotorPopulationDecoder
@@ -412,25 +421,38 @@ internal static class NeuronalMotorPopulationDecoder
                 ((1.0f - item.BalanceError) * 0.20)), 0.0, 1.0);
 
         var supportGain = 0.75 + (cerebellarSupport * 0.15) + (posturalSupport * 0.10);
-        var rawLeft = sleeping ? 0.0 : Math.Clamp(leftPopulation * effectiveGate * supportGain, 0.0, 1.0);
-        var rawRight = sleeping ? 0.0 : Math.Clamp(rightPopulation * effectiveGate * supportGain, 0.0, 1.0);
+        var actionDecision = NeuronalActionSelectionDecoder.Decode(snapshots);
+        var unshapedLeft = sleeping ? 0.0 : Math.Clamp(leftPopulation * effectiveGate * supportGain, 0.0, 1.0);
+        var unshapedRight = sleeping ? 0.0 : Math.Clamp(rightPopulation * effectiveGate * supportGain, 0.0, 1.0);
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(
+            actionDecision,
+            unshapedLeft,
+            unshapedRight);
+        var rawLeft = sleeping ? 0.0 : shaped.Left;
+        var rawRight = sleeping ? 0.0 : shaped.Right;
         var alpha = settings.SmoothingAlpha;
         var leftDrive = sleeping ? 0.0 : Lerp(previous.LeftDrive, rawLeft, alpha);
         var rightDrive = sleeping ? 0.0 : Lerp(previous.RightDrive, rawRight, alpha);
-        var signalStrength = Math.Max(leftDrive, rightDrive);
+        var signalStrength = Math.Max(Math.Abs(leftDrive), Math.Abs(rightDrive));
 
         var supportCoverage = ((cerebellar.Length > 0 ? 1.0 : 0.0) + (postural.Length > 0 ? 1.0 : 0.0)) * 0.5;
-        var confidence = Math.Clamp(
+        var motorConfidence = Math.Clamp(
             (motorCoverage * 0.48) +
             (signalStrength * 0.24) +
             (basalGangliaCoverage * 0.18) +
             (supportCoverage * 0.10),
             0.0,
             1.0);
+        var confidence = actionDecision.Available
+            ? Math.Clamp((motorConfidence * 0.72) + (actionDecision.Confidence * 0.28), 0.0, 1.0)
+            : motorConfidence;
         var confidenceEma = previous.Tick <= 0
             ? confidence
             : Lerp(previous.ConfidenceEma, confidence, MetricsAlpha);
+        var actionAuthorityReady = !actionDecision.Available ||
+            (actionDecision.Active && actionDecision.Confidence >= settings.MinimumOutputConfidence);
         var active = !sleeping &&
+            actionAuthorityReady &&
             motorCoverage >= settings.MinimumCircuitCoverage &&
             confidence >= settings.MinimumOutputConfidence &&
             signalStrength >= 0.01;
@@ -445,7 +467,11 @@ internal static class NeuronalMotorPopulationDecoder
             : previous.AgreementEma;
         var evaluationSamples = reference.Available ? previous.EvaluationSamples + 1 : previous.EvaluationSamples;
         var activeEvaluationSamples = comparable ? previous.ActiveEvaluationSamples + 1 : previous.ActiveEvaluationSamples;
+        var actionPromotionReady = !actionDecision.Available ||
+            (actionDecision.Confidence >= settings.PromotionMinimumConfidence &&
+             actionDecision.CircuitCoverage >= settings.PromotionMinimumCoverage);
         var qualified = comparable &&
+            actionPromotionReady &&
             agreementEma >= settings.PromotionMinimumAgreement &&
             confidenceEma >= settings.PromotionMinimumConfidence &&
             motorCoverage >= settings.PromotionMinimumCoverage;
@@ -482,7 +508,11 @@ internal static class NeuronalMotorPopulationDecoder
             PromotionReady: promotionReady,
             MinimumOutputConfidence: settings.MinimumOutputConfidence,
             MaxPopulationEventsPerSide: settings.MaxPopulationEventsPerSide,
-            Evidence: $"motor-populations={observedStructures.Count}/{MotorWeights.Count}; bilateral-coverage={motorCoverage:0.000}; basal-ganglia={(basalGanglia.Length > 0 ? "observed" : "missing")}; cerebellar={(cerebellar.Length > 0 ? "observed" : "missing")}; posture={(postural.Length > 0 ? "observed" : "missing")}");
+            Evidence: $"motor-populations={observedStructures.Count}/{MotorWeights.Count}; bilateral-coverage={motorCoverage:0.000}; basal-ganglia={(basalGanglia.Length > 0 ? "observed" : "missing")}; action-channels={(actionDecision.Available ? (actionDecision.Active ? "selected" : "suppressed") : "missing")}; cerebellar={(cerebellar.Length > 0 ? "observed" : "missing")}; posture={(postural.Length > 0 ? "observed" : "missing")}",
+            SelectedActionChannel: actionDecision.SelectedChannel,
+            ActionSelectionConfidence: actionDecision.Confidence,
+            ActionCircuitCoverage: actionDecision.CircuitCoverage,
+            ActionSelectionMargin: actionDecision.SelectionMargin);
     }
 
     private static double NormalizeRate(float rateHz, NeuronalMotorControlSettings settings)

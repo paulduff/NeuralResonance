@@ -61,6 +61,25 @@ Replace central goal ranking and `ResolveIntentionalMotorDirective` with competi
 
 Acceptance requires learned choice reversal after reward contingency changes, suppression under GPi/SNr stimulation, disinhibition under direct-pathway stimulation, and no dependency on action-name strings.
 
+#### Implemented vertical slice
+
+The first action-selection slice uses four stable, interleaved population lanes. Lane identity is numeric and is preserved across cortical proposals, striatum, pallidal/nigral output, and motor thalamus. It is never named after an action. Every striatal lane contains paired D1-dominant and D2-dominant medium spiny populations. The transport layer now respects their anatomy: D1 spikes use direct GPi/SNr output routes and D2 spikes use the indirect GPe route, while non-striatal axonal collaterals retain ordinary fan-out.
+
+Each participating structure reports per-lane measured firing, pathway role, output inhibition, motor-thalamic relay, corticostriatal eligibility trace, and learned synaptic strength. The controller can decode a winning lane from these measurements and shape the existing bilateral descending motor population at the actuator boundary. Numeric lane `0` preserves bilateral advance, `1` and `2` apply differential drive, and `3` applies bilateral withdrawal. These meanings exist only at the body boundary; no goal or action text is present in neuron identifiers, channel state, routing, or learning.
+
+This slice remains under the rung 1 `Shadow -> Assist -> Primary` evidence gate. Missing action-channel data preserves rung 1 observation behavior, but once action-channel telemetry is present an incomplete or inhibited action circuit cannot silently fall back to unselected movement. Promotion evidence now includes lane coverage, selection confidence, and selection margin.
+
+The causal test set pins:
+
+- lane identity through cortex, striatum, GPi, and motor thalamus;
+- paired D1/D2 populations in every lane;
+- D1/direct and D2/indirect route separation;
+- winner-take-all competition without semantic action labels;
+- movement suppression under GPi stimulation;
+- lane disinhibition under direct-pathway stimulation;
+- loss of authority after core-circuit ablation;
+- corticostriatal synaptic preference reversal after reward contingency reversal.
+
 ### Rung 3 - Neuronal Perception
 
 Replace symbolic object/category injection with sensory feature populations, recurrent cortical binding, salience competition, and hippocampal indexing. Labels may be attached by the language bridge after a percept exists; labels may not create the percept.

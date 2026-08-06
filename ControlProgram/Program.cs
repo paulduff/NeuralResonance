@@ -23754,7 +23754,8 @@ internal sealed class TickCoordinator(
                     ack.SpinalProprioceptiveDiagnostics,
                     ack.OlfactoryLimbicMemoryDiagnostics,
                     ack.AuditoryLanguageMotorDiagnostics,
-                    ack.VisualObjectRecognitionDiagnostics);
+                    ack.VisualObjectRecognitionDiagnostics,
+                    ack.ActionSelectionDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -25846,12 +25847,54 @@ internal sealed class TickCoordinator(
             $"Sample: {sample}");
     }
 
-    // Axonal fan-out: a structure's spike propagates along ALL of its connectome edges,
-    // not a single selected one. internal so the behavior can be pinned by tests.
+    // Axonal fan-out follows every anatomically compatible collateral. Striatal D1
+    // and D2 medium spiny neurons are the exception to undifferentiated fan-out:
+    // D1 cells project through direct output nuclei, while D2 cells project through GPe.
     internal static IReadOnlyList<SynapticConnection> ResolveRoutes(IReadOnlyList<SynapticConnection> candidates, SpikeMessage spike)
     {
-        _ = spike; // fan-out is independent of the spike's nominal (DefaultTarget) target
-        return candidates;
+        if (spike.SourceStructure != StructureId.Striatum ||
+            !TryParseSourceNeuronIndex(spike.SourceNeuronId, out var neuronIndex))
+        {
+            return candidates;
+        }
+
+        var directPathway = (neuronIndex & 1) == 0;
+        return candidates
+            .Where(route => IsCompatibleStriatalProjection(route, directPathway))
+            .ToArray();
+    }
+
+    private static bool IsCompatibleStriatalProjection(SynapticConnection route, bool directPathway)
+    {
+        if (route.Target == StructureId.GPe)
+        {
+            return !directPathway;
+        }
+
+        if (route.Target is StructureId.GPi or StructureId.Snr or StructureId.Snc)
+        {
+            return directPathway;
+        }
+
+        return true;
+    }
+
+    private static bool TryParseSourceNeuronIndex(string? neuronId, out int index)
+    {
+        index = 0;
+        if (string.IsNullOrWhiteSpace(neuronId))
+        {
+            return false;
+        }
+
+        var text = neuronId.AsSpan().Trim();
+        var start = text.Length - 1;
+        while (start >= 0 && char.IsDigit(text[start]))
+        {
+            start--;
+        }
+
+        return start < text.Length - 1 && int.TryParse(text[(start + 1)..], out index);
     }
 
     private static bool IsMotorSleepSuppressedRoute(StructureId source, StructureId target)
@@ -26268,10 +26311,11 @@ internal sealed class TickCoordinator(
                 AverageSpinalProprioceptiveDiagnostics(members),
                 AverageOlfactoryLimbicMemoryDiagnostics(members),
                 AverageAuditoryLanguageMotorDiagnostics(members),
-                AverageVisualObjectRecognitionDiagnostics(members)));
+                AverageVisualObjectRecognitionDiagnostics(members),
+                AverageActionSelectionDiagnostics(members)));
         }
 
-        return EnrichVisualObjectRecognitionDiagnostics(
+        return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
             EnrichAuditoryLanguageMotorDiagnostics(
                 EnrichOlfactoryLimbicMemoryDiagnostics(
                     EnrichSpinalProprioceptiveDiagnostics(
@@ -26287,7 +26331,7 @@ internal sealed class TickCoordinator(
                                                             EnrichSuperiorColliculusOrientingDiagnostics(
                                                                 EnrichVestibuloReticularPostureDiagnostics(
                                                                     EnrichCerebellarCorrectionDiagnostics(
-                                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+                                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()));
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -26354,7 +26398,8 @@ internal sealed class TickCoordinator(
                 snapshot.SpinalProprioceptiveDiagnostics,
                 snapshot.OlfactoryLimbicMemoryDiagnostics,
                 snapshot.AuditoryLanguageMotorDiagnostics,
-                snapshot.VisualObjectRecognitionDiagnostics));
+                snapshot.VisualObjectRecognitionDiagnostics,
+                snapshot.ActionSelectionDiagnostics));
         }
 
         return merged;
@@ -26568,6 +26613,179 @@ internal sealed class TickCoordinator(
 
         return snapshots;
     }
+
+    private static ActionSelectionDiagnostics? AverageActionSelectionDiagnostics(
+        IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(static member => member.ActionSelectionDiagnostics)
+            .Where(static item => item is not null)
+            .Cast<ActionSelectionDiagnostics>()
+            .ToArray();
+        if (diagnostics.Length == 0)
+        {
+            return null;
+        }
+
+        var channels = new ActionChannelActivity[4];
+        for (var channel = 0; channel < channels.Length; channel++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.Channels)
+                .Where(item => item.ChannelIndex == channel)
+                .ToArray();
+            channels[channel] = AverageActionChannel(channel, values);
+        }
+
+        var (selected, margin) = SelectActionChannel(channels);
+        return new ActionSelectionDiagnostics(
+            members[0].StructureId,
+            channels,
+            selected,
+            margin,
+            (float)diagnostics.Average(static item => item.DopamineModulation));
+    }
+
+    private static IReadOnlyList<StructureSnapshot> EnrichActionSelectionDiagnostics(
+        IReadOnlyList<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return snapshots;
+        }
+
+        var byId = snapshots.ToDictionary(static snapshot => snapshot.StructureId);
+        var channels = new ActionChannelActivity[4];
+        for (var channel = 0; channel < channels.Length; channel++)
+        {
+            var pfc = GetActionChannel(byId, StructureId.Pfc, channel);
+            var acc = GetActionChannel(byId, StructureId.Acc, channel);
+            var premotor = GetActionChannel(byId, StructureId.PremotorCortex, channel);
+            var sma = GetActionChannel(byId, StructureId.Sma, channel);
+            var striatum = GetActionChannel(byId, StructureId.Striatum, channel);
+            var stn = GetActionChannel(byId, StructureId.Stn, channel);
+            var gpi = GetActionChannel(byId, StructureId.GPi, channel);
+            var snr = GetActionChannel(byId, StructureId.Snr, channel);
+            var motorThalamus = GetActionChannel(byId, StructureId.MotorThalamus, channel);
+
+            var proposal = (pfc.ProposalDrive * 0.30f) +
+                (acc.ProposalDrive * 0.10f) +
+                (premotor.ProposalDrive * 0.35f) +
+                (sma.ProposalDrive * 0.25f);
+            var direct = striatum.DirectPathwayActivation;
+            var indirect = striatum.IndirectPathwayActivation;
+            var hyperdirect = stn.HyperdirectSuppression;
+            var output = Math.Max(gpi.OutputNucleusInhibition, snr.OutputNucleusInhibition);
+            var thalamic = motorThalamus.ThalamicRelayActivation;
+            var learned = Math.Clamp(striatum.LearnedSynapticStrength / 5f, 0f, 1f);
+            var eligibility = Math.Clamp(striatum.EligibilityTrace, -1f, 1f);
+            var score = (proposal * 0.30f) +
+                (direct * 0.32f) +
+                (thalamic * 0.18f) +
+                (learned * 0.08f) +
+                (Math.Max(0f, eligibility) * 0.04f) -
+                (indirect * 0.20f) -
+                (hyperdirect * 0.28f) -
+                (output * 0.42f);
+            channels[channel] = new ActionChannelActivity(
+                channel,
+                proposal,
+                direct,
+                indirect,
+                hyperdirect,
+                output,
+                thalamic,
+                eligibility,
+                striatum.LearnedSynapticStrength,
+                score);
+        }
+
+        var (selected, margin) = SelectActionChannel(channels);
+        var dopamine = snapshots
+            .Select(static snapshot => snapshot.ActionSelectionDiagnostics?.DopamineModulation)
+            .Where(static value => value.HasValue)
+            .Select(static value => value!.Value)
+            .DefaultIfEmpty(0f)
+            .Average();
+        var composite = new ActionSelectionDiagnostics(
+            StructureId.Striatum,
+            channels,
+            selected,
+            margin,
+            dopamine);
+
+        var enriched = snapshots.ToList();
+        for (var i = 0; i < enriched.Count; i++)
+        {
+            if (CarriesActionSelectionComposite(enriched[i].StructureId))
+            {
+                enriched[i] = enriched[i] with { ActionSelectionDiagnostics = composite };
+            }
+        }
+
+        return enriched;
+    }
+
+    private static ActionChannelActivity GetActionChannel(
+        IReadOnlyDictionary<StructureId, StructureSnapshot> snapshots,
+        StructureId structure,
+        int channel)
+        => snapshots.TryGetValue(structure, out var snapshot)
+            ? snapshot.ActionSelectionDiagnostics?.Channels.FirstOrDefault(item => item.ChannelIndex == channel)
+                ?? EmptyActionChannel(channel)
+            : EmptyActionChannel(channel);
+
+    private static ActionChannelActivity AverageActionChannel(
+        int channel,
+        IReadOnlyList<ActionChannelActivity> values)
+        => values.Count == 0
+            ? EmptyActionChannel(channel)
+            : new ActionChannelActivity(
+                channel,
+                (float)values.Average(static item => item.ProposalDrive),
+                (float)values.Average(static item => item.DirectPathwayActivation),
+                (float)values.Average(static item => item.IndirectPathwayActivation),
+                (float)values.Average(static item => item.HyperdirectSuppression),
+                (float)values.Average(static item => item.OutputNucleusInhibition),
+                (float)values.Average(static item => item.ThalamicRelayActivation),
+                (float)values.Average(static item => item.EligibilityTrace),
+                (float)values.Average(static item => item.LearnedSynapticStrength),
+                (float)values.Average(static item => item.SelectionScore));
+
+    private static ActionChannelActivity EmptyActionChannel(int channel)
+        => new(channel, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+
+    private static (int Selected, float Margin) SelectActionChannel(
+        IReadOnlyList<ActionChannelActivity> channels)
+    {
+        if (channels.Count == 0)
+        {
+            return (-1, 0f);
+        }
+
+        var ordered = channels
+            .OrderByDescending(static channel => channel.SelectionScore)
+            .ThenBy(static channel => channel.ChannelIndex)
+            .Take(2)
+            .ToArray();
+        var margin = ordered.Length > 1
+            ? Math.Max(0f, ordered[0].SelectionScore - ordered[1].SelectionScore)
+            : 0f;
+        return (ordered[0].ChannelIndex, margin);
+    }
+
+    private static bool CarriesActionSelectionComposite(StructureId structure)
+        => structure is StructureId.Pfc
+            or StructureId.Acc
+            or StructureId.PremotorCortex
+            or StructureId.Sma
+            or StructureId.Striatum
+            or StructureId.GPe
+            or StructureId.GlobusPallidus
+            or StructureId.GPi
+            or StructureId.Stn
+            or StructureId.Snr
+            or StructureId.MotorThalamus;
 
     private static float GetRate(IReadOnlyDictionary<StructureId, StructureSnapshot> snapshots, StructureId structureId)
         => snapshots.TryGetValue(structureId, out var snapshot) ? snapshot.MeanFiringRateHz : 0f;
@@ -37901,7 +38119,8 @@ internal sealed record InstanceStructureSnapshot(
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
-    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

@@ -58,6 +58,24 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly string[] _topIds = new string[100];
 
+	private readonly float[] _actionChannelRateSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly int[] _actionChannelRateCounts = new int[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelDirectSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly int[] _actionChannelDirectCounts = new int[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelIndirectSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly int[] _actionChannelIndirectCounts = new int[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelEligibility = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelSynapticStrength = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly bool[] _actionChannelLearningObserved = new bool[ActionChannelTopology.ChannelCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -207,6 +225,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 			ProcessDueQueue(_feedForward, tickSignal, isFeedback: false);
 			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
+			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
+			if (actionCircuit)
+			{
+				Array.Clear(_actionChannelRateSums);
+				Array.Clear(_actionChannelRateCounts);
+				Array.Clear(_actionChannelDirectSums);
+				Array.Clear(_actionChannelDirectCounts);
+				Array.Clear(_actionChannelIndirectSums);
+				Array.Clear(_actionChannelIndirectCounts);
+			}
 			int num = 0;
 			int num2 = 0;
 			double num3 = 0.0;
@@ -239,6 +267,25 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				}
 				num3 += (double)modelNeuron.FiringRateHz;
 				num4 += (double)modelNeuron.ActivityTrace;
+				if (actionCircuit)
+				{
+					var channel = ActionChannelTopology.ChannelForNeuron(modelNeuron.Index, _profile.StructureId);
+					_actionChannelRateSums[channel] += modelNeuron.FiringRateHz;
+					_actionChannelRateCounts[channel]++;
+					if (_profile.StructureId == StructureId.Striatum)
+					{
+						if (ActionChannelTopology.IsDirectPathwayNeuron(modelNeuron.Index))
+						{
+							_actionChannelDirectSums[channel] += modelNeuron.FiringRateHz;
+							_actionChannelDirectCounts[channel]++;
+						}
+						else
+						{
+							_actionChannelIndirectSums[channel] += modelNeuron.FiringRateHz;
+							_actionChannelIndirectCounts[channel]++;
+						}
+					}
+				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
 				transportSupportTotal += (double)modelNeuron.MicrotubuleTransportSupport;
@@ -283,7 +330,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(tickSignal.GlobalNeuromodState);
 			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
 			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition);
+			var actionSelection = BuildActionSelectionDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -476,6 +524,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	{
 		double num = Math.Max(0.0, timestampMs - value.LastUpdateTimestampMs);
 		float traceDelta = UpdateTraceState(value, num, 1f, postsynActivity, message.Neurotransmitter, microtubuleTracePersistenceSupport);
+		if (IsCorticostriatalActionInput(message))
+		{
+			traceDelta = UpdateCorticostriatalEligibility(value, postsynActivity);
+		}
 		value.ThetaM = PlasticityRules.UpdateBcmTheta(value.ThetaM, postsynActivity, num);
 		value.LastUpdateTimestampMs = timestampMs;
 		value.LastTargetNeuronIndex = targetNeuronIndex;
@@ -483,7 +535,42 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, rewardPredictionError, climbingCoincident);
 		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
 		value.Stabilize();
+		ObserveActionChannelLearning(message, value, targetNeuronIndex);
 		PersistSynapses(timestampMs);
+	}
+
+	private void ObserveActionChannelLearning(SpikeMessage message, SynapseState synapse, int targetNeuronIndex)
+	{
+		if (!IsCorticostriatalActionInput(message))
+		{
+			return;
+		}
+
+		var channel = ActionChannelTopology.ChannelForNeuron(targetNeuronIndex, _profile.StructureId);
+		const float alpha = 0.08f;
+		if (!_actionChannelLearningObserved[channel])
+		{
+			_actionChannelEligibility[channel] = synapse.EligibilityTrace;
+			_actionChannelSynapticStrength[channel] = synapse.VesicleQuanta;
+			_actionChannelLearningObserved[channel] = true;
+			return;
+		}
+
+		_actionChannelEligibility[channel] += (synapse.EligibilityTrace - _actionChannelEligibility[channel]) * alpha;
+		_actionChannelSynapticStrength[channel] += (synapse.VesicleQuanta - _actionChannelSynapticStrength[channel]) * alpha;
+	}
+
+	private bool IsCorticostriatalActionInput(SpikeMessage message)
+		=> _profile.StructureId == StructureId.Striatum &&
+			message.Neurotransmitter == NTEnum.GLUTAMATE &&
+			ActionChannelTopology.IsProposalStructure(message.SourceStructure);
+
+	private static float UpdateCorticostriatalEligibility(SynapseState synapse, float postsynActivity)
+	{
+		var coactivity = 0.008f + (Math.Clamp(postsynActivity, 0f, 1f) * 0.022f);
+		synapse.EligibilityTrace = Math.Clamp(Math.Max(0f, synapse.EligibilityTrace) + coactivity, 0f, 1f);
+		synapse.SynapticTagTrace = Math.Clamp(Math.Max(0f, synapse.SynapticTagTrace) + coactivity * 0.5f, 0f, 1f);
+		return coactivity;
 	}
 
 	private static float UpdateTraceState(SynapseState synapse, double dtMs, float preImpulse, float postActivity, NTEnum neurotransmitter, float microtubuleTracePersistenceSupport)
@@ -511,7 +598,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		return _profile.PlasticityRule switch
 		{
 			"BCM" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta) * 0.35f,
-			"DopamineModulatedSTDP" => traceConsolidation + PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.25f,
+			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.35f + traceConsolidation * 0.05f,
 			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
 			"CerebellarLTD" => PlasticityRules.CerebellarLtdCoincidence(vesicleQuanta, climbingCoincident, postsynActivity),
 			"MossyFiberLTP" => PlasticityRules.MossyFiberLtp(vesicleQuanta) * 0.35f + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
@@ -535,7 +622,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
 		return _profile.PlasticityRule switch
 		{
-			"DopamineModulatedSTDP" => traceConsolidation + PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.25f,
+			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.35f + traceConsolidation * 0.05f,
 			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
 			"BCM" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta) * 0.35f,
 			"BCM+STDP" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta),
@@ -766,6 +853,78 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private static readonly string[] BodyZoneNames = ["FaceHead", "HandArm", "Trunk", "LegFoot"];
 	private static readonly string[] SpatialZoneNames = ["NearBody", "LeftPeripersonal", "RightPeripersonal", "FarSpace"];
+
+	private ActionSelectionDiagnostics? BuildActionSelectionDiagnostics(NeuromodState neuromod)
+	{
+		if (!ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var channels = new ActionChannelActivity[ActionChannelTopology.ChannelCount];
+		var bestChannel = 0;
+		var bestScore = float.MinValue;
+		var secondScore = float.MinValue;
+		for (var channel = 0; channel < channels.Length; channel++)
+		{
+			var rate = NormalizeActionRate(AverageChannel(
+				_actionChannelRateSums,
+				_actionChannelRateCounts,
+				channel));
+			var proposal = ActionChannelTopology.IsProposalStructure(_profile.StructureId) ? rate : 0f;
+			var direct = _profile.StructureId == StructureId.Striatum
+				? NormalizeActionRate(AverageChannel(_actionChannelDirectSums, _actionChannelDirectCounts, channel))
+				: 0f;
+			var indirect = _profile.StructureId == StructureId.Striatum
+				? NormalizeActionRate(AverageChannel(_actionChannelIndirectSums, _actionChannelIndirectCounts, channel))
+				: 0f;
+			var hyperdirect = _profile.StructureId == StructureId.Stn ? rate : 0f;
+			var outputInhibition = _profile.StructureId is StructureId.GPi or StructureId.Snr ? rate : 0f;
+			var thalamic = _profile.StructureId == StructureId.MotorThalamus ? rate : 0f;
+			var eligibility = _actionChannelLearningObserved[channel] ? _actionChannelEligibility[channel] : 0f;
+			var learnedStrength = _actionChannelLearningObserved[channel] ? _actionChannelSynapticStrength[channel] : 0f;
+			var score = proposal + direct + thalamic - indirect - hyperdirect - outputInhibition;
+			channels[channel] = new ActionChannelActivity(
+				channel,
+				proposal,
+				direct,
+				indirect,
+				hyperdirect,
+				outputInhibition,
+				thalamic,
+				eligibility,
+				learnedStrength,
+				score);
+
+			if (score > bestScore)
+			{
+				secondScore = bestScore;
+				bestScore = score;
+				bestChannel = channel;
+			}
+			else if (score > secondScore)
+			{
+				secondScore = score;
+			}
+		}
+
+		var margin = secondScore == float.MinValue ? 0f : Math.Max(0f, bestScore - secondScore);
+		return new ActionSelectionDiagnostics(
+			_profile.StructureId,
+			channels,
+			bestChannel,
+			margin,
+			Math.Clamp(neuromod.DopamineLevel, 0f, 1f));
+	}
+
+	private static float AverageChannel(float[] sums, int[] counts, int channel)
+		=> counts[channel] > 0 ? sums[channel] / counts[channel] : 0f;
+
+	private static float NormalizeActionRate(float rateHz)
+	{
+		var bounded = Math.Max(0f, rateHz);
+		return bounded / (bounded + 12f);
+	}
 
 	private BasalGangliaDiagnostics? BuildBasalGangliaDiagnostics(NeuromodState neuromod)
 	{

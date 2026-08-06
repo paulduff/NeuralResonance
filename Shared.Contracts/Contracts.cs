@@ -53,7 +53,8 @@ public sealed record TickAck(
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
-    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -90,6 +91,25 @@ public sealed record BasalGangliaDiagnostics(
     float ThalamicDisinhibition,
     float DopamineModulation,
     float ActionSelectionBias);
+
+public sealed record ActionChannelActivity(
+    int ChannelIndex,
+    float ProposalDrive,
+    float DirectPathwayActivation,
+    float IndirectPathwayActivation,
+    float HyperdirectSuppression,
+    float OutputNucleusInhibition,
+    float ThalamicRelayActivation,
+    float EligibilityTrace,
+    float LearnedSynapticStrength,
+    float SelectionScore);
+
+public sealed record ActionSelectionDiagnostics(
+    StructureId SourceStructure,
+    IReadOnlyList<ActionChannelActivity> Channels,
+    int SelectedChannel,
+    float SelectionMargin,
+    float DopamineModulation);
 
 public sealed record CerebellarDiagnostics(
     string CorrectionMode,
@@ -317,7 +337,8 @@ public sealed record StructureSnapshot(
     SpinalProprioceptiveDiagnostics? SpinalProprioceptiveDiagnostics = null,
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
-    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null);
+    VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

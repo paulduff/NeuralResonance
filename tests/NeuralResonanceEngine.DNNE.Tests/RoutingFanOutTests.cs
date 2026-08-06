@@ -73,6 +73,29 @@ public sealed class RoutingFanOutTests
         }
     }
 
+    [Fact]
+    public void StriatalD1AndD2NeuronsUseAnatomicallyDistinctProjectionSets()
+    {
+        var candidates = LoadConnections(StructureId.Striatum);
+        var d1 = TickCoordinator.ResolveRoutes(candidates, new SpikeMessage
+        {
+            SourceStructure = StructureId.Striatum,
+            SourceNeuronId = "n-000"
+        });
+        var d2 = TickCoordinator.ResolveRoutes(candidates, new SpikeMessage
+        {
+            SourceStructure = StructureId.Striatum,
+            SourceNeuronId = "n-001"
+        });
+
+        Assert.Contains(d1, route => route.Target == StructureId.GPi);
+        Assert.Contains(d1, route => route.Target == StructureId.Snr);
+        Assert.DoesNotContain(d1, route => route.Target == StructureId.GPe);
+
+        Assert.Contains(d2, route => route.Target == StructureId.GPe);
+        Assert.DoesNotContain(d2, route => route.Target is StructureId.GPi or StructureId.Snr or StructureId.Snc);
+    }
+
     // ---- connectivity loading (mirrors MajorPathwayIntegrationTests) ----
 
     private static List<SynapticConnection> LoadConnections(StructureId source)

@@ -454,12 +454,33 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (message.TargetStructure == StructureId.MotorThalamus &&
+			ActionChannelTopology.IsActionCircuitStructure(message.SourceStructure))
+		{
+			return ActionChannelTopology.Project(
+				sourceIndex,
+				message.SourceStructure,
+				neuronCount,
+				message.TargetStructure,
+				message.IsFeedback ? 31 : 29);
+		}
+
 		int offset = message.IsFeedback ? 1 : 0;
 		return TopographicMap.ProjectLayeredColumn(sourceIndex + offset, neuronCount, 3, message.SourceStructure, message.TargetStructure, 29);
 	}
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
+		if (circuit.StructureId == StructureId.MotorThalamus)
+		{
+			return ActionChannelTopology.Project(
+				source.Index,
+				circuit.StructureId,
+				Math.Max(16, circuit.TargetMapModulo),
+				targetStructure,
+				31);
+		}
+
 		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 3, targetStructure, targetStructure, 31);
 	}
 
@@ -518,12 +539,22 @@ internal sealed class BasalGangliaCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
-		return TopographicMap.ProjectChannel(sourceIndex, neuronCount, 32, 6, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 43 : 41);
+		return ActionChannelTopology.Project(
+			sourceIndex,
+			message.SourceStructure,
+			neuronCount,
+			message.TargetStructure,
+			message.IsFeedback ? 43 : 41);
 	}
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
-		return TopographicMap.ProjectChannel(source.Index, Math.Max(16, circuit.TargetMapModulo), 32, 6, targetStructure, targetStructure, 47);
+		return ActionChannelTopology.Project(
+			source.Index,
+			circuit.StructureId,
+			Math.Max(16, circuit.TargetMapModulo),
+			targetStructure,
+			47);
 	}
 
 	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)

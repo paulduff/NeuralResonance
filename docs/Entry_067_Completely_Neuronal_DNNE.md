@@ -34,18 +34,16 @@ The principal remaining hybrid boundary is `SimulationState`. It computes goals,
 2. **Population codes over labels.** Direction, magnitude, confidence, and inhibition are represented by firing populations and timing, not action words in neuron identifiers.
 3. **Causal proof.** Silencing, lesioning, stimulation, and pathway ablation must change behavior in the predicted direction.
 4. **Closed-loop proof.** A behavior is accepted only when it survives body and world feedback, not merely when a diagnostic scalar looks plausible.
-5. **Shadow before authority.** New neuronal paths first run without control, then assist, then become primary after objective gates pass.
-6. **Fallbacks are visible and temporary.** Every symbolic fallback has telemetry, an owner, a retirement gate, and no claim to be neuronal.
+5. **Evidence before deployment.** New neuronal paths are tested offline and in isolated embodied trials before entering the live circuit.
+6. **No symbolic fallback.** Missing or weak neuronal evidence produces no action; it never restores a semantic command path.
 7. **One body contract.** Maze and world simulators consume the same motor population language and return consistent sensory/body encodings.
 8. **Reproducibility.** Seeds, configurations, checkpoints, lesions, and evaluation traces are retained for every promotion decision.
 
-## Control Modes
+## Neuronal Authority
 
-- `Shadow`: the neuronal motor decoder runs and is evaluated, but the existing symbolic route controls the avatar.
-- `Assist`: population-coded neuronal output is blended with the existing route for embodied trials.
-- `Primary`: symbolic locomotion spikes are removed at the avatar boundary and symbolic motor injection into the brain is disabled. Only neuronal population output controls locomotion. Tool actions remain explicit until their own neuronal populations are implemented.
+Live motor authority has no selectable mode. The avatar accepts only population-coded descending output. Semantic locomotion and tool messages are removed at the avatar boundary, and missing, stale, sleeping, incomplete, or low-confidence neuronal evidence produces no movement.
 
-`Primary` cannot be selected until the configured evidence gate is satisfied. A failed or low-confidence neuronal output in `Primary` produces no movement; it does not silently fall back to a symbolic command.
+Tool actions are intentionally unavailable until dedicated manipulation populations and their causal tests exist. This prevents an unimplemented neuronal capability from being concealed behind a text parser.
 
 ## Migration Rungs
 
@@ -53,7 +51,7 @@ The principal remaining hybrid boundary is `SimulationState`. It computes goals,
 
 Decode bilateral premotor, SMA, M1, motor-thalamic, reticular, and spinal firing rates into left/right descending drive. Gate output with basal-ganglia inhibition/disinhibition and report cerebellar and postural support. Emit population-coded body events without semantic action names.
 
-Acceptance requires coverage of the expected bilateral circuit, stable confidence, agreement with the reference route during shadow evaluation, correct sleep gating, and causal changes under motor or basal-ganglia ablation.
+Acceptance requires coverage of the expected bilateral circuit, stable confidence, correct sleep gating, and causal changes under motor or basal-ganglia ablation.
 
 ### Rung 2 - Neuronal Action Selection
 
@@ -67,7 +65,7 @@ The first action-selection slice uses four stable, interleaved population lanes.
 
 Each participating structure reports per-lane measured firing, pathway role, output inhibition, motor-thalamic relay, corticostriatal eligibility trace, and learned synaptic strength. The controller can decode a winning lane from these measurements and shape the existing bilateral descending motor population at the actuator boundary. Numeric lane `0` preserves bilateral advance, `1` and `2` apply differential drive, and `3` applies bilateral withdrawal. These meanings exist only at the body boundary; no goal or action text is present in neuron identifiers, channel state, routing, or learning.
 
-This slice remains under the rung 1 `Shadow -> Assist -> Primary` evidence gate. Missing action-channel data preserves rung 1 observation behavior, but once action-channel telemetry is present an incomplete or inhibited action circuit cannot silently fall back to unselected movement. Promotion evidence now includes lane coverage, selection confidence, and selection margin.
+Missing action-channel data preserves raw descending-population observation behavior, but once action-channel telemetry is present an incomplete or inhibited action circuit cannot silently fall back to unselected movement. Evidence includes lane coverage, selection confidence, and selection margin.
 
 The causal test set pins:
 
@@ -220,7 +218,9 @@ Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-
 The final semantic actuation paths have been removed from the runtime:
 
 - English parsing can stimulate auditory and language populations but cannot construct or dispatch motor spikes.
-- The central intentional-action loop remains available for migration comparison but cannot inject named motor directives into premotor, M1, reticular, thalamic, or spinal populations.
+- The live motor decoder does not receive the central intentional-action record and cannot compare against or imitate a named directive.
+- The avatar discards all motor-structure traffic that is not a numeric population code, including semantic tool commands.
+- Runtime `Shadow`, `Assist`, promotion, rollback, and motor-mode administration paths have been deleted.
 - Entity and DNNE fallback narration cannot emit without a grounded neuronal language circuit, neuronal language attention, a complete speech chain, acceptable uncertainty, and wake-state authorization.
 - The deterministic survival replay applies the same language gate as the hosted route.
 - Missing neuronal attention produces no selection rather than restoring the old scalar winner.
@@ -250,28 +250,22 @@ The first implemented slice adds:
 - a bilateral population-rate decoder over actual motor-structure snapshots;
 - a bounded freshness window for time-sliced services, with cluster replicas averaged per biological population;
 - basal-ganglia output inhibition and thalamic disinhibition gating;
-- confidence, circuit coverage, agreement, and promotion telemetry;
-- `Shadow`, `Assist`, and evidence-gated `Primary` control modes;
+- confidence and circuit-coverage telemetry;
 - population-coded avatar events that contain direction and polarity but no goal/action labels;
 - shared integration in both rendered worlds;
 - sleep and low-confidence motor suppression;
-- unit and causal tests, including proof that changing the symbolic reference does not change neural output.
+- unit and causal tests, including proof that the decoder has no symbolic-action input.
 
-The symbolic motor path remains temporarily available for shadow comparison and rollback. This is not the final neuronal action-selection circuit; it is the first honest removal of semantic motor labels from the brain-to-body authority path.
+The symbolic motor path, runtime mode switch, and old mode-qualification executable have been removed. Historical reports remain as provenance, but they cannot affect a running brain.
 
-## Evidence Gate
+## Runtime Invariants
 
-Promotion to `Primary` requires all configured conditions:
-
-- sufficient active evaluation samples;
-- bilateral motor-circuit coverage above threshold;
-- confidence EMA above threshold;
-- agreement EMA above threshold during comparable symbolic-reference windows;
-- a sustained qualified streak;
-- no active sleep gate;
-- passing population-code, lesion, and simulator integration tests.
-
-Agreement is a migration measurement, not a demand that the neuronal system permanently imitate the symbolic system. After primary control stabilizes, success, survival, learning speed, generalization, and causal integrity replace symbolic agreement as the leading measures.
+- Only numeric population codes can actuate the body.
+- Bilateral circuit coverage and confidence must clear configured thresholds.
+- Sleep silences descending output.
+- Semantic motor and tool identifiers are rejected even if emitted by retained diagnostic code.
+- No administrative endpoint or configuration value can restore legacy motor authority.
+- Success, survival, learning speed, generalization, and causal integrity are the leading embodied measures.
 
 ## Safety And Scientific Honesty
 

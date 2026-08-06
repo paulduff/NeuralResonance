@@ -18,14 +18,14 @@ public sealed class AvatarNervousSystemTests
                     wallClockUnixMs = 101L,
                     sourceStructure = StructureId.M1,
                     sourceHemisphere = "L",
-                    sourceNeuronId = "motor_forward"
+                    sourceNeuronId = "population:l:excitatory:1:0"
                 },
                 new
                 {
                     wallClockUnixMs = 102L,
                     sourceStructure = StructureId.M1,
                     sourceHemisphere = "R",
-                    sourceNeuronId = "motor_forward"
+                    sourceNeuronId = "population:r:excitatory:1:0"
                 }
             }
         });
@@ -46,8 +46,8 @@ public sealed class AvatarNervousSystemTests
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "L", 100, "motor_forward"),
-            new AvatarDispatchSpike("M1", "R", 101, "motor_forward")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:excitatory:1:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:1:0")
         };
 
         var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
@@ -59,7 +59,7 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
-    public void InterpretBrainSignalsGatesMotorDuringSleepButKeepsToolSignal()
+    public void InterpretBrainSignalsGatesMotorAndRejectsSemanticToolSignalDuringSleep()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
@@ -72,11 +72,11 @@ public sealed class AvatarNervousSystemTests
         Assert.Equal(0, signal.LeftMotorDrive);
         Assert.Equal(0, signal.RightMotorDrive);
         Assert.Equal(0, signal.MotorEvents);
-        Assert.Equal(AvatarToolAction.Build, signal.Tool.Action);
+        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
     }
 
     [Fact]
-    public void InterpretBrainSignalsProducesToolIntentFromMotorStructures()
+    public void InterpretBrainSignalsRejectsSemanticToolIntentFromMotorStructures()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
@@ -87,12 +87,13 @@ public sealed class AvatarNervousSystemTests
 
         var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
 
-        Assert.True(signal.Tool.HasAction);
-        Assert.Equal(AvatarToolAction.Dig, signal.Tool.Action);
+        Assert.False(signal.Tool.HasAction);
+        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
+        Assert.Equal(0, signal.MotorEvents);
     }
 
     [Fact]
-    public void LocomotionIntentDoesNotBecomeToolAction()
+    public void SemanticLocomotionIntentProducesNoBodyDrive()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
@@ -104,8 +105,9 @@ public sealed class AvatarNervousSystemTests
 
         var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
 
-        Assert.True(signal.LeftMotorDrive > 0);
-        Assert.True(signal.RightMotorDrive > 0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
+        Assert.Equal(0, signal.MotorEvents);
         Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
     }
 

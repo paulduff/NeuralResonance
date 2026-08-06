@@ -1,5 +1,7 @@
 # Entry 068 - Embodied Neuronal Motor Qualification
 
+> Historical record. The mode-promotion executable and launcher described here were retired by Entry 073 after neuronal-only actuation became the sole runtime path. These commands are no longer available.
+
 ## Purpose
 
 Rungs 1 through 8 made neuronal circuits authoritative and removed symbolic cognition writes. Rung 9 establishes the evidence required before neuronal motor output may advance from `Shadow` to `Assist`, and later from `Assist` to a guarded `Primary` canary.

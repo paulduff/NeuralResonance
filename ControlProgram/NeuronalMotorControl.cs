@@ -2,105 +2,46 @@ using Microsoft.Extensions.Configuration;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
-internal static class NeuronalMotorModes
-{
-    public const string Shadow = "Shadow";
-    public const string Assist = "Assist";
-    public const string Primary = "Primary";
-
-    public static bool TryNormalize(string? value, out string mode)
-    {
-        if (string.Equals(value, Shadow, StringComparison.OrdinalIgnoreCase))
-        {
-            mode = Shadow;
-            return true;
-        }
-
-        if (string.Equals(value, Assist, StringComparison.OrdinalIgnoreCase))
-        {
-            mode = Assist;
-            return true;
-        }
-
-        if (string.Equals(value, Primary, StringComparison.OrdinalIgnoreCase))
-        {
-            mode = Primary;
-            return true;
-        }
-
-        mode = Shadow;
-        return false;
-    }
-}
-
 internal sealed record NeuronalMotorControlSettings(
-    string Mode,
     double BaselineRateHz,
     double SaturationRateHz,
     double SmoothingAlpha,
     int PopulationSnapshotMaxAgeTicks,
     double MinimumCircuitCoverage,
     double MinimumOutputConfidence,
-    int MaxPopulationEventsPerSide,
-    int PromotionMinimumSamples,
-    double PromotionMinimumAgreement,
-    double PromotionMinimumConfidence,
-    double PromotionMinimumCoverage,
-    int PromotionConsecutiveTicks)
+    int MaxPopulationEventsPerSide)
 {
     public static NeuronalMotorControlSettings FromConfiguration(IConfiguration configuration)
     {
         var section = configuration.GetSection("NeuronalMotorControl");
-        NeuronalMotorModes.TryNormalize(section["Mode"], out var mode);
-        if (mode == NeuronalMotorModes.Primary)
-        {
-            // Primary authority is earned by the live evidence gate, never granted
-            // merely by an appsettings value at process startup.
-            mode = NeuronalMotorModes.Shadow;
-        }
-
         return Normalize(new NeuronalMotorControlSettings(
-            Mode: mode,
             BaselineRateHz: section.GetValue<double?>("BaselineRateHz") ?? 1.5,
             SaturationRateHz: section.GetValue<double?>("SaturationRateHz") ?? 25.0,
             SmoothingAlpha: section.GetValue<double?>("SmoothingAlpha") ?? 0.20,
             PopulationSnapshotMaxAgeTicks: section.GetValue<int?>("PopulationSnapshotMaxAgeTicks") ?? 96,
             MinimumCircuitCoverage: section.GetValue<double?>("MinimumCircuitCoverage") ?? 0.45,
             MinimumOutputConfidence: section.GetValue<double?>("MinimumOutputConfidence") ?? 0.45,
-            MaxPopulationEventsPerSide: section.GetValue<int?>("MaxPopulationEventsPerSide") ?? 12,
-            PromotionMinimumSamples: section.GetValue<int?>("PromotionMinimumSamples") ?? 1200,
-            PromotionMinimumAgreement: section.GetValue<double?>("PromotionMinimumAgreement") ?? 0.72,
-            PromotionMinimumConfidence: section.GetValue<double?>("PromotionMinimumConfidence") ?? 0.62,
-            PromotionMinimumCoverage: section.GetValue<double?>("PromotionMinimumCoverage") ?? 0.80,
-            PromotionConsecutiveTicks: section.GetValue<int?>("PromotionConsecutiveTicks") ?? 600));
+            MaxPopulationEventsPerSide: section.GetValue<int?>("MaxPopulationEventsPerSide") ?? 12));
     }
 
     public static NeuronalMotorControlSettings Normalize(NeuronalMotorControlSettings value)
     {
-        NeuronalMotorModes.TryNormalize(value.Mode, out var mode);
         var baseline = Math.Clamp(value.BaselineRateHz, 0.0, 100.0);
         var saturation = Math.Clamp(value.SaturationRateHz, baseline + 0.1, 500.0);
         return value with
         {
-            Mode = mode,
             BaselineRateHz = baseline,
             SaturationRateHz = saturation,
             SmoothingAlpha = Math.Clamp(value.SmoothingAlpha, 0.01, 1.0),
             PopulationSnapshotMaxAgeTicks = Math.Clamp(value.PopulationSnapshotMaxAgeTicks, 1, 4096),
             MinimumCircuitCoverage = Math.Clamp(value.MinimumCircuitCoverage, 0.05, 1.0),
             MinimumOutputConfidence = Math.Clamp(value.MinimumOutputConfidence, 0.05, 1.0),
-            MaxPopulationEventsPerSide = Math.Clamp(value.MaxPopulationEventsPerSide, 1, 64),
-            PromotionMinimumSamples = Math.Clamp(value.PromotionMinimumSamples, 50, 10_000_000),
-            PromotionMinimumAgreement = Math.Clamp(value.PromotionMinimumAgreement, 0.0, 1.0),
-            PromotionMinimumConfidence = Math.Clamp(value.PromotionMinimumConfidence, 0.0, 1.0),
-            PromotionMinimumCoverage = Math.Clamp(value.PromotionMinimumCoverage, 0.0, 1.0),
-            PromotionConsecutiveTicks = Math.Clamp(value.PromotionConsecutiveTicks, 10, 10_000_000)
+            MaxPopulationEventsPerSide = Math.Clamp(value.MaxPopulationEventsPerSide, 1, 64)
         };
     }
 }
 
 internal sealed record NeuronalMotorControlSnapshot(
-    long Generation,
     NeuronalMotorControlSettings Settings);
 
 internal sealed class NeuronalMotorPopulationWindow
@@ -174,9 +115,7 @@ internal sealed class NeuronalMotorPopulationWindow
 
 internal sealed class NeuronalMotorControlState
 {
-    private readonly object _gate = new();
-    private NeuronalMotorControlSettings _settings;
-    private long _generation;
+    private readonly NeuronalMotorControlSettings _settings;
 
     public NeuronalMotorControlState(NeuronalMotorControlSettings settings)
     {
@@ -187,51 +126,10 @@ internal sealed class NeuronalMotorControlState
         => new(NeuronalMotorControlSettings.FromConfiguration(configuration));
 
     public NeuronalMotorControlSnapshot GetSnapshot()
-    {
-        lock (_gate)
-        {
-            return new NeuronalMotorControlSnapshot(_generation, _settings);
-        }
-    }
-
-    public bool TryApplyMode(
-        string? requestedMode,
-        NeuronalMotorRuntime runtime,
-        out NeuronalMotorControlSnapshot snapshot,
-        out string error)
-    {
-        if (!NeuronalMotorModes.TryNormalize(requestedMode, out var mode))
-        {
-            snapshot = GetSnapshot();
-            error = "Mode must be Shadow, Assist, or Primary.";
-            return false;
-        }
-
-        lock (_gate)
-        {
-            if (mode == NeuronalMotorModes.Primary && !runtime.PromotionReady)
-            {
-                snapshot = new NeuronalMotorControlSnapshot(_generation, _settings);
-                error = "Primary mode is locked until the neuronal motor evidence gate passes.";
-                return false;
-            }
-
-            if (!string.Equals(_settings.Mode, mode, StringComparison.Ordinal))
-            {
-                _settings = _settings with { Mode = mode };
-                _generation++;
-            }
-
-            snapshot = new NeuronalMotorControlSnapshot(_generation, _settings);
-            error = string.Empty;
-            return true;
-        }
-    }
+        => new(_settings);
 }
 
 internal sealed record NeuronalMotorRuntime(
-    string Mode,
-    long ControlGeneration,
     bool Active,
     bool Sleeping,
     long Tick,
@@ -245,15 +143,6 @@ internal sealed record NeuronalMotorRuntime(
     double OutputInhibition,
     double Confidence,
     double ConfidenceEma,
-    bool SymbolicReferenceAvailable,
-    double SymbolicReferenceLeft,
-    double SymbolicReferenceRight,
-    double Agreement,
-    double AgreementEma,
-    long EvaluationSamples,
-    long ActiveEvaluationSamples,
-    int QualifiedConsecutiveTicks,
-    bool PromotionReady,
     double MinimumOutputConfidence,
     int MaxPopulationEventsPerSide,
     string Evidence,
@@ -264,8 +153,6 @@ internal sealed record NeuronalMotorRuntime(
     bool ActionCircuitObserved = false)
 {
     public static NeuronalMotorRuntime Default { get; } = new(
-        Mode: NeuronalMotorModes.Shadow,
-        ControlGeneration: 0,
         Active: false,
         Sleeping: false,
         Tick: 0,
@@ -279,15 +166,6 @@ internal sealed record NeuronalMotorRuntime(
         OutputInhibition: 1.0,
         Confidence: 0.0,
         ConfidenceEma: 0.0,
-        SymbolicReferenceAvailable: false,
-        SymbolicReferenceLeft: 0.0,
-        SymbolicReferenceRight: 0.0,
-        Agreement: 0.0,
-        AgreementEma: 0.0,
-        EvaluationSamples: 0,
-        ActiveEvaluationSamples: 0,
-        QualifiedConsecutiveTicks: 0,
-        PromotionReady: false,
         MinimumOutputConfidence: 0.45,
         MaxPopulationEventsPerSide: 12,
         Evidence: "waiting for bilateral neuronal motor populations",
@@ -315,13 +193,11 @@ internal static class NeuronalMotorPopulationDecoder
     public static NeuronalMotorRuntime Decode(
         long tick,
         IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IntentionalActionLoopRuntime symbolicReference,
         bool sleeping,
         NeuronalMotorControlSnapshot control,
         NeuronalMotorRuntime previous)
     {
         ArgumentNullException.ThrowIfNull(snapshots);
-        ArgumentNullException.ThrowIfNull(symbolicReference);
         ArgumentNullException.ThrowIfNull(control);
         ArgumentNullException.ThrowIfNull(previous);
 
@@ -458,33 +334,9 @@ internal static class NeuronalMotorPopulationDecoder
             confidence >= settings.MinimumOutputConfidence &&
             signalStrength >= 0.01;
 
-        var reference = ResolveSymbolicReference(symbolicReference);
-        var comparable = reference.Available && active;
-        var agreement = comparable
-            ? CalculateAgreement(leftDrive, rightDrive, reference.Left, reference.Right)
-            : previous.Agreement;
-        var agreementEma = comparable
-            ? (previous.ActiveEvaluationSamples == 0 ? agreement : Lerp(previous.AgreementEma, agreement, MetricsAlpha))
-            : previous.AgreementEma;
-        var evaluationSamples = reference.Available ? previous.EvaluationSamples + 1 : previous.EvaluationSamples;
-        var activeEvaluationSamples = comparable ? previous.ActiveEvaluationSamples + 1 : previous.ActiveEvaluationSamples;
-        var actionPromotionReady = !actionDecision.Available ||
-            (actionDecision.Confidence >= settings.PromotionMinimumConfidence &&
-             actionDecision.CircuitCoverage >= settings.PromotionMinimumCoverage);
-        var qualified = comparable &&
-            actionPromotionReady &&
-            agreementEma >= settings.PromotionMinimumAgreement &&
-            confidenceEma >= settings.PromotionMinimumConfidence &&
-            motorCoverage >= settings.PromotionMinimumCoverage;
-        var qualifiedTicks = qualified ? previous.QualifiedConsecutiveTicks + 1 : 0;
-        var promotionReady = activeEvaluationSamples >= settings.PromotionMinimumSamples &&
-            qualifiedTicks >= settings.PromotionConsecutiveTicks;
-
         var forwardDrive = Math.Clamp((leftDrive + rightDrive) * 0.5, 0.0, 1.0);
         var turnDrive = Math.Clamp(rightDrive - leftDrive, -1.0, 1.0);
         return new NeuronalMotorRuntime(
-            Mode: settings.Mode,
-            ControlGeneration: control.Generation,
             Active: active,
             Sleeping: sleeping,
             Tick: tick,
@@ -498,15 +350,6 @@ internal static class NeuronalMotorPopulationDecoder
             OutputInhibition: outputInhibition,
             Confidence: confidence,
             ConfidenceEma: confidenceEma,
-            SymbolicReferenceAvailable: reference.Available,
-            SymbolicReferenceLeft: reference.Left,
-            SymbolicReferenceRight: reference.Right,
-            Agreement: agreement,
-            AgreementEma: agreementEma,
-            EvaluationSamples: evaluationSamples,
-            ActiveEvaluationSamples: activeEvaluationSamples,
-            QualifiedConsecutiveTicks: qualifiedTicks,
-            PromotionReady: promotionReady,
             MinimumOutputConfidence: settings.MinimumOutputConfidence,
             MaxPopulationEventsPerSide: settings.MaxPopulationEventsPerSide,
             Evidence: $"motor-populations={observedStructures.Count}/{MotorWeights.Count}; bilateral-coverage={motorCoverage:0.000}; basal-ganglia={(basalGanglia.Length > 0 ? "observed" : "missing")}; action-channels={(actionDecision.Available ? (actionDecision.Active ? "selected" : "suppressed") : "missing")}; cerebellar={(cerebellar.Length > 0 ? "observed" : "missing")}; posture={(postural.Length > 0 ? "observed" : "missing")}",
@@ -524,83 +367,6 @@ internal static class NeuronalMotorPopulationDecoder
             0.0,
             1.0);
 
-    private static (bool Available, double Left, double Right) ResolveSymbolicReference(IntentionalActionLoopRuntime intent)
-    {
-        if (!intent.Active || string.IsNullOrWhiteSpace(intent.MotorDirective))
-        {
-            return (false, 0.0, 0.0);
-        }
-
-        var directive = intent.MotorDirective.Trim().ToLowerInvariant();
-        if (directive.Contains("idle", StringComparison.Ordinal) ||
-            directive.Contains("stop", StringComparison.Ordinal) ||
-            directive.Contains("rest", StringComparison.Ordinal) ||
-            directive.Contains("guard", StringComparison.Ordinal) ||
-            directive.Contains("immobilize", StringComparison.Ordinal))
-        {
-            return (true, 0.0, 0.0);
-        }
-
-        if (directive.Contains("about_face_left", StringComparison.Ordinal) ||
-            directive.Contains("turn_around_left", StringComparison.Ordinal) ||
-            directive.Contains("turn_left", StringComparison.Ordinal) ||
-            directive.Contains("pivot_left", StringComparison.Ordinal))
-        {
-            return (true, -1.0, 1.0);
-        }
-
-        if (directive.Contains("about_face", StringComparison.Ordinal) ||
-            directive.Contains("turn_around", StringComparison.Ordinal) ||
-            directive.Contains("turn_right", StringComparison.Ordinal) ||
-            directive.Contains("pivot_right", StringComparison.Ordinal))
-        {
-            return (true, 1.0, -1.0);
-        }
-
-        if (directive.Contains("bear_left", StringComparison.Ordinal) || directive.Contains("arc_left", StringComparison.Ordinal))
-        {
-            return (true, 0.20, 1.0);
-        }
-
-        if (directive.Contains("bear_right", StringComparison.Ordinal) || directive.Contains("arc_right", StringComparison.Ordinal))
-        {
-            return (true, 1.0, 0.20);
-        }
-
-        if (directive.Contains("avoid", StringComparison.Ordinal) ||
-            directive.Contains("escape", StringComparison.Ordinal) ||
-            directive.Contains("back", StringComparison.Ordinal) ||
-            directive.Contains("retreat", StringComparison.Ordinal))
-        {
-            return (true, -1.0, -1.0);
-        }
-
-        if (directive.Contains("slow_protect", StringComparison.Ordinal))
-        {
-            return (true, 0.25, 0.25);
-        }
-
-        if (directive.Contains("forward", StringComparison.Ordinal) ||
-            directive.Contains("approach", StringComparison.Ordinal) ||
-            directive.Contains("seek", StringComparison.Ordinal) ||
-            directive.Contains("explore", StringComparison.Ordinal))
-        {
-            return (true, 1.0, 1.0);
-        }
-
-        return (false, 0.0, 0.0);
-    }
-
-    private static double CalculateAgreement(double left, double right, double referenceLeft, double referenceRight)
-    {
-        var distance = Math.Sqrt(
-            Math.Pow(left - referenceLeft, 2.0) +
-            Math.Pow(right - referenceRight, 2.0));
-        return Math.Clamp(1.0 - (distance / Math.Sqrt(8.0)), 0.0, 1.0);
-    }
-
     private static double Lerp(double current, double target, double alpha)
         => current + ((target - current) * alpha);
 }
-
-internal sealed record NeuronalMotorModeRequest(string? Mode);

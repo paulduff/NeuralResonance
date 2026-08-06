@@ -3,7 +3,6 @@ using System.Text.Json;
 namespace NRE.SimAvatar;
 
 public sealed record AvatarNeuronalMotorState(
-    string Mode,
     bool Active,
     bool Sleeping,
     long Tick,
@@ -12,11 +11,9 @@ public sealed record AvatarNeuronalMotorState(
     double RightDrive,
     double Confidence,
     double MinimumOutputConfidence,
-    int MaxPopulationEventsPerSide,
-    bool PromotionReady)
+    int MaxPopulationEventsPerSide)
 {
-    public static AvatarNeuronalMotorState ShadowDefault { get; } = new(
-        Mode: "Shadow",
+    public static AvatarNeuronalMotorState UnavailableDefault { get; } = new(
         Active: false,
         Sleeping: false,
         Tick: 0,
@@ -25,8 +22,7 @@ public sealed record AvatarNeuronalMotorState(
         RightDrive: 0.0,
         Confidence: 0.0,
         MinimumOutputConfidence: 1.0,
-        MaxPopulationEventsPerSide: 12,
-        PromotionReady: false);
+        MaxPopulationEventsPerSide: 12);
 }
 
 /// <summary>
@@ -46,14 +42,9 @@ public static class AvatarNeuronalMotorBridge
         neuronalState = Parse(stateElement);
         nextNeuronalTick = lastNeuronalTick;
 
-        var primary = neuronalState.Mode.Equals("Primary", StringComparison.OrdinalIgnoreCase);
-        var assist = neuronalState.Mode.Equals("Assist", StringComparison.OrdinalIgnoreCase);
-        var result = primary
-            ? FilterSymbolicMotorAuthority(originalDispatches)
-            : new List<AvatarDispatchSpike>(originalDispatches);
+        var result = FilterNonNeuronalMotorTraffic(originalDispatches);
 
-        if ((!primary && !assist) ||
-            neuronalState.Tick <= lastNeuronalTick ||
+        if (neuronalState.Tick <= lastNeuronalTick ||
             neuronalState.Sleeping ||
             !neuronalState.Active ||
             neuronalState.Confidence < neuronalState.MinimumOutputConfidence)
@@ -72,19 +63,10 @@ public static class AvatarNeuronalMotorBridge
         if (!AvatarJson.TryGetProperty(stateElement, "neuronalMotor", out var motor) ||
             motor.ValueKind != JsonValueKind.Object)
         {
-            return AvatarNeuronalMotorState.ShadowDefault;
-        }
-
-        var mode = AvatarJson.GetString(motor, "mode");
-        if (!mode.Equals("Shadow", StringComparison.OrdinalIgnoreCase) &&
-            !mode.Equals("Assist", StringComparison.OrdinalIgnoreCase) &&
-            !mode.Equals("Primary", StringComparison.OrdinalIgnoreCase))
-        {
-            mode = "Shadow";
+            return AvatarNeuronalMotorState.UnavailableDefault;
         }
 
         return new AvatarNeuronalMotorState(
-            Mode: mode,
             Active: AvatarJson.GetBool(motor, "active"),
             Sleeping: AvatarJson.GetBool(motor, "sleeping"),
             Tick: Math.Max(0, AvatarJson.GetLong(motor, "tick")),
@@ -93,41 +75,23 @@ public static class AvatarNeuronalMotorBridge
             RightDrive: Math.Clamp(AvatarJson.GetDouble(motor, "rightDrive"), -1.0, 1.0),
             Confidence: Math.Clamp(AvatarJson.GetDouble(motor, "confidence"), 0.0, 1.0),
             MinimumOutputConfidence: Math.Clamp(AvatarJson.GetDouble(motor, "minimumOutputConfidence"), 0.0, 1.0),
-            MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64),
-            PromotionReady: AvatarJson.GetBool(motor, "promotionReady"));
+            MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64));
     }
 
-    private static List<AvatarDispatchSpike> FilterSymbolicMotorAuthority(
+    private static List<AvatarDispatchSpike> FilterNonNeuronalMotorTraffic(
         IReadOnlyList<AvatarDispatchSpike> originalDispatches)
     {
         var result = new List<AvatarDispatchSpike>(originalDispatches.Count);
         for (var i = 0; i < originalDispatches.Count; i++)
         {
             var dispatch = originalDispatches[i];
-            if (!AvatarMotorCatalog.IsMotorStructure(dispatch.SourceStructure) || IsToolSignal(dispatch.SourceNeuronId))
+            if (!AvatarMotorCatalog.IsMotorStructure(dispatch.SourceStructure))
             {
                 result.Add(dispatch);
             }
         }
 
         return result;
-    }
-
-    private static bool IsToolSignal(string sourceNeuronId)
-    {
-        if (string.IsNullOrWhiteSpace(sourceNeuronId))
-        {
-            return false;
-        }
-
-        var value = sourceNeuronId.Trim();
-        return value.Contains("tool", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("dig", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("mine", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("excavate", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("build", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("place", StringComparison.OrdinalIgnoreCase) ||
-               value.Contains("construct", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AppendPopulationEvents(
@@ -158,4 +122,3 @@ public static class AvatarNeuronalMotorBridge
         }
     }
 }
-

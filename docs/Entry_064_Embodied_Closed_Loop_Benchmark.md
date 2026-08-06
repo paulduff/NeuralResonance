@@ -1,5 +1,7 @@
 # Entry 064 - Embodied Closed-Loop Benchmark
 
+> Historical record. Entry 073 retired this symbolic-directive benchmark because it injected named motor commands into the production avatar. Neuronal actuation tests now exercise numeric population codes directly.
+
 Date: 2026-08-05
 
 ## Purpose

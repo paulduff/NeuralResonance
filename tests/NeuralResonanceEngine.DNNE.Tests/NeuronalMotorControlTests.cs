@@ -78,68 +78,37 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
-    public void SymbolicReferenceCanScoreButCannotChangeNeuronalOutput()
+    public void DecoderSignatureContainsNoSymbolicActionState()
     {
-        var snapshots = CreateMotorCircuit(20.0f, 20.0f);
-        var forward = Decode(snapshots, Symbolic("motor_forward"));
-        var turn = Decode(snapshots, Symbolic("motor_turn_left"));
+        var decode = typeof(NeuronalMotorPopulationDecoder)
+            .GetMethods()
+            .Single(method => method.Name == nameof(NeuronalMotorPopulationDecoder.Decode));
 
-        Assert.Equal(forward.LeftDrive, turn.LeftDrive, 10);
-        Assert.Equal(forward.RightDrive, turn.RightDrive, 10);
-        Assert.NotEqual(forward.SymbolicReferenceLeft, turn.SymbolicReferenceLeft);
-        Assert.NotEqual(forward.Agreement, turn.Agreement);
+        Assert.DoesNotContain(
+            decode.GetParameters(),
+            parameter => parameter.ParameterType == typeof(IntentionalActionLoopRuntime));
     }
 
     [Fact]
-    public void SustainedQualifiedShadowEvidenceUnlocksPrimaryMode()
+    public void MotorControlSettingsExposeNoLegacyMode()
     {
-        var settings = CreateSettings() with
-        {
-            PromotionMinimumSamples = 50,
-            PromotionConsecutiveTicks = 10,
-            PromotionMinimumAgreement = 0.70,
-            PromotionMinimumConfidence = 0.55,
-            PromotionMinimumCoverage = 0.95
-        };
-        var control = new NeuronalMotorControlSnapshot(0, settings);
-        var runtime = NeuronalMotorRuntime.Default;
-        var snapshots = CreateMotorCircuit(25.0f, 25.0f);
-        for (var tick = 1; tick <= 80; tick++)
-        {
-            runtime = NeuronalMotorPopulationDecoder.Decode(
-                tick,
-                snapshots,
-                Symbolic("motor_forward"),
-                sleeping: false,
-                control,
-                runtime);
-        }
-
-        Assert.True(runtime.PromotionReady);
-        Assert.True(runtime.ActiveEvaluationSamples >= 50);
-        Assert.True(runtime.QualifiedConsecutiveTicks >= 10);
-
-        var state = new NeuronalMotorControlState(settings);
-        Assert.True(state.TryApplyMode("Primary", runtime, out var applied, out var error), error);
-        Assert.Equal("Primary", applied.Settings.Mode);
+        Assert.DoesNotContain(
+            typeof(NeuronalMotorControlSettings).GetProperties(),
+            property => property.Name == "Mode");
     }
 
     [Fact]
-    public void PrimaryModeIsRejectedBeforeEvidenceGatePasses()
+    public void RuntimeExposesNoMotorModeMutationMethod()
     {
-        var state = new NeuronalMotorControlState(CreateSettings());
-
-        var applied = state.TryApplyMode("Primary", NeuronalMotorRuntime.Default, out var snapshot, out var error);
-
-        Assert.False(applied);
-        Assert.Equal("Shadow", snapshot.Settings.Mode);
-        Assert.Contains("evidence gate", error, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            typeof(NeuronalMotorControlState).GetMethods(),
+            method => method.Name == "TryApplyMode");
     }
 
     [Fact]
-    public void AssistBridgeAddsPopulationEventsOncePerNeuronalTick()
+    public void NeuronalBridgeAddsPopulationEventsOncePerNeuronalTick()
     {
-        var state = CreateAvatarState("Assist", active: true, tick: 12, confidence: 0.8, left: 0.5, right: 0.75);
+        var state = CreateAvatarState(active: true, tick: 12, confidence: 0.8, left: 0.5, right: 0.75);
         var original = new[] { new AvatarDispatchSpike("V1", "L", 100, "visual:edge") };
 
         var first = AvatarNeuronalMotorBridge.Compose(state, original, -1, out var cursor, out _);
@@ -152,9 +121,9 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
-    public void PrimaryBridgeRemovesSymbolicLocomotionButPreservesToolSignals()
+    public void NeuronalBridgeRemovesAllSemanticMotorAndToolSignals()
     {
-        var state = CreateAvatarState("Primary", active: true, tick: 18, confidence: 0.9, left: 0.6, right: 0.6);
+        var state = CreateAvatarState(active: true, tick: 18, confidence: 0.9, left: 0.6, right: 0.6);
         var original = new[]
         {
             new AvatarDispatchSpike("M1", "L", 100, "L:motor_forward_18_0"),
@@ -165,14 +134,15 @@ public sealed class NeuronalMotorControlTests
         var composed = AvatarNeuronalMotorBridge.Compose(state, original, -1, out _, out _);
 
         Assert.DoesNotContain(composed, spike => spike.SourceNeuronId.Contains("motor_forward", StringComparison.Ordinal));
-        Assert.Contains(composed, spike => spike.SourceNeuronId.Contains("tool_build", StringComparison.Ordinal));
+        Assert.DoesNotContain(composed, spike => spike.SourceNeuronId.Contains("tool_build", StringComparison.Ordinal));
+        Assert.Contains(composed, spike => spike.SourceNeuronId.Equals("visual:edge", StringComparison.Ordinal));
         Assert.Contains(composed, spike => spike.SourceNeuronId.StartsWith("population:", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void LowConfidencePrimaryOutputDoesNotFallBackToSymbolicMovement()
+    public void LowConfidenceNeuronalOutputDoesNotFallBackToSymbolicMovement()
     {
-        var state = CreateAvatarState("Primary", active: false, tick: 20, confidence: 0.2, left: 1.0, right: 1.0);
+        var state = CreateAvatarState(active: false, tick: 20, confidence: 0.2, left: 1.0, right: 1.0);
         var original = new[] { new AvatarDispatchSpike("M1", "L", 100, "motor_forward") };
 
         var composed = AvatarNeuronalMotorBridge.Compose(state, original, -1, out _, out _);
@@ -196,42 +166,23 @@ public sealed class NeuronalMotorControlTests
 
     private static NeuronalMotorRuntime Decode(
         IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IntentionalActionLoopRuntime? reference = null,
         bool sleeping = false)
         => NeuronalMotorPopulationDecoder.Decode(
             tick: 1,
             snapshots,
-            reference ?? Symbolic("motor_forward"),
             sleeping,
-            new NeuronalMotorControlSnapshot(0, CreateSettings()),
+            new NeuronalMotorControlSnapshot(CreateSettings()),
             NeuronalMotorRuntime.Default);
 
     private static NeuronalMotorControlSettings CreateSettings()
         => NeuronalMotorControlSettings.Normalize(new NeuronalMotorControlSettings(
-            Mode: "Shadow",
             BaselineRateHz: 1.5,
             SaturationRateHz: 25.0,
             SmoothingAlpha: 1.0,
             PopulationSnapshotMaxAgeTicks: 96,
             MinimumCircuitCoverage: 0.45,
             MinimumOutputConfidence: 0.35,
-            MaxPopulationEventsPerSide: 12,
-            PromotionMinimumSamples: 50,
-            PromotionMinimumAgreement: 0.70,
-            PromotionMinimumConfidence: 0.55,
-            PromotionMinimumCoverage: 0.95,
-            PromotionConsecutiveTicks: 10));
-
-    private static IntentionalActionLoopRuntime Symbolic(string directive)
-        => IntentionalActionLoopRuntime.Default with
-        {
-            Active = true,
-            MotorDirective = directive,
-            Commitment = 1.0f,
-            Readiness = 1.0f,
-            Confidence = 1.0f,
-            Inhibition = 0.0f
-        };
+            MaxPopulationEventsPerSide: 12));
 
     private static IReadOnlyList<InstanceStructureSnapshot> CreateMotorCircuit(
         float leftRate,
@@ -326,7 +277,6 @@ public sealed class NeuronalMotorControlTests
     }
 
     private static JsonElement CreateAvatarState(
-        string mode,
         bool active,
         long tick,
         double confidence,
@@ -336,7 +286,6 @@ public sealed class NeuronalMotorControlTests
         {
             neuronalMotor = new
             {
-                mode,
                 active,
                 sleeping = false,
                 tick,
@@ -345,8 +294,7 @@ public sealed class NeuronalMotorControlTests
                 rightDrive = right,
                 confidence,
                 minimumOutputConfidence = 0.45,
-                maxPopulationEventsPerSide = 8,
-                promotionReady = mode.Equals("Primary", StringComparison.OrdinalIgnoreCase)
+                maxPopulationEventsPerSide = 8
             }
         });
 }

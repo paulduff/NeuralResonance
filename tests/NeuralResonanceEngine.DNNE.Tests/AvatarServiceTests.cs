@@ -10,8 +10,8 @@ public sealed class AvatarServiceTests
         using var service = CreateService();
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "L", 100, "motor_forward"),
-            new AvatarDispatchSpike("M1", "R", 101, "motor_forward")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:excitatory:1:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:1:0")
         };
 
         service.PostBrainSignals(dispatches, AwakeBody);

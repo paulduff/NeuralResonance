@@ -309,39 +309,6 @@ app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRunt
     Results.Ok(languageGrounding.GetSnapshot()));
 app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cognitionAuthority) =>
     Results.Ok(cognitionAuthority.GetSnapshot()));
-app.MapPost("/api/v1/admin/neuronal-motor", (
-    NeuronalMotorModeRequest request,
-    SimulationState state,
-    NeuronalMotorControlState control) =>
-{
-    if (request is null)
-    {
-        return Results.BadRequest(new { Error = "Request payload is required." });
-    }
-
-    if (!control.TryApplyMode(
-            request.Mode,
-            state.GetNeuronalMotorSnapshot(),
-            out var snapshot,
-            out var error))
-    {
-        return Results.BadRequest(new
-        {
-            Error = error,
-            Control = snapshot,
-            Runtime = state.GetNeuronalMotorSnapshot()
-        });
-    }
-
-    state.AppendOutputLog(
-        $"Neuronal motor mode set to {snapshot.Settings.Mode} (generation {snapshot.Generation}).");
-    return Results.Ok(new
-    {
-        Applied = true,
-        Control = snapshot,
-        Runtime = state.GetNeuronalMotorSnapshot()
-    });
-});
 app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok(state.GetSelfMonitoringLoopSnapshot()));
 // /api/v1/active-inference: route was registered but GetActiveInferenceSnapshot()
 // is not implemented on SimulationState and no client references this URL. Removed
@@ -23847,7 +23814,6 @@ internal sealed class TickCoordinator(
             }
 
             var aggregatedSnapshots = AggregateInstanceSnapshots(processedSnapshots);
-            var intentionalAction = state.GetIntentionalActionLoopSnapshot();
             var previousNeuronalMotor = state.GetNeuronalMotorSnapshot();
             var neuronalControl = neuronalMotorControl.GetSnapshot();
             var neuronalMotorPopulation = neuronalMotorPopulationWindow.UpdateAndGet(
@@ -23857,7 +23823,6 @@ internal sealed class TickCoordinator(
             var neuronalMotor = NeuronalMotorPopulationDecoder.Decode(
                 tickSignal.Tick,
                 neuronalMotorPopulation,
-                intentionalAction,
                 sleepRuntimeAtTickStart.IsSleeping,
                 neuronalControl,
                 previousNeuronalMotor);
@@ -23870,18 +23835,6 @@ internal sealed class TickCoordinator(
                 neuronalSleep,
                 neuronalLanguage,
                 neuronalMotor);
-            if (previousNeuronalMotor.ControlGeneration != neuronalMotor.ControlGeneration ||
-                !string.Equals(previousNeuronalMotor.Mode, neuronalMotor.Mode, StringComparison.Ordinal))
-            {
-                state.AppendOutputLog(
-                    $"Neuronal motor control active in {neuronalMotor.Mode} mode (generation {neuronalMotor.ControlGeneration}).");
-            }
-
-            if (!previousNeuronalMotor.PromotionReady && neuronalMotor.PromotionReady)
-            {
-                state.AppendOutputLog(
-                    $"Neuronal motor promotion gate passed at tick {tickSignal.Tick}: agreement={neuronalMotor.AgreementEma:0.000}, confidence={neuronalMotor.ConfidenceEma:0.000}, coverage={neuronalMotor.MotorCircuitCoverage:0.000}, samples={neuronalMotor.ActiveEvaluationSamples}.");
-            }
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, state.GlobalAttentionBias);
             var (leftVisualTopDown, rightVisualTopDown, visualTrnGate) = ComputeVisualHemifieldTopDown(processedSnapshots);

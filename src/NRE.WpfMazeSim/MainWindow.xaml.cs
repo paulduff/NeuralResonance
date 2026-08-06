@@ -170,7 +170,6 @@ public partial class MainWindow : Window
     private long _lastTick;
     private long _dispatchSinceMs;
     private long _lastNeuronalMotorTick = -1;
-    private string _neuronalMotorMode = "Shadow";
     private bool _sleepState;
     private bool _brainPollInFlight;
     private bool _navigationPollInFlight;
@@ -579,12 +578,6 @@ public partial class MainWindow : Window
                 _lastNeuronalMotorTick,
                 out _lastNeuronalMotorTick,
                 out var neuronalMotor);
-            if (!string.Equals(_neuronalMotorMode, neuronalMotor.Mode, StringComparison.OrdinalIgnoreCase))
-            {
-                _neuronalMotorMode = neuronalMotor.Mode;
-                Log($"Neuronal motor bridge: {_neuronalMotorMode} mode, confidence {neuronalMotor.Confidence:0.000}.");
-            }
-
             if (SpatialNavigationCheckBox.IsChecked != true)
             {
                 ApplyMotorDispatch(dispatches);

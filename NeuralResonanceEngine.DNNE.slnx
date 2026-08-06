@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/Benchmarks/">
     <Project Path="Benchmarks/NeuralResonanceEngine.CorticalBenchmarks/NeuralResonanceEngine.CorticalBenchmarks.csproj" />
-    <Project Path="Benchmarks/NeuralResonanceEngine.EmbodiedBenchmarks/NeuralResonanceEngine.EmbodiedBenchmarks.csproj" />
   </Folder>
   <Folder Name="/ControlProgram/">
     <Project Path="ControlProgram/NeuralResonanceEngine.ControlProgram.csproj" />

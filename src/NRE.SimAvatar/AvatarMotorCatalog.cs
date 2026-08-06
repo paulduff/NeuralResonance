@@ -52,7 +52,6 @@ public static class AvatarMotorCatalog
         double leftInput = 0.0;
         double rightInput = 0.0;
         var motorEvents = 0;
-        var inPlaceTurnEvents = 0;
 
         for (var i = 0; i < dispatches.Count; i++)
         {
@@ -62,34 +61,16 @@ public static class AvatarMotorCatalog
                 continue;
             }
 
-            motorEvents++;
             var weight = ResolveMotorWeight(dispatch.SourceStructure);
-            if (TryApplyPopulationCode(dispatch, weight, ref leftInput, ref rightInput))
+            if (!TryApplyPopulationCode(dispatch, weight, ref leftInput, ref rightInput))
             {
                 continue;
             }
 
-            if (TryApplyExplicitMotorDirective(dispatch.SourceNeuronId, weight, ref leftInput, ref rightInput, ref inPlaceTurnEvents))
-            {
-                continue;
-            }
-
-            switch (dispatch.SourceHemisphere)
-            {
-                case "L":
-                    leftInput += weight;
-                    break;
-                case "R":
-                    rightInput += weight;
-                    break;
-                default:
-                    leftInput += weight * 0.5;
-                    rightInput += weight * 0.5;
-                    break;
-            }
+            motorEvents++;
         }
 
-        return new AvatarMotorDriveSummary(leftInput, rightInput, motorEvents, inPlaceTurnEvents);
+        return new AvatarMotorDriveSummary(leftInput, rightInput, motorEvents, InPlaceTurnEvents: 0);
     }
 
     private static bool TryApplyPopulationCode(
@@ -125,138 +106,4 @@ public static class AvatarMotorCatalog
         return true;
     }
 
-    private static bool TryApplyExplicitMotorDirective(
-        string sourceNeuronId,
-        double weight,
-        ref double leftInput,
-        ref double rightInput,
-        ref int inPlaceTurnEvents)
-    {
-        if (string.IsNullOrWhiteSpace(sourceNeuronId))
-        {
-            return false;
-        }
-
-        var normalized = sourceNeuronId.Trim().ToLowerInvariant();
-        if (normalized.Contains("motor_stop", StringComparison.Ordinal) ||
-            normalized.Contains("motor_rest", StringComparison.Ordinal) ||
-            normalized.Contains("motor_immobilize", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 10.5;
-            rightInput -= weight * 10.5;
-            return true;
-        }
-
-        if (normalized.Contains("motor_forward", StringComparison.Ordinal) ||
-            normalized.Contains("motor_approach", StringComparison.Ordinal))
-        {
-            leftInput += weight * 1.35;
-            rightInput += weight * 1.35;
-            return true;
-        }
-
-        if (normalized.Contains("motor_seek", StringComparison.Ordinal))
-        {
-            leftInput += weight * 1.12;
-            rightInput += weight * 1.12;
-            return true;
-        }
-
-        if (normalized.Contains("motor_explore", StringComparison.Ordinal))
-        {
-            leftInput += weight * 0.82;
-            rightInput += weight * 0.82;
-            return true;
-        }
-
-        if (normalized.Contains("motor_slow_protect", StringComparison.Ordinal))
-        {
-            leftInput += weight * 0.24;
-            rightInput += weight * 0.24;
-            return true;
-        }
-
-        if (normalized.Contains("motor_guard_body", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 0.35;
-            rightInput -= weight * 0.35;
-            return true;
-        }
-
-        if (normalized.Contains("motor_reorient", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 1.05;
-            rightInput += weight * 1.05;
-            inPlaceTurnEvents++;
-            return true;
-        }
-
-        if (normalized.Contains("motor_avoid_threat", StringComparison.Ordinal) ||
-            normalized.Contains("motor_escape", StringComparison.Ordinal) ||
-            normalized.Contains("motor_back", StringComparison.Ordinal) ||
-            normalized.Contains("motor_retreat", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 0.92;
-            rightInput -= weight * 0.92;
-            return true;
-        }
-
-        if (normalized.Contains("motor_about_face_left", StringComparison.Ordinal) ||
-            normalized.Contains("motor_turn_around_left", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 1.75;
-            rightInput += weight * 1.75;
-            inPlaceTurnEvents++;
-            return true;
-        }
-
-        if (normalized.Contains("motor_about_face_right", StringComparison.Ordinal) ||
-            normalized.Contains("motor_turn_around_right", StringComparison.Ordinal) ||
-            normalized.Contains("motor_about_face", StringComparison.Ordinal) ||
-            normalized.Contains("motor_turn_around", StringComparison.Ordinal))
-        {
-            leftInput += weight * 1.75;
-            rightInput -= weight * 1.75;
-            inPlaceTurnEvents++;
-            return true;
-        }
-
-        if (normalized.Contains("motor_bear_left", StringComparison.Ordinal) ||
-            normalized.Contains("motor_arc_left", StringComparison.Ordinal))
-        {
-            leftInput += weight * 0.16;
-            rightInput += weight * 1.72;
-            return true;
-        }
-
-        if (normalized.Contains("motor_bear_right", StringComparison.Ordinal) ||
-            normalized.Contains("motor_arc_right", StringComparison.Ordinal))
-        {
-            leftInput += weight * 1.72;
-            rightInput += weight * 0.16;
-            return true;
-        }
-
-        if (normalized.Contains("motor_turn_left", StringComparison.Ordinal) ||
-            normalized.Contains("motor_pivot_left", StringComparison.Ordinal) ||
-            normalized.Contains("motor_left", StringComparison.Ordinal))
-        {
-            leftInput -= weight * 1.35;
-            rightInput += weight * 1.35;
-            inPlaceTurnEvents++;
-            return true;
-        }
-
-        if (normalized.Contains("motor_turn_right", StringComparison.Ordinal) ||
-            normalized.Contains("motor_pivot_right", StringComparison.Ordinal) ||
-            normalized.Contains("motor_right", StringComparison.Ordinal))
-        {
-            leftInput += weight * 1.35;
-            rightInput -= weight * 1.35;
-            inPlaceTurnEvents++;
-            return true;
-        }
-
-        return false;
-    }
 }

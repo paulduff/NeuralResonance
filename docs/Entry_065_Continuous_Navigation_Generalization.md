@@ -1,5 +1,7 @@
 # Entry 065 - Continuous Navigation Generalization
 
+> Historical record. Entry 073 retired this symbolic navigator benchmark and its launcher. Future navigation benchmarks must drive neuronal action populations rather than named motor directives.
+
 Date: 2026-08-05
 
 ## Purpose

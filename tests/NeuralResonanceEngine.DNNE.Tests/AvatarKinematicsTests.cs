@@ -5,11 +5,12 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class AvatarKinematicsTests
 {
     [Fact]
-    public void World_Turn_Left_Command_Pivots_In_Place()
+    public void Opposed_Population_Drive_Pivots_In_Place()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "L", 100, "L:motor_turn_left_100_0")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:inhibitory:100:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -21,12 +22,12 @@ public sealed class AvatarKinematicsTests
             AllowSignedMotorDrive: true,
             InPlaceTurnCancelsForwardDrive: true);
 
-        double leftDrive = 80.0;
-        double rightDrive = 80.0;
+        double leftDrive = 0.0;
+        double rightDrive = 0.0;
         var summary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
 
-        Assert.Equal(1, summary.InPlaceTurnEvents);
+        Assert.Equal(2, summary.MotorEvents);
         Assert.True(leftDrive < 0.0, $"Expected left drive to reverse for pivot, got {leftDrive:0.000}.");
         Assert.True(rightDrive > 0.0, $"Expected right drive to push forward for pivot, got {rightDrive:0.000}.");
         Assert.InRange(Math.Abs(forwardSpeed), 0.0, 0.0001);
@@ -34,11 +35,12 @@ public sealed class AvatarKinematicsTests
     }
 
     [Fact]
-    public void Maze_Turn_Left_Command_Remains_Forward_Only()
+    public void Forward_Only_Profile_Clamps_Opposed_Population_Drive()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "L", 100, "L:motor_turn_left_100_0")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:inhibitory:100:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -60,11 +62,12 @@ public sealed class AvatarKinematicsTests
     }
 
     [Fact]
-    public void About_Face_Command_Pivots_Without_Forward_Drift()
+    public void Opposed_Premotor_Populations_Pivot_Without_Forward_Drift()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("PremotorCortex", "R", 100, "R:motor_about_face_escape_100_0")
+            new AvatarDispatchSpike("PremotorCortex", "L", 100, "population:l:inhibitory:100:0"),
+            new AvatarDispatchSpike("PremotorCortex", "R", 101, "population:r:excitatory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -76,22 +79,23 @@ public sealed class AvatarKinematicsTests
             AllowSignedMotorDrive: true,
             InPlaceTurnCancelsForwardDrive: true);
 
-        double leftDrive = 90.0;
-        double rightDrive = 90.0;
+        double leftDrive = 0.0;
+        double rightDrive = 0.0;
         var summary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
 
-        Assert.Equal(1, summary.InPlaceTurnEvents);
+        Assert.Equal(2, summary.MotorEvents);
         Assert.InRange(Math.Abs(forwardSpeed), 0.0, 0.0001);
         Assert.NotEqual(0.0, turnRateDeg);
     }
 
     [Fact]
-    public void Avoid_Threat_Command_Produces_Retreat_Drive()
+    public void Bilateral_Inhibitory_Populations_Produce_Retreat_Drive()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "R", 100, "R:motor_avoid_threat_100_0")
+            new AvatarDispatchSpike("M1", "L", 100, "population:l:inhibitory:100:0"),
+            new AvatarDispatchSpike("M1", "R", 101, "population:r:inhibitory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -115,11 +119,11 @@ public sealed class AvatarKinematicsTests
     }
 
     [Fact]
-    public void Spinal_Output_Command_Produces_Forward_Drive()
+    public void Spinal_Population_Output_Produces_Forward_Drive()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("SpinalCordMotor", "M", 100, "M:motor_seek_shelter_100_0")
+            new AvatarDispatchSpike("SpinalCordMotor", "M", 100, "population:m:excitatory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -144,11 +148,11 @@ public sealed class AvatarKinematicsTests
     }
 
     [Fact]
-    public void Explore_Command_Produces_Cautious_Forward_Drive()
+    public void Reticular_Population_Output_Produces_Forward_Drive()
     {
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("ReticularFormation", "M", 100, "M:motor_explore_100_0")
+            new AvatarDispatchSpike("ReticularFormation", "M", 100, "population:m:excitatory:100:0")
         };
         var options = new AvatarKinematicsOptions(
             MaxMotorDrive: 240.0,
@@ -174,7 +178,7 @@ public sealed class AvatarKinematicsTests
     [InlineData("motor_rest")]
     [InlineData("motor_guard_body")]
     [InlineData("motor_immobilize_protect")]
-    public void Protective_Hold_Commands_Do_Not_Create_Forward_Drive(string directive)
+    public void Semantic_Motor_Directives_Are_Rejected(string directive)
     {
         var dispatches = new[]
         {
@@ -192,9 +196,10 @@ public sealed class AvatarKinematicsTests
 
         double leftDrive = 0.0;
         double rightDrive = 0.0;
-        AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
+        var summary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
         var (forwardSpeed, _) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
 
+        Assert.Equal(0, summary.MotorEvents);
         Assert.True(forwardSpeed <= 0.0);
     }
 }

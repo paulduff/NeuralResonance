@@ -62,7 +62,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
                 $"channel={motor.SelectedActionChannel};coverage={motor.ActionCircuitCoverage:0.000}"),
             Domain("motor-output", motor.MotorCircuitCoverage > 0.0, motor.MotorCircuitCoverage >= 0.45, motor.Active,
                 "/api/v1/neuronal-motor",
-                $"mode={motor.Mode};coverage={motor.MotorCircuitCoverage:0.000};confidence={motor.Confidence:0.000}")
+                $"coverage={motor.MotorCircuitCoverage:0.000};confidence={motor.Confidence:0.000}")
         };
         var next = new NeuronalCognitionAuthoritySnapshot(
             tick,

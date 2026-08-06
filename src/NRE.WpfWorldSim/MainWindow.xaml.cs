@@ -355,7 +355,6 @@ public partial class MainWindow : Window
     private string _brainActionTarget = string.Empty;
     private long _dispatchSinceMs;
     private long _lastNeuronalMotorTick = -1;
-    private string _neuronalMotorMode = "Shadow";
     private long _engineServiceNonOkCount;
     private double _engineInputPressure;
     private bool _sleepState;
@@ -7905,12 +7904,6 @@ public partial class MainWindow : Window
                 _lastNeuronalMotorTick,
                 out _lastNeuronalMotorTick,
                 out var neuronalMotor);
-            if (!string.Equals(_neuronalMotorMode, neuronalMotor.Mode, StringComparison.OrdinalIgnoreCase))
-            {
-                _neuronalMotorMode = neuronalMotor.Mode;
-                Log($"Neuronal motor bridge: {_neuronalMotorMode} mode, confidence {neuronalMotor.Confidence:0.000}.");
-            }
-
             UpdateMotorPathwayAuditFromFrame(root, dispatches);
             ApplyMotorDispatch(dispatches);
         }

@@ -1,13 +1,19 @@
 using System;
 using NeuralResonanceEngine.Protocol;
 
-internal sealed class SynapseState(Guid synapseId, NTEnum neurotransmitter, float vesicleQuanta)
+internal sealed class SynapseState(
+	Guid synapseId,
+	NTEnum neurotransmitter,
+	float vesicleQuanta,
+	float? baselineVesicleQuanta = null)
 {
 	public Guid SynapseId { get; } = synapseId;
 
 	public NTEnum Neurotransmitter { get; } = neurotransmitter;
 
 	public float VesicleQuanta { get; set; } = vesicleQuanta;
+
+	public float BaselineVesicleQuanta { get; set; } = baselineVesicleQuanta ?? vesicleQuanta;
 
 	public float PreTrace { get; set; }
 
@@ -23,9 +29,12 @@ internal sealed class SynapseState(Guid synapseId, NTEnum neurotransmitter, floa
 
 	public int LastTargetNeuronIndex { get; set; } = -1;
 
+	public int UpdateCount { get; set; }
+
 	public void Stabilize()
 	{
 		VesicleQuanta = PlasticityRules.ClampQuanta(VesicleQuanta);
+		BaselineVesicleQuanta = PlasticityRules.ClampQuanta(BaselineVesicleQuanta);
 		PreTrace = FiniteClamp(PreTrace, 0f, 8f, 0f);
 		PostTrace = FiniteClamp(PostTrace, 0f, 8f, 0f);
 		ThetaM = FiniteClamp(ThetaM, 0.001f, 10f, 0.2f);
@@ -34,6 +43,7 @@ internal sealed class SynapseState(Guid synapseId, NTEnum neurotransmitter, floa
 		LastUpdateTimestampMs = double.IsFinite(LastUpdateTimestampMs)
 			? Math.Max(0.0, LastUpdateTimestampMs)
 			: 0.0;
+		UpdateCount = Math.Max(0, UpdateCount);
 	}
 
 	private static float FiniteClamp(float value, float minimum, float maximum, float fallback)

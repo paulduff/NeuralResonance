@@ -86,6 +86,22 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly float[] _perceptPreviousEvidence = new float[PerceptEnsembleTopology.EnsembleCount];
 
+	private readonly float[] _synapticMemoryRecallTrace = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly float[] _synapticMemoryStrengthSums = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly float[] _synapticMemoryEligibilitySums = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly float[] _synapticMemoryTagSums = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly float[] _synapticMemoryExtinctionSums = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly float[] _synapticMemoryConsolidationSums = new float[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly int[] _synapticMemorySupportingCounts = new int[SynapticMemoryTopology.EnsembleCount];
+
+	private readonly int[] _synapticMemoryLearnedCounts = new int[SynapticMemoryTopology.EnsembleCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -113,6 +129,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId);
 		_synapseStore.Load(_inboundSynapses, _outboundSynapses);
+		RebuildSynapticMemoryAggregates();
 		// Capture the handlers as fields so they can be unsubscribed in Dispose.
 		// Without this, recreating an engine in-process (tests, hot reload) would
 		// leak subscriptions and trigger SaveSynapseState on stale engines.
@@ -237,6 +254,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
 			var perceptCircuit = PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId);
+			var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
 			if (actionCircuit)
 			{
 				Array.Clear(_actionChannelRateSums);
@@ -246,7 +264,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				Array.Clear(_actionChannelIndirectSums);
 				Array.Clear(_actionChannelIndirectCounts);
 			}
-			if (perceptCircuit)
+			if (perceptCircuit || memoryCircuit)
 			{
 				Array.Clear(_perceptEnsembleRateSums);
 				Array.Clear(_perceptEnsembleRateCounts);
@@ -302,7 +320,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						}
 					}
 				}
-				if (perceptCircuit)
+				if (perceptCircuit || memoryCircuit)
 				{
 					var ensemble = PerceptEnsembleTopology.EnsembleForNeuron(modelNeuron.Index);
 					_perceptEnsembleRateSums[ensemble] += modelNeuron.FiringRateHz;
@@ -354,7 +372,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
 			var actionSelection = BuildActionSelectionDiagnostics(tickSignal.GlobalNeuromodState);
 			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles);
+			var synapticMemory = BuildSynapticMemoryDiagnostics();
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -493,7 +512,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	{
 		if (!_inboundSynapses.TryGetValue(message.SynapseId, out SynapseState value))
 		{
-			value = new SynapseState(message.SynapseId, message.Neurotransmitter, Math.Clamp(message.VesicleQuanta, 0.05f, 5f));
+			// Presynaptic release strength arrives in the message. The receiving
+			// synapse begins at a neutral local weight so a caller cannot install a
+			// learned memory merely by choosing a large vesicle payload.
+			value = new SynapseState(message.SynapseId, message.Neurotransmitter, 1f, 1f);
 			_inboundSynapses[message.SynapseId] = value;
 		}
 		return value;
@@ -545,6 +567,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float rewardPredictionError)
 	{
+		var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
+		var previousTargetNeuronIndex = value.LastTargetNeuronIndex;
+		var previousContribution = memoryCircuit ? ComputeSynapticMemoryContribution(value) : default;
+		var previouslySupported = memoryCircuit && value.UpdateCount > 0 && previousTargetNeuronIndex >= 0;
 		double num = Math.Max(0.0, timestampMs - value.LastUpdateTimestampMs);
 		float traceDelta = UpdateTraceState(value, num, 1f, postsynActivity, message.Neurotransmitter, microtubuleTracePersistenceSupport);
 		if (IsCorticostriatalActionInput(message))
@@ -554,12 +580,78 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		value.ThetaM = PlasticityRules.UpdateBcmTheta(value.ThetaM, postsynActivity, num);
 		value.LastUpdateTimestampMs = timestampMs;
 		value.LastTargetNeuronIndex = targetNeuronIndex;
+		value.UpdateCount = value.UpdateCount < int.MaxValue ? value.UpdateCount + 1 : int.MaxValue;
+		ApplySynapticMemoryTeaching(
+			message,
+			value,
+			postsynActivity,
+			neuromod,
+			rewardPredictionError);
 		bool climbingCoincident = _profile.StructureId == StructureId.PurkinjeCellLayer && (message.SourceStructure == StructureId.InferiorOlive || message.SpikeType == SpikeTypeEnum.COMPLEX);
 		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, rewardPredictionError, climbingCoincident);
+		if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && rewardPredictionError > 0.05f)
+		{
+			// Positive prediction error must be able to reacquire an association
+			// after extinction has made its eligibility and tag traces negative.
+			// Otherwise tag-capture-only structures remain trapped at the floor.
+			var reacquisitionDrive = Math.Clamp(rewardPredictionError, 0f, 1f) *
+				(0.010f + Math.Clamp(postsynActivity, 0f, 1f) * 0.018f);
+			delta += reacquisitionDrive;
+		}
+		else if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && rewardPredictionError < -0.05f)
+		{
+			var extinctionDrive = Math.Clamp(-rewardPredictionError, 0f, 1f) *
+				(0.008f + Math.Clamp(postsynActivity, 0f, 1f) * 0.025f);
+			delta -= extinctionDrive;
+		}
 		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
 		value.Stabilize();
+		if (memoryCircuit)
+		{
+			UpdateSynapticMemoryAggregate(
+				previousTargetNeuronIndex,
+				previousContribution,
+				previouslySupported,
+				value.LastTargetNeuronIndex,
+				ComputeSynapticMemoryContribution(value));
+		}
 		ObserveActionChannelLearning(message, value, targetNeuronIndex);
 		PersistSynapses(timestampMs);
+	}
+
+	private void ApplySynapticMemoryTeaching(
+		SpikeMessage message,
+		SynapseState synapse,
+		float postsynActivity,
+		NeuromodState neuromod,
+		float rewardPredictionError)
+	{
+		if (!SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) ||
+			message.Neurotransmitter != NTEnum.GLUTAMATE)
+		{
+			return;
+		}
+
+		var burstGain = message.SpikeType is SpikeTypeEnum.BURST or SpikeTypeEnum.COMPLEX ? 1f : 0.45f;
+		var coactivity = Math.Clamp((postsynActivity * 0.70f) + (burstGain * 0.30f), 0f, 1f);
+		var encodingGate = Math.Clamp(
+			0.15f +
+			(neuromod.AcetylcholineLevel * 0.45f) +
+			(neuromod.NorepinephrineLevel * 0.25f) +
+			(Math.Max(0f, rewardPredictionError) * 0.15f),
+			0f,
+			1f);
+		if (rewardPredictionError < -0.05f)
+		{
+			var extinction = coactivity * Math.Clamp(-rewardPredictionError, 0f, 1f);
+			synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace - (extinction * 0.12f), -1f, 1f);
+			synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace - (extinction * 0.08f), -1f, 1f);
+			return;
+		}
+
+		var encoding = coactivity * encodingGate;
+		synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace + (encoding * 0.10f), -1f, 1f);
+		synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace + (encoding * 0.07f), -1f, 1f);
 	}
 
 	private void ObserveActionChannelLearning(SpikeMessage message, SynapseState synapse, int targetNeuronIndex)
@@ -1045,6 +1137,246 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			best,
 			margin,
 			_perceptBindingTrace[best]);
+	}
+
+	private void RebuildSynapticMemoryAggregates()
+	{
+		if (!SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId))
+		{
+			return;
+		}
+
+		foreach (var synapse in _inboundSynapses.Values)
+		{
+			if (synapse.UpdateCount <= 0 || synapse.LastTargetNeuronIndex < 0)
+			{
+				continue;
+			}
+
+			AddSynapticMemoryContribution(
+				PerceptEnsembleTopology.EnsembleForNeuron(synapse.LastTargetNeuronIndex),
+				ComputeSynapticMemoryContribution(synapse),
+				1f);
+		}
+	}
+
+	private void UpdateSynapticMemoryAggregate(
+		int previousTargetNeuronIndex,
+		SynapticMemoryContribution previous,
+		bool previouslySupported,
+		int currentTargetNeuronIndex,
+		SynapticMemoryContribution current)
+	{
+		if (previouslySupported)
+		{
+			AddSynapticMemoryContribution(
+				PerceptEnsembleTopology.EnsembleForNeuron(previousTargetNeuronIndex),
+				previous,
+				-1f);
+		}
+
+		if (currentTargetNeuronIndex >= 0)
+		{
+			AddSynapticMemoryContribution(
+				PerceptEnsembleTopology.EnsembleForNeuron(currentTargetNeuronIndex),
+				current,
+				1f);
+		}
+	}
+
+	private void AddSynapticMemoryContribution(
+		int ensemble,
+		SynapticMemoryContribution contribution,
+		float direction)
+	{
+		_synapticMemoryStrengthSums[ensemble] = Math.Max(
+			0f,
+			_synapticMemoryStrengthSums[ensemble] + (contribution.EngramStrength * direction));
+		_synapticMemoryEligibilitySums[ensemble] = Math.Max(
+			0f,
+			_synapticMemoryEligibilitySums[ensemble] + (contribution.EligibilityTrace * direction));
+		_synapticMemoryTagSums[ensemble] = Math.Max(
+			0f,
+			_synapticMemoryTagSums[ensemble] + (contribution.SynapticTag * direction));
+		_synapticMemoryExtinctionSums[ensemble] = Math.Max(
+			0f,
+			_synapticMemoryExtinctionSums[ensemble] + (contribution.Extinction * direction));
+		_synapticMemoryConsolidationSums[ensemble] = Math.Max(
+			0f,
+			_synapticMemoryConsolidationSums[ensemble] + (contribution.Consolidation * direction));
+		_synapticMemorySupportingCounts[ensemble] = Math.Max(
+			0,
+			_synapticMemorySupportingCounts[ensemble] + (direction > 0f ? 1 : -1));
+		if (contribution.Learned)
+		{
+			_synapticMemoryLearnedCounts[ensemble] = Math.Max(
+				0,
+				_synapticMemoryLearnedCounts[ensemble] + (direction > 0f ? 1 : -1));
+		}
+	}
+
+	private static SynapticMemoryContribution ComputeSynapticMemoryContribution(SynapseState synapse)
+	{
+		var baseline = PlasticityRules.ClampQuanta(synapse.BaselineVesicleQuanta);
+		var positiveChange = Math.Max(0f, synapse.VesicleQuanta - baseline) /
+			Math.Max(0.05f, 5f - baseline);
+		var negativeChange = Math.Max(0f, baseline - synapse.VesicleQuanta) /
+			Math.Max(0.05f, baseline - 0.05f);
+		var positiveTag = Math.Max(0f, synapse.SynapticTagTrace);
+		var negativeTag = Math.Max(0f, -synapse.SynapticTagTrace);
+		var positiveEligibility = Math.Max(0f, synapse.EligibilityTrace);
+		var repetition = Math.Clamp(MathF.Log2(synapse.UpdateCount + 1f) / 6f, 0f, 1f);
+		var engram = Math.Clamp(
+			(positiveChange * 0.52f) +
+			(positiveTag * 0.25f) +
+			(positiveEligibility * 0.13f) +
+			(positiveChange * repetition * 0.10f),
+			0f,
+			1f);
+		var extinction = Math.Clamp((negativeChange * 0.65f) + (negativeTag * 0.35f), 0f, 1f);
+		var consolidation = Math.Clamp(
+			positiveChange * (0.30f + repetition * 0.70f),
+			0f,
+			1f);
+		return new SynapticMemoryContribution(
+			engram,
+			positiveEligibility,
+			positiveTag,
+			extinction,
+			consolidation,
+			engram > 0.005f || negativeChange > 0.005f);
+	}
+
+	private readonly record struct SynapticMemoryContribution(
+		float EngramStrength,
+		float EligibilityTrace,
+		float SynapticTag,
+		float Extinction,
+		float Consolidation,
+		bool Learned);
+
+	private SynapticMemoryDiagnostics? BuildSynapticMemoryDiagnostics()
+	{
+		if (!SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var count = SynapticMemoryTopology.EnsembleCount;
+		Span<float> cue = stackalloc float[count];
+		Span<float> strength = stackalloc float[count];
+		Span<float> eligibility = stackalloc float[count];
+		Span<float> tag = stackalloc float[count];
+		Span<float> extinction = stackalloc float[count];
+		Span<float> consolidation = stackalloc float[count];
+		Span<int> supporting = stackalloc int[count];
+		var learnedSynapses = 0;
+
+		for (var ensemble = 0; ensemble < count; ensemble++)
+		{
+			cue[ensemble] = NormalizePerceptRate(AverageChannel(
+				_perceptEnsembleRateSums,
+				_perceptEnsembleRateCounts,
+				ensemble));
+			strength[ensemble] = _synapticMemoryStrengthSums[ensemble];
+			eligibility[ensemble] = _synapticMemoryEligibilitySums[ensemble];
+			tag[ensemble] = _synapticMemoryTagSums[ensemble];
+			extinction[ensemble] = _synapticMemoryExtinctionSums[ensemble];
+			consolidation[ensemble] = _synapticMemoryConsolidationSums[ensemble];
+			supporting[ensemble] = _synapticMemorySupportingCounts[ensemble];
+			learnedSynapses += _synapticMemoryLearnedCounts[ensemble];
+		}
+
+		var activities = new SynapticMemoryEnsembleActivity[count];
+		var best = -1;
+		var bestRecall = 0f;
+		var secondRecall = 0f;
+		var hippocampalTotal = 0f;
+		var corticalTotal = 0f;
+		var represented = 0;
+		for (var ensemble = 0; ensemble < count; ensemble++)
+		{
+			if (supporting[ensemble] > 0)
+			{
+				var divisor = supporting[ensemble];
+				strength[ensemble] /= divisor;
+				eligibility[ensemble] /= divisor;
+				tag[ensemble] /= divisor;
+				extinction[ensemble] /= divisor;
+				consolidation[ensemble] /= divisor;
+				represented++;
+			}
+
+			var competitor = 0f;
+			for (var other = 0; other < count; other++)
+			{
+				if (other != ensemble)
+				{
+					competitor = Math.Max(competitor, cue[other] * strength[other]);
+				}
+			}
+
+			var recurrentGain = _profile.StructureId switch
+			{
+				StructureId.CA3 => 0.46f,
+				StructureId.CA1 => 0.28f,
+				StructureId.Subiculum => 0.20f,
+				_ => 0.12f
+			};
+			var persistence = SynapticMemoryTopology.IsHippocampal(_profile.StructureId) ? 0.90f : 0.82f;
+			var cueRecall = cue[ensemble] * strength[ensemble];
+			_synapticMemoryRecallTrace[ensemble] = Math.Clamp(
+				(_synapticMemoryRecallTrace[ensemble] * persistence) +
+				(cueRecall * (0.72f + recurrentGain)) -
+				(competitor * 0.10f),
+				0f,
+				1f);
+			var recall = _synapticMemoryRecallTrace[ensemble];
+			var interference = Math.Clamp(competitor, 0f, 1f);
+
+			activities[ensemble] = new SynapticMemoryEnsembleActivity(
+				ensemble,
+				cue[ensemble],
+				strength[ensemble],
+				recall,
+				eligibility[ensemble],
+				tag[ensemble],
+				interference,
+				extinction[ensemble],
+				consolidation[ensemble],
+				supporting[ensemble]);
+
+			if (SynapticMemoryTopology.IsHippocampal(_profile.StructureId))
+			{
+				hippocampalTotal += strength[ensemble];
+			}
+			if (SynapticMemoryTopology.IsCorticalConsolidation(_profile.StructureId))
+			{
+				corticalTotal += consolidation[ensemble];
+			}
+
+			if (recall > bestRecall)
+			{
+				secondRecall = bestRecall;
+				bestRecall = recall;
+				best = ensemble;
+			}
+			else if (recall > secondRecall)
+			{
+				secondRecall = recall;
+			}
+		}
+
+		var normalizer = Math.Max(1, represented);
+		return new SynapticMemoryDiagnostics(
+			_profile.StructureId,
+			SynapticMemoryTopology.RoleFor(_profile.StructureId),
+			activities,
+			bestRecall > 0.0001f ? best : -1,
+			Math.Max(0f, bestRecall - secondRecall),
+			Math.Clamp(hippocampalTotal / normalizer, 0f, 1f),
+			Math.Clamp(corticalTotal / normalizer, 0f, 1f),
+			learnedSynapses);
 	}
 
 	private static float NormalizePerceptRate(float rateHz)

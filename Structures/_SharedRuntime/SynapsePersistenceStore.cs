@@ -320,6 +320,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 		public float VesicleQuanta { get; set; }
 
+		public float BaselineVesicleQuanta { get; set; }
+
 		public float PreTrace { get; set; }
 
 		public float PostTrace { get; set; }
@@ -334,6 +336,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 		public int LastTargetNeuronIndex { get; set; }
 
+		public int UpdateCount { get; set; }
+
 		public static SynapseStoreEntry FromSynapseState(string? key, SynapseState synapse)
 		{
 			synapse.Stabilize();
@@ -343,19 +347,26 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				SynapseId = synapse.SynapseId,
 				Neurotransmitter = synapse.Neurotransmitter,
 				VesicleQuanta = synapse.VesicleQuanta,
+				BaselineVesicleQuanta = synapse.BaselineVesicleQuanta,
 				PreTrace = synapse.PreTrace,
 				PostTrace = synapse.PostTrace,
 				ThetaM = synapse.ThetaM,
 				EligibilityTrace = synapse.EligibilityTrace,
 				SynapticTagTrace = synapse.SynapticTagTrace,
 				LastUpdateTimestampMs = synapse.LastUpdateTimestampMs,
-				LastTargetNeuronIndex = synapse.LastTargetNeuronIndex
+				LastTargetNeuronIndex = synapse.LastTargetNeuronIndex,
+				UpdateCount = synapse.UpdateCount
 			};
 		}
 
 		public SynapseState ToSynapseState()
 		{
-			var synapse = new SynapseState(SynapseId, Neurotransmitter, PlasticityRules.ClampQuanta(VesicleQuanta))
+			var baseline = BaselineVesicleQuanta > 0f ? BaselineVesicleQuanta : VesicleQuanta;
+			var synapse = new SynapseState(
+				SynapseId,
+				Neurotransmitter,
+				PlasticityRules.ClampQuanta(VesicleQuanta),
+				PlasticityRules.ClampQuanta(baseline))
 			{
 				PreTrace = PreTrace,
 				PostTrace = PostTrace,
@@ -363,7 +374,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				EligibilityTrace = EligibilityTrace,
 				SynapticTagTrace = SynapticTagTrace,
 				LastUpdateTimestampMs = LastUpdateTimestampMs,
-				LastTargetNeuronIndex = LastTargetNeuronIndex
+				LastTargetNeuronIndex = LastTargetNeuronIndex,
+				UpdateCount = UpdateCount
 			};
 			synapse.Stabilize();
 			return synapse;

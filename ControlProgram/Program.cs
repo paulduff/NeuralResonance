@@ -50,6 +50,7 @@ builder.Services.AddSingleton<SimulationState>();
 builder.Services.AddSingleton(NeuronalMotorControlState.FromConfiguration(builder.Configuration));
 builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
 builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
+builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -222,6 +223,8 @@ app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorContro
 }));
 app.MapGet("/api/v1/neuronal-perception", (NeuronalPerceptionRuntime perception) =>
     Results.Ok(perception.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-memory", (NeuronalMemoryRuntime memory) =>
+    Results.Ok(memory.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -5011,6 +5014,9 @@ internal sealed class SimulationState
             RefreshEpisodicMemorySnapshotLocked(Tick);
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 EpisodicMemory.Count,
@@ -5042,6 +5048,9 @@ internal sealed class SimulationState
             RefreshUnifiedEventMemorySnapshotLocked(Tick);
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 UnifiedEventMemory.Count,
@@ -5080,6 +5089,9 @@ internal sealed class SimulationState
             UpdateSemanticMemoryLocked(Tick);
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 SemanticMemory.Count,
@@ -6116,6 +6128,9 @@ internal sealed class SimulationState
 
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 Count = _objectMemory.Count,
@@ -6160,6 +6175,9 @@ internal sealed class SimulationState
             RefreshPlaceMemorySnapshotLocked(Tick);
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 PlaceMemory.Count,
@@ -6416,6 +6434,9 @@ internal sealed class SimulationState
             var clamped = Math.Clamp(maxCount, 1, 256);
             return new
             {
+                Authority = "LegacyTelemetry",
+                CanAuthorizeRecall = false,
+                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
                 Tick,
                 SimulationClockMs,
                 ActionMemory.Count,
@@ -22685,6 +22706,7 @@ internal sealed class TickCoordinator(
     NeuronalMotorControlState neuronalMotorControl,
     NeuronalMotorPopulationWindow neuronalMotorPopulationWindow,
     NeuronalPerceptionRuntime neuronalPerception,
+    NeuronalMemoryRuntime neuronalMemory,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23476,11 +23498,13 @@ internal sealed class TickCoordinator(
                     ack.AuditoryLanguageMotorDiagnostics,
                     ack.VisualObjectRecognitionDiagnostics,
                     ack.ActionSelectionDiagnostics,
-                    ack.PerceptEnsembleDiagnostics);
+                    ack.PerceptEnsembleDiagnostics,
+                    ack.SynapticMemoryDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
+            neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var queueFlush = await FlushQueuedDispatchBatchesAsync(
                 tickSignal,
                 state,
@@ -26036,7 +26060,8 @@ internal sealed class TickCoordinator(
                 AverageAuditoryLanguageMotorDiagnostics(members),
                 AverageVisualObjectRecognitionDiagnostics(members),
                 AverageActionSelectionDiagnostics(members),
-                AveragePerceptEnsembleDiagnostics(members)));
+                AveragePerceptEnsembleDiagnostics(members),
+                AverageSynapticMemoryDiagnostics(members)));
         }
 
         return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
@@ -26124,7 +26149,8 @@ internal sealed class TickCoordinator(
                 snapshot.AuditoryLanguageMotorDiagnostics,
                 snapshot.VisualObjectRecognitionDiagnostics,
                 snapshot.ActionSelectionDiagnostics,
-                snapshot.PerceptEnsembleDiagnostics));
+                snapshot.PerceptEnsembleDiagnostics,
+                snapshot.SynapticMemoryDiagnostics));
         }
 
         return merged;
@@ -26420,6 +26446,60 @@ internal sealed class TickCoordinator(
             ranked[0].EnsembleIndex,
             margin,
             (float)diagnostics.Average(static item => item.Persistence));
+    }
+
+    private static SynapticMemoryDiagnostics? AverageSynapticMemoryDiagnostics(
+        IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(static member => member.SynapticMemoryDiagnostics)
+            .Where(static item => item is not null)
+            .Cast<SynapticMemoryDiagnostics>()
+            .ToArray();
+        if (diagnostics.Length == 0)
+        {
+            return null;
+        }
+
+        var ensembles = new SynapticMemoryEnsembleActivity[8];
+        for (var ensemble = 0; ensemble < ensembles.Length; ensemble++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.Ensembles)
+                .Where(item => item.EnsembleIndex == ensemble)
+                .ToArray();
+            ensembles[ensemble] = values.Length == 0
+                ? new SynapticMemoryEnsembleActivity(ensemble, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0)
+                : new SynapticMemoryEnsembleActivity(
+                    ensemble,
+                    (float)values.Average(static item => item.CueDrive),
+                    (float)values.Average(static item => item.EngramStrength),
+                    (float)values.Average(static item => item.RecallActivation),
+                    (float)values.Average(static item => item.EligibilityTrace),
+                    (float)values.Average(static item => item.SynapticTag),
+                    (float)values.Average(static item => item.Interference),
+                    (float)values.Average(static item => item.Extinction),
+                    (float)values.Average(static item => item.Consolidation),
+                    values.Sum(static item => item.SupportingSynapses));
+        }
+
+        var ranked = ensembles
+            .OrderByDescending(static item => item.RecallActivation)
+            .ThenBy(static item => item.EnsembleIndex)
+            .ToArray();
+        var recalled = ranked[0].RecallActivation > 0f ? ranked[0].EnsembleIndex : -1;
+        var margin = ranked.Length > 1
+            ? Math.Max(0f, ranked[0].RecallActivation - ranked[1].RecallActivation)
+            : 0f;
+        return new SynapticMemoryDiagnostics(
+            members[0].StructureId,
+            diagnostics[0].MemoryRole,
+            ensembles,
+            recalled,
+            margin,
+            (float)diagnostics.Average(static item => item.HippocampalDependence),
+            (float)diagnostics.Average(static item => item.CorticalConsolidation),
+            diagnostics.Sum(static item => item.LearnedSynapseCount));
     }
 
     private static IReadOnlyList<StructureSnapshot> EnrichActionSelectionDiagnostics(
@@ -37908,7 +37988,8 @@ internal sealed record InstanceStructureSnapshot(
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
-    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

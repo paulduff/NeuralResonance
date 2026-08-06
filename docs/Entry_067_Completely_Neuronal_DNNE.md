@@ -104,6 +104,27 @@ Move episodic, semantic, spatial, action, and autobiographical memory authority 
 
 Acceptance requires one-shot episodic traces, cue-dependent recall, interference, extinction/relearning, hippocampal dependence for new episodes, and gradual cortical consolidation.
 
+#### Implemented vertical slice
+
+The first authoritative memory slice reads eight numeric memory ensembles directly from persisted inbound synapses in object, spatial, hippocampal, semantic, autobiographical, and action circuits. Each synapse now retains its neutral baseline weight, current weight, target population, eligibility trace, synaptic tag, update count, and timing state. Existing checkpoints without a baseline migrate conservatively by treating their loaded weight as the baseline, preventing old transport amplitudes from being misreported as learning.
+
+Receiving synapses start at a neutral local weight. Presynaptic vesicle release remains part of immediate signal strength, but a caller can no longer install a postsynaptic memory merely by transmitting a large vesicle payload. Local coactivity, acetylcholine/norepinephrine encoding gates, burst timing, and reward prediction error alter eligibility, tags, and weights. Negative prediction error drives extinction; later positive prediction error supplies a reacquisition term so a suppressed association can be learned again rather than remaining trapped at the synaptic floor.
+
+Every memory structure reports per-ensemble cue drive, learned engram strength relative to its own baseline, recall activation, eligibility, tagging, competing-trace interference, extinction, consolidation, and supporting-synapse count. CA3 and downstream hippocampal stages provide bounded recurrent pattern-completion persistence. Cortical consolidation depends on both potentiation and repeated updates, so it rises gradually rather than appearing fully formed after one event.
+
+The controller's `/api/v1/neuronal-memory` decoder is read-only. It can report active recall only when a current population cue, persisted learned synapses, nonzero recall activity, and a competition margin agree. It separately reports hippocampal dependence and cortical consolidation. Removing hippocampal diagnostics removes authority to claim new episodic encoding, while established cortical traces can still support non-episodic recall.
+
+The older episodic, unified-event, semantic, object, place, and action memory endpoints remain available for checkpoint compatibility and human-readable audit records, but their responses are marked `LegacyTelemetry`, `CanAuthorizeRecall=false`, and point to the neuronal endpoint. They are not evidence for a neuronal recall claim. Later rung-8 work will remove their remaining internal advisory uses after downstream workspace, sleep, and language consumers have neuronal replacements.
+
+The causal test set pins:
+
+- one-event CA3 burst encoding followed by cue-dependent recall;
+- reduced recall strength and margin under competing-trace interference;
+- loss of new-episode authority when the hippocampal path is absent;
+- negative-prediction-error extinction followed by positive-evidence relearning;
+- synaptic memory survival across a structure-engine restart;
+- gradual temporal-association cortical consolidation across repeated experience.
+
 ### Rung 5 - Neuronal Attention And Workspace
 
 Replace central focus selection and workspace fields with thalamocortical competition, TRN inhibition, pulvinar routing, recurrent PFC maintenance, and oscillatory broadcast.

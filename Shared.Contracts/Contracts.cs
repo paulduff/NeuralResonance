@@ -55,7 +55,8 @@ public sealed record TickAck(
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
-    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -312,6 +313,28 @@ public sealed record PerceptEnsembleDiagnostics(
     float DominanceMargin,
     float Persistence);
 
+public sealed record SynapticMemoryEnsembleActivity(
+    int EnsembleIndex,
+    float CueDrive,
+    float EngramStrength,
+    float RecallActivation,
+    float EligibilityTrace,
+    float SynapticTag,
+    float Interference,
+    float Extinction,
+    float Consolidation,
+    int SupportingSynapses);
+
+public sealed record SynapticMemoryDiagnostics(
+    StructureId SourceStructure,
+    string MemoryRole,
+    IReadOnlyList<SynapticMemoryEnsembleActivity> Ensembles,
+    int RecalledEnsemble,
+    float RecallMargin,
+    float HippocampalDependence,
+    float CorticalConsolidation,
+    int LearnedSynapseCount);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -360,7 +383,8 @@ public sealed record StructureSnapshot(
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
-    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

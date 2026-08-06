@@ -78,7 +78,7 @@
                         <TextBlock Text="Avatar Vision" FontWeight="SemiBold" />
                         <CheckBox x:Name="VisionInputCheckBox"
                                   IsChecked="True"
-                                  Content="Send avatar vision to brain (V1)"
+                                  Content="Send avatar eye frame to Retina"
                                   Margin="0,6,0,6" />
                         <Border Width="196"
                                 Height="196"
@@ -94,24 +94,6 @@
                         <TextBlock x:Name="VisionSignalText" Margin="0,6,0,0" Text="Vision signal: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="VisionInputStatusText" Margin="0,2,0,0" Text="Visual input: -" TextWrapping="Wrap" />
 
-                        <!-- Pixel-level vision: posts the raw rendered preview as grayscale bytes
-                             to NRE.Api so the brain's V1 Gabor hierarchy + retinotopic occipital
-                             injection see actual pixels rather than symbolic intensity/saliency.
-                             Independent of the V1 symbolic dispatch above. -->
-                        <TextBlock Text="Pixel-Vision (NRE.Api — removed)" FontWeight="SemiBold" Margin="0,10,0,0" />
-                        <CheckBox x:Name="PixelVisionCheckBox"
-                                  IsChecked="False"
-                                  Content="Send pixel vision to NRE.Api (no live target)"
-                                  Margin="0,6,0,0"
-                                  Checked="PixelVisionCheckBox_OnChecked"
-                                  Unchecked="PixelVisionCheckBox_OnUnchecked" />
-                        <DockPanel Margin="0,4,0,0">
-                            <TextBlock Text="Endpoint:" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBox x:Name="PixelVisionEndpointTextBox"
-                                     Text="http://localhost:5005"
-                                     LostFocus="PixelVisionEndpointTextBox_OnLostFocus"
-                                     KeyDown="PixelVisionEndpointTextBox_OnKeyDown" />
-                        </DockPanel>
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Object Memory" FontWeight="SemiBold" />
                         <TextBox x:Name="ObjectMemoryTextBox"

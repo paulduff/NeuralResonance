@@ -223,7 +223,7 @@
                         <CheckBox x:Name="SendAvatarVisionCheckBox"
                                   Margin="0,6,0,0"
                                   IsChecked="True"
-                                  Content="Send avatar vision to brain (V1)"
+                                  Content="Send avatar eye frame to Retina"
                                   Checked="SendAvatarVisionCheckBox_OnChecked"
                                   Unchecked="SendAvatarVisionCheckBox_OnUnchecked" />
                         <Border Margin="0,6,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#020B1C" Height="160">
@@ -233,25 +233,6 @@
                                    UseLayoutRounding="True" />
                         </Border>
                         <TextBlock x:Name="AvatarPreviewInfoText" Margin="0,6,0,0" Text="Preview: waiting for frame..." />
-
-                        <!-- Pixel-level vision: posts the raw rendered preview as grayscale bytes
-                             to NRE.Api so the brain's V1 Gabor hierarchy + retinotopic occipital
-                             injection see actual pixels rather than symbolic intensity/saliency.
-                             Independent of the V1 symbolic dispatch above (ControlProgram). -->
-                        <TextBlock Text="Pixel-Vision (NRE.Api — removed)" FontWeight="SemiBold" Margin="0,12,0,0" />
-                        <CheckBox x:Name="PixelVisionCheckBox"
-                                  IsChecked="False"
-                                  Content="Send pixel vision to NRE.Api (no live target)"
-                                  Margin="0,6,0,0"
-                                  Checked="PixelVisionCheckBox_OnChecked"
-                                  Unchecked="PixelVisionCheckBox_OnUnchecked" />
-                        <DockPanel Margin="0,4,0,0">
-                            <TextBlock Text="Endpoint:" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#B8C6E6" />
-                            <TextBox x:Name="PixelVisionEndpointTextBox"
-                                     Text="http://localhost:5005"
-                                     LostFocus="PixelVisionEndpointTextBox_OnLostFocus"
-                                     KeyDown="PixelVisionEndpointTextBox_OnKeyDown" />
-                        </DockPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

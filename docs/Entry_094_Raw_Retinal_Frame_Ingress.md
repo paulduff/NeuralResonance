@@ -9,8 +9,8 @@ camera pixels can now enter the Retina services without a host process naming
 objects, selecting a salient field, choosing a hemisphere, or injecting
 orientation-coded spikes directly into V1.
 
-The older structured visual endpoint remains only long enough to migrate every
-producer in the following rung. It is not the target architecture.
+Entry 095 subsequently migrated every producer and deleted the older
+structured visual endpoint and its transport types.
 
 ## Receptor Boundary
 
@@ -87,9 +87,9 @@ frames and malformed payload lengths return a bad request.
 - Cortical functional benchmark: PASS, 100% overall, stream separation,
   learning, persistence, and adaptive output gating.
 
-## Next Rung
+## Completion
 
-Migrate maze, world, and editor webcam producers to this route, then physically
-delete the structured visual request, direct-to-V1 spike builder, host
-salience/intensity calculations, dead NRE.Api transport, and map-editor brain
-stimulus.
+Entry 095 moves maze, world, and editor webcam producers to this route and
+physically deletes the structured visual request, direct-to-V1 spike builder,
+host salience/intensity calculations, dead NRE.Api transport, and map-editor
+brain stimulus.

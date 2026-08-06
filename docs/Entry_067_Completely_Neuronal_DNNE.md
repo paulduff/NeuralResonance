@@ -342,8 +342,14 @@ frames are transformed into bounded retinotopic ON/OFF ganglion spikes with
 local center-surround contrast, temporal adaptation, stable receptor synapses,
 and contralateral field projection. The route exposes no semantic pattern,
 salience, target, hemisphere, attention, reward, or action authority. The
-structured visual compatibility route remains only until all producers move to
-the raw receptor path in the next rung.
+following rung completes the producer migration.
+
+Entry 095 deletes structured visual authority. Maze, world, and editor webcam
+producers now send only raw eye or camera frames to Retina. The structured
+visual request, public endpoint, direct-to-V1 spike builder, host salience and
+hemifield targeting, explicit hemisphere fallback, dead NRE.Api pixel route,
+and map-editor brain stimulus are physically absent. Visual attention remains
+a read-only decoder of measured neuronal activity and cannot steer ingress.
 
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as

@@ -362,7 +362,7 @@
                                                        Grid.Column="1"
                                                        Margin="8,6,0,0"
                                                        Foreground="#9EB3E5"
-                                                       Text="V1 route: awaiting webcam input" />
+                                                       Text="Retina route: awaiting webcam input" />
                                         </Grid>
 
                                         <TextBlock Margin="0,12,0,4"

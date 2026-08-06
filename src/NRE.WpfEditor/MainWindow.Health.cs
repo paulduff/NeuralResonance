@@ -147,32 +147,32 @@ public partial class MainWindow
     {
         if (!_webcamRunning)
         {
-            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
+            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "Retina route: awaiting webcam input");
             return;
         }
 
         if (_visualRouteRecoveryInFlight)
         {
-            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "V1 route: recovery in progress");
+            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "Retina route: recovery in progress");
             return;
         }
 
-        if (_v1RouteConsecutiveFailures <= 0)
+        if (_retinaRouteConsecutiveFailures <= 0)
         {
-            if (_lastV1RouteSuccessUtc == DateTime.MinValue)
+            if (_lastRetinaRouteSuccessUtc == DateTime.MinValue)
             {
-                SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "V1 route: waiting first successful dispatch");
+                SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "Retina route: waiting first successful dispatch");
                 return;
             }
 
-            var successAge = DateTime.UtcNow - _lastV1RouteSuccessUtc;
-            if (successAge > V1RouteStallWarningTimeout)
+            var successAge = DateTime.UtcNow - _lastRetinaRouteSuccessUtc;
+            if (successAge > RetinaRouteStallWarningTimeout)
             {
                 SetInputHealthIndicator(
                     VisualRouteHealthLight,
                     VisualRouteHealthText,
                     InputHealthState.Warning,
-                    $"V1 route: no recent deliveries ({successAge.TotalSeconds:0.0}s)");
+                    $"Retina route: no recent deliveries ({successAge.TotalSeconds:0.0}s)");
                 return;
             }
 
@@ -180,21 +180,21 @@ public partial class MainWindow
                 VisualRouteHealthLight,
                 VisualRouteHealthText,
                 InputHealthState.Healthy,
-                $"V1 route: healthy ({successAge.TotalMilliseconds:0} ms since delivery)");
+                $"Retina route: healthy ({successAge.TotalMilliseconds:0} ms since delivery)");
             return;
         }
 
-        var failureAge = _lastV1RouteFailureUtc == DateTime.MinValue
+        var failureAge = _lastRetinaRouteFailureUtc == DateTime.MinValue
             ? 0.0
-            : (DateTime.UtcNow - _lastV1RouteFailureUtc).TotalSeconds;
-        var failureState = _v1RouteConsecutiveFailures >= V1RouteRecoveryFailureThreshold
+            : (DateTime.UtcNow - _lastRetinaRouteFailureUtc).TotalSeconds;
+        var failureState = _retinaRouteConsecutiveFailures >= RetinaRouteRecoveryFailureThreshold
             ? InputHealthState.Failed
             : InputHealthState.Warning;
         SetInputHealthIndicator(
             VisualRouteHealthLight,
             VisualRouteHealthText,
             failureState,
-            $"V1 route: failures={_v1RouteConsecutiveFailures} (last {failureAge:0.0}s)");
+            $"Retina route: failures={_retinaRouteConsecutiveFailures} (last {failureAge:0.0}s)");
     }
 
     private async Task RestartWebcamInputFromWatchdogAsync()
@@ -229,15 +229,15 @@ public partial class MainWindow
 
     private void NoteVisualRouteDispatchSuccess()
     {
-        _lastV1RouteSuccessUtc = DateTime.UtcNow;
-        _v1RouteConsecutiveFailures = 0;
+        _lastRetinaRouteSuccessUtc = DateTime.UtcNow;
+        _retinaRouteConsecutiveFailures = 0;
     }
 
     private async Task NoteVisualRouteDispatchFailureAsync(string reason, CancellationToken token)
     {
-        _lastV1RouteFailureUtc = DateTime.UtcNow;
-        _v1RouteConsecutiveFailures++;
-        if (_v1RouteConsecutiveFailures < V1RouteRecoveryFailureThreshold)
+        _lastRetinaRouteFailureUtc = DateTime.UtcNow;
+        _retinaRouteConsecutiveFailures++;
+        if (_retinaRouteConsecutiveFailures < RetinaRouteRecoveryFailureThreshold)
         {
             return;
         }
@@ -253,33 +253,33 @@ public partial class MainWindow
         }
 
         var now = DateTime.UtcNow;
-        if ((now - _lastV1RouteRecoveryUtc) < V1RouteRecoveryCooldown)
+        if ((now - _lastRetinaRouteRecoveryUtc) < RetinaRouteRecoveryCooldown)
         {
             return;
         }
 
         _visualRouteRecoveryInFlight = true;
-        _lastV1RouteRecoveryUtc = now;
+        _lastRetinaRouteRecoveryUtc = now;
         try
         {
             PostUi(() => SetInputHealthIndicator(
                 VisualRouteHealthLight,
                 VisualRouteHealthText,
                 InputHealthState.Warning,
-                $"V1 route: recovering ({TrimForStatus(reason)})"));
+                $"Retina route: recovering ({TrimForStatus(reason)})"));
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             cts.CancelAfter(TimeSpan.FromMilliseconds(4500));
             var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
             if (baseUri is null)
             {
-                PostUi(() => AddOutputLog("V1 route auto-recovery skipped: Control Program endpoint unavailable."));
+                PostUi(() => AddOutputLog("Retina route auto-recovery skipped: Control Program endpoint unavailable."));
                 return;
             }
 
             var request = new
             {
-                StructureId = "V1",
+                StructureId = "Retina",
                 Hemisphere = (string?)null
             };
 
@@ -287,7 +287,7 @@ public partial class MainWindow
             var payload = await response.Content.ReadAsStringAsync(cts.Token);
             if (!response.IsSuccessStatusCode)
             {
-                PostUi(() => AddOutputLog($"V1 route auto-recovery failed: HTTP {(int)response.StatusCode}. {TrimForStatus(payload, 180)}"));
+                PostUi(() => AddOutputLog($"Retina route auto-recovery failed: HTTP {(int)response.StatusCode}. {TrimForStatus(payload, 180)}"));
                 return;
             }
 
@@ -307,11 +307,11 @@ public partial class MainWindow
                 // Best-effort parse.
             }
 
-            PostUi(() => AddOutputLog($"V1 route auto-recovery requested: restarted={restarted}, healthy={healthy}."));
+            PostUi(() => AddOutputLog($"Retina route auto-recovery requested: restarted={restarted}, healthy={healthy}."));
         }
         catch (Exception ex)
         {
-            PostUi(() => AddOutputLog($"V1 route auto-recovery warning: {TrimForStatus(ex.Message)}"));
+            PostUi(() => AddOutputLog($"Retina route auto-recovery warning: {TrimForStatus(ex.Message)}"));
         }
         finally
         {

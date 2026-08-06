@@ -29,18 +29,6 @@ public static class AdminInputSource
 
 public sealed record InputGateControlRequest(bool? AvatarVisionEnabled, bool? SpontaneousSpikingEnabled);
 
-public sealed record VisualInputRequest(
-    string? Pattern,
-    float? Intensity,
-    int? BurstCount,
-    string? TargetStructure,
-    string? SourceStructure,
-    string? Hemisphere,
-    float? LeftFieldSaliency,
-    float? RightFieldSaliency,
-    bool? UseAttentionRouting,
-    string? InputSource);
-
 public sealed record BodyStateInputRequest(
     float? ForwardVelocity,
     float? TurnRateDeg,

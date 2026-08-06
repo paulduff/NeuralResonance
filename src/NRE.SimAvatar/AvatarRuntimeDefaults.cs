@@ -2,8 +2,6 @@ namespace NRE.SimAvatar;
 
 public static class AvatarRuntimeDefaults
 {
-    public const string UnifiedVisualStreamPattern = "VideoFrame";
-    public const string UnifiedVisualStreamSourceStructure = "Retina";
     public const string UnifiedVisualInputSource = "avatar_vision";
     public const string UnifiedAudioInputSource = "avatar_audio";
     public const string UnifiedAudioSourceStructure = "Cochlea";

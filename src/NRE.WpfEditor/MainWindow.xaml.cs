@@ -46,7 +46,6 @@ public partial class MainWindow : Window
     private readonly SemaphoreSlim _inputSignal = new(0);
     private readonly CancellationTokenSource _workerCts = new();
     private readonly HttpClient _httpClient = NreHttpClientFactory.CreateDefault();
-    private readonly VisualInputDispatchClient _visualInputClient;
     private readonly AvatarService _avatarService = new(EditorNervousSystemOptions, "NRE.Editor.AvatarService");
     private readonly Uri[] _snapshotBaseUris = BuildSnapshotBaseUris();
     private readonly Random _random = new(42);
@@ -173,7 +172,7 @@ public partial class MainWindow : Window
     private int _shutdownRequested;
     private bool _shutdownComplete;
     private bool _shutdownInFlight;
-    private int _v1RouteConsecutiveFailures;
+    private int _retinaRouteConsecutiveFailures;
     private int _webcamFrameEdgePx = DefaultWebcamFrameEdgePx;
     private long _webcamFrameCount;
     private long _webcamStimulusDroppedCount;
@@ -189,9 +188,9 @@ public partial class MainWindow : Window
     private DateTime _lastMicrophoneRecoveryUtc = DateTime.MinValue;
     private DateTime _lastWebcamWatchdogRecoveryUtc = DateTime.MinValue;
     private DateTime _lastMicrophoneWatchdogRecoveryUtc = DateTime.MinValue;
-    private DateTime _lastV1RouteRecoveryUtc = DateTime.MinValue;
-    private DateTime _lastV1RouteSuccessUtc = DateTime.MinValue;
-    private DateTime _lastV1RouteFailureUtc = DateTime.MinValue;
+    private DateTime _lastRetinaRouteRecoveryUtc = DateTime.MinValue;
+    private DateTime _lastRetinaRouteSuccessUtc = DateTime.MinValue;
+    private DateTime _lastRetinaRouteFailureUtc = DateTime.MinValue;
     private DateTime _lastLanguageInputUtc = DateTime.MinValue;
     private DateTime _lastSpeechUtc = DateTime.MinValue;
     private DateTime _lastLanguageUtteranceUtc = DateTime.MinValue;
@@ -212,10 +211,7 @@ public partial class MainWindow : Window
     private double _audioRmsEwma;
     private double _audioZcrEwma;
     private double _audioLevelEwma;
-    private double _pendingWebcamMotionSignal;
-    private double _pendingWebcamLuminanceSignal;
-    private double _pendingWebcamLeftSaliencySignal = 0.5;
-    private double _pendingWebcamRightSaliencySignal = 0.5;
+    private AvatarSightFrame? _pendingWebcamSightFrame;
     private DateTime _lastMicrophoneDataUtc = DateTime.MinValue;
     private DateTime _lastMicrophoneMeterUiUtc = DateTime.MinValue;
     private Uri? _preferredControlBaseUri;
@@ -243,8 +239,8 @@ public partial class MainWindow : Window
     private static readonly TimeSpan SensoryHealthPollInterval = TimeSpan.FromMilliseconds(900);
     private static readonly TimeSpan WebcamWatchdogRecoveryCooldown = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan MicrophoneWatchdogRecoveryCooldown = TimeSpan.FromSeconds(4);
-    private static readonly TimeSpan V1RouteRecoveryCooldown = TimeSpan.FromSeconds(8);
-    private static readonly TimeSpan V1RouteStallWarningTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RetinaRouteRecoveryCooldown = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan RetinaRouteStallWarningTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan OutputDuplicateSuppressionWindow = TimeSpan.FromSeconds(5);
     private const int DefaultWebcamFrameEdgePx = 196;
     private const int MaxOutputLogLines = 400;
@@ -263,7 +259,7 @@ public partial class MainWindow : Window
     private const int SpeechDefaultMinDispatchSpikes = 12;
     private const int WebcamReadFailureWarnThreshold = 30;
     private const int WebcamReadFailureReconnectThreshold = 250;
-    private const int V1RouteRecoveryFailureThreshold = 3;
+    private const int RetinaRouteRecoveryFailureThreshold = 3;
     private const int MaxNeuronHighlightsPerStructurePerFrame = 1024;
     private const int MaxPathwayActivationsPerFrame = 160;
     private const double MicrophoneUtterancePromoteRmsThreshold = 0.045;
@@ -343,7 +339,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         _httpClient.Timeout = Timeout.InfiniteTimeSpan;
-        _visualInputClient = new VisualInputDispatchClient(_httpClient);
         InitializeComponent();
         _displayModeControlsReady = true;
         BuildDockContent();
@@ -732,7 +727,7 @@ public partial class MainWindow : Window
         SetLanguageCommandTelemetryText("Brain telemetry: awaiting runtime state");
         SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
         SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
-        SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
+        SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "Retina route: awaiting webcam input");
         UpdateAvatarTransportPanel();
         InitializeSpeechControlsUi();
         UpdateReasoningSliderLabels();
@@ -4979,18 +4974,6 @@ private sealed record TransportSpikePipeline(int Generated, int Routed, int Deli
 {
     public static TransportSpikePipeline Empty { get; } = new(0, 0, 0);
 }
-private sealed record VisualStimulusDispatchResult(
-    string Pattern,
-    int Generated,
-    int Delivered,
-    int TargetCount,
-    bool RecoveryAttempted,
-    int RecoveryRestarted,
-    int RecoveryHealthy,
-    int RecoveryRetriedInstances,
-    string? FocusField,
-    string? FocusHemisphere,
-    float FocusConfidence);
 private sealed record AuditoryStimulusDispatchResult(
     string Pattern,
     int Generated,

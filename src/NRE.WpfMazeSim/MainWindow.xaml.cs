@@ -93,23 +93,11 @@ public partial class MainWindow : Window
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private readonly HttpClient _httpClient;
     private readonly HttpClient _auditoryInputHttpClient;
-    private readonly VisualInputDispatchClient _visualInputClient;
 
-    // Pixel-vision dispatch: posts raw grayscale frames to NRE.Api (the brain engine
-    // that hosts SetVisualFrame). Separate target from the ControlProgram endpoint
-    // used for symbolic visual stimuli — drives the brain's V1 Gabor hierarchy +
-    // retinotopic occipital injection with actual pixels. If NRE.Api isn't running
-    // the post fails silently; the existing symbolic path continues regardless.
-    private readonly HttpClient _pixelVisionHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1500) });
     private readonly AvatarService _avatarService = new(
         MazeNervousSystemOptions,
         "NRE.Maze.AvatarService",
         new AvatarServiceClockOptions(Enabled: true, TickIntervalMs: 50, DriveDecayOverride: 0.86));
-    private string _pixelVisionEndpoint = "http://localhost:5005";
-    private bool _pixelVisionDispatchInFlight;
-    private long _pixelVisionConsecutiveFailures;
-    private long _lastPixelVisionFailureLogMs;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly JsonDocumentOptions _jsonDocOptions = new() { AllowTrailingCommas = true };
     private readonly Model3DGroup _sceneRoot = new();
@@ -123,6 +111,7 @@ public partial class MainWindow : Window
     private readonly WriteableBitmap _visionBitmap;
     private readonly byte[] _visionPixels = new byte[VisionWidth * VisionHeight * 4];
     private readonly double[] _visionDepthBuffer = new double[VisionWidth];
+    private int _visionGeneration;
     private readonly Point3D _cameraTarget = new(0.0, 0.78, 0.0);
 
     private int _mazeRows;
@@ -224,7 +213,6 @@ public partial class MainWindow : Window
             NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1500) });
         _auditoryInputHttpClient = NreHttpClientFactory.Create(
             NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
-        _visualInputClient = new VisualInputDispatchClient(_httpClient);
 
         _renderTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
@@ -295,7 +283,6 @@ public partial class MainWindow : Window
         _avatarService.Dispose();
         _auditoryInputHttpClient.Dispose();
         _httpClient.Dispose();
-        _pixelVisionHttpClient.Dispose();
         _shutdown.Dispose();
     }
 
@@ -513,37 +500,35 @@ public partial class MainWindow : Window
 
     private async Task UpdateAvatarVisionAsync(CancellationToken token)
     {
-        var analysis = RenderAvatarVisionFrame();
-        VisionSignalText.Text = $"Vision signal: i={analysis.Intensity:0.00} b={analysis.BurstCount} L={analysis.LeftSaliency:0.00} R={analysis.RightSaliency:0.00} m={analysis.MotionSignal:0.00} p={analysis.Pattern}";
-
-        // Pixel-vision dispatch fires from the same rendered frame using a
-        // separate in-flight flag and HTTP client.
-        if (PixelVisionCheckBox?.IsChecked == true
-            && !_pixelVisionDispatchInFlight
-            && !string.IsNullOrWhiteSpace(_pixelVisionEndpoint))
-        {
-            _pixelVisionDispatchInFlight = true;
-            _ = DispatchAvatarVisionPixelsAsync();
-        }
+        var frame = RenderAvatarVisionFrame();
+        _avatarService.PostSightInputFrame(frame);
+        VisionSignalText.Text = $"Retinal frame: {frame.Width}x{frame.Height} {frame.PixelFormat}";
 
         if (VisionInputCheckBox.IsChecked != true)
         {
-            SetVisionInputStatus("Visual input: disabled");
+            SetVisionInputStatus("Retinal input: disabled");
             return;
         }
 
         var endpoint = ResolveEndpointUri();
         if (endpoint is null)
         {
-            SetVisionInputStatus("Visual input: invalid endpoint URI");
+            SetVisionInputStatus("Retinal input: invalid endpoint URI");
             return;
         }
 
         try
         {
-            var visualDispatch = await SendAvatarVisualStimulusAsync(endpoint, analysis, token);
+            var dispatch = await AvatarControlApi.PostRetinalFrameAsync(
+                _httpClient,
+                endpoint,
+                frame,
+                AvatarRuntimeDefaults.UnifiedVisualInputSource,
+                token);
             SetVisionInputStatus(
-                $"Visual input: gen={visualDispatch.Generated} del={visualDispatch.Delivered} tgt={visualDispatch.TargetCount}");
+                dispatch.BlockedByInputGate
+                    ? "Retinal input: blocked by input gate"
+                    : $"Retinal input: on={dispatch.OnChannelSpikes} off={dispatch.OffChannelSpikes} gen={dispatch.GeneratedSpikes} tgt={dispatch.TargetInstances}");
         }
         catch (OperationCanceledException)
         {
@@ -551,119 +536,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            SetVisionInputStatus($"Visual input: {ex.GetType().Name}");
+            SetVisionInputStatus($"Retinal input: {ex.GetType().Name}");
         }
     }
 
-    /// <summary>
-    /// Convert the vision preview (BGRA32) to 8-bit grayscale and POST it to
-    /// NRE.Api's <c>/api/engine/visual-frame</c>. The brain's V1 Gabor hierarchy
-    /// + retinotopic occipital injection consumes the raw bytes — true pixel
-    /// vision rather than the symbolic intensity/saliency dispatch.
-    /// </summary>
-    private async Task DispatchAvatarVisionPixelsAsync()
-    {
-        try
-        {
-            int w = VisionWidth, h = VisionHeight;
-            var gray = new byte[w * h];
-            AvatarPixelVision.ConvertBgra32ToGrayscale(_visionPixels, w, h, gray);
-
-            var uri = new Uri(new Uri(_pixelVisionEndpoint), $"/api/engine/visual-frame?w={w}&h={h}");
-            using var content = new ByteArrayContent(gray);
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-
-            using var resp = await _pixelVisionHttpClient.PostAsync(uri, content, _shutdown.Token);
-            if (resp.IsSuccessStatusCode)
-            {
-                if (Interlocked.Read(ref _pixelVisionConsecutiveFailures) > 0)
-                {
-                    Log($"Pixel-vision dispatch recovered ({_pixelVisionEndpoint}).");
-                    Interlocked.Exchange(ref _pixelVisionConsecutiveFailures, 0);
-                }
-            }
-            else
-            {
-                RegisterPixelVisionFailure($"HTTP {(int)resp.StatusCode}");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Shutdown — silent.
-        }
-        catch (Exception ex)
-        {
-            RegisterPixelVisionFailure($"{ex.GetType().Name}");
-        }
-        finally
-        {
-            _pixelVisionDispatchInFlight = false;
-        }
-    }
-
-    private void PixelVisionCheckBox_OnChecked(object sender, RoutedEventArgs e)
-    {
-        // Suppress Log() during XAML init: the Checked event fires from the
-        // XAML parser before the log target exists, which would NRE. Only log
-        // once the window has finished loading.
-        if (IsLoaded) Log($"Pixel vision enabled (target {_pixelVisionEndpoint}).");
-    }
-
-    private void PixelVisionCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
-    {
-        if (IsLoaded) Log("Pixel vision disabled.");
-    }
-
-    private void PixelVisionEndpointTextBox_OnLostFocus(object sender, RoutedEventArgs e)
-        => CommitPixelVisionEndpoint();
-
-    private void PixelVisionEndpointTextBox_OnKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter || e.Key == Key.Return)
-        {
-            CommitPixelVisionEndpoint();
-            e.Handled = true;
-        }
-    }
-
-    private void CommitPixelVisionEndpoint()
-    {
-        if (PixelVisionEndpointTextBox is null) return;
-        var raw = (PixelVisionEndpointTextBox.Text ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            PixelVisionEndpointTextBox.Text = _pixelVisionEndpoint;
-            return;
-        }
-
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var parsed)
-            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
-        {
-            if (IsLoaded) Log($"Pixel vision endpoint rejected (must be http/https): {raw}");
-            PixelVisionEndpointTextBox.Text = _pixelVisionEndpoint;
-            return;
-        }
-
-        if (_pixelVisionEndpoint == parsed.AbsoluteUri) return;
-        _pixelVisionEndpoint = parsed.AbsoluteUri;
-        Interlocked.Exchange(ref _pixelVisionConsecutiveFailures, 0);
-        if (IsLoaded) Log($"Pixel vision endpoint set: {_pixelVisionEndpoint}");
-    }
-
-    private void RegisterPixelVisionFailure(string reason)
-    {
-        var failures = Interlocked.Increment(ref _pixelVisionConsecutiveFailures);
-        // First failure + every 16th thereafter, max once per 5 s. Keeps the log
-        // readable when NRE.Api is offline.
-        var nowMs = Environment.TickCount64;
-        if (failures == 1 || (failures % 16 == 0 && (nowMs - Interlocked.Read(ref _lastPixelVisionFailureLogMs)) >= 5000))
-        {
-            Interlocked.Exchange(ref _lastPixelVisionFailureLogMs, nowMs);
-            Log($"Pixel-vision dispatch warning ({_pixelVisionEndpoint}): {reason} (failures={failures}). NRE.Api may be offline.");
-        }
-    }
-
-    private AvatarVisualSignal RenderAvatarVisionFrame()
+    private AvatarSightFrame RenderAvatarVisionFrame()
     {
         var headingRad = GetAvatarLookHeadingRad();
         var fovRad = VisionFovDegrees * Math.PI / 180.0;
@@ -671,63 +548,17 @@ public partial class MainWindow : Window
         RenderVisionWalls(headingRad, fovRad);
 
         DrawVisionSprites(headingRad, fovRad);
-        var visualSignal = BuildWorldBasedAvatarVisionSignal();
-
-        DrawVisionDebugOverlay(visualSignal.LeftSaliency, visualSignal.RightSaliency, visualSignal.MotionSignal);
-
         _visionBitmap.WritePixels(VisionBitmapRect, _visionPixels, VisionWidth * 4, 0);
 
-        return visualSignal;
-    }
-
-    private AvatarVisualSignal BuildWorldBasedAvatarVisionSignal()
-    {
-        var headingRad = GetAvatarLookHeadingRad();
-        var fovRad = VisionFovDegrees * Math.PI / 180.0;
-        const int rayCount = 32;
-
-        var leftSum = 0.0;
-        var rightSum = 0.0;
-        var allSum = 0.0;
-        var leftCount = 0;
-        var rightCount = 0;
-        for (var i = 0; i < rayCount; i++)
-        {
-            var t = (i + 0.5) / rayCount;
-            var angle = headingRad + ((t - 0.5) * fovRad);
-            var ray = TraceVisionRay(Math.Sin(angle), Math.Cos(angle), VisionRange);
-            var saliency = ray.HitWall
-                ? Math.Clamp(0.18 + ((1.0 - (ray.Distance / VisionRange)) * 0.62), 0.08, 0.82)
-                : 0.04;
-
-            allSum += saliency;
-            if (i < rayCount / 2)
-            {
-                leftSum += saliency;
-                leftCount++;
-            }
-            else
-            {
-                rightSum += saliency;
-                rightCount++;
-            }
-        }
-
-        var motionSignal = Math.Clamp((Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed) + (Math.Abs(_lastTurnRateDeg) / 280.0) + (Math.Abs(_avatarHeadYawDeg) / AvatarHeadMaxYawDeg * 0.22), 0.0, 1.0);
-        var leftSaliency = Math.Clamp(leftSum / Math.Max(1, leftCount), 0.0, 1.0);
-        var rightSaliency = Math.Clamp(rightSum / Math.Max(1, rightCount), 0.0, 1.0);
-        var luminanceSignal = Math.Clamp(allSum / rayCount, 0.0, 1.0);
-        var intensity = (float)Math.Clamp(0.15 + (0.55 * Math.Max(leftSaliency, rightSaliency)) + (0.30 * motionSignal), 0.05, 1.0);
-        var burstCount = Math.Clamp((int)Math.Round(4 + (intensity * 20.0) + (motionSignal * 8.0)), 4, 40);
-
-        return AvatarVisualSignalFactory.FromRenderedFrame(
-            AvatarRuntimeDefaults.UnifiedVisualStreamPattern,
-            intensity,
-            burstCount,
-            leftSaliency,
-            rightSaliency,
-            motionSignal,
-            luminanceSignal);
+        return new AvatarSightFrame(
+            Generation: Interlocked.Increment(ref _visionGeneration),
+            CaptureTimestampMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Width: VisionWidth,
+            Height: VisionHeight,
+            Stride: VisionWidth * 4,
+            Pixels: _visionPixels,
+            PreviewHeadingDeg: headingRad * 180.0 / Math.PI,
+            PixelFormat: "Bgra32");
     }
 
     private void FillVisionBackground()
@@ -881,58 +712,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void DrawVisionDebugOverlay(double leftSaliency, double rightSaliency, double motionSignal)
-    {
-        DrawVisionRectOutline(0, 0, VisionWidth - 1, VisionHeight - 1, Color.FromRgb(48, 91, 166), 0.42);
-
-        var centerX = VisionWidth / 2;
-        for (var y = 0; y < VisionHeight; y++)
-        {
-            BlendVisionPixel(centerX, y, Color.FromRgb(198, 224, 255), 0.25);
-        }
-
-        var barTop = 6;
-        var barHeight = 6;
-        var half = VisionWidth / 2;
-        var leftLength = (int)Math.Round((half - 14) * Math.Clamp(leftSaliency, 0.0, 1.0));
-        var rightLength = (int)Math.Round((half - 14) * Math.Clamp(rightSaliency, 0.0, 1.0));
-
-        for (var x = 8; x < 8 + leftLength; x++)
-        {
-            for (var y = barTop; y < barTop + barHeight; y++)
-            {
-                BlendVisionPixel(x, y, Color.FromRgb(74, 222, 128), 0.75);
-            }
-        }
-
-        for (var x = half + 6; x < half + 6 + rightLength; x++)
-        {
-            for (var y = barTop; y < barTop + barHeight; y++)
-            {
-                BlendVisionPixel(x, y, Color.FromRgb(96, 165, 250), 0.75);
-            }
-        }
-
-        var focusLeft = leftSaliency >= rightSaliency;
-        var focusMagnitude = Math.Abs(leftSaliency - rightSaliency);
-        var boxW = 62;
-        var boxH = 62;
-        var boxY = (VisionHeight / 2) - (boxH / 2);
-        var boxX = focusLeft
-            ? (VisionWidth / 4) - (boxW / 2)
-            : ((VisionWidth * 3) / 4) - (boxW / 2);
-        var boxAlpha = Math.Clamp(0.22 + (focusMagnitude * 0.60), 0.22, 0.88);
-        DrawVisionRectOutline(boxX, boxY, boxX + boxW, boxY + boxH, Color.FromRgb(196, 231, 255), boxAlpha);
-
-        var motionBarWidth = (int)Math.Round((VisionWidth - 16) * Math.Clamp(motionSignal, 0.0, 1.0));
-        var motionY = VisionHeight - 9;
-        for (var x = 8; x < 8 + motionBarWidth; x++)
-        {
-            BlendVisionPixel(x, motionY, Color.FromRgb(252, 211, 77), 0.82);
-            BlendVisionPixel(x, motionY + 1, Color.FromRgb(252, 211, 77), 0.82);
-        }
-    }
-
     private void DrawVisionRectOutline(int x0, int y0, int x1, int y1, Color color, double alpha)
     {
         var clampedX0 = Math.Clamp(x0, 0, VisionWidth - 1);
@@ -990,41 +769,6 @@ public partial class MainWindow : Window
         _visionPixels[idx + 1] = (byte)Math.Clamp((_visionPixels[idx + 1] * (1.0 - a)) + (color.G * a), 0.0, 255.0);
         _visionPixels[idx + 2] = (byte)Math.Clamp((_visionPixels[idx + 2] * (1.0 - a)) + (color.R * a), 0.0, 255.0);
         _visionPixels[idx + 3] = 255;
-    }
-
-    private async Task<VisualStimulusDispatchResult> SendAvatarVisualStimulusAsync(
-        Uri baseUri,
-        AvatarVisualSignal analysis,
-        CancellationToken token)
-    {
-        var request = analysis.ToVisualInputRequest();
-
-        var outcome = await _visualInputClient.DispatchWithHemisphereFallbackAsync(
-            baseUri,
-            request,
-            ex => VisualInputDispatchClient.ShouldRetryHemisphereFallback(ex, "V1"),
-            token);
-        if (outcome.FallbackAttempted)
-        {
-            if (outcome.LeftResponse is not null &&
-                outcome.RightResponse is null &&
-                outcome.RightError is not null)
-            {
-                Log($"Avatar vision partial dispatch (R failed): {VisualInputDispatchClient.FormatHttpError(outcome.RightError, 80)}");
-            }
-            else if (outcome.RightResponse is not null &&
-                     outcome.LeftResponse is null &&
-                     outcome.LeftError is not null)
-            {
-                Log($"Avatar vision partial dispatch (L failed): {VisualInputDispatchClient.FormatHttpError(outcome.LeftError, 80)}");
-            }
-        }
-
-        var response = outcome.Response;
-        return new VisualStimulusDispatchResult(
-            response.GeneratedSpikes,
-            response.DeliveredSpikes,
-            response.TargetInstances);
     }
 
     private void SetVisionInputStatus(string status)
@@ -3054,7 +2798,6 @@ public partial class MainWindow : Window
     private readonly record struct VisionSprite(Point World, Color Color, double SizeScale);
     private readonly record struct WallBounds(double XMin, double XMax, double ZMin, double ZMax);
     private readonly record struct LearningSample(long Tick, int Score);
-    private readonly record struct VisualStimulusDispatchResult(int Generated, int Delivered, int TargetCount);
 }
 
 

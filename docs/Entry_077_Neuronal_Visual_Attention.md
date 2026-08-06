@@ -21,12 +21,15 @@ The decoder fails closed to `neutral/M` when any required hemisphere is absent, 
 
 ## Sensory Boundary
 
-`POST /api/v1/admin/input/visual` still accepts left/right saliency because saliency is receptor input, not a cognitive decision. It is encoded as asymmetric contralateral spike strength and burst count:
+This boundary was tightened further by Entries 094 and 095. The structured
+visual endpoint and host-provided left/right salience no longer exist. Raw
+pixel fields are transduced into retinotopic ON/OFF ganglion spikes:
 
 - left-field saliency drives right-hemisphere visual populations;
 - right-field saliency drives left-hemisphere visual populations.
 
-The request cannot set focus. The next population snapshots determine whether either field wins. The endpoint also no longer writes the legacy predictive-perception scalar.
+Frame input cannot set focus. The next population snapshots determine whether
+either field wins.
 
 ## Removed Legacy Authority
 

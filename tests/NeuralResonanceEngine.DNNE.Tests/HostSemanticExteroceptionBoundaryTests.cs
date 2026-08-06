@@ -8,7 +8,7 @@ public sealed class HostSemanticExteroceptionBoundaryTests
     [Fact]
     public void SemanticObjectTransportTypesNoLongerExist()
     {
-        Assert.Null(typeof(VisualInputRequest).Assembly.GetType(
+        Assert.Null(typeof(InputGateControlRequest).Assembly.GetType(
             "NeuralResonanceEngine.Shared.Contracts.ObjectInputRequest",
             throwOnError: false));
         Assert.Null(typeof(AvatarSightFrame).Assembly.GetType(
@@ -54,8 +54,9 @@ public sealed class HostSemanticExteroceptionBoundaryTests
         var worldSource = ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs");
 
         Assert.Contains("RenderAvatarVisionFrame", mazeSource, StringComparison.Ordinal);
-        Assert.Contains("SendAvatarVisualStimulusAsync", mazeSource, StringComparison.Ordinal);
+        Assert.Contains("PostRetinalFrameAsync", mazeSource, StringComparison.Ordinal);
         Assert.Contains("PostSightInputFrame", worldSource, StringComparison.Ordinal);
+        Assert.Contains("PostRetinalFrameAsync", worldSource, StringComparison.Ordinal);
     }
 
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)

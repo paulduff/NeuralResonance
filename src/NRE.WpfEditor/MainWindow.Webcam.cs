@@ -10,8 +10,7 @@ using Cv2 = OpenCvSharp.Cv2;
 
 namespace NRE.WpfEditor;
 
-// Webcam input pipeline: capture loop, frame preview, motion/luminance/saliency
-// extraction, V1 stimulus dispatch, attention reticle. Extracted from MainWindow.xaml.cs.
+// Webcam input pipeline: capture, raw retinal dispatch, preview, and neural-attention reticle.
 public partial class MainWindow
 {
     private void WebcamResolutionCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -126,18 +125,15 @@ public partial class MainWindow
             _webcamStimulusSentCount = 0;
             _webcamStimulusInFlight = false;
             _webcamStimulusPending = false;
-            _pendingWebcamMotionSignal = 0;
-            _pendingWebcamLuminanceSignal = 0;
-            _pendingWebcamLeftSaliencySignal = 0.5;
-            _pendingWebcamRightSaliencySignal = 0.5;
+            _pendingWebcamSightFrame = null;
             _lastWebcamFrameUtc = DateTime.MinValue;
             _lastWebcamPreviewUiUtc = DateTime.MinValue;
-            _lastV1RouteSuccessUtc = DateTime.MinValue;
-            _lastV1RouteFailureUtc = DateTime.MinValue;
-            _v1RouteConsecutiveFailures = 0;
+            _lastRetinaRouteSuccessUtc = DateTime.MinValue;
+            _lastRetinaRouteFailureUtc = DateTime.MinValue;
+            _retinaRouteConsecutiveFailures = 0;
             WebcamStatusText.Text = $"Webcam: starting camera {cameraIndex} ({frameEdgePx}x{frameEdgePx})";
             SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Warning, "Webcam pipeline: starting");
-            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "V1 route: waiting first dispatch");
+            SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Warning, "Retina route: waiting first dispatch");
             SetWebcamPreviewUnavailable("Avatar sight starting...");
             AddOutputLog($"Webcam input starting on camera index {cameraIndex} at {frameEdgePx}x{frameEdgePx}.");
             _webcamTask = Task.Run(() => WebcamInputLoopAsync(cameraIndex, frameEdgePx, token), token);
@@ -185,10 +181,7 @@ public partial class MainWindow
         _webcamStimulusSentCount = 0;
         _webcamStimulusInFlight = false;
         _webcamStimulusPending = false;
-        _pendingWebcamMotionSignal = 0;
-        _pendingWebcamLuminanceSignal = 0;
-        _pendingWebcamLeftSaliencySignal = 0.5;
-        _pendingWebcamRightSaliencySignal = 0.5;
+        _pendingWebcamSightFrame = null;
         _lastWebcamFrameUtc = DateTime.MinValue;
         _lastWebcamPreviewUiUtc = DateTime.MinValue;
         if (ToggleWebcamInputButton is not null)
@@ -198,7 +191,7 @@ public partial class MainWindow
 
         WebcamStatusText.Text = $"Webcam: idle ({_webcamFrameEdgePx}x{_webcamFrameEdgePx})";
         SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
-        SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
+        SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "Retina route: awaiting webcam input");
         SetWebcamPreviewUnavailable("Avatar sight stopped");
         AddOutputLog("Webcam input stopped.");
         return true;
@@ -210,10 +203,6 @@ public partial class MainWindow
 
         CV.VideoCapture? capture = null;
         using var frame = new CV.Mat();
-        using var gray = new CV.Mat();
-        using var previousGray = new CV.Mat();
-        using var diff = new CV.Mat();
-        var motionEwma = 0.0;
         var readFailureCount = 0;
         var lastStatusRefreshUtc = DateTime.MinValue;
 
@@ -263,7 +252,6 @@ public partial class MainWindow
                             capture.Release();
                             capture.Dispose();
                             capture = null;
-                            previousGray.Release();
                             PostUi(() => WebcamStatusText.Text = $"Webcam: reconnecting camera {cameraIndex} after prolonged frame stall...");
                             await Task.Delay(250, token);
                             continue;
@@ -280,42 +268,40 @@ public partial class MainWindow
                     }
 
                     readFailureCount = 0;
-                    Cv2.CvtColor(frame, gray, CV.ColorConversionCodes.BGR2GRAY);
-                    if (previousGray.Empty())
-                    {
-                        gray.CopyTo(previousGray);
-                        await Task.Delay(33, token);
-                        continue;
-                    }
-
-                    Cv2.Absdiff(gray, previousGray, diff);
-                    var motion = Cv2.Mean(diff).Val0;
-                    var luminance = Cv2.Mean(gray).Val0;
-                    motionEwma = (motionEwma * 0.82) + (motion * 0.18);
-                    var (leftSaliency, rightSaliency) = ComputeHemifieldSaliency(gray, diff);
-
                     var now = DateTime.UtcNow;
                     _lastWebcamFrameUtc = now;
                     _webcamFrameCount++;
-                    QueueWebcamPreviewFrame(frame, now);
-                    if ((now - _lastWebcamStimulusUtc) >= WebcamStimulusInterval)
+                    var previewDue = (now - _lastWebcamPreviewUiUtc) >= WebcamPreviewUiInterval;
+                    var retinalDispatchDue = (now - _lastWebcamStimulusUtc) >= WebcamStimulusInterval;
+                    if (previewDue || retinalDispatchDue)
                     {
-                        _lastWebcamStimulusUtc = now;
-                        QueueWebcamStimulusDispatch(motionEwma, luminance, leftSaliency, rightSaliency, token);
+                        var sightFrame = CreateWebcamSightFrame(frame, now);
+                        if (sightFrame is not null)
+                        {
+                            _avatarService.PostSightInputFrame(sightFrame);
+                            if (previewDue)
+                            {
+                                _lastWebcamPreviewUiUtc = now;
+                                _ = PresentWebcamAvatarSightOutputWhenReadyAsync(sightFrame.Generation);
+                            }
+
+                            if (retinalDispatchDue)
+                            {
+                                _lastWebcamStimulusUtc = now;
+                                QueueWebcamStimulusDispatch(sightFrame, token);
+                            }
+                        }
                     }
 
                     if ((now - lastStatusRefreshUtc) >= TimeSpan.FromMilliseconds(420))
                     {
                         lastStatusRefreshUtc = now;
-                        var motionLabel = motionEwma / 255.0;
-                        var lumaLabel = luminance / 255.0;
                         PostUi(() =>
                         {
-                            WebcamStatusText.Text = $"Webcam: live m={motionLabel:0.00} y={lumaLabel:0.00} f={_webcamFrameCount} q={(_webcamStimulusInFlight ? "busy" : "idle")} sent={_webcamStimulusSentCount} drop={_webcamStimulusDroppedCount} ({frameEdgePx}x{frameEdgePx})";
+                            WebcamStatusText.Text = $"Webcam: live f={_webcamFrameCount} q={(_webcamStimulusInFlight ? "busy" : "idle")} sent={_webcamStimulusSentCount} drop={_webcamStimulusDroppedCount} ({frameEdgePx}x{frameEdgePx})";
                         });
                     }
 
-                    gray.CopyTo(previousGray);
                     await Task.Delay(24, token);
                 }
                 catch (OperationCanceledException)
@@ -346,75 +332,59 @@ public partial class MainWindow
         });
     }
 
-    private async Task PushWebcamStimulusAsync(
-        double motionSignal,
-        double luminanceSignal,
-        double leftSaliency,
-        double rightSaliency,
-        CancellationToken token)
+    private async Task PushWebcamStimulusAsync(AvatarSightFrame frame, CancellationToken token)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         cts.CancelAfter(TimeSpan.FromMilliseconds(1500));
         var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
         if (baseUri is null)
         {
-            _lastV1RouteFailureUtc = DateTime.UtcNow;
-            _v1RouteConsecutiveFailures = Math.Min(_v1RouteConsecutiveFailures + 1, 1000);
+            _lastRetinaRouteFailureUtc = DateTime.UtcNow;
+            _retinaRouteConsecutiveFailures = Math.Min(_retinaRouteConsecutiveFailures + 1, 1000);
             PostUi(() =>
             {
-                WebcamStatusText.Text = $"Webcam: live m={motionSignal / 255.0:0.00} y={luminanceSignal / 255.0:0.00} f={_webcamFrameCount} (awaiting control)";
-                SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Failed, "V1 route: control endpoint unavailable");
+                WebcamStatusText.Text = $"Webcam: live f={_webcamFrameCount} (awaiting control)";
+                SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Failed, "Retina route: control endpoint unavailable");
             });
             return;
         }
 
-        var visualSignal = AvatarVisualSignalFactory.FromWebcam(motionSignal, luminanceSignal, leftSaliency, rightSaliency);
-        var result = await SendVisualStimulusAsync(baseUri, visualSignal, cts.Token);
-        if (result.Delivered > 0)
+        var result = await AvatarControlApi.PostRetinalFrameAsync(
+            _httpClient,
+            baseUri,
+            frame,
+            "editor_webcam",
+            cts.Token);
+        if (result.Accepted && !result.BlockedByInputGate && result.TargetInstances > 0)
+        {
+            NoteVisualRouteDispatchSuccess();
+        }
+        else if (result.BlockedByInputGate)
         {
             NoteVisualRouteDispatchSuccess();
         }
         else
         {
-            await NoteVisualRouteDispatchFailureAsync($"delivered=0 generated={result.Generated} targets={result.TargetCount}", token);
+            await NoteVisualRouteDispatchFailureAsync(
+                $"accepted={result.Accepted} generated={result.GeneratedSpikes} targets={result.TargetInstances}",
+                token);
         }
 
         PostUi(() =>
         {
-            var recoveryLabel = result.RecoveryAttempted
-                ? $" rec={result.RecoveryHealthy}/{Math.Max(result.RecoveryRestarted, result.RecoveryRetriedInstances)}"
-                : string.Empty;
-            var focusLabel = string.IsNullOrWhiteSpace(result.FocusField)
-                ? "neutral"
-                : result.FocusField!;
-            _visualAttentionFocusField = focusLabel.Trim().ToLowerInvariant();
-            _visualAttentionFocusHemisphere = string.IsNullOrWhiteSpace(result.FocusHemisphere)
-                ? "M"
-                : result.FocusHemisphere!.Trim().ToUpperInvariant();
-            _visualAttentionFocusConfidence = Math.Clamp(result.FocusConfidence, 0f, 1f);
-            UpdateWebcamAttentionReticle();
             WebcamStatusText.Text =
-                $"Webcam: {result.Pattern} i={visualSignal.Intensity:0.00} b={visualSignal.BurstCount} del={result.Delivered} m={visualSignal.MotionSignal:0.00} " +
-                $"attn={focusLabel}/{result.FocusHemisphere}({result.FocusConfidence:0.00}) f={_webcamFrameCount}{recoveryLabel}";
-            if (result.Delivered > 0)
+                result.BlockedByInputGate
+                    ? $"Webcam: Retina input gate closed f={_webcamFrameCount}"
+                    : $"Webcam: Retina on={result.OnChannelSpikes} off={result.OffChannelSpikes} gen={result.GeneratedSpikes} " +
+                      $"y={result.MeanLuminance:0.00} dt={result.MeanTemporalChange:0.00} f={_webcamFrameCount}";
+            if (result.GeneratedSpikes > 0)
             {
-                AddSpikeLog($"Webcam {result.Pattern}: delivered {result.Delivered} spikes");
-            }
-
-            if (result.RecoveryAttempted)
-            {
-                AddOutputLog(
-                    $"Webcam recovery: restarted={result.RecoveryRestarted}, healthy={result.RecoveryHealthy}, retried={result.RecoveryRetriedInstances}, delivered={result.Delivered}/{result.Generated}.");
+                AddSpikeLog($"Webcam Retina: generated {result.GeneratedSpikes} receptor spikes");
             }
         });
     }
 
-    private void QueueWebcamStimulusDispatch(
-        double motionSignal,
-        double luminanceSignal,
-        double leftSaliency,
-        double rightSaliency,
-        CancellationToken token)
+    private void QueueWebcamStimulusDispatch(AvatarSightFrame frame, CancellationToken token)
     {
         var shouldStartWorker = false;
         lock (_webcamStimulusGate)
@@ -422,19 +392,13 @@ public partial class MainWindow
             if (_webcamStimulusInFlight)
             {
                 _webcamStimulusPending = true;
-                _pendingWebcamMotionSignal = motionSignal;
-                _pendingWebcamLuminanceSignal = luminanceSignal;
-                _pendingWebcamLeftSaliencySignal = leftSaliency;
-                _pendingWebcamRightSaliencySignal = rightSaliency;
+                _pendingWebcamSightFrame = frame;
                 _webcamStimulusDroppedCount++;
             }
             else
             {
                 _webcamStimulusInFlight = true;
-                _pendingWebcamMotionSignal = motionSignal;
-                _pendingWebcamLuminanceSignal = luminanceSignal;
-                _pendingWebcamLeftSaliencySignal = leftSaliency;
-                _pendingWebcamRightSaliencySignal = rightSaliency;
+                _pendingWebcamSightFrame = frame;
                 shouldStartWorker = true;
             }
         }
@@ -451,22 +415,20 @@ public partial class MainWindow
         {
             while (!token.IsCancellationRequested)
             {
-                double motionSignal;
-                double luminanceSignal;
-                double leftSaliency;
-                double rightSaliency;
+                AvatarSightFrame? frame;
                 lock (_webcamStimulusGate)
                 {
-                    motionSignal = _pendingWebcamMotionSignal;
-                    luminanceSignal = _pendingWebcamLuminanceSignal;
-                    leftSaliency = _pendingWebcamLeftSaliencySignal;
-                    rightSaliency = _pendingWebcamRightSaliencySignal;
+                    frame = _pendingWebcamSightFrame;
+                    _pendingWebcamSightFrame = null;
                     _webcamStimulusPending = false;
                 }
 
                 try
                 {
-                    await PushWebcamStimulusAsync(motionSignal, luminanceSignal, leftSaliency, rightSaliency, token);
+                    if (frame is not null)
+                    {
+                        await PushWebcamStimulusAsync(frame, token);
+                    }
                     _webcamStimulusSentCount++;
                 }
                 catch (OperationCanceledException)
@@ -504,19 +466,12 @@ public partial class MainWindow
         }
     }
 
-    private void QueueWebcamPreviewFrame(CV.Mat frame, DateTime nowUtc)
+    private AvatarSightFrame? CreateWebcamSightFrame(CV.Mat frame, DateTime nowUtc)
     {
-        if (WebcamPreviewImage is null || frame.Empty())
+        if (frame.Empty())
         {
-            return;
+            return null;
         }
-
-        if ((nowUtc - _lastWebcamPreviewUiUtc) < WebcamPreviewUiInterval)
-        {
-            return;
-        }
-
-        _lastWebcamPreviewUiUtc = nowUtc;
 
         using var rgb = new CV.Mat();
         Cv2.CvtColor(frame, rgb, CV.ColorConversionCodes.BGR2RGB);
@@ -526,12 +481,12 @@ public partial class MainWindow
         var byteCount = stride * height;
         if (byteCount <= 0)
         {
-            return;
+            return null;
         }
 
         var pixels = new byte[byteCount];
         Marshal.Copy(rgb.Data, pixels, 0, byteCount);
-        var sightFrame = new AvatarSightFrame(
+        return new AvatarSightFrame(
             Generation: unchecked((int)Math.Min(_webcamFrameCount, int.MaxValue)),
             CaptureTimestampMs: new DateTimeOffset(nowUtc).ToUnixTimeMilliseconds(),
             Width: width,
@@ -540,8 +495,6 @@ public partial class MainWindow
             Pixels: pixels,
             PreviewHeadingDeg: 0.0,
             PixelFormat: "Rgb24");
-        _avatarService.PostSightInputFrame(sightFrame);
-        _ = PresentWebcamAvatarSightOutputWhenReadyAsync(sightFrame.Generation);
     }
 
     private async Task PresentWebcamAvatarSightOutputWhenReadyAsync(int minGeneration)
@@ -706,84 +659,4 @@ public partial class MainWindow
         WebcamAttentionReticle.Visibility = Visibility.Visible;
     }
 
-    private async Task<VisualStimulusDispatchResult> SendVisualStimulusAsync(
-        Uri baseUri,
-        AvatarVisualSignal visualSignal,
-        CancellationToken cancellationToken)
-    {
-        var request = visualSignal.ToVisualInputRequest();
-
-        var outcome = await _visualInputClient.DispatchWithHemisphereFallbackAsync(
-            baseUri,
-            request,
-            ex => VisualInputDispatchClient.ShouldRetryHemisphereFallback(ex, "V1"),
-            cancellationToken);
-
-        if (outcome.FallbackAttempted)
-        {
-            AddOutputLog("Webcam visual route fallback: retrying explicit L/R hemisphere dispatch.");
-            if (outcome.LeftResponse is not null &&
-                outcome.RightResponse is null &&
-                outcome.RightError is not null)
-            {
-                AddOutputLog(
-                    $"Webcam visual route partial recovery: right hemisphere dispatch failed ({VisualInputDispatchClient.FormatHttpError(outcome.RightError, 120)}).");
-            }
-            else if (outcome.RightResponse is not null &&
-                     outcome.LeftResponse is null &&
-                     outcome.LeftError is not null)
-            {
-                AddOutputLog(
-                    $"Webcam visual route partial recovery: left hemisphere dispatch failed ({VisualInputDispatchClient.FormatHttpError(outcome.LeftError, 120)}).");
-            }
-        }
-
-        var response = outcome.Response;
-        return new VisualStimulusDispatchResult(
-            visualSignal.Pattern,
-            response.GeneratedSpikes,
-            response.DeliveredSpikes,
-            response.TargetInstances,
-            response.RecoveryAttempted,
-            response.RecoveryRestarted,
-            response.RecoveryHealthy,
-            response.RecoveryRetriedInstances,
-            response.AttentionFocusField,
-            response.AttentionFocusHemisphere,
-            response.AttentionFocusConfidence);
-    }
-
-    private static (double Left, double Right) ComputeHemifieldSaliency(CV.Mat gray, CV.Mat diff)
-    {
-        if (gray.Empty() || diff.Empty() || gray.Width < 2 || diff.Width < 2)
-        {
-            return (0.5, 0.5);
-        }
-
-        var splitX = gray.Width / 2;
-        if (splitX <= 0 || splitX >= gray.Width)
-        {
-            return (0.5, 0.5);
-        }
-
-        using var leftGray = new CV.Mat(gray, new CV.Rect(0, 0, splitX, gray.Height));
-        using var rightGray = new CV.Mat(gray, new CV.Rect(splitX, 0, gray.Width - splitX, gray.Height));
-        using var leftDiff = new CV.Mat(diff, new CV.Rect(0, 0, splitX, diff.Height));
-        using var rightDiff = new CV.Mat(diff, new CV.Rect(splitX, 0, diff.Width - splitX, diff.Height));
-
-        var leftMotion = Math.Clamp(Cv2.Mean(leftDiff).Val0 / 255.0, 0.0, 1.0);
-        var rightMotion = Math.Clamp(Cv2.Mean(rightDiff).Val0 / 255.0, 0.0, 1.0);
-        var leftLuma = Math.Clamp(Cv2.Mean(leftGray).Val0 / 255.0, 0.0, 1.0);
-        var rightLuma = Math.Clamp(Cv2.Mean(rightGray).Val0 / 255.0, 0.0, 1.0);
-
-        var leftRaw = Math.Clamp((0.72 * leftMotion) + (0.28 * leftLuma), 0.0, 1.0);
-        var rightRaw = Math.Clamp((0.72 * rightMotion) + (0.28 * rightLuma), 0.0, 1.0);
-        var sum = leftRaw + rightRaw;
-        if (sum <= 0.0001)
-        {
-            return (0.5, 0.5);
-        }
-
-        return (leftRaw / sum, rightRaw / sum);
-    }
 }

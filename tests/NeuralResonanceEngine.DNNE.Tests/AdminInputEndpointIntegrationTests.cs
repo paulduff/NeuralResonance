@@ -52,31 +52,18 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task VisualInput_AvatarSource_Is_Blocked_When_AvatarVision_Gate_Is_Disabled()
+    public async Task StructuredVisualInputEndpointDoesNotExist()
     {
-        var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: false);
-
-        var response = await client.PostAsJsonAsync(
+        var response = await _fixture.Client.PostAsJsonAsync(
             "/api/v1/admin/input/visual",
-            new VisualInputRequest(
-                Pattern: "VideoFrame",
-                Intensity: 0.8f,
-                BurstCount: 16,
-                TargetStructure: "V1",
-                SourceStructure: "Retina",
-                Hemisphere: null,
-                LeftFieldSaliency: 0.4f,
-                RightFieldSaliency: 0.6f,
-                UseAttentionRouting: true,
-                InputSource: "avatar_vision"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            new
+            {
+                Pattern = "PreclassifiedObject",
+                TargetStructure = "V1",
+                LeftFieldSaliency = 1.0f
+            });
 
-        var audioPayload = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(audioPayload);
-        Assert.True(GetBool(doc.RootElement, "blockedByInputGate"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -119,59 +106,6 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         using var doc = await ReadJsonAsync(response);
         Assert.Contains("exactly", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task VisualInput_NonAvatarSource_Uses_Normal_Path_Instead_Of_Gate_Blocking()
-    {
-        var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: false);
-
-        var response = await client.PostAsJsonAsync(
-            "/api/v1/admin/input/visual",
-            new VisualInputRequest(
-                Pattern: "TerrainPaint",
-                Intensity: 0.7f,
-                BurstCount: 12,
-                TargetStructure: "V1",
-                SourceStructure: "Retina",
-                Hemisphere: null,
-                LeftFieldSaliency: 0.3f,
-                RightFieldSaliency: 0.7f,
-                UseAttentionRouting: true,
-                InputSource: "world_map_editor"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        using var doc = await ReadJsonAsync(response);
-        Assert.False(GetBool(doc.RootElement, "blockedByInputGate"));
-    }
-
-    [Fact]
-    public async Task VisualInput_AvatarSource_Accepts_And_Defers_Dispatch_When_Gate_Enabled()
-    {
-        var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: true);
-
-        var response = await client.PostAsJsonAsync(
-            "/api/v1/admin/input/visual",
-            new VisualInputRequest(
-                Pattern: "VideoFrame",
-                Intensity: 0.8f,
-                BurstCount: 16,
-                TargetStructure: "V1",
-                SourceStructure: "Retina",
-                Hemisphere: null,
-                LeftFieldSaliency: 0.5f,
-                RightFieldSaliency: 0.5f,
-                UseAttentionRouting: false,
-                InputSource: "avatar_vision"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var payload = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(payload);
-        Assert.True(GetBool(doc.RootElement, "accepted"), payload);
-        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), payload);
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
     }
 
     [Fact]

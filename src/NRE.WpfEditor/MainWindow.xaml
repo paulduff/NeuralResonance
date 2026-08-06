@@ -442,7 +442,7 @@
                                          HorizontalScrollBarVisibility="Auto" />
                             </Border>
                         </layout:LayoutAnchorable>
-                        <layout:LayoutAnchorable x:Name="InhabitanceAnchorable" Title="Inhabitance" CanClose="False" CanHide="True">
+                        <layout:LayoutAnchorable x:Name="InhabitanceAnchorable" Title="Embodiment" CanClose="False" CanHide="True">
                             <Border Background="#111A2E" Padding="8">
                                 <TextBox x:Name="InhabitanceTextBox"
                                          BorderThickness="0"
@@ -474,7 +474,7 @@
                                          HorizontalScrollBarVisibility="Auto" />
                             </Border>
                         </layout:LayoutAnchorable>
-                        <layout:LayoutAnchorable x:Name="ReasoningAnchorable" Title="Reasoning" CanClose="False" CanHide="True">
+                        <layout:LayoutAnchorable x:Name="ReasoningAnchorable" Title="Neuronal Cognition" CanClose="False" CanHide="True">
                             <Border Background="#111A2E" Padding="8">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
@@ -494,7 +494,7 @@
                                         <TextBlock x:Name="ReasoningStatusText"
                                                    Margin="0,8,0,0"
                                                    Foreground="#9EB3E5"
-                                                   Text="Reasoning controls: awaiting runtime state" />
+                                                   Text="Neuronal cognition: awaiting runtime state" />
 
                                         <TextBlock Margin="0,12,0,4"
                                                    Text="Neuronal Executive"
@@ -536,120 +536,6 @@
                                                 Click="ReasoningApplyCurriculumButton_OnClick"
                                                 Content="Apply Curriculum" />
 
-                                        <TextBlock Margin="0,14,0,4" Text="Consolidation Control" Foreground="#DDE6FF" FontWeight="SemiBold" />
-                                        <CheckBox x:Name="ReasoningConsolidationEnabledCheckBox"
-                                                  Foreground="#C5D2F2"
-                                                  Content="Consolidation Enabled"
-                                                  IsChecked="True" />
-                                        <TextBlock Margin="0,10,0,4" Text="Replay Weight (Early Hippocampal)" Foreground="#B9C8ED" />
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="ReasoningReplayEarlySlider"
-                                                    Grid.Column="0"
-                                                    Minimum="0.20"
-                                                    Maximum="4.00"
-                                                    ValueChanged="ReasoningSlider_OnValueChanged"
-                                                    Value="1.80" />
-                                            <TextBlock x:Name="ReasoningReplayEarlyText"
-                                                       Grid.Column="1"
-                                                       Margin="8,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="#C5D2F2"
-                                                       Text="1.80" />
-                                        </Grid>
-                                        <TextBlock Margin="0,10,0,4" Text="Replay Weight (Late Cortical)" Foreground="#B9C8ED" />
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="ReasoningReplayLateSlider"
-                                                    Grid.Column="0"
-                                                    Minimum="0.20"
-                                                    Maximum="4.00"
-                                                    ValueChanged="ReasoningSlider_OnValueChanged"
-                                                    Value="1.40" />
-                                            <TextBlock x:Name="ReasoningReplayLateText"
-                                                       Grid.Column="1"
-                                                       Margin="8,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="#C5D2F2"
-                                                       Text="1.40" />
-                                        </Grid>
-                                        <TextBlock Margin="0,10,0,4" Text="Anti-Forgetting Homeostasis" Foreground="#B9C8ED" />
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="ReasoningAntiForgettingSlider"
-                                                    Grid.Column="0"
-                                                    Minimum="0.00"
-                                                    Maximum="1.00"
-                                                    ValueChanged="ReasoningSlider_OnValueChanged"
-                                                    Value="0.60" />
-                                            <TextBlock x:Name="ReasoningAntiForgettingText"
-                                                       Grid.Column="1"
-                                                       Margin="8,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="#C5D2F2"
-                                                       Text="0.60" />
-                                        </Grid>
-                                        <Button Margin="0,10,0,0"
-                                                Padding="8,4"
-                                                Click="ReasoningApplyConsolidationButton_OnClick"
-                                                Content="Apply Consolidation" />
-
-                                        <TextBlock Margin="0,14,0,4" Text="Counterfactual Probe" Foreground="#DDE6FF" FontWeight="SemiBold" />
-                                        <TextBlock Text="Action Key (source|target|NT|feedback)" Foreground="#B9C8ED" />
-                                        <TextBox x:Name="ReasoningCounterfactualActionTextBox"
-                                                 Margin="0,4,0,0"
-                                                 Background="#14203B"
-                                                 Foreground="#DDE6FF"
-                                                 BorderBrush="#2D3D63"
-                                                 Text="idle" />
-                                        <TextBlock Margin="0,10,0,4" Text="Horizon Steps" Foreground="#B9C8ED" />
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="ReasoningCounterfactualHorizonSlider"
-                                                    Grid.Column="0"
-                                                    Minimum="1"
-                                                    Maximum="12"
-                                                    TickFrequency="1"
-                                                    IsSnapToTickEnabled="True"
-                                                    ValueChanged="ReasoningSlider_OnValueChanged"
-                                                    Value="4" />
-                                            <TextBlock x:Name="ReasoningCounterfactualHorizonText"
-                                                       Grid.Column="1"
-                                                       Margin="8,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="#C5D2F2"
-                                                       Text="4" />
-                                        </Grid>
-                                        <Button Margin="0,10,0,0"
-                                                Padding="8,4"
-                                                Click="ReasoningEvaluateCounterfactualButton_OnClick"
-                                                Content="Evaluate Counterfactual" />
-                                        <TextBox x:Name="ReasoningCounterfactualResultTextBox"
-                                                 Margin="0,8,0,0"
-                                                 Height="120"
-                                                 BorderThickness="0"
-                                                 Background="#0E1830"
-                                                 Foreground="#D3E0FF"
-                                                 FontFamily="Consolas"
-                                                 FontSize="12"
-                                                 IsReadOnly="True"
-                                                 IsReadOnlyCaretVisible="True"
-                                                 AcceptsReturn="True"
-                                                 TextWrapping="NoWrap"
-                                                 VerticalScrollBarVisibility="Auto"
-                                                 HorizontalScrollBarVisibility="Auto" />
                                     </StackPanel>
                                 </ScrollViewer>
                             </Border>

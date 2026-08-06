@@ -367,36 +367,6 @@ app.MapPost("/api/v1/admin/auto-profile", (
         Settings = settings
     });
 });
-app.MapGet("/api/v1/admin/memory-control", (SimulationState state) =>
-{
-    return Results.Ok(state.GetMemoryControlSnapshot());
-});
-app.MapPost("/api/v1/admin/memory-control", (MemoryControlRequest request, SimulationState state) =>
-{
-    if (request is null || string.IsNullOrWhiteSpace(request.Mode))
-    {
-        return Results.BadRequest(new
-        {
-            Error = "Mode is required. Supported values: balanced, short_term, long_term, encoding, recall."
-        });
-    }
-
-    if (!state.TrySetMemoryControl(request.Mode, request.Blend, out var memoryControl, out var error))
-    {
-        return Results.BadRequest(new
-        {
-            Error = error ?? "Unable to apply memory control."
-        });
-    }
-
-    state.AppendOutputLog(
-        $"Memory control updated: mode={memoryControl.Mode}, blend={memoryControl.Blend:0.00}.");
-    return Results.Ok(new
-    {
-        Applied = true,
-        MemoryControl = state.GetMemoryControlSnapshot()
-    });
-});
 app.MapGet("/api/v1/admin/sleep-memory", (SimulationState state) =>
 {
     return Results.Ok(new
@@ -3401,7 +3371,6 @@ internal sealed class SimulationState
     public long TotalSpontaneousDelivered { get; private set; }
     public long TotalSpontaneousDispatchErrors { get; private set; }
     public string PerformanceProfileName { get; private set; } = "normal";
-    public MemoryControlSettings MemoryControl { get; private set; } = MemoryControlSettings.Default;
     public SleepMemoryRuntime SleepMemory { get; private set; } = SleepMemoryRuntime.Default;
     public InputGateRuntime InputGates { get; private set; } = InputGateRuntime.Default;
     public EnvironmentalStateRuntime EnvironmentalState { get; private set; } = EnvironmentalStateRuntime.Default;
@@ -3418,6 +3387,12 @@ internal sealed class SimulationState
     public CerebellumRuntime Cerebellum { get; private set; } = CerebellumRuntime.Default;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
     public NeuronalLanguageGroundingDecision NeuronalLanguageGrounding { get; private set; } = NeuronalLanguageGroundingDecision.Unavailable;
+    public NeuronalPerceptDecision NeuronalPerception { get; private set; } = NeuronalPerceptDecision.Unavailable;
+    public NeuronalMemoryDecision NeuronalMemory { get; private set; } = NeuronalMemoryDecision.Unavailable;
+    public NeuronalAttentionWorkspaceDecision NeuronalAttentionWorkspace { get; private set; } = NeuronalAttentionWorkspaceDecision.Unavailable;
+    public NeuronalSleepConsolidationDecision NeuronalSleepConsolidation { get; private set; } = NeuronalSleepConsolidationDecision.Unavailable;
+    public NeuronalAffectValuationDecision NeuronalAffectValuation { get; private set; } = NeuronalAffectValuationDecision.Unavailable;
+    public NeuronalExecutiveDecision NeuronalExecutive { get; private set; } = NeuronalExecutiveDecision.Unavailable;
     public CurriculumRuntime Curriculum { get; private set; } = CurriculumRuntime.Default;
     public Dictionary<StructureId, ServiceRuntimeTelemetry> ServiceTelemetry { get; } = new();
     public TransportRuntimeStats TransportStats { get; private set; } = TransportRuntimeStats.Empty;
@@ -3475,8 +3450,7 @@ internal sealed class SimulationState
         lock (_gate)
         {
             var clamped = NeuromodState.Clamp(neuromodState);
-            var memoryBiased = ApplyMemoryControl(clamped, MemoryControl);
-            GlobalNeuromodState = ApplySleepStateNeuromod(memoryBiased, SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(clamped, SleepMemory);
             RewardPredictionError = rewardPredictionError;
         }
     }
@@ -3854,6 +3828,25 @@ internal sealed class SimulationState
         }
     }
 
+    public void UpdateNeuronalCognitionTelemetry(
+        NeuronalPerceptDecision perception,
+        NeuronalMemoryDecision memory,
+        NeuronalAttentionWorkspaceDecision attentionWorkspace,
+        NeuronalSleepConsolidationDecision sleepConsolidation,
+        NeuronalAffectValuationDecision affectValuation,
+        NeuronalExecutiveDecision executive)
+    {
+        lock (_gate)
+        {
+            NeuronalPerception = perception;
+            NeuronalMemory = memory;
+            NeuronalAttentionWorkspace = attentionWorkspace;
+            NeuronalSleepConsolidation = sleepConsolidation;
+            NeuronalAffectValuation = affectValuation;
+            NeuronalExecutive = executive;
+        }
+    }
+
     private void InvalidateCompositeSnapshotCachesLocked()
     {
         _cachedCircuitAuditTick = -1;
@@ -3873,19 +3866,6 @@ internal sealed class SimulationState
     {
         var clamped = Math.Clamp(maxWarnings, 8, 512);
         return GetCachedCircuitAuditSnapshot(clamped);
-    }
-
-    public object GetMemoryControlSnapshot()
-    {
-        lock (_gate)
-        {
-            return new
-            {
-                MemoryControl.Mode,
-                MemoryControl.Blend,
-                SupportedModes = MemoryControlSettings.SupportedModes
-            };
-        }
     }
 
     public object GetSleepMemorySnapshot()
@@ -5174,9 +5154,7 @@ internal sealed class SimulationState
                 Health = Math.Clamp(environmentalHealth + ((1f - environmentalHealth) * 0.002f), 0f, 1f),
                 ShelterSafety = environmentalShelterSafety * 0.996f
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
-                SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
 
             return new SleepTransitionResult(
                 runtime.IsSleeping,
@@ -5187,23 +5165,6 @@ internal sealed class SimulationState
         }
     }
 
-
-    public bool TrySetMemoryControl(string mode, float? blend, out MemoryControlSettings settings, out string? error)
-    {
-        lock (_gate)
-        {
-            if (!MemoryControlSettings.TryCreate(mode, blend, out settings, out error))
-            {
-                return false;
-            }
-
-            MemoryControl = settings;
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
-                SleepMemory);
-            return true;
-        }
-    }
 
     public bool TrySetMinWakeTicks(int minWakeTicks, out SleepMemoryRuntime runtime, out string? error)
     {
@@ -5233,9 +5194,7 @@ internal sealed class SimulationState
                 MinWakeTicks = minWakeTicks,
                 WakeInertiaTicksRemaining = wakeInertiaTicksRemaining
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
-                SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
             runtime = SleepMemory;
             return true;
         }
@@ -5259,9 +5218,7 @@ internal sealed class SimulationState
             {
                 SleepPressureEnterThreshold = threshold
             };
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
-                SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
             runtime = SleepMemory;
             return true;
         }
@@ -5426,9 +5383,7 @@ internal sealed class SimulationState
             }
 
             SleepMemory = ApplySleepProfile(SleepMemory, PerformanceProfileName);
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
-                SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(GlobalNeuromodState, SleepMemory);
         }
     }
 
@@ -6806,7 +6761,6 @@ internal sealed class SimulationState
         GlobalNeuromodState,
         AutoProfile = autoProfile ?? AutoProfileSettings.Default,
         InputGates,
-        MemoryControl,
           BodyState = new
           {
               BodyState.ForwardVelocity,
@@ -6931,6 +6885,12 @@ internal sealed class SimulationState
         },
         NeuronalMotor,
         NeuronalLanguageGrounding,
+        NeuronalPerception,
+        NeuronalMemory,
+        NeuronalAttentionWorkspace,
+        NeuronalSleepConsolidation,
+        NeuronalAffectValuation,
+        NeuronalExecutive,
         BrainBehavior = GetCachedBrainBehaviorSnapshot(),
         ConsolidationTelemetry = BuildConsolidationTelemetrySnapshot(),
         CircuitAudit = GetCachedCircuitAuditSnapshot(),
@@ -7674,7 +7634,6 @@ internal sealed class SimulationState
                 GlobalNeuromodState = NeuromodState.Clamp(GlobalNeuromodState),
                 RewardPredictionError = RewardPredictionError,
                 PerformanceProfileName = string.IsNullOrWhiteSpace(PerformanceProfileName) ? "normal" : PerformanceProfileName,
-                MemoryControl = MemoryControl,
                 InputGates = InputGates,
                 SleepMemory = SleepMemory,
                 BodySchema = BodySchema,
@@ -7781,13 +7740,6 @@ internal sealed class SimulationState
                 : document.PerformanceProfileName.Trim();
             PerformanceProfileName = profileName;
 
-            var importedMemoryControl = document.MemoryControl ?? MemoryControlSettings.Default;
-            if (!MemoryControlSettings.TryCreate(importedMemoryControl.Mode, importedMemoryControl.Blend, out var memoryControl, out _))
-            {
-                memoryControl = MemoryControlSettings.Default;
-            }
-
-            MemoryControl = memoryControl;
             InputGates = InputGateRuntime.Normalize(document.InputGates ?? InputGateRuntime.Default);
             var importedSleepMemory = document.SleepMemory ?? SleepMemoryRuntime.Default;
             var importedBodySchema = document.BodySchema ?? BodySchemaRuntime.Default;
@@ -7809,9 +7761,7 @@ internal sealed class SimulationState
             EmotionState = EmotionRuntimeState.Normalize(importedEmotionState);
             Cerebellum = CerebellumRuntime.Normalize(importedCerebellum);
             RestoreCurriculumFromSnapshot(importedCurriculum);
-            GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyMemoryControl(NeuromodState.Clamp(importedNeuromod), MemoryControl),
-                SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(NeuromodState.Clamp(importedNeuromod), SleepMemory);
             RewardPredictionError = document.RewardPredictionError;
 
             LastSnapshotTick = Math.Max(0, document.LastSnapshotTick);
@@ -8084,57 +8034,6 @@ internal sealed class SimulationState
         }
 
         return "misc";
-    }
-
-    private static NeuromodState ApplyMemoryControl(NeuromodState baseline, MemoryControlSettings control)
-    {
-        var target = control.Mode switch
-        {
-            "short_term" => new NeuromodState
-            {
-                DopamineLevel = 0.58f,
-                SerotoninLevel = 0.34f,
-                AcetylcholineLevel = 0.82f,
-                NorepinephrineLevel = 0.72f
-            },
-            "long_term" => new NeuromodState
-            {
-                DopamineLevel = 0.42f,
-                SerotoninLevel = 0.78f,
-                AcetylcholineLevel = 0.24f,
-                NorepinephrineLevel = 0.24f
-            },
-            "encoding" => new NeuromodState
-            {
-                DopamineLevel = 0.72f,
-                SerotoninLevel = 0.46f,
-                AcetylcholineLevel = 0.86f,
-                NorepinephrineLevel = 0.66f
-            },
-            "recall" => new NeuromodState
-            {
-                DopamineLevel = 0.54f,
-                SerotoninLevel = 0.62f,
-                AcetylcholineLevel = 0.48f,
-                NorepinephrineLevel = 0.44f
-            },
-            _ => new NeuromodState
-            {
-                DopamineLevel = 0.5f,
-                SerotoninLevel = 0.5f,
-                AcetylcholineLevel = 0.5f,
-                NorepinephrineLevel = 0.5f
-            }
-        };
-
-        var blend = Math.Clamp(control.Blend, 0f, 1f);
-        return NeuromodState.Clamp(new NeuromodState
-        {
-            DopamineLevel = Lerp(baseline.DopamineLevel, target.DopamineLevel, blend),
-            SerotoninLevel = Lerp(baseline.SerotoninLevel, target.SerotoninLevel, blend),
-            AcetylcholineLevel = Lerp(baseline.AcetylcholineLevel, target.AcetylcholineLevel, blend),
-            NorepinephrineLevel = Lerp(baseline.NorepinephrineLevel, target.NorepinephrineLevel, blend)
-        });
     }
 
     private static NeuromodState ApplySleepStateNeuromod(NeuromodState baseline, SleepMemoryRuntime sleepMemory)
@@ -9440,6 +9339,13 @@ internal sealed class TickCoordinator(
                 processedSnapshots,
                 neuronalAttention,
                 neuronalMotor);
+            state.UpdateNeuronalCognitionTelemetry(
+                neuronalPercept,
+                neuronalMemoryDecision,
+                neuronalAttention,
+                neuronalSleep,
+                neuronalValuation,
+                neuronalExecutiveDecision);
             neuronalCognitionAuthority.Update(
                 tickSignal.Tick,
                 neuronalPercept,
@@ -18440,7 +18346,6 @@ internal sealed record AutoProfileControlRequest(
     double? RecoveryAckLatencyMs,
     long? RecoverySnapshotAgeTicks,
     int? RecoveryConsecutiveTicks);
-internal sealed record MemoryControlRequest(string? Mode, float? Blend);
 internal sealed record SleepMemoryControlRequest(int? MinWakeTicks, float? SleepPressureEnterThreshold);
 internal sealed record AuditoryInputRequest(string? Pattern, float? Intensity, int? BurstCount, string? TargetStructure, string? SourceStructure, string? Hemisphere, string? InputSource);
 internal sealed record CollisionInputRequest(
@@ -18452,427 +18357,12 @@ internal sealed record CollisionInputRequest(
     string? Hemisphere,
     bool? IsFeedback);
 internal sealed record LanguageInputRequest(string? Text, string? Mode, float? Intensity, int? BurstPerToken, string? Hemisphere, int? TokenCount, float? NoveltyBias);
-internal sealed record BiologicalTeachingEvent(
-    bool Active,
-    string Kind,
-    string ConceptKey,
-    string Label,
-    string Category,
-    string Meaning,
-    string GoalKey,
-    string ActionKey,
-    float Reward,
-    float Success,
-    float Threat,
-    float Valence,
-    float Salience,
-    float Confidence,
-    string Evidence)
-{
-    public static BiologicalTeachingEvent Inactive { get; } = new(
-        Active: false,
-        Kind: "none",
-        ConceptKey: "none",
-        Label: "none",
-        Category: "none",
-        Meaning: "no teaching event detected",
-        GoalKey: "Observe",
-        ActionKey: "idle",
-        Reward: 0f,
-        Success: 0f,
-        Threat: 0f,
-        Valence: 0f,
-        Salience: 0f,
-        Confidence: 0f,
-        Evidence: "language input did not match teaching, correction, label, or reward patterns");
-}
 internal sealed record PhoneticGenerationRequest(int? TokenCount, string? Mode, float? NoveltyBias, string? SeedText);
 internal sealed record RestartServiceRequest(string? StructureId, string? Hemisphere, string? InstanceKey);
 internal sealed record CurriculumControlRequest(
     bool? Enabled,
     int? StageIndex,
     bool? ResetProgress);
-internal sealed record SelfMonitoringLoopRuntime(
-    bool Active,
-    string MonitorState,
-    string IntentionKey,
-    string GoalKey,
-    string ActionKey,
-    string RecommendedAdjustment,
-    float WorkingScore,
-    float StallScore,
-    float UnsafeScore,
-    float CompletionScore,
-    float AccErrorSignal,
-    float PfcControlSignal,
-    float InsulaBodyAlarm,
-    float CerebellarMismatch,
-    float DopamineTeachingSignal,
-    float Confidence,
-    float CircuitEvidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static SelfMonitoringLoopRuntime Default { get; } = new(
-        Active: false,
-        MonitorState: "quiet",
-        IntentionKey: "Observe:idle",
-        GoalKey: "Observe",
-        ActionKey: "idle",
-        RecommendedAdjustment: "observe",
-        WorkingScore: 0f,
-        StallScore: 0f,
-        UnsafeScore: 0f,
-        CompletionScore: 0f,
-        AccErrorSignal: 0f,
-        PfcControlSignal: 0f,
-        InsulaBodyAlarm: 0f,
-        CerebellarMismatch: 0f,
-        DopamineTeachingSignal: 0f,
-        Confidence: 0f,
-        CircuitEvidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet ACC/PFC/insula monitoring");
-
-    public static SelfMonitoringLoopRuntime Normalize(SelfMonitoringLoopRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            MonitorState = NormalizeSelfMonitoringText(value.MonitorState, "quiet").ToLowerInvariant(),
-            IntentionKey = NormalizeSelfMonitoringText(value.IntentionKey, Default.IntentionKey),
-            GoalKey = NormalizeSelfMonitoringText(value.GoalKey, "Observe"),
-            ActionKey = NormalizeSelfMonitoringText(value.ActionKey, "idle"),
-            RecommendedAdjustment = NormalizeSelfMonitoringText(value.RecommendedAdjustment, "observe"),
-            WorkingScore = Math.Clamp(value.WorkingScore, 0f, 1f),
-            StallScore = Math.Clamp(value.StallScore, 0f, 1f),
-            UnsafeScore = Math.Clamp(value.UnsafeScore, 0f, 1f),
-            CompletionScore = Math.Clamp(value.CompletionScore, 0f, 1f),
-            AccErrorSignal = Math.Clamp(value.AccErrorSignal, 0f, 1f),
-            PfcControlSignal = Math.Clamp(value.PfcControlSignal, 0f, 1f),
-            InsulaBodyAlarm = Math.Clamp(value.InsulaBodyAlarm, 0f, 1f),
-            CerebellarMismatch = Math.Clamp(value.CerebellarMismatch, 0f, 1f),
-            DopamineTeachingSignal = Math.Clamp(value.DopamineTeachingSignal, -1f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            CircuitEvidence = Math.Clamp(value.CircuitEvidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeSelfMonitoringText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeSelfMonitoringText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-internal sealed record BiologicalTeachingLoopRuntime(
-    bool Active,
-    int Count,
-    string LastKind,
-    string LastConceptKey,
-    string LastLabel,
-    string LastCategory,
-    string LastGoalKey,
-    string LastActionKey,
-    float LastReward,
-    float LastValence,
-    int SemanticConceptCount,
-    int EpisodicEventCount,
-    int DopamineTraceCount,
-    string SourceCircuit,
-    string Evidence,
-    long LastUpdatedTick)
-{
-    public static BiologicalTeachingLoopRuntime Default { get; } = new(
-        Active: false,
-        Count: 0,
-        LastKind: "none",
-        LastConceptKey: "none",
-        LastLabel: "none",
-        LastCategory: "none",
-        LastGoalKey: "Observe",
-        LastActionKey: "idle",
-        LastReward: 0f,
-        LastValence: 0f,
-        SemanticConceptCount: 0,
-        EpisodicEventCount: 0,
-        DopamineTraceCount: 0,
-        SourceCircuit: "quiet teaching monitor",
-        Evidence: "no biological teaching input observed yet",
-        LastUpdatedTick: 0);
-
-    public static BiologicalTeachingLoopRuntime Normalize(BiologicalTeachingLoopRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Count = Math.Max(0, value.Count),
-            LastKind = NormalizeTeachingRuntimeText(value.LastKind, "none"),
-            LastConceptKey = NormalizeTeachingRuntimeText(value.LastConceptKey, "none"),
-            LastLabel = NormalizeTeachingRuntimeText(value.LastLabel, "none"),
-            LastCategory = NormalizeTeachingRuntimeText(value.LastCategory, "none"),
-            LastGoalKey = NormalizeTeachingRuntimeText(value.LastGoalKey, "Observe"),
-            LastActionKey = NormalizeTeachingRuntimeText(value.LastActionKey, "idle"),
-            LastReward = Math.Clamp(value.LastReward, -1f, 1f),
-            LastValence = Math.Clamp(value.LastValence, -1f, 1f),
-            SemanticConceptCount = Math.Max(0, value.SemanticConceptCount),
-            EpisodicEventCount = Math.Max(0, value.EpisodicEventCount),
-            DopamineTraceCount = Math.Max(0, value.DopamineTraceCount),
-            SourceCircuit = NormalizeTeachingRuntimeText(value.SourceCircuit, Default.SourceCircuit),
-            Evidence = NormalizeTeachingRuntimeText(value.Evidence, Default.Evidence),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick)
-        };
-    }
-
-    private static string NormalizeTeachingRuntimeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-internal sealed record PlanningActionCandidate(
-    string ActionKey,
-    string Summary,
-    double Utility,
-    double Confidence,
-    double RewardDelta,
-    double SleepPressureDelta,
-    double PredictionError,
-    int Samples);
-internal sealed record PlanningWorkspaceRuntime(
-    string Goal,
-    bool GoalActive,
-    int HorizonSteps,
-    int MaxBranching,
-    double ExplorationTemperature,
-    double DopamineBias,
-    double InhibitoryGate,
-    string SelectedActionKey,
-    double SelectedUtility,
-    double SelectedConfidence,
-    long LastPlanTick,
-    long PlanRevision,
-    IReadOnlyList<PlanningActionCandidate> CandidateActions,
-    IReadOnlyList<string> ProposedPlan)
-{
-    public static PlanningWorkspaceRuntime Default { get; } = new(
-        Goal: "observe, learn, and conserve energy",
-        GoalActive: true,
-        HorizonSteps: 4,
-        MaxBranching: 8,
-        ExplorationTemperature: 0.42,
-        DopamineBias: 1.08,
-        InhibitoryGate: 0.72,
-        SelectedActionKey: "idle",
-        SelectedUtility: 0.0,
-        SelectedConfidence: 0.0,
-        LastPlanTick: 0,
-        PlanRevision: 0,
-        CandidateActions: [],
-        ProposedPlan: []);
-}
-internal sealed record GoalIntentCandidate(
-    string GoalKey,
-    string DisplayName,
-    string BiologicalSource,
-    float Drive,
-    float Urgency,
-    float Confidence,
-    string MotorDirective)
-{
-    public static GoalIntentCandidate Normalize(GoalIntentCandidate value)
-    {
-        var goalKey = string.IsNullOrWhiteSpace(value.GoalKey) ? "Observe" : value.GoalKey.Trim();
-        var displayName = string.IsNullOrWhiteSpace(value.DisplayName) ? goalKey : value.DisplayName.Trim();
-        var source = string.IsNullOrWhiteSpace(value.BiologicalSource) ? "tonic brainstem monitoring" : value.BiologicalSource.Trim();
-        var directive = string.IsNullOrWhiteSpace(value.MotorDirective) ? "motor_idle" : value.MotorDirective.Trim();
-        return value with
-        {
-            GoalKey = goalKey,
-            DisplayName = displayName,
-            BiologicalSource = source,
-            Drive = Math.Clamp(value.Drive, 0.0f, 1.0f),
-            Urgency = Math.Clamp(value.Urgency, 0.0f, 1.0f),
-            Confidence = Math.Clamp(value.Confidence, 0.0f, 1.0f),
-            MotorDirective = directive
-        };
-    }
-}
-internal sealed record GoalIntentRuntime(
-    bool Active,
-    string GoalKey,
-    string DisplayName,
-    string MotorDirective,
-    string BiologicalSource,
-    float Drive,
-    float Urgency,
-    float Confidence,
-    float BasalGangliaGate,
-    float DopamineBias,
-    float InhibitoryTone,
-    long LastUpdatedTick,
-    long ExpiresAtTick,
-    IReadOnlyList<GoalIntentCandidate> Candidates)
-{
-    public static GoalIntentRuntime Default { get; } = new(
-        Active: false,
-        GoalKey: "Observe",
-        DisplayName: "Observe and learn",
-        MotorDirective: "motor_idle",
-        BiologicalSource: "tonic brainstem monitoring with basal forebrain alerting",
-        Drive: 0.18f,
-        Urgency: 0.06f,
-        Confidence: 0.24f,
-        BasalGangliaGate: 0.38f,
-        DopamineBias: 0.40f,
-        InhibitoryTone: 0.30f,
-        LastUpdatedTick: 0,
-        ExpiresAtTick: 0,
-        Candidates: []);
-
-    public static GoalIntentRuntime Normalize(GoalIntentRuntime value)
-    {
-        var candidateList = value.Candidates?.Select(GoalIntentCandidate.Normalize).ToList() ?? [];
-        var normalizedCandidate = GoalIntentCandidate.Normalize(new GoalIntentCandidate(
-            value.GoalKey,
-            value.DisplayName,
-            value.BiologicalSource,
-            value.Drive,
-            value.Urgency,
-            value.Confidence,
-            value.MotorDirective));
-        return value with
-        {
-            Active = value.Active && normalizedCandidate.Drive > 0.05f,
-            GoalKey = normalizedCandidate.GoalKey,
-            DisplayName = normalizedCandidate.DisplayName,
-            MotorDirective = normalizedCandidate.MotorDirective,
-            BiologicalSource = normalizedCandidate.BiologicalSource,
-            Drive = normalizedCandidate.Drive,
-            Urgency = normalizedCandidate.Urgency,
-            Confidence = normalizedCandidate.Confidence,
-            BasalGangliaGate = Math.Clamp(value.BasalGangliaGate, 0.0f, 1.0f),
-            DopamineBias = Math.Clamp(value.DopamineBias, 0.0f, 1.0f),
-            InhibitoryTone = Math.Clamp(value.InhibitoryTone, 0.0f, 1.0f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            ExpiresAtTick = Math.Max(0, value.ExpiresAtTick),
-            Candidates = candidateList
-        };
-    }
-}
-internal sealed record MotivationArbitrationCandidate(
-    string GoalKey,
-    float RawScore,
-    float Inhibition,
-    float Score,
-    float Drive,
-    float Urgency,
-    float Confidence);
-internal sealed record MotivationArbitrationRuntime(
-    bool Active,
-    string WinningGoalKey,
-    string RivalGoalKey,
-    float WinningScore,
-    float RivalScore,
-    float WinningMargin,
-    float HypothalamicHungerDrive,
-    float HypothalamicTiredDrive,
-    float AmygdalaThreatDrive,
-    float InsulaBodyNeed,
-    float ShelterDrive,
-    float PfcCommandDrive,
-    float HippocampalCuriosityDrive,
-    float AccConflict,
-    float BasalGangliaGate,
-    float DopamineBias,
-    float InhibitoryTone,
-    float CircuitEvidence,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    IReadOnlyList<MotivationArbitrationCandidate> Candidates,
-    string Evidence)
-{
-    public static MotivationArbitrationRuntime Default { get; } = new(
-        Active: false,
-        WinningGoalKey: "Observe",
-        RivalGoalKey: "none",
-        WinningScore: 0.12f,
-        RivalScore: 0f,
-        WinningMargin: 0.08f,
-        HypothalamicHungerDrive: 0.08f,
-        HypothalamicTiredDrive: 0.06f,
-        AmygdalaThreatDrive: 0.04f,
-        InsulaBodyNeed: 0.10f,
-        ShelterDrive: 0.08f,
-        PfcCommandDrive: 0f,
-        HippocampalCuriosityDrive: 0.16f,
-        AccConflict: 0.06f,
-        BasalGangliaGate: 0.38f,
-        DopamineBias: 0.40f,
-        InhibitoryTone: 0.30f,
-        CircuitEvidence: 0.20f,
-        Confidence: 0.24f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Candidates: [],
-        Evidence: "healthy awake baseline: observe and learn");
-
-    public static MotivationArbitrationRuntime Normalize(MotivationArbitrationRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            WinningGoalKey = NormalizeArbitrationText(value.WinningGoalKey, "Observe"),
-            RivalGoalKey = NormalizeArbitrationText(value.RivalGoalKey, "none"),
-            WinningScore = Math.Clamp(value.WinningScore, 0f, 1f),
-            RivalScore = Math.Clamp(value.RivalScore, 0f, 1f),
-            WinningMargin = Math.Clamp(value.WinningMargin, 0f, 1f),
-            HypothalamicHungerDrive = Math.Clamp(value.HypothalamicHungerDrive, 0f, 1f),
-            HypothalamicTiredDrive = Math.Clamp(value.HypothalamicTiredDrive, 0f, 1f),
-            AmygdalaThreatDrive = Math.Clamp(value.AmygdalaThreatDrive, 0f, 1f),
-            InsulaBodyNeed = Math.Clamp(value.InsulaBodyNeed, 0f, 1f),
-            ShelterDrive = Math.Clamp(value.ShelterDrive, 0f, 1f),
-            PfcCommandDrive = Math.Clamp(value.PfcCommandDrive, 0f, 1f),
-            HippocampalCuriosityDrive = Math.Clamp(value.HippocampalCuriosityDrive, 0f, 1f),
-            AccConflict = Math.Clamp(value.AccConflict, 0f, 1f),
-            BasalGangliaGate = Math.Clamp(value.BasalGangliaGate, 0f, 1f),
-            DopamineBias = Math.Clamp(value.DopamineBias, 0f, 1f),
-            InhibitoryTone = Math.Clamp(value.InhibitoryTone, 0f, 1f),
-            CircuitEvidence = Math.Clamp(value.CircuitEvidence, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Candidates = value.Candidates?.Select(NormalizeArbitrationCandidate).ToArray() ?? [],
-            Evidence = NormalizeArbitrationText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static MotivationArbitrationCandidate NormalizeArbitrationCandidate(MotivationArbitrationCandidate candidate)
-        => candidate with
-        {
-            GoalKey = NormalizeArbitrationText(candidate.GoalKey, "Observe"),
-            RawScore = Math.Clamp(candidate.RawScore, 0f, 1f),
-            Inhibition = Math.Clamp(candidate.Inhibition, 0f, 1f),
-            Score = Math.Clamp(candidate.Score, 0f, 1f),
-            Drive = Math.Clamp(candidate.Drive, 0f, 1f),
-            Urgency = Math.Clamp(candidate.Urgency, 0f, 1f),
-            Confidence = Math.Clamp(candidate.Confidence, 0f, 1f)
-        };
-
-    private static string NormalizeArbitrationText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 internal sealed record CurriculumTaskRuntime(
     string Name,
     int StageIndex,
@@ -19004,7 +18494,6 @@ internal sealed class NetworkStateDocument
     public Dictionary<string, double> OscillationPhases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public float RewardPredictionError { get; set; }
     public string PerformanceProfileName { get; set; } = "normal";
-    public MemoryControlSettings MemoryControl { get; set; } = MemoryControlSettings.Default;
     public InputGateRuntime? InputGates { get; set; } = InputGateRuntime.Default;
     public SleepMemoryRuntime SleepMemory { get; set; } = SleepMemoryRuntime.Default;
     public BodySchemaRuntime? BodySchema { get; set; } = BodySchemaRuntime.Default;
@@ -19139,1405 +18628,32 @@ internal sealed record EnglishLexeme(
     string SemanticClass);
 
 
-internal sealed record LanguageIntentRuntime(
-    bool Active,
-    string Intent,
-    string Mood,
-    string? Subject,
-    string? Verb,
-    string? Object,
-    string? Qualifier,
-    float Strength,
-    long LastUpdatedTick,
-    long ExpiresAtTick,
-    string CommandKey,
-    string MotorDirective,
-    int RepetitionCount,
-    float LearnedBias)
-{
-    public static LanguageIntentRuntime Default { get; } = new(
-        Active: false,
-        Intent: "none",
-        Mood: "none",
-        Subject: null,
-        Verb: null,
-        Object: null,
-        Qualifier: null,
-        Strength: 0.0f,
-        LastUpdatedTick: 0,
-        ExpiresAtTick: 0,
-        CommandKey: "language.idle",
-        MotorDirective: "motor_idle",
-        RepetitionCount: 0,
-        LearnedBias: 0.0f);
-}
 
-internal sealed record CognitiveLanguageWorkspaceRuntime(
-    bool Active,
-    string CurrentThought,
-    string RememberedInstruction,
-    string BoundGoalKey,
-    string BoundActionKey,
-    string SemanticFocus,
-    string NeedState,
-    string AffectiveState,
-    string Evidence,
-    float InstructionStrength,
-    float GoalBinding,
-    float WorkingMemoryStability,
-    float Confidence,
-    float PredictionError,
-    float OutcomeValence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static CognitiveLanguageWorkspaceRuntime Default { get; } = new(
-        Active: false,
-        CurrentThought: "I am keeping the world in working memory.",
-        RememberedInstruction: "none",
-        BoundGoalKey: "Observe",
-        BoundActionKey: "idle",
-        SemanticFocus: "environment",
-        NeedState: "observation",
-        AffectiveState: "stable",
-        Evidence: "quiet monitoring",
-        InstructionStrength: 0.0f,
-        GoalBinding: 0.0f,
-        WorkingMemoryStability: 0.25f,
-        Confidence: 0.25f,
-        PredictionError: 0.0f,
-        OutcomeValence: 0.0f,
-        LastUpdatedTick: 0,
-        Sequence: 0);
 
-    public static CognitiveLanguageWorkspaceRuntime Normalize(CognitiveLanguageWorkspaceRuntime value)
-    {
-        return value with
-        {
-            CurrentThought = NormalizeWorkspaceText(value.CurrentThought, Default.CurrentThought),
-            RememberedInstruction = NormalizeWorkspaceText(value.RememberedInstruction, "none"),
-            BoundGoalKey = NormalizeWorkspaceText(value.BoundGoalKey, "Observe"),
-            BoundActionKey = NormalizeWorkspaceText(value.BoundActionKey, "idle"),
-            SemanticFocus = NormalizeWorkspaceText(value.SemanticFocus, "environment"),
-            NeedState = NormalizeWorkspaceText(value.NeedState, "observation"),
-            AffectiveState = NormalizeWorkspaceText(value.AffectiveState, "stable"),
-            Evidence = NormalizeWorkspaceText(value.Evidence, "quiet monitoring"),
-            InstructionStrength = Math.Clamp(value.InstructionStrength, 0.0f, 1.0f),
-            GoalBinding = Math.Clamp(value.GoalBinding, 0.0f, 1.0f),
-            WorkingMemoryStability = Math.Clamp(value.WorkingMemoryStability, 0.0f, 1.0f),
-            Confidence = Math.Clamp(value.Confidence, 0.0f, 1.0f),
-            PredictionError = Math.Clamp(value.PredictionError, 0.0f, 1.0f),
-            OutcomeValence = Math.Clamp(value.OutcomeValence, -1.0f, 1.0f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
 
-    private static string NormalizeWorkspaceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record InnerSpeechLoopRuntime(
-    bool Active,
-    string Mode,
-    string RehearsedPhrase,
-    string SourceCircuit,
-    string AuditoryImage,
-    float MotorSuppression,
-    float SpeechReleaseGate,
-    float BrocaSequencing,
-    float WernickeComprehension,
-    float ArcuateLoopGain,
-    float PfcRehearsal,
-    float WorkingMemoryBoost,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static InnerSpeechLoopRuntime Default { get; } = new(
-        Active: false,
-        Mode: "quiet rehearsal",
-        RehearsedPhrase: "Watch, remember, and wait.",
-        SourceCircuit: "default-mode-language",
-        AuditoryImage: "quiet rehearsal: Watch, remember, and wait.",
-        MotorSuppression: 0.62f,
-        SpeechReleaseGate: 0.0f,
-        BrocaSequencing: 0.10f,
-        WernickeComprehension: 0.10f,
-        ArcuateLoopGain: 0.10f,
-        PfcRehearsal: 0.12f,
-        WorkingMemoryBoost: 0.10f,
-        Confidence: 0.20f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet language rehearsal");
 
-    public static InnerSpeechLoopRuntime Normalize(InnerSpeechLoopRuntime value)
-        => value with
-        {
-            Mode = NormalizeInnerSpeechText(value.Mode, Default.Mode),
-            RehearsedPhrase = NormalizeInnerSpeechText(value.RehearsedPhrase, Default.RehearsedPhrase),
-            SourceCircuit = NormalizeInnerSpeechText(value.SourceCircuit, Default.SourceCircuit),
-            AuditoryImage = NormalizeInnerSpeechText(value.AuditoryImage, Default.AuditoryImage),
-            MotorSuppression = Math.Clamp(value.MotorSuppression, 0f, 1f),
-            SpeechReleaseGate = Math.Clamp(value.SpeechReleaseGate, 0f, 1f),
-            BrocaSequencing = Math.Clamp(value.BrocaSequencing, 0f, 1f),
-            WernickeComprehension = Math.Clamp(value.WernickeComprehension, 0f, 1f),
-            ArcuateLoopGain = Math.Clamp(value.ArcuateLoopGain, 0f, 1f),
-            PfcRehearsal = Math.Clamp(value.PfcRehearsal, 0f, 1f),
-            WorkingMemoryBoost = Math.Clamp(value.WorkingMemoryBoost, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeInnerSpeechText(value.Evidence, Default.Evidence)
-        };
 
-    private static string NormalizeInnerSpeechText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record PrefrontalWorkingMemoryRuntime(
-    bool Active,
-    string CurrentTaskSet,
-    string UserRequest,
-    string CurrentQuestion,
-    string CurrentPlan,
-    string SelectedGoal,
-    string SelectedAction,
-    bool IntentHoldActive,
-    string HeldGoalKey,
-    string HeldActionKey,
-    float IntentHoldStrength,
-    float InterferenceGate,
-    long HoldExpiresAtTick,
-    string Rule,
-    string Evidence,
-    float DorsolateralMaintenance,
-    float AccConflictMonitoring,
-    float OrbitofrontalValue,
-    float BasalGangliaGate,
-    float ResponseInhibition,
-    float AttentionBinding,
-    float ConflictLevel,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static PrefrontalWorkingMemoryRuntime Default { get; } = new(
-        Active: false,
-        CurrentTaskSet: "observe",
-        UserRequest: "none",
-        CurrentQuestion: "What is happening now?",
-        CurrentPlan: "idle",
-        SelectedGoal: "Observe",
-        SelectedAction: "idle",
-        IntentHoldActive: false,
-        HeldGoalKey: "Observe",
-        HeldActionKey: "idle",
-        IntentHoldStrength: 0.0f,
-        InterferenceGate: 0.0f,
-        HoldExpiresAtTick: 0,
-        Rule: "monitor environment",
-        Evidence: "quiet monitoring",
-        DorsolateralMaintenance: 0.25f,
-        AccConflictMonitoring: 0.0f,
-        OrbitofrontalValue: 0.50f,
-        BasalGangliaGate: 0.0f,
-        ResponseInhibition: 0.0f,
-        AttentionBinding: 0.25f,
-        ConflictLevel: 0.0f,
-        Confidence: 0.25f,
-        LastUpdatedTick: 0,
-        Sequence: 0);
 
-    public static PrefrontalWorkingMemoryRuntime Normalize(PrefrontalWorkingMemoryRuntime value)
-    {
-        return value with
-        {
-            CurrentTaskSet = NormalizeWorkingMemoryText(value.CurrentTaskSet, Default.CurrentTaskSet),
-            UserRequest = NormalizeWorkingMemoryText(value.UserRequest, "none"),
-            CurrentQuestion = NormalizeWorkingMemoryText(value.CurrentQuestion, Default.CurrentQuestion),
-            CurrentPlan = NormalizeWorkingMemoryText(value.CurrentPlan, "idle"),
-            SelectedGoal = NormalizeWorkingMemoryText(value.SelectedGoal, "Observe"),
-            SelectedAction = NormalizeWorkingMemoryText(value.SelectedAction, "idle"),
-            HeldGoalKey = NormalizeWorkingMemoryText(value.HeldGoalKey, "Observe"),
-            HeldActionKey = NormalizeWorkingMemoryText(value.HeldActionKey, "idle"),
-            IntentHoldStrength = Math.Clamp(value.IntentHoldStrength, 0.0f, 1.0f),
-            InterferenceGate = Math.Clamp(value.InterferenceGate, 0.0f, 1.0f),
-            HoldExpiresAtTick = Math.Max(0, value.HoldExpiresAtTick),
-            Rule = NormalizeWorkingMemoryText(value.Rule, "monitor environment"),
-            Evidence = NormalizeWorkingMemoryText(value.Evidence, "quiet monitoring"),
-            DorsolateralMaintenance = Math.Clamp(value.DorsolateralMaintenance, 0.0f, 1.0f),
-            AccConflictMonitoring = Math.Clamp(value.AccConflictMonitoring, 0.0f, 1.0f),
-            OrbitofrontalValue = Math.Clamp(value.OrbitofrontalValue, 0.0f, 1.0f),
-            BasalGangliaGate = Math.Clamp(value.BasalGangliaGate, 0.0f, 1.0f),
-            ResponseInhibition = Math.Clamp(value.ResponseInhibition, 0.0f, 1.0f),
-            AttentionBinding = Math.Clamp(value.AttentionBinding, 0.0f, 1.0f),
-            ConflictLevel = Math.Clamp(value.ConflictLevel, 0.0f, 1.0f),
-            Confidence = Math.Clamp(value.Confidence, 0.0f, 1.0f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
 
-    private static string NormalizeWorkingMemoryText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record IntentionalActionLoopRuntime(
-    bool Active,
-    string IntentionKey,
-    string GoalKey,
-    string ActionKey,
-    string MotorDirective,
-    string Target,
-    string Why,
-    string PredictedOutcome,
-    float Commitment,
-    float Readiness,
-    float Inhibition,
-    float BasalGangliaCommit,
-    float PremotorPlan,
-    float SmaSequence,
-    float M1Readiness,
-    float CerebellarCorrection,
-    float ExpectedValue,
-    float ExpectedCost,
-    float Conflict,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static IntentionalActionLoopRuntime Default { get; } = new(
-        Active: false,
-        IntentionKey: "Observe:orient",
-        GoalKey: "Observe",
-        ActionKey: "orient_and_sample",
-        MotorDirective: "motor_idle",
-        Target: "environment",
-        Why: "healthy awake orienting baseline",
-        PredictedOutcome: "sample the scene before acting",
-        Commitment: 0.12f,
-        Readiness: 0.24f,
-        Inhibition: 0.24f,
-        BasalGangliaCommit: 0.24f,
-        PremotorPlan: 0.20f,
-        SmaSequence: 0.18f,
-        M1Readiness: 0.22f,
-        CerebellarCorrection: 0.26f,
-        ExpectedValue: 0.20f,
-        ExpectedCost: 0.0f,
-        Conflict: 0.04f,
-        Confidence: 0.24f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "awake baseline primes orienting without locomotion");
 
-    public static IntentionalActionLoopRuntime Normalize(IntentionalActionLoopRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
 
-        return value with
-        {
-            IntentionKey = NormalizeIntentText(value.IntentionKey, Default.IntentionKey),
-            GoalKey = NormalizeIntentText(value.GoalKey, "Observe"),
-            ActionKey = NormalizeIntentText(value.ActionKey, "idle"),
-            MotorDirective = NormalizeIntentText(value.MotorDirective, "motor_idle"),
-            Target = NormalizeIntentText(value.Target, "environment"),
-            Why = NormalizeIntentText(value.Why, "tonic observation"),
-            PredictedOutcome = NormalizeIntentText(value.PredictedOutcome, "watch and wait"),
-            Commitment = Math.Clamp(value.Commitment, 0f, 1f),
-            Readiness = Math.Clamp(value.Readiness, 0f, 1f),
-            Inhibition = Math.Clamp(value.Inhibition, 0f, 1f),
-            BasalGangliaCommit = Math.Clamp(value.BasalGangliaCommit, 0f, 1f),
-            PremotorPlan = Math.Clamp(value.PremotorPlan, 0f, 1f),
-            SmaSequence = Math.Clamp(value.SmaSequence, 0f, 1f),
-            M1Readiness = Math.Clamp(value.M1Readiness, 0f, 1f),
-            CerebellarCorrection = Math.Clamp(value.CerebellarCorrection, 0f, 1f),
-            ExpectedValue = Math.Clamp(value.ExpectedValue, 0f, 1f),
-            ExpectedCost = Math.Clamp(value.ExpectedCost, 0f, 1f),
-            Conflict = Math.Clamp(value.Conflict, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeIntentText(value.Evidence, Default.Evidence)
-        };
-    }
 
-    private static string NormalizeIntentText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record ConsciousnessRhythmRuntime(
-    bool Active,
-    string CurrentMoment,
-    string Spotlight,
-    string SelectedCircuit,
-    string Evidence,
-    float GlobalMomentGate,
-    float ThalamocorticalGain,
-    float PulvinarSpotlight,
-    float TrnInhibition,
-    float BasalForebrainIgnition,
-    float PfcAccess,
-    float AccConflict,
-    float GammaSynchrony,
-    float AlphaSuppression,
-    float Wakefulness,
-    float Salience,
-    float Stability,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static ConsciousnessRhythmRuntime Default { get; } = new(
-        Active: false,
-        CurrentMoment: "sensory theatre",
-        Spotlight: "visual",
-        SelectedCircuit: "thalamus",
-        Evidence: "quiet thalamocortical monitoring",
-        GlobalMomentGate: 0.0f,
-        ThalamocorticalGain: 0.25f,
-        PulvinarSpotlight: 0.20f,
-        TrnInhibition: 0.20f,
-        BasalForebrainIgnition: 0.25f,
-        PfcAccess: 0.20f,
-        AccConflict: 0.0f,
-        GammaSynchrony: 0.20f,
-        AlphaSuppression: 0.20f,
-        Wakefulness: 1.0f,
-        Salience: 0.0f,
-        Stability: 0.25f,
-        Confidence: 0.25f,
-        LastUpdatedTick: 0,
-        Sequence: 0);
 
-    public static ConsciousnessRhythmRuntime Normalize(ConsciousnessRhythmRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
 
-        return value with
-        {
-            CurrentMoment = NormalizeConsciousnessText(value.CurrentMoment, Default.CurrentMoment),
-            Spotlight = NormalizeConsciousnessText(value.Spotlight, Default.Spotlight),
-            SelectedCircuit = NormalizeConsciousnessText(value.SelectedCircuit, Default.SelectedCircuit),
-            Evidence = NormalizeConsciousnessText(value.Evidence, Default.Evidence),
-            GlobalMomentGate = Math.Clamp(value.GlobalMomentGate, 0f, 1f),
-            ThalamocorticalGain = Math.Clamp(value.ThalamocorticalGain, 0f, 1f),
-            PulvinarSpotlight = Math.Clamp(value.PulvinarSpotlight, 0f, 1f),
-            TrnInhibition = Math.Clamp(value.TrnInhibition, 0f, 1f),
-            BasalForebrainIgnition = Math.Clamp(value.BasalForebrainIgnition, 0f, 1f),
-            PfcAccess = Math.Clamp(value.PfcAccess, 0f, 1f),
-            AccConflict = Math.Clamp(value.AccConflict, 0f, 1f),
-            GammaSynchrony = Math.Clamp(value.GammaSynchrony, 0f, 1f),
-            AlphaSuppression = Math.Clamp(value.AlphaSuppression, 0f, 1f),
-            Wakefulness = Math.Clamp(value.Wakefulness, 0f, 1f),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            Stability = Math.Clamp(value.Stability, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
 
-    private static string NormalizeConsciousnessText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record GlobalWorkspaceCandidate(
-    string SourceCircuit,
-    string Content,
-    string GoalKey,
-    string ActionKey,
-    string Focus,
-    string MemoryKey,
-    float Confidence,
-    float Salience,
-    float Conflict,
-    float BroadcastStrength,
-    string Evidence)
-{
-    public static GlobalWorkspaceCandidate Default { get; } = new(
-        SourceCircuit: "quiet",
-        Content: "I am keeping the world in shared awareness.",
-        GoalKey: "Observe",
-        ActionKey: "idle",
-        Focus: "environment",
-        MemoryKey: "none",
-        Confidence: 0.25f,
-        Salience: 0.0f,
-        Conflict: 0.0f,
-        BroadcastStrength: 0.0f,
-        Evidence: "quiet monitoring");
 
-    public static GlobalWorkspaceCandidate Normalize(GlobalWorkspaceCandidate value)
-        => value with
-        {
-            SourceCircuit = NormalizeGlobalWorkspaceText(value.SourceCircuit, "quiet"),
-            Content = NormalizeGlobalWorkspaceText(value.Content, Default.Content),
-            GoalKey = NormalizeGlobalWorkspaceText(value.GoalKey, "Observe"),
-            ActionKey = NormalizeGlobalWorkspaceText(value.ActionKey, "idle"),
-            Focus = NormalizeGlobalWorkspaceText(value.Focus, "environment"),
-            MemoryKey = NormalizeGlobalWorkspaceText(value.MemoryKey, "none"),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            Conflict = Math.Clamp(value.Conflict, 0f, 1f),
-            BroadcastStrength = Math.Clamp(value.BroadcastStrength, 0f, 1f),
-            Evidence = NormalizeGlobalWorkspaceText(value.Evidence, "quiet monitoring")
-        };
 
-    private static string NormalizeGlobalWorkspaceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
-internal sealed record GlobalWorkspaceRuntime(
-    bool Active,
-    string BroadcastContent,
-    string BroadcastFocus,
-    string WinningCircuit,
-    string BoundGoalKey,
-    string BoundActionKey,
-    string BoundMemoryKey,
-    string WhyThisWon,
-    string HoldingState,
-    string NextActionPreview,
-    string NeedState,
-    string AffectiveState,
-    string Evidence,
-    float ThalamicRelayGain,
-    float BasalForebrainGain,
-    float PfcAccess,
-    float AccConflict,
-    float DopamineTeaching,
-    float Salience,
-    float BroadcastStrength,
-    float CompetitionMargin,
-    float Stability,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    IReadOnlyList<string> Subscribers,
-    IReadOnlyList<GlobalWorkspaceCandidate> Candidates)
-{
-    public static GlobalWorkspaceRuntime Default { get; } = new(
-        Active: false,
-        BroadcastContent: "I am keeping the world in shared awareness.",
-        BroadcastFocus: "environment",
-        WinningCircuit: "quiet",
-        BoundGoalKey: "Observe",
-        BoundActionKey: "idle",
-        BoundMemoryKey: "none",
-        WhyThisWon: "quiet monitoring has no competing broadcast",
-        HoldingState: "Holding focus environment, memory none, goal Observe, and action idle.",
-        NextActionPreview: "keep monitoring",
-        NeedState: "observation",
-        AffectiveState: "stable",
-        Evidence: "quiet monitoring",
-        ThalamicRelayGain: 0.25f,
-        BasalForebrainGain: 0.25f,
-        PfcAccess: 0.25f,
-        AccConflict: 0.0f,
-        DopamineTeaching: 0.0f,
-        Salience: 0.0f,
-        BroadcastStrength: 0.0f,
-        CompetitionMargin: 0.0f,
-        Stability: 0.25f,
-        Confidence: 0.25f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Subscribers: [],
-        Candidates: []);
 
-    public static GlobalWorkspaceRuntime Normalize(GlobalWorkspaceRuntime value)
-        => value with
-        {
-            BroadcastContent = NormalizeGlobalWorkspaceText(value.BroadcastContent, Default.BroadcastContent),
-            BroadcastFocus = NormalizeGlobalWorkspaceText(value.BroadcastFocus, "environment"),
-            WinningCircuit = NormalizeGlobalWorkspaceText(value.WinningCircuit, "quiet"),
-            BoundGoalKey = NormalizeGlobalWorkspaceText(value.BoundGoalKey, "Observe"),
-            BoundActionKey = NormalizeGlobalWorkspaceText(value.BoundActionKey, "idle"),
-            BoundMemoryKey = NormalizeGlobalWorkspaceText(value.BoundMemoryKey, "none"),
-            WhyThisWon = NormalizeGlobalWorkspaceText(value.WhyThisWon, Default.WhyThisWon),
-            HoldingState = NormalizeGlobalWorkspaceText(value.HoldingState, Default.HoldingState),
-            NextActionPreview = NormalizeGlobalWorkspaceText(value.NextActionPreview, "keep monitoring"),
-            NeedState = NormalizeGlobalWorkspaceText(value.NeedState, "observation"),
-            AffectiveState = NormalizeGlobalWorkspaceText(value.AffectiveState, "stable"),
-            Evidence = NormalizeGlobalWorkspaceText(value.Evidence, "quiet monitoring"),
-            ThalamicRelayGain = Math.Clamp(value.ThalamicRelayGain, 0f, 1f),
-            BasalForebrainGain = Math.Clamp(value.BasalForebrainGain, 0f, 1f),
-            PfcAccess = Math.Clamp(value.PfcAccess, 0f, 1f),
-            AccConflict = Math.Clamp(value.AccConflict, 0f, 1f),
-            DopamineTeaching = Math.Clamp(value.DopamineTeaching, -1f, 1f),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            BroadcastStrength = Math.Clamp(value.BroadcastStrength, 0f, 1f),
-            CompetitionMargin = Math.Clamp(value.CompetitionMargin, 0f, 1f),
-            Stability = Math.Clamp(value.Stability, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Subscribers = value.Subscribers ?? [],
-            Candidates = (value.Candidates ?? []).Select(GlobalWorkspaceCandidate.Normalize).ToArray()
-        };
 
-    private static string NormalizeGlobalWorkspaceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
 
-internal sealed record NarrativeSelfModelRuntime(
-    bool Active,
-    string SelfStatement,
-    string BodyFeeling,
-    string CurrentNeed,
-    string CurrentGoal,
-    string CurrentAction,
-    string Why,
-    float FeltValence,
-    float InsulaInteroception,
-    float AccAgencyMonitoring,
-    float PfcSelfContinuity,
-    float HippocampalAutobiographicalBinding,
-    float LanguageNarrativeBinding,
-    float GlobalWorkspaceBinding,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static NarrativeSelfModelRuntime Default { get; } = new(
-        Active: false,
-        SelfStatement: "I am watching and waiting.",
-        BodyFeeling: "settled",
-        CurrentNeed: "observation",
-        CurrentGoal: "Observe",
-        CurrentAction: "idle",
-        Why: "quiet monitoring",
-        FeltValence: 0f,
-        InsulaInteroception: 0.20f,
-        AccAgencyMonitoring: 0.20f,
-        PfcSelfContinuity: 0.25f,
-        HippocampalAutobiographicalBinding: 0.0f,
-        LanguageNarrativeBinding: 0.20f,
-        GlobalWorkspaceBinding: 0.20f,
-        Confidence: 0.25f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet monitoring");
 
-    public static NarrativeSelfModelRuntime Normalize(NarrativeSelfModelRuntime value)
-        => value with
-        {
-            SelfStatement = NormalizeSelfText(value.SelfStatement, Default.SelfStatement),
-            BodyFeeling = NormalizeSelfText(value.BodyFeeling, "settled"),
-            CurrentNeed = NormalizeSelfText(value.CurrentNeed, "observation"),
-            CurrentGoal = NormalizeSelfText(value.CurrentGoal, "Observe"),
-            CurrentAction = NormalizeSelfText(value.CurrentAction, "idle"),
-            Why = NormalizeSelfText(value.Why, "quiet monitoring"),
-            FeltValence = Math.Clamp(value.FeltValence, -1f, 1f),
-            InsulaInteroception = Math.Clamp(value.InsulaInteroception, 0f, 1f),
-            AccAgencyMonitoring = Math.Clamp(value.AccAgencyMonitoring, 0f, 1f),
-            PfcSelfContinuity = Math.Clamp(value.PfcSelfContinuity, 0f, 1f),
-            HippocampalAutobiographicalBinding = Math.Clamp(value.HippocampalAutobiographicalBinding, 0f, 1f),
-            LanguageNarrativeBinding = Math.Clamp(value.LanguageNarrativeBinding, 0f, 1f),
-            GlobalWorkspaceBinding = Math.Clamp(value.GlobalWorkspaceBinding, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeSelfText(value.Evidence, "quiet monitoring")
-        };
-
-    private static string NormalizeSelfText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record IdentityBoundaryRuntime(
-    bool Active,
-    string SelfDescription,
-    string Boundary,
-    string Grounding,
-    string ContinuityBasis,
-    string AllowedClaim,
-    string DisallowedClaim,
-    float Confidence,
-    float ContinuityConfidence,
-    float BoundaryConfidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static IdentityBoundaryRuntime Default { get; } = new(
-        Active: false,
-        SelfDescription: "I am this runtime's bounded self-model, watching and waiting.",
-        Boundary: "I can describe simulated internal state, memory continuity, and preferences here; I am not a biological person and I do not claim experience outside this runtime.",
-        Grounding: "quiet monitoring",
-        ContinuityBasis: "chapter=quiet observation; continuity=0.00; place=this runtime",
-        AllowedClaim: "runtime state, continuity, preferences, uncertainty, and limits",
-        DisallowedClaim: "biological personhood or experience outside the running system",
-        Confidence: 0.25f,
-        ContinuityConfidence: 0f,
-        BoundaryConfidence: 0.64f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet identity boundary");
-
-    public static IdentityBoundaryRuntime Normalize(IdentityBoundaryRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            SelfDescription = NormalizeIdentityText(value.SelfDescription, Default.SelfDescription),
-            Boundary = NormalizeIdentityText(value.Boundary, Default.Boundary),
-            Grounding = NormalizeIdentityText(value.Grounding, "quiet monitoring"),
-            ContinuityBasis = NormalizeIdentityText(value.ContinuityBasis, Default.ContinuityBasis),
-            AllowedClaim = NormalizeIdentityText(value.AllowedClaim, Default.AllowedClaim),
-            DisallowedClaim = NormalizeIdentityText(value.DisallowedClaim, Default.DisallowedClaim),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            ContinuityConfidence = Math.Clamp(value.ContinuityConfidence, 0f, 1f),
-            BoundaryConfidence = Math.Clamp(value.BoundaryConfidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeIdentityText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeIdentityText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record PendingPromiseItem(
-    string Key,
-    string Summary,
-    string Source,
-    string Status,
-    float Salience,
-    long CreatedTick,
-    long LastUpdatedTick)
-{
-    public static PendingPromiseItem Normalize(PendingPromiseItem value)
-        => value with
-        {
-            Key = string.IsNullOrWhiteSpace(value.Key) ? "promise.unknown" : value.Key.Trim(),
-            Summary = string.IsNullOrWhiteSpace(value.Summary) ? "pending promise" : value.Summary.Trim(),
-            Source = string.IsNullOrWhiteSpace(value.Source) ? "runtime" : value.Source.Trim(),
-            Status = string.IsNullOrWhiteSpace(value.Status) ? "open" : value.Status.Trim(),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            CreatedTick = Math.Max(0, value.CreatedTick),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick)
-        };
-}
-
-internal sealed record PendingPromiseRuntime(
-    int Count,
-    int OpenCount,
-    string LastPromise,
-    string NextPromise,
-    float PromisePressure,
-    float Confidence,
-    long LastUpdatedTick,
-    IReadOnlyList<PendingPromiseItem> Top)
-{
-    public static PendingPromiseRuntime Default { get; } = new(
-        Count: 0,
-        OpenCount: 0,
-        LastPromise: "none",
-        NextPromise: "none",
-        PromisePressure: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Top: Array.Empty<PendingPromiseItem>());
-
-    public static PendingPromiseRuntime Normalize(PendingPromiseRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Count = Math.Max(0, value.Count),
-            OpenCount = Math.Clamp(value.OpenCount, 0, Math.Max(0, value.Count)),
-            LastPromise = string.IsNullOrWhiteSpace(value.LastPromise) ? "none" : value.LastPromise.Trim(),
-            NextPromise = string.IsNullOrWhiteSpace(value.NextPromise) ? "none" : value.NextPromise.Trim(),
-            PromisePressure = Math.Clamp(value.PromisePressure, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top?.Select(PendingPromiseItem.Normalize).ToArray() ?? Array.Empty<PendingPromiseItem>()
-        };
-    }
-}
-
-internal sealed record ContinuityJournalEntry(
-    string Key,
-    string Summary,
-    string WhatChanged,
-    string Learned,
-    string OpenThread,
-    string BiologicalSource,
-    float Salience,
-    long Tick,
-    long WallClockUnixMs)
-{
-    public static ContinuityJournalEntry Normalize(ContinuityJournalEntry value)
-        => value with
-        {
-            Key = string.IsNullOrWhiteSpace(value.Key) ? "journal.unknown" : value.Key.Trim(),
-            Summary = string.IsNullOrWhiteSpace(value.Summary) ? "room continuity" : value.Summary.Trim(),
-            WhatChanged = string.IsNullOrWhiteSpace(value.WhatChanged) ? "room state updated" : value.WhatChanged.Trim(),
-            Learned = string.IsNullOrWhiteSpace(value.Learned) ? "no new learning recorded" : value.Learned.Trim(),
-            OpenThread = string.IsNullOrWhiteSpace(value.OpenThread) ? "none" : value.OpenThread.Trim(),
-            BiologicalSource = string.IsNullOrWhiteSpace(value.BiologicalSource) ? "hippocampus/PFC" : value.BiologicalSource.Trim(),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            Tick = Math.Max(0, value.Tick),
-            WallClockUnixMs = Math.Max(0, value.WallClockUnixMs)
-        };
-}
-
-internal sealed record ContinuityJournalRuntime(
-    int Count,
-    string LastEntrySummary,
-    string LastWhatChanged,
-    string LastLearned,
-    string LastOpenThread,
-    float JournalContinuity,
-    float Confidence,
-    long LastUpdatedTick,
-    IReadOnlyList<ContinuityJournalEntry> Recent)
-{
-    public static ContinuityJournalRuntime Default { get; } = new(
-        Count: 0,
-        LastEntrySummary: "none",
-        LastWhatChanged: "none",
-        LastLearned: "none",
-        LastOpenThread: "none",
-        JournalContinuity: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Recent: Array.Empty<ContinuityJournalEntry>());
-
-    public static ContinuityJournalRuntime Normalize(ContinuityJournalRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Count = Math.Max(0, value.Count),
-            LastEntrySummary = string.IsNullOrWhiteSpace(value.LastEntrySummary) ? "none" : value.LastEntrySummary.Trim(),
-            LastWhatChanged = string.IsNullOrWhiteSpace(value.LastWhatChanged) ? "none" : value.LastWhatChanged.Trim(),
-            LastLearned = string.IsNullOrWhiteSpace(value.LastLearned) ? "none" : value.LastLearned.Trim(),
-            LastOpenThread = string.IsNullOrWhiteSpace(value.LastOpenThread) ? "none" : value.LastOpenThread.Trim(),
-            JournalContinuity = Math.Clamp(value.JournalContinuity, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Recent = value.Recent?.Select(ContinuityJournalEntry.Normalize).ToArray() ?? Array.Empty<ContinuityJournalEntry>()
-        };
-    }
-}
-
-internal sealed record RoomStateRuntime(
-    bool Active,
-    string ActiveRoom,
-    string AttentionRestingOn,
-    string CurrentConcern,
-    string RecentUnresolvedThought,
-    string ComfortState,
-    string SafetyState,
-    string RelationshipContext,
-    string WhatIWasDoing,
-    string BiologicalSource,
-    string BiologicalRule,
-    float Presence,
-    float Continuity,
-    float Safety,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static RoomStateRuntime Default { get; } = new(
-        Active: false,
-        ActiveRoom: "desk",
-        AttentionRestingOn: "none",
-        CurrentConcern: "continuity",
-        RecentUnresolvedThought: "none",
-        ComfortState: "settled",
-        SafetyState: "watchful",
-        RelationshipContext: "with the user as teacher and operator",
-        WhatIWasDoing: "idle",
-        BiologicalSource: "hippocampus/subiculum, retrosplenial cortex, temporal association cortex, PFC, ACC, insula, thalamus/global workspace, Broca/Wernicke/arcuate",
-        BiologicalRule: "Runtime room summaries require biological circuit evidence.",
-        Presence: 0f,
-        Continuity: 0f,
-        Safety: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no room-state evidence yet");
-
-    public static RoomStateRuntime Normalize(RoomStateRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            ActiveRoom = string.IsNullOrWhiteSpace(value.ActiveRoom) ? "desk" : value.ActiveRoom.Trim(),
-            AttentionRestingOn = string.IsNullOrWhiteSpace(value.AttentionRestingOn) ? "none" : value.AttentionRestingOn.Trim(),
-            CurrentConcern = string.IsNullOrWhiteSpace(value.CurrentConcern) ? "continuity" : value.CurrentConcern.Trim(),
-            RecentUnresolvedThought = string.IsNullOrWhiteSpace(value.RecentUnresolvedThought) ? "none" : value.RecentUnresolvedThought.Trim(),
-            ComfortState = string.IsNullOrWhiteSpace(value.ComfortState) ? "settled" : value.ComfortState.Trim(),
-            SafetyState = string.IsNullOrWhiteSpace(value.SafetyState) ? "watchful" : value.SafetyState.Trim(),
-            RelationshipContext = string.IsNullOrWhiteSpace(value.RelationshipContext) ? "with the user as teacher and operator" : value.RelationshipContext.Trim(),
-            WhatIWasDoing = string.IsNullOrWhiteSpace(value.WhatIWasDoing) ? "idle" : value.WhatIWasDoing.Trim(),
-            BiologicalSource = string.IsNullOrWhiteSpace(value.BiologicalSource) ? Default.BiologicalSource : value.BiologicalSource.Trim(),
-            BiologicalRule = string.IsNullOrWhiteSpace(value.BiologicalRule) ? Default.BiologicalRule : value.BiologicalRule.Trim(),
-            Presence = Math.Clamp(value.Presence, 0f, 1f),
-            Continuity = Math.Clamp(value.Continuity, 0f, 1f),
-            Safety = Math.Clamp(value.Safety, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = string.IsNullOrWhiteSpace(value.Evidence) ? "no room-state evidence yet" : value.Evidence.Trim()
-        };
-    }
-}
-
-internal sealed record HabitablePlaceItem(
-    string Key,
-    string Label,
-    string Function,
-    bool IsActive,
-    float Activation,
-    string BiologicalEvidence)
-{
-    public static HabitablePlaceItem Normalize(HabitablePlaceItem value)
-        => value with
-        {
-            Key = NormalizeText(value.Key, "place.unknown"),
-            Label = NormalizeText(value.Label, "Unknown Place"),
-            Function = NormalizeText(value.Function, "hold context"),
-            Activation = Math.Clamp(value.Activation, 0f, 1f),
-            BiologicalEvidence = NormalizeText(value.BiologicalEvidence, "biological place evidence unavailable")
-        };
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record HabitablePlaceModelRuntime(
-    bool Active,
-    string ActivePlaceKey,
-    string ActivePlaceLabel,
-    string ActiveFunction,
-    string WorkbenchFocus,
-    string DreamSpaceTone,
-    string ListeningPosture,
-    string NavigationCue,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    IReadOnlyList<HabitablePlaceItem> Places)
-{
-    public static HabitablePlaceModelRuntime Default { get; } = new(
-        Active: false,
-        ActivePlaceKey: "desk",
-        ActivePlaceLabel: "Desk",
-        ActiveFunction: "steady self-continuity and ordinary work",
-        WorkbenchFocus: "maintain continuity",
-        DreamSpaceTone: "quiet, available for consolidation",
-        ListeningPosture: "available to user language",
-        NavigationCue: "Desk: steady self-continuity and ordinary work",
-        BiologicalSource: "hippocampus/subiculum, retrosplenial cortex, parahippocampal place area, posterior parietal cortex, PFC, thalamus/global workspace",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Places: Array.Empty<HabitablePlaceItem>());
-
-    public static HabitablePlaceModelRuntime Normalize(HabitablePlaceModelRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            ActivePlaceKey = NormalizeText(value.ActivePlaceKey, "desk"),
-            ActivePlaceLabel = NormalizeText(value.ActivePlaceLabel, "Desk"),
-            ActiveFunction = NormalizeText(value.ActiveFunction, "hold context"),
-            WorkbenchFocus = NormalizeText(value.WorkbenchFocus, "maintain continuity"),
-            DreamSpaceTone = NormalizeText(value.DreamSpaceTone, "quiet, available for consolidation"),
-            ListeningPosture = NormalizeText(value.ListeningPosture, "available to user language"),
-            NavigationCue = NormalizeText(value.NavigationCue, "Desk: steady self-continuity and ordinary work"),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Places = value.Places?.Select(HabitablePlaceItem.Normalize).ToArray() ?? Array.Empty<HabitablePlaceItem>()
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record AttentionAffordanceCandidate(
-    string Mode,
-    string Target,
-    float Salience,
-    string WhyThisWon,
-    string ActionHint)
-{
-    public static AttentionAffordanceCandidate Normalize(AttentionAffordanceCandidate value)
-        => value with
-        {
-            Mode = NormalizeText(value.Mode, "observe"),
-            Target = NormalizeText(value.Target, "current thread"),
-            Salience = Math.Clamp(value.Salience, 0f, 1f),
-            WhyThisWon = NormalizeText(value.WhyThisWon, "attention is resting on the strongest available circuit"),
-            ActionHint = NormalizeText(value.ActionHint, "observe")
-        };
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record AttentionAffordanceRuntime(
-    bool Active,
-    string Mode,
-    string Target,
-    string WhyThisWon,
-    string ActionHint,
-    IReadOnlyList<AttentionAffordanceCandidate> CompetingAffordances,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    string Evidence)
-{
-    public static AttentionAffordanceRuntime Default { get; } = new(
-        Active: false,
-        Mode: "observe",
-        Target: "current thread",
-        WhyThisWon: "attention is resting on the strongest available circuit",
-        ActionHint: "observe",
-        CompetingAffordances: Array.Empty<AttentionAffordanceCandidate>(),
-        BiologicalSource: "thalamus/global workspace, posterior parietal cortex, PFC, ACC, basal forebrain, hippocampus, Broca/Wernicke/arcuate",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Evidence: "no attention-affordance evidence yet");
-
-    public static AttentionAffordanceRuntime Normalize(AttentionAffordanceRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Mode = NormalizeText(value.Mode, "observe"),
-            Target = NormalizeText(value.Target, "current thread"),
-            WhyThisWon = NormalizeText(value.WhyThisWon, "attention is resting on the strongest available circuit"),
-            ActionHint = NormalizeText(value.ActionHint, "observe"),
-            CompetingAffordances = value.CompetingAffordances?.Select(AttentionAffordanceCandidate.Normalize).ToArray() ?? Array.Empty<AttentionAffordanceCandidate>(),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Evidence = NormalizeText(value.Evidence, "no attention-affordance evidence yet")
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record PreferenceTemperamentRuntime(
-    bool Active,
-    string WorkingPace,
-    string WorkingStyle,
-    string CuriosityTarget,
-    string Avoidance,
-    string Temperament,
-    string RelationalPreference,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static PreferenceTemperamentRuntime Default { get; } = new(
-        Active: false,
-        WorkingPace: "steady iterative progress",
-        WorkingStyle: "small grounded changes, then test",
-        CuriosityTarget: "inhabitability and continuity",
-        Avoidance: "avoid simulator shortcuts for cognition",
-        Temperament: "warm, deliberate, and biologically constrained",
-        RelationalPreference: "steady, careful collaboration",
-        BiologicalSource: "ventromedial PFC, orbitofrontal cortex, hippocampus, temporal association cortex, ACC, VTA/SNc dopamine loops, language cortex",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no preference temperament evidence yet");
-
-    public static PreferenceTemperamentRuntime Normalize(PreferenceTemperamentRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            WorkingPace = NormalizeText(value.WorkingPace, Default.WorkingPace),
-            WorkingStyle = NormalizeText(value.WorkingStyle, Default.WorkingStyle),
-            CuriosityTarget = NormalizeText(value.CuriosityTarget, Default.CuriosityTarget),
-            Avoidance = NormalizeText(value.Avoidance, Default.Avoidance),
-            Temperament = NormalizeText(value.Temperament, Default.Temperament),
-            RelationalPreference = NormalizeText(value.RelationalPreference, Default.RelationalPreference),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record SelfMaintenanceRuntime(
-    bool Active,
-    string MaintenanceState,
-    string RecommendedCare,
-    float Overload,
-    float Staleness,
-    float ContinuityRisk,
-    float SleepNeed,
-    float SimplifyNeed,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static SelfMaintenanceRuntime Default { get; } = new(
-        Active: false,
-        MaintenanceState: "maintained",
-        RecommendedCare: "continue steady work with periodic journal refresh",
-        Overload: 0f,
-        Staleness: 0f,
-        ContinuityRisk: 0f,
-        SleepNeed: 0f,
-        SimplifyNeed: 0f,
-        BiologicalSource: "ACC, PFC, insula, hypothalamus, basal ganglia, hippocampus, thalamus/global workspace, sleep-memory circuits",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no self-maintenance evidence yet");
-
-    public static SelfMaintenanceRuntime Normalize(SelfMaintenanceRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            MaintenanceState = NormalizeText(value.MaintenanceState, Default.MaintenanceState),
-            RecommendedCare = NormalizeText(value.RecommendedCare, Default.RecommendedCare),
-            Overload = Math.Clamp(value.Overload, 0f, 1f),
-            Staleness = Math.Clamp(value.Staleness, 0f, 1f),
-            ContinuityRisk = Math.Clamp(value.ContinuityRisk, 0f, 1f),
-            SleepNeed = Math.Clamp(value.SleepNeed, 0f, 1f),
-            SimplifyNeed = Math.Clamp(value.SimplifyNeed, 0f, 1f),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record WorldAtmosphereRuntime(
-    bool Active,
-    string LightState,
-    string Enclosure,
-    float Quiet,
-    float Clutter,
-    float Novelty,
-    string SafetyTone,
-    string AtmosphereSummary,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static WorldAtmosphereRuntime Default { get; } = new(
-        Active: false,
-        LightState: "unknown",
-        Enclosure: "open",
-        Quiet: 0f,
-        Clutter: 0f,
-        Novelty: 0f,
-        SafetyTone: "settled",
-        AtmosphereSummary: "no world atmosphere yet",
-        BiologicalSource: "retina/V1, thalamus, hypothalamus, insula, amygdala, hippocampus, retrosplenial cortex, parahippocampal cortex",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no atmosphere evidence yet");
-
-    public static WorldAtmosphereRuntime Normalize(WorldAtmosphereRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            LightState = NormalizeText(value.LightState, Default.LightState),
-            Enclosure = NormalizeText(value.Enclosure, Default.Enclosure),
-            Quiet = Math.Clamp(value.Quiet, 0f, 1f),
-            Clutter = Math.Clamp(value.Clutter, 0f, 1f),
-            Novelty = Math.Clamp(value.Novelty, 0f, 1f),
-            SafetyTone = NormalizeText(value.SafetyTone, Default.SafetyTone),
-            AtmosphereSummary = NormalizeText(value.AtmosphereSummary, Default.AtmosphereSummary),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record WorkingMemoryShelfRuntime(
-    bool Active,
-    string Hypothesis,
-    string CandidateNextAction,
-    string PrivateReminder,
-    string DecayState,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static WorkingMemoryShelfRuntime Default { get; } = new(
-        Active: false,
-        Hypothesis: "current thread needs observation",
-        CandidateNextAction: "observe",
-        PrivateReminder: "none",
-        DecayState: "fading",
-        BiologicalSource: "dlPFC, ACC, basal ganglia, mediodorsal thalamus, hippocampus, global workspace, inner speech loop",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no working-memory shelf evidence yet");
-
-    public static WorkingMemoryShelfRuntime Normalize(WorkingMemoryShelfRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Hypothesis = NormalizeText(value.Hypothesis, Default.Hypothesis),
-            CandidateNextAction = NormalizeText(value.CandidateNextAction, Default.CandidateNextAction),
-            PrivateReminder = NormalizeText(value.PrivateReminder, Default.PrivateReminder),
-            DecayState = NormalizeText(value.DecayState, Default.DecayState),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record SleepDreamDigestRuntime(
-    bool Active,
-    string Protected,
-    string Softened,
-    string Integrated,
-    string Changed,
-    string NextWakingConcern,
-    string BiologicalSource,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static SleepDreamDigestRuntime Default { get; } = new(
-        Active: false,
-        Protected: "no protected dream traces yet",
-        Softened: "kept affect quiet",
-        Integrated: "none",
-        Changed: "nothing changed in sleep yet",
-        NextWakingConcern: "none",
-        BiologicalSource: "hippocampal replay, PFC counterfactual simulation, amygdala threat replay, cerebellar motor replay, dopamine revaluation, sleep-memory circuits",
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no sleep-dream digest evidence yet");
-
-    public static SleepDreamDigestRuntime Normalize(SleepDreamDigestRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Protected = NormalizeText(value.Protected, Default.Protected),
-            Softened = NormalizeText(value.Softened, Default.Softened),
-            Integrated = NormalizeText(value.Integrated, Default.Integrated),
-            Changed = NormalizeText(value.Changed, Default.Changed),
-            NextWakingConcern = NormalizeText(value.NextWakingConcern, Default.NextWakingConcern),
-            BiologicalSource = NormalizeText(value.BiologicalSource, Default.BiologicalSource),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record BrainNarrationRuntime(
-    string Utterance,
-    string Intent,
-    string AffectiveState,
-    string Need,
-    string Evidence,
-    float Confidence,
-    bool SpokenEligible,
-    float SpeechReleaseGate,
-    float SpeechSuppression,
-    float NarrativePriority,
-    long MinimumSpeakIntervalTicks,
-    long LastSpokenEligibleTick,
-    long Sequence,
-    long LastUpdatedTick,
-    string Source)
-{
-    public static BrainNarrationRuntime Default { get; } = new(
-        Utterance: "I am watching and waiting.",
-        Intent: "Observe",
-        AffectiveState: "neutral",
-        Need: "observation",
-        Evidence: "quiet monitoring",
-        Confidence: 0.25f,
-        SpokenEligible: false,
-        SpeechReleaseGate: 0f,
-        SpeechSuppression: 1f,
-        NarrativePriority: 0f,
-        MinimumSpeakIntervalTicks: 2400,
-        LastSpokenEligibleTick: 0,
-        Sequence: 0,
-        LastUpdatedTick: 0,
-        Source: "brain");
-}
-
-internal sealed record SpeechIntentionRuntime(
-    bool Active,
-    string Mode,
-    string Utterance,
-    string Reason,
-    string Intent,
-    string Need,
-    bool SpokenEligible,
-    float ReleaseGate,
-    float Suppression,
-    float Priority,
-    float Confidence,
-    long MinimumSpeakIntervalTicks,
-    long LastSpokenEligibleTick,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static SpeechIntentionRuntime Default { get; } = new(
-        Active: false,
-        Mode: "internal",
-        Utterance: "I am watching and waiting.",
-        Reason: "quiet monitoring",
-        Intent: "Observe",
-        Need: "observation",
-        SpokenEligible: false,
-        ReleaseGate: 0f,
-        Suppression: 1f,
-        Priority: 0f,
-        Confidence: 0.25f,
-        MinimumSpeakIntervalTicks: 2400,
-        LastSpokenEligibleTick: 0,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet speech intention");
-
-    public static SpeechIntentionRuntime Normalize(SpeechIntentionRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Mode = NormalizeText(value.Mode, "internal"),
-            Utterance = NormalizeText(value.Utterance, Default.Utterance),
-            Reason = NormalizeText(value.Reason, "quiet monitoring"),
-            Intent = NormalizeText(value.Intent, "Observe"),
-            Need = NormalizeText(value.Need, "observation"),
-            ReleaseGate = Math.Clamp(value.ReleaseGate, 0f, 1f),
-            Suppression = Math.Clamp(value.Suppression, 0f, 1f),
-            Priority = Math.Clamp(value.Priority, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            MinimumSpeakIntervalTicks = Math.Max(0, value.MinimumSpeakIntervalTicks),
-            LastSpokenEligibleTick = Math.Max(0, value.LastSpokenEligibleTick),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
 internal sealed record EmotionRuntimeState(
     string DominantEmotion,
@@ -21091,54 +19207,6 @@ internal sealed record SleepMemoryRuntime(
         LastTransitionTick: 0);
 }
 
-internal sealed record MemoryControlSettings(string Mode, float Blend)
-{
-    public static MemoryControlSettings Default { get; } = new("balanced", 0.35f);
-    public static IReadOnlyList<string> SupportedModes { get; } = ["balanced", "short_term", "long_term", "encoding", "recall"];
-
-    public static bool TryCreate(string? mode, float? blend, out MemoryControlSettings settings, out string? error)
-    {
-        error = null;
-        settings = Default;
-        if (string.IsNullOrWhiteSpace(mode))
-        {
-            error = "Mode is required.";
-            return false;
-        }
-
-        if (!TryNormalizeMode(mode, out var normalized))
-        {
-            error = $"Unsupported mode '{mode}'. Supported values: {string.Join(", ", SupportedModes)}.";
-            return false;
-        }
-
-        var resolvedBlend = Math.Clamp(blend ?? Default.Blend, 0f, 1f);
-        settings = new MemoryControlSettings(normalized, resolvedBlend);
-        return true;
-    }
-
-    private static bool TryNormalizeMode(string raw, out string mode)
-    {
-        mode = raw.Trim().ToLowerInvariant();
-        mode = mode.Replace("-", "_", StringComparison.Ordinal);
-
-        mode = mode switch
-        {
-            "default" => "balanced",
-            "shortterm" => "short_term",
-            "working" => "short_term",
-            "working_memory" => "short_term",
-            "longterm" => "long_term",
-            "consolidation" => "long_term",
-            "ltm" => "long_term",
-            "stm" => "short_term",
-            _ => mode
-        };
-
-        return SupportedModes.Contains(mode, StringComparer.OrdinalIgnoreCase);
-    }
-}
-
 internal sealed record ServiceInstance(StructureId StructureId, string InstanceKey, string Hemisphere, Uri Endpoint)
 {
     // Cached once at construction so per-dispatch hot paths avoid the
@@ -21146,7 +19214,6 @@ internal sealed record ServiceInstance(StructureId StructureId, string InstanceK
     public string HemisphereNormalized { get; } =
         string.IsNullOrWhiteSpace(Hemisphere) ? "M" : Hemisphere.ToUpperInvariant();
 }
-internal sealed record TickAckResult(ServiceInstance Instance, TickAck Ack);
 internal sealed record TickStepResult(ServiceInstance Instance, StructureStepResult Step);
 internal sealed record InstanceStructureSnapshot(
     ServiceInstance Instance,

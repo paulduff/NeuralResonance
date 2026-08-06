@@ -482,6 +482,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             "SemanticMemory",
             "DopamineLearning",
             "DreamConsolidation",
+            "MemoryControl",
             "EngramBank",
             "SchemaBank",
             "ObjectMemory",

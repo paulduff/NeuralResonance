@@ -331,6 +331,7 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     [InlineData("/api/v1/inhabitance")]
     [InlineData("/api/v1/biological-teaching-loop")]
     [InlineData("/api/v1/admin/object-memory")]
+    [InlineData("/api/v1/admin/memory-control")]
     [InlineData("/api/v1/admin/reasoning/schemas")]
     [InlineData("/api/v1/admin/reasoning/world-model")]
     [InlineData("/api/v1/admin/reasoning/counterfactual")]

@@ -86,7 +86,8 @@ public sealed class NeuronalMotorControlTests
 
         Assert.DoesNotContain(
             decode.GetParameters(),
-            parameter => parameter.ParameterType == typeof(IntentionalActionLoopRuntime));
+            parameter => parameter.ParameterType.Name == "IntentionalActionLoopRuntime");
+        Assert.Null(typeof(SimulationState).Assembly.GetType("IntentionalActionLoopRuntime"));
     }
 
     [Fact]

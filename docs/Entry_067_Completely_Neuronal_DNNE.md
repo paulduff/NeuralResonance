@@ -272,6 +272,13 @@ callbacks, and obsolete telemetry. Structure-local synapses are now the only
 durable learning substrate, and sleep transitions require measured neuronal
 sleep-circuit authority.
 
+Entry 086 deletes the orphaned scalar cognition records and the editor surfaces
+that still portrayed those retired records as a working planner, memory,
+workspace, narrative self, or world model. Manual memory-mode control and its
+checkpoint state are gone. Editor cognition, language, embodiment, and motor
+panes now report the neuronal decoders already measured during the live tick,
+and the synthetic brain-narration speech bridge has been removed.
+
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 
 No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.

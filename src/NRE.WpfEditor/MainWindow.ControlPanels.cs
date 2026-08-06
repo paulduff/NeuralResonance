@@ -8,8 +8,8 @@ using System.Windows.Threading;
 namespace NRE.WpfEditor;
 
 // Control-panel handlers: performance profile buttons, auto-profile sliders,
-// sleep-pressure / min-wake-ticks controls, input-gates checkboxes, reasoning
-// curriculum/consolidation/counterfactual apply actions,
+// sleep-pressure / min-wake-ticks controls, input-gates checkboxes, neuronal
+// cognition curriculum controls,
 // structure restart helpers.
 // Extracted from MainWindow.xaml.cs.
 public partial class MainWindow
@@ -93,9 +93,7 @@ public partial class MainWindow
 
     private void SyncReasoningControlsFromState(JsonElement root)
     {
-        if (_reasoningApplyCurriculumInFlight ||
-            _reasoningApplyConsolidationInFlight ||
-            _reasoningCounterfactualInFlight)
+        if (_reasoningApplyCurriculumInFlight)
         {
             return;
         }
@@ -120,18 +118,6 @@ public partial class MainWindow
                 SetSliderValue(ReasoningCurriculumStageSlider, GetInt(curriculum, "stageIndex"));
             }
 
-            if (TryGetProperty(root, "consolidationControl", out var consolidation) && consolidation.ValueKind == JsonValueKind.Object)
-            {
-                foundAny = true;
-                if (ReasoningConsolidationEnabledCheckBox is not null)
-                {
-                    ReasoningConsolidationEnabledCheckBox.IsChecked = GetBool(consolidation, "enabled", true);
-                }
-
-                SetSliderValue(ReasoningReplayEarlySlider, GetDouble(consolidation, "replayWeightEarlyHippocampal"));
-                SetSliderValue(ReasoningReplayLateSlider, GetDouble(consolidation, "replayWeightLateCortical"));
-                SetSliderValue(ReasoningAntiForgettingSlider, GetDouble(consolidation, "antiForgettingHomeostasis"));
-            }
         }
         finally
         {
@@ -148,8 +134,8 @@ public partial class MainWindow
         {
             var tick = GetLong(root, "tick");
             ReasoningStatusText.Text = tick > 0
-                ? $"Reasoning controls: synced from runtime (tick {tick})"
-                : "Reasoning controls: synced from runtime";
+                ? $"Neuronal cognition: curriculum synced (tick {tick})"
+                : "Neuronal cognition: curriculum synced";
         }
     }
 
@@ -160,144 +146,6 @@ public partial class MainWindow
             ReasoningCurriculumStageText.Text = ((int)Math.Round(ReasoningCurriculumStageSlider.Value)).ToString();
         }
 
-        if (ReasoningReplayEarlyText is not null && ReasoningReplayEarlySlider is not null)
-        {
-            ReasoningReplayEarlyText.Text = ReasoningReplayEarlySlider.Value.ToString("0.00");
-        }
-
-        if (ReasoningReplayLateText is not null && ReasoningReplayLateSlider is not null)
-        {
-            ReasoningReplayLateText.Text = ReasoningReplayLateSlider.Value.ToString("0.00");
-        }
-
-        if (ReasoningAntiForgettingText is not null && ReasoningAntiForgettingSlider is not null)
-        {
-            ReasoningAntiForgettingText.Text = ReasoningAntiForgettingSlider.Value.ToString("0.00");
-        }
-
-        if (ReasoningCounterfactualHorizonText is not null && ReasoningCounterfactualHorizonSlider is not null)
-        {
-            ReasoningCounterfactualHorizonText.Text = ((int)Math.Round(ReasoningCounterfactualHorizonSlider.Value)).ToString();
-        }
-    }
-
-    private static string FormatCounterfactualResult(string payload)
-    {
-        if (string.IsNullOrWhiteSpace(payload))
-        {
-            return "Counterfactual returned no payload.";
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(payload);
-            var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return payload;
-            }
-
-            var found = GetBool(root, "found");
-            var horizon = GetInt(root, "horizonSteps");
-            if (!found)
-            {
-                var reason = GetString(root, "reason");
-                var suggestions = new List<string>(8);
-                if (TryGetProperty(root, "suggestedActions", out var suggested) && suggested.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in suggested.EnumerateArray().Take(8))
-                    {
-                        if (item.ValueKind == JsonValueKind.String)
-                        {
-                            var suggestedAction = item.GetString();
-                            if (!string.IsNullOrWhiteSpace(suggestedAction))
-                            {
-                                suggestions.Add(suggestedAction);
-                            }
-                        }
-                    }
-                }
-
-                return string.Join(Environment.NewLine, new[]
-                {
-                    $"Found: {found}",
-                    $"Horizon: {horizon}",
-                    $"Reason: {(string.IsNullOrWhiteSpace(reason) ? "-" : reason)}",
-                    $"Suggestions: {(suggestions.Count == 0 ? "-" : string.Join(", ", suggestions))}"
-                });
-            }
-
-            var actionKey = string.Empty;
-            var source = string.Empty;
-            var target = string.Empty;
-            var nt = string.Empty;
-            var isFeedback = false;
-            if (TryGetProperty(root, "action", out var action) && action.ValueKind == JsonValueKind.Object)
-            {
-                actionKey = GetString(action, "actionKey");
-                source = GetString(action, "source");
-                target = GetString(action, "target");
-                nt = GetString(action, "neurotransmitter");
-                isFeedback = GetBool(action, "isFeedback");
-            }
-
-            var oneStepDispatch = 0.0;
-            var oneStepPathway = 0.0;
-            var oneStepReward = 0.0;
-            var oneStepSleep = 0.0;
-            if (TryGetProperty(root, "oneStep", out var oneStep) && oneStep.ValueKind == JsonValueKind.Object)
-            {
-                oneStepDispatch = GetDouble(oneStep, "expectedDispatchDelta");
-                oneStepPathway = GetDouble(oneStep, "expectedPathwayDelta");
-                oneStepReward = GetDouble(oneStep, "expectedRewardDelta");
-                oneStepSleep = GetDouble(oneStep, "expectedSleepPressureDelta");
-            }
-
-            var multiDispatch = 0.0;
-            var multiPathway = 0.0;
-            var multiReward = 0.0;
-            var multiSleep = 0.0;
-            if (TryGetProperty(root, "multiStep", out var multiStep) && multiStep.ValueKind == JsonValueKind.Object)
-            {
-                multiDispatch = GetDouble(multiStep, "dispatchDelta");
-                multiPathway = GetDouble(multiStep, "pathwayDelta");
-                multiReward = GetDouble(multiStep, "rewardDelta");
-                multiSleep = GetDouble(multiStep, "sleepPressureDelta");
-            }
-
-            var confidence = GetDouble(root, "confidence");
-            var predictionError = GetDouble(root, "predictionError");
-            var samples = GetLong(root, "samples");
-
-            var alternatives = new List<string>(6);
-            if (TryGetProperty(root, "alternatives", out var alternativesArray) && alternativesArray.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var alternative in alternativesArray.EnumerateArray().Take(6))
-                {
-                    var altAction = GetString(alternative, "actionKey");
-                    var altReward = GetDouble(alternative, "expectedRewardDelta");
-                    var altDispatch = GetDouble(alternative, "expectedDispatchDelta");
-                    var altSleep = GetDouble(alternative, "expectedSleepPressureDelta");
-                    alternatives.Add(
-                        $"{altAction} (reward {altReward:+0.000;-0.000;0.000}, dispatch {altDispatch:+0.000;-0.000;0.000}, sleep {altSleep:+0.000;-0.000;0.000})");
-                }
-            }
-
-            return string.Join(Environment.NewLine, new[]
-            {
-                $"Found: {found}",
-                $"Action: {actionKey} ({source}->{target}, {nt}, feedback={isFeedback})",
-                $"Horizon: {horizon}",
-                $"One-step delta: dispatch {oneStepDispatch:+0.000;-0.000;0.000}, pathways {oneStepPathway:+0.000;-0.000;0.000}, reward {oneStepReward:+0.000;-0.000;0.000}, sleep {oneStepSleep:+0.000;-0.000;0.000}",
-                $"Multi-step delta: dispatch {multiDispatch:+0.000;-0.000;0.000}, pathways {multiPathway:+0.000;-0.000;0.000}, reward {multiReward:+0.000;-0.000;0.000}, sleep {multiSleep:+0.000;-0.000;0.000}",
-                $"Confidence: {confidence:0.000} | prediction error: {predictionError:0.000} | samples: {samples}",
-                $"Alternatives: {(alternatives.Count == 0 ? "-" : string.Join(" | ", alternatives))}"
-            });
-        }
-        catch
-        {
-            return payload;
-        }
     }
 
     private async Task ApplyReasoningCurriculumAsync()
@@ -379,175 +227,7 @@ public partial class MainWindow
         }
     }
 
-    private async Task ApplyReasoningConsolidationAsync()
-    {
-        if (_reasoningApplyConsolidationInFlight)
-        {
-            AddOutputLog("Reasoning consolidation update already in progress.");
-            return;
-        }
 
-        _reasoningApplyConsolidationInFlight = true;
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5000));
-        try
-        {
-            var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
-            if (baseUri is null)
-            {
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = "Reasoning consolidation: control endpoint unavailable";
-                }
-                AddOutputLog("Reasoning consolidation update skipped: Control Program endpoint not available.");
-                return;
-            }
-
-            var request = new
-            {
-                Enabled = ReasoningConsolidationEnabledCheckBox?.IsChecked ?? true,
-                ReplayWeightEarlyHippocampal = (float)(ReasoningReplayEarlySlider?.Value ?? 1.8),
-                ReplayWeightLateCortical = (float)(ReasoningReplayLateSlider?.Value ?? 1.4),
-                AntiForgettingHomeostasis = (float)(ReasoningAntiForgettingSlider?.Value ?? 0.60)
-            };
-
-            using var response = await _httpClient.PostAsJsonAsync(new Uri(baseUri, "/api/v1/admin/reasoning/consolidation"), request, cts.Token);
-            var payload = await response.Content.ReadAsStringAsync(cts.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                NoteControlEndpointFailure();
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = $"Reasoning consolidation: HTTP {(int)response.StatusCode}";
-                }
-                AddOutputLog($"Reasoning consolidation update failed: HTTP {(int)response.StatusCode}. {TrimForStatus(payload, 220)}");
-                return;
-            }
-
-            NoteControlEndpointSuccess(baseUri);
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = "Reasoning consolidation: applied";
-            }
-            AddOutputLog("Reasoning consolidation settings updated.");
-
-            if (!string.IsNullOrWhiteSpace(payload))
-            {
-                using var doc = JsonDocument.Parse(payload);
-                if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                {
-                    SetReasoningText(FormatReasoningState(doc.RootElement));
-                    SyncReasoningControlsFromState(doc.RootElement);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            NoteControlEndpointFailure();
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = $"Reasoning consolidation: error ({ex.GetType().Name})";
-            }
-            AddOutputLog($"Reasoning consolidation update failed: {ex.Message}");
-        }
-        finally
-        {
-            _reasoningApplyConsolidationInFlight = false;
-        }
-    }
-
-    private async Task EvaluateReasoningCounterfactualAsync()
-    {
-        if (_reasoningCounterfactualInFlight)
-        {
-            AddOutputLog("Reasoning counterfactual request already in progress.");
-            return;
-        }
-
-        _reasoningCounterfactualInFlight = true;
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(6500));
-        try
-        {
-            var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
-            if (baseUri is null)
-            {
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = "Reasoning counterfactual: control endpoint unavailable";
-                }
-                if (ReasoningCounterfactualResultTextBox is not null)
-                {
-                    ReasoningCounterfactualResultTextBox.Text = "Counterfactual skipped: Control Program endpoint not available.";
-                    ReasoningCounterfactualResultTextBox.CaretIndex = 0;
-                }
-                AddOutputLog("Reasoning counterfactual skipped: Control Program endpoint not available.");
-                return;
-            }
-
-            var actionKey = ReasoningCounterfactualActionTextBox?.Text?.Trim();
-            if (string.IsNullOrWhiteSpace(actionKey))
-            {
-                actionKey = "idle";
-            }
-
-            var request = new
-            {
-                ActionKey = actionKey,
-                HorizonSteps = (int)Math.Round(ReasoningCounterfactualHorizonSlider?.Value ?? 4)
-            };
-
-            using var response = await _httpClient.PostAsJsonAsync(new Uri(baseUri, "/api/v1/admin/reasoning/counterfactual"), request, cts.Token);
-            var payload = await response.Content.ReadAsStringAsync(cts.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                NoteControlEndpointFailure();
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = $"Reasoning counterfactual: HTTP {(int)response.StatusCode}";
-                }
-                if (ReasoningCounterfactualResultTextBox is not null)
-                {
-                    ReasoningCounterfactualResultTextBox.Text =
-                        $"Counterfactual failed: HTTP {(int)response.StatusCode}.{Environment.NewLine}{TrimForStatus(payload, 400)}";
-                    ReasoningCounterfactualResultTextBox.CaretIndex = 0;
-                }
-                AddOutputLog($"Reasoning counterfactual failed: HTTP {(int)response.StatusCode}. {TrimForStatus(payload, 220)}");
-                return;
-            }
-
-            NoteControlEndpointSuccess(baseUri);
-            var formatted = FormatCounterfactualResult(payload);
-            if (ReasoningCounterfactualResultTextBox is not null)
-            {
-                ReasoningCounterfactualResultTextBox.Text = formatted;
-                ReasoningCounterfactualResultTextBox.CaretIndex = 0;
-            }
-
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = $"Reasoning counterfactual evaluated: {actionKey}";
-            }
-            AddOutputLog($"Reasoning counterfactual evaluated for '{actionKey}'.");
-        }
-        catch (Exception ex)
-        {
-            NoteControlEndpointFailure();
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = $"Reasoning counterfactual: error ({ex.GetType().Name})";
-            }
-
-            if (ReasoningCounterfactualResultTextBox is not null)
-            {
-                ReasoningCounterfactualResultTextBox.Text = $"Counterfactual failed: {ex.Message}";
-                ReasoningCounterfactualResultTextBox.CaretIndex = 0;
-            }
-            AddOutputLog($"Reasoning counterfactual failed: {ex.Message}");
-        }
-        finally
-        {
-            _reasoningCounterfactualInFlight = false;
-        }
-    }
 
     private void ReasoningSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -564,12 +244,6 @@ public partial class MainWindow
     // WPF dispatcher (which would tear down the whole editor).
     private async void ReasoningApplyCurriculumButton_OnClick(object sender, RoutedEventArgs e)
         => await SafeHandlerAsync(ApplyReasoningCurriculumAsync, "Apply reasoning curriculum");
-
-    private async void ReasoningApplyConsolidationButton_OnClick(object sender, RoutedEventArgs e)
-        => await SafeHandlerAsync(ApplyReasoningConsolidationAsync, "Apply reasoning consolidation");
-
-    private async void ReasoningEvaluateCounterfactualButton_OnClick(object sender, RoutedEventArgs e)
-        => await SafeHandlerAsync(EvaluateReasoningCounterfactualAsync, "Evaluate reasoning counterfactual");
 
     // Webcam UI handlers (resolution combo, preview viewport sizing) moved to MainWindow.Webcam.cs.
 

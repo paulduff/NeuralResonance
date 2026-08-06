@@ -179,8 +179,6 @@ public partial class MainWindow : Window
     private bool _visualRouteRecoveryInFlight;
     private bool _suppressReasoningControlEvents;
     private bool _reasoningApplyCurriculumInFlight;
-    private bool _reasoningApplyConsolidationInFlight;
-    private bool _reasoningCounterfactualInFlight;
     private int _shutdownRequested;
     private bool _shutdownComplete;
     private bool _shutdownInFlight;
@@ -207,12 +205,10 @@ public partial class MainWindow : Window
     private DateTime _lastV1RouteFailureUtc = DateTime.MinValue;
     private DateTime _lastLanguageInputUtc = DateTime.MinValue;
     private DateTime _lastSpeechUtc = DateTime.MinValue;
-    private DateTime _lastBrainNarrationSpeechUtc = DateTime.MinValue;
     private DateTime _lastLanguageUtteranceUtc = DateTime.MinValue;
     private string _lastLanguageUtterance = "hello world";
     private string _lastSpokenPhrase = string.Empty;
     private long _languageUtteranceSequence;
-    private long _lastBrainNarrationSequence;
     private long _lastSpokenLanguageUtteranceSequence;
     private long _lastSpeechDispatchWallClockMs;
     private int _speechVolume = 95;
@@ -250,7 +246,6 @@ public partial class MainWindow : Window
     private static readonly TimeSpan MicrophoneStimulusInterval = TimeSpan.FromMilliseconds(180);
     private static readonly TimeSpan LanguageInputCooldown = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan SpeechCooldown = TimeSpan.FromMilliseconds(6000);
-    private static readonly TimeSpan BrainNarrationSpeechCooldown = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan SpeechDuplicateSuppression = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan LanguageUtteranceRetention = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan PassiveLanguageUtteranceUpdateCooldown = TimeSpan.FromSeconds(6);
@@ -745,9 +740,8 @@ public partial class MainWindow : Window
         SelectionPlasticityText.Text = "Plasticity: -";
         SelectionMicrotubuleText.Text = "Experimental: intracellular microtubule approximation - waiting for live diagnostics";
         TransportStatsTextBox.Text = "Waiting for /api/v1/frame ...";
-        InhabitanceTextBox.Text = "Waiting for inhabitance telemetry ...";
-        ReasoningTextBox.Text = "Waiting for reasoning telemetry ...";
-        ReasoningCounterfactualResultTextBox.Text = "Counterfactual result will appear here.";
+        InhabitanceTextBox.Text = "Waiting for embodied neuronal telemetry ...";
+        ReasoningTextBox.Text = "Waiting for neuronal cognition telemetry ...";
         ApplyPresetTransformLock(LockPresetTransformsCheckBox?.IsChecked ?? true);
         NeuronBudgetSlider.Value = _displayNeuronGridEdge;
         NeuronBudgetText.Text = FormatNeuronBudgetLabel(_displayNeuronGridEdge);
@@ -1785,7 +1779,6 @@ public partial class MainWindow : Window
             SyncInputGatesFromState(stateElement);
             transportStatsBaseText = FormatTransportStats(stateElement);
             SetLanguageCommandTelemetryText(FormatBrainTelemetry(stateElement));
-            SyncBrainNarrationFromState(stateElement);
             UpdateVisualAttentionReticleFromState(stateElement);
             spikePipeline = ParseTransportSpikePipeline(stateElement);
             telemetry = ParseServiceTelemetryFromState(stateElement);
@@ -1833,96 +1826,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SyncBrainNarrationFromState(JsonElement stateElement)
-    {
-        if (!TryGetProperty(stateElement, "brainNarration", out var narration) ||
-            narration.ValueKind != JsonValueKind.Object)
-        {
-            return;
-        }
-
-        var sequence = GetLong(narration, "sequence");
-        if (sequence <= 0 || sequence <= _lastBrainNarrationSequence)
-        {
-            return;
-        }
-
-        var utterance = GetString(narration, "utterance");
-        if (string.IsNullOrWhiteSpace(utterance))
-        {
-            _lastBrainNarrationSequence = sequence;
-            return;
-        }
-
-        _lastBrainNarrationSequence = sequence;
-        var spokenEligible = GetBool(narration, "spokenEligible", true);
-        var speechReleaseGate = GetDouble(narration, "speechReleaseGate");
-        var speechSuppression = GetDouble(narration, "speechSuppression");
-        if (!spokenEligible || speechReleaseGate < 0.32 || speechSuppression > 0.78)
-        {
-            return;
-        }
-
-        if (!IsSpeakableBrainNarration(utterance))
-        {
-            return;
-        }
-
-        if (!_speechOutputEnabled || _isSimulationSleeping)
-        {
-            return;
-        }
-
-        var now = DateTime.UtcNow;
-        if ((now - _lastSpeechUtc) < SpeechCooldown ||
-            (now - _lastBrainNarrationSpeechUtc) < BrainNarrationSpeechCooldown)
-        {
-            return;
-        }
-
-        if (string.Equals(_lastSpokenPhrase, utterance, StringComparison.OrdinalIgnoreCase) &&
-            (now - _lastSpeechUtc) < SpeechDuplicateSuppression)
-        {
-            return;
-        }
-
-        _lastSpeechUtc = now;
-        _lastBrainNarrationSpeechUtc = now;
-        _lastSpokenPhrase = utterance;
-        _speechQueue.Writer.TryWrite(utterance);
-    }
-
-    private static bool IsSpeakableBrainNarration(string utterance)
-    {
-        var normalized = NormalizeSpeechUtterance(utterance);
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return false;
-        }
-
-        var lower = normalized.ToLowerInvariant();
-        if (lower.Contains('=') ||
-            lower.Contains("dopamine", StringComparison.Ordinal) ||
-            lower.Contains("hippocamp", StringComparison.Ordinal) ||
-            lower.Contains("ca1", StringComparison.Ordinal) ||
-            lower.Contains("ca2", StringComparison.Ordinal) ||
-            lower.Contains("ca3", StringComparison.Ordinal) ||
-            lower.Contains("dentate", StringComparison.Ordinal) ||
-            lower.Contains("entorhinal", StringComparison.Ordinal) ||
-            lower.Contains("subiculum", StringComparison.Ordinal) ||
-            lower.Contains("insula=", StringComparison.Ordinal) ||
-            lower.Contains("binding", StringComparison.Ordinal) ||
-            lower.Contains("confidence", StringComparison.Ordinal) ||
-            lower.Contains("trace", StringComparison.Ordinal) ||
-            lower.Contains("runtime", StringComparison.Ordinal) ||
-            lower.Contains("telemetry", StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        return lower.StartsWith("i ", StringComparison.Ordinal) ||
-               lower.StartsWith("it is ", StringComparison.Ordinal);
-    }
 
     private void ProcessSnapshotFramePayload(
         JsonElement frame,

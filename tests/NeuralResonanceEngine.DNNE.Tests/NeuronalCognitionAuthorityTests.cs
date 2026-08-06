@@ -90,6 +90,42 @@ public sealed class NeuronalCognitionAuthorityTests
     }
 
     [Fact]
+    public void ScalarCognitionRecordTypesArePhysicallyAbsent()
+    {
+        var assembly = typeof(SimulationState).Assembly;
+        string[] retiredTypes =
+        [
+            "PlanningWorkspaceRuntime",
+            "GoalIntentRuntime",
+            "MotivationArbitrationRuntime",
+            "LanguageIntentRuntime",
+            "CognitiveLanguageWorkspaceRuntime",
+            "InnerSpeechLoopRuntime",
+            "PrefrontalWorkingMemoryRuntime",
+            "IntentionalActionLoopRuntime",
+            "ConsciousnessRhythmRuntime",
+            "GlobalWorkspaceRuntime",
+            "NarrativeSelfModelRuntime",
+            "IdentityBoundaryRuntime",
+            "PendingPromiseRuntime",
+            "ContinuityJournalRuntime",
+            "RoomStateRuntime",
+            "HabitablePlaceModelRuntime",
+            "AttentionAffordanceRuntime",
+            "PreferenceTemperamentRuntime",
+            "SelfMaintenanceRuntime",
+            "WorldAtmosphereRuntime",
+            "WorkingMemoryShelfRuntime",
+            "SleepDreamDigestRuntime",
+            "BrainNarrationRuntime",
+            "SpeechIntentionRuntime",
+            "MemoryControlSettings"
+        ];
+
+        Assert.All(retiredTypes, typeName => Assert.Null(assembly.GetType(typeName)));
+    }
+
+    [Fact]
     public void RuntimeAssemblyContainsNoSemanticMotorSpikeBuilders()
     {
         var methodNames = typeof(SimulationState).Assembly

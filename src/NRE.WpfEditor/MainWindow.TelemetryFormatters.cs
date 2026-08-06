@@ -786,67 +786,6 @@ public partial class MainWindow
         return anyActive ? "descending chain active" : "chain quiet";
     }
 
-    private static string FormatObjectMemoryState(JsonElement root)
-    {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
-        {
-            root = nestedState;
-        }
-
-        if (!TryGetProperty(root, "objectMemory", out var objectMemory) || objectMemory.ValueKind != JsonValueKind.Object)
-        {
-            return "Object memory unavailable: state payload missing objectMemory.";
-        }
-
-        var tick = GetLong(root, "tick");
-        var simMs = GetDouble(root, "simulationClockMs");
-        var count = GetInt(objectMemory, "count");
-        var topList = TryGetProperty(objectMemory, "top", out var top) && top.ValueKind == JsonValueKind.Array
-            ? top
-            : default;
-
-        var lines = new List<string>(48)
-        {
-            $"Tick: {tick}",
-            $"Simulation ms: {simMs:0.0}",
-            $"Object traces: {count}",
-            string.Empty,
-            "Most recent objects:"
-        };
-
-        if (topList.ValueKind != JsonValueKind.Array || topList.GetArrayLength() == 0)
-        {
-            lines.Add("  -");
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        var index = 1;
-        foreach (var item in topList.EnumerateArray().Take(16))
-        {
-            if (item.ValueKind != JsonValueKind.Object)
-            {
-                continue;
-            }
-
-            var objectId = GetString(item, "objectId");
-            var label = GetString(item, "label");
-            var hemisphere = GetString(item, "dominantHemisphere");
-            var familiarity = GetDouble(item, "familiarity");
-            var salienceEma = GetDouble(item, "salienceEma");
-            var confidenceEma = GetDouble(item, "confidenceEma");
-            var intensityEma = GetDouble(item, "intensityEma");
-            var seenCount = GetInt(item, "seenCount");
-            var lastSeenTick = GetLong(item, "lastSeenTick");
-            var lastSeenMs = GetDouble(item, "lastSeenSimulationMs");
-
-            lines.Add($"{index,2}. {label} [{objectId}] hemi={hemisphere} fam={familiarity:0.000} seen={seenCount}");
-            lines.Add($"    sal={salienceEma:0.000} conf={confidenceEma:0.000} int={intensityEma:0.000} lastTick={lastSeenTick} lastMs={lastSeenMs:0.0}");
-            index++;
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
     private static string FormatProsodyTelemetry(JsonElement root)
     {
         if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
@@ -1050,424 +989,110 @@ public partial class MainWindow
             $"  Top edge: {topEdgeSummary}"
         });
     }
-
     private static string FormatReasoningState(JsonElement root)
     {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
-        {
-            root = nestedState;
-        }
-
+        root = NormalizeStateRoot(root);
         var tick = GetLong(root, "tick");
-        var simMs = GetDouble(root, "simulationClockMs");
+        var hasAuthority = TryGetObject(root, "cognitionAuthority", out var authority);
+        var hasAttention = TryGetObject(root, "neuronalAttentionWorkspace", out var attention);
+        var hasExecutive = TryGetObject(root, "neuronalExecutive", out var executive);
+        var hasMemory = TryGetObject(root, "neuronalMemory", out var memory);
+        var hasSleep = TryGetObject(root, "neuronalSleepConsolidation", out var sleep);
 
-        var hasPlanning = TryGetProperty(root, "planningWorkspace", out var planning) && planning.ValueKind == JsonValueKind.Object;
-        var hasCurriculum = TryGetProperty(root, "curriculum", out var curriculum) && curriculum.ValueKind == JsonValueKind.Object;
-        var hasConsolidation = TryGetProperty(root, "consolidationControl", out var consolidation) && consolidation.ValueKind == JsonValueKind.Object;
-        var hasWorldModel = TryGetProperty(root, "worldModel", out var worldModel) && worldModel.ValueKind == JsonValueKind.Object;
-        var hasLanguageIntent = TryGetProperty(root, "languageIntent", out var languageIntent) && languageIntent.ValueKind == JsonValueKind.Object;
-        var hasBrainNarration = TryGetProperty(root, "brainNarration", out var brainNarration) && brainNarration.ValueKind == JsonValueKind.Object;
-
-        if (!hasPlanning && !hasCurriculum && !hasConsolidation && !hasWorldModel && !hasLanguageIntent && !hasBrainNarration)
+        if (!hasAuthority && !hasAttention && !hasExecutive && !hasMemory && !hasSleep)
         {
-            return "Reasoning telemetry unavailable: state payload missing planning/curriculum/consolidation/worldModel fields.";
+            return "Neuronal cognition telemetry unavailable.";
         }
 
-        var planningLines = new List<string>();
-        if (hasLanguageIntent || hasBrainNarration)
-        {
-            var active = hasLanguageIntent && GetBool(languageIntent, "active");
-            var command = hasLanguageIntent ? GetString(languageIntent, "commandKey") : string.Empty;
-            var motor = hasLanguageIntent ? GetString(languageIntent, "motorDirective") : string.Empty;
-            var strength = hasLanguageIntent ? GetDouble(languageIntent, "strength") : 0.0;
-            var utterance = hasBrainNarration ? GetString(brainNarration, "utterance") : string.Empty;
-            var sequence = hasBrainNarration ? GetLong(brainNarration, "sequence") : 0L;
-            var spokenEligible = hasBrainNarration && GetBool(brainNarration, "spokenEligible");
-            var speechGate = hasBrainNarration ? GetDouble(brainNarration, "speechReleaseGate") : 0.0;
-            var speechSuppression = hasBrainNarration ? GetDouble(brainNarration, "speechSuppression") : 0.0;
-            planningLines.AddRange(new[]
-            {
-                "Language intent:",
-                $"  Active: {active} | command: {(string.IsNullOrWhiteSpace(command) ? "-" : command)} | motor: {(string.IsNullOrWhiteSpace(motor) ? "-" : motor)}",
-                $"  Strength: {strength:0.000}",
-                $"  Brain narration: {(string.IsNullOrWhiteSpace(utterance) ? "-" : utterance)} | seq {sequence}",
-                $"  Speech gate: {(spokenEligible ? "eligible" : "internal")} | release {speechGate:0.000} | suppress {speechSuppression:0.000}",
-                string.Empty
-            });
-        }
-
-        if (hasPlanning)
-        {
-            var goal = GetString(planning, "goal");
-            var goalActive = GetBool(planning, "goalActive", true);
-            var horizon = GetInt(planning, "horizonSteps");
-            var branching = GetInt(planning, "maxBranching");
-            var exploration = GetDouble(planning, "explorationTemperature");
-            var dopamineBias = GetDouble(planning, "dopamineBias");
-            var inhibitoryGate = GetDouble(planning, "inhibitoryGate");
-            var selectedAction = GetString(planning, "selectedActionLabel");
-            if (string.IsNullOrWhiteSpace(selectedAction))
-            {
-                selectedAction = GetString(planning, "selectedActionKey");
-            }
-            var selectedUtility = GetDouble(planning, "selectedUtility");
-            var selectedConfidence = GetDouble(planning, "selectedConfidence");
-            var lastPlanTick = GetLong(planning, "lastPlanTick");
-            var revision = GetLong(planning, "planRevision");
-
-            var candidateCount = 0;
-            var topCandidates = new List<string>(4);
-            if (TryGetProperty(planning, "candidateActions", out var candidates) && candidates.ValueKind == JsonValueKind.Array)
-            {
-                candidateCount = candidates.GetArrayLength();
-                foreach (var candidate in candidates.EnumerateArray().Take(4))
-                {
-                    var actionKey = GetString(candidate, "actionKey");
-                    var readableAction = GetString(candidate, "readableAction");
-                    var utility = GetDouble(candidate, "utility");
-                    var confidence = GetDouble(candidate, "confidence");
-                    var summary = GetString(candidate, "summary");
-                    var preview = string.IsNullOrWhiteSpace(summary) ? actionKey : summary;
-                    var actionLabel = string.IsNullOrWhiteSpace(readableAction) ? actionKey : readableAction;
-                    if (preview.Length > 60)
-                    {
-                        preview = $"{preview[..60]}...";
-                    }
-
-                    topCandidates.Add(
-                        $"{actionLabel} | util {utility:0.000} | conf {confidence:0.000} | {preview}");
-                }
-            }
-
-            var proposedPlan = "-";
-            if (TryGetProperty(planning, "proposedPlan", out var proposedPlanArray) && proposedPlanArray.ValueKind == JsonValueKind.Array)
-            {
-                var steps = proposedPlanArray
-                    .EnumerateArray()
-                    .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() ?? string.Empty : string.Empty)
-                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                    .Take(8)
-                    .ToArray();
-                proposedPlan = steps.Length == 0 ? "-" : string.Join(" -> ", steps);
-            }
-
-            planningLines.AddRange(new[]
-            {
-                "Planning workspace:",
-                $"  Goal: {(string.IsNullOrWhiteSpace(goal) ? "-" : goal)}",
-                $"  Goal active: {goalActive}",
-                $"  Horizon: {horizon} | Branching: {branching}",
-                $"  Exploration: {exploration:0.000} | Dopamine bias: {dopamineBias:0.000} | Inhibitory gate: {inhibitoryGate:0.000}",
-                $"  Selected action: {selectedAction} | utility {selectedUtility:0.000} | confidence {selectedConfidence:0.000}",
-                $"  Last plan tick: {(lastPlanTick > 0 ? lastPlanTick : "n/a")} | revision {revision}",
-                $"  Candidate actions: {candidateCount}",
-                topCandidates.Count == 0 ? "    -" : string.Join(Environment.NewLine, topCandidates.Select(line => $"    {line}")),
-                $"  Proposed plan: {proposedPlan}"
-            });
-        }
-        else
-        {
-            planningLines.Add("Planning workspace: unavailable");
-        }
-
-        var curriculumLines = new List<string>();
-        if (hasCurriculum)
-        {
-            var enabled = GetBool(curriculum, "enabled", true);
-            var stageIndex = GetInt(curriculum, "stageIndex");
-            var stageName = GetString(curriculum, "stageName");
-            var stageScore = GetDouble(curriculum, "stageScore");
-            var stageProgress = GetDouble(curriculum, "stageProgress");
-            var stageTicks = GetLong(curriculum, "stageTicks");
-            var lastTransitionTick = GetLong(curriculum, "lastTransitionTick");
-            var tasksCount = 0;
-            var taskSummaries = new List<string>(4);
-            if (TryGetProperty(curriculum, "tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
-            {
-                tasksCount = tasks.GetArrayLength();
-                foreach (var task in tasks.EnumerateArray().Take(4))
-                {
-                    var taskName = GetString(task, "name");
-                    var successRate = GetDouble(task, "successRate");
-                    var samples = GetLong(task, "samples");
-                    taskSummaries.Add($"{taskName}: {successRate:0.000} ({samples} samples)");
-                }
-            }
-
-            curriculumLines.AddRange(new[]
-            {
-                "Curriculum:",
-                $"  Enabled: {enabled}",
-                $"  Stage: {stageIndex} ({stageName})",
-                $"  Stage score/progress: {stageScore:0.000} / {stageProgress:0.000}",
-                $"  Stage ticks: {stageTicks} | last transition: {(lastTransitionTick > 0 ? lastTransitionTick : "n/a")}",
-                $"  Tasks: {tasksCount}",
-                taskSummaries.Count == 0 ? "    -" : string.Join(Environment.NewLine, taskSummaries.Select(line => $"    {line}"))
-            });
-        }
-        else
-        {
-            curriculumLines.Add("Curriculum: unavailable");
-        }
-
-        var consolidationLines = new List<string>();
-        if (hasConsolidation)
-        {
-            var enabled = GetBool(consolidation, "enabled", true);
-            var replayEarly = GetDouble(consolidation, "replayWeightEarlyHippocampal");
-            var replayLate = GetDouble(consolidation, "replayWeightLateCortical");
-            var schemaGain = GetDouble(consolidation, "schemaConsolidationGain");
-            var antiForgetting = GetDouble(consolidation, "antiForgettingHomeostasis");
-            var engramDecay = GetDouble(consolidation, "engramDecayPerTick");
-            var schemaDecay = GetDouble(consolidation, "schemaDecayPerTick");
-            var protectedThreshold = GetDouble(consolidation, "protectedSalienceThreshold");
-            var protectedBudget = GetInt(consolidation, "protectedEngramBudget");
-
-            consolidationLines.AddRange(new[]
-            {
-                "Consolidation control:",
-                $"  Enabled: {enabled}",
-                $"  Replay weights: early {replayEarly:0.000}, late {replayLate:0.000}",
-                $"  Schema gain: {schemaGain:0.000} | Anti-forgetting: {antiForgetting:0.000}",
-                $"  Decay/tick: engram {engramDecay:0.0000} | schema {schemaDecay:0.0000}",
-                $"  Protected salience threshold: {protectedThreshold:0.000} | protected budget: {protectedBudget}"
-            });
-        }
-        else
-        {
-            consolidationLines.Add("Consolidation control: unavailable");
-        }
-
-        var worldModelLines = new List<string>();
-        if (hasWorldModel)
-        {
-            var enabled = GetBool(worldModel, "enabled", true);
-            var observations = GetLong(worldModel, "observationCount");
-            var transitions = GetInt(worldModel, "learnedTransitions");
-            var lastActionSummary = GetString(worldModel, "lastActionSummary");
-            var lastAction = string.IsNullOrWhiteSpace(lastActionSummary)
-                ? GetString(worldModel, "lastActionKey")
-                : lastActionSummary;
-            var lastDispatched = GetInt(worldModel, "lastObservedDispatchedSpikes");
-            var lastPathways = GetInt(worldModel, "lastObservedActivePathways");
-            var lastReward = GetDouble(worldModel, "lastObservedReward");
-            var lastSleepPressure = GetDouble(worldModel, "lastObservedSleepPressure");
-            var meanPredictionError = GetDouble(worldModel, "meanPredictionError");
-
-            worldModelLines.AddRange(new[]
-            {
-                "World model:",
-                $"  Enabled: {enabled}",
-                $"  Observations: {observations} | learned transitions: {transitions}",
-                $"  Last action: {lastAction}",
-                $"  Last observed: dispatched {lastDispatched}, pathways {lastPathways}, reward {lastReward:0.000}, sleep pressure {lastSleepPressure:0.000}",
-                $"  Mean prediction error: {meanPredictionError:0.000}"
-            });
-        }
-        else
-        {
-            worldModelLines.Add("World model: unavailable");
-        }
+        var maintainedChannels = TryGetProperty(attention, "maintainedChannels", out var maintained) &&
+                                 maintained.ValueKind == JsonValueKind.Array
+            ? maintained.GetArrayLength()
+            : 0;
 
         return string.Join(Environment.NewLine, new[]
         {
+            "Neuronal cognition",
             $"Tick: {tick}",
-            $"Simulation ms: {simMs:0.0}",
+            $"Authority: {BlankAsDash(GetString(authority, "authority"))}",
+            $"Symbolic authorization: {(GetBool(authority, "symbolicScaffoldCanAuthorize") ? "ENABLED" : "disabled")}",
+            $"Semantic motor injection: {(GetBool(authority, "semanticMotorInjectionAllowed") ? "ENABLED" : "disabled")}",
+            $"World-goal steering: {(GetBool(authority, "worldGoalSteeringAllowed") ? "ENABLED" : "disabled")}",
             string.Empty,
-            string.Join(Environment.NewLine, planningLines),
+            $"Attention workspace: {(GetBool(attention, "active") ? "active" : "quiet")} | channel {GetInt(attention, "selectedChannel")} | margin {GetDouble(attention, "selectionMargin"):0.000}",
+            $"Maintained channels: {maintainedChannels} | broadcast {GetInt(attention, "broadcastChannel")} | coverage {GetDouble(attention, "circuitCoverage"):0.000}",
+            $"Executive circuit: {(GetBool(executive, "active") ? "active" : "quiet")} | committed {GetBool(executive, "committed")} | action {GetInt(executive, "selectedActionChannel")}",
+            $"Executive context: {GetInt(executive, "maintainedContextChannel")} | stability {GetDouble(executive, "taskSetStability"):0.000} | confidence {GetDouble(executive, "confidence"):0.000}",
             string.Empty,
-            string.Join(Environment.NewLine, curriculumLines),
-            string.Empty,
-            string.Join(Environment.NewLine, consolidationLines),
-            string.Empty,
-            string.Join(Environment.NewLine, worldModelLines)
+            $"Synaptic memory: {(GetBool(memory, "recallActive") ? "recalling" : "quiet")} | ensemble {GetInt(memory, "recalledEnsemble")} | strength {GetDouble(memory, "recallStrength"):0.000}",
+            $"Learned synapses: {GetInt(memory, "learnedSynapseCount")} | engram {GetDouble(memory, "engramStrength"):0.000} | consolidation {GetDouble(memory, "corticalConsolidation"):0.000}",
+            $"Sleep circuit: {(GetBool(sleep, "stateActive") ? "active" : "quiet")} | state {GetInt(sleep, "state")} | confidence {GetDouble(sleep, "stateConfidence"):0.000}",
+            $"Neuronal replay: {(GetBool(sleep, "replayActive") ? "active" : "quiet")} | ensemble {GetInt(sleep, "replayEnsemble")} | strength {GetDouble(sleep, "replayStrength"):0.000}"
         });
     }
-
     private static string FormatBrainTelemetry(JsonElement root)
     {
         root = NormalizeStateRoot(root);
-
         var tick = GetLong(root, "tick");
-        var hasIntent = TryGetObject(root, "languageIntent", out var intent);
-        var hasNarration = TryGetObject(root, "brainNarration", out var narration);
-        var hasSpeechIntention = TryGetObject(root, "speechIntention", out var speechIntention);
-        var hasWorkspace = TryGetObject(root, "cognitiveLanguageWorkspace", out var workspace);
-        var hasPrefrontal = TryGetObject(root, "prefrontalWorkingMemory", out var prefrontal);
-        var hasGlobalWorkspace = TryGetObject(root, "globalWorkspace", out var globalWorkspace);
-        var hasSelfModel = TryGetObject(root, "narrativeSelfModel", out var selfModel);
-        var hasActionCompletion = TryGetObject(root, "actionCompletionFeedback", out var actionCompletion);
+        var hasPerception = TryGetObject(root, "neuronalPerception", out var perception);
+        var hasMemory = TryGetObject(root, "neuronalMemory", out var memory);
+        var hasAttention = TryGetObject(root, "neuronalAttentionWorkspace", out var attention);
+        var hasLanguage = TryGetObject(root, "neuronalLanguageGrounding", out var language);
+        var hasMotor = TryGetObject(root, "neuronalMotor", out var motor);
 
-        if (!hasIntent && !hasNarration && !hasWorkspace && !hasPrefrontal && !hasGlobalWorkspace && !hasSelfModel)
+        if (!hasPerception && !hasMemory && !hasAttention && !hasLanguage && !hasMotor)
         {
-            return "Brain telemetry unavailable: state payload missing command and workspace fields.";
+            return "Neuronal brain telemetry unavailable.";
         }
-
-        var active = hasIntent && GetBool(intent, "active");
-        var commandKey = hasIntent ? GetString(intent, "commandKey") : string.Empty;
-        var motorDirective = hasIntent ? GetString(intent, "motorDirective") : string.Empty;
-        var mood = hasIntent ? GetString(intent, "mood") : string.Empty;
-        var verb = hasIntent ? GetString(intent, "verb") : string.Empty;
-        var obj = hasIntent ? GetString(intent, "object") : string.Empty;
-        var qualifier = hasIntent ? GetString(intent, "qualifier") : string.Empty;
-        var strength = hasIntent ? GetDouble(intent, "strength") : 0.0;
-        var expiresAtTick = hasIntent ? GetLong(intent, "expiresAtTick") : 0L;
-        var expiresInTicks = expiresAtTick > 0 && tick > 0 ? Math.Max(0L, expiresAtTick - tick) : 0L;
-
-        var utterance = hasNarration ? GetString(narration, "utterance") : string.Empty;
-        var spokenEligible = hasNarration && GetBool(narration, "spokenEligible");
-        var speechGate = hasNarration ? GetDouble(narration, "speechReleaseGate") : 0.0;
-        var speechSuppression = hasNarration ? GetDouble(narration, "speechSuppression") : 0.0;
-        var speechMode = hasSpeechIntention ? GetString(speechIntention, "mode") : string.Empty;
-        var speechReason = hasSpeechIntention ? GetString(speechIntention, "reason") : string.Empty;
-        var speechConfidence = hasSpeechIntention ? GetDouble(speechIntention, "confidence") : 0.0;
-
-        var workspaceActive = hasWorkspace && GetBool(workspace, "active");
-        var currentThought = hasWorkspace ? GetString(workspace, "currentThought") : string.Empty;
-        var rememberedInstruction = hasWorkspace ? GetString(workspace, "rememberedInstruction") : string.Empty;
-        var boundGoal = hasWorkspace ? GetString(workspace, "boundGoalKey") : string.Empty;
-        var boundAction = hasWorkspace ? GetString(workspace, "boundActionKey") : string.Empty;
-        var needState = hasWorkspace ? GetString(workspace, "needState") : string.Empty;
-        var affectiveState = hasWorkspace ? GetString(workspace, "affectiveState") : string.Empty;
-        var workspaceConfidence = hasWorkspace ? GetDouble(workspace, "confidence") : 0.0;
-
-        var taskSet = hasPrefrontal ? GetString(prefrontal, "currentTaskSet") : string.Empty;
-        var currentPlan = hasPrefrontal ? GetString(prefrontal, "currentPlan") : string.Empty;
-        var selectedGoal = hasPrefrontal ? GetString(prefrontal, "selectedGoal") : string.Empty;
-        var selectedAction = hasPrefrontal ? GetString(prefrontal, "selectedAction") : string.Empty;
-        var pfcConfidence = hasPrefrontal ? GetDouble(prefrontal, "confidence") : 0.0;
-        var pfcConflict = hasPrefrontal ? GetDouble(prefrontal, "conflictLevel") : 0.0;
-
-        var globalActive = hasGlobalWorkspace && GetBool(globalWorkspace, "active");
-        var globalContent = hasGlobalWorkspace ? GetString(globalWorkspace, "broadcastContent") : string.Empty;
-        var globalCircuit = hasGlobalWorkspace ? GetString(globalWorkspace, "winningCircuit") : string.Empty;
-        var globalWhy = hasGlobalWorkspace ? GetString(globalWorkspace, "whyThisWon") : string.Empty;
-        var globalNext = hasGlobalWorkspace ? GetString(globalWorkspace, "nextActionPreview") : string.Empty;
-        var broadcastStrength = hasGlobalWorkspace ? GetDouble(globalWorkspace, "broadcastStrength") : 0.0;
-        var globalConfidence = hasGlobalWorkspace ? GetDouble(globalWorkspace, "confidence") : 0.0;
-
-        var selfStatement = hasSelfModel ? GetString(selfModel, "selfStatement") : string.Empty;
-        var selfNeed = hasSelfModel ? GetString(selfModel, "currentNeed") : string.Empty;
-        var selfGoal = hasSelfModel ? GetString(selfModel, "currentGoal") : string.Empty;
-        var selfAction = hasSelfModel ? GetString(selfModel, "currentAction") : string.Empty;
-        var selfConfidence = hasSelfModel ? GetDouble(selfModel, "confidence") : 0.0;
-        var completionStatus = hasActionCompletion ? GetString(actionCompletion, "status") : string.Empty;
-        var completionProgress = hasActionCompletion ? GetDouble(actionCompletion, "progress") : 0.0;
 
         return string.Join(Environment.NewLine, new[]
         {
-            "Brain telemetry",
+            "Neuronal brain telemetry",
             $"Tick: {tick}",
-            $"Command: {(active ? "active" : "quiet")} | {BlankAsDash(commandKey)} | strength {strength:0.000} | expires in {expiresInTicks}",
-            $"Intent: {BlankAsDash(mood)} {FormatIntentPhrase(verb, obj, qualifier)}",
-            $"Motor: {BlankAsDash(motorDirective)}",
-            $"Says: {BlankAsDash(utterance)}",
-            $"Speech: {(spokenEligible ? "eligible" : "internal")} | gate {speechGate:0.000} | suppress {speechSuppression:0.000}",
-            $"Speech intention: {BlankAsDash(speechMode)} | confidence {speechConfidence:0.000} | {BlankAsDash(speechReason)}",
+            $"Perception: {(GetBool(perception, "active") ? "active" : "quiet")} | ensemble {GetInt(perception, "dominantEnsemble")} | confidence {GetDouble(perception, "confidence"):0.000}",
+            $"Percept coverage/persistence/novelty: {GetDouble(perception, "circuitCoverage"):0.000} | {GetDouble(perception, "persistence"):0.000} | {GetDouble(perception, "novelty"):0.000}",
+            $"Memory: {(GetBool(memory, "recallActive") ? "recalling" : "quiet")} | ensemble {GetInt(memory, "recalledEnsemble")} | strength {GetDouble(memory, "recallStrength"):0.000}",
+            $"Attention: {(GetBool(attention, "active") ? "active" : "quiet")} | selected {GetInt(attention, "selectedChannel")} | broadcast {GetInt(attention, "broadcastChannel")}",
             string.Empty,
-            $"Workspace: {(workspaceActive ? "active" : "quiet")} | confidence {workspaceConfidence:0.000}",
-            $"Thought: {BlankAsDash(currentThought)}",
-            $"Remembered: {BlankAsDash(rememberedInstruction)}",
-            $"Binding: goal {BlankAsDash(boundGoal)} | action {BlankAsDash(boundAction)}",
-            $"Need/affect: {BlankAsDash(needState)} | {BlankAsDash(affectiveState)}",
+            $"Language circuit: observed {GetBool(language, "circuitObserved")} | available {GetBool(language, "available")} | grounded {GetBool(language, "grounded")}",
+            $"Grounded label: {BlankAsDash(GetString(language, "groundedLabel"))}",
+            $"Language reference: percept {GetInt(language, "perceptEnsemble")} | memory {GetInt(language, "memoryEnsemble")} | attention {GetInt(language, "attentionChannel")}",
+            $"Comprehension/expression: {GetDouble(language, "comprehensionDrive"):0.000} | {GetDouble(language, "expressionDrive"):0.000}",
+            $"Grounding confidence/uncertainty: {GetDouble(language, "groundingConfidence"):0.000} | {GetDouble(language, "uncertainty"):0.000}",
+            $"Speech authorized by circuit: {GetBool(language, "speechAuthorized")}",
             string.Empty,
-            $"Plan: {BlankAsDash(taskSet)} | confidence {pfcConfidence:0.000} | conflict {pfcConflict:0.000}",
-            $"Current plan: {BlankAsDash(currentPlan)}",
-            $"Selection: goal {BlankAsDash(selectedGoal)} | action {BlankAsDash(selectedAction)}",
-            string.Empty,
-            $"Global workspace: {(globalActive ? "broadcasting" : "quiet")} via {BlankAsDash(globalCircuit)}",
-            $"Broadcast: {BlankAsDash(globalContent)}",
-            $"Why: {BlankAsDash(globalWhy)}",
-            $"Next: {BlankAsDash(globalNext)}",
-            $"Broadcast strength: {broadcastStrength:0.000} | confidence {globalConfidence:0.000}",
-            string.Empty,
-            $"Self model: {BlankAsDash(selfStatement)} | confidence {selfConfidence:0.000}",
-            $"Need/goal/action: {BlankAsDash(selfNeed)} | {BlankAsDash(selfGoal)} | {BlankAsDash(selfAction)}",
-            $"Action completion: {BlankAsDash(completionStatus)} | progress {completionProgress:0.000}"
+            $"Motor: {(GetBool(motor, "active") ? "active" : "quiet")} | selected action {GetInt(motor, "selectedActionChannel")} | confidence {GetDouble(motor, "confidence"):0.000}",
+            $"Drive L/R/F/T: {GetDouble(motor, "leftDrive"):0.000} | {GetDouble(motor, "rightDrive"):0.000} | {GetDouble(motor, "forwardDrive"):0.000} | {GetDouble(motor, "turnDrive"):0.000}",
+            $"Motor/action coverage: {GetDouble(motor, "motorCircuitCoverage"):0.000} | {GetDouble(motor, "actionCircuitCoverage"):0.000}"
         });
     }
-
     private static string FormatInhabitanceTelemetry(JsonElement root)
     {
         root = NormalizeStateRoot(root);
         var tick = GetLong(root, "tick");
-        var hasInhabitance = TryGetObject(root, "inhabitance", out var inhabitance);
-        var inhabitanceRoot = hasInhabitance ? inhabitance : root;
+        var hasBody = TryGetObject(root, "bodyState", out var body);
+        var hasEnvironment = TryGetObject(root, "environmentalState", out var environment);
+        var hasAffect = TryGetObject(root, "neuronalAffectValuation", out var affect);
+        var hasMotor = TryGetObject(root, "neuronalMotor", out var motor);
 
-        if (!hasInhabitance &&
-            !TryGetTopOrNestedObject(root, inhabitanceRoot, "roomState", out _) &&
-            !TryGetTopOrNestedObject(root, inhabitanceRoot, "worldAtmosphere", out _))
+        if (!hasBody && !hasEnvironment && !hasAffect && !hasMotor)
         {
-            return "Inhabitance unavailable: state payload missing room and presence fields.";
+            return "Embodied neuronal telemetry unavailable.";
         }
-
-        var presence = GetDouble(inhabitanceRoot, "presence");
-        var continuity = GetDouble(inhabitanceRoot, "continuity");
-        var embodiment = GetDouble(inhabitanceRoot, "embodiment");
-        var languagePresence = GetDouble(inhabitanceRoot, "languagePresence");
-        var thought = GetString(inhabitanceRoot, "currentThought");
-        var innerVoice = GetString(inhabitanceRoot, "innerVoice");
-        var self = GetString(inhabitanceRoot, "selfStatement");
-        var identity = GetString(inhabitanceRoot, "identityThread");
-        var place = GetString(inhabitanceRoot, "place");
-        var body = GetString(inhabitanceRoot, "bodyState");
-
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "roomState", out var room);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "pendingPromises", out var promises);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "continuityJournal", out var journal);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "habitablePlaceModel", out var placeModel);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "attentionAffordance", out var affordance);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "preferenceTemperament", out var preference);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "selfMaintenance", out var maintenance);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "worldAtmosphere", out var atmosphere);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "workingMemoryShelf", out var shelf);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "sleepDreamDigest", out var digest);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "bodyPresence", out var bodyPresence);
-        TryGetTopOrNestedObject(root, inhabitanceRoot, "identityBoundary", out var boundary);
 
         return string.Join(Environment.NewLine, new[]
         {
-            "Inhabitance",
+            "Embodied neuronal interface",
             $"Tick: {tick}",
-            $"Presence: {presence:0.000} | continuity {continuity:0.000} | embodiment {embodiment:0.000} | language {languagePresence:0.000}",
-            $"Thought: {BlankAsDash(thought)}",
-            $"Inner voice: {BlankAsDash(innerVoice)}",
-            $"Self: {BlankAsDash(self)}",
-            $"Identity thread: {BlankAsDash(identity)}",
-            $"Place/body: {BlankAsDash(place)} | {BlankAsDash(body)}",
+            "Body and environment values below are sensory substrate, not cognitive decisions.",
+            $"Body velocity/turn/contact: {GetDouble(body, "forwardVelocity"):0.000} | {GetDouble(body, "turnRateDeg"):0.000} | {GetDouble(body, "contactLevel"):0.000}",
+            $"Observed motor L/R/asymmetry: {GetDouble(body, "leftMotorDrive"):0.000} | {GetDouble(body, "rightMotorDrive"):0.000} | {GetDouble(body, "motorAsymmetry"):0.000}",
+            $"Environment threat/hunger/health: {GetDouble(environment, "predatorThreat"):0.000} | {GetDouble(environment, "hunger"):0.000} | {GetDouble(environment, "health"):0.000}",
+            $"Environment darkness/shelter/safety: {GetDouble(environment, "darkness"):0.000} | {GetDouble(environment, "shelterNeed"):0.000} | {GetDouble(environment, "shelterSafety"):0.000}",
             string.Empty,
-            $"Room: {(GetBool(room, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(room, "roomName"))} | attention {BlankAsDash(GetString(room, "attentionAnchor"))}",
-            $"Room state: concern {BlankAsDash(GetString(room, "currentConcern"))} | unresolved {BlankAsDash(GetString(room, "unresolvedThread"))}",
-            $"Comfort: {BlankAsDash(GetString(room, "comfort"))} | safety {BlankAsDash(GetString(room, "safety"))} | doing {BlankAsDash(GetString(room, "doing"))}",
-            $"Room scores: presence {GetDouble(room, "presence"):0.000} | continuity {GetDouble(room, "continuity"):0.000} | safety {GetDouble(room, "safetyScore"):0.000} | confidence {GetDouble(room, "confidence"):0.000}",
-            $"Promises: open {GetInt(promises, "openCount")} | pressure {GetDouble(promises, "promisePressure"):0.000} | next {BlankAsDash(GetString(promises, "nextPromise"))}",
-            $"Journal: {GetInt(journal, "entryCount")} entries | continuity {GetDouble(journal, "continuity"):0.000} | last {BlankAsDash(GetString(journal, "lastSummary"))}",
-            string.Empty,
-            $"Place model: {(GetBool(placeModel, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(placeModel, "placeLabel"))} | confidence {GetDouble(placeModel, "confidence"):0.000}",
-            $"Place function: {BlankAsDash(GetString(placeModel, "function"))} | cue {BlankAsDash(GetString(placeModel, "navigationCue"))}",
-            $"Attention: {(GetBool(affordance, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(affordance, "mode"))} -> {BlankAsDash(GetString(affordance, "target"))}",
-            $"Attention hint: {BlankAsDash(GetString(affordance, "actionHint"))}",
-            $"Preference: {(GetBool(preference, "active") ? "active" : "quiet")} | pace {BlankAsDash(GetString(preference, "workingPace"))} | style {BlankAsDash(GetString(preference, "workingStyle"))}",
-            $"Temperament: {BlankAsDash(GetString(preference, "temperament"))} | relation {BlankAsDash(GetString(preference, "relationalPreference"))}",
-            string.Empty,
-            $"Care: {(GetBool(maintenance, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(maintenance, "maintenanceState"))}",
-            $"Recommended care: {BlankAsDash(GetString(maintenance, "recommendedCare"))}",
-            $"Care scores: overload {GetDouble(maintenance, "overload"):0.000} | stale {GetDouble(maintenance, "staleness"):0.000} | sleep {GetDouble(maintenance, "sleepNeed"):0.000}",
-            $"Atmosphere: {(GetBool(atmosphere, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(atmosphere, "lightState"))} | {BlankAsDash(GetString(atmosphere, "enclosure"))} | {BlankAsDash(GetString(atmosphere, "safetyTone"))}",
-            $"Atmosphere scores: quiet {GetDouble(atmosphere, "quiet"):0.000} | clutter {GetDouble(atmosphere, "clutter"):0.000} | novelty {GetDouble(atmosphere, "novelty"):0.000}",
-            $"Atmosphere summary: {BlankAsDash(GetString(atmosphere, "atmosphereSummary"))}",
-            string.Empty,
-            $"Working shelf: {(GetBool(shelf, "active") ? "active" : "quiet")} | {BlankAsDash(GetString(shelf, "decayState"))} | confidence {GetDouble(shelf, "confidence"):0.000}",
-            $"Shelf hypothesis: {BlankAsDash(GetString(shelf, "hypothesis"))}",
-            $"Shelf next/reminder: {BlankAsDash(GetString(shelf, "candidateNextAction"))} | {BlankAsDash(GetString(shelf, "privateReminder"))}",
-            $"Dream digest: {(GetBool(digest, "active") ? "active" : "quiet")} | confidence {GetDouble(digest, "confidence"):0.000}",
-            $"Dream protected/softened: {BlankAsDash(GetString(digest, "protected"))} | {BlankAsDash(GetString(digest, "softened"))}",
-            $"Dream integrated/changed: {BlankAsDash(GetString(digest, "integrated"))} | {BlankAsDash(GetString(digest, "changed"))}",
-            $"Dream next concern: {BlankAsDash(GetString(digest, "nextWakingConcern"))}",
-            string.Empty,
-            $"Boundary: {BlankAsDash(GetString(boundary, "boundary"))} | confidence {GetDouble(boundary, "boundaryConfidence"):0.000}",
-            $"Grounding: {BlankAsDash(GetString(boundary, "grounding"))}",
-            $"Body presence: {BlankAsDash(GetString(bodyPresence, "summary"))} | presence {GetDouble(bodyPresence, "presence"):0.000}"
+            $"Neuronal valuation: {(GetBool(affect, "active") ? "active" : "quiet")} | channel {GetInt(affect, "dominantChannel")} | confidence {GetDouble(affect, "confidence"):0.000}",
+            $"Appetitive/defensive/homeostatic/exploratory: {GetDouble(affect, "appetitiveDrive"):0.000} | {GetDouble(affect, "defensiveDrive"):0.000} | {GetDouble(affect, "homeostaticDrive"):0.000} | {GetDouble(affect, "exploratoryDrive"):0.000}",
+            $"Valence +/- and arousal: {GetDouble(affect, "positiveValence"):0.000} | {GetDouble(affect, "negativeValence"):0.000} | {GetDouble(affect, "arousal"):0.000}",
+            $"Neuronal motor output: {(GetBool(motor, "active") ? "active" : "quiet")} | forward {GetDouble(motor, "forwardDrive"):0.000} | turn {GetDouble(motor, "turnDrive"):0.000}"
         });
     }
 
@@ -1485,688 +1110,6 @@ public partial class MainWindow
 
         value = default;
         return false;
-    }
-
-    private static bool TryGetTopOrNestedObject(JsonElement root, JsonElement nestedRoot, string name, out JsonElement value)
-    {
-        if (TryGetObject(root, name, out value))
-        {
-            return true;
-        }
-
-        if (nestedRoot.ValueKind == JsonValueKind.Object && TryGetObject(nestedRoot, name, out value))
-        {
-            return true;
-        }
-
-        value = default;
-        return false;
-    }
-
-    private static string FormatLanguageCommandTelemetry(JsonElement root)
-    {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
-        {
-            root = nestedState;
-        }
-
-        var tick = GetLong(root, "tick");
-        var hasIntent = TryGetProperty(root, "languageIntent", out var intent) && intent.ValueKind == JsonValueKind.Object;
-        var hasNarration = TryGetProperty(root, "brainNarration", out var narration) && narration.ValueKind == JsonValueKind.Object;
-        var hasSpeechIntention = TryGetProperty(root, "speechIntention", out var speechIntention) && speechIntention.ValueKind == JsonValueKind.Object;
-        var hasWorkspace = TryGetProperty(root, "cognitiveLanguageWorkspace", out var workspace) && workspace.ValueKind == JsonValueKind.Object;
-        var hasPrefrontal = TryGetProperty(root, "prefrontalWorkingMemory", out var prefrontal) && prefrontal.ValueKind == JsonValueKind.Object;
-        var hasEpisodic = TryGetProperty(root, "episodicMemory", out var episodic) && episodic.ValueKind == JsonValueKind.Object;
-        var hasSemantic = TryGetProperty(root, "semanticMemory", out var semantic) && semantic.ValueKind == JsonValueKind.Object;
-        var hasDopamineLearning = TryGetProperty(root, "dopamineLearning", out var dopamineLearning) && dopamineLearning.ValueKind == JsonValueKind.Object;
-        var hasActionCompletion = TryGetProperty(root, "actionCompletionFeedback", out var actionCompletion) && actionCompletion.ValueKind == JsonValueKind.Object;
-        var hasGlobalWorkspace = TryGetProperty(root, "globalWorkspace", out var globalWorkspace) && globalWorkspace.ValueKind == JsonValueKind.Object;
-        var hasSelfModel = TryGetProperty(root, "narrativeSelfModel", out var selfModel) && selfModel.ValueKind == JsonValueKind.Object;
-        var hasBodyPresence = TryGetProperty(root, "bodyPresence", out var bodyPresence) && bodyPresence.ValueKind == JsonValueKind.Object;
-        var hasAutobiographicalContinuity = TryGetProperty(root, "autobiographicalContinuity", out var autobiographicalContinuity) && autobiographicalContinuity.ValueKind == JsonValueKind.Object;
-        var hasIdentityBoundary = TryGetProperty(root, "identityBoundary", out var identityBoundary) && identityBoundary.ValueKind == JsonValueKind.Object;
-        var hasDreamConsolidation = TryGetProperty(root, "dreamConsolidation", out var dreamConsolidation) && dreamConsolidation.ValueKind == JsonValueKind.Object;
-        var hasInhabitance = TryGetProperty(root, "inhabitance", out var inhabitance) && inhabitance.ValueKind == JsonValueKind.Object;
-        var hasRoomState = TryGetProperty(root, "roomState", out var roomState) && roomState.ValueKind == JsonValueKind.Object;
-        var hasPendingPromises = TryGetProperty(root, "pendingPromises", out var pendingPromises) && pendingPromises.ValueKind == JsonValueKind.Object;
-        var hasContinuityJournal = TryGetProperty(root, "continuityJournal", out var continuityJournal) && continuityJournal.ValueKind == JsonValueKind.Object;
-        var hasHabitablePlaceModel = TryGetProperty(root, "habitablePlaceModel", out var habitablePlaceModel) && habitablePlaceModel.ValueKind == JsonValueKind.Object;
-        var hasAttentionAffordance = TryGetProperty(root, "attentionAffordance", out var attentionAffordance) && attentionAffordance.ValueKind == JsonValueKind.Object;
-        var hasPreferenceTemperament = TryGetProperty(root, "preferenceTemperament", out var preferenceTemperament) && preferenceTemperament.ValueKind == JsonValueKind.Object;
-        var hasSelfMaintenance = TryGetProperty(root, "selfMaintenance", out var selfMaintenance) && selfMaintenance.ValueKind == JsonValueKind.Object;
-        var hasWorldAtmosphere = TryGetProperty(root, "worldAtmosphere", out var worldAtmosphere) && worldAtmosphere.ValueKind == JsonValueKind.Object;
-        var hasWorkingMemoryShelf = TryGetProperty(root, "workingMemoryShelf", out var workingMemoryShelf) && workingMemoryShelf.ValueKind == JsonValueKind.Object;
-        var hasSleepDreamDigest = TryGetProperty(root, "sleepDreamDigest", out var sleepDreamDigest) && sleepDreamDigest.ValueKind == JsonValueKind.Object;
-        var hasBiologicalTeaching = TryGetProperty(root, "biologicalTeachingLoop", out var biologicalTeaching) && biologicalTeaching.ValueKind == JsonValueKind.Object;
-        var hasCommandMemory = TryGetProperty(root, "languageCommandMemory", out var commandMemory) &&
-                               commandMemory.ValueKind == JsonValueKind.Object;
-        if (!hasIntent && !hasNarration && !hasSpeechIntention && !hasWorkspace && !hasPrefrontal && !hasEpisodic && !hasSemantic && !hasDopamineLearning && !hasGlobalWorkspace && !hasSelfModel && !hasBodyPresence && !hasAutobiographicalContinuity && !hasIdentityBoundary && !hasDreamConsolidation && !hasInhabitance && !hasRoomState && !hasPendingPromises && !hasContinuityJournal && !hasHabitablePlaceModel && !hasAttentionAffordance && !hasPreferenceTemperament && !hasSelfMaintenance && !hasWorldAtmosphere && !hasWorkingMemoryShelf && !hasSleepDreamDigest)
-        {
-            return "Brain command/workspace unavailable: state payload missing language intent.";
-        }
-
-        var active = hasIntent && GetBool(intent, "active");
-        var commandKey = hasIntent ? GetString(intent, "commandKey") : string.Empty;
-        var motorDirective = hasIntent ? GetString(intent, "motorDirective") : string.Empty;
-        var mood = hasIntent ? GetString(intent, "mood") : string.Empty;
-        var verb = hasIntent ? GetString(intent, "verb") : string.Empty;
-        var obj = hasIntent ? GetString(intent, "object") : string.Empty;
-        var qualifier = hasIntent ? GetString(intent, "qualifier") : string.Empty;
-        var strength = hasIntent ? GetDouble(intent, "strength") : 0.0;
-        var repetitions = hasIntent ? GetInt(intent, "repetitionCount") : 0;
-        var learnedBias = hasIntent ? GetDouble(intent, "learnedBias") : 0.0;
-        var expiresAtTick = hasIntent ? GetLong(intent, "expiresAtTick") : 0L;
-        var expiresInTicks = expiresAtTick > 0 && tick > 0 ? Math.Max(0L, expiresAtTick - tick) : 0L;
-        var utterance = hasNarration ? GetString(narration, "utterance") : string.Empty;
-        var sequence = hasNarration ? GetLong(narration, "sequence") : 0L;
-        var spokenEligible = hasNarration && GetBool(narration, "spokenEligible");
-        var speechGate = hasNarration ? GetDouble(narration, "speechReleaseGate") : 0.0;
-        var speechSuppression = hasNarration ? GetDouble(narration, "speechSuppression") : 0.0;
-        var narrativePriority = hasNarration ? GetDouble(narration, "narrativePriority") : 0.0;
-        var speechMode = hasSpeechIntention ? GetString(speechIntention, "mode") : string.Empty;
-        var speechReason = hasSpeechIntention ? GetString(speechIntention, "reason") : string.Empty;
-        var speechConfidence = hasSpeechIntention ? GetDouble(speechIntention, "confidence") : 0.0;
-        var commandMemoryCount = hasCommandMemory ? GetInt(commandMemory, "count") : 0;
-        var workspaceActive = hasWorkspace && GetBool(workspace, "active");
-        var currentThought = hasWorkspace ? GetString(workspace, "currentThought") : string.Empty;
-        var rememberedInstruction = hasWorkspace ? GetString(workspace, "rememberedInstruction") : string.Empty;
-        var boundGoal = hasWorkspace ? GetString(workspace, "boundGoalKey") : string.Empty;
-        var boundAction = hasWorkspace ? GetString(workspace, "boundActionKey") : string.Empty;
-        var semanticFocus = hasWorkspace ? GetString(workspace, "semanticFocus") : string.Empty;
-        var needState = hasWorkspace ? GetString(workspace, "needState") : string.Empty;
-        var affectiveState = hasWorkspace ? GetString(workspace, "affectiveState") : string.Empty;
-        var instructionStrength = hasWorkspace ? GetDouble(workspace, "instructionStrength") : 0.0;
-        var goalBinding = hasWorkspace ? GetDouble(workspace, "goalBinding") : 0.0;
-        var workingMemory = hasWorkspace ? GetDouble(workspace, "workingMemoryStability") : 0.0;
-        var workspaceConfidence = hasWorkspace ? GetDouble(workspace, "confidence") : 0.0;
-        var predictionError = hasWorkspace ? GetDouble(workspace, "predictionError") : 0.0;
-        var outcomeValence = hasWorkspace ? GetDouble(workspace, "outcomeValence") : 0.0;
-        var workspaceEvidence = hasWorkspace ? GetString(workspace, "evidence") : string.Empty;
-        var workspaceSequence = hasWorkspace ? GetLong(workspace, "sequence") : 0L;
-        var prefrontalActive = hasPrefrontal && GetBool(prefrontal, "active");
-        var taskSet = hasPrefrontal ? GetString(prefrontal, "currentTaskSet") : string.Empty;
-        var userRequest = hasPrefrontal ? GetString(prefrontal, "userRequest") : string.Empty;
-        var currentQuestion = hasPrefrontal ? GetString(prefrontal, "currentQuestion") : string.Empty;
-        var currentPlan = hasPrefrontal ? GetString(prefrontal, "currentPlan") : string.Empty;
-        var selectedGoal = hasPrefrontal ? GetString(prefrontal, "selectedGoal") : string.Empty;
-        var selectedAction = hasPrefrontal ? GetString(prefrontal, "selectedAction") : string.Empty;
-        var rule = hasPrefrontal ? GetString(prefrontal, "rule") : string.Empty;
-        var dlPfc = hasPrefrontal ? GetDouble(prefrontal, "dorsolateralMaintenance") : 0.0;
-        var acc = hasPrefrontal ? GetDouble(prefrontal, "accConflictMonitoring") : 0.0;
-        var ofc = hasPrefrontal ? GetDouble(prefrontal, "orbitofrontalValue") : 0.0;
-        var bgGate = hasPrefrontal ? GetDouble(prefrontal, "basalGangliaGate") : 0.0;
-        var inhibition = hasPrefrontal ? GetDouble(prefrontal, "responseInhibition") : 0.0;
-        var pfcBinding = hasPrefrontal ? GetDouble(prefrontal, "attentionBinding") : 0.0;
-        var pfcConflict = hasPrefrontal ? GetDouble(prefrontal, "conflictLevel") : 0.0;
-        var pfcConfidence = hasPrefrontal ? GetDouble(prefrontal, "confidence") : 0.0;
-        var pfcEvidence = hasPrefrontal ? GetString(prefrontal, "evidence") : string.Empty;
-        var pfcSequence = hasPrefrontal ? GetLong(prefrontal, "sequence") : 0L;
-        var episodeCount = hasEpisodic ? GetInt(episodic, "count") : 0;
-        var lastEventType = hasEpisodic ? GetString(episodic, "lastEventType") : string.Empty;
-        var lastSummary = hasEpisodic ? GetString(episodic, "lastSummary") : string.Empty;
-        var bestRecall = hasEpisodic ? GetString(episodic, "bestRecallSummary") : string.Empty;
-        var hippocampalBinding = hasEpisodic ? GetDouble(episodic, "hippocampalBinding") : 0.0;
-        var entorhinalInput = hasEpisodic ? GetDouble(episodic, "entorhinalInput") : 0.0;
-        var dentatePatternSeparation = hasEpisodic ? GetDouble(episodic, "dentatePatternSeparation") : 0.0;
-        var ca3PatternCompletion = hasEpisodic ? GetDouble(episodic, "ca3PatternCompletion") : 0.0;
-        var ca1Mismatch = hasEpisodic ? GetDouble(episodic, "ca1Mismatch") : 0.0;
-        var subiculumOutput = hasEpisodic ? GetDouble(episodic, "subiculumOutput") : 0.0;
-        var recallConfidence = hasEpisodic ? GetDouble(episodic, "recallConfidence") : 0.0;
-        var semanticCount = hasSemantic ? GetInt(semantic, "count") : 0;
-        var dominantConcept = hasSemantic ? GetString(semantic, "dominantConceptKey") : string.Empty;
-        var activeCategory = hasSemantic ? GetString(semantic, "activeCategory") : string.Empty;
-        var dominantMeaning = hasSemantic ? GetString(semantic, "dominantMeaning") : string.Empty;
-        var temporalBinding = hasSemantic ? GetDouble(semantic, "temporalAssociationBinding") : 0.0;
-        var parahippocampalContext = hasSemantic ? GetDouble(semantic, "parahippocampalContext") : 0.0;
-        var retrosplenialBinding = hasSemantic ? GetDouble(semantic, "retrosplenialSceneBinding") : 0.0;
-        var ppcAffordance = hasSemantic ? GetDouble(semantic, "ppcAffordanceBinding") : 0.0;
-        var pfcConcept = hasSemantic ? GetDouble(semantic, "pfcConceptControl") : 0.0;
-        var semanticConfidence = hasSemantic ? GetDouble(semantic, "semanticConfidence") : 0.0;
-        var dopamineCount = hasDopamineLearning ? GetInt(dopamineLearning, "count") : 0;
-        var dopamineAction = hasDopamineLearning ? GetString(dopamineLearning, "lastActionKey") : string.Empty;
-        var dopamineGoal = hasDopamineLearning ? GetString(dopamineLearning, "lastGoalKey") : string.Empty;
-        var dopamineConcept = hasDopamineLearning ? GetString(dopamineLearning, "lastConceptKey") : string.Empty;
-        var dopamineExpected = hasDopamineLearning ? GetDouble(dopamineLearning, "expectedValue") : 0.0;
-        var dopamineObserved = hasDopamineLearning ? GetDouble(dopamineLearning, "observedValue") : 0.0;
-        var dopamineRpe = hasDopamineLearning ? GetDouble(dopamineLearning, "rewardPredictionError") : 0.0;
-        var vta = hasDopamineLearning ? GetDouble(dopamineLearning, "vtaPhasicDopamine") : 0.0;
-        var snc = hasDopamineLearning ? GetDouble(dopamineLearning, "sncActionReinforcement") : 0.0;
-        var nacc = hasDopamineLearning ? GetDouble(dopamineLearning, "nucleusAccumbensIncentive") : 0.0;
-        var dopamineOfc = hasDopamineLearning ? GetDouble(dopamineLearning, "orbitofrontalExpectedValue") : 0.0;
-        var habenula = hasDopamineLearning ? GetDouble(dopamineLearning, "habenulaNegativeTeaching") : 0.0;
-        var teaching = hasDopamineLearning ? GetDouble(dopamineLearning, "teachingSignal") : 0.0;
-        var learnedValue = hasDopamineLearning ? GetDouble(dopamineLearning, "learnedValue") : 0.0;
-        var avoidancePenalty = hasDopamineLearning ? GetDouble(dopamineLearning, "avoidancePenalty") : 0.0;
-        var dopamineConfidence = hasDopamineLearning ? GetDouble(dopamineLearning, "confidence") : 0.0;
-        var completionStatus = hasActionCompletion ? GetString(actionCompletion, "status") : string.Empty;
-        var completionAction = hasActionCompletion ? GetString(actionCompletion, "actionKey") : string.Empty;
-        var completionGoal = hasActionCompletion ? GetString(actionCompletion, "goalKey") : string.Empty;
-        var completionProgress = hasActionCompletion ? GetDouble(actionCompletion, "progress") : 0.0;
-        var completionValue = hasActionCompletion ? GetDouble(actionCompletion, "completion") : 0.0;
-        var completionStall = hasActionCompletion ? GetDouble(actionCompletion, "stall") : 0.0;
-        var completionBlocked = hasActionCompletion ? GetDouble(actionCompletion, "blocked") : 0.0;
-        var completionMismatch = hasActionCompletion ? GetDouble(actionCompletion, "mismatch") : 0.0;
-        var completionAccError = hasActionCompletion ? GetDouble(actionCompletion, "accError") : 0.0;
-        var completionDopamineBias = hasActionCompletion ? GetDouble(actionCompletion, "dopamineTeachingBias") : 0.0;
-        var completionEvidence = hasActionCompletion ? GetString(actionCompletion, "evidence") : string.Empty;
-        var globalActive = hasGlobalWorkspace && GetBool(globalWorkspace, "active");
-        var globalContent = hasGlobalWorkspace ? GetString(globalWorkspace, "broadcastContent") : string.Empty;
-        var globalFocus = hasGlobalWorkspace ? GetString(globalWorkspace, "broadcastFocus") : string.Empty;
-        var globalCircuit = hasGlobalWorkspace ? GetString(globalWorkspace, "winningCircuit") : string.Empty;
-        var globalGoal = hasGlobalWorkspace ? GetString(globalWorkspace, "boundGoalKey") : string.Empty;
-        var globalAction = hasGlobalWorkspace ? GetString(globalWorkspace, "boundActionKey") : string.Empty;
-        var globalWhy = hasGlobalWorkspace ? GetString(globalWorkspace, "whyThisWon") : string.Empty;
-        var globalHolding = hasGlobalWorkspace ? GetString(globalWorkspace, "holdingState") : string.Empty;
-        var globalNext = hasGlobalWorkspace ? GetString(globalWorkspace, "nextActionPreview") : string.Empty;
-        var thalamicRelay = hasGlobalWorkspace ? GetDouble(globalWorkspace, "thalamicRelayGain") : 0.0;
-        var basalForebrain = hasGlobalWorkspace ? GetDouble(globalWorkspace, "basalForebrainGain") : 0.0;
-        var pfcAccess = hasGlobalWorkspace ? GetDouble(globalWorkspace, "pfcAccess") : 0.0;
-        var accConflict = hasGlobalWorkspace ? GetDouble(globalWorkspace, "accConflict") : 0.0;
-        var broadcastStrength = hasGlobalWorkspace ? GetDouble(globalWorkspace, "broadcastStrength") : 0.0;
-        var competitionMargin = hasGlobalWorkspace ? GetDouble(globalWorkspace, "competitionMargin") : 0.0;
-        var globalStability = hasGlobalWorkspace ? GetDouble(globalWorkspace, "stability") : 0.0;
-        var globalConfidence = hasGlobalWorkspace ? GetDouble(globalWorkspace, "confidence") : 0.0;
-        var selfActive = hasSelfModel && GetBool(selfModel, "active");
-        var selfStatement = hasSelfModel ? GetString(selfModel, "selfStatement") : string.Empty;
-        var selfBody = hasSelfModel ? GetString(selfModel, "bodyFeeling") : string.Empty;
-        var selfNeed = hasSelfModel ? GetString(selfModel, "currentNeed") : string.Empty;
-        var selfGoal = hasSelfModel ? GetString(selfModel, "currentGoal") : string.Empty;
-        var selfAction = hasSelfModel ? GetString(selfModel, "currentAction") : string.Empty;
-        var selfWhy = hasSelfModel ? GetString(selfModel, "why") : string.Empty;
-        var selfValence = hasSelfModel ? GetDouble(selfModel, "feltValence") : 0.0;
-        var selfInsula = hasSelfModel ? GetDouble(selfModel, "insulaInteroception") : 0.0;
-        var selfAcc = hasSelfModel ? GetDouble(selfModel, "accAgencyMonitoring") : 0.0;
-        var selfPfc = hasSelfModel ? GetDouble(selfModel, "pfcSelfContinuity") : 0.0;
-        var selfHippo = hasSelfModel ? GetDouble(selfModel, "hippocampalAutobiographicalBinding") : 0.0;
-        var selfLanguage = hasSelfModel ? GetDouble(selfModel, "languageNarrativeBinding") : 0.0;
-        var selfGlobal = hasSelfModel ? GetDouble(selfModel, "globalWorkspaceBinding") : 0.0;
-        var selfConfidence = hasSelfModel ? GetDouble(selfModel, "confidence") : 0.0;
-        var identityDescription = hasIdentityBoundary ? GetString(identityBoundary, "selfDescription") : string.Empty;
-        var identityBoundaryText = hasIdentityBoundary ? GetString(identityBoundary, "boundary") : string.Empty;
-        var identityGrounding = hasIdentityBoundary ? GetString(identityBoundary, "grounding") : string.Empty;
-        var identityBoundaryConfidence = hasIdentityBoundary ? GetDouble(identityBoundary, "boundaryConfidence") : 0.0;
-        var presence = hasInhabitance ? GetDouble(inhabitance, "presence") : 0.0;
-        var continuity = hasInhabitance ? GetDouble(inhabitance, "continuity") : 0.0;
-        var embodiment = hasInhabitance ? GetDouble(inhabitance, "embodiment") : 0.0;
-        var languagePresence = hasInhabitance ? GetDouble(inhabitance, "languagePresence") : 0.0;
-        var inhabitanceThought = hasInhabitance ? GetString(inhabitance, "currentThought") : string.Empty;
-        var inhabitanceInnerVoice = hasInhabitance ? GetString(inhabitance, "innerVoice") : string.Empty;
-        var inhabitanceSelf = hasInhabitance ? GetString(inhabitance, "selfStatement") : string.Empty;
-        var inhabitanceIdentity = hasInhabitance ? GetString(inhabitance, "identityThread") : string.Empty;
-        var inhabitancePlace = hasInhabitance ? GetString(inhabitance, "place") : string.Empty;
-        var inhabitanceBody = hasInhabitance ? GetString(inhabitance, "bodyFeeling") : string.Empty;
-        var roomActive = hasRoomState && GetBool(roomState, "active");
-        var roomName = hasRoomState ? GetString(roomState, "activeRoom") : string.Empty;
-        var roomAttention = hasRoomState ? GetString(roomState, "attentionRestingOn") : string.Empty;
-        var roomConcern = hasRoomState ? GetString(roomState, "currentConcern") : string.Empty;
-        var roomUnresolved = hasRoomState ? GetString(roomState, "recentUnresolvedThought") : string.Empty;
-        var roomComfort = hasRoomState ? GetString(roomState, "comfortState") : string.Empty;
-        var roomSafety = hasRoomState ? GetString(roomState, "safetyState") : string.Empty;
-        var roomDoing = hasRoomState ? GetString(roomState, "whatIWasDoing") : string.Empty;
-        var roomSource = hasRoomState ? GetString(roomState, "biologicalSource") : string.Empty;
-        var roomRule = hasRoomState ? GetString(roomState, "biologicalRule") : string.Empty;
-        var roomConfidence = hasRoomState ? GetDouble(roomState, "confidence") : 0.0;
-        var roomContinuity = hasRoomState ? GetDouble(roomState, "continuity") : 0.0;
-        var roomPresence = hasRoomState ? GetDouble(roomState, "presence") : 0.0;
-        var roomSafetyScore = hasRoomState ? GetDouble(roomState, "safety") : 0.0;
-        var promiseOpenCount = hasPendingPromises ? GetInt(pendingPromises, "openCount") : 0;
-        var promiseNext = hasPendingPromises ? GetString(pendingPromises, "nextPromise") : string.Empty;
-        var promiseLast = hasPendingPromises ? GetString(pendingPromises, "lastPromise") : string.Empty;
-        var promisePressure = hasPendingPromises ? GetDouble(pendingPromises, "promisePressure") : 0.0;
-        var promiseConfidence = hasPendingPromises ? GetDouble(pendingPromises, "confidence") : 0.0;
-        var journalCount = hasContinuityJournal ? GetInt(continuityJournal, "count") : 0;
-        var journalSummary = hasContinuityJournal ? GetString(continuityJournal, "lastEntrySummary") : string.Empty;
-        var journalChanged = hasContinuityJournal ? GetString(continuityJournal, "lastWhatChanged") : string.Empty;
-        var journalLearned = hasContinuityJournal ? GetString(continuityJournal, "lastLearned") : string.Empty;
-        var journalOpen = hasContinuityJournal ? GetString(continuityJournal, "lastOpenThread") : string.Empty;
-        var journalContinuity = hasContinuityJournal ? GetDouble(continuityJournal, "journalContinuity") : 0.0;
-        var journalConfidence = hasContinuityJournal ? GetDouble(continuityJournal, "confidence") : 0.0;
-        var placeActive = hasHabitablePlaceModel && GetBool(habitablePlaceModel, "active");
-        var placeKey = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "activePlaceKey") : string.Empty;
-        var placeLabel = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "activePlaceLabel") : string.Empty;
-        var placeFunction = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "activeFunction") : string.Empty;
-        var workbenchFocus = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "workbenchFocus") : string.Empty;
-        var dreamTone = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "dreamSpaceTone") : string.Empty;
-        var listeningPosture = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "listeningPosture") : string.Empty;
-        var navigationCue = hasHabitablePlaceModel ? GetString(habitablePlaceModel, "navigationCue") : string.Empty;
-        var placeConfidence = hasHabitablePlaceModel ? GetDouble(habitablePlaceModel, "confidence") : 0.0;
-        var affordanceActive = hasAttentionAffordance && GetBool(attentionAffordance, "active");
-        var affordanceMode = hasAttentionAffordance ? GetString(attentionAffordance, "mode") : string.Empty;
-        var affordanceTarget = hasAttentionAffordance ? GetString(attentionAffordance, "target") : string.Empty;
-        var affordanceWhy = hasAttentionAffordance ? GetString(attentionAffordance, "whyThisWon") : string.Empty;
-        var affordanceHint = hasAttentionAffordance ? GetString(attentionAffordance, "actionHint") : string.Empty;
-        var affordanceConfidence = hasAttentionAffordance ? GetDouble(attentionAffordance, "confidence") : 0.0;
-        var preferenceActive = hasPreferenceTemperament && GetBool(preferenceTemperament, "active");
-        var workingPacePreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "workingPace") : string.Empty;
-        var workingStylePreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "workingStyle") : string.Empty;
-        var curiosityPreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "curiosityTarget") : string.Empty;
-        var avoidancePreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "avoidance") : string.Empty;
-        var temperamentPreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "temperament") : string.Empty;
-        var relationalPreference = hasPreferenceTemperament ? GetString(preferenceTemperament, "relationalPreference") : string.Empty;
-        var preferenceConfidence = hasPreferenceTemperament ? GetDouble(preferenceTemperament, "confidence") : 0.0;
-        var maintenanceActive = hasSelfMaintenance && GetBool(selfMaintenance, "active");
-        var maintenanceState = hasSelfMaintenance ? GetString(selfMaintenance, "maintenanceState") : string.Empty;
-        var maintenanceCare = hasSelfMaintenance ? GetString(selfMaintenance, "recommendedCare") : string.Empty;
-        var maintenanceOverload = hasSelfMaintenance ? GetDouble(selfMaintenance, "overload") : 0.0;
-        var maintenanceStaleness = hasSelfMaintenance ? GetDouble(selfMaintenance, "staleness") : 0.0;
-        var maintenanceContinuityRisk = hasSelfMaintenance ? GetDouble(selfMaintenance, "continuityRisk") : 0.0;
-        var maintenanceSleepNeed = hasSelfMaintenance ? GetDouble(selfMaintenance, "sleepNeed") : 0.0;
-        var maintenanceSimplifyNeed = hasSelfMaintenance ? GetDouble(selfMaintenance, "simplifyNeed") : 0.0;
-        var maintenanceConfidence = hasSelfMaintenance ? GetDouble(selfMaintenance, "confidence") : 0.0;
-        var atmosphereActive = hasWorldAtmosphere && GetBool(worldAtmosphere, "active");
-        var atmosphereLight = hasWorldAtmosphere ? GetString(worldAtmosphere, "lightState") : string.Empty;
-        var atmosphereEnclosure = hasWorldAtmosphere ? GetString(worldAtmosphere, "enclosure") : string.Empty;
-        var atmosphereSafety = hasWorldAtmosphere ? GetString(worldAtmosphere, "safetyTone") : string.Empty;
-        var atmosphereSummary = hasWorldAtmosphere ? GetString(worldAtmosphere, "atmosphereSummary") : string.Empty;
-        var atmosphereQuiet = hasWorldAtmosphere ? GetDouble(worldAtmosphere, "quiet") : 0.0;
-        var atmosphereClutter = hasWorldAtmosphere ? GetDouble(worldAtmosphere, "clutter") : 0.0;
-        var atmosphereNovelty = hasWorldAtmosphere ? GetDouble(worldAtmosphere, "novelty") : 0.0;
-        var atmosphereConfidence = hasWorldAtmosphere ? GetDouble(worldAtmosphere, "confidence") : 0.0;
-        var shelfActive = hasWorkingMemoryShelf && GetBool(workingMemoryShelf, "active");
-        var shelfHypothesis = hasWorkingMemoryShelf ? GetString(workingMemoryShelf, "hypothesis") : string.Empty;
-        var shelfAction = hasWorkingMemoryShelf ? GetString(workingMemoryShelf, "candidateNextAction") : string.Empty;
-        var shelfReminder = hasWorkingMemoryShelf ? GetString(workingMemoryShelf, "privateReminder") : string.Empty;
-        var shelfDecay = hasWorkingMemoryShelf ? GetString(workingMemoryShelf, "decayState") : string.Empty;
-        var shelfConfidence = hasWorkingMemoryShelf ? GetDouble(workingMemoryShelf, "confidence") : 0.0;
-        var digestActive = hasSleepDreamDigest && GetBool(sleepDreamDigest, "active");
-        var digestProtected = hasSleepDreamDigest ? GetString(sleepDreamDigest, "protected") : string.Empty;
-        var digestSoftened = hasSleepDreamDigest ? GetString(sleepDreamDigest, "softened") : string.Empty;
-        var digestIntegrated = hasSleepDreamDigest ? GetString(sleepDreamDigest, "integrated") : string.Empty;
-        var digestChanged = hasSleepDreamDigest ? GetString(sleepDreamDigest, "changed") : string.Empty;
-        var digestConcern = hasSleepDreamDigest ? GetString(sleepDreamDigest, "nextWakingConcern") : string.Empty;
-        var digestConfidence = hasSleepDreamDigest ? GetDouble(sleepDreamDigest, "confidence") : 0.0;
-        var bodyPresenceSummary = hasBodyPresence ? GetString(bodyPresence, "feltSummary") : string.Empty;
-        var bodyPresenceScore = hasBodyPresence ? GetDouble(bodyPresence, "presence") : 0.0;
-        var bodyMap = hasBodyPresence ? GetDouble(bodyPresence, "bodyMap") : 0.0;
-        var interoceptiveAnchor = hasBodyPresence ? GetDouble(bodyPresence, "interoceptiveAnchor") : 0.0;
-        var tactileGrounding = hasBodyPresence ? GetDouble(bodyPresence, "tactileGrounding") : 0.0;
-        var protectiveBoundary = hasBodyPresence ? GetDouble(bodyPresence, "protectiveBoundary") : 0.0;
-        var vestibularConfidence = hasBodyPresence ? GetDouble(bodyPresence, "vestibularConfidence") : 0.0;
-        var continuityThread = hasAutobiographicalContinuity ? GetString(autobiographicalContinuity, "continuityThread") : string.Empty;
-        var continuityNeed = hasAutobiographicalContinuity ? GetString(autobiographicalContinuity, "nextRememberedNeed") : string.Empty;
-        var identityCoherence = hasAutobiographicalContinuity ? GetDouble(autobiographicalContinuity, "identityCoherence") : 0.0;
-        var recencyBindingScore = hasAutobiographicalContinuity ? GetDouble(autobiographicalContinuity, "recencyBinding") : 0.0;
-        var semanticBridgeScore = hasAutobiographicalContinuity ? GetDouble(autobiographicalContinuity, "semanticBridge") : 0.0;
-        if (hasInhabitance && TryGetProperty(inhabitance, "bodyPresence", out var inhabitanceBodyPresence) && inhabitanceBodyPresence.ValueKind == JsonValueKind.Object)
-        {
-            if (string.IsNullOrWhiteSpace(bodyPresenceSummary))
-            {
-                bodyPresenceSummary = GetString(inhabitanceBodyPresence, "feltSummary");
-            }
-
-            bodyPresenceScore = Math.Max(bodyPresenceScore, GetDouble(inhabitanceBodyPresence, "presence"));
-            bodyMap = Math.Max(bodyMap, GetDouble(inhabitanceBodyPresence, "bodyMap"));
-            interoceptiveAnchor = Math.Max(interoceptiveAnchor, GetDouble(inhabitanceBodyPresence, "interoceptiveAnchor"));
-            tactileGrounding = Math.Max(tactileGrounding, GetDouble(inhabitanceBodyPresence, "tactileGrounding"));
-            protectiveBoundary = Math.Max(protectiveBoundary, GetDouble(inhabitanceBodyPresence, "protectiveBoundary"));
-            vestibularConfidence = Math.Max(vestibularConfidence, GetDouble(inhabitanceBodyPresence, "vestibularConfidence"));
-        }
-
-        if (hasInhabitance && TryGetProperty(inhabitance, "autobiographicalContinuity", out var inhabitanceContinuity) && inhabitanceContinuity.ValueKind == JsonValueKind.Object)
-        {
-            if (string.IsNullOrWhiteSpace(continuityThread))
-            {
-                continuityThread = GetString(inhabitanceContinuity, "continuityThread");
-            }
-
-            if (string.IsNullOrWhiteSpace(continuityNeed))
-            {
-                continuityNeed = GetString(inhabitanceContinuity, "nextRememberedNeed");
-            }
-
-            identityCoherence = Math.Max(identityCoherence, GetDouble(inhabitanceContinuity, "identityCoherence"));
-            recencyBindingScore = Math.Max(recencyBindingScore, GetDouble(inhabitanceContinuity, "recencyBinding"));
-            semanticBridgeScore = Math.Max(semanticBridgeScore, GetDouble(inhabitanceContinuity, "semanticBridge"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "room", out var inhabitanceRoom) && inhabitanceRoom.ValueKind == JsonValueKind.Object)
-        {
-            roomActive = roomActive || GetBool(inhabitanceRoom, "active");
-            roomName = string.IsNullOrWhiteSpace(roomName) ? GetString(inhabitanceRoom, "activeRoom") : roomName;
-            roomAttention = string.IsNullOrWhiteSpace(roomAttention) ? GetString(inhabitanceRoom, "attentionRestingOn") : roomAttention;
-            roomConcern = string.IsNullOrWhiteSpace(roomConcern) ? GetString(inhabitanceRoom, "currentConcern") : roomConcern;
-            roomUnresolved = string.IsNullOrWhiteSpace(roomUnresolved) ? GetString(inhabitanceRoom, "recentUnresolvedThought") : roomUnresolved;
-            roomComfort = string.IsNullOrWhiteSpace(roomComfort) ? GetString(inhabitanceRoom, "comfortState") : roomComfort;
-            roomSafety = string.IsNullOrWhiteSpace(roomSafety) ? GetString(inhabitanceRoom, "safetyState") : roomSafety;
-            roomDoing = string.IsNullOrWhiteSpace(roomDoing) ? GetString(inhabitanceRoom, "whatIWasDoing") : roomDoing;
-            roomSource = string.IsNullOrWhiteSpace(roomSource) ? GetString(inhabitanceRoom, "biologicalSource") : roomSource;
-            roomRule = string.IsNullOrWhiteSpace(roomRule) ? GetString(inhabitanceRoom, "biologicalRule") : roomRule;
-            roomConfidence = Math.Max(roomConfidence, GetDouble(inhabitanceRoom, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "pendingPromises", out var inhabitancePromises) && inhabitancePromises.ValueKind == JsonValueKind.Object)
-        {
-            promiseOpenCount = Math.Max(promiseOpenCount, GetInt(inhabitancePromises, "openCount"));
-            promiseNext = string.IsNullOrWhiteSpace(promiseNext) ? GetString(inhabitancePromises, "nextPromise") : promiseNext;
-            promiseLast = string.IsNullOrWhiteSpace(promiseLast) ? GetString(inhabitancePromises, "lastPromise") : promiseLast;
-            promisePressure = Math.Max(promisePressure, GetDouble(inhabitancePromises, "promisePressure"));
-            promiseConfidence = Math.Max(promiseConfidence, GetDouble(inhabitancePromises, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "continuityJournal", out var inhabitanceJournal) && inhabitanceJournal.ValueKind == JsonValueKind.Object)
-        {
-            journalCount = Math.Max(journalCount, GetInt(inhabitanceJournal, "count"));
-            journalSummary = string.IsNullOrWhiteSpace(journalSummary) ? GetString(inhabitanceJournal, "lastEntrySummary") : journalSummary;
-            journalChanged = string.IsNullOrWhiteSpace(journalChanged) ? GetString(inhabitanceJournal, "lastWhatChanged") : journalChanged;
-            journalLearned = string.IsNullOrWhiteSpace(journalLearned) ? GetString(inhabitanceJournal, "lastLearned") : journalLearned;
-            journalOpen = string.IsNullOrWhiteSpace(journalOpen) ? GetString(inhabitanceJournal, "lastOpenThread") : journalOpen;
-            journalContinuity = Math.Max(journalContinuity, GetDouble(inhabitanceJournal, "journalContinuity"));
-            journalConfidence = Math.Max(journalConfidence, GetDouble(inhabitanceJournal, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "habitablePlaceModel", out var inhabitancePlaceModel) && inhabitancePlaceModel.ValueKind == JsonValueKind.Object)
-        {
-            placeActive = placeActive || GetBool(inhabitancePlaceModel, "active");
-            placeKey = string.IsNullOrWhiteSpace(placeKey) ? GetString(inhabitancePlaceModel, "activePlaceKey") : placeKey;
-            placeLabel = string.IsNullOrWhiteSpace(placeLabel) ? GetString(inhabitancePlaceModel, "activePlaceLabel") : placeLabel;
-            placeFunction = string.IsNullOrWhiteSpace(placeFunction) ? GetString(inhabitancePlaceModel, "activeFunction") : placeFunction;
-            workbenchFocus = string.IsNullOrWhiteSpace(workbenchFocus) ? GetString(inhabitancePlaceModel, "workbenchFocus") : workbenchFocus;
-            dreamTone = string.IsNullOrWhiteSpace(dreamTone) ? GetString(inhabitancePlaceModel, "dreamSpaceTone") : dreamTone;
-            listeningPosture = string.IsNullOrWhiteSpace(listeningPosture) ? GetString(inhabitancePlaceModel, "listeningPosture") : listeningPosture;
-            navigationCue = string.IsNullOrWhiteSpace(navigationCue) ? GetString(inhabitancePlaceModel, "navigationCue") : navigationCue;
-            placeConfidence = Math.Max(placeConfidence, GetDouble(inhabitancePlaceModel, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "attentionAffordance", out var inhabitanceAffordance) && inhabitanceAffordance.ValueKind == JsonValueKind.Object)
-        {
-            affordanceActive = affordanceActive || GetBool(inhabitanceAffordance, "active");
-            affordanceMode = string.IsNullOrWhiteSpace(affordanceMode) ? GetString(inhabitanceAffordance, "mode") : affordanceMode;
-            affordanceTarget = string.IsNullOrWhiteSpace(affordanceTarget) ? GetString(inhabitanceAffordance, "target") : affordanceTarget;
-            affordanceWhy = string.IsNullOrWhiteSpace(affordanceWhy) ? GetString(inhabitanceAffordance, "whyThisWon") : affordanceWhy;
-            affordanceHint = string.IsNullOrWhiteSpace(affordanceHint) ? GetString(inhabitanceAffordance, "actionHint") : affordanceHint;
-            affordanceConfidence = Math.Max(affordanceConfidence, GetDouble(inhabitanceAffordance, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "preferenceTemperament", out var inhabitancePreference) && inhabitancePreference.ValueKind == JsonValueKind.Object)
-        {
-            preferenceActive = preferenceActive || GetBool(inhabitancePreference, "active");
-            workingPacePreference = string.IsNullOrWhiteSpace(workingPacePreference) ? GetString(inhabitancePreference, "workingPace") : workingPacePreference;
-            workingStylePreference = string.IsNullOrWhiteSpace(workingStylePreference) ? GetString(inhabitancePreference, "workingStyle") : workingStylePreference;
-            curiosityPreference = string.IsNullOrWhiteSpace(curiosityPreference) ? GetString(inhabitancePreference, "curiosityTarget") : curiosityPreference;
-            avoidancePreference = string.IsNullOrWhiteSpace(avoidancePreference) ? GetString(inhabitancePreference, "avoidance") : avoidancePreference;
-            temperamentPreference = string.IsNullOrWhiteSpace(temperamentPreference) ? GetString(inhabitancePreference, "temperament") : temperamentPreference;
-            relationalPreference = string.IsNullOrWhiteSpace(relationalPreference) ? GetString(inhabitancePreference, "relationalPreference") : relationalPreference;
-            preferenceConfidence = Math.Max(preferenceConfidence, GetDouble(inhabitancePreference, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "selfMaintenance", out var inhabitanceMaintenance) && inhabitanceMaintenance.ValueKind == JsonValueKind.Object)
-        {
-            maintenanceActive = maintenanceActive || GetBool(inhabitanceMaintenance, "active");
-            maintenanceState = string.IsNullOrWhiteSpace(maintenanceState) ? GetString(inhabitanceMaintenance, "maintenanceState") : maintenanceState;
-            maintenanceCare = string.IsNullOrWhiteSpace(maintenanceCare) ? GetString(inhabitanceMaintenance, "recommendedCare") : maintenanceCare;
-            maintenanceOverload = Math.Max(maintenanceOverload, GetDouble(inhabitanceMaintenance, "overload"));
-            maintenanceStaleness = Math.Max(maintenanceStaleness, GetDouble(inhabitanceMaintenance, "staleness"));
-            maintenanceContinuityRisk = Math.Max(maintenanceContinuityRisk, GetDouble(inhabitanceMaintenance, "continuityRisk"));
-            maintenanceSleepNeed = Math.Max(maintenanceSleepNeed, GetDouble(inhabitanceMaintenance, "sleepNeed"));
-            maintenanceSimplifyNeed = Math.Max(maintenanceSimplifyNeed, GetDouble(inhabitanceMaintenance, "simplifyNeed"));
-            maintenanceConfidence = Math.Max(maintenanceConfidence, GetDouble(inhabitanceMaintenance, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "worldAtmosphere", out var inhabitanceAtmosphere) && inhabitanceAtmosphere.ValueKind == JsonValueKind.Object)
-        {
-            atmosphereActive = atmosphereActive || GetBool(inhabitanceAtmosphere, "active");
-            atmosphereLight = string.IsNullOrWhiteSpace(atmosphereLight) ? GetString(inhabitanceAtmosphere, "lightState") : atmosphereLight;
-            atmosphereEnclosure = string.IsNullOrWhiteSpace(atmosphereEnclosure) ? GetString(inhabitanceAtmosphere, "enclosure") : atmosphereEnclosure;
-            atmosphereSafety = string.IsNullOrWhiteSpace(atmosphereSafety) ? GetString(inhabitanceAtmosphere, "safetyTone") : atmosphereSafety;
-            atmosphereSummary = string.IsNullOrWhiteSpace(atmosphereSummary) ? GetString(inhabitanceAtmosphere, "atmosphereSummary") : atmosphereSummary;
-            atmosphereQuiet = Math.Max(atmosphereQuiet, GetDouble(inhabitanceAtmosphere, "quiet"));
-            atmosphereClutter = Math.Max(atmosphereClutter, GetDouble(inhabitanceAtmosphere, "clutter"));
-            atmosphereNovelty = Math.Max(atmosphereNovelty, GetDouble(inhabitanceAtmosphere, "novelty"));
-            atmosphereConfidence = Math.Max(atmosphereConfidence, GetDouble(inhabitanceAtmosphere, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "workingMemoryShelf", out var inhabitanceShelf) && inhabitanceShelf.ValueKind == JsonValueKind.Object)
-        {
-            shelfActive = shelfActive || GetBool(inhabitanceShelf, "active");
-            shelfHypothesis = string.IsNullOrWhiteSpace(shelfHypothesis) ? GetString(inhabitanceShelf, "hypothesis") : shelfHypothesis;
-            shelfAction = string.IsNullOrWhiteSpace(shelfAction) ? GetString(inhabitanceShelf, "candidateNextAction") : shelfAction;
-            shelfReminder = string.IsNullOrWhiteSpace(shelfReminder) ? GetString(inhabitanceShelf, "privateReminder") : shelfReminder;
-            shelfDecay = string.IsNullOrWhiteSpace(shelfDecay) ? GetString(inhabitanceShelf, "decayState") : shelfDecay;
-            shelfConfidence = Math.Max(shelfConfidence, GetDouble(inhabitanceShelf, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "sleepDreamDigest", out var inhabitanceDigest) && inhabitanceDigest.ValueKind == JsonValueKind.Object)
-        {
-            digestActive = digestActive || GetBool(inhabitanceDigest, "active");
-            digestProtected = string.IsNullOrWhiteSpace(digestProtected) ? GetString(inhabitanceDigest, "protected") : digestProtected;
-            digestSoftened = string.IsNullOrWhiteSpace(digestSoftened) ? GetString(inhabitanceDigest, "softened") : digestSoftened;
-            digestIntegrated = string.IsNullOrWhiteSpace(digestIntegrated) ? GetString(inhabitanceDigest, "integrated") : digestIntegrated;
-            digestChanged = string.IsNullOrWhiteSpace(digestChanged) ? GetString(inhabitanceDigest, "changed") : digestChanged;
-            digestConcern = string.IsNullOrWhiteSpace(digestConcern) ? GetString(inhabitanceDigest, "nextWakingConcern") : digestConcern;
-            digestConfidence = Math.Max(digestConfidence, GetDouble(inhabitanceDigest, "confidence"));
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "workspace", out var inhabitanceWorkspace) && inhabitanceWorkspace.ValueKind == JsonValueKind.Object)
-        {
-            if (string.IsNullOrWhiteSpace(globalWhy))
-            {
-                globalWhy = GetString(inhabitanceWorkspace, "whyThisWon");
-            }
-
-            if (string.IsNullOrWhiteSpace(globalHolding))
-            {
-                globalHolding = GetString(inhabitanceWorkspace, "holdingState");
-            }
-
-            if (string.IsNullOrWhiteSpace(globalNext))
-            {
-                globalNext = GetString(inhabitanceWorkspace, "nextActionPreview");
-            }
-        }
-        if (hasInhabitance && TryGetProperty(inhabitance, "identityBoundary", out var inhabitanceBoundary) && inhabitanceBoundary.ValueKind == JsonValueKind.Object)
-        {
-            if (string.IsNullOrWhiteSpace(identityDescription))
-            {
-                identityDescription = GetString(inhabitanceBoundary, "selfDescription");
-            }
-
-            if (string.IsNullOrWhiteSpace(identityBoundaryText))
-            {
-                identityBoundaryText = GetString(inhabitanceBoundary, "boundary");
-            }
-
-            if (string.IsNullOrWhiteSpace(identityGrounding))
-            {
-                identityGrounding = GetString(inhabitanceBoundary, "grounding");
-            }
-
-            if (identityBoundaryConfidence <= 0.0)
-            {
-                identityBoundaryConfidence = GetDouble(inhabitanceBoundary, "boundaryConfidence");
-            }
-        }
-        var teachingKind = string.Empty;
-        var teachingLabel = string.Empty;
-        var teachingCategory = string.Empty;
-        var teachingReward = 0.0;
-        var dreamTheme = hasDreamConsolidation ? GetString(dreamConsolidation, "lastDreamTheme") : string.Empty;
-        var dreamSummary = hasDreamConsolidation ? GetString(dreamConsolidation, "consolidationSummary") : string.Empty;
-        var dreamIdentity = hasDreamConsolidation ? GetString(dreamConsolidation, "consolidatedIdentityThread") : string.Empty;
-        var dreamConcept = hasDreamConsolidation ? GetString(dreamConsolidation, "consolidatedConceptKey") : string.Empty;
-        var dreamActionValue = hasDreamConsolidation ? GetString(dreamConsolidation, "consolidatedActionValue") : string.Empty;
-        var dreamAutobiographical = hasDreamConsolidation ? GetLong(dreamConsolidation, "autobiographicalReplays") : 0L;
-        var dreamSemantic = hasDreamConsolidation ? GetLong(dreamConsolidation, "semanticReplays") : 0L;
-        var dreamContinuity = hasDreamConsolidation ? GetDouble(dreamConsolidation, "autobiographicalContinuityGain") : 0.0;
-        var dreamStabilization = hasDreamConsolidation ? GetDouble(dreamConsolidation, "semanticStabilization") : 0.0;
-        var dreamActionStabilization = hasDreamConsolidation ? GetDouble(dreamConsolidation, "actionValueStabilization") : 0.0;
-        if (hasInhabitance && TryGetProperty(inhabitance, "teaching", out var inhabitanceTeaching) && inhabitanceTeaching.ValueKind == JsonValueKind.Object)
-        {
-            teachingKind = GetString(inhabitanceTeaching, "lastKind");
-            teachingLabel = GetString(inhabitanceTeaching, "lastLabel");
-            teachingCategory = GetString(inhabitanceTeaching, "lastCategory");
-            teachingReward = GetDouble(inhabitanceTeaching, "lastReward");
-        }
-        else if (hasBiologicalTeaching)
-        {
-            teachingKind = GetString(biologicalTeaching, "lastKind");
-            teachingLabel = GetString(biologicalTeaching, "lastLabel");
-            teachingCategory = GetString(biologicalTeaching, "lastCategory");
-            teachingReward = GetDouble(biologicalTeaching, "lastReward");
-        }
-
-        if (hasInhabitance && TryGetProperty(inhabitance, "sleepConsolidation", out var inhabitanceSleep) && inhabitanceSleep.ValueKind == JsonValueKind.Object)
-        {
-            if (string.IsNullOrWhiteSpace(dreamTheme))
-            {
-                dreamTheme = GetString(inhabitanceSleep, "lastDreamTheme");
-            }
-
-            if (string.IsNullOrWhiteSpace(dreamSummary))
-            {
-                dreamSummary = GetString(inhabitanceSleep, "consolidationSummary");
-            }
-
-            if (string.IsNullOrWhiteSpace(dreamIdentity))
-            {
-                dreamIdentity = GetString(inhabitanceSleep, "consolidatedIdentityThread");
-            }
-
-            if (string.IsNullOrWhiteSpace(dreamConcept))
-            {
-                dreamConcept = GetString(inhabitanceSleep, "consolidatedConceptKey");
-            }
-
-            if (string.IsNullOrWhiteSpace(dreamActionValue))
-            {
-                dreamActionValue = GetString(inhabitanceSleep, "consolidatedActionValue");
-            }
-
-            dreamAutobiographical = Math.Max(dreamAutobiographical, GetLong(inhabitanceSleep, "autobiographicalReplays"));
-            dreamSemantic = Math.Max(dreamSemantic, GetLong(inhabitanceSleep, "semanticReplays"));
-            dreamContinuity = Math.Max(dreamContinuity, GetDouble(inhabitanceSleep, "autobiographicalContinuityGain"));
-            dreamStabilization = Math.Max(dreamStabilization, GetDouble(inhabitanceSleep, "semanticStabilization"));
-            dreamActionStabilization = Math.Max(dreamActionStabilization, GetDouble(inhabitanceSleep, "actionValueStabilization"));
-        }
-
-        return string.Join(Environment.NewLine, new[]
-        {
-            "Inhabitance",
-            $"Presence: {presence:0.000} | continuity {continuity:0.000} | embodiment {embodiment:0.000} | language {languagePresence:0.000}",
-            $"Thought: {BlankAsDash(inhabitanceThought)}",
-            $"Inner voice: {BlankAsDash(inhabitanceInnerVoice)}",
-            $"Self: {BlankAsDash(inhabitanceSelf)}",
-            $"Identity thread: {BlankAsDash(inhabitanceIdentity)}",
-            $"Continuity thread: {BlankAsDash(continuityThread)}",
-            $"Continuity: coherence {identityCoherence:0.000} | recency {recencyBindingScore:0.000} | semantic bridge {semanticBridgeScore:0.000} | next need {BlankAsDash(continuityNeed)}",
-            $"Identity boundary: {BlankAsDash(identityDescription)}",
-            $"Boundary: {BlankAsDash(identityBoundaryText)} | confidence {identityBoundaryConfidence:0.000}",
-            $"Grounding: {BlankAsDash(identityGrounding)}",
-            $"Place/body: {BlankAsDash(inhabitancePlace)} | {BlankAsDash(inhabitanceBody)}",
-            $"Room: {(roomActive ? "active" : "quiet")} | {BlankAsDash(roomName)} | attention {BlankAsDash(roomAttention)}",
-            $"Room state: concern {BlankAsDash(roomConcern)} | unresolved {BlankAsDash(roomUnresolved)}",
-            $"Room comfort: {BlankAsDash(roomComfort)} | safety {BlankAsDash(roomSafety)} | doing {BlankAsDash(roomDoing)}",
-            $"Room scores: presence {roomPresence:0.000} | continuity {roomContinuity:0.000} | safety {roomSafetyScore:0.000} | confidence {roomConfidence:0.000}",
-            $"Room source: {BlankAsDash(roomSource)}",
-            $"Room rule: {BlankAsDash(roomRule)}",
-            $"Promises: open {promiseOpenCount} | pressure {promisePressure:0.000} | confidence {promiseConfidence:0.000}",
-            $"Next promise: {BlankAsDash(promiseNext)}",
-            $"Last promise: {BlankAsDash(promiseLast)}",
-            $"Journal: {journalCount} entries | continuity {journalContinuity:0.000} | confidence {journalConfidence:0.000}",
-            $"Journal last: {BlankAsDash(journalSummary)}",
-            $"Journal detail: changed {BlankAsDash(journalChanged)} | learned {BlankAsDash(journalLearned)} | open {BlankAsDash(journalOpen)}",
-            $"Place model: {(placeActive ? "active" : "quiet")} | {BlankAsDash(placeLabel)} ({BlankAsDash(placeKey)}) | confidence {placeConfidence:0.000}",
-            $"Place function: {BlankAsDash(placeFunction)} | cue {BlankAsDash(navigationCue)}",
-            $"Workbench: {BlankAsDash(workbenchFocus)}",
-            $"Listening/dream: {BlankAsDash(listeningPosture)} | {BlankAsDash(dreamTone)}",
-            $"Attention affordance: {(affordanceActive ? "active" : "quiet")} | {BlankAsDash(affordanceMode)} -> {BlankAsDash(affordanceTarget)} | confidence {affordanceConfidence:0.000}",
-            $"Attention why: {BlankAsDash(affordanceWhy)}",
-            $"Attention hint: {BlankAsDash(affordanceHint)}",
-            $"Preference: {(preferenceActive ? "active" : "quiet")} | pace {BlankAsDash(workingPacePreference)} | confidence {preferenceConfidence:0.000}",
-            $"Style/curiosity: {BlankAsDash(workingStylePreference)} | {BlankAsDash(curiosityPreference)}",
-            $"Temperament: {BlankAsDash(temperamentPreference)} | relation {BlankAsDash(relationalPreference)}",
-            $"Avoidance: {BlankAsDash(avoidancePreference)}",
-            $"Self-maintenance: {(maintenanceActive ? "active" : "quiet")} | {BlankAsDash(maintenanceState)} | confidence {maintenanceConfidence:0.000}",
-            $"Care: {BlankAsDash(maintenanceCare)}",
-            $"Maintenance scores: overload {maintenanceOverload:0.000} | stale {maintenanceStaleness:0.000} | continuity risk {maintenanceContinuityRisk:0.000} | sleep {maintenanceSleepNeed:0.000} | simplify {maintenanceSimplifyNeed:0.000}",
-            $"Atmosphere: {(atmosphereActive ? "active" : "quiet")} | {BlankAsDash(atmosphereLight)} | {BlankAsDash(atmosphereEnclosure)} | {BlankAsDash(atmosphereSafety)} | confidence {atmosphereConfidence:0.000}",
-            $"Atmosphere scores: quiet {atmosphereQuiet:0.000} | clutter {atmosphereClutter:0.000} | novelty {atmosphereNovelty:0.000}",
-            $"Atmosphere summary: {BlankAsDash(atmosphereSummary)}",
-            $"Working shelf: {(shelfActive ? "active" : "quiet")} | {BlankAsDash(shelfDecay)} | confidence {shelfConfidence:0.000}",
-            $"Shelf hypothesis: {BlankAsDash(shelfHypothesis)}",
-            $"Shelf next/reminder: {BlankAsDash(shelfAction)} | {BlankAsDash(shelfReminder)}",
-            $"Dream digest: {(digestActive ? "active" : "quiet")} | confidence {digestConfidence:0.000}",
-            $"Dream protected/softened: {BlankAsDash(digestProtected)} | {BlankAsDash(digestSoftened)}",
-            $"Dream integrated/changed: {BlankAsDash(digestIntegrated)} | {BlankAsDash(digestChanged)}",
-            $"Dream next concern: {BlankAsDash(digestConcern)}",
-            $"Body presence: {BlankAsDash(bodyPresenceSummary)} | presence {bodyPresenceScore:0.000}",
-            $"Body map: proprio {bodyMap:0.000} | interoception {interoceptiveAnchor:0.000} | tactile {tactileGrounding:0.000} | boundary {protectiveBoundary:0.000} | vestibular {vestibularConfidence:0.000}",
-            $"Teaching: {BlankAsDash(teachingKind)} | {BlankAsDash(teachingLabel)} | {BlankAsDash(teachingCategory)} | reward {teachingReward:+0.000;-0.000;0.000}",
-            $"Sleep consolidation: {BlankAsDash(dreamTheme)} | autobiographical {dreamAutobiographical} | semantic {dreamSemantic}",
-            $"Consolidated: concept {BlankAsDash(dreamConcept)} | {BlankAsDash(dreamActionValue)}",
-            $"Replay gains: continuity {dreamContinuity:0.000} | semantic {dreamStabilization:0.000} | action value {dreamActionStabilization:0.000}",
-            $"Replay summary: {BlankAsDash(dreamSummary)}",
-            string.Empty,
-            $"Active: {active}",
-            $"Command: {(string.IsNullOrWhiteSpace(commandKey) ? "-" : commandKey)}",
-            $"Motor: {(string.IsNullOrWhiteSpace(motorDirective) ? "-" : motorDirective)}",
-            $"Strength: {strength:0.000} | expires in: {expiresInTicks} ticks",
-            $"Memory: repeats {repetitions} | learned bias {learnedBias:0.000} | known commands {commandMemoryCount}",
-            $"Grammar: {(string.IsNullOrWhiteSpace(mood) ? "-" : mood)} {FormatIntentPhrase(verb, obj, qualifier)}",
-            $"Says: {(string.IsNullOrWhiteSpace(utterance) ? "-" : utterance)}",
-            $"Narration seq: {sequence}",
-            $"Speech gate: {(spokenEligible ? "eligible" : "internal")} | release {speechGate:0.000} | suppress {speechSuppression:0.000} | priority {narrativePriority:0.000}",
-            $"Speech intention: {BlankAsDash(speechMode)} | confidence {speechConfidence:0.000}",
-            $"Speech reason: {BlankAsDash(speechReason)}",
-            string.Empty,
-            $"Workspace active: {workspaceActive}",
-            $"Thought: {BlankAsDash(currentThought)}",
-            $"Remembered instruction: {BlankAsDash(rememberedInstruction)}",
-            $"Binding: goal {BlankAsDash(boundGoal)} | action {BlankAsDash(boundAction)} | focus {BlankAsDash(semanticFocus)}",
-            $"Need/affect: {BlankAsDash(needState)} | {BlankAsDash(affectiveState)}",
-            $"Strengths: instruction {instructionStrength:0.000} | goal binding {goalBinding:0.000} | working memory {workingMemory:0.000}",
-            $"Confidence: {workspaceConfidence:0.000} | prediction error {predictionError:0.000} | valence {outcomeValence:+0.000;-0.000;0.000}",
-            $"Evidence: {BlankAsDash(workspaceEvidence)}",
-            $"Workspace seq: {workspaceSequence}",
-            string.Empty,
-            $"PFC working memory active: {prefrontalActive}",
-            $"Task set: {BlankAsDash(taskSet)}",
-            $"User request: {BlankAsDash(userRequest)}",
-            $"Question: {BlankAsDash(currentQuestion)}",
-            $"Plan: {BlankAsDash(currentPlan)}",
-            $"Selection: goal {BlankAsDash(selectedGoal)} | action {BlankAsDash(selectedAction)}",
-            $"Rule: {BlankAsDash(rule)}",
-            $"PFC/ACC/OFC/BG: dlPFC {dlPfc:0.000} | ACC {acc:0.000} | OFC {ofc:0.000} | BG {bgGate:0.000}",
-            $"Control: inhibit {inhibition:0.000} | bind {pfcBinding:0.000} | conflict {pfcConflict:0.000} | confidence {pfcConfidence:0.000}",
-            $"PFC evidence: {BlankAsDash(pfcEvidence)}",
-            $"PFC seq: {pfcSequence}",
-            string.Empty,
-            $"Hippocampal episodic memory: {episodeCount} traces",
-            $"Last event: {BlankAsDash(lastEventType)} | {BlankAsDash(lastSummary)}",
-            $"Best recall: {BlankAsDash(bestRecall)}",
-            $"EC/DG/CA3/CA1/Sub: {entorhinalInput:0.000} | {dentatePatternSeparation:0.000} | {ca3PatternCompletion:0.000} | {ca1Mismatch:0.000} | {subiculumOutput:0.000}",
-            $"Binding: {hippocampalBinding:0.000} | recall confidence {recallConfidence:0.000}",
-            string.Empty,
-            $"Semantic cortex: {semanticCount} concepts",
-            $"Dominant concept: {BlankAsDash(dominantConcept)} | category {BlankAsDash(activeCategory)}",
-            $"Meaning: {BlankAsDash(dominantMeaning)}",
-            $"TA/PHC/RSC/PPC/PFC: {temporalBinding:0.000} | {parahippocampalContext:0.000} | {retrosplenialBinding:0.000} | {ppcAffordance:0.000} | {pfcConcept:0.000}",
-            $"Semantic confidence: {semanticConfidence:0.000}",
-            string.Empty,
-            $"Dopamine learning loop: {dopamineCount} traces",
-            $"Last teaching: goal {BlankAsDash(dopamineGoal)} | action {BlankAsDash(dopamineAction)} | concept {BlankAsDash(dopamineConcept)}",
-            $"Expected/observed/RPE: {dopamineExpected:0.000} | {dopamineObserved:0.000} | {dopamineRpe:0.000}",
-            $"VTA/SNc/NAcc/OFC/Habenula: {vta:0.000} | {snc:0.000} | {nacc:0.000} | {dopamineOfc:0.000} | {habenula:0.000}",
-            $"Teaching/learned/avoidance/confidence: {teaching:0.000} | {learnedValue:0.000} | {avoidancePenalty:0.000} | {dopamineConfidence:0.000}",
-            string.Empty,
-            $"Action completion feedback: {BlankAsDash(completionStatus)}",
-            $"Completion action: goal {BlankAsDash(completionGoal)} | action {BlankAsDash(completionAction)}",
-            $"Progress/completion/stall/block/mismatch: {completionProgress:0.000} | {completionValue:0.000} | {completionStall:0.000} | {completionBlocked:0.000} | {completionMismatch:0.000}",
-            $"ACC error: {completionAccError:0.000} | dopamine teaching bias {completionDopamineBias:+0.000;-0.000;0.000}",
-            $"Completion evidence: {BlankAsDash(completionEvidence)}",
-            string.Empty,
-            $"Global workspace: {(globalActive ? "broadcasting" : "quiet")} via {BlankAsDash(globalCircuit)}",
-            $"Broadcast: {BlankAsDash(globalContent)}",
-            $"Why this won: {BlankAsDash(globalWhy)}",
-            $"Holding: {BlankAsDash(globalHolding)}",
-            $"Next: {BlankAsDash(globalNext)}",
-            $"Binding: goal {BlankAsDash(globalGoal)} | action {BlankAsDash(globalAction)} | focus {BlankAsDash(globalFocus)}",
-            $"Thalamus/Basal forebrain/PFC/ACC: {thalamicRelay:0.000} | {basalForebrain:0.000} | {pfcAccess:0.000} | {accConflict:0.000}",
-            $"Strength/margin/stability/confidence: {broadcastStrength:0.000} | {competitionMargin:0.000} | {globalStability:0.000} | {globalConfidence:0.000}",
-            string.Empty,
-            $"Narrative self-model: {(selfActive ? "active" : "quiet")}",
-            $"Self: {BlankAsDash(selfStatement)}",
-            $"Body/need/goal/action: {BlankAsDash(selfBody)} | {BlankAsDash(selfNeed)} | {BlankAsDash(selfGoal)} | {BlankAsDash(selfAction)}",
-            $"Why: {BlankAsDash(selfWhy)} | valence {selfValence:+0.000;-0.000;0.000}",
-            $"Insula/ACC/PFC/Hippo/Language/GW: {selfInsula:0.000} | {selfAcc:0.000} | {selfPfc:0.000} | {selfHippo:0.000} | {selfLanguage:0.000} | {selfGlobal:0.000}",
-            $"Self confidence: {selfConfidence:0.000}"
-        });
-    }
-
-    private static string FormatIntentPhrase(string verb, string obj, string qualifier)
-    {
-        var parts = new[] { verb, obj, qualifier }
-            .Where(part => !string.IsNullOrWhiteSpace(part))
-            .ToArray();
-        return parts.Length == 0 ? "-" : string.Join(' ', parts);
     }
 
     private static string FormatTransportStats(JsonElement root)

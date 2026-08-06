@@ -9,10 +9,18 @@ namespace NRE.WpfEditor;
 // Extracted from MainWindow.xaml.cs to consolidate geometry construction.
 public partial class MainWindow
 {
+    private const double InternalGuideOpacityScale = 0.55;
+    private const double InternalGuideSpecularScale = 0.35;
+
     private static readonly SpecularMaterial NeuralStructureSpecularMaterial =
         CreateFrozenSpecularMaterial(Color.FromRgb(214, 224, 242), 0.18, 38.0);
 
-    private static void AddReferenceMesh(Model3DGroup root, MeshGeometry3D mesh, Color diffuseColor, Color emissiveColor)
+    private static void AddReferenceMesh(
+        Model3DGroup root,
+        MeshGeometry3D mesh,
+        Color diffuseColor,
+        Color emissiveColor,
+        double opacityScale = 1.0)
     {
         if (mesh.Positions.Count == 0)
         {
@@ -20,7 +28,13 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.04, 44.0);
+        var material = CreateFrozenSurfaceMaterial(
+            diffuseColor,
+            emissiveColor,
+            0.04,
+            44.0,
+            opacityScale,
+            opacityScale);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
@@ -28,17 +42,19 @@ public partial class MainWindow
         Color diffuseColor,
         Color emissiveColor,
         double specularOpacity,
-        double specularPower)
+        double specularPower,
+        double opacityScale = 1.0,
+        double specularScale = 1.0)
     {
         // Keep alpha in one place. Using both an ARGB brush and Brush.Opacity
         // multiplies transparency and made the anatomical shell almost disappear.
         var diffuse = new SolidColorBrush(Color.FromRgb(diffuseColor.R, diffuseColor.G, diffuseColor.B))
         {
-            Opacity = diffuseColor.A / 255.0
+            Opacity = (diffuseColor.A / 255.0) * Math.Clamp(opacityScale, 0.0, 1.0)
         };
         var emissive = new SolidColorBrush(Color.FromRgb(emissiveColor.R, emissiveColor.G, emissiveColor.B))
         {
-            Opacity = emissiveColor.A / 255.0
+            Opacity = (emissiveColor.A / 255.0) * Math.Clamp(opacityScale, 0.0, 1.0)
         };
         diffuse.Freeze();
         emissive.Freeze();
@@ -46,7 +62,10 @@ public partial class MainWindow
         var material = new MaterialGroup();
         material.Children.Add(new DiffuseMaterial(diffuse));
         material.Children.Add(new EmissiveMaterial(emissive));
-        material.Children.Add(CreateFrozenSpecularMaterial(Color.FromRgb(246, 224, 224), specularOpacity, specularPower));
+        material.Children.Add(CreateFrozenSpecularMaterial(
+            Color.FromRgb(246, 224, 224),
+            specularOpacity * Math.Clamp(specularScale, 0.0, 1.0),
+            specularPower));
         TryFreeze(material);
         return material;
     }
@@ -254,7 +273,13 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.15, 28.0);
+        var material = CreateFrozenSurfaceMaterial(
+            diffuseColor,
+            emissiveColor,
+            0.15,
+            28.0,
+            InternalGuideOpacityScale,
+            InternalGuideSpecularScale);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
@@ -267,7 +292,13 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var material = CreateFrozenSurfaceMaterial(color, Color.FromArgb((byte)Math.Min(40, (int)color.A), color.R, color.G, color.B), 0.08, 18.0);
+        var material = CreateFrozenSurfaceMaterial(
+            color,
+            Color.FromArgb((byte)Math.Min(40, (int)color.A), color.R, color.G, color.B),
+            0.08,
+            18.0,
+            0.70,
+            0.55);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 
@@ -898,8 +929,8 @@ public partial class MainWindow
                 // Lateral edge of the orbitofrontal shelf. This curve turns
                 // forward at the frontal pole and leaves the temporal tongue
                 // visibly separate below the Sylvian fissure.
-                var theta = 0.40 + (0.88 * s);
-                var phi = -0.68 + (0.10 * Math.Sin(s * Math.PI));
+                var theta = 0.34 + (0.92 * s);
+                var phi = -0.36 + (0.08 * Math.Sin(s * Math.PI));
                 return (theta, phi);
             });
         AppendCorticalLandmarkCurve(

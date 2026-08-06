@@ -904,19 +904,27 @@ public partial class MainWindow
             Bell(longitudinal, 0.66, 0.10) *
             Bell(vertical, -0.49, 0.12) *
             (0.20 + (0.80 * Math.Pow(lateralShoulder, 1.08)));
+        var temporalMedialRise =
+            Bell(longitudinal, 0.22, 0.52) *
+            Bell(vertical, -0.56, 0.20) *
+            Math.Pow(1.0 - lateralShoulder, 1.45);
         var orbitalShelf =
-            Bell(longitudinal, 0.70, 0.17) *
-            Bell(vertical, -0.65, 0.11) *
-            (0.34 + (0.66 * lateralShoulder));
+            Bell(longitudinal, 0.66, 0.24) *
+            Bell(vertical, -0.35, 0.12) *
+            (0.42 + (0.58 * lateralShoulder));
+        var frontotemporalNotch =
+            Bell(longitudinal, 0.68, 0.18) *
+            Bell(vertical, -0.47, 0.022) *
+            (0.30 + (0.70 * lateralShoulder));
         var occipitalLobe = Math.Pow(posterior, 1.15);
 
         var widthRadiusMm = CortexHalfWidthMm *
             (1.0 +
              (0.035 * frontalLobe) +
-             (0.055 * orbitalShelf) +
+             (0.095 * orbitalShelf) +
              (0.090 * temporalRoot) +
-             (0.105 * temporalTongue) +
-             (0.050 * temporalPole) -
+             (0.135 * temporalTongue) +
+             (0.065 * temporalPole) -
              (0.060 * occipitalLobe));
         var xMm = hemisphereSign * (CortexMidlineGapMm + (lateral * widthRadiusMm));
 
@@ -924,8 +932,8 @@ public partial class MainWindow
         yMm += 3.6 * frontalLobe * (0.30 + (0.70 * superior));
         yMm += 2.4 * parietalCrown;
         yMm -= 8.5 * temporalRoot;
-        yMm -= 10.5 * temporalTongue;
-        yMm -= 4.5 * temporalPole;
+        yMm -= 13.5 * temporalTongue;
+        yMm -= 6.5 * temporalPole;
         yMm -= 1.8 * Math.Pow(superior, 4.0);
         yMm += 1.4 * Math.Pow(inferior, 5.0);
 
@@ -936,10 +944,14 @@ public partial class MainWindow
             // The orbital surface is a real anterior projection, not merely a
             // flattened underside. A broad, nearly horizontal shelf separates
             // the frontal pole from the lower and more lateral temporal tongue.
-            var shelfTargetMm = -27.5 - (2.5 * lateralShoulder);
-            var shelfBlend = Math.Clamp(orbitalShelf * 0.82, 0.0, 0.78);
+            var shelfTargetMm = -18.5 - (2.0 * lateralShoulder);
+            var shelfBlend = Math.Clamp(orbitalShelf * 1.04, 0.0, 0.92);
             yMm = (yMm * (1.0 - shelfBlend)) + (shelfTargetMm * shelfBlend);
         }
+
+        // The temporal tongue is lowest laterally. Its medial surface climbs
+        // toward the longitudinal fissure instead of remaining a flat shelf.
+        yMm += 9.0 * temporalMedialRise * (1.0 - Math.Min(0.85, orbitalShelf));
 
         var longitudinalRadiusMm = longitudinal >= 0.0
             ? CortexAnteriorRadiusMm
@@ -947,10 +959,14 @@ public partial class MainWindow
         var zMm = longitudinal * longitudinalRadiusMm;
         zMm += 1.8 * frontalLobe;
         zMm -= 1.2 * occipitalLobe;
-        zMm += 7.5 * orbitalShelf;
-        zMm += 2.5 * temporalRoot;
-        zMm += 6.5 * temporalTongue;
-        zMm += 9.5 * temporalPole;
+        // Positive Z is anterior, directly away from the cerebellum. The
+        // orbitofrontal shelf therefore overhangs the temporal pole in Z as
+        // well as sitting above it in Y.
+        zMm += 24.0 * orbitalShelf;
+        zMm -= 9.0 * frontotemporalNotch;
+        zMm += 1.0 * temporalRoot;
+        zMm += 3.5 * temporalTongue;
+        zMm += 4.5 * temporalPole;
 
         // The lateral (Sylvian) fissure separates the superior temporal gyrus
         // from frontal and parietal cortex. Its posterior end sits higher than
@@ -958,13 +974,16 @@ public partial class MainWindow
         var normalizedLongitudinal = Math.Clamp((longitudinal + 0.72) / 1.42, 0.0, 1.0);
         var sylvianVertical = 0.07 - (0.27 * normalizedLongitudinal);
         var sylvianFissure =
-            Bell(vertical, sylvianVertical, 0.0065) *
+            Bell(vertical, sylvianVertical, 0.0120) *
             Bell(longitudinal, 0.02, 0.46) *
             Math.Pow(lateralShoulder, 1.35);
         xMm = hemisphereSign * Math.Max(
             CortexMidlineGapMm,
-            Math.Abs(xMm) - (3.2 * sylvianFissure));
-        yMm -= 1.2 * sylvianFissure;
+            Math.Abs(xMm) - (7.0 * sylvianFissure));
+        yMm -= 2.8 * sylvianFissure;
+        xMm = hemisphereSign * Math.Max(
+            CortexMidlineGapMm,
+            Math.Abs(xMm) - (4.0 * frontotemporalNotch));
 
         return RotateCorticalShellTowardMidlineAroundZ(
             MmToRender(new Point3D(xMm, yMm, zMm)),

@@ -1519,12 +1519,14 @@ public partial class MainWindow : Window
             brainContent,
             BuildCerebellarReferenceSurfaceMesh(48, 24),
             cerebellumDiffuse,
-            Color.FromArgb(2, 226, 156, 170));
+            Color.FromArgb(2, 226, 156, 170),
+            InternalGuideOpacityScale);
         AddReferenceMesh(
             brainContent,
             BuildBrainstemReferenceSurfaceMesh(24, 32),
             brainstemDiffuse,
-            Color.FromArgb(2, 236, 172, 142));
+            Color.FromArgb(2, 236, 172, 142),
+            InternalGuideOpacityScale);
 
     }
 

@@ -25,7 +25,7 @@ A wall impact now produces only:
 
 - collision rejection or physical sliding along the struck surface;
 - physical health and score consequences used by the qualification world;
-- pain, damage, and effort receptor telemetry;
+- raw touch, pain, hunger, health, motion, and motor receptor telemetry;
 - a collision spike packet whose hemisphere identifies the physically struck
   side, or both hemispheres for a frontal contact.
 
@@ -80,6 +80,10 @@ agency:
 
 These functions may describe what happened. They cannot select an action,
 goal, target, turn sign, or recovery strategy.
+
+Entry 091 subsequently deletes the semantic outcome channel itself. Damage,
+effort, progress, novelty, safety, threat, and reward labels are no longer
+accepted as neural input.
 
 ## Authority Tests
 

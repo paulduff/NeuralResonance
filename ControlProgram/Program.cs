@@ -1195,7 +1195,9 @@ app.MapPost("/api/v1/admin/input/body-state", async (
     var tactileRight = Math.Clamp(request.TactileRight.GetValueOrDefault(0f), 0f, 1f);
     var tactileGround = Math.Clamp(request.TactileGround.GetValueOrDefault(0f), 0f, 1f);
     var painLevel = Math.Clamp(request.PainLevel.GetValueOrDefault(rawContactLevel * 0.35f), 0f, 1f);
-    var urgency = Math.Clamp(request.Urgency.GetValueOrDefault(0f), 0f, 1f);
+    var hunger = Math.Clamp(request.Hunger.GetValueOrDefault(0f), 0f, 1f);
+    var health = Math.Clamp(request.Health.GetValueOrDefault(1f), 0f, 1f);
+    var healthDeficit = 1f - health;
     var tactileLoad = Math.Clamp(
         Math.Max(rawContactLevel, Math.Max(Math.Max(tactileFront, Math.Max(tactileLeft, tactileRight)), tactileGround * 0.35f)),
         0f,
@@ -1215,7 +1217,8 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         tactileRight,
         tactileGround,
         painLevel,
-        urgency,
+        hunger,
+        health,
         leftDrive,
         rightDrive);
     var motionSignal = Math.Clamp((float)(forwardVelocity / 3.0), 0f, 1f);
@@ -1224,23 +1227,10 @@ app.MapPost("/api/v1/admin/input/body-state", async (
     var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(derivedIntensity), 0.10f, 3.50f);
     var derivedBurstCount = Math.Clamp((int)Math.Round(6 + (16.0 * motionSignal) + (10.0 * turnSignal) + (10.0 * contactLevel)), 4, 72);
     var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(derivedBurstCount), 4, 96);
-    var environmentalDarkness = Math.Clamp(request.EnvironmentalDarkness.GetValueOrDefault(0f), 0f, 1f);
-    var shelterNeed = Math.Clamp(request.ShelterNeed.GetValueOrDefault(0f), 0f, 1f);
-    var anxiety = Math.Clamp(request.Anxiety.GetValueOrDefault(0f), 0f, 1f);
-    var hunger = Math.Clamp(request.Hunger.GetValueOrDefault(0f), 0f, 1f);
-    var predatorThreat = Math.Clamp(request.PredatorThreat.GetValueOrDefault(0f), 0f, 1f);
-    var inShelter = Math.Clamp(request.InShelter.GetValueOrDefault(0f), 0f, 1f);
-    var health = Math.Clamp(request.Health.GetValueOrDefault(1f), 0f, 1f);
-    var shelterSafety = Math.Clamp(request.ShelterSafety.GetValueOrDefault(inShelter), 0f, 1f);
-    var environmentalState = state.UpdateEnvironmentalState(
-        environmentalDarkness,
-        shelterNeed,
-        anxiety,
-        hunger,
-        predatorThreat,
-        inShelter,
-        health,
-        shelterSafety);
+    var interoceptiveSignal = Math.Clamp(Math.Max(hunger, Math.Max(healthDeficit, painLevel)), 0f, 1f);
+    var interoceptiveIntensity = Math.Clamp(0.12f + (hunger * 0.92f) + (healthDeficit * 1.18f) + (painLevel * 0.86f), 0.10f, 3.50f);
+    var interoceptiveBurstCount = Math.Clamp((int)Math.Round(4 + (hunger * 18) + (healthDeficit * 24) + (painLevel * 20)), 4, 72);
+    var interoceptiveTargets = ResolveBodyStateInteroceptiveTargets(interoceptiveSignal);
     var neuronalSleep = state.NeuronalSleepConsolidation;
     var neuronalSleepActive = neuronalSleep.Available &&
         neuronalSleep.StateActive &&
@@ -1248,7 +1238,7 @@ app.MapPost("/api/v1/admin/input/body-state", async (
     var cerebellarTargets = includeCerebellar
         ? ResolveBodyStateCerebellarTargets(contactLevel, turnSignal, motorAsymmetry)
         : Array.Empty<StructureId>();
-    var targetLabel = BuildBodyStateTargetLabel(targetStructure, includeVestibular, cerebellarTargets);
+    var targetLabel = BuildBodyStateTargetLabel(targetStructure, includeVestibular, cerebellarTargets, interoceptiveTargets);
 
     var knownTargetInstances = catalog.GetByStructureWithKnownFallback(targetStructure, hemisphereHint)
         .ToList();
@@ -1270,6 +1260,17 @@ app.MapPost("/api/v1/admin/input/body-state", async (
 
         knownTargetInstances.AddRange(catalog.GetByStructureWithKnownFallback(cerebellarTarget, hemisphereHint));
         liveTargetInstances.AddRange(catalog.GetByStructure(cerebellarTarget, hemisphereHint));
+    }
+
+    foreach (var interoceptiveTarget in interoceptiveTargets)
+    {
+        if (interoceptiveTarget == targetStructure)
+        {
+            continue;
+        }
+
+        knownTargetInstances.AddRange(catalog.GetByStructureWithKnownFallback(interoceptiveTarget, hemisphereHint));
+        liveTargetInstances.AddRange(catalog.GetByStructure(interoceptiveTarget, hemisphereHint));
     }
 
     knownTargetInstances = knownTargetInstances
@@ -1298,8 +1299,11 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             IncludeVestibular = includeVestibular,
             IncludeCerebellar = includeCerebellar,
             CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
+            InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
             Intensity = intensity,
             BurstCount = burstCount,
+            InteroceptiveIntensity = interoceptiveIntensity,
+            InteroceptiveBurstCount = interoceptiveBurstCount,
             IsFeedback = isFeedback,
             ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
             TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
@@ -1309,10 +1313,10 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             TactileRight = tactileRight,
             TactileGround = tactileGround,
             PainLevel = painLevel,
-            Urgency = urgency,
+            Hunger = hunger,
+            Health = health,
             InputSource = inputSource,
             BodyState = bodyState,
-            Environment = environmentalState,
             SleepState = neuronalSleepActive ? "sleeping" : "awake",
             TargetInstances = 0,
             KnownTargetInstances = knownTargetInstances.Count,
@@ -1348,15 +1352,21 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             instance =>
             {
                 var hemisphere = instance.HemisphereNormalized;
-                return BuildCollisionStimulusSpikes(
+                var isInteroceptive = interoceptiveTargets.Contains(instance.StructureId);
+                var dispatchSource = isInteroceptive
+                    ? instance.StructureId == StructureId.NucleusTractusSolitarius
+                        ? StructureId.Medulla
+                        : StructureId.NucleusTractusSolitarius
+                    : sourceStructure;
+                return BuildBodyStateStimulusSpikes(
                     tick,
                     timestampMs,
-                    sourceStructure,
+                    dispatchSource,
                     instance.StructureId,
                     hemisphere,
-                    pattern,
-                    intensity,
-                    burstCount,
+                    isInteroceptive ? "InteroceptiveState" : pattern,
+                    isInteroceptive ? interoceptiveIntensity : intensity,
+                    isInteroceptive ? interoceptiveBurstCount : burstCount,
                     isFeedback);
             },
             clientFactory,
@@ -1374,8 +1384,11 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             IncludeVestibular = includeVestibular,
             IncludeCerebellar = includeCerebellar,
             CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
+            InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
             Intensity = intensity,
             BurstCount = burstCount,
+            InteroceptiveIntensity = interoceptiveIntensity,
+            InteroceptiveBurstCount = interoceptiveBurstCount,
             IsFeedback = isFeedback,
             ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
             TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
@@ -1385,10 +1398,10 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             TactileRight = tactileRight,
             TactileGround = tactileGround,
             PainLevel = painLevel,
-            Urgency = urgency,
+            Hunger = hunger,
+            Health = health,
             InputSource = inputSource,
             BodyState = bodyState,
-            Environment = environmentalState,
             SleepState = neuronalSleepActive ? "sleeping" : "awake",
             TargetInstances = liveTargetInstances.Count,
             KnownTargetInstances = knownTargetInstances.Count,
@@ -1407,15 +1420,21 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         instance =>
         {
             var hemisphere = instance.HemisphereNormalized;
-            return BuildCollisionStimulusSpikes(
+            var isInteroceptive = interoceptiveTargets.Contains(instance.StructureId);
+            var dispatchSource = isInteroceptive
+                ? instance.StructureId == StructureId.NucleusTractusSolitarius
+                    ? StructureId.Medulla
+                    : StructureId.NucleusTractusSolitarius
+                : sourceStructure;
+            return BuildBodyStateStimulusSpikes(
                 tick,
                 timestampMs,
-                sourceStructure,
+                dispatchSource,
                 instance.StructureId,
                 hemisphere,
-                pattern,
-                intensity,
-                burstCount,
+                isInteroceptive ? "InteroceptiveState" : pattern,
+                isInteroceptive ? interoceptiveIntensity : intensity,
+                isInteroceptive ? interoceptiveBurstCount : burstCount,
                 isFeedback);
         },
         clientFactory,
@@ -1440,8 +1459,11 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         IncludeVestibular = includeVestibular,
         IncludeCerebellar = includeCerebellar,
         CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
+        InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
         Intensity = intensity,
         BurstCount = burstCount,
+        InteroceptiveIntensity = interoceptiveIntensity,
+        InteroceptiveBurstCount = interoceptiveBurstCount,
         IsFeedback = isFeedback,
         ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
         TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
@@ -1451,211 +1473,15 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         TactileRight = tactileRight,
         TactileGround = tactileGround,
         PainLevel = painLevel,
-        Urgency = urgency,
+        Hunger = hunger,
+        Health = health,
         InputSource = inputSource,
         BodyState = bodyState,
-        Environment = environmentalState,
         SleepState = neuronalSleepActive ? "sleeping" : "awake",
         TargetInstances = liveTargetInstances.Count,
         KnownTargetInstances = knownTargetInstances.Count,
         LiveTargetInstances = liveTargetInstances.Count,
         Targets = targetSummary,
-        GeneratedSpikes = dispatch.GeneratedSpikes,
-        DeliveredSpikes = dispatch.DeliveredSpikes,
-        Errors = dispatch.Errors
-    });
-});
-app.MapPost("/api/v1/admin/input/outcome", async (
-    OutcomeInputRequest request,
-    RuntimeInstanceCatalog catalog,
-    IHttpClientFactory clientFactory,
-    SimulationState state,
-    InputIngressRuntime ingress,
-    CancellationToken ct) =>
-{
-    if (request is null)
-    {
-        return Results.BadRequest(new { Error = "Request payload missing." });
-    }
-
-    var pattern = string.IsNullOrWhiteSpace(request.Pattern) ? "HomeostaticOutcome" : request.Pattern.Trim();
-    var inputSource = AdminInputSource.Normalize(request.InputSource);
-    var satietyRelief = Math.Clamp(request.SatietyRelief.GetValueOrDefault(0f), 0f, 1f);
-    var safetyRelief = Math.Clamp(request.SafetyRelief.GetValueOrDefault(0f), 0f, 1f);
-    var painLevel = Math.Clamp(request.PainLevel.GetValueOrDefault(0f), 0f, 1f);
-    var damageLevel = Math.Clamp(request.DamageLevel.GetValueOrDefault(0f), 0f, 1f);
-    var shelterComfort = Math.Clamp(request.ShelterComfort.GetValueOrDefault(0f), 0f, 1f);
-    var progress = Math.Clamp(request.Progress.GetValueOrDefault(0f), 0f, 1f);
-    var effortCost = Math.Clamp(request.EffortCost.GetValueOrDefault(0f), 0f, 1f);
-    var novelty = Math.Clamp(request.Novelty.GetValueOrDefault(0f), 0f, 1f);
-    var socialApproval = Math.Clamp(request.SocialApproval.GetValueOrDefault(0f), 0f, 1f);
-    var outcomeState = state.UpdateOutcomeState(
-        satietyRelief,
-        safetyRelief,
-        painLevel,
-        damageLevel,
-        shelterComfort,
-        progress,
-        effortCost,
-        novelty,
-        socialApproval);
-
-    if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
-    {
-        state.AppendOutputLog(
-            $"Outcome input throttled by ingress gate: pattern={pattern}, inputSource={inputSource}.");
-        return Results.Json(new
-        {
-            Error = "Outcome input is temporarily throttled due to ingress backpressure.",
-            InputSource = inputSource,
-            Ingress = ingressSnapshot,
-            OutcomeState = outcomeState
-        }, statusCode: StatusCodes.Status429TooManyRequests);
-    }
-    using var _ = ingressLease;
-
-    var appetitive = Math.Clamp(outcomeState.AppetitiveRelief, 0f, 1f);
-    var aversive = Math.Clamp(outcomeState.AversiveOutcome, 0f, 1f);
-    var salience = Math.Max(appetitive, aversive);
-    var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(0.24f + (appetitive * 1.20f) + (aversive * 1.45f)), 0.10f, 3.50f);
-    var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault((int)Math.Round(8 + (appetitive * 24) + (aversive * 30))), 4, 96);
-    var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
-    var targetStructures = new List<StructureId>(10);
-    if (appetitive > 0.01f)
-    {
-        targetStructures.AddRange(
-        [
-            StructureId.NucleusTractusSolitarius,
-            StructureId.Insula,
-            StructureId.Hypothalamus,
-            StructureId.OrbitofrontalCortex,
-            StructureId.NucleusAccumbens,
-            StructureId.Vta,
-            StructureId.Snc,
-            StructureId.VentralPallidum
-        ]);
-    }
-
-    if (aversive > 0.01f)
-    {
-        targetStructures.AddRange(
-        [
-            StructureId.Insula,
-            StructureId.Acc,
-            StructureId.Amygdala,
-            StructureId.Habenula,
-            StructureId.Hypothalamus,
-            StructureId.PeriaqueductalGray
-        ]);
-    }
-
-    if (novelty > 0.01f)
-    {
-        targetStructures.AddRange(
-        [
-            StructureId.EntorhinalCortex,
-            StructureId.CA3,
-            StructureId.CA1,
-            StructureId.BasalForebrain
-        ]);
-    }
-
-    if (targetStructures.Count == 0)
-    {
-        targetStructures.Add(StructureId.Insula);
-    }
-
-    var liveTargetInstances = targetStructures
-        .Distinct()
-        .SelectMany(structure => catalog.GetByStructure(structure, hemisphereHint))
-        .GroupBy(instance => instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
-        .Select(group => group.First())
-        .ToList();
-    var knownTargetCount = targetStructures
-        .Distinct()
-        .Sum(structure => catalog.GetByStructureWithKnownFallback(structure, hemisphereHint).Count);
-
-    if (knownTargetCount == 0)
-    {
-        return Results.NotFound(new
-        {
-            Error = $"No active service instances found for outcome targets with hemisphere {(hemisphereHint ?? "both")}.",
-            InputSource = inputSource,
-            OutcomeState = outcomeState
-        });
-    }
-
-    if (liveTargetInstances.Count == 0)
-    {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            InputSource = inputSource,
-            Intensity = intensity,
-            BurstCount = burstCount,
-            OutcomeState = outcomeState,
-            TargetInstances = 0,
-            KnownTargetInstances = knownTargetCount,
-            LiveTargetInstances = 0,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Errors = new[]
-            {
-                $"No live service instances currently available for outcome targets with hemisphere {(hemisphereHint ?? "both")}."
-            }
-        });
-    }
-
-    var tick = state.Tick;
-    var timestampMs = state.SimulationClockMs;
-    var sourceStructure = aversive > appetitive
-        ? StructureId.Habenula
-        : StructureId.NucleusTractusSolitarius;
-    var dispatch = await DispatchStimulusToInstancesAsync(
-        liveTargetInstances,
-        instance =>
-        {
-            var hemisphere = instance.HemisphereNormalized;
-            var targetIntensity = intensity;
-            if (instance.StructureId is StructureId.Vta or StructureId.Snc or StructureId.NucleusAccumbens or StructureId.VentralPallidum)
-            {
-                targetIntensity *= 0.72f + (0.42f * appetitive);
-            }
-            else if (instance.StructureId is StructureId.Habenula or StructureId.Acc or StructureId.Amygdala or StructureId.PeriaqueductalGray)
-            {
-                targetIntensity *= 0.72f + (0.44f * aversive);
-            }
-
-            return BuildCollisionStimulusSpikes(
-                tick,
-                timestampMs,
-                sourceStructure,
-                instance.StructureId,
-                hemisphere,
-                pattern,
-                Math.Clamp(targetIntensity, 0.10f, 3.50f),
-                burstCount,
-                isFeedback: true);
-        },
-        clientFactory,
-        state,
-        tick,
-        timestampMs,
-        ct);
-
-    state.AppendOutputLog(
-        $"Outcome input injected: pattern={pattern}, appetitive={appetitive:0.000}, aversive={aversive:0.000}, salience={salience:0.000}, liveTargets={liveTargetInstances.Count}, generated={dispatch.GeneratedSpikes}, delivered={dispatch.DeliveredSpikes}, inputSource={inputSource}, errors={dispatch.Errors.Count}.");
-
-    return Results.Ok(new
-    {
-        Pattern = pattern,
-        InputSource = inputSource,
-        Intensity = intensity,
-        BurstCount = burstCount,
-        OutcomeState = outcomeState,
-        TargetInstances = liveTargetInstances.Count,
-        KnownTargetInstances = knownTargetCount,
-        LiveTargetInstances = liveTargetInstances.Count,
         GeneratedSpikes = dispatch.GeneratedSpikes,
         DeliveredSpikes = dispatch.DeliveredSpikes,
         Errors = dispatch.Errors
@@ -2071,6 +1897,21 @@ static int ParseIntQuery(HttpRequest request, string key, int defaultValue, int 
     return Math.Clamp(parsed, min, max);
 }
 
+static int ComputeStableStimulusHash(string text)
+{
+    unchecked
+    {
+        var hash = 2166136261u;
+        foreach (var character in text)
+        {
+            hash = (hash ^ (byte)character) * 16777619u;
+            hash = (hash ^ (byte)(character >> 8)) * 16777619u;
+        }
+
+        return (int)(hash & int.MaxValue);
+    }
+}
+
 static List<SpikeMessage> BuildVisualStimulusSpikes(
     long tick,
     double timestampMs,
@@ -2082,7 +1923,7 @@ static List<SpikeMessage> BuildVisualStimulusSpikes(
     int burstCount)
 {
     var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "stimulus" : pattern;
-    var patternSeed = Math.Abs(patternLabel.GetHashCode(StringComparison.Ordinal));
+    var patternSeed = ComputeStableStimulusHash(patternLabel);
     var spikes = new List<SpikeMessage>(burstCount);
     for (var i = 0; i < burstCount; i++)
     {
@@ -2133,7 +1974,7 @@ static List<SpikeMessage> BuildAuditoryStimulusSpikes(
     int burstCount)
 {
     var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "auditory" : pattern;
-    var patternSeed = Math.Abs(patternLabel.GetHashCode(StringComparison.Ordinal));
+    var patternSeed = ComputeStableStimulusHash(patternLabel);
     var spikes = new List<SpikeMessage>(burstCount);
     for (var i = 0; i < burstCount; i++)
     {
@@ -2183,7 +2024,7 @@ static List<SpikeMessage> BuildCollisionStimulusSpikes(
         patternToken = "collision";
     }
 
-    var patternSeed = Math.Abs(patternLabel.GetHashCode(StringComparison.Ordinal));
+    var patternSeed = ComputeStableStimulusHash(patternLabel);
     var spikes = new List<SpikeMessage>(burstCount);
     for (var i = 0; i < burstCount; i++)
     {
@@ -2213,6 +2054,59 @@ static List<SpikeMessage> BuildCollisionStimulusSpikes(
     return spikes;
 }
 
+static List<SpikeMessage> BuildBodyStateStimulusSpikes(
+    long tick,
+    double timestampMs,
+    StructureId sourceStructure,
+    StructureId targetStructure,
+    string hemisphere,
+    string pattern,
+    float intensity,
+    int burstCount,
+    bool isFeedback)
+{
+    var channel = targetStructure switch
+    {
+        StructureId.S1 => "somatic",
+        StructureId.VestibularNuclei => "vestibular",
+        StructureId.NucleusTractusSolitarius or StructureId.Hypothalamus or StructureId.Insula => "interoceptive",
+        StructureId.CerebellarGranule or StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.InferiorOlive => "proprioceptive",
+        _ => "body"
+    };
+    var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "BodyState" : pattern.Trim();
+    var patternToken = Regex.Replace(patternLabel, "[^A-Za-z0-9]+", "_");
+    if (string.IsNullOrWhiteSpace(patternToken))
+    {
+        patternToken = "BodyState";
+    }
+
+    var patternSeed = ComputeStableStimulusHash($"{channel}:{patternLabel}");
+    var spikes = new List<SpikeMessage>(burstCount);
+    for (var i = 0; i < burstCount; i++)
+    {
+        var receptor = (patternSeed + i) % 16;
+        var lane = (patternSeed + (i * 7)) % 48;
+        spikes.Add(new SpikeMessage
+        {
+            MessageId = Guid.NewGuid(),
+            TimestampMs = timestampMs,
+            SourceStructure = sourceStructure,
+            TargetStructure = targetStructure,
+            SourceNeuronId = $"{hemisphere}:{channel}_receptor_{patternToken}_{tick}_{receptor}_{i}",
+            TargetNeuronId = $"{hemisphere}:{channel}_afferent_cell_{lane}",
+            SynapseId = Guid.NewGuid(),
+            Neurotransmitter = NTEnum.GLUTAMATE,
+            VesicleQuanta = Math.Clamp((0.88f + (receptor * 0.045f)) * intensity, 0.08f, 8.0f),
+            ReuptakeRate = Math.Clamp(2.6f + (lane * 0.10f), 1.6f, 14.0f),
+            SpikeType = i % 7 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL,
+            IsFeedback = isFeedback,
+            ModulationContext = null
+        });
+    }
+
+    return spikes;
+}
+
 static List<SpikeMessage> BuildLanguageStimulusSpikes(
     long tick,
     double timestampMs,
@@ -2228,7 +2122,7 @@ static List<SpikeMessage> BuildLanguageStimulusSpikes(
     for (var tokenIndex = 0; tokenIndex < tokens.Count; tokenIndex++)
     {
         var token = tokens[tokenIndex];
-        var tokenHash = Math.Abs(token.GetHashCode(StringComparison.Ordinal));
+        var tokenHash = ComputeStableStimulusHash(token);
         for (var i = 0; i < burstPerToken; i++)
         {
             var channel = (tokenHash + (i * 17) + (tokenIndex * 7)) % 96;
@@ -2721,10 +2615,21 @@ static StructureId[] ResolveBodyStateCerebellarTargets(float contactLevel, float
     return targets.ToArray();
 }
 
+static StructureId[] ResolveBodyStateInteroceptiveTargets(float interoceptiveSignal)
+    => interoceptiveSignal > 0.005f
+        ?
+        [
+            StructureId.NucleusTractusSolitarius,
+            StructureId.Hypothalamus,
+            StructureId.Insula
+        ]
+        : Array.Empty<StructureId>();
+
 static string BuildBodyStateTargetLabel(
     StructureId primaryTarget,
     bool includeVestibular,
-    IReadOnlyList<StructureId> cerebellarTargets)
+    IReadOnlyList<StructureId> cerebellarTargets,
+    IReadOnlyList<StructureId> interoceptiveTargets)
 {
     var labels = new List<string> { primaryTarget.ToString() };
     if (includeVestibular)
@@ -2733,6 +2638,7 @@ static string BuildBodyStateTargetLabel(
     }
 
     labels.AddRange(cerebellarTargets.Select(t => t.ToString()));
+    labels.AddRange(interoceptiveTargets.Select(t => t.ToString()));
     return string.Join(", ", labels.Distinct(StringComparer.OrdinalIgnoreCase));
 }
 
@@ -3143,8 +3049,6 @@ internal sealed class SimulationState
     public string PerformanceProfileName { get; private set; } = "normal";
     public MetabolicPhysiologyRuntime MetabolicPhysiology { get; private set; } = MetabolicPhysiologyRuntime.Default;
     public InputGateRuntime InputGates { get; private set; } = InputGateRuntime.Default;
-    public EnvironmentalStateRuntime EnvironmentalState { get; private set; } = EnvironmentalStateRuntime.Default;
-    public OutcomeStateRuntime OutcomeState { get; private set; } = OutcomeStateRuntime.Default;
     public BodyStateRuntime BodyState { get; private set; } = BodyStateRuntime.Default;
     public NeuronalVisualAttentionDecision VisualAttention { get; private set; } = NeuronalVisualAttentionDecision.Unavailable;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
@@ -4133,78 +4037,6 @@ internal sealed class SimulationState
         }
     }
 
-    public EnvironmentalStateRuntime UpdateEnvironmentalState(
-        float darkness,
-        float shelterNeed,
-        float anxiety,
-        float hunger = 0f,
-        float predatorThreat = 0f,
-        float inShelter = 0f,
-        float health = 1f,
-        float shelterSafety = 0f)
-    {
-        lock (_gate)
-        {
-            EnvironmentalState = new EnvironmentalStateRuntime(
-                Darkness: Math.Clamp(darkness, 0f, 1f),
-                ShelterNeed: Math.Clamp(shelterNeed, 0f, 1f),
-                Anxiety: Math.Clamp(anxiety, 0f, 1f),
-                Hunger: Math.Clamp(hunger, 0f, 1f),
-                PredatorThreat: Math.Clamp(predatorThreat, 0f, 1f),
-                InShelter: Math.Clamp(inShelter, 0f, 1f),
-                Health: Math.Clamp(health, 0f, 1f),
-                ShelterSafety: Math.Clamp(shelterSafety, 0f, 1f),
-                LastInputTick: Tick);
-            return EnvironmentalState;
-        }
-    }
-
-    public OutcomeStateRuntime UpdateOutcomeState(
-        float satietyRelief,
-        float safetyRelief,
-        float painLevel,
-        float damageLevel,
-        float shelterComfort,
-        float progress,
-        float effortCost,
-        float novelty,
-        float socialApproval)
-    {
-        lock (_gate)
-        {
-            var appetitive = Math.Clamp(
-                (satietyRelief * 0.30f) +
-                (safetyRelief * 0.24f) +
-                (shelterComfort * 0.18f) +
-                (progress * 0.14f) +
-                (novelty * 0.07f) +
-                (socialApproval * 0.07f),
-                0f,
-                1f);
-            var aversive = Math.Clamp(
-                (painLevel * 0.40f) +
-                (damageLevel * 0.34f) +
-                (effortCost * 0.20f) +
-                (Math.Max(0f, -progress) * 0.06f),
-                0f,
-                1f);
-            OutcomeState = new OutcomeStateRuntime(
-                SatietyRelief: Math.Clamp(satietyRelief, 0f, 1f),
-                SafetyRelief: Math.Clamp(safetyRelief, 0f, 1f),
-                PainLevel: Math.Clamp(painLevel, 0f, 1f),
-                DamageLevel: Math.Clamp(damageLevel, 0f, 1f),
-                ShelterComfort: Math.Clamp(shelterComfort, 0f, 1f),
-                Progress: Math.Clamp(progress, 0f, 1f),
-                EffortCost: Math.Clamp(effortCost, 0f, 1f),
-                Novelty: Math.Clamp(novelty, 0f, 1f),
-                SocialApproval: Math.Clamp(socialApproval, 0f, 1f),
-                AppetitiveRelief: appetitive,
-                AversiveOutcome: aversive,
-                LastInputTick: Tick);
-            return OutcomeState;
-        }
-    }
-
     public BodyStateRuntime UpdateBodyState(
         float forwardVelocity,
         float turnRateDeg,
@@ -4220,7 +4052,8 @@ internal sealed class SimulationState
             tactileRight: 0f,
             tactileGround: 0f,
             painLevel: contactLevel * 0.35f,
-            urgency: 0f,
+            hunger: 0f,
+            health: 1f,
             leftMotorDrive,
             rightMotorDrive);
 
@@ -4233,7 +4066,8 @@ internal sealed class SimulationState
         float tactileRight,
         float tactileGround,
         float painLevel,
-        float urgency,
+        float hunger,
+        float health,
         float leftMotorDrive,
         float rightMotorDrive)
     {
@@ -4253,7 +4087,8 @@ internal sealed class SimulationState
                 TactileRight: Math.Clamp(tactileRight, 0f, 1f),
                 TactileGround: Math.Clamp(tactileGround, 0f, 1f),
                 PainLevel: Math.Clamp(painLevel, 0f, 1f),
-                Urgency: Math.Clamp(urgency, 0f, 1f),
+                Hunger: Math.Clamp(hunger, 0f, 1f),
+                Health: Math.Clamp(health, 0f, 1f),
                 LeftMotorDrive: left,
                 RightMotorDrive: right,
                 MotorAsymmetry: asymmetry,
@@ -4335,8 +4170,6 @@ internal sealed class SimulationState
             TotalSpontaneousDelivered = 0;
             TotalSpontaneousDispatchErrors = 0;
             MetabolicPhysiology = MetabolicPhysiologyRuntime.Default;
-            EnvironmentalState = EnvironmentalStateRuntime.Default;
-            OutcomeState = OutcomeStateRuntime.Default;
             BodyState = BodyStateRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
             Curriculum = CurriculumRuntime.Default;
@@ -5663,24 +5496,18 @@ internal sealed class SimulationState
               BodyState.ForwardVelocity,
               BodyState.TurnRateDeg,
               BodyState.ContactLevel,
+              BodyState.TactileFront,
+              BodyState.TactileLeft,
+              BodyState.TactileRight,
+              BodyState.TactileGround,
+              BodyState.PainLevel,
+              BodyState.Hunger,
+              BodyState.Health,
               BodyState.LeftMotorDrive,
               BodyState.RightMotorDrive,
               BodyState.MotorAsymmetry,
               BodyState.LastInputTick
           },
-          EnvironmentalState = new
-          {
-              EnvironmentalState.Darkness,
-              EnvironmentalState.ShelterNeed,
-              EnvironmentalState.Anxiety,
-              EnvironmentalState.Hunger,
-              EnvironmentalState.PredatorThreat,
-              EnvironmentalState.InShelter,
-              EnvironmentalState.Health,
-              EnvironmentalState.ShelterSafety,
-              EnvironmentalState.LastInputTick
-          },
-          OutcomeState,
           Curriculum,
           MetabolicPhysiology = new
         {
@@ -14789,58 +14616,6 @@ internal sealed record MetabolicTransitionResult(
     float AtpBudget,
     int SleepTicks);
 
-internal sealed record EnvironmentalStateRuntime(
-    float Darkness,
-    float ShelterNeed,
-    float Anxiety,
-    float Hunger,
-    float PredatorThreat,
-    float InShelter,
-    float Health,
-    float ShelterSafety,
-    long LastInputTick)
-{
-    public static EnvironmentalStateRuntime Default { get; } = new(
-        Darkness: 0f,
-        ShelterNeed: 0f,
-        Anxiety: 0f,
-        Hunger: 0f,
-        PredatorThreat: 0f,
-        InShelter: 0f,
-        Health: 1f,
-        ShelterSafety: 0f,
-        LastInputTick: long.MinValue);
-}
-
-internal sealed record OutcomeStateRuntime(
-    float SatietyRelief,
-    float SafetyRelief,
-    float PainLevel,
-    float DamageLevel,
-    float ShelterComfort,
-    float Progress,
-    float EffortCost,
-    float Novelty,
-    float SocialApproval,
-    float AppetitiveRelief,
-    float AversiveOutcome,
-    long LastInputTick)
-{
-    public static OutcomeStateRuntime Default { get; } = new(
-        SatietyRelief: 0f,
-        SafetyRelief: 0f,
-        PainLevel: 0f,
-        DamageLevel: 0f,
-        ShelterComfort: 0f,
-        Progress: 0f,
-        EffortCost: 0f,
-        Novelty: 0f,
-        SocialApproval: 0f,
-        AppetitiveRelief: 0f,
-        AversiveOutcome: 0f,
-        LastInputTick: long.MinValue);
-}
-
 internal sealed record BodyStateRuntime(
     float ForwardVelocity,
     float TurnRateDeg,
@@ -14850,7 +14625,8 @@ internal sealed record BodyStateRuntime(
     float TactileRight,
     float TactileGround,
     float PainLevel,
-    float Urgency,
+    float Hunger,
+    float Health,
     float LeftMotorDrive,
     float RightMotorDrive,
     float MotorAsymmetry,
@@ -14865,7 +14641,8 @@ internal sealed record BodyStateRuntime(
         TactileRight: 0f,
         TactileGround: 0f,
         PainLevel: 0f,
-        Urgency: 0f,
+        Hunger: 0f,
+        Health: 1f,
         LeftMotorDrive: 0f,
         RightMotorDrive: 0f,
         MotorAsymmetry: 0f,

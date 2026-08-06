@@ -171,13 +171,11 @@ public partial class MainWindow : Window
     private DateTime _lastWallImpactUtc = DateTime.MinValue;
     private bool _bodyStimulusInFlight;
     private bool _collisionInputInFlight;
-    private bool _outcomeStimulusInFlight;
     private bool _environmentAudioInFlight;
     private bool _englishCommandInFlight;
     private bool _visionTickInFlight;
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
     private long _lastBodyStateDispatchMs;
-    private long _lastOutcomeDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
@@ -1611,7 +1609,6 @@ public partial class MainWindow : Window
         {
             _score += 120;
             _health = Math.Min(100, _health + 12);
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(SafetyRelief: 0.60, ShelterComfort: 0.22, Progress: 1.0, Novelty: 0.25, SocialApproval: 0.18), force: true);
             SetMazeEvent("Goal reached: reward +120, health +12");
             RespawnToCheckpoint();
         }
@@ -1694,7 +1691,6 @@ public partial class MainWindow : Window
             _sceneRoot.Children.Remove(food.Model);
             _foodsCollected++;
             _score += 30;
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(SatietyRelief: 0.82, Progress: 0.28, Novelty: 0.06), force: true);
             SetMazeEvent($"Food collected ({_foodsCollected}/{_foodEntities.Count})");
         }
     }
@@ -1725,7 +1721,6 @@ public partial class MainWindow : Window
             _respawnWorld = checkpoint.World;
             _checkpointActivations++;
             _score += 15;
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(SafetyRelief: 0.36, ShelterComfort: 0.18, Progress: 0.42, Novelty: 0.16), force: true);
             SetMazeEvent($"Checkpoint activated ({_checkpointActivations}/{_checkpointEntities.Count})");
         }
     }
@@ -1750,7 +1745,6 @@ public partial class MainWindow : Window
             _hazardContacts++;
             _health = Math.Max(0, _health - 18);
             _score = Math.Max(0, _score - 10);
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.78, DamageLevel: 0.52, EffortCost: 0.18), force: true);
 
             var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
             var pushbackX = _avatarX - (Math.Sin(headingRad) * 0.55);
@@ -1794,7 +1788,6 @@ public partial class MainWindow : Window
         _score = Math.Max(0, _score - scorePenalty);
         _health = Math.Max(1, _health - healthPenalty);
 
-        QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: slidAlongWall ? 0.18 : 0.32, DamageLevel: slidAlongWall ? 0.06 : 0.12, EffortCost: 0.22), force: true);
         QueueCollisionInput(slidAlongWall);
 
         SetMazeEvent($"Wall impact #{_wallImpacts}: score -{scorePenalty}");
@@ -1869,53 +1862,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void QueueOutcomeInput(AvatarOutcomeTelemetry telemetry, bool force = false)
-        => _ = DispatchOutcomeInputAsync(telemetry, force, _shutdown.Token);
-
-    private async Task DispatchOutcomeInputAsync(AvatarOutcomeTelemetry telemetry, bool force, CancellationToken token)
-    {
-        if (_outcomeStimulusInFlight)
-        {
-            return;
-        }
-
-        var nowMs = Environment.TickCount64;
-        if (!force && (nowMs - _lastOutcomeDispatchMs) < 650)
-        {
-            return;
-        }
-
-        var endpoint = ResolveEndpointUri();
-        if (endpoint is null)
-        {
-            return;
-        }
-
-        _outcomeStimulusInFlight = true;
-        _lastOutcomeDispatchMs = nowMs;
-        try
-        {
-            _avatarService.PostOutcome(telemetry);
-            var outcome = await DrainAvatarOutcomeAsync(token);
-            if (outcome.HasValue)
-            {
-                await AvatarControlApi.PostOutcomeAsync(_httpClient, endpoint, outcome.Value, token);
-            }
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // shutdown path
-        }
-        catch
-        {
-            // Best-effort biological outcome input.
-        }
-        finally
-        {
-            _outcomeStimulusInFlight = false;
-        }
-    }
-
     private async Task DispatchBodyStateInputAsync(CancellationToken token)
     {
         if (_bodyStimulusInFlight)
@@ -1939,25 +1885,31 @@ public partial class MainWindow : Window
         _lastBodyStateDispatchMs = nowMs;
         try
         {
-            var wall = Math.Clamp(_lastWallProximity, 0.0, 1.0);
-            var frontTouch = Math.Clamp(Math.Max(_lastFrontProximity, wall * 0.35), 0.0, 1.0);
-            var leftTouch = Math.Clamp(_lastLeftProximity, 0.0, 1.0);
-            var rightTouch = Math.Clamp(_lastRightProximity, 0.0, 1.0);
+            var wallImpactAge = (DateTime.UtcNow - _lastWallImpactUtc).TotalSeconds;
+            var wallContact = wallImpactAge is >= 0.0 and < 0.45
+                ? 1.0 - (wallImpactAge / 0.45)
+                : 0.0;
+            var probeTotal = _lastFrontProximity + _lastLeftProximity + _lastRightProximity;
+            var frontTouch = probeTotal > 0.001 ? wallContact * (_lastFrontProximity / probeTotal) : wallContact;
+            var leftTouch = probeTotal > 0.001 ? wallContact * (_lastLeftProximity / probeTotal) : 0.0;
+            var rightTouch = probeTotal > 0.001 ? wallContact * (_lastRightProximity / probeTotal) : 0.0;
             var groundTouch = Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed * 0.70), 0.0, 1.0);
-            var hazardProximity = EstimateNearestHazardAudioProximity(CellSize * 4.5);
-            var urgency = Math.Clamp((ComputeUrgentRunScale() - 1.0) / (MazeRunSpeedMultiplier - 1.0), 0.0, 1.0);
+            var hazardImpactAge = (DateTime.UtcNow - _lastHazardDamageUtc).TotalSeconds;
+            var hazardPain = hazardImpactAge is >= 0.0 and < 0.65
+                ? 0.82 * (1.0 - (hazardImpactAge / 0.65))
+                : 0.0;
             var telemetry = new AvatarBodyTelemetry(
-                _lastForwardSpeed,
-                _lastTurnRateDeg,
-                wall,
-                _leftMotorDrive,
-                _rightMotorDrive,
+                ForwardVelocity: _lastForwardSpeed,
+                TurnRateDeg: _lastTurnRateDeg,
+                ContactLevel: wallContact,
+                LeftMotorDrive: _leftMotorDrive,
+                RightMotorDrive: _rightMotorDrive,
+                Health: _health / 100.0,
                 TactileFront: frontTouch,
                 TactileLeft: leftTouch,
                 TactileRight: rightTouch,
                 TactileGround: groundTouch,
-                PainLevel: Math.Clamp((wall * 0.45) + (hazardProximity * 0.55), 0.0, 1.0),
-                Urgency: urgency);
+                PainLevel: Math.Clamp(Math.Max(wallContact * 0.45, hazardPain), 0.0, 1.0));
             _avatarService.PostBodyInput(telemetry, MazeBodyStateProfile);
             var bodyInput = await DrainAvatarBodyInputAsync(token);
             if (bodyInput.HasValue)
@@ -1982,17 +1934,6 @@ public partial class MainWindow : Window
         {
             _bodyStimulusInFlight = false;
         }
-    }
-
-    private async Task<AvatarOutcomeTelemetry?> DrainAvatarOutcomeAsync(CancellationToken token)
-    {
-        if (_avatarService.TryDequeueOutcome(out var outcome))
-        {
-            return outcome;
-        }
-
-        await Task.Delay(1, token);
-        return _avatarService.TryDequeueOutcome(out outcome) ? outcome : null;
     }
 
     private async Task<AvatarBodyStateInput?> DrainAvatarBodyInputAsync(CancellationToken token)

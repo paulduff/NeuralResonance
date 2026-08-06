@@ -47,19 +47,12 @@ public static class AvatarBodyStateInputFactory
             IsFeedback: true,
             Pattern: profile.Pattern,
             InputSource: profile.InputSource,
-            EnvironmentalDarkness: (float)Math.Clamp(telemetry.EnvironmentalDarkness, 0.0, 1.0),
-            ShelterNeed: (float)Math.Clamp(telemetry.ShelterNeed, 0.0, 1.0),
-            Anxiety: (float)Math.Clamp(telemetry.Anxiety, 0.0, 1.0),
             Hunger: (float)Math.Clamp(telemetry.Hunger, 0.0, 1.0),
-            PredatorThreat: (float)Math.Clamp(telemetry.PredatorThreat, 0.0, 1.0),
-            InShelter: (float)Math.Clamp(telemetry.InShelter, 0.0, 1.0),
             Health: (float)Math.Clamp(telemetry.Health, 0.0, 1.0),
-            ShelterSafety: (float)Math.Clamp(telemetry.ShelterSafety, 0.0, 1.0),
             TactileFront: (float)tactileFront,
             TactileLeft: (float)tactileLeft,
             TactileRight: (float)tactileRight,
             TactileGround: (float)tactileGround,
-            PainLevel: (float)Math.Clamp(telemetry.PainLevel, 0.0, 1.0),
-            Urgency: (float)Math.Clamp(telemetry.Urgency, 0.0, 1.0));
+            PainLevel: (float)Math.Clamp(telemetry.PainLevel, 0.0, 1.0));
     }
 }

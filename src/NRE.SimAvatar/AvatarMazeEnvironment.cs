@@ -201,41 +201,21 @@ public sealed class AvatarMazeEnvironment
 
     public AvatarBodyTelemetry CreateBodyTelemetry(AvatarMazeTransition? transition = null)
     {
-        AvatarMazeObservation observation = Observe();
-        double contact = transition?.Collision == true ? 0.86 : 0.02;
+        double contact = transition?.Collision == true ? 0.86 : 0.0;
         return new AvatarBodyTelemetry(
             ForwardVelocity: transition?.ForwardVelocity ?? 0.0,
             TurnRateDeg: transition?.TurnRateDeg ?? 0.0,
             ContactLevel: contact,
             LeftMotorDrive: 0.0,
             RightMotorDrive: 0.0,
-            EnvironmentalDarkness: 0.22,
-            ShelterNeed: 0.08,
-            Anxiety: transition?.Collision == true ? 0.48 : 0.08,
             Hunger: 0.32,
-            PredatorThreat: transition?.Collision == true ? 0.28 : 0.02,
-            InShelter: GoalReached ? 1.0 : 0.0,
             Health: transition?.Collision == true ? 0.96 : 1.0,
-            ShelterSafety: GoalReached ? 0.96 : 0.08,
-            TactileFront: observation.ForwardOpen ? 0.04 : 0.82,
-            TactileLeft: observation.LeftOpen ? 0.04 : 0.72,
-            TactileRight: observation.RightOpen ? 0.04 : 0.72,
+            TactileFront: transition?.Collision == true ? 0.86 : 0.0,
+            TactileLeft: 0.0,
+            TactileRight: 0.0,
             TactileGround: 0.18,
-            PainLevel: transition?.Collision == true ? 0.18 : 0.0,
-            Urgency: GoalReached ? 0.0 : 0.24);
+            PainLevel: transition?.Collision == true ? 0.18 : 0.0);
     }
-
-    public AvatarOutcomeTelemetry CreateOutcomeTelemetry(AvatarMazeTransition transition)
-        => new(
-            SafetyRelief: transition.GoalReached ? 0.92 : 0.0,
-            PainLevel: transition.Collision ? 0.18 : 0.0,
-            DamageLevel: transition.Collision ? 0.05 : 0.0,
-            ShelterComfort: transition.GoalReached ? 0.78 : 0.0,
-            Progress: Math.Max(0.0, transition.Progress),
-            EffortCost: Math.Clamp(transition.DistanceTravelled * 0.035, 0.0, 0.12),
-            Novelty: transition.EnteredNewCell ? 0.16 : 0.0,
-            Pattern: transition.GoalReached ? "MazeGoalReached" : transition.Collision ? "MazeWallCollision" : "MazeProgress",
-            InputSource: "headless_maze_world");
 
     public AvatarObjectObservation CreateGoalObservation()
     {

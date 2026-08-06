@@ -380,7 +380,6 @@ public partial class MainWindow : Window
     private readonly AvatarWarningGate _visionDispatchWarningGate = new();
     private bool _objectDispatchInFlight;
     private bool _environmentAudioInFlight;
-    private bool _outcomeStimulusInFlight;
     private readonly AvatarRetryBackoff _objectDispatchBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 2000);
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
     private readonly Dictionary<string, AvatarInputPressureGate> _brainInputPressureGates = new(StringComparer.OrdinalIgnoreCase);
@@ -403,7 +402,6 @@ public partial class MainWindow : Window
     private double _lastForwardSpeed;
     private double _lastTurnRateDeg;
     private long _lastBodyStateDispatchMs;
-    private long _lastOutcomeDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
     private bool _bodyStimulusInFlight;
     private bool _englishCommandInFlight;
@@ -558,8 +556,6 @@ public partial class MainWindow : Window
         _objectRecognitionCooldown = 0.0;
         _objectDispatchInFlight = false;
         _environmentAudioInFlight = false;
-        _outcomeStimulusInFlight = false;
-        _lastOutcomeDispatchMs = 0;
         _lastEnvironmentAudioDispatchMs = 0;
         _objectDispatchBackoff.Reset();
         _objectDispatchWarningGate.Reset();
@@ -937,8 +933,6 @@ public partial class MainWindow : Window
         _objectRecognitionCooldown = 0.0;
         _objectDispatchInFlight = false;
         _environmentAudioInFlight = false;
-        _outcomeStimulusInFlight = false;
-        _lastOutcomeDispatchMs = 0;
         _lastEnvironmentAudioDispatchMs = 0;
         _objectDispatchBackoff.Reset();
         _objectDispatchWarningGate.Reset();
@@ -2554,7 +2548,6 @@ public partial class MainWindow : Window
         {
             _collisionHits++;
             _collisionPulse = 1.0;
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.26, DamageLevel: 0.08, EffortCost: 0.24), force: true);
         }
 
         _trailAccumulatorSeconds += dt;
@@ -3033,7 +3026,6 @@ public partial class MainWindow : Window
         {
             _health = Math.Clamp(_health + (dt * 0.010), 0.0, 1.0);
             _hunger = Math.Clamp(_hunger - (dt * 0.0025), 0.0, 1.0);
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(SafetyRelief: 0.16, ShelterComfort: 0.34, SatietyRelief: 0.05));
         }
 
         ConsumeNearbyPickups();
@@ -3162,7 +3154,6 @@ public partial class MainWindow : Window
                         ? (0.50 * _weaponEffectiveness)
                         : (0.34 * _weaponEffectiveness);
                     _threat = Math.Clamp(_threat - threatDrop, 0.0, 1.0);
-                    QueueOutcomeInput(new AvatarOutcomeTelemetry(SafetyRelief: Math.Clamp(threatDrop, 0.0, 1.0), Progress: 0.26, EffortCost: 0.12), force: true);
                     predator.HeadingDeg = NormalizeDegrees(predator.HeadingDeg + 180.0);
                 }
             }
@@ -3174,7 +3165,6 @@ public partial class MainWindow : Window
                     _health = Math.Clamp(_health - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
                     _collisionHits++;
                     _collisionPulse = 1.0;
-                    QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.86, DamageLevel: 0.72, EffortCost: 0.22), force: true);
                     RegisterFlightEpisode(1.0, "predator strike");
                 }
             }
@@ -3208,7 +3198,6 @@ public partial class MainWindow : Window
                 pickup.Transform.OffsetY = -999;
                 _foodConsumed++;
                 _hunger = Math.Clamp(_hunger - 0.35, 0.0, 1.0);
-                QueueOutcomeInput(new AvatarOutcomeTelemetry(SatietyRelief: 0.88, Progress: 0.22, Novelty: 0.08), force: true);
                 _foodPickups[i] = pickup;
             }
         }
@@ -3241,11 +3230,9 @@ public partial class MainWindow : Window
                 {
                     _flightPressure = 0.0;
                     _flightEpisodesWithoutWeapon = 0;
-                    QueueOutcomeInput(new AvatarOutcomeTelemetry(SafetyRelief: 0.42, Progress: 0.34, Novelty: 0.18), force: true);
                 }
                 else
                 {
-                    QueueOutcomeInput(new AvatarOutcomeTelemetry(Progress: 0.24, Novelty: 0.10), force: true);
                 }
                 _weaponPickups[i] = pickup;
             }
@@ -5735,59 +5722,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void QueueOutcomeInput(AvatarOutcomeTelemetry telemetry, bool force = false)
-        => _ = DispatchOutcomeInputAsync(telemetry, force, _shutdown.Token);
-
-    private async Task DispatchOutcomeInputAsync(AvatarOutcomeTelemetry telemetry, bool force, CancellationToken token)
-    {
-        if (_outcomeStimulusInFlight)
-        {
-            return;
-        }
-
-        var nowMs = Environment.TickCount64;
-        if (!force && (nowMs - _lastOutcomeDispatchMs) < 650)
-        {
-            return;
-        }
-
-        if (!force && IsEngineInputOverloaded())
-        {
-            return;
-        }
-
-        var endpoint = GetSelectedEndpoint();
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            return;
-        }
-
-        _outcomeStimulusInFlight = true;
-        _lastOutcomeDispatchMs = nowMs;
-        try
-        {
-            _avatarService.PostOutcome(telemetry);
-            var outcome = await DrainAvatarOutcomeAsync(token);
-            if (outcome.HasValue)
-            {
-                await AvatarControlApi.PostOutcomeAsync(_sensoryInputHttpClient, endpoint, outcome.Value, token);
-                RegisterOptionalBrainInputSuccess("outcome input");
-            }
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // Shutdown path.
-        }
-        catch (Exception ex)
-        {
-            RegisterOptionalBrainInputFailure("outcome input", $"{ex.GetType().Name}: {TrimForLog(ex.Message, 140)}", Environment.TickCount64);
-        }
-        finally
-        {
-            _outcomeStimulusInFlight = false;
-        }
-    }
-
     private bool ShouldDispatchBodyStateInput(long nowMs)
     {
         if (_bodyStimulusInFlight)
@@ -5809,17 +5743,6 @@ public partial class MainWindow : Window
         var bodyDispatchIntervalMs = Math.Max(BodyStateDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
 
         return (nowMs - _lastBodyStateDispatchMs) >= bodyDispatchIntervalMs;
-    }
-
-    private async Task<AvatarOutcomeTelemetry?> DrainAvatarOutcomeAsync(CancellationToken token)
-    {
-        if (_avatarService.TryDequeueOutcome(out var outcome))
-        {
-            return outcome;
-        }
-
-        await Task.Delay(1, token);
-        return _avatarService.TryDequeueOutcome(out outcome) ? outcome : null;
     }
 
     private async Task<AvatarBodyStateInput?> DrainAvatarBodyInputAsync(CancellationToken token)
@@ -5850,40 +5773,31 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var frontTouch = Math.Clamp(Math.Max(_collisionPulse, _lastFrontProximity), 0.0, 1.0);
-            var leftTouch = Math.Clamp(Math.Max(_collisionPulse * 0.35, _lastLeftProximity), 0.0, 1.0);
-            var rightTouch = Math.Clamp(Math.Max(_collisionPulse * 0.35, _lastRightProximity), 0.0, 1.0);
+            var contactPulse = Math.Clamp(_collisionPulse, 0.0, 1.0);
+            var probeTotal = _lastFrontProximity + _lastLeftProximity + _lastRightProximity;
+            var frontTouch = probeTotal > 0.001 ? contactPulse * (_lastFrontProximity / probeTotal) : contactPulse;
+            var leftTouch = probeTotal > 0.001 ? contactPulse * (_lastLeftProximity / probeTotal) : 0.0;
+            var rightTouch = probeTotal > 0.001 ? contactPulse * (_lastRightProximity / probeTotal) : 0.0;
             var groundTouch = Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed * 0.72), 0.0, 1.0);
             if (TryClassifyCurrentTerrain(out var currentSurface) && currentSurface == BlockKind.Water)
             {
                 groundTouch = Math.Max(groundTouch, 0.58);
             }
 
-            var contact = Math.Clamp(Math.Max(frontTouch, Math.Max(leftTouch, rightTouch)) + (_collisionPulse * 0.18), 0.0, 1.0);
-            var urgency = Math.Clamp((ComputeUrgentRunScale() - 1.0) / (WorldRunSpeedMultiplier - 1.0), 0.0, 1.0);
-            var inShelter = IsInShelter() ? 1.0 : 0.0;
-            var shelterSafety = Math.Clamp(inShelter * (0.78 + ((1.0 - _threat) * 0.22)), 0.0, 1.0);
-            var effectiveAnxiety = Math.Clamp(Math.Max(_threat, _environmentAnxiety), 0.0, 1.0);
+            var contact = contactPulse;
             var telemetry = new AvatarBodyTelemetry(
-                _lastForwardSpeed,
-                _lastTurnRateDeg,
-                contact,
-                _leftMotorDrive,
-                _rightMotorDrive,
-                _darkness01,
-                _environmentShelterNeed,
-                effectiveAnxiety,
-                _hunger,
-                _threat,
-                inShelter,
-                _health,
-                shelterSafety,
+                ForwardVelocity: _lastForwardSpeed,
+                TurnRateDeg: _lastTurnRateDeg,
+                ContactLevel: contact,
+                LeftMotorDrive: _leftMotorDrive,
+                RightMotorDrive: _rightMotorDrive,
+                Hunger: _hunger,
+                Health: _health,
                 TactileFront: frontTouch,
                 TactileLeft: leftTouch,
                 TactileRight: rightTouch,
                 TactileGround: groundTouch,
-                PainLevel: Math.Clamp(_collisionPulse * 0.70, 0.0, 1.0),
-                Urgency: urgency);
+                PainLevel: Math.Clamp(contactPulse * 0.70, 0.0, 1.0));
             _avatarService.PostBodyInput(telemetry, WorldBodyStateProfile);
             var bodyInput = await DrainAvatarBodyInputAsync(token);
             if (bodyInput.HasValue)

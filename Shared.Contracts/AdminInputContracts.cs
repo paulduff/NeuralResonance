@@ -68,36 +68,13 @@ public sealed record BodyStateInputRequest(
     bool? IsFeedback,
     string? Pattern,
     string? InputSource,
-    float? EnvironmentalDarkness = null,
-    float? ShelterNeed = null,
-    float? Anxiety = null,
     float? Hunger = null,
-    float? PredatorThreat = null,
-    float? InShelter = null,
     float? Health = null,
-    float? ShelterSafety = null,
     float? TactileFront = null,
     float? TactileLeft = null,
     float? TactileRight = null,
     float? TactileGround = null,
-    float? PainLevel = null,
-    float? Urgency = null);
-
-public sealed record OutcomeInputRequest(
-    string? Pattern,
-    string? InputSource,
-    float? SatietyRelief,
-    float? SafetyRelief,
-    float? PainLevel,
-    float? DamageLevel,
-    float? ShelterComfort,
-    float? Progress,
-    float? EffortCost,
-    float? Novelty,
-    float? SocialApproval,
-    float? Intensity,
-    int? BurstCount,
-    string? Hemisphere);
+    float? PainLevel = null);
 
 public sealed record InputGateRuntime(
     bool AvatarVisionEnabled,

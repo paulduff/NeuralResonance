@@ -12,6 +12,4 @@ public static class AvatarRuntimeDefaults
     public const string BodyStateInputSource = "avatar_body_state";
     public const string BodyStateSourceStructure = "SpinalCordMotor";
     public const string BodyStateTargetStructure = "S1";
-    public const string OutcomePattern = "HomeostaticOutcome";
-    public const string OutcomeInputSource = "avatar_outcome";
 }

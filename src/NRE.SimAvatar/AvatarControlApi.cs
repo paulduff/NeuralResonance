@@ -9,7 +9,6 @@ public static class AvatarControlApi
         => $"/api/v1/frame?dispatch_since_ms={Math.Max(0, dispatchSinceMs)}&include_connectome={(includeConnectome ? "true" : "false")}";
 
     public const string BodyStatePath = "/api/v1/admin/input/body-state";
-    public const string OutcomeInputPath = "/api/v1/admin/input/outcome";
     public const string AuditoryInputPath = "/api/v1/admin/input/auditory";
     public const string LanguageInputPath = "/api/v1/admin/input/language";
 
@@ -34,12 +33,6 @@ public static class AvatarControlApi
 
     public static Task PostBodyStateAsync(HttpClient client, string endpoint, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default) =>
         PostBodyStateCoreAsync(client, BuildUri(endpoint, BodyStatePath), telemetry, profile, cancellationToken);
-
-    public static Task PostOutcomeAsync(HttpClient client, Uri endpoint, AvatarOutcomeTelemetry telemetry, CancellationToken cancellationToken = default) =>
-        PostOutcomeCoreAsync(client, BuildUri(endpoint, OutcomeInputPath), telemetry, cancellationToken);
-
-    public static Task PostOutcomeAsync(HttpClient client, string endpoint, AvatarOutcomeTelemetry telemetry, CancellationToken cancellationToken = default) =>
-        PostOutcomeCoreAsync(client, BuildUri(endpoint, OutcomeInputPath), telemetry, cancellationToken);
 
     public static Task<AvatarAuditoryDispatchResult> PostAuditoryCueAsync(HttpClient client, Uri endpoint, AvatarAuditoryCue cue, CancellationToken cancellationToken = default) =>
         PostAuditoryCueCoreAsync(client, BuildUri(endpoint, AuditoryInputPath), cue, cancellationToken);
@@ -67,17 +60,6 @@ public static class AvatarControlApi
         {
             var message = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new InvalidOperationException($"Body-state input failed: HTTP {(int)response.StatusCode} {message}");
-        }
-    }
-
-    private static async Task PostOutcomeCoreAsync(HttpClient client, Uri uri, AvatarOutcomeTelemetry telemetry, CancellationToken cancellationToken = default)
-    {
-        var request = AvatarOutcomeInputFactory.CreateRequest(telemetry);
-        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var message = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Outcome input failed: HTTP {(int)response.StatusCode} {message}");
         }
     }
 

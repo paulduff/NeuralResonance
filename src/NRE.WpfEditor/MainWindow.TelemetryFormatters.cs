@@ -1069,11 +1069,10 @@ public partial class MainWindow
         root = NormalizeStateRoot(root);
         var tick = GetLong(root, "tick");
         var hasBody = TryGetObject(root, "bodyState", out var body);
-        var hasEnvironment = TryGetObject(root, "environmentalState", out var environment);
         var hasAffect = TryGetObject(root, "neuronalAffectValuation", out var affect);
         var hasMotor = TryGetObject(root, "neuronalMotor", out var motor);
 
-        if (!hasBody && !hasEnvironment && !hasAffect && !hasMotor)
+        if (!hasBody && !hasAffect && !hasMotor)
         {
             return "Embodied neuronal telemetry unavailable.";
         }
@@ -1082,11 +1081,11 @@ public partial class MainWindow
         {
             "Embodied neuronal interface",
             $"Tick: {tick}",
-            "Body and environment values below are sensory substrate, not cognitive decisions.",
+            "Body values below are raw receptor substrate, not cognitive decisions.",
             $"Body velocity/turn/contact: {GetDouble(body, "forwardVelocity"):0.000} | {GetDouble(body, "turnRateDeg"):0.000} | {GetDouble(body, "contactLevel"):0.000}",
+            $"Touch front/left/right/ground: {GetDouble(body, "tactileFront"):0.000} | {GetDouble(body, "tactileLeft"):0.000} | {GetDouble(body, "tactileRight"):0.000} | {GetDouble(body, "tactileGround"):0.000}",
+            $"Interoception hunger/health/pain: {GetDouble(body, "hunger"):0.000} | {GetDouble(body, "health"):0.000} | {GetDouble(body, "painLevel"):0.000}",
             $"Observed motor L/R/asymmetry: {GetDouble(body, "leftMotorDrive"):0.000} | {GetDouble(body, "rightMotorDrive"):0.000} | {GetDouble(body, "motorAsymmetry"):0.000}",
-            $"Environment threat/hunger/health: {GetDouble(environment, "predatorThreat"):0.000} | {GetDouble(environment, "hunger"):0.000} | {GetDouble(environment, "health"):0.000}",
-            $"Environment darkness/shelter/safety: {GetDouble(environment, "darkness"):0.000} | {GetDouble(environment, "shelterNeed"):0.000} | {GetDouble(environment, "shelterSafety"):0.000}",
             string.Empty,
             $"Neuronal valuation: {(GetBool(affect, "active") ? "active" : "quiet")} | channel {GetInt(affect, "dominantChannel")} | confidence {GetDouble(affect, "confidence"):0.000}",
             $"Appetitive/defensive/homeostatic/exploratory: {GetDouble(affect, "appetitiveDrive"):0.000} | {GetDouble(affect, "defensiveDrive"):0.000} | {GetDouble(affect, "homeostaticDrive"):0.000} | {GetDouble(affect, "exploratoryDrive"):0.000}",

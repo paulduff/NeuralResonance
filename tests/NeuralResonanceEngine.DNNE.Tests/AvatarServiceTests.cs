@@ -58,7 +58,7 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void BodyAndOutcomePacketsCannotSteerMotorOutput()
+    public void BodyPacketsCannotSteerMotorOutput()
     {
         using var service = CreateService();
         service.PostBrainSignals(MotorDispatches());
@@ -71,16 +71,10 @@ public sealed class AvatarServiceTests
                 ContactLevel: 1.0,
                 LeftMotorDrive: 0.0,
                 RightMotorDrive: 0.0,
-                PainLevel: 1.0,
-                PredatorThreat: 1.0,
-                Anxiety: 1.0),
+                PainLevel: 1.0),
             CreateBodyStateProfile());
-        service.PostOutcome(new AvatarOutcomeTelemetry(
-            PainLevel: 1.0,
-            DamageLevel: 1.0,
-            EffortCost: 1.0));
 
-        WaitUntil(() => service.ProcessedCommands >= 3);
+        WaitUntil(() => service.ProcessedCommands >= 2);
         var after = service.LatestSignal;
         Assert.Equal(before.LeftMotorDrive, after.LeftMotorDrive);
         Assert.Equal(before.RightMotorDrive, after.RightMotorDrive);
@@ -122,7 +116,7 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void ServiceTransportsBodyAndOutcomePacketsUnchanged()
+    public void ServiceTransportsBodyPacketsUnchanged()
     {
         using var service = CreateService();
         var telemetry = new AvatarBodyTelemetry(
@@ -132,13 +126,10 @@ public sealed class AvatarServiceTests
             LeftMotorDrive: 12.0,
             RightMotorDrive: 14.0);
         var profile = CreateBodyStateProfile();
-        var outcome = new AvatarOutcomeTelemetry(Progress: 0.6, EffortCost: 0.1);
 
         service.PostBodyInput(telemetry, profile);
-        service.PostOutcome(outcome);
 
         Assert.Equal(new AvatarBodyStateInput(telemetry, profile), WaitForBodyInput(service));
-        Assert.Equal(outcome, WaitForOutcome(service));
     }
 
     [Fact]
@@ -275,9 +266,6 @@ public sealed class AvatarServiceTests
 
     private static AvatarBodyStateInput WaitForBodyInput(AvatarService service)
         => WaitForQueue<AvatarBodyStateInput>(service.TryDequeueBodyInput, "body input");
-
-    private static AvatarOutcomeTelemetry WaitForOutcome(AvatarService service)
-        => WaitForQueue<AvatarOutcomeTelemetry>(service.TryDequeueOutcome, "outcome");
 
     private static AvatarObjectObservation WaitForObjectObservation(AvatarService service)
         => WaitForQueue<AvatarObjectObservation>(service.TryDequeueObjectObservation, "object observation");

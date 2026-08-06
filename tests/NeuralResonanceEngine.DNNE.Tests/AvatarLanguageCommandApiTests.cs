@@ -40,15 +40,30 @@ public sealed class AvatarLanguageCommandApiTests
     }
 
     [Fact]
-    public async Task Outcome_Post_Throws_When_Control_Program_Rejects_The_Request()
+    public async Task Body_State_Post_Throws_When_Control_Program_Rejects_The_Request()
     {
-        using var client = new HttpClient(new StaticResponseHandler(HttpStatusCode.BadRequest, "invalid outcome"));
+        using var client = new HttpClient(new StaticResponseHandler(HttpStatusCode.BadRequest, "invalid body state"));
+        var profile = new AvatarBodyStateProfile(
+            MaxForwardSpeed: 2.0,
+            MaxTurnRateDeg: 180.0,
+            BaseIntensity: 0.2,
+            MotionIntensityWeight: 0.3,
+            TurnIntensityWeight: 0.2,
+            ContactIntensityWeight: 0.4,
+            BaseBurstCount: 6,
+            MotionBurstWeight: 8,
+            TurnBurstWeight: 6,
+            ContactBurstWeight: 10);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            AvatarControlApi.PostOutcomeAsync(client, new Uri("http://localhost:5080"), new AvatarOutcomeTelemetry()));
+            AvatarControlApi.PostBodyStateAsync(
+                client,
+                new Uri("http://localhost:5080"),
+                new AvatarBodyTelemetry(0.0, 0.0, 0.0, 0.0, 0.0),
+                profile));
 
         Assert.Contains("HTTP 400", error.Message);
-        Assert.Contains("invalid outcome", error.Message);
+        Assert.Contains("invalid body state", error.Message);
     }
 
     [Fact]

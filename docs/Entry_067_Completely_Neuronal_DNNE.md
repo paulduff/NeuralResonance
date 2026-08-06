@@ -312,6 +312,14 @@ escape, or host target locking. Both rendered worlds now apply neuronal
 differential drive directly to body heading and limit themselves to physics,
 receptor transduction, consequences, rendering, and explicit human reset.
 
+Entry 091 deletes host-authored valuation ingress. The outcome request,
+transport queue, HTTP endpoint, scalar environmental/outcome states, and every
+simulator outcome publisher are gone. Body ingress carries only raw motion,
+motor, touch, pain, hunger, and health measurements. Interoceptive receptor
+trains enter through medulla/NTS and reach hypothalamic and insular circuits;
+threat, safety, novelty, progress, reward, and social meaning must now be
+derived by neuronal circuits rather than supplied by a world label.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

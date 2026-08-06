@@ -1014,10 +1014,6 @@ public partial class MainWindow : Window
         _corpusCallosumVisual = _anatomyDisplayMode
             ? null
             : AddCorpusCallosumPathwayScaffold(brainContent);
-        // A restrained anatomical envelope makes the distributed cortical patches
-        // read as one brain while leaving the live circuit activity visible.
-        AddAnatomicalReferenceSurfaces(brainContent, _anatomyDisplayMode);
-
         var centers = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
         var atlasCenters = new Dictionary<string, Point3D>(StringComparer.OrdinalIgnoreCase);
         var atlasGeometryByInstance = new Dictionary<string, AtlasGeometry>(StringComparer.OrdinalIgnoreCase);
@@ -1102,9 +1098,10 @@ public partial class MainWindow : Window
                     atlasGeometryByInstance[instanceId] = measuredGeometry;
                 }
                 var renderBaseColor = uniqueStructureColors[def.SnapshotId];
-                var renderStructure = !_anatomyDisplayMode &&
-                                      !string.Equals(def.SnapshotId, "CorpusCallosum", StringComparison.OrdinalIgnoreCase) &&
-                                      !IsPeripheralSensoryStructure(def.SnapshotId);
+                // Every registered structure remains visible in both display
+                // modes. Anatomy mode changes context and materials; it must
+                // not remove the neural structures being inspected.
+                var renderStructure = true;
 
                 var baseDim = ScaleColor(renderBaseColor, 0.22);
                 var diffuse = new SolidColorBrush(baseDim)
@@ -1233,6 +1230,12 @@ public partial class MainWindow : Window
                 byBase.Add(structureVisual);
             }
         }
+
+        // WPF 3D transparency is order-sensitive. Draw the closed reference
+        // shells after neural structures so their depth buffer cannot hide the
+        // anatomy they are meant to contextualize. Pathways follow the shell
+        // and therefore remain crisp above it.
+        AddAnatomicalReferenceSurfaces(brainContent, _anatomyDisplayMode);
 
         foreach (var pathway in LoadPathwayDefinitions())
         {
@@ -1466,23 +1469,20 @@ public partial class MainWindow : Window
         };
     }
 
-    private static bool IsPeripheralSensoryStructure(string snapshotId)
-        => snapshotId is "Retina" or "Cochlea";
-
     private static void AddAnatomicalReferenceSurfaces(Model3DGroup brainContent, bool anatomyDisplayMode)
     {
         var cortexDiffuse = anatomyDisplayMode
-            ? Color.FromArgb(236, 184, 128, 138)
-            : Color.FromArgb(132, 118, 106, 122);
+            ? Color.FromArgb(48, 184, 128, 138)
+            : Color.FromArgb(32, 118, 106, 122);
         var cortexEmissive = anatomyDisplayMode
-            ? Color.FromArgb(10, 236, 170, 180)
-            : Color.FromArgb(12, 236, 170, 180);
+            ? Color.FromArgb(2, 236, 170, 180)
+            : Color.FromArgb(2, 236, 170, 180);
         var cerebellumDiffuse = anatomyDisplayMode
-            ? Color.FromArgb(230, 168, 108, 120)
-            : Color.FromArgb(92, 158, 102, 114);
+            ? Color.FromArgb(48, 168, 108, 120)
+            : Color.FromArgb(32, 158, 102, 114);
         var brainstemDiffuse = anatomyDisplayMode
-            ? Color.FromArgb(232, 176, 126, 106)
-            : Color.FromArgb(96, 166, 116, 98);
+            ? Color.FromArgb(48, 176, 126, 106)
+            : Color.FromArgb(32, 166, 116, 98);
 
         AddReferenceMesh(
             brainContent,
@@ -1500,12 +1500,12 @@ public partial class MainWindow : Window
             brainContent,
             BuildCerebellarReferenceSurfaceMesh(48, 24),
             cerebellumDiffuse,
-            Color.FromArgb(16, 226, 156, 170));
+            Color.FromArgb(2, 226, 156, 170));
         AddReferenceMesh(
             brainContent,
             BuildBrainstemReferenceSurfaceMesh(24, 32),
             brainstemDiffuse,
-            Color.FromArgb(14, 236, 172, 142));
+            Color.FromArgb(2, 236, 172, 142));
 
     }
 
@@ -1921,7 +1921,7 @@ public partial class MainWindow : Window
         NoteControlEndpointSuccess(verifiedBaseUri);
         _lastSnapshotUtc = DateTime.UtcNow;
 
-        if (payload.StructureStates.Count == 0)
+        if (payload.StructureStates.Count == 0 && dispatchSpikes.Count == 0)
         {
             SetTransportStatsText(AppendFrameSpikeMetrics(
                 frameState.TransportStatsBaseText,
@@ -1942,8 +1942,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (payload.StructureStates.Count == 0)
+        {
+            SetRenderStatus("Render: live dispatch activity (awaiting structure snapshots)", appendToOutput: false);
+        }
+
         var expectedStructureCount = Math.Max(1, _structureVisualsByBaseId.Count);
-        if (payload.StructureStates.Count < (expectedStructureCount / 3))
+        if (payload.StructureStates.Count > 0 && payload.StructureStates.Count < (expectedStructureCount / 3))
         {
             var missing = Math.Max(0, expectedStructureCount - payload.StructureStates.Count);
             SetRenderStatus($"Render: partial live snapshot ({payload.StructureStates.Count}/{expectedStructureCount}); {missing} structures offline/unresponsive");
@@ -2199,6 +2204,7 @@ public partial class MainWindow : Window
         var ops = new List<NeuronHighlightOp>(64);
         var litSpikeSlots = new HashSet<(string SnapshotId, string Hemisphere, int Index)>();
         var unmatchedLog = new List<UnmatchedNeuronLog>();
+        var snapshotStructureIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         double callosumLevel = -1.0;
         var visibleNeuronHighlights = 0;
         var structuresWithNeuronSpikes = 0;
@@ -2207,6 +2213,7 @@ public partial class MainWindow : Window
 
         foreach (var state in payload.StructureStates)
         {
+            snapshotStructureIds.Add(state.StructureId);
             if (string.Equals(state.StructureId, "CorpusCallosum", StringComparison.OrdinalIgnoreCase))
             {
                 callosumLevel = Math.Clamp(((state.SpikeOut + state.SpikeIn) / 96.0) + (state.MeanRateHz / 45.0), 0.0, 1.0);
@@ -2227,35 +2234,49 @@ public partial class MainWindow : Window
             foreach (var visual in visuals)
             {
                 meanFiringRateUpdates.Add((visual, state.MeanRateHz, state.Microtubules, state.BodySchema, state.BasalGanglia, state.Cerebellar, state.VestibuloReticular, state.SuperiorColliculus, state.HippocampalSpatial, state.SalienceAffect, state.PrefrontalWorkingMemory, state.ThalamicAttentionGate, state.HypothalamicHomeostasis, state.SleepWakeArousal, state.DescendingDefense, state.DopamineReward, state.SeptohippocampalTheta, state.SpinalProprioceptive, state.OlfactoryLimbicMemory, state.AuditoryLanguageMotor, state.VisualObjectRecognition));
-
-                if (realNeuronIds.Count == 0 || visual.SpikeNeuronBrushes.Count == 0)
-                {
-                    continue;
-                }
-
-                var scopedNeuronIds = FilterNeuronIdsForHemisphere(realNeuronIds, visual.Hemisphere);
-                foreach (var neuronId in scopedNeuronIds)
-                {
-                    var idx = ResolveSpikeBrushIndexForNeuronId(visual, neuronId);
-                    if (idx < 0 || idx >= visual.SpikeNeuronBrushes.Count)
-                    {
-                        unmatchedNeuronIds++;
-                        unmatchedLog.Add(new UnmatchedNeuronLog(state.StructureId, visual.Hemisphere, neuronId, "no spike brush slot"));
-                        continue;
-                    }
-
-                    if (!litSpikeSlots.Add((visual.SnapshotId, visual.Hemisphere, idx)))
-                    {
-                        continue;
-                    }
-
-                    visibleNeuronHighlights++;
-                    ops.Add(new NeuronHighlightOp(
-                        visual.SpikeNeuronBrushes[idx],
-                        visual.SpikeColor,
-                        dispatchNeuronIds?.Contains(neuronId) ?? false));
-                }
             }
+
+            PrepareStructureNeuronHighlights(
+                state.StructureId,
+                visuals,
+                realNeuronIds,
+                dispatchNeuronIds,
+                litSpikeSlots,
+                ops,
+                unmatchedLog,
+                ref visibleNeuronHighlights,
+                ref unmatchedNeuronIds);
+        }
+
+        // Direct dispatch traces are the authoritative per-event activity
+        // stream. A slow or overloaded structure may miss the aggregate
+        // snapshot for this frame, but its routed spikes must remain visible.
+        foreach (var dispatchEntry in dispatchIdsByStructure)
+        {
+            if (snapshotStructureIds.Contains(dispatchEntry.Key) ||
+                !_structureVisualsByBaseId.TryGetValue(dispatchEntry.Key, out var visuals))
+            {
+                continue;
+            }
+
+            var dispatchNeuronIds = dispatchEntry.Value;
+            var realNeuronIds = BuildFrameNeuronIdList(dispatchNeuronIds, []);
+            if (realNeuronIds.Count == 0)
+            {
+                continue;
+            }
+
+            structuresWithNeuronSpikes++;
+            PrepareStructureNeuronHighlights(
+                dispatchEntry.Key,
+                visuals,
+                realNeuronIds,
+                dispatchNeuronIds,
+                litSpikeSlots,
+                ops,
+                unmatchedLog,
+                ref visibleNeuronHighlights,
+                ref unmatchedNeuronIds);
         }
 
         return new NeuronHighlightPrep(
@@ -2264,6 +2285,53 @@ public partial class MainWindow : Window
             unmatchedLog,
             callosumLevel,
             new NeuronHighlightResult(structuresWithNeuronSpikes, visibleNeuronHighlights, unmatchedNeuronIds));
+    }
+
+    private static void PrepareStructureNeuronHighlights(
+        string structureId,
+        IReadOnlyList<StructureVisual> visuals,
+        IReadOnlyList<string> neuronIds,
+        HashSet<string>? dispatchNeuronIds,
+        HashSet<(string SnapshotId, string Hemisphere, int Index)> litSpikeSlots,
+        List<NeuronHighlightOp> ops,
+        List<UnmatchedNeuronLog> unmatchedLog,
+        ref int visibleNeuronHighlights,
+        ref int unmatchedNeuronIds)
+    {
+        if (neuronIds.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var visual in visuals)
+        {
+            if (visual.SpikeNeuronBrushes.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var neuronId in FilterNeuronIdsForHemisphere(neuronIds, visual.Hemisphere))
+            {
+                var idx = ResolveSpikeBrushIndexForNeuronId(visual, neuronId);
+                if (idx < 0 || idx >= visual.SpikeNeuronBrushes.Count)
+                {
+                    unmatchedNeuronIds++;
+                    unmatchedLog.Add(new UnmatchedNeuronLog(structureId, visual.Hemisphere, neuronId, "no spike brush slot"));
+                    continue;
+                }
+
+                if (!litSpikeSlots.Add((visual.SnapshotId, visual.Hemisphere, idx)))
+                {
+                    continue;
+                }
+
+                visibleNeuronHighlights++;
+                ops.Add(new NeuronHighlightOp(
+                    visual.SpikeNeuronBrushes[idx],
+                    visual.SpikeColor,
+                    dispatchNeuronIds?.Contains(neuronId) ?? false));
+            }
+        }
     }
 
     // UI THREAD ONLY - takes the precomputed ops and mutates the brushes.

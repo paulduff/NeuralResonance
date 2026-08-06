@@ -20,7 +20,7 @@ public partial class MainWindow
         }
 
         TryFreeze(mesh);
-        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.22, 44.0);
+        var material = CreateFrozenSurfaceMaterial(diffuseColor, emissiveColor, 0.04, 44.0);
         root.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material });
     }
 

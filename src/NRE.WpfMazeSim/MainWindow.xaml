@@ -55,16 +55,9 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="Maze Brain Drive" FontSize="16" FontWeight="Bold" />
-                        <CheckBox x:Name="SpatialNavigationCheckBox"
-                                  IsChecked="False"
-                                  IsEnabled="False"
-                                  Content="Legacy spatial navigator (offline benchmark only)"
-                                  Margin="0,8,0,0"
-                                  Checked="SpatialNavigationCheckBox_OnChecked"
-                                  Unchecked="SpatialNavigationCheckBox_OnUnchecked" />
                         <TextBlock x:Name="NavigationStatusText"
-                                   Margin="0,3,0,4"
-                                   Text="Navigation: neuronal brain drive"
+                                   Margin="0,8,0,4"
+                                   Text="Motor authority: neuronal brain drive"
                                    TextWrapping="Wrap" />
                         <TextBlock x:Name="TickText" Margin="0,8,0,0" Text="Tick: -" />
                         <TextBlock x:Name="DispatchText" Margin="0,4,0,0" Text="Dispatch spikes: -" />
@@ -169,24 +162,6 @@
                         <TextBlock Text="Smoothing" />
                         <Slider x:Name="DriveSmoothingSlider" Minimum="0.0" Maximum="0.98" Value="0.86" TickFrequency="0.01" IsSnapToTickEnabled="False" />
                         <TextBlock x:Name="DriveSmoothingText" Margin="0,2,0,8" Text="0.86" />
-
-                        <TextBlock Text="Orienting Stimulus Intensity" />
-                        <Slider x:Name="EscapeAggressivenessSlider"
-                                Minimum="0.50"
-                                Maximum="2.50"
-                                Value="1.00"
-                                TickFrequency="0.05"
-                                IsSnapToTickEnabled="False" />
-                        <TextBlock x:Name="EscapeAggressivenessText" Margin="0,2,0,8" Text="1.00x" />
-
-                        <TextBlock Text="Orienting Stimulus Cooldown (ms)" />
-                        <Slider x:Name="EscapeCooldownSlider"
-                                Minimum="250"
-                                Maximum="3000"
-                                Value="900"
-                                TickFrequency="50"
-                                IsSnapToTickEnabled="False" />
-                        <TextBlock x:Name="EscapeCooldownText" Margin="0,2,0,8" Text="900 ms" />
 
                     </StackPanel>
                 </ScrollViewer>

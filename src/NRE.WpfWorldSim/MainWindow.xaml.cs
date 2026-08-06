@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Buffers;
 using System.Net;
 using System.Net.Http;
@@ -60,59 +60,14 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorLength = 1.85;
     private const int AvatarVisionDispatchTimeoutMs = 3000;
     private const int ObjectCueDispatchTimeoutMs = 9000;
-    private const double OrientingTargetVisibleRange = 26.0;
-    private const double OrientingTargetLockGain = 3.4;
-    private const double OrientingScanTurnRateDeg = 96.0;
-    private const double OrientingTargetCenteredDeg = 7.5;
-    private const double OrientingMaxTurnAssistDeg = 185.0;
-    private const double OrientingIntentThreshold = 0.34;
-    private const double OrientingMemoryStepDriveThreshold = 0.46;
-    private const double OrientingMemoryAlignedDeg = 22.0;
-    private const double OrientingMemoryVisibleMinDistance = 1.8;
-    private const double OrientingMemoryTargetRange = 96.0;
-    private const double AboutFaceThreatRangeMultiplier = 1.45;
-    private const double AboutFaceAlignedDeg = 18.0;
-    private const double AboutFaceRunCommitDeg = 36.0;
-    private const double AboutFaceTurnGain = 6.2;
-    private const double AboutFaceMaxTurnRateDeg = 300.0;
-    private const double AboutFaceThreatThreshold = 0.40;
     private const int MaxLogLines = 220;
     private const int MapStimulusDebounceMs = 110;
-    private const double EscapeProbeRange = 2.8;
-    private const double EscapeSideProbeAngleDeg = 48.0;
-    private const double StuckDistanceThresholdSq = 0.0007;
-    private const double NoProgressRecoveryTimeoutSec = 1.65;
-    private const int ConsecutiveWallContactThreshold = 7;
-    private const double EscapeReflexCooldownSec = 0.42;
-    private const int SpinGuardTickThreshold = 16;
-    private const double EscapeReverseBaseSpeed = -1.05;
-    private const double EscapeStrafeSpeed = 0.52;
-    private const double CornerSidestepDistance = 0.36;
-    private const int HardUnstuckNoProgressTicks = 24;
-    private const double HardUnstuckRadiusMin = 1.2;
-    private const double HardUnstuckRadiusMax = 16.0;
-    private const double HardUnstuckRadiusStep = 0.45;
-    private const int HardUnstuckGridDepth = 56;
-    private const double HardUnstuckMinClearance = 1.05;
-
-    // Tier-7 anti-stall: instead of teleporting (not embodied), a sustained stuck
-    // condition damages the avatar, eventually killing it. Death triggers an
-    // honest, narrated respawn at the world spawn point.
-    //
-    // StuckDamagePerSec  : drained while _inStuckEpisode, regardless of contact.
-    // StuckImpactDamage  : extra hit per collision tick while stuck (wall-bashing).
-    // RespawnHealthFraction: HP after respawn (0.6 = death is costly but not catastrophic).
-    private const double StuckDamagePerSec = 0.04;
-    private const double StuckImpactDamage = 0.012;
-    private const double RespawnHealthFraction = 0.6;
-    // Motor-drive intent above this is "the brain is actively trying to move".
-    // Below this the avatar is idle/standing and stuck-damage should NOT accrue.
-    // Motor drives saturate at ~240; 12 ≈ 5% of max — a clear "trying" signal that
-    // still excludes residual drive from decay (0.92/tick decays a 120 drive to
-    // ~12 over ~25 ticks).
-    private const double StuckDamageMotorIntentThreshold = 12.0;
+    private const double SpawnSearchRadiusMin = 1.2;
+    private const double SpawnSearchRadiusMax = 16.0;
+    private const double SpawnSearchRadiusStep = 0.45;
+    private const int SpawnSearchGridDepth = 56;
+    private const double SpawnSearchMinClearance = 1.05;
     private const double AvatarVisualYawOffsetDeg = 0.0;
-    private const double AvatarHeadMaxYawDeg = 76.0;
     private const double AvatarHeadReturnRateDeg = 220.0;
     private const double FollowCameraBehindBlocks = 6.0;
     private const double FollowCameraAboveBlocks = 8.0;
@@ -340,9 +295,6 @@ public partial class MainWindow : Window
     private double _rightMotorDrive;
     private int _lastMotorDispatchCount;
     private int _ticksWithoutMotorDispatch;
-    private double _orientingScanPhaseDeg;
-    private long _lastOrientingLogMs;
-    private long _lastAboutFaceLogMs;
     private string _brainMotorDirective = "motor_idle";
     private string _brainGoalKey = string.Empty;
     private string _brainActionTarget = string.Empty;
@@ -383,12 +335,6 @@ public partial class MainWindow : Window
     private int _foodSpawnTarget = 12;
     private int _predatorSpawnTarget = 3;
     private int _objectDispatchMaxCuesPerCycle = DefaultObjectDispatchMaxCuesPerCycle;
-    private double _antiStallDistanceThresholdSq = StuckDistanceThresholdSq;
-    private double _antiStallNoProgressTimeoutSec = NoProgressRecoveryTimeoutSec;
-    private int _antiStallContactThreshold = ConsecutiveWallContactThreshold;
-    private double _antiStallEscapeCooldownSec = EscapeReflexCooldownSec;
-    private double _antiStallReverseBaseSpeed = EscapeReverseBaseSpeed;
-    private double _antiStallStrafeSpeed = EscapeStrafeSpeed;
     private bool _showThreatField = true;
     private bool _showPatrolPaths;
     private double _lastFrameSeconds;
@@ -449,22 +395,8 @@ public partial class MainWindow : Window
     private readonly AvatarWarningGate _endpointValidationWarningGate = new();
     private DateTime _lastTelemetrySuccessUtc = DateTime.MinValue;
     private int _telemetryFailureStreak;
-    private DateTime _lastProgressUtc = DateTime.UtcNow;
-    private DateTime _lastEscapeReflexUtc = DateTime.MinValue;
-    private int _consecutiveWallContacts;
-    private int _escapeRearmTicksRemaining;
-    private int _noProgressTicks;
-    private int _stuckRecoveries;
-    private int _hardUnstuckEvents;
-    // Tier-7: cumulative deaths from stuck-induced damage (replaces silent teleport).
-    private int _avatarDeaths;
-    private int _pathRecoveries;
-    private int _stuckEpisodes;
     private int _spawnValidationRetries;
     private int _shelterDoorCorridorClears;
-    private int _navFilteredMoves;
-    private double _stuckSecondsAccum;
-    private bool _inStuckEpisode;
     private double _lastFrontProximity;
     private double _lastLeftProximity;
     private double _lastRightProximity;
@@ -545,7 +477,6 @@ public partial class MainWindow : Window
         RefreshSurvivalTuningLabels();
         RebuildWorldFromSeed();
         ResetCamera();
-        _lastProgressUtc = DateTime.UtcNow;
         BrainNarrationText.Text = "Brain narration: waiting for brain state.";
         EnglishCommandStatusText.Text = "Command: idle";
         SetConnectionStatus(AvatarControlStatusText.Connecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
@@ -614,9 +545,6 @@ public partial class MainWindow : Window
         _lastNeuronalMotorTick = -1;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        _orientingScanPhaseDeg = 0.0;
-        _lastOrientingLogMs = 0;
-        _lastAboutFaceLogMs = 0;
         _brainMotorDirective = "motor_idle";
         _brainGoalKey = string.Empty;
         _brainActionTarget = string.Empty;
@@ -625,17 +553,6 @@ public partial class MainWindow : Window
         _sleepState = false;
         _collisionHits = 0;
         _collisionPulse = 0.0;
-        _consecutiveWallContacts = 0;
-        _escapeRearmTicksRemaining = 0;
-        _noProgressTicks = 0;
-        _stuckRecoveries = 0;
-        _hardUnstuckEvents = 0;
-        _avatarDeaths = 0;
-        _pathRecoveries = 0;
-        _stuckEpisodes = 0;
-        _stuckSecondsAccum = 0.0;
-        _inStuckEpisode = false;
-        _navFilteredMoves = 0;
         _spawnValidationRetries = 0;
         _shelterDoorCorridorClears = 0;
         _objectRecognitionCooldown = 0.0;
@@ -656,8 +573,6 @@ public partial class MainWindow : Window
         _nextSurvivalHudUpdateSeconds = 0.0;
         _objectMemoryBackoff.Reset();
         _objectMemoryWarningGate.Reset();
-        _lastEscapeReflexUtc = DateTime.MinValue;
-        _lastProgressUtc = DateTime.UtcNow;
         _lastTelemetrySuccessUtc = DateTime.MinValue;
         _telemetryFailureStreak = 0;
         _endpointValidationWarningGate.Reset();
@@ -789,36 +704,6 @@ public partial class MainWindow : Window
         RequestWorldRespawn();
     }
 
-    private void AntiStallTimeoutSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _antiStallNoProgressTimeoutSec = e.NewValue;
-        RefreshSurvivalTuningLabels();
-    }
-
-    private void AntiStallContactSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _antiStallContactThreshold = Math.Max(1, (int)Math.Round(e.NewValue));
-        RefreshSurvivalTuningLabels();
-    }
-
-    private void AntiStallCooldownSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _antiStallEscapeCooldownSec = Math.Max(0.05, e.NewValue);
-        RefreshSurvivalTuningLabels();
-    }
-
-    private void AntiStallReverseSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _antiStallReverseBaseSpeed = e.NewValue;
-        RefreshSurvivalTuningLabels();
-    }
-
-    private void AntiStallStrafeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _antiStallStrafeSpeed = Math.Max(0.0, e.NewValue);
-        RefreshSurvivalTuningLabels();
-    }
-
     private void ObjectDispatchMaxCuesSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         _objectDispatchMaxCuesPerCycle = Math.Max(1, (int)Math.Round(e.NewValue));
@@ -887,11 +772,6 @@ public partial class MainWindow : Window
         _objectDispatchMaxCuesPerCycle = ObjectDispatchMaxCuesSlider?.Value > 0
             ? Math.Max(1, (int)Math.Round(ObjectDispatchMaxCuesSlider.Value))
             : _objectDispatchMaxCuesPerCycle;
-        _antiStallNoProgressTimeoutSec = AntiStallTimeoutSlider?.Value > 0 ? AntiStallTimeoutSlider.Value : _antiStallNoProgressTimeoutSec;
-        _antiStallContactThreshold = AntiStallContactSlider?.Value > 0 ? (int)Math.Round(AntiStallContactSlider.Value) : _antiStallContactThreshold;
-        _antiStallEscapeCooldownSec = AntiStallCooldownSlider?.Value > 0 ? AntiStallCooldownSlider.Value : _antiStallEscapeCooldownSec;
-        _antiStallReverseBaseSpeed = AntiStallReverseSlider is not null ? AntiStallReverseSlider.Value : _antiStallReverseBaseSpeed;
-        _antiStallStrafeSpeed = AntiStallStrafeSlider is not null ? Math.Max(0.0, AntiStallStrafeSlider.Value) : _antiStallStrafeSpeed;
         _showThreatField = ShowThreatFieldCheckBox?.IsChecked ?? _showThreatField;
         _showPatrolPaths = ShowPatrolPathsCheckBox?.IsChecked ?? _showPatrolPaths;
     }
@@ -907,12 +787,6 @@ public partial class MainWindow : Window
         var foodSpawn = FoodSpawnValueText;
         var predatorSpawn = PredatorSpawnValueText;
         var objectDispatchMaxCues = ObjectDispatchMaxCuesValueText;
-        var antiStallTimeout = AntiStallTimeoutValueText;
-        var antiStallContact = AntiStallContactValueText;
-        var antiStallCooldown = AntiStallCooldownValueText;
-        var antiStallReverse = AntiStallReverseValueText;
-        var antiStallStrafe = AntiStallStrafeValueText;
-
         if (hunger is null ||
             threatDecay is null ||
             predatorSpeed is null ||
@@ -921,12 +795,7 @@ public partial class MainWindow : Window
             shelterRadius is null ||
             foodSpawn is null ||
             predatorSpawn is null ||
-            objectDispatchMaxCues is null ||
-            antiStallTimeout is null ||
-            antiStallContact is null ||
-            antiStallCooldown is null ||
-            antiStallReverse is null ||
-            antiStallStrafe is null)
+            objectDispatchMaxCues is null)
         {
             return;
         }
@@ -940,11 +809,6 @@ public partial class MainWindow : Window
         foodSpawn.Text = _foodSpawnTarget.ToString(CultureInfo.InvariantCulture);
         predatorSpawn.Text = _predatorSpawnTarget.ToString(CultureInfo.InvariantCulture);
         objectDispatchMaxCues.Text = _objectDispatchMaxCuesPerCycle.ToString(CultureInfo.InvariantCulture);
-        antiStallTimeout.Text = $"{_antiStallNoProgressTimeoutSec:0.00} s";
-        antiStallContact.Text = _antiStallContactThreshold.ToString(CultureInfo.InvariantCulture);
-        antiStallCooldown.Text = $"{_antiStallEscapeCooldownSec:0.00} s";
-        antiStallReverse.Text = $"{_antiStallReverseBaseSpeed:0.00}";
-        antiStallStrafe.Text = $"{_antiStallStrafeSpeed:0.00}";
     }
 
     private void ResetObjectRecognitionUi(string status)
@@ -1086,20 +950,6 @@ public partial class MainWindow : Window
         _nextObjectMemoryPollMs = 0;
         _objectMemoryBackoff.Reset();
         _objectMemoryWarningGate.Reset();
-        _stuckRecoveries = 0;
-        _hardUnstuckEvents = 0;
-        _avatarDeaths = 0;
-        _pathRecoveries = 0;
-        _stuckEpisodes = 0;
-        _stuckSecondsAccum = 0.0;
-        _inStuckEpisode = false;
-        _noProgressTicks = 0;
-        _consecutiveWallContacts = 0;
-        _escapeRearmTicksRemaining = 0;
-        _navFilteredMoves = 0;
-        _orientingScanPhaseDeg = 0.0;
-        _lastOrientingLogMs = 0;
-        _lastAboutFaceLogMs = 0;
         _brainMotorDirective = "motor_idle";
         _brainGoalKey = string.Empty;
         _brainActionTarget = string.Empty;
@@ -1138,7 +988,6 @@ public partial class MainWindow : Window
         MotorPathwayAuditText.Text = _motorPathwayAuditText;
         CollisionText.Text = "Collision hits: 0";
         TrailText.Text = "Trail points: 0 | mapped: 0";
-        AntiStallText.Text = "Anti-stall: episodes 0, recoveries 0, path 0, hard 0, fail 0, nav 0, contacts 0, escape ticks 0";
         SurvivalHungerText.Text = "Hunger: 0%";
         SurvivalHealthText.Text = "Health: 100%";
         SurvivalThreatText.Text = "Threat: 0%";
@@ -2598,14 +2447,11 @@ public partial class MainWindow : Window
         var mapped = _visitedTerrainCells.Count;
         var mappedPercent = _explorableTerrainCells > 0 ? (mapped * 100.0 / _explorableTerrainCells) : 0.0;
         TrailText.Text = $"Trail points: {_trailPoints.Count} | mapped: {mapped}/{Math.Max(_explorableTerrainCells, 1)} ({mappedPercent:0.0}%)";
-        AntiStallText.Text =
-            $"Anti-stall: episodes {_stuckEpisodes}, recoveries {_stuckRecoveries}, path {_pathRecoveries}, hard {_hardUnstuckEvents}, deaths {_avatarDeaths}, nav {_navFilteredMoves}, contacts {_consecutiveWallContacts}, stuck {_stuckSecondsAccum:0.0}s";
     }
 
     private void UpdateAvatar(double dt)
     {
         SyncMotorDriveFromAvatarService();
-        _escapeRearmTicksRemaining = Math.Max(0, _escapeRearmTicksRemaining - 1);
         var moved = false;
         var blocked = false;
 
@@ -2613,25 +2459,12 @@ public partial class MainWindow : Window
         // movement through physics and feed consequences back, but it never steers.
         var actionOutput = _avatarService.PublishActionOutput(forwardScale: 1.0);
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
-        var escapingThreat = false;
+        UpdateAvatarHeadYaw(dt);
 
-        var strafeSpeed = 0.0;
-        var isTranslating = Math.Abs(forwardSpeed) > 0.08 || Math.Abs(strafeSpeed) > 0.08;
-        var forceBodyTurn = escapingThreat || isTranslating;
-        var bodyTurnRateDeg = forceBodyTurn ? turnRateDeg : 0.0;
-        UpdateAvatarHeadYaw(dt, turnRateDeg, returnToForward: isTranslating || escapingThreat);
-
-        var previousX = _avatarX;
-        var previousZ = _avatarZ;
-        var previousHeading = _avatarHeadingDeg;
-        _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, bodyTurnRateDeg, dt);
-        var headingRad = AvatarKinematics.DegreesToRadians(_avatarHeadingDeg);
+        _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, turnRateDeg, dt);
         var (dirX, dirZ) = AvatarKinematics.ForwardDirection(_avatarHeadingDeg);
-        var lateralX = Math.Sin(headingRad + (Math.PI * 0.5));
-        var lateralZ = Math.Cos(headingRad + (Math.PI * 0.5));
 
         var step = forwardSpeed * dt;
-        var strafeStep = strafeSpeed * dt;
         var nextX = _avatarX + (dirX * step);
         var nextZ = _avatarZ + (dirZ * step);
 
@@ -2640,18 +2473,18 @@ public partial class MainWindow : Window
         // avatar tunnel through thin obstacles. Split the move into segments no
         // larger than 0.8 * AvatarRadius and advance through them, stopping at the
         // last clear sub-step if the path collides.
-        var moveDx = (dirX * step) + (lateralX * strafeStep);
-        var moveDz = (dirZ * step) + (lateralZ * strafeStep);
+        var moveDx = dirX * step;
+        var moveDz = dirZ * step;
         var moveLen = Math.Sqrt((moveDx * moveDx) + (moveDz * moveDz));
         var maxSweep = AvatarRadius * 0.8;
         double nextY;
         if (moveLen <= maxSweep)
         {
             // Short hop: existing single-test path.
-            if (!Collides(nextX + (lateralX * strafeStep), nextZ + (lateralZ * strafeStep), out nextY))
+            if (!Collides(nextX, nextZ, out nextY))
             {
-                _avatarX = nextX + (lateralX * strafeStep);
-                _avatarZ = nextZ + (lateralZ * strafeStep);
+                _avatarX = nextX;
+                _avatarZ = nextZ;
                 _avatarY = nextY;
                 moved = true;
             }
@@ -2715,24 +2548,14 @@ public partial class MainWindow : Window
         _avatarTranslate.OffsetZ = _avatarZ;
         _avatarYawRotation.Angle = NormalizeDegrees(_avatarHeadingDeg + AvatarVisualYawOffsetDeg);
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
-        if (RegisterVisitedTerrainCell(_avatarX, _avatarZ) && moved)
-        {
-            QueueOutcomeInput(new AvatarOutcomeTelemetry(Progress: 0.12, Novelty: 0.22, EffortCost: Math.Clamp(Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed * 0.06, 0.0, 0.10)));
-        }
+        RegisterVisitedTerrainCell(_avatarX, _avatarZ);
 
         if (blocked)
         {
             _collisionHits++;
             _collisionPulse = 1.0;
-            _consecutiveWallContacts++;
             QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: 0.26, DamageLevel: 0.08, EffortCost: 0.24), force: true);
         }
-        else if (moved)
-        {
-            _consecutiveWallContacts = Math.Max(0, _consecutiveWallContacts - 1);
-        }
-
-        UpdateProgressAndRecoverIfStuck(previousX, previousZ, previousHeading, blocked, dt);
 
         _trailAccumulatorSeconds += dt;
         if (moved && _trailAccumulatorSeconds >= TrailSampleSeconds)
@@ -2742,27 +2565,11 @@ public partial class MainWindow : Window
         }
 
         _lastForwardSpeed = forwardSpeed;
-        _lastTurnRateDeg = bodyTurnRateDeg;
+        _lastTurnRateDeg = turnRateDeg;
     }
 
-    private void UpdateAvatarHeadYaw(double dt, double commandedTurnRateDeg, bool returnToForward)
-    {
-        if (returnToForward)
-        {
-            _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
-            return;
-        }
-
-        if (Math.Abs(commandedTurnRateDeg) <= 0.01)
-        {
-            return;
-        }
-
-        _avatarHeadYawDeg = Math.Clamp(
-            _avatarHeadYawDeg + (commandedTurnRateDeg * dt),
-            -AvatarHeadMaxYawDeg,
-            AvatarHeadMaxYawDeg);
-    }
+    private void UpdateAvatarHeadYaw(double dt)
+        => _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
 
     private double ComputeUrgentRunScale()
     {
@@ -2779,324 +2586,19 @@ public partial class MainWindow : Window
         return 1.0 + ((WorldRunSpeedMultiplier - 1.0) * smoothUrgency);
     }
 
-    private void ApplyReactiveCollisionAvoidance(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (dt <= 0.0)
-        {
-            return;
-        }
-
-        var headingRad = DegreesToRadians(_avatarHeadingDeg);
-        var sideProbeOffset = DegreesToRadians(EscapeSideProbeAngleDeg);
-        var frontDistance = TraceCollisionDistance(Math.Sin(headingRad), Math.Cos(headingRad), EscapeProbeRange);
-        var leftDistance = TraceCollisionDistance(Math.Sin(headingRad - sideProbeOffset), Math.Cos(headingRad - sideProbeOffset), EscapeProbeRange);
-        var rightDistance = TraceCollisionDistance(Math.Sin(headingRad + sideProbeOffset), Math.Cos(headingRad + sideProbeOffset), EscapeProbeRange);
-
-        var frontProximity = Math.Clamp(1.0 - (frontDistance / EscapeProbeRange), 0.0, 1.0);
-        var leftProximity = Math.Clamp(1.0 - (leftDistance / EscapeProbeRange), 0.0, 1.0);
-        var rightProximity = Math.Clamp(1.0 - (rightDistance / EscapeProbeRange), 0.0, 1.0);
-        _lastFrontProximity = frontProximity;
-        _lastLeftProximity = leftProximity;
-        _lastRightProximity = rightProximity;
-
-        var maxProximity = Math.Max(frontProximity, Math.Max(leftProximity, rightProximity));
-        if (maxProximity <= 0.02)
-        {
-            return;
-        }
-
-        var steer = leftProximity - rightProximity;
-        if (Math.Abs(steer) < 0.05 && frontProximity > 0.32)
-        {
-            steer = ((_stuckRecoveries + _hardUnstuckEvents) & 1) == 0 ? 0.24 : -0.24;
-        }
-
-        var turnAssist = steer * (95.0 + (145.0 * frontProximity));
-        var sidePressure = Math.Max(leftProximity, rightProximity);
-        var forwardPenalty = (0.70 * frontProximity) + (0.30 * sidePressure);
-
-        turnRateDeg = Math.Clamp(turnRateDeg + turnAssist, -300.0, 300.0);
-        forwardSpeed = Math.Clamp(forwardSpeed - forwardPenalty, -1.9, WorldRunMaxForwardSpeed);
-
-        if (frontProximity >= 0.82)
-        {
-            forwardSpeed = Math.Min(forwardSpeed, -0.55);
-        }
-    }
-
-    private double TraceCollisionDistance(double dirX, double dirZ, double maxDistance)
-    {
-        if (_heights is null)
-        {
-            return maxDistance;
-        }
-
-        var invLen = 1.0 / Math.Max(0.0001, Math.Sqrt((dirX * dirX) + (dirZ * dirZ)));
-        dirX *= invLen;
-        dirZ *= invLen;
-
-        const double stepSize = 0.32;
-        for (var distance = stepSize; distance <= maxDistance; distance += stepSize)
-        {
-            var sampleX = _avatarX + (dirX * distance);
-            var sampleZ = _avatarZ + (dirZ * distance);
-            if (Collides(sampleX, sampleZ, out _))
-            {
-                return distance;
-            }
-        }
-
-        return maxDistance;
-    }
-
-    private bool TryApplyNavigationFilter(double headingRad, double signedStep, out double nextY)
-    {
-        nextY = _avatarY;
-        var stepMagnitude = Math.Clamp(Math.Abs(signedStep), 0.26, 0.90);
-        var baseHeading = signedStep < 0.0 ? headingRad + Math.PI : headingRad;
-        ReadOnlySpan<double> headingOffsetsDeg = [0, 16, -16, 30, -30, 50, -50, 75, -75, 108, -108, 145, -145, 180];
-
-        var found = false;
-        var bestScore = double.MinValue;
-        var bestX = _avatarX;
-        var bestZ = _avatarZ;
-        var bestTopY = _avatarY - AvatarFootOffset;
-        var bestHeading = baseHeading;
-
-        for (var i = 0; i < headingOffsetsDeg.Length; i++)
-        {
-            var probeHeading = baseHeading + DegreesToRadians(headingOffsetsDeg[i]);
-            var probeX = _avatarX + (Math.Sin(probeHeading) * stepMagnitude);
-            var probeZ = _avatarZ + (Math.Cos(probeHeading) * stepMagnitude);
-            if (Collides(probeX, probeZ, out var probeTopY))
-            {
-                continue;
-            }
-
-            var clearance = TraceCollisionDistance(Math.Sin(probeHeading), Math.Cos(probeHeading), EscapeProbeRange + 1.4);
-            var directionalPenalty = Math.Abs(headingOffsetsDeg[i]) * 0.012;
-            var score = clearance - directionalPenalty;
-            if (!found || score > bestScore)
-            {
-                found = true;
-                bestScore = score;
-                bestX = probeX;
-                bestZ = probeZ;
-                bestTopY = probeTopY;
-                bestHeading = probeHeading;
-            }
-        }
-
-        if (!found)
-        {
-            return false;
-        }
-
-        _avatarX = bestX;
-        _avatarZ = bestZ;
-        _avatarHeadingDeg = NormalizeDegrees(bestHeading * (180.0 / Math.PI));
-        nextY = bestTopY;
-        _navFilteredMoves++;
-        return true;
-    }
-
-    private bool TryCornerSidestep(double headingRad, double forwardStep, out double nextY)
-    {
-        nextY = _avatarY;
-
-        var sideStep = CornerSidestepDistance + Math.Min(0.18, Math.Abs(forwardStep) * 0.6);
-        var leftProbe = TraceCollisionDistance(
-            Math.Sin(headingRad - (Math.PI * 0.5)),
-            Math.Cos(headingRad - (Math.PI * 0.5)),
-            EscapeProbeRange);
-        var rightProbe = TraceCollisionDistance(
-            Math.Sin(headingRad + (Math.PI * 0.5)),
-            Math.Cos(headingRad + (Math.PI * 0.5)),
-            EscapeProbeRange);
-
-        var preferRight = rightProbe > leftProbe;
-        var firstSign = preferRight ? 1.0 : -1.0;
-        var secondSign = -firstSign;
-
-        if (TrySidestep(firstSign, sideStep, headingRad, out nextY) || TrySidestep(secondSign, sideStep, headingRad, out nextY))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool TrySidestep(double sideSign, double sideStep, double headingRad, out double nextY)
-    {
-        var lateralDirX = Math.Sin(headingRad + (sideSign * (Math.PI * 0.5)));
-        var lateralDirZ = Math.Cos(headingRad + (sideSign * (Math.PI * 0.5)));
-        var retreat = 0.12;
-        var candidateX = _avatarX + (lateralDirX * sideStep) - (Math.Sin(headingRad) * retreat);
-        var candidateZ = _avatarZ + (lateralDirZ * sideStep) - (Math.Cos(headingRad) * retreat);
-        if (!Collides(candidateX, candidateZ, out nextY))
-        {
-            _avatarX = candidateX;
-            _avatarZ = candidateZ;
-            return true;
-        }
-
-        nextY = _avatarY;
-        return false;
-    }
-
-    private bool TryProbeStepAroundObstacle(double headingRad, double signedStep, out double nextY)
-    {
-        nextY = _avatarY;
-
-        var stepMagnitude = Math.Clamp(Math.Abs(signedStep), 0.20, 0.72);
-        // If we are currently reversing, probe from the reverse-facing heading.
-        var baseHeading = signedStep < 0.0 ? headingRad + Math.PI : headingRad;
-
-        // Ordered from minimal detour to stronger side-step/turn escapes.
-        ReadOnlySpan<double> offsetsDeg = [24, -24, 42, -42, 68, -68, 96, -96, 128, -128, 158, -158];
-        for (var i = 0; i < offsetsDeg.Length; i++)
-        {
-            var probeHeading = baseHeading + DegreesToRadians(offsetsDeg[i]);
-            var candidateX = _avatarX + (Math.Sin(probeHeading) * stepMagnitude);
-            var candidateZ = _avatarZ + (Math.Cos(probeHeading) * stepMagnitude);
-            if (Collides(candidateX, candidateZ, out var candidateTerrainY))
-            {
-                continue;
-            }
-
-            _avatarX = candidateX;
-            _avatarZ = candidateZ;
-            // Nudge heading toward successful escape direction so follow-up motor updates
-            // don't immediately re-enter the obstacle.
-            _avatarHeadingDeg = NormalizeDegrees(probeHeading * (180.0 / Math.PI));
-            nextY = candidateTerrainY;
-            return true;
-        }
-
-        return false;
-    }
-
-    private void UpdateProgressAndRecoverIfStuck(double previousX, double previousZ, double previousHeadingDeg, bool collisionDetected, double dt)
-    {
-        var movedSquared = DistanceSquared(previousX, previousZ, _avatarX, _avatarZ);
-        var now = DateTime.UtcNow;
-        if (movedSquared >= _antiStallDistanceThresholdSq)
-        {
-            _lastProgressUtc = now;
-            _consecutiveWallContacts = 0;
-            _noProgressTicks = 0;
-            _inStuckEpisode = false;
-            return;
-        }
-
-        if (!_inStuckEpisode)
-        {
-            _inStuckEpisode = true;
-            _stuckEpisodes++;
-        }
-
-        _stuckSecondsAccum += Math.Max(0.001, dt);
-        _noProgressTicks++;
-
-        // Tier-7: stuck time costs HP — but ONLY when the avatar is actively trying
-        // to move and failing. The original implementation drained HP whenever
-        // movedSquared was below threshold, which also fired when the brain was idle,
-        // when the avatar was on a slow uphill (small but real movement), or during
-        // sleep. Those cases are not "stuck" — they're "not trying to move".
-        //
-        // The gate: motor drive intent above a low threshold, OR a real collision
-        // rejection from the caller. This way wall-bashing and trapped-in-corner
-        // cases still escalate to death, but standing still does not.
-        var motorIntent = Math.Max(_leftMotorDrive, _rightMotorDrive);
-        var isActivelyStuck = collisionDetected || motorIntent > StuckDamageMotorIntentThreshold;
-        if (isActivelyStuck)
-        {
-            _health = Math.Clamp(_health - (StuckDamagePerSec * Math.Max(0.001, dt)), 0.0, 1.0);
-            if (collisionDetected)
-            {
-                _health = Math.Clamp(_health - StuckImpactDamage, 0.0, 1.0);
-            }
-
-            if (_health <= 0.0)
-            {
-                HandleStuckDeath(collisionDetected ? "fatal collision damage" : "fatal exhaustion");
-                return;
-            }
-        }
-        else
-        {
-            // Not actively stuck (brain idle or moving slowly). Reset the
-            // stuck-episode bookkeeping so the next genuine stall starts fresh.
-            _inStuckEpisode = false;
-            _noProgressTicks = Math.Max(0, _noProgressTicks - 1);
-            return;
-        }
-
-        var headingDeltaSigned = _avatarHeadingDeg - previousHeadingDeg;
-        if (headingDeltaSigned > 180.0)
-        {
-            headingDeltaSigned -= 360.0;
-        }
-        else if (headingDeltaSigned < -180.0)
-        {
-            headingDeltaSigned += 360.0;
-        }
-
-        var headingDelta = Math.Abs(headingDeltaSigned);
-        if (collisionDetected)
-        {
-            // Brain-drive only: collisions feed pain/body-state back to the brain.
-            return;
-        }
-
-        if ((now - _lastProgressUtc) > TimeSpan.FromSeconds(_antiStallNoProgressTimeoutSec))
-        {
-            _lastProgressUtc = now;
-        }
-    }
-
-    /// <summary>
-    /// Tier-7 terminal anti-stall: when stuck-induced damage drains HP to zero,
-    /// the avatar dies. This is narrated explicitly and respawns at the world
-    /// spawn point — the embodied honest replacement for the previous silent
-    /// teleport. Death also resets motor state so the brain doesn't keep driving
-    /// the same failed action sequence into a freshly-spawned body.
-    /// </summary>
-    private void HandleStuckDeath(string cause)
-    {
-        _avatarDeaths++;
-        Log($"Avatar died: {cause} (death #{_avatarDeaths}). Respawning at world spawn.");
-
-        ResetAvatarPose(logMessage: false);
-        // Respawn with reduced HP: death has a cost, but the avatar isn't
-        // immediately doomed to die again on the next stuck episode.
-        _health = RespawnHealthFraction;
-        _stuckSecondsAccum = 0.0;
-        _inStuckEpisode = false;
-        _consecutiveWallContacts = 0;
-        _noProgressTicks = 0;
-    }
-
-    // TryForceHardUnstuck (mid-life teleport relocation) was removed in tier-7:
-    // it relocated the avatar by writing new coordinates, which is not embodied.
-    // Stuck-induced damage in UpdateProgressAndRecoverIfStuck now drives the avatar
-    // to death and HandleStuckDeath() respawns it at the spawn point with a clear
-    // narration. The TryFindHardUnstuckCandidate helper below is still used by
-    // ValidateAndRepairSpawnPose for *initial spawn* placement only — that is not
-    // a teleport during the avatar's life, just a search for a clear spawn cell.
-    private bool TryFindHardUnstuckCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
+    private bool TryFindClearSpawnCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
     {
         targetX = _avatarX;
         targetY = _avatarY;
         targetZ = _avatarZ;
         targetHeadingDeg = _avatarHeadingDeg;
 
-        if (TryFindGridEscapeCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
+        if (TryFindClearGridSpawnCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
         {
             return true;
         }
 
-        if (TryFindRandomGlobalEscapeCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
+        if (TryFindRandomClearSpawnCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
         {
             return true;
         }
@@ -3126,7 +2628,7 @@ public partial class MainWindow : Window
                     }
 
                     var clearance = EstimateLocalClearance(outsideX, outsideZ, 4.6);
-                    if (clearance < HardUnstuckMinClearance)
+                    if (clearance < SpawnSearchMinClearance)
                     {
                         continue;
                     }
@@ -3143,7 +2645,7 @@ public partial class MainWindow : Window
         var headingRad = DegreesToRadians(_avatarHeadingDeg);
         ReadOnlySpan<double> headingOffsetsDeg = [0, 24, -24, 42, -42, 68, -68, 96, -96, 128, -128, 158, -158, 180];
 
-        for (var radius = HardUnstuckRadiusMin; radius <= HardUnstuckRadiusMax; radius += HardUnstuckRadiusStep)
+        for (var radius = SpawnSearchRadiusMin; radius <= SpawnSearchRadiusMax; radius += SpawnSearchRadiusStep)
         {
             for (var i = 0; i < headingOffsetsDeg.Length; i++)
             {
@@ -3169,7 +2671,7 @@ public partial class MainWindow : Window
                 }
 
                 var clearance = EstimateLocalClearance(probeX, probeZ, 4.6);
-                if (clearance < HardUnstuckMinClearance)
+                if (clearance < SpawnSearchMinClearance)
                 {
                     continue;
                 }
@@ -3182,7 +2684,7 @@ public partial class MainWindow : Window
             }
         }
 
-        if (TryFindRandomGlobalEscapeCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
+        if (TryFindRandomClearSpawnCandidate(out targetX, out targetY, out targetZ, out targetHeadingDeg))
         {
             return true;
         }
@@ -3190,7 +2692,32 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private bool TryFindGridEscapeCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
+    private double TraceCollisionDistance(double dirX, double dirZ, double maxDistance)
+    {
+        if (_heights is null)
+        {
+            return maxDistance;
+        }
+
+        var invLen = 1.0 / Math.Max(0.0001, Math.Sqrt((dirX * dirX) + (dirZ * dirZ)));
+        dirX *= invLen;
+        dirZ *= invLen;
+
+        const double stepSize = 0.32;
+        for (var distance = stepSize; distance <= maxDistance; distance += stepSize)
+        {
+            var sampleX = _avatarX + (dirX * distance);
+            var sampleZ = _avatarZ + (dirZ * distance);
+            if (Collides(sampleX, sampleZ, out _))
+            {
+                return distance;
+            }
+        }
+
+        return maxDistance;
+    }
+
+    private bool TryFindClearGridSpawnCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
     {
         targetX = _avatarX;
         targetY = _avatarY;
@@ -3218,7 +2745,7 @@ public partial class MainWindow : Window
         while (queue.Count > 0)
         {
             var node = queue.Dequeue();
-            if (node.Depth > HardUnstuckGridDepth)
+            if (node.Depth > SpawnSearchGridDepth)
             {
                 continue;
             }
@@ -3242,7 +2769,7 @@ public partial class MainWindow : Window
                 }
 
                 var clearance = EstimateLocalClearance(worldX, worldZ, 4.8);
-                if (clearance < HardUnstuckMinClearance)
+                if (clearance < SpawnSearchMinClearance)
                 {
                     goto EnqueueNeighbors;
                 }
@@ -3292,7 +2819,7 @@ public partial class MainWindow : Window
                         continue;
                     }
 
-                    // During hard escape, allow steeper terrain transitions than normal movement.
+                    // Initial spawn validation may cross steeper terrain than normal movement.
                     if (Math.Abs(neighborHeight - currentHeight) > 4)
                     {
                         continue;
@@ -3385,7 +2912,7 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private bool TryFindRandomGlobalEscapeCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
+    private bool TryFindRandomClearSpawnCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
     {
         targetX = _avatarX;
         targetY = _avatarY;
@@ -3396,7 +2923,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        var random = new Random(unchecked((int)(Environment.TickCount64 ^ (_stuckRecoveries * 7919L) ^ (_hardUnstuckEvents * 104729L))));
+        var random = new Random(unchecked((int)(Environment.TickCount64 ^ (_seed * 104729L))));
         var worldHalf = (WorldSize - 1) * 0.5;
         var nearestShelter = GetNearestShelter();
         var bestScore = double.NegativeInfinity;
@@ -3419,7 +2946,7 @@ public partial class MainWindow : Window
             }
 
             var clearance = EstimateLocalClearance(worldX, worldZ, 5.2);
-            if (clearance < HardUnstuckMinClearance)
+            if (clearance < SpawnSearchMinClearance)
             {
                 continue;
             }
@@ -5747,11 +5274,6 @@ public partial class MainWindow : Window
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
         _trailPoints.Clear();
         _trailAccumulatorSeconds = 0.0;
-        _consecutiveWallContacts = 0;
-        _escapeRearmTicksRemaining = 0;
-        _noProgressTicks = 0;
-        _lastProgressUtc = DateTime.UtcNow;
-        _lastEscapeReflexUtc = DateTime.MinValue;
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
@@ -5803,8 +5325,8 @@ public partial class MainWindow : Window
             }
         }
 
-        // Final fallback: use hard-unstuck search if normal spawn validation fails.
-        if (TryFindHardUnstuckCandidate(out var targetX, out var targetY, out var targetZ, out var targetHeadingDeg))
+        // Final fallback: search the generated terrain for a clear initial spawn.
+        if (TryFindClearSpawnCandidate(out var targetX, out var targetY, out var targetZ, out var targetHeadingDeg))
         {
             _avatarX = targetX;
             _avatarY = targetY;
@@ -6212,488 +5734,6 @@ public partial class MainWindow : Window
             _ticksWithoutMotorDispatch = signal.TicksWithoutMotorDispatch;
         }
     }
-
-    private bool ApplyAboutFaceEscape(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (_sleepState || _predators.Count == 0 || dt <= 0.0)
-        {
-            return false;
-        }
-
-        var nearestPredator = FindNearest(_predators);
-        var triggerRange = Math.Max(2.0, _predatorSenseRadius * AboutFaceThreatRangeMultiplier);
-        if (nearestPredator.Distance > triggerRange || !TryResolveAboutFaceDrive(nearestPredator.Distance, out var drive))
-        {
-            return false;
-        }
-
-        var awayHeadingDeg = NormalizeDegrees(
-            Math.Atan2(_avatarX - nearestPredator.Position.X, _avatarZ - nearestPredator.Position.Z) * (180.0 / Math.PI));
-        var turnErrorDeg = NormalizeSignedDegrees(awayHeadingDeg - _avatarHeadingDeg);
-        if (Math.Abs(Math.Abs(turnErrorDeg) - 180.0) < 0.5)
-        {
-            turnErrorDeg = ChooseAboutFaceTurnSign() * 179.5;
-        }
-
-        var absError = Math.Abs(turnErrorDeg);
-        var turnAssist = Math.Clamp(
-            turnErrorDeg * AboutFaceTurnGain * (0.72 + (drive * 0.42)),
-            -AboutFaceMaxTurnRateDeg,
-            AboutFaceMaxTurnRateDeg);
-        turnRateDeg = Math.Clamp(
-            turnRateDeg + turnAssist,
-            -WorldKinematicsOptions.MaxTurnRateDeg,
-            WorldKinematicsOptions.MaxTurnRateDeg);
-
-        if (absError > AboutFaceRunCommitDeg)
-        {
-            // Commit to a real about-face: rotate first so the next forward burst increases distance.
-            forwardSpeed = Math.Min(forwardSpeed, 0.0);
-        }
-        else
-        {
-            var runCommit = Math.Clamp(0.54 + (drive * 0.36), 0.54, 0.94);
-            forwardSpeed = Math.Max(forwardSpeed, WorldRunMaxForwardSpeed * runCommit);
-        }
-
-        if (absError <= AboutFaceAlignedDeg)
-        {
-            _flightPressure = Math.Clamp(_flightPressure - (dt * 0.18), 0.0, 1.0);
-        }
-
-        LogAboutFaceOccasionally(
-            $"Avatar escape: about-face from predator, turn {turnErrorDeg:0} deg, distance {nearestPredator.Distance:0.0}m");
-        return true;
-    }
-
-    private bool TryResolveAboutFaceDrive(double predatorDistance, out double drive)
-    {
-        var combinedIntent = $"{_brainMotorDirective} {_brainGoalKey} {_brainActionTarget}";
-        var defensiveIntent = MentionsAny(
-            combinedIntent,
-            "avoidthreat",
-            "avoid_threat",
-            "avoid threat",
-            "retreat",
-            "escape",
-            "danger",
-            "predator",
-            "bear",
-            "away");
-        var immediatePredator = predatorDistance <= Math.Max(2.0, _predatorSenseRadius * 1.05);
-        if (!immediatePredator && !defensiveIntent && _flightPressure < 0.58 && _threat < 0.66)
-        {
-            drive = 0.0;
-            return false;
-        }
-
-        var proximityDrive = immediatePredator
-            ? Math.Clamp(1.0 - (predatorDistance / Math.Max(0.5, _predatorSenseRadius * 1.05)), 0.0, 1.0)
-            : 0.0;
-        var anxietyDrive = immediatePredator || defensiveIntent
-            ? _environmentAnxiety * 0.42
-            : 0.0;
-        var unarmedBias = _weaponCharges <= 0 ? 0.16 : -0.22;
-        drive = Math.Clamp(
-            Math.Max(Math.Max(_threat, _flightPressure), Math.Max(anxietyDrive, proximityDrive)) + unarmedBias,
-            0.0,
-            1.0);
-
-        if (defensiveIntent)
-        {
-            drive = Math.Max(drive, _weaponCharges <= 0 ? 0.66 : 0.48);
-        }
-
-        return drive >= AboutFaceThreatThreshold;
-    }
-
-    private double ChooseAboutFaceTurnSign()
-    {
-        var headingRad = DegreesToRadians(_avatarHeadingDeg);
-        var leftDistance = TraceCollisionDistance(
-            Math.Sin(headingRad - (Math.PI * 0.5)),
-            Math.Cos(headingRad - (Math.PI * 0.5)),
-            EscapeProbeRange);
-        var rightDistance = TraceCollisionDistance(
-            Math.Sin(headingRad + (Math.PI * 0.5)),
-            Math.Cos(headingRad + (Math.PI * 0.5)),
-            EscapeProbeRange);
-
-        if (Math.Abs(rightDistance - leftDistance) > 0.08)
-        {
-            return rightDistance > leftDistance ? 1.0 : -1.0;
-        }
-
-        return ((_stuckRecoveries + _hardUnstuckEvents) & 1) == 0 ? 1.0 : -1.0;
-    }
-
-    private void LogAboutFaceOccasionally(string message)
-    {
-        var nowMs = Environment.TickCount64;
-        if ((nowMs - _lastAboutFaceLogMs) < 1200)
-        {
-            return;
-        }
-
-        _lastAboutFaceLogMs = nowMs;
-        Log(message);
-    }
-
-    private void ApplyOrientingTargetLock(double dt, ref double forwardSpeed, ref double turnRateDeg)
-    {
-        if (_sleepState)
-        {
-            return;
-        }
-
-        var goal = ResolveOrientingGoalKind(out var drive);
-        if (goal == OrientingGoalKind.None || drive < OrientingIntentThreshold)
-        {
-            return;
-        }
-
-        if (TryFindVisibleOrientingTarget(goal, out var target))
-        {
-            var turnAssist = Math.Clamp(
-                target.SignedAngleDeg * OrientingTargetLockGain * drive,
-                -OrientingMaxTurnAssistDeg,
-                OrientingMaxTurnAssistDeg);
-            turnRateDeg = Math.Clamp(
-                turnRateDeg + turnAssist,
-                -WorldKinematicsOptions.MaxTurnRateDeg,
-                WorldKinematicsOptions.MaxTurnRateDeg);
-
-            var halfFov = AvatarVisionHorizontalFovDeg * 0.5;
-            var offCenter = Math.Clamp(Math.Abs(target.SignedAngleDeg) / halfFov, 0.0, 1.0);
-            if (Math.Abs(target.SignedAngleDeg) > OrientingTargetCenteredDeg)
-            {
-                forwardSpeed *= Math.Clamp(1.0 - (offCenter * 0.74), 0.18, 1.0);
-            }
-            else
-            {
-                forwardSpeed = Math.Max(forwardSpeed, WorldWalkMaxForwardSpeed * (0.24 + (drive * 0.20)));
-            }
-
-            LogOrientingOccasionally($"Avatar orienting: lock {goal.ToString().ToLowerInvariant()} angle {target.SignedAngleDeg:0.0} deg, distance {target.Distance:0.0}m");
-            return;
-        }
-
-        if (TryFindRememberedOrientingTarget(goal, out var rememberedTarget))
-        {
-            var turnAssist = Math.Clamp(
-                rememberedTarget.SignedAngleDeg * OrientingTargetLockGain * drive,
-                -OrientingMaxTurnAssistDeg,
-                OrientingMaxTurnAssistDeg);
-            turnRateDeg = Math.Clamp(
-                turnRateDeg + turnAssist,
-                -WorldKinematicsOptions.MaxTurnRateDeg,
-                WorldKinematicsOptions.MaxTurnRateDeg);
-
-            if (drive >= OrientingMemoryStepDriveThreshold &&
-                rememberedTarget.Distance > OrientingMemoryVisibleMinDistance &&
-                Math.Abs(rememberedTarget.SignedAngleDeg) <= OrientingMemoryAlignedDeg)
-            {
-                var frontClearance = TraceCollisionDistanceFrom(
-                    _avatarX,
-                    _avatarZ,
-                    Math.Sin(DegreesToRadians(_avatarHeadingDeg)),
-                    Math.Cos(DegreesToRadians(_avatarHeadingDeg)),
-                    2.2);
-                if (frontClearance > 1.15)
-                {
-                    var cautiousSpeed = WorldWalkMaxForwardSpeed * (0.16 + (drive * 0.18));
-                    forwardSpeed = Math.Max(forwardSpeed, cautiousSpeed);
-                }
-            }
-            else if (Math.Abs(forwardSpeed) < 0.20)
-            {
-                forwardSpeed = 0.0;
-            }
-
-            LogOrientingOccasionally($"Avatar orienting: remembered {goal.ToString().ToLowerInvariant()} angle {rememberedTarget.SignedAngleDeg:0.0} deg, distance {rememberedTarget.Distance:0.0}m");
-            return;
-        }
-
-        _orientingScanPhaseDeg = NormalizeDegrees(_orientingScanPhaseDeg + (dt * 58.0) + (drive * 11.0));
-        var scanSign = ResolveCommandedScanSign();
-        if (Math.Abs(scanSign) < 0.5)
-        {
-            scanSign = Math.Sin(DegreesToRadians(_orientingScanPhaseDeg)) >= 0.0 ? 1.0 : -1.0;
-        }
-
-        forwardSpeed = Math.Abs(forwardSpeed) > 0.20
-            ? forwardSpeed * 0.55
-            : 0.0;
-        var scanAssist = scanSign * OrientingScanTurnRateDeg * (0.62 + (drive * 0.62));
-        turnRateDeg = Math.Clamp(
-            turnRateDeg + scanAssist,
-            -WorldKinematicsOptions.MaxTurnRateDeg,
-            WorldKinematicsOptions.MaxTurnRateDeg);
-        LogOrientingOccasionally($"Avatar orienting: head-scanning for {goal.ToString().ToLowerInvariant()}");
-    }
-
-    private OrientingGoalKind ResolveOrientingGoalKind(out double drive)
-    {
-        var combinedIntent = $"{_brainMotorDirective} {_brainGoalKey} {_brainActionTarget}";
-        var weaponDrive = Math.Max(GetWeaponNeedPressure(), Math.Clamp(_flightPressure + (_threat * 0.35), 0.0, 1.0));
-        if (_weaponCharges <= 0 &&
-            (MentionsAny(combinedIntent, "weapon", "tool", "arm", "defend", "fight") || weaponDrive >= 0.38))
-        {
-            drive = Math.Clamp(Math.Max(0.45, weaponDrive), 0.0, 1.0);
-            return OrientingGoalKind.Weapon;
-        }
-
-        var shelterDrive = Math.Clamp(
-            (_limbicTiredDrive * 0.70) + (_environmentShelterNeed * 0.85) + (_environmentSleepPressure * 0.30),
-            0.0,
-            1.0);
-        if (MentionsAny(combinedIntent, "shelter", "sleep", "home", "cave", "rest", "tired") || shelterDrive >= 0.40)
-        {
-            drive = Math.Clamp(Math.Max(0.45, shelterDrive), 0.0, 1.0);
-            return OrientingGoalKind.Shelter;
-        }
-
-        var hungerDrive = ComputeNeedDrive(_hunger, 0.34, 0.90);
-        if (MentionsAny(combinedIntent, "food", "eat", "hungry", "forage", "approach_food") || hungerDrive >= 0.34)
-        {
-            drive = Math.Clamp(Math.Max(0.42, hungerDrive), 0.0, 1.0);
-            return OrientingGoalKind.Food;
-        }
-
-        drive = 0.0;
-        return OrientingGoalKind.None;
-    }
-
-    private bool TryFindVisibleOrientingTarget(OrientingGoalKind goal, out VisibleOrientingTarget target)
-    {
-        target = default;
-        var found = false;
-        var bestScore = double.NegativeInfinity;
-
-        if (goal == OrientingGoalKind.Food)
-        {
-            foreach (var pickup in _foodPickups)
-            {
-                if (pickup.Active)
-                {
-                    found |= TryConsiderVisibleOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
-                }
-            }
-
-            return found;
-        }
-
-        if (goal == OrientingGoalKind.Weapon)
-        {
-            foreach (var pickup in _weaponPickups)
-            {
-                if (pickup.Active)
-                {
-                    found |= TryConsiderVisibleOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
-                }
-            }
-
-            return found;
-        }
-
-        if (goal == OrientingGoalKind.Shelter)
-        {
-            foreach (var shelter in _shelterSites)
-            {
-                var position = new Point3D(shelter.X, shelter.BaseY + 0.8, shelter.Z);
-                found |= TryConsiderVisibleOrientingCandidate(goal, position, ref target, ref bestScore);
-            }
-        }
-
-        return found;
-    }
-
-    private bool TryFindRememberedOrientingTarget(OrientingGoalKind goal, out VisibleOrientingTarget target)
-    {
-        target = default;
-        var found = false;
-        var bestScore = double.NegativeInfinity;
-
-        if (goal == OrientingGoalKind.Food)
-        {
-            foreach (var pickup in _foodPickups)
-            {
-                if (pickup.Active)
-                {
-                    found |= TryConsiderRememberedOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
-                }
-            }
-
-            return found;
-        }
-
-        if (goal == OrientingGoalKind.Weapon)
-        {
-            foreach (var pickup in _weaponPickups)
-            {
-                if (pickup.Active)
-                {
-                    found |= TryConsiderRememberedOrientingCandidate(goal, pickup.Position, ref target, ref bestScore);
-                }
-            }
-
-            return found;
-        }
-
-        if (goal == OrientingGoalKind.Shelter)
-        {
-            foreach (var shelter in _shelterSites)
-            {
-                var position = new Point3D(shelter.X, shelter.BaseY + 0.8, shelter.Z);
-                found |= TryConsiderRememberedOrientingCandidate(goal, position, ref target, ref bestScore);
-            }
-        }
-
-        return found;
-    }
-
-    private bool TryConsiderVisibleOrientingCandidate(
-        OrientingGoalKind goal,
-        Point3D position,
-        ref VisibleOrientingTarget target,
-        ref double bestScore)
-    {
-        var dx = position.X - _avatarX;
-        var dz = position.Z - _avatarZ;
-        var distance = Math.Sqrt((dx * dx) + (dz * dz));
-        if (distance > OrientingTargetVisibleRange ||
-            !TryProjectToAvatarView(position, distance, out _, out var confidence))
-        {
-            return false;
-        }
-
-        var bodyAngleDeg = NormalizeSignedDegrees((Math.Atan2(dx, dz) * (180.0 / Math.PI)) - _avatarHeadingDeg);
-        var score = (confidence * 1.55) + (1.0 - Math.Clamp(distance / OrientingTargetVisibleRange, 0.0, 1.0));
-        if (score <= bestScore)
-        {
-            return true;
-        }
-
-        bestScore = score;
-        target = new VisibleOrientingTarget(goal, position, distance, bodyAngleDeg, confidence);
-        return true;
-    }
-
-    private bool TryConsiderRememberedOrientingCandidate(
-        OrientingGoalKind goal,
-        Point3D position,
-        ref VisibleOrientingTarget target,
-        ref double bestScore)
-    {
-        var dx = position.X - _avatarX;
-        var dz = position.Z - _avatarZ;
-        var distance = Math.Sqrt((dx * dx) + (dz * dz));
-        if (distance < 0.25 || distance > OrientingMemoryTargetRange)
-        {
-            return false;
-        }
-
-        var targetHeadingDeg = NormalizeDegrees(Math.Atan2(dx, dz) * (180.0 / Math.PI));
-        var signedAngleDeg = NormalizeSignedDegrees(targetHeadingDeg - _avatarHeadingDeg);
-        var alignment = 1.0 - Math.Clamp(Math.Abs(signedAngleDeg) / 180.0, 0.0, 1.0);
-        var distanceScore = 1.0 - Math.Clamp(distance / OrientingMemoryTargetRange, 0.0, 1.0);
-        var score = (distanceScore * 1.25) + (alignment * 0.45);
-        if (score <= bestScore)
-        {
-            return true;
-        }
-
-        bestScore = score;
-        target = new VisibleOrientingTarget(goal, position, distance, signedAngleDeg, alignment);
-        return true;
-    }
-
-    private bool TryProjectToAvatarView(Point3D position, double distance, out double signedAngleDeg, out double centerConfidence)
-    {
-        signedAngleDeg = 0.0;
-        centerConfidence = 0.0;
-        if (distance <= 0.001)
-        {
-            centerConfidence = 1.0;
-            return true;
-        }
-
-        var dx = position.X - _avatarX;
-        var dz = position.Z - _avatarZ;
-        var invDistance = 1.0 / distance;
-        var targetX = dx * invDistance;
-        var targetZ = dz * invDistance;
-        var forward = GetAvatarVisualForward();
-        var forwardDot = Math.Clamp((forward.X * targetX) + (forward.Z * targetZ), -1.0, 1.0);
-        if (forwardDot <= 0.04)
-        {
-            return false;
-        }
-
-        var lateral = (forward.X * targetZ) - (forward.Z * targetX);
-        signedAngleDeg = Math.Atan2(lateral, forwardDot) * (180.0 / Math.PI);
-        var halfFov = AvatarVisionHorizontalFovDeg * 0.5;
-        if (Math.Abs(signedAngleDeg) > halfFov)
-        {
-            return false;
-        }
-
-        var clearance = TraceCollisionDistance(targetX, targetZ, Math.Min(distance, OrientingTargetVisibleRange));
-        if (clearance + 0.45 < distance)
-        {
-            return false;
-        }
-
-        centerConfidence = 1.0 - Math.Clamp(Math.Abs(signedAngleDeg) / halfFov, 0.0, 1.0);
-        return true;
-    }
-
-    private double ResolveCommandedScanSign()
-    {
-        var directive = _brainMotorDirective ?? string.Empty;
-        if (directive.Contains("left", StringComparison.OrdinalIgnoreCase))
-        {
-            return 1.0;
-        }
-
-        if (directive.Contains("right", StringComparison.OrdinalIgnoreCase))
-        {
-            return -1.0;
-        }
-
-        return 0.0;
-    }
-
-    private void LogOrientingOccasionally(string message)
-    {
-        var nowMs = Environment.TickCount64;
-        if ((nowMs - _lastOrientingLogMs) < 1500)
-        {
-            return;
-        }
-
-        _lastOrientingLogMs = nowMs;
-        Log(message);
-    }
-
-    private static bool MentionsAny(string value, params string[] terms)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        for (var i = 0; i < terms.Length; i++)
-        {
-            if (value.Contains(terms[i], StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
 
     private void QueueOutcomeInput(AvatarOutcomeTelemetry telemetry, bool force = false)
         => _ = DispatchOutcomeInputAsync(telemetry, force, _shutdown.Token);
@@ -9039,14 +8079,6 @@ public partial class MainWindow : Window
         Long = 2
     }
 
-    private enum OrientingGoalKind
-    {
-        None = 0,
-        Food = 1,
-        Shelter = 2,
-        Weapon = 3
-    }
-
     private enum BlockKind
     {
         Grass,
@@ -9093,13 +8125,6 @@ public partial class MainWindow : Window
     private readonly record struct VisionTerrainCell(
         BlockKind Kind,
         Color Color);
-
-    private readonly record struct VisibleOrientingTarget(
-        OrientingGoalKind Kind,
-        Point3D Position,
-        double Distance,
-        double SignedAngleDeg,
-        double CenterConfidence);
 
     private sealed class VisionComputeRequestEnvelope
     {

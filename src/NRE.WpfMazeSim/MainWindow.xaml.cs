@@ -44,16 +44,10 @@ public partial class MainWindow : Window
     private const double VisionRange = 9.5;
     private const double CameraMinPitchDeg = -85.0;
     private const double CameraMaxPitchDeg = 65.0;
-    private const double EscapeAggressivenessDefault = 1.0;
-    private const double EscapeCooldownDefaultMs = 900.0;
     private const double WallProbeRange = 1.7;
     private const double WallProbeSideAngleDeg = 34.0;
-    private const double HardStuckTimeoutSec = 6.5;
-    private const double HardStuckCollisionBurstWindowSec = 1.8;
-    private const int HardStuckCollisionBurstThreshold = 5;
     private static readonly TimeSpan HazardDamageCooldown = TimeSpan.FromMilliseconds(820);
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
-    private static readonly TimeSpan NoProgressRecoveryTimeout = TimeSpan.FromSeconds(4.0);
     private static readonly TimeSpan ObjectStimulusCooldown = TimeSpan.FromMilliseconds(450);
     private const int BodyStateDispatchIntervalMs = 350;
     private const int EnvironmentAudioDispatchIntervalMs = 1800;
@@ -98,7 +92,6 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _renderTimer;
     private readonly DispatcherTimer _brainPollTimer;
-    private readonly DispatcherTimer _navigationTimer;
     private readonly DispatcherTimer _visionTimer;
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private readonly HttpClient _httpClient;
@@ -123,7 +116,6 @@ public partial class MainWindow : Window
     private readonly CancellationTokenSource _shutdown = new();
     private readonly JsonDocumentOptions _jsonDocOptions = new() { AllowTrailingCommas = true };
     private readonly Model3DGroup _sceneRoot = new();
-    private readonly Queue<DateTime> _recentWallCollisionUtc = new();
     private readonly AxisAngleRotation3D _avatarYawRotation = new(new Vector3D(0, 1, 0), 0);
     private readonly AxisAngleRotation3D _avatarHeadYawRotation = new(new Vector3D(0, 1, 0), 0);
     private readonly TranslateTransform3D _avatarTranslate = new();
@@ -170,7 +162,6 @@ public partial class MainWindow : Window
     private long _dispatchSinceMs;
     private long _lastNeuronalMotorTick = -1;
     private bool _brainPollInFlight;
-    private bool _navigationPollInFlight;
     private bool _connectedOnce;
     private string _lastConnectionMessage = string.Empty;
     private string _lastVisionInputStatus = string.Empty;
@@ -178,10 +169,8 @@ public partial class MainWindow : Window
     private double _lastSimTimeSeconds;
     private DateTime _lastHazardDamageUtc = DateTime.MinValue;
     private DateTime _lastWallImpactUtc = DateTime.MinValue;
-    private DateTime _lastEscapeReflexUtc = DateTime.MinValue;
-    private DateTime _lastProgressUtc = DateTime.UtcNow;
-    private bool _collisionStimulusInFlight;
     private bool _bodyStimulusInFlight;
+    private bool _collisionInputInFlight;
     private bool _outcomeStimulusInFlight;
     private bool _environmentAudioInFlight;
     private bool _englishCommandInFlight;
@@ -204,14 +193,10 @@ public partial class MainWindow : Window
     private int _foodsCollected;
     private int _hazardContacts;
     private int _wallImpacts;
-    private int _consecutiveWallContacts;
-    private int _stuckRecoveries;
-    private int _hardUnstuckEvents;
     private double _lastWallProximity;
     private double _lastFrontProximity;
     private double _lastLeftProximity;
     private double _lastRightProximity;
-    private string? _collisionEscapeHemisphere;
     private int _checkpointActivations;
     private string _lastMazeEvent = "-";
     private string _limbicStage = "unknown";
@@ -226,12 +211,9 @@ public partial class MainWindow : Window
     private double _limbicNorepinephrine;
     private readonly Queue<long> _recentWallImpactTicks = new();
     private readonly Queue<LearningSample> _learningSamples = new();
-    private readonly string _navigationSessionId = $"wpf-maze-{Environment.ProcessId}-{Guid.NewGuid():N}";
     private double _totalDistanceTravelled;
     private double _bestDistanceToGoal = double.MaxValue;
     private long _lastLearningSampleTick = -1;
-    private bool _navigationResetPending = true;
-    private string _lastNavigationDirective = "motor_stop";
 
     public MainWindow()
     {
@@ -263,26 +245,15 @@ public partial class MainWindow : Window
         };
         _brainPollTimer.Tick += BrainPollTimer_OnTick;
 
-        _navigationTimer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(80)
-        };
-        _navigationTimer.Tick += NavigationTimer_OnTick;
-
         _visionTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(120)
         };
         _visionTimer.Tick += VisionTimer_OnTick;
 
-        EscapeAggressivenessSlider.Value = EscapeAggressivenessDefault;
-        EscapeCooldownSlider.Value = EscapeCooldownDefaultMs;
-
         ForwardGainSlider.ValueChanged += GainSlider_OnValueChanged;
         TurnGainSlider.ValueChanged += GainSlider_OnValueChanged;
         DriveSmoothingSlider.ValueChanged += GainSlider_OnValueChanged;
-        EscapeAggressivenessSlider.ValueChanged += GainSlider_OnValueChanged;
-        EscapeCooldownSlider.ValueChanged += GainSlider_OnValueChanged;
 
         Loaded += MainWindow_OnLoaded;
         Closed += MainWindow_OnClosed;
@@ -306,7 +277,7 @@ public partial class MainWindow : Window
         LimbicDriveText.Text = "Limbic drives: waiting for Control Program state.";
         BrainNarrationText.Text = "Brain narration: waiting for brain state.";
         EnglishCommandStatusText.Text = "Command: idle";
-        NavigationStatusText.Text = "Navigation: waiting for Control Program";
+        NavigationStatusText.Text = "Motor authority: neuronal brain drive";
     }
 
     private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -314,7 +285,6 @@ public partial class MainWindow : Window
         Focus();
         _renderTimer.Start();
         _brainPollTimer.Start();
-        _navigationTimer.Start();
         _visionTimer.Start();
         SetConnectionStatus(AvatarControlStatusText.Connecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Maze simulator ready. Waiting for motor pathway spikes from Control Program dispatch stream.");
@@ -328,7 +298,6 @@ public partial class MainWindow : Window
         _shutdown.Cancel();
         _renderTimer.Stop();
         _brainPollTimer.Stop();
-        _navigationTimer.Stop();
         _visionTimer.Stop();
         _avatarService.Dispose();
         _auditoryInputHttpClient.Dispose();
@@ -410,15 +379,7 @@ public partial class MainWindow : Window
         ForwardGainText.Text = ForwardGainSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         TurnGainText.Text = TurnGainSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DriveSmoothingText.Text = DriveSmoothingSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
-        EscapeAggressivenessText.Text = $"{EscapeAggressivenessSlider.Value:0.00}x";
-        EscapeCooldownText.Text = $"{EscapeCooldownSlider.Value:0} ms";
     }
-
-    private double GetEscapeAggressiveness() =>
-        Math.Clamp(EscapeAggressivenessSlider.Value, 0.50, 2.50);
-
-    private TimeSpan GetEscapeReflexCooldown() =>
-        TimeSpan.FromMilliseconds(Math.Clamp(EscapeCooldownSlider.Value, 250.0, 3000.0));
 
     private void RenderTimer_OnTick(object? sender, EventArgs e)
     {
@@ -468,41 +429,6 @@ public partial class MainWindow : Window
         finally
         {
             _brainPollInFlight = false;
-        }
-    }
-
-    private async void NavigationTimer_OnTick(object? sender, EventArgs e)
-    {
-        if (_navigationPollInFlight ||
-            _shutdown.IsCancellationRequested ||
-            SpatialNavigationCheckBox.IsChecked != true)
-        {
-            return;
-        }
-
-        var endpoint = ResolveEndpointUri();
-        if (endpoint is null)
-        {
-            StopSpatialNavigation("Navigation: invalid Control Program endpoint");
-            return;
-        }
-
-        _navigationPollInFlight = true;
-        try
-        {
-            await PollSpatialNavigationAsync(endpoint, _shutdown.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            // No-op on shutdown or request timeout.
-        }
-        catch (Exception ex)
-        {
-            StopSpatialNavigation($"Navigation: {ex.GetType().Name}");
-        }
-        finally
-        {
-            _navigationPollInFlight = false;
         }
     }
 
@@ -574,10 +500,7 @@ public partial class MainWindow : Window
                 _lastNeuronalMotorTick,
                 out _lastNeuronalMotorTick,
                 out var neuronalMotor);
-            if (SpatialNavigationCheckBox.IsChecked != true)
-            {
-                ApplyMotorDispatch(dispatches);
-            }
+            ApplyMotorDispatch(dispatches);
             SetConnectionStatus(AvatarControlStatusText.ConnectedWithMotorEvents(_lastTick, _lastMotorDispatchCount), Brushes.LightGreen, logOnChange: false);
             if (!_connectedOnce)
             {
@@ -1622,27 +1545,13 @@ public partial class MainWindow : Window
             turnGain: TurnGainSlider.Value);
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
 
-        var movingForward = forwardSpeed > 0.08;
-        var translating = Math.Abs(forwardSpeed) > 0.08;
-        bool navigationTurning = SpatialNavigationCheckBox.IsChecked == true &&
-                                 (_lastNavigationDirective.Contains("turn", StringComparison.OrdinalIgnoreCase) ||
-                                  _lastNavigationDirective.Contains("about_face", StringComparison.OrdinalIgnoreCase));
-        var bodyTurnRateDeg = (movingForward || translating || navigationTurning) ? turnRateDeg : 0.0;
-        if (Math.Abs(bodyTurnRateDeg) > 0.001)
+        if (Math.Abs(turnRateDeg) > 0.001)
         {
-            _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, bodyTurnRateDeg, dt);
+            _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, turnRateDeg, dt);
         }
 
         UpdateDirectionalWallProximity();
-
-        if (movingForward || navigationTurning)
-        {
-            _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
-        }
-        else if (!translating && Math.Abs(turnRateDeg) > 0.01)
-        {
-            _avatarHeadYawDeg = Math.Clamp(_avatarHeadYawDeg + (turnRateDeg * dt), -AvatarHeadMaxYawDeg, AvatarHeadMaxYawDeg);
-        }
+        _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
 
         var (dirX, dirZ) = AvatarKinematics.ForwardDirection(_avatarHeadingDeg);
 
@@ -1651,7 +1560,6 @@ public partial class MainWindow : Window
         var step = forwardSpeed * dt;
         var nextX = _avatarX + (dirX * step);
         var nextZ = _avatarZ + (dirZ * step);
-        var collisionDetected = false;
         var slidAlongWall = false;
 
         if (!Collides(nextX, nextZ))
@@ -1661,7 +1569,6 @@ public partial class MainWindow : Window
         }
         else
         {
-            collisionDetected = true;
             if (!Collides(nextX, _avatarZ))
             {
                 _avatarX = nextX;
@@ -1677,7 +1584,6 @@ public partial class MainWindow : Window
             ApplyWallImpactPenalty(slidAlongWall);
         }
 
-        UpdateProgressAndRecoverIfStuck(previousX, previousZ, collisionDetected, slidAlongWall);
         UpdateDirectionalWallProximity();
         var movedDistance = Math.Sqrt(DistanceSquared(previousX, previousZ, _avatarX, _avatarZ));
         _totalDistanceTravelled += movedDistance;
@@ -1691,21 +1597,13 @@ public partial class MainWindow : Window
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
 
         _lastForwardSpeed = forwardSpeed;
-        _lastTurnRateDeg = bodyTurnRateDeg;
+        _lastTurnRateDeg = turnRateDeg;
 
         var dx = _avatarX - _goalWorld.X;
         var dz = _avatarZ - _goalWorld.Y;
         var distanceToGoal = Math.Sqrt((dx * dx) + (dz * dz));
         if (distanceToGoal < _bestDistanceToGoal)
         {
-            if (_bestDistanceToGoal < double.MaxValue)
-            {
-                var progress = Math.Clamp((_bestDistanceToGoal - distanceToGoal) / CellSize, 0.0, 1.0);
-                if (progress > 0.05)
-                {
-                    QueueOutcomeInput(new AvatarOutcomeTelemetry(Progress: progress * 0.38, EffortCost: Math.Clamp(Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed * 0.08, 0.0, 0.12)));
-                }
-            }
             _bestDistanceToGoal = distanceToGoal;
         }
 
@@ -1890,262 +1788,42 @@ public partial class MainWindow : Window
         _lastWallImpactUtc = now;
         _wallImpacts++;
         _recentWallImpactTicks.Enqueue(Math.Max(0, _lastTick));
-        RegisterWallCollisionEvent(now, slidAlongWall);
-
         var scorePenalty = slidAlongWall ? 2 : 4;
         var healthPenalty = slidAlongWall ? 1 : 2;
 
         _score = Math.Max(0, _score - scorePenalty);
         _health = Math.Max(1, _health - healthPenalty);
 
-        // Wall impacts are mild aversive teaching signals; never force a hard reset.
-        _limbicAversiveDrive = Math.Clamp(_limbicAversiveDrive + (slidAlongWall ? 0.05 : 0.08), 0.0, 1.0);
-        _limbicThreat = Math.Clamp(_limbicThreat + (slidAlongWall ? 0.04 : 0.07), 0.0, 1.0);
         QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: slidAlongWall ? 0.18 : 0.32, DamageLevel: slidAlongWall ? 0.06 : 0.12, EffortCost: 0.22), force: true);
+        QueueCollisionInput(slidAlongWall);
 
         SetMazeEvent($"Wall impact #{_wallImpacts}: score -{scorePenalty}");
-        TriggerOrientingStimulus("wall-impact", severeImpact: !slidAlongWall);
     }
 
-    private void UpdateProgressAndRecoverIfStuck(double previousX, double previousZ, bool collisionDetected, bool slidAlongWall)
+    private void QueueCollisionInput(bool slidAlongWall)
     {
-        var movedSquared = DistanceSquared(previousX, previousZ, _avatarX, _avatarZ);
-        var now = DateTime.UtcNow;
-        if (movedSquared >= 0.0016)
+        if (_collisionInputInFlight)
         {
-            _lastProgressUtc = now;
-            _consecutiveWallContacts = 0;
-            if (!collisionDetected)
-            {
-                _collisionEscapeHemisphere = null;
-            }
             return;
         }
 
-        if (collisionDetected)
-        {
-            _consecutiveWallContacts++;
-            var threshold = slidAlongWall ? 10 : 6;
-            if (_consecutiveWallContacts >= threshold)
-            {
-                TriggerOrientingStimulus("wall-trap recovery", severeImpact: true);
-                _consecutiveWallContacts = 0;
-            }
-
-            return;
-        }
-
-        if (now - _lastProgressUtc > NoProgressRecoveryTimeout)
-        {
-            var severe = (now - _lastProgressUtc).TotalSeconds >= HardStuckTimeoutSec;
-            TriggerOrientingStimulus("no-progress recovery", severeImpact: severe);
-            _lastProgressUtc = now;
-            _consecutiveWallContacts = 0;
-        }
+        const double sideDeadband = 0.04;
+        var hemisphere = _lastLeftProximity > _lastRightProximity + sideDeadband
+            ? "L"
+            : _lastRightProximity > _lastLeftProximity + sideDeadband
+                ? "R"
+                : null;
+        _ = DispatchCollisionInputAsync(
+            hemisphere,
+            slidAlongWall ? 0.90 : 1.25,
+            slidAlongWall ? 12 : 20,
+            _shutdown.Token);
     }
 
-    private void RegisterWallCollisionEvent(DateTime now, bool slidAlongWall)
-    {
-        _recentWallCollisionUtc.Enqueue(now);
-
-        var window = TimeSpan.FromSeconds(HardStuckCollisionBurstWindowSec);
-        while (_recentWallCollisionUtc.Count > 0 && (now - _recentWallCollisionUtc.Peek()) > window)
-        {
-            _recentWallCollisionUtc.Dequeue();
-        }
-
-        if (_recentWallCollisionUtc.Count < HardStuckCollisionBurstThreshold)
-        {
-            return;
-        }
-
-        TriggerOrientingStimulus("collision burst recovery", severeImpact: true);
-        _recentWallCollisionUtc.Clear();
-    }
-
-    private async Task PollSpatialNavigationAsync(Uri endpoint, CancellationToken token)
-    {
-        var (row, column) = WorldToGrid(_avatarX, _avatarZ);
-        var (goalRow, goalColumn) = WorldToGrid(_goalWorld.X, _goalWorld.Y);
-        int headingQuarter = NavigationCoordinateFrame.HeadingQuarterFromDegrees(_avatarHeadingDeg);
-        Point cellCenter = GridToWorld(row, column);
-        double distanceFromCellCenter = Math.Sqrt(DistanceSquared(_avatarX, _avatarZ, cellCenter.X, cellCenter.Y));
-        double distanceToGoal = Math.Sqrt(DistanceSquared(_avatarX, _avatarZ, _goalWorld.X, _goalWorld.Y));
-        double relativeGoalBearing = NavigationCoordinateFrame.RelativeBearingDegrees(
-            _avatarX,
-            _avatarZ,
-            _goalWorld.X,
-            _goalWorld.Y,
-            _avatarHeadingDeg);
-        var observation = new HippocampalNavigationObservation(
-            row,
-            column,
-            headingQuarter,
-            IsNavigationDirectionOpen(row, column, headingQuarter),
-            IsNavigationDirectionOpen(row, column, NavigationCoordinateFrame.RotateQuarter(headingQuarter, 1)),
-            IsNavigationDirectionOpen(row, column, NavigationCoordinateFrame.RotateQuarter(headingQuarter, -1)),
-            IsNavigationDirectionOpen(row, column, NavigationCoordinateFrame.RotateQuarter(headingQuarter, 2)),
-            goalRow,
-            goalColumn,
-            relativeGoalBearing,
-            distanceToGoal,
-            _wallImpacts,
-            distanceToGoal <= GoalRadius);
-        var request = new HippocampalNavigationControlRequest(
-            _navigationSessionId,
-            $"wpf-maze-{_mazeSeed}-{_mazeRows}x{_mazeCols}",
-            _navigationResetPending,
-            distanceFromCellCenter <= CellSize * 0.20,
-            _avatarHeadingDeg,
-            observation,
-            (_avatarX - cellCenter.X) / CellSize,
-            (_avatarZ - cellCenter.Y) / CellSize);
-
-        using var response = await _httpClient.PostAsJsonAsync(
-            new Uri(endpoint, "/api/v1/navigation/decision"),
-            request,
-            token);
-        if (!response.IsSuccessStatusCode)
-        {
-            string detail = await ReadNavigationErrorAsync(response, token);
-            StopSpatialNavigation($"Navigation: HTTP {(int)response.StatusCode} {detail}".TrimEnd());
-            return;
-        }
-
-        HippocampalNavigationControlResponse? result = await response.Content
-            .ReadFromJsonAsync<HippocampalNavigationControlResponse>(cancellationToken: token);
-        if (result is null)
-        {
-            StopSpatialNavigation("Navigation: empty response");
-            return;
-        }
-
-        if (!string.Equals(result.ProtocolVersion, NavigationCoordinateFrame.ControlProtocolVersion, StringComparison.Ordinal))
-        {
-            StopSpatialNavigation($"Navigation: protocol mismatch ({result.ProtocolVersion})");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(result.MotorDirective))
-        {
-            StopSpatialNavigation("Navigation: response omitted motor directive");
-            return;
-        }
-
-        AvatarDispatchSpike[] spikes = result.MotorSpikes
-            .Where(static spike => !string.IsNullOrWhiteSpace(spike.SourceStructure))
-            .Select(static spike => new AvatarDispatchSpike(
-                spike.SourceStructure,
-                AvatarJson.NormalizeHemisphere(spike.SourceHemisphere),
-                spike.WallClockUnixMs,
-                spike.SourceNeuronId))
-            .ToArray();
-        if (!result.MotorDirective.Equals("motor_stop", StringComparison.OrdinalIgnoreCase) && spikes.Length == 0)
-        {
-            StopSpatialNavigation("Navigation: motor directive contained no M1 spikes");
-            return;
-        }
-
-        ApplySpatialNavigationDirective(result.MotorDirective, spikes, result.ResetApplied);
-        _navigationResetPending = false;
-
-        NavigationStatusText.Text =
-            $"Navigation: {result.MotorDirective} -> ({result.Decision.TargetRow},{result.Decision.TargetColumn}) | error {result.HeadingErrorDeg:0.0} deg | " +
-            $"places {result.ExploredPlaceCount} | edges {result.LearnedEdgeCount} | " +
-            $"backtracks {result.BacktrackCount} | decisions {result.DecisionCount}";
-    }
-
-    private static async Task<string> ReadNavigationErrorAsync(
-        HttpResponseMessage response,
-        CancellationToken token)
-    {
-        string payload = await response.Content.ReadAsStringAsync(token);
-        if (string.IsNullOrWhiteSpace(payload))
-        {
-            return string.Empty;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(payload);
-            string error = AvatarJson.GetString(document.RootElement, "error", "detail", "title");
-            if (!string.IsNullOrWhiteSpace(error))
-            {
-                return error;
-            }
-        }
-        catch (JsonException)
-        {
-            // Fall through to a compact plain-text diagnostic.
-        }
-
-        string compact = string.Join(' ', payload.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return compact.Length <= 120 ? compact : compact[..120];
-    }
-
-    private void ApplySpatialNavigationDirective(
-        string directive,
-        IReadOnlyList<AvatarDispatchSpike> spikes,
-        bool forceReset)
-    {
-        bool changed = !string.Equals(directive, _lastNavigationDirective, StringComparison.OrdinalIgnoreCase);
-        if (changed || forceReset)
-        {
-            _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        }
-
-        if (!directive.Equals("motor_stop", StringComparison.OrdinalIgnoreCase))
-        {
-            ApplyMotorDispatch(spikes);
-        }
-
-        _lastNavigationDirective = directive;
-    }
-
-    private void StopSpatialNavigation(string status)
-    {
-        if (!_lastNavigationDirective.Equals("motor_stop", StringComparison.OrdinalIgnoreCase))
-        {
-            _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        }
-
-        _lastNavigationDirective = "motor_stop";
-        NavigationStatusText.Text = status;
-    }
-
-    private void TriggerOrientingStimulus(string reason, bool severeImpact)
-    {
-        var now = DateTime.UtcNow;
-        var cooldown = GetEscapeReflexCooldown();
-        if (now - _lastEscapeReflexUtc < cooldown || _collisionStimulusInFlight)
-        {
-            return;
-        }
-
-        _lastEscapeReflexUtc = now;
-        _stuckRecoveries++;
-        var aggressiveness = GetEscapeAggressiveness();
-
-        var hemisphere = AvatarWallSensing.ResolveEscapeHemisphere(
-            _collisionEscapeHemisphere,
-            _lastLeftProximity,
-            _lastRightProximity,
-            _lastTurnRateDeg);
-        _collisionEscapeHemisphere = hemisphere;
-        var intensity = Math.Clamp(0.85 + (0.35 * aggressiveness) + (severeImpact ? 0.25 : 0.0), 0.20, 3.50);
-        var burstCount = Math.Clamp((int)Math.Round(10 + (aggressiveness * 6.0) + (severeImpact ? 6.0 : 0.0) + (_consecutiveWallContacts * 0.8)), 6, 48);
-
-        SetMazeEvent($"Orienting reflex #{_stuckRecoveries}: {reason}");
-        _ = DispatchCollisionStimulusAsync(hemisphere, intensity, burstCount, reason, _shutdown.Token);
-    }
-
-    private async Task DispatchCollisionStimulusAsync(
-        string hemisphere,
+    private async Task DispatchCollisionInputAsync(
+        string? hemisphere,
         double intensity,
         int burstCount,
-        string reason,
         CancellationToken token)
     {
         var endpoint = ResolveEndpointUri();
@@ -2154,12 +1832,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        _collisionStimulusInFlight = true;
+        _collisionInputInFlight = true;
         try
         {
             var request = new
             {
-                Pattern = reason,
+                Pattern = "wall_contact",
                 Intensity = Math.Clamp(intensity, 0.20, 3.50),
                 BurstCount = Math.Clamp(burstCount, 6, 64),
                 TargetStructure = "SuperiorColliculus",
@@ -2168,36 +1846,26 @@ public partial class MainWindow : Window
                 IsFeedback = false
             };
 
-            using var response = await _httpClient.PostAsJsonAsync(new Uri(endpoint, "/api/v1/admin/input/collision"), request, token);
-            var payload = await response.Content.ReadAsStringAsync(token);
+            using var response = await _httpClient.PostAsJsonAsync(
+                new Uri(endpoint, "/api/v1/admin/input/collision"),
+                request,
+                token);
             if (!response.IsSuccessStatusCode)
             {
-                Log($"Collision stimulus warning: HTTP {(int)response.StatusCode}. {payload}");
-                return;
+                Log($"Collision input warning: HTTP {(int)response.StatusCode}.");
             }
-
-            using var doc = JsonDocument.Parse(payload);
-            var delivered = GetInt(doc.RootElement, "deliveredSpikes");
-            var generated = GetInt(doc.RootElement, "generatedSpikes");
-            if (delivered <= 0)
-            {
-                Log($"Collision orienting injected but not delivered ({generated}/0).");
-                return;
-            }
-
-            Log($"Collision orienting delivered {delivered}/{generated} spikes to SuperiorColliculus ({hemisphere}).");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
-            // app shutdown path
+            // Application shutdown.
         }
         catch (Exception ex)
         {
-            Log($"Collision stimulus warning: {ex.GetType().Name}.");
+            Log($"Collision input warning: {ex.GetType().Name}.");
         }
         finally
         {
-            _collisionStimulusInFlight = false;
+            _collisionInputInFlight = false;
         }
     }
 
@@ -3343,20 +3011,15 @@ public partial class MainWindow : Window
         _avatarHeadYawDeg = 0;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        _navigationResetPending = true;
-        _lastNavigationDirective = "motor_stop";
         _avatarTranslate.OffsetX = _avatarX;
         _avatarTranslate.OffsetY = AvatarRadius + 0.04;
         _avatarTranslate.OffsetZ = _avatarZ;
         _avatarYawRotation.Angle = _avatarHeadingDeg;
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
-        _lastProgressUtc = DateTime.UtcNow;
         _lastWallProximity = 0.0;
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
-        _collisionEscapeHemisphere = null;
-        _recentWallCollisionUtc.Clear();
         _recentWallImpactTicks.Clear();
         if (logMessage)
         {
@@ -3371,22 +3034,16 @@ public partial class MainWindow : Window
         _foodsCollected = 0;
         _hazardContacts = 0;
         _wallImpacts = 0;
-        _consecutiveWallContacts = 0;
-        _stuckRecoveries = 0;
-        _hardUnstuckEvents = 0;
         _lastWallProximity = 0.0;
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
-        _collisionEscapeHemisphere = null;
         _checkpointActivations = 0;
         _lastMazeEvent = "-";
         _lastHazardDamageUtc = DateTime.MinValue;
         _lastWallImpactUtc = DateTime.MinValue;
-        _lastEscapeReflexUtc = DateTime.MinValue;
-        _recentWallCollisionUtc.Clear();
         _recentWallImpactTicks.Clear();
-        _collisionStimulusInFlight = false;
+        _collisionInputInFlight = false;
         _bodyStimulusInFlight = false;
         _lastBodyStateDispatchMs = 0;
         _respawnWorld = _startWorld;
@@ -3414,38 +3071,11 @@ public partial class MainWindow : Window
         _lastTick = 0;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        _navigationResetPending = true;
-        _lastNavigationDirective = "motor_stop";
         SetConnectionStatus(AvatarControlStatusText.Reconnecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Connection cursor reset. Polling frame stream from dispatch origin.");
     }
 
     private void ResetAvatarButton_OnClick(object sender, RoutedEventArgs e) => ResetRun();
-
-    private void SpatialNavigationCheckBox_OnChecked(object sender, RoutedEventArgs e)
-    {
-        _navigationResetPending = true;
-        _lastNavigationDirective = "motor_stop";
-        if (NavigationStatusText is not null)
-        {
-            NavigationStatusText.Text = "Navigation: ready to bind a new world session";
-        }
-
-        if (IsLoaded)
-        {
-            Log("Spatial navigator enabled. Rendered maze observations now drive brain-side navigation decisions.");
-        }
-    }
-
-    private void SpatialNavigationCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
-    {
-        _navigationResetPending = true;
-        StopSpatialNavigation("Navigation: disabled; raw Control Program dispatch active");
-        if (IsLoaded)
-        {
-            Log("Spatial navigator disabled. Raw Control Program motor dispatch restored.");
-        }
-    }
 
     private async void SendEnglishCommandButton_OnClick(object sender, RoutedEventArgs e) => await SendEnglishCommandAsync();
 
@@ -3519,7 +3149,7 @@ public partial class MainWindow : Window
         MoveText.Text = $"Speed/Turn: {_lastForwardSpeed:0.00} m/s | body {_lastTurnRateDeg:0.0} deg/s | head {_avatarHeadYawDeg:0.0}° | wall={_lastWallProximity:0.00}";
         PoseText.Text = $"Avatar pose: x {_avatarX:0.00}, z {_avatarZ:0.00}, body yaw {_avatarHeadingDeg:0.0}°, look {GetAvatarLookHeadingDeg():0.0}°";
         ScoreText.Text = $"Score: {_score} | Food {_foodsCollected}/{_foodEntities.Count}";
-        HealthText.Text = $"Health: {_health} | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts} | Recoveries {_stuckRecoveries} | Unsticks {_hardUnstuckEvents} | Burst {_recentWallCollisionUtc.Count}/{HardStuckCollisionBurstThreshold}";
+        HealthText.Text = $"Health: {_health} | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts}";
         CheckpointText.Text = $"Checkpoint: {_checkpointActivations}/{_checkpointEntities.Count} @ ({_respawnWorld.X:0.0}, {_respawnWorld.Y:0.0})";
         EventText.Text = $"Event: {_lastMazeEvent}";
         LimbicStageText.Text = $"Limbic stage: {_limbicStage} | sal={_limbicSalience:0.00} thr={_limbicThreat:0.00}";
@@ -3765,12 +3395,6 @@ public partial class MainWindow : Window
         }
 
         return _mazeLayout[row][col] == '#';
-    }
-
-    private bool IsNavigationDirectionOpen(int row, int column, int headingQuarter)
-    {
-        (int dr, int dc) = NavigationCoordinateFrame.DirectionDelta(headingQuarter);
-        return !IsWall(row + dr, column + dc);
     }
 
     private double GetAvatarLookHeadingDeg() => NormalizeDegrees(_avatarHeadingDeg + _avatarHeadYawDeg);

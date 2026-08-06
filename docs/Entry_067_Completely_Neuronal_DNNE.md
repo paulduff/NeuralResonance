@@ -305,6 +305,13 @@ packets in producer order and projects neuronal bilateral drive through body
 kinematics. Body and outcome telemetry cannot steer movement, and the editor
 reports transport telemetry rather than a host-authored avatar self.
 
+Entry 090 deletes simulator steering authority. The maze no longer contains a
+goal-aware navigation client or host escape reflex, and the world no longer
+contains reactive avoidance, no-progress punishment, semantic about-face
+escape, or host target locking. Both rendered worlds now apply neuronal
+differential drive directly to body heading and limit themselves to physics,
+receptor transduction, consequences, rendering, and explicit human reset.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

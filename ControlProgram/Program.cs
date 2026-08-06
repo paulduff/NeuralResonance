@@ -219,20 +219,6 @@ app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(n
 }));
 app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
 app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.GetBodyPresenceSnapshot()));
-app.MapGet("/api/v1/predictive-perception", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizePerception = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-perception",
-    State = state.GetPredictivePerceptionSnapshot()
-}));
-app.MapGet("/api/v1/persistent-percepts", (SimulationState state, int? max) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizePerception = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-perception",
-    State = state.GetPersistentPerceptsSnapshot(max ?? 32)
-}));
 app.MapGet("/api/v1/embodied-attention", (SimulationState state) => Results.Ok(state.GetEmbodiedAttentionSpotlightSnapshot()));
 app.MapGet("/api/v1/place-memory", (SimulationState state, int? max) => Results.Ok(state.GetPlaceMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/cerebellum", (SimulationState state) => Results.Ok(state.GetCerebellumSnapshot()));
@@ -1043,13 +1029,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             ? parsedSource
             : StructureId.Thalamus;
     var inputSource = AdminInputSource.Normalize(request.InputSource);
-    var auditoryPredictivePerception = state.ObservePredictivePerception(
-        "auditory",
-        $"{inputSource}:{pattern}",
-        Math.Clamp(intensity / 3.0f, 0f, 1f),
-        0.68f,
-        inputSource);
-
     if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
     {
         state.AppendOutputLog(
@@ -1089,7 +1068,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             RecoveryRestarted = 0,
             RecoveryHealthy = 0,
             RecoveryRetriedInstances = 0,
-            PredictiveSurprise = auditoryPredictivePerception.Surprise,
             InputSource = inputSource,
             Accepted = AdminInputSource.IsAvatarSource(inputSource),
             DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
@@ -1118,7 +1096,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             RecoveryRetriedInstances = 0,
             PausedDueToSleep = true,
             SleepState = "sleeping",
-            PredictiveSurprise = auditoryPredictivePerception.Surprise,
             InputSource = inputSource,
             Errors = Array.Empty<string>()
         });
@@ -1170,7 +1147,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
             RecoveryHealthy = 0,
             RecoveryRetriedInstances = 0,
             PausedDueToSleep = false,
-            PredictiveSurprise = auditoryPredictivePerception.Surprise,
             InputSource = inputSource,
             Accepted = true,
             DispatchDeferred = true,
@@ -1293,8 +1269,6 @@ app.MapPost("/api/v1/admin/input/auditory", async (
         RecoveryRestarted = recoveryRestarted,
         RecoveryHealthy = recoveryHealthy,
         RecoveryRetriedInstances = recoveryRetried,
-        PredictiveSurprise = auditoryPredictivePerception.Surprise,
-        PredictiveCue = auditoryPredictivePerception.LastCue,
         InputSource = inputSource,
         Errors = errors
     });
@@ -1325,12 +1299,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
         : Enum.TryParse<StructureId>(request.SourceStructure, ignoreCase: true, out var parsedSource)
             ? parsedSource
             : StructureId.S1;
-    var collisionPredictivePerception = state.ObservePredictivePerception(
-        "somatosensory",
-        $"collision:{pattern}",
-        Math.Clamp(intensity / 4.0f, 0f, 1f),
-        0.74f,
-        "avatar");
     if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
     {
         state.AppendOutputLog(
@@ -1371,7 +1339,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
             LiveTargetInstances = 0,
             GeneratedSpikes = 0,
             DeliveredSpikes = 0,
-            PredictiveSurprise = collisionPredictivePerception.Surprise,
             Errors = new[]
             {
                 $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
@@ -1396,7 +1363,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
             DeliveredSpikes = 0,
             PausedDueToSleep = true,
             SleepState = "sleeping",
-            PredictiveSurprise = collisionPredictivePerception.Surprise,
             Errors = Array.Empty<string>()
         });
     }
@@ -1448,8 +1414,6 @@ app.MapPost("/api/v1/admin/input/collision", async (
         LiveTargetInstances = liveTargetInstances.Count,
         GeneratedSpikes = dispatch.GeneratedSpikes,
         DeliveredSpikes = dispatch.DeliveredSpikes,
-        PredictiveSurprise = collisionPredictivePerception.Surprise,
-        PredictiveCue = collisionPredictivePerception.LastCue,
         Errors = dispatch.Errors
     });
 });
@@ -1549,19 +1513,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         inShelter,
         health,
         shelterSafety);
-    var bodyPredictivePerception = state.ObservePredictivePerception(
-        "somatosensory",
-        $"{inputSource}:{pattern}",
-        Math.Clamp((motionSignal * 0.24f) + (turnSignal * 0.14f) + (contactLevel * 0.28f) + (painLevel * 0.22f) + (urgency * 0.12f), 0f, 1f),
-        Math.Clamp(0.52f + (contactLevel * 0.20f) + (painLevel * 0.18f), 0f, 1f),
-        inputSource);
-    var interoceptivePredictivePerception = state.ObservePredictivePerception(
-        "interoceptive",
-        $"body:{pattern}",
-        Math.Clamp((hunger * 0.24f) + (environmentalDarkness * 0.16f) + (shelterNeed * 0.18f) + (anxiety * 0.16f) + (predatorThreat * 0.16f) + ((1f - health) * 0.10f), 0f, 1f),
-        0.64f,
-        inputSource);
-
     var sleepState = state.GetSleepMemoryRuntime();
     if (sleepState.IsSleeping)
     {
@@ -1637,7 +1588,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             InputSource = inputSource,
             BodyState = bodyState,
             Environment = environmentalState,
-            PredictiveSurprise = Math.Max(bodyPredictivePerception.Surprise, interoceptivePredictivePerception.Surprise),
             SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
             PausedDueToSleep = false,
             TargetInstances = 0,
@@ -1717,10 +1667,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
             InputSource = inputSource,
             BodyState = bodyState,
             Environment = environmentalState,
-            PredictiveSurprise = Math.Max(bodyPredictivePerception.Surprise, interoceptivePredictivePerception.Surprise),
-            PredictiveCue = interoceptivePredictivePerception.Surprise >= bodyPredictivePerception.Surprise
-                ? interoceptivePredictivePerception.LastCue
-                : bodyPredictivePerception.LastCue,
             SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
             PausedDueToSleep = false,
             TargetInstances = liveTargetInstances.Count,
@@ -1789,10 +1735,6 @@ app.MapPost("/api/v1/admin/input/body-state", async (
         InputSource = inputSource,
         BodyState = bodyState,
         Environment = environmentalState,
-        PredictiveSurprise = Math.Max(bodyPredictivePerception.Surprise, interoceptivePredictivePerception.Surprise),
-        PredictiveCue = interoceptivePredictivePerception.Surprise >= bodyPredictivePerception.Surprise
-            ? interoceptivePredictivePerception.LastCue
-            : bodyPredictivePerception.LastCue,
         SleepState = sleepState.IsSleeping ? "sleeping" : "awake",
         PausedDueToSleep = false,
         TargetInstances = liveTargetInstances.Count,
@@ -1856,12 +1798,6 @@ app.MapPost("/api/v1/admin/input/outcome", async (
     var appetitive = Math.Clamp(outcomeState.AppetitiveRelief, 0f, 1f);
     var aversive = Math.Clamp(outcomeState.AversiveOutcome, 0f, 1f);
     var salience = Math.Max(appetitive, aversive);
-    var outcomePredictivePerception = state.ObservePredictivePerception(
-        "interoceptive",
-        $"outcome:{pattern}",
-        Math.Clamp((appetitive * 0.36f) + (aversive * 0.36f) + (novelty * 0.16f) + (progress * 0.12f), 0f, 1f),
-        Math.Clamp(0.56f + (salience * 0.28f), 0f, 1f),
-        inputSource);
     var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(0.24f + (appetitive * 1.20f) + (aversive * 1.45f)), 0.10f, 3.50f);
     var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault((int)Math.Round(8 + (appetitive * 24) + (aversive * 30))), 4, 96);
     var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
@@ -1939,8 +1875,6 @@ app.MapPost("/api/v1/admin/input/outcome", async (
             Intensity = intensity,
             BurstCount = burstCount,
             OutcomeState = outcomeState,
-            PredictiveSurprise = outcomePredictivePerception.Surprise,
-            PredictiveCue = outcomePredictivePerception.LastCue,
             TargetInstances = 0,
             KnownTargetInstances = knownTargetCount,
             LiveTargetInstances = 0,
@@ -2002,8 +1936,6 @@ app.MapPost("/api/v1/admin/input/outcome", async (
         Intensity = intensity,
         BurstCount = burstCount,
         OutcomeState = outcomeState,
-        PredictiveSurprise = outcomePredictivePerception.Surprise,
-        PredictiveCue = outcomePredictivePerception.LastCue,
         TargetInstances = liveTargetInstances.Count,
         KnownTargetInstances = knownTargetCount,
         LiveTargetInstances = liveTargetInstances.Count,
@@ -5475,175 +5407,6 @@ internal sealed class SimulationState
         }
     }
 
-    public PredictivePerceptionRuntime GetPredictivePerceptionSnapshot()
-    {
-        lock (_gate)
-        {
-            return PredictivePerception;
-        }
-    }
-
-    public PredictivePerceptionRuntime ObservePredictivePerception(
-        string channel,
-        string cue,
-        float observation,
-        float confidence,
-        string inputSource)
-    {
-        lock (_gate)
-        {
-            return ObservePredictivePerceptionLocked(channel, cue, observation, confidence, inputSource, Tick);
-        }
-    }
-
-    private PredictivePerceptionRuntime ObservePredictivePerceptionLocked(
-        string channel,
-        string cue,
-        float observation,
-        float confidence,
-        string inputSource,
-        long tick)
-    {
-        var normalizedChannel = NormalizePredictivePerceptionChannel(channel);
-        var normalizedCue = NormalizePredictivePerceptionCue(cue);
-        var normalizedSource = string.IsNullOrWhiteSpace(inputSource) ? "unknown" : inputSource.Trim();
-        var clampedObservation = Clamp01(observation);
-        var clampedConfidence = Clamp01(confidence);
-        var previous = PredictivePerception;
-        var expected = normalizedChannel switch
-        {
-            "visual" => previous.VisualPrediction,
-            "auditory" => previous.AuditoryPrediction,
-            "somatosensory" => previous.SomatosensoryPrediction,
-            "interoceptive" => previous.InteroceptivePrediction,
-            _ => previous.PredictionError
-        };
-        var cueChanged = !string.Equals(previous.LastCue, normalizedCue, StringComparison.OrdinalIgnoreCase) ||
-                         !string.Equals(previous.LastChannel, normalizedChannel, StringComparison.OrdinalIgnoreCase);
-        var mismatch = Math.Abs(clampedObservation - expected);
-        var novelty = Clamp01((mismatch * 0.72f) + (cueChanged ? 0.28f : 0f));
-        var surprise = Clamp01(((mismatch * 0.70f) + (novelty * 0.30f)) * (0.42f + (0.58f * clampedConfidence)));
-        var alpha = 0.18f + (0.20f * clampedConfidence);
-        var visualPrediction = previous.VisualPrediction;
-        var auditoryPrediction = previous.AuditoryPrediction;
-        var somatosensoryPrediction = previous.SomatosensoryPrediction;
-        var interoceptivePrediction = previous.InteroceptivePrediction;
-        switch (normalizedChannel)
-        {
-            case "visual":
-                visualPrediction = Lerp01(visualPrediction, clampedObservation, alpha);
-                break;
-            case "auditory":
-                auditoryPrediction = Lerp01(auditoryPrediction, clampedObservation, alpha);
-                break;
-            case "somatosensory":
-                somatosensoryPrediction = Lerp01(somatosensoryPrediction, clampedObservation, alpha);
-                break;
-            case "interoceptive":
-                interoceptivePrediction = Lerp01(interoceptivePrediction, clampedObservation, alpha);
-                break;
-        }
-
-        var predictionError = Clamp01((previous.PredictionError * 0.72f) + (surprise * 0.28f));
-        var salienceBias = Clamp01((previous.SalienceBias * 0.64f) + (surprise * 0.36f));
-        var lcAlert = Clamp01((previous.LocusCoeruleusAlert * 0.62f) + (surprise * 0.38f));
-        var hippocampalGate = Clamp01((previous.HippocampalEncodingGate * 0.66f) + (novelty * 0.34f));
-        var accConflict = Clamp01((previous.AccConflictSignal * 0.64f) + (mismatch * clampedConfidence * 0.36f));
-        var dopamineTeaching = ClampSigned01((previous.DopamineTeachingSignal * 0.70f) + ((clampedObservation - expected) * clampedConfidence * 0.30f));
-        var sensoryBias = BuildPredictivePerceptionAttentionBias(normalizedChannel, surprise, previous.SensoryBias);
-        var predictiveCircuitEvidence = ResolvePredictivePerceptionCircuitEvidenceLocked(tick, normalizedChannel);
-        var adaptationCircuitEvidence = ResolveStimulusAdaptationCircuitEvidenceLocked(tick, normalizedChannel);
-        var repeatedCue = !cueChanged;
-        var habituationGate = Clamp01((previous.HabituationGate * 0.72f) + (repeatedCue ? (1f - surprise) * clampedConfidence * 0.28f : 0f));
-        var sensitizationGate = Clamp01((previous.SensitizationGate * 0.64f) + (surprise * (0.22f + (accConflict * 0.18f) + (lcAlert * 0.20f))));
-        var repetitionSuppression = Clamp01((previous.RepetitionSuppression * 0.74f) + (habituationGate * 0.26f));
-        var noveltyEncodingDrive = Clamp01((previous.NoveltyEncodingDrive * 0.66f) + (novelty * hippocampalGate * 0.34f));
-        var stimulusAdaptationGain = Clamp01(
-            0.50f +
-            (sensitizationGate * 0.34f) +
-            (noveltyEncodingDrive * 0.22f) -
-            (habituationGate * 0.28f));
-        var adaptationMode = ResolveStimulusAdaptationMode(
-            habituationGate,
-            sensitizationGate,
-            noveltyEncodingDrive,
-            surprise);
-        var adaptationEvidence = BuildStimulusAdaptationEvidence(
-            normalizedChannel,
-            normalizedCue,
-            repeatedCue,
-            habituationGate,
-            sensitizationGate,
-            repetitionSuppression,
-            noveltyEncodingDrive,
-            lcAlert,
-            accConflict,
-            hippocampalGate,
-            AttentionState.BasalForebrainGain,
-            adaptationCircuitEvidence);
-
-        PredictivePerception = PredictivePerceptionRuntime.Normalize(new PredictivePerceptionRuntime(
-            Active: predictiveCircuitEvidence > 0.10f,
-            LastChannel: normalizedChannel,
-            LastCue: normalizedCue,
-            InputSource: normalizedSource,
-            VisualPrediction: visualPrediction,
-            VisualObservation: normalizedChannel == "visual" ? clampedObservation : previous.VisualObservation,
-            AuditoryPrediction: auditoryPrediction,
-            AuditoryObservation: normalizedChannel == "auditory" ? clampedObservation : previous.AuditoryObservation,
-            SomatosensoryPrediction: somatosensoryPrediction,
-            SomatosensoryObservation: normalizedChannel == "somatosensory" ? clampedObservation : previous.SomatosensoryObservation,
-            InteroceptivePrediction: interoceptivePrediction,
-            InteroceptiveObservation: normalizedChannel == "interoceptive" ? clampedObservation : previous.InteroceptiveObservation,
-            PredictionError: ApplyCircuitGate(predictionError, predictiveCircuitEvidence),
-            Surprise: ApplyCircuitGate(surprise, predictiveCircuitEvidence),
-            Novelty: ApplyCircuitGate(novelty, predictiveCircuitEvidence),
-            Confidence: ApplyCircuitGate(clampedConfidence, predictiveCircuitEvidence),
-            SalienceBias: ApplyCircuitGate(salienceBias, predictiveCircuitEvidence),
-            LocusCoeruleusAlert: ApplyCircuitGate(lcAlert, predictiveCircuitEvidence),
-            HippocampalEncodingGate: ApplyCircuitGate(hippocampalGate, predictiveCircuitEvidence),
-            AccConflictSignal: ApplyCircuitGate(accConflict, predictiveCircuitEvidence),
-            DopamineTeachingSignal: dopamineTeaching,
-            HabituationGate: ApplyCircuitGate(habituationGate, adaptationCircuitEvidence),
-            SensitizationGate: ApplyCircuitGate(sensitizationGate, adaptationCircuitEvidence),
-            RepetitionSuppression: ApplyCircuitGate(repetitionSuppression, adaptationCircuitEvidence),
-            NoveltyEncodingDrive: ApplyCircuitGate(noveltyEncodingDrive, adaptationCircuitEvidence),
-            StimulusAdaptationGain: ApplyCircuitGate(stimulusAdaptationGain, adaptationCircuitEvidence),
-            AdaptationMode: adaptationMode,
-            AdaptationEvidence: adaptationEvidence,
-            SensoryBias: sensoryBias,
-            ExpectedChannel: previous.ExpectedChannel,
-            ExpectedCue: previous.ExpectedCue,
-            ExpectedAction: previous.ExpectedAction,
-            ForwardModelConfidence: previous.ForwardModelConfidence,
-            CerebellarForwardModel: previous.CerebellarForwardModel,
-            HippocampalPatternCompletion: previous.HippocampalPatternCompletion,
-            PfcTopDownExpectation: previous.PfcTopDownExpectation,
-            SimulationEvidence: previous.SimulationEvidence,
-            LastSimulationTick: previous.LastSimulationTick,
-            LastUpdatedTick: tick));
-
-        if (surprise >= 0.34f)
-        {
-            UpsertEpisodicEventLocked(
-                tick,
-                "predictive_perception",
-                $"predictive:{normalizedChannel}:{normalizedCue}:{tick / 300}",
-                $"Unexpected {normalizedChannel} cue: {normalizedCue}.",
-                objectId: normalizedCue,
-                label: normalizedCue,
-                goalKey: GoalIntent.Active ? GoalIntent.GoalKey : "Observe",
-                actionKey: PlanningWorkspace.SelectedActionKey,
-                valence: dopamineTeaching,
-                salience: Math.Max(salienceBias, surprise),
-                novelty: novelty,
-                confidence: clampedConfidence);
-            RefreshEpisodicMemorySnapshotLocked(tick);
-        }
-
-        return PredictivePerception;
-    }
-
     private void UpdatePredictiveSensorySimulationLocked(long tick)
     {
         var previous = PredictivePerception;
@@ -6261,35 +6024,6 @@ internal sealed class SimulationState
                 SimulationClockMs,
                 Count = _objectMemory.Count,
                 Items = items
-            };
-        }
-    }
-
-    public object GetPersistentPerceptsSnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshPersistentPerceptsLocked(Tick);
-            var clamped = Math.Clamp(maxCount, 1, MaxObjectMemoryEntries);
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                PersistentPercepts.Count,
-                PersistentPercepts.ActiveObjectId,
-                PersistentPercepts.ActiveLabel,
-                PersistentPercepts.ActiveCategory,
-                PersistentPercepts.ActiveHemisphere,
-                PersistentPercepts.ObjectPermanence,
-                PersistentPercepts.SpatialIntention,
-                PersistentPercepts.GoalSupport,
-                PersistentPercepts.LastSeenTick,
-                PersistentPercepts.LastUpdatedTick,
-                Top = PersistentPercepts.Top
-                    .OrderByDescending(item => item.SpatialIntention + item.ObjectPermanence)
-                    .ThenByDescending(item => item.LastSeenTick)
-                    .Take(clamped)
-                    .ToList()
             };
         }
     }
@@ -18427,19 +18161,6 @@ internal sealed class SimulationState
                     InputGates.AvatarVisionEnabled,
                     InputGates.SpontaneousSpikingEnabled
                 },
-                PersistentPercepts = new
-                {
-                    PersistentPercepts.Count,
-                    PersistentPercepts.ActiveObjectId,
-                    PersistentPercepts.ActiveLabel,
-                    PersistentPercepts.ActiveCategory,
-                    PersistentPercepts.ActiveHemisphere,
-                    PersistentPercepts.ObjectPermanence,
-                    PersistentPercepts.SpatialIntention,
-                    PersistentPercepts.GoalSupport,
-                    PersistentPercepts.LastSeenTick,
-                    PersistentPercepts.LastUpdatedTick
-                },
                 PlaceMemory = new
                 {
                     PlaceMemory.Count,
@@ -20197,7 +19918,6 @@ internal sealed class SimulationState
           InteroceptiveCore,
           PainProtection,
           BodyPresence,
-          PredictivePerception,
           PlaceMemory,
           Cerebellum,
           EnvironmentalState = new
@@ -20354,20 +20074,6 @@ internal sealed class SimulationState
                         item.LastSeenSimulationMs
                     })
                     .ToList()
-        },
-        PersistentPercepts = new
-        {
-            PersistentPercepts.Count,
-            PersistentPercepts.ActiveObjectId,
-            PersistentPercepts.ActiveLabel,
-            PersistentPercepts.ActiveCategory,
-            PersistentPercepts.ActiveHemisphere,
-            PersistentPercepts.ObjectPermanence,
-            PersistentPercepts.SpatialIntention,
-            PersistentPercepts.GoalSupport,
-            PersistentPercepts.LastSeenTick,
-            PersistentPercepts.LastUpdatedTick,
-            PersistentPercepts.Top
         },
         EmbodiedAttentionSpotlight,
         LimbicState = new
@@ -21183,7 +20889,6 @@ internal sealed class SimulationState
                 InteroceptiveCore = InteroceptiveCore,
                 PainProtection = PainProtection,
                 BodyPresence = BodyPresence,
-                PersistentPercepts = PersistentPercepts,
                 EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlight,
                 AttentionState = AttentionState,
                 LimbicState = LimbicState,
@@ -21348,7 +21053,6 @@ internal sealed class SimulationState
             var importedInteroceptiveCore = document.InteroceptiveCore ?? InteroceptiveCoreRuntime.Default;
             var importedPainProtection = document.PainProtection ?? PainProtectionRuntime.Default;
             var importedBodyPresence = document.BodyPresence ?? BodyPresenceRuntime.Default;
-            var importedPersistentPercepts = document.PersistentPercepts ?? PersistentPerceptRuntime.Default;
             var importedEmbodiedAttentionSpotlight = document.EmbodiedAttentionSpotlight ?? EmbodiedAttentionSpotlightRuntime.Default;
             var importedAttentionState = document.AttentionState ?? BiologicalAttentionRuntime.Default;
             var importedLimbicState = document.LimbicState ?? LimbicRuntimeState.Default;
@@ -21400,7 +21104,6 @@ internal sealed class SimulationState
             InteroceptiveCore = InteroceptiveCoreRuntime.Normalize(importedInteroceptiveCore);
             PainProtection = PainProtectionRuntime.Normalize(importedPainProtection);
             BodyPresence = BodyPresenceRuntime.Normalize(importedBodyPresence);
-            PersistentPercepts = PersistentPerceptRuntime.Normalize(importedPersistentPercepts);
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Normalize(importedEmbodiedAttentionSpotlight);
             AttentionState = BiologicalAttentionRuntime.Normalize(importedAttentionState);
             LimbicState = importedLimbicState;
@@ -34927,7 +34630,6 @@ internal sealed class NetworkStateDocument
     public InteroceptiveCoreRuntime? InteroceptiveCore { get; set; } = InteroceptiveCoreRuntime.Default;
     public PainProtectionRuntime? PainProtection { get; set; } = PainProtectionRuntime.Default;
     public BodyPresenceRuntime? BodyPresence { get; set; } = BodyPresenceRuntime.Default;
-    public PersistentPerceptRuntime? PersistentPercepts { get; set; } = PersistentPerceptRuntime.Default;
     public EmbodiedAttentionSpotlightRuntime? EmbodiedAttentionSpotlight { get; set; } = EmbodiedAttentionSpotlightRuntime.Default;
     public BiologicalAttentionRuntime? AttentionState { get; set; } = BiologicalAttentionRuntime.Default;
     public LimbicRuntimeState LimbicState { get; set; } = LimbicRuntimeState.Default;

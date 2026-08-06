@@ -85,10 +85,42 @@ public sealed class NeuronalPerceptionTests
         Assert.Equal(before.DominantEnsemble, first!.EnsembleIndex);
         Assert.Equal(first.EnsembleIndex, second!.EnsembleIndex);
         Assert.Equal(2, after.LanguageAnnotations.Count);
+        Assert.Equal(NeuronalPerceptionRuntime.Authority, after.Interpretation.Authority);
+        Assert.True(after.Interpretation.Active);
+        Assert.True(after.Interpretation.LanguageAnnotationAttached);
+        Assert.Equal("candidate-a", after.Interpretation.ObjectId);
+        Assert.Equal("contradictory second label", after.Interpretation.Label);
+        Assert.True(after.Interpretation.ReadOnly);
+        Assert.False(after.Interpretation.CanCreatePercepts);
+        Assert.False(after.Interpretation.CanCreateMemories);
 
         var neuronalPayload = JsonSerializer.Serialize(after.Percept);
         Assert.DoesNotContain("first label", neuronalPayload, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("contradictory", neuronalPayload, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void LanguageAnnotationDoesNotPersistWithoutCurrentNeuronalEvidence()
+    {
+        var runtime = new NeuronalPerceptionRuntime();
+        runtime.Update(42, CreateCircuit(2, 0.92f));
+        Assert.True(runtime.TryAttachLanguageAnnotation(
+            "candidate-a",
+            "temporary label",
+            0.9,
+            out _,
+            out _));
+
+        var labelled = runtime.GetSnapshot();
+        runtime.Update(43, CreateCircuit(2, 0.86f));
+        var advanced = runtime.GetSnapshot();
+
+        Assert.True(labelled.Interpretation.LanguageAnnotationAttached);
+        Assert.True(advanced.Interpretation.Active);
+        Assert.True(advanced.Interpretation.Persistence > 0.0);
+        Assert.False(advanced.Interpretation.LanguageAnnotationAttached);
+        Assert.Null(advanced.Interpretation.ObjectId);
+        Assert.Null(advanced.Interpretation.Label);
     }
 
     [Fact]

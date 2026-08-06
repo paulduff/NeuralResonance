@@ -160,6 +160,8 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
 
         var audioPayload = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(audioPayload);
+        Assert.False(TryGetProperty(doc.RootElement, "predictiveSurprise", out _));
+        Assert.False(TryGetProperty(doc.RootElement, "predictiveCue", out _));
         if (GetBool(doc.RootElement, "pausedDueToSleep"))
         {
             Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
@@ -199,6 +201,8 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var doc = await ReadJsonAsync(response);
+        Assert.False(TryGetProperty(doc.RootElement, "predictiveSurprise", out _));
+        Assert.False(TryGetProperty(doc.RootElement, "predictiveCue", out _));
         Assert.True(GetBool(doc.RootElement, "accepted"));
         Assert.True(GetBool(doc.RootElement, "dispatchDeferred"));
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
@@ -303,6 +307,16 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         var response = await client.PostAsJsonAsync(
             "/api/v1/admin/input/visual-attention",
             new { leftFieldSaliency = 0.85f, rightFieldSaliency = 0.10f });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/v1/predictive-perception")]
+    [InlineData("/api/v1/persistent-percepts")]
+    public async Task Legacy_Perception_Endpoints_Are_Removed(string path)
+    {
+        using var response = await _fixture.Client.GetAsync(path);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

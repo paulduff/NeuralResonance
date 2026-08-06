@@ -413,159 +413,16 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
-    public void Predictive_Perception_Is_Exposed_In_Diagnostics()
+    public void Legacy_Perception_Writers_Diagnostics_And_Checkpoint_State_Are_Absent()
     {
-        var state = new SimulationState();
-        AdvanceTicks(state, 12);
-        var predictive = state.ObservePredictivePerception(
-            "visual",
-            "object:food",
-            observation: 0.94f,
-            confidence: 0.82f,
-            inputSource: "world");
+        Assert.Null(typeof(SimulationState).GetMethod("ObservePredictivePerception"));
+        Assert.Null(typeof(SimulationState).GetMethod("GetPredictivePerceptionSnapshot"));
+        Assert.Null(typeof(SimulationState).GetMethod("GetPersistentPerceptsSnapshot"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("PersistentPercepts"));
 
-        using var document = SerializeDiagnostics(state);
-        var diagnostic = GetObject(document.RootElement, "predictivePerception");
-
-        Assert.True(predictive.Active);
-        Assert.Equal("visual", GetString(diagnostic, "lastChannel"));
-        Assert.Equal("object:food", GetString(diagnostic, "lastCue"));
-        Assert.True(GetSingle(diagnostic, "surprise") > 0.20f);
-        Assert.True(GetSingle(diagnostic, "hippocampalEncodingGate") > 0.0f);
-        Assert.True(GetSingle(diagnostic, "sensitizationGate") > 0.0f);
-        Assert.True(GetSingle(diagnostic, "noveltyEncodingDrive") > 0.0f);
-        Assert.NotEqual("stable", GetString(diagnostic, "adaptationMode"));
-        Assert.Contains("hippocampus", GetString(diagnostic, "adaptationEvidence"), StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Predictive_Perception_Tracks_Stimulus_Adaptation()
-    {
-        var state = new SimulationState();
-        AdvanceTicks(state, 12);
-
-        var first = state.ObservePredictivePerception(
-            "visual",
-            "object:lamp",
-            observation: 0.72f,
-            confidence: 0.84f,
-            inputSource: "test");
-        PredictivePerceptionRuntime repeated = first;
-        for (var i = 0; i < 6; i++)
-        {
-            repeated = state.ObservePredictivePerception(
-                "visual",
-                "object:lamp",
-                observation: 0.72f,
-                confidence: 0.84f,
-                inputSource: "test");
-        }
-
-        var novel = state.ObservePredictivePerception(
-            "visual",
-            "object:door",
-            observation: 0.96f,
-            confidence: 0.86f,
-            inputSource: "test");
-
-        Assert.True(repeated.HabituationGate > first.HabituationGate);
-        Assert.True(repeated.RepetitionSuppression > first.RepetitionSuppression);
-        Assert.Contains(repeated.AdaptationMode, new[] { "habituating", "sensitizing", "novelty_encoding" });
-        Assert.True(novel.NoveltyEncodingDrive >= repeated.NoveltyEncodingDrive || novel.SensitizationGate >= repeated.SensitizationGate);
-
-        using var document = SerializeDiagnostics(state);
-        var audit = GetObject(document.RootElement, "circuitAudit");
-        var functions = EnumerateObjects(audit, "functionSupport").ToArray();
-        var adaptation = functions.First(entry => GetString(entry, "functionKey") == "stimulus_adaptation");
-
-        Assert.True(GetSingle(adaptation, "support") > 0.10f);
-        Assert.Contains(ReadStringArray(adaptation, "requiredStructures"), structure => structure.Contains("BasalForebrain", StringComparison.OrdinalIgnoreCase));
-        Assert.Contains(ReadStringArray(adaptation, "requiredStructures"), structure => structure.Contains("LocusCoeruleus", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public void Predictive_Sensory_Simulation_Uses_Memory_And_Goal_To_Expect_Food()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            "food.apple",
-            "apple food",
-            "M",
-            salience: 0.88f,
-            confidence: 0.82f,
-            intensity: 1.0f,
-            deliveredSpikes: 24);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Visual = 0.48f,
-            Memory = 0.24f,
-            FocusConfidence = 0.72f,
-            SensoryBias = new AttentionVector(0.58f, 0.12f, 0.12f, 0.18f)
-        });
-        state.UpdateEnvironmentalState(
-            darkness: 0.05f,
-            shelterNeed: 0.04f,
-            anxiety: 0.08f,
-            hunger: 0.82f,
-            predatorThreat: 0.0f,
-            inShelter: 0.0f,
-            health: 0.94f,
-            shelterSafety: 0.0f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.08f, interoceptive: 0.78f, threat: 0.0f, aversive: 0.04f));
-
-        DriveCognition(state, 8);
-
-        using var document = SerializeDiagnostics(state);
-        var predictive = GetObject(document.RootElement, "predictivePerception");
-
-        Assert.True(GetBool(predictive, "active"));
-        Assert.Equal("visual", GetString(predictive, "expectedChannel"));
-        Assert.Contains("food", GetString(predictive, "expectedCue"), StringComparison.OrdinalIgnoreCase);
-        Assert.True(GetSingle(predictive, "visualPrediction") > 0.22f);
-        Assert.True(GetSingle(predictive, "hippocampalPatternCompletion") > 0.10f);
-        Assert.True(GetSingle(predictive, "pfcTopDownExpectation") > 0.10f);
-    }
-
-    [Fact]
-    public void Predictive_Sensory_Simulation_Expects_Threat_Sound_When_Predator_Is_Salient()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            "threat.bear",
-            "bear predator",
-            "M",
-            salience: 0.96f,
-            confidence: 0.90f,
-            intensity: 1.0f,
-            deliveredSpikes: 24);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Auditory = 0.42f,
-            Visual = 0.24f,
-            FocusConfidence = 0.66f,
-            SensoryBias = new AttentionVector(0.24f, 0.46f, 0.14f, 0.16f)
-        });
-        state.UpdateEnvironmentalState(
-            darkness: 0.22f,
-            shelterNeed: 0.18f,
-            anxiety: 0.76f,
-            hunger: 0.18f,
-            predatorThreat: 0.88f,
-            inShelter: 0.0f,
-            health: 0.84f,
-            shelterSafety: 0.0f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.12f, interoceptive: 0.14f, threat: 0.86f, aversive: 0.72f));
-
-        DriveCognition(state, 8);
-
-        using var document = SerializeDiagnostics(state);
-        var predictive = GetObject(document.RootElement, "predictivePerception");
-
-        Assert.True(GetBool(predictive, "active"));
-        Assert.Equal("auditory", GetString(predictive, "expectedChannel"));
-        Assert.Contains("threat", GetString(predictive, "expectedCue"), StringComparison.OrdinalIgnoreCase);
-        Assert.True(GetSingle(predictive, "auditoryPrediction") > 0.20f);
-        Assert.True(GetSingle(predictive, "forwardModelConfidence") > 0.10f);
+        using var document = SerializeDiagnostics(new SimulationState());
+        Assert.False(TryGetProperty(document.RootElement, "predictivePerception", out _));
+        Assert.False(TryGetProperty(document.RootElement, "persistentPercepts", out _));
     }
 
     [Fact]
@@ -989,61 +846,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.True(GetInt(worldMap, "count") > 0);
         Assert.Equal("food", GetString(first, "category"));
         Assert.True(GetSingle(first, "food") > 0.45f);
-    }
-
-    [Fact]
-    public void Persistent_Percepts_Preserve_Recently_Seen_Objects()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            objectId: "berry_patch_permanent",
-            label: "food berry patch",
-            hemisphere: "L",
-            salience: 0.84f,
-            confidence: 0.80f,
-            intensity: 1.0f,
-            deliveredSpikes: 24);
-        AdvanceTicks(state, 30);
-
-        using var document = SerializeDiagnostics(state);
-        var percepts = GetObject(document.RootElement, "persistentPercepts");
-
-        Assert.True(GetInt(percepts, "count") > 0);
-        Assert.Equal("food", GetString(percepts, "activeCategory"));
-        Assert.Contains("berry", GetString(percepts, "activeLabel"), StringComparison.OrdinalIgnoreCase);
-        Assert.True(GetSingle(percepts, "objectPermanence") > 0.20f);
-    }
-
-    [Fact]
-    public void Persistent_Percepts_Bias_Food_Intention_Target()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            objectId: "berry_patch_target",
-            label: "food berry patch",
-            hemisphere: "R",
-            salience: 0.88f,
-            confidence: 0.84f,
-            intensity: 1.0f,
-            deliveredSpikes: 28);
-        state.UpdateEnvironmentalState(
-            darkness: 0.10f,
-            shelterNeed: 0.08f,
-            anxiety: 0.06f,
-            hunger: 0.96f,
-            predatorThreat: 0.02f,
-            inShelter: 0.20f,
-            health: 0.92f,
-            shelterSafety: 0.38f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.12f, interoceptive: 0.92f, threat: 0.04f, aversive: 0.05f));
-        DriveCognition(state, 4);
-
-        using var document = SerializeDiagnostics(state);
-        var intent = GetObject(document.RootElement, "intentionalActionLoop");
-
-        Assert.Equal("FindFood", GetString(intent, "goalKey"));
-        Assert.Contains("remembered food", GetString(intent, "target"), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("berry_patch_target", GetString(intent, "target"), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

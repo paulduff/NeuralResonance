@@ -32,13 +32,32 @@ internal sealed record PerceptLanguageAnnotation(
     double Confidence,
     long AttachedUnixMs);
 
+internal sealed record NeuronalPerceptInterpretation(
+    string Authority,
+    bool Available,
+    bool Active,
+    int DominantEnsemble,
+    string? ObjectId,
+    string? Label,
+    bool LanguageAnnotationAttached,
+    double Confidence,
+    double DominanceMargin,
+    double CircuitCoverage,
+    double Persistence,
+    double Novelty,
+    bool ReadOnly,
+    bool CanCreatePercepts,
+    bool CanCreateMemories);
+
 internal sealed record NeuronalPerceptionSnapshot(
     long Tick,
     NeuronalPerceptDecision Percept,
+    NeuronalPerceptInterpretation Interpretation,
     IReadOnlyList<PerceptLanguageAnnotation> LanguageAnnotations);
 
 internal sealed class NeuronalPerceptionRuntime
 {
+    public const string Authority = "DistributedPerceptEnsembleCompetition";
     private const int MaxAuditAnnotations = 64;
     private readonly object _gate = new();
     private readonly Queue<PerceptLanguageAnnotation> _annotations = new();
@@ -64,7 +83,12 @@ internal sealed class NeuronalPerceptionRuntime
     {
         lock (_gate)
         {
-            return new NeuronalPerceptionSnapshot(_tick, _percept, _annotations.ToArray());
+            var annotations = _annotations.ToArray();
+            return new NeuronalPerceptionSnapshot(
+                _tick,
+                _percept,
+                BuildInterpretation(_tick, _percept, annotations),
+                annotations);
         }
     }
 
@@ -108,6 +132,34 @@ internal sealed class NeuronalPerceptionRuntime
     {
         var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static NeuronalPerceptInterpretation BuildInterpretation(
+        long tick,
+        NeuronalPerceptDecision percept,
+        IReadOnlyList<PerceptLanguageAnnotation> annotations)
+    {
+        var annotation = percept.Active
+            ? annotations.LastOrDefault(item =>
+                item.Tick == tick &&
+                item.EnsembleIndex == percept.DominantEnsemble)
+            : null;
+        return new NeuronalPerceptInterpretation(
+            Authority,
+            percept.Available,
+            percept.Active,
+            percept.DominantEnsemble,
+            annotation?.ObjectId,
+            annotation?.Label,
+            annotation is not null,
+            percept.Confidence,
+            percept.DominanceMargin,
+            percept.CircuitCoverage,
+            percept.Persistence,
+            percept.Novelty,
+            ReadOnly: true,
+            CanCreatePercepts: false,
+            CanCreateMemories: false);
     }
 }
 

@@ -41,36 +41,6 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public async Task VisualAttention_Handler_Rejects_Empty_Saliency()
-    {
-        var state = CreateState();
-
-        var result = AdminInputControlRoutes.PostVisualAttention(
-            new VisualAttentionInputRequest(LeftFieldSaliency: null, RightFieldSaliency: null),
-            state);
-        var (status, body) = await ExecuteJsonResultAsync(result);
-
-        Assert.Equal(StatusCodes.Status400BadRequest, status);
-        Assert.NotNull(body);
-        Assert.Contains("leftFieldSaliency", GetString(body.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task VisualAttention_Handler_Accepts_Left_Right_Signals()
-    {
-        var state = CreateState();
-
-        var result = AdminInputControlRoutes.PostVisualAttention(
-            new VisualAttentionInputRequest(LeftFieldSaliency: 0.90f, RightFieldSaliency: 0.10f),
-            state);
-        var (status, body) = await ExecuteJsonResultAsync(result);
-
-        Assert.Equal(StatusCodes.Status200OK, status);
-        Assert.NotNull(body);
-        Assert.NotEqual(string.Empty, GetString(body.RootElement, "focusedField"));
-    }
-
-    [Fact]
     public async Task Reasoning_And_Telemetry_Handlers_Return_Ok()
     {
         var state = CreateState();

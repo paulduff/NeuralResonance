@@ -29,6 +29,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         NeuronalPerceptDecision percept,
         NeuronalMemoryDecision memory,
         NeuronalAttentionWorkspaceDecision attention,
+        NeuronalVisualAttentionDecision visualAttention,
         NeuronalSleepConsolidationDecision sleep,
         NeuronalLanguageGroundingDecision language,
         NeuronalAffectValuationDecision valuation,
@@ -38,6 +39,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         ArgumentNullException.ThrowIfNull(percept);
         ArgumentNullException.ThrowIfNull(memory);
         ArgumentNullException.ThrowIfNull(attention);
+        ArgumentNullException.ThrowIfNull(visualAttention);
         ArgumentNullException.ThrowIfNull(sleep);
         ArgumentNullException.ThrowIfNull(language);
         ArgumentNullException.ThrowIfNull(valuation);
@@ -55,6 +57,9 @@ internal sealed class NeuronalCognitionAuthorityRuntime
             Domain("attention-workspace", attention.Available, attention.Available, attention.Active,
                 "/api/v1/neuronal-attention-workspace",
                 $"channel={attention.SelectedChannel};coverage={attention.CircuitCoverage:0.000}"),
+            Domain("visual-attention", visualAttention.CircuitCoverage >= 1.0, visualAttention.Available, visualAttention.Active,
+                "/api/v1/neuronal-visual-attention",
+                $"observer=read-only;field={visualAttention.FocusedField};hemisphere={visualAttention.FocusedHemisphere};coverage={visualAttention.CircuitCoverage:0.000};confidence={visualAttention.FocusConfidence:0.000}"),
             Domain("sleep-consolidation", sleep.CircuitObserved, sleep.Available, sleep.StateActive,
                 "/api/v1/neuronal-sleep-consolidation",
                 $"state={(int)sleep.State};replay={sleep.ReplayEnsemble};coverage={sleep.CircuitCoverage:0.000}"),

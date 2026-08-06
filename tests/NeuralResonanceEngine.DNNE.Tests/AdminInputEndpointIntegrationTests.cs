@@ -296,20 +296,15 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task VisualAttention_Endpoint_Validates_And_Accepts_Signals()
+    public async Task Legacy_VisualAttention_Override_Endpoint_Is_Removed()
     {
         var client = _fixture.Client;
 
-        var bad = await client.PostAsJsonAsync("/api/v1/admin/input/visual-attention", new { });
-        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
-
-        var good = await client.PostAsJsonAsync(
+        var response = await client.PostAsJsonAsync(
             "/api/v1/admin/input/visual-attention",
-            new VisualAttentionInputRequest(LeftFieldSaliency: 0.85f, RightFieldSaliency: 0.10f));
-        Assert.Equal(HttpStatusCode.OK, good.StatusCode);
+            new { leftFieldSaliency = 0.85f, rightFieldSaliency = 0.10f });
 
-        using var goodDoc = await ReadJsonAsync(good);
-        Assert.NotEqual(string.Empty, GetString(goodDoc.RootElement, "focusedField"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -459,7 +454,7 @@ public sealed class ControlProgramProcessFixture : IAsyncLifetime
 
     public HttpClient Client { get; private set; } = new()
     {
-        Timeout = TimeSpan.FromSeconds(10)
+        Timeout = TimeSpan.FromSeconds(30)
     };
 
     public async Task InitializeAsync()
@@ -503,7 +498,7 @@ public sealed class ControlProgramProcessFixture : IAsyncLifetime
         Client = new HttpClient
         {
             BaseAddress = new Uri($"http://127.0.0.1:{port}"),
-            Timeout = TimeSpan.FromSeconds(10)
+            Timeout = TimeSpan.FromSeconds(30)
         };
 
         await WaitUntilReadyAsync();

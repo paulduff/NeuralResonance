@@ -29,8 +29,6 @@ public static class AdminInputSource
 
 public sealed record InputGateControlRequest(bool? AvatarVisionEnabled, bool? SpontaneousSpikingEnabled);
 
-public sealed record VisualAttentionInputRequest(float? LeftFieldSaliency, float? RightFieldSaliency);
-
 public sealed record ObjectInputRequest(
     string? ObjectId,
     string? Label,

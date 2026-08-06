@@ -158,42 +158,48 @@ public partial class MainWindow
         }
 
         var tick = GetLong(root, "tick");
-        var leftBottomUp = GetDouble(attention, "leftBottomUp");
-        var rightBottomUp = GetDouble(attention, "rightBottomUp");
-        var leftIntegrated = GetDouble(attention, "leftIntegrated");
-        var rightIntegrated = GetDouble(attention, "rightIntegrated");
+        var authority = GetString(attention, "authority");
+        var available = GetBool(attention, "available");
+        var active = GetBool(attention, "active");
+        var leftFieldDrive = GetDouble(attention, "leftFieldDrive");
+        var rightFieldDrive = GetDouble(attention, "rightFieldDrive");
+        var leftTrn = GetDouble(attention, "leftHemisphereTrnSuppression");
+        var rightTrn = GetDouble(attention, "rightHemisphereTrnSuppression");
         var focusField = GetString(attention, "focusedField");
         var focusHemisphere = GetString(attention, "focusedHemisphere");
         var focusConfidence = GetDouble(attention, "focusConfidence");
-        var holdTicksRemaining = GetInt(attention, "holdTicksRemaining");
-        var lastInputTick = GetLong(attention, "lastInputTick");
-        var lastSaccadeTick = GetLong(attention, "lastSaccadeTick");
+        var selectionMargin = GetDouble(attention, "selectionMargin");
+        var circuitCoverage = GetDouble(attention, "circuitCoverage");
+        var sustainedSelectionTicks = GetLong(attention, "sustainedSelectionTicks");
+        var lastSelectionTick = GetLong(attention, "lastSelectionTick");
 
         var focusFieldLabel = string.IsNullOrWhiteSpace(focusField) ? "neutral" : focusField;
         var focusHemiLabel = string.IsNullOrWhiteSpace(focusHemisphere) ? "M" : focusHemisphere;
         var targetHemisphere = focusHemiLabel is "L" or "R" ? focusHemiLabel : "both";
-        var inputAgeTicks = (tick > 0 && lastInputTick > 0) ? Math.Max(0L, tick - lastInputTick) : -1;
-        var saccadeAgeTicks = (tick > 0 && lastSaccadeTick > 0) ? Math.Max(0L, tick - lastSaccadeTick) : -1;
+        var selectionAgeTicks = (tick > 0 && lastSelectionTick >= 0) ? Math.Max(0L, tick - lastSelectionTick) : -1;
 
         return string.Join(Environment.NewLine, new[]
         {
             $"Tick: {tick}",
+            $"Authority: {(string.IsNullOrWhiteSpace(authority) ? "neuronal" : authority)}",
+            $"Circuit observed: {(available ? "yes" : "no")} | active: {(active ? "yes" : "no")}",
+            $"Circuit coverage: {circuitCoverage:P1}",
             $"Focused field: {focusFieldLabel}",
             $"Focused hemisphere (contralateral target): {targetHemisphere}",
             $"Focus confidence: {focusConfidence:0.000}",
-            $"Hold ticks remaining: {holdTicksRemaining}",
-            $"Last input tick: {(lastInputTick > 0 ? lastInputTick : "n/a")}",
-            $"Input age: {(inputAgeTicks >= 0 ? $"{inputAgeTicks} ticks" : "n/a")}",
-            $"Last saccade tick: {(lastSaccadeTick > 0 ? lastSaccadeTick : "n/a")}",
-            $"Saccade age: {(saccadeAgeTicks >= 0 ? $"{saccadeAgeTicks} ticks" : "n/a")}",
+            $"Selection margin: {selectionMargin:0.000}",
+            $"Sustained neural winner: {sustainedSelectionTicks} ticks",
+            $"Selection age: {(selectionAgeTicks >= 0 ? $"{selectionAgeTicks} ticks" : "n/a")}",
             string.Empty,
-            "Bottom-up saliency:",
-            $"  Left field:  {leftBottomUp:0.000}",
-            $"  Right field: {rightBottomUp:0.000}",
+            "Bilateral field drive:",
+            $"  Left field (right hemisphere): {leftFieldDrive:0.000}",
+            $"  Right field (left hemisphere): {rightFieldDrive:0.000}",
             string.Empty,
-            "Integrated drive (bottom-up + top-down):",
-            $"  Left field:  {leftIntegrated:0.000}",
-            $"  Right field: {rightIntegrated:0.000}"
+            "TRN suppression:",
+            $"  Left hemisphere:  {leftTrn:0.000}",
+            $"  Right hemisphere: {rightTrn:0.000}",
+            string.Empty,
+            "Visual attention is read-only neuronal telemetry; no controller override is enabled."
         });
     }
 

@@ -10,7 +10,6 @@ internal static class AdminInputControlRoutes
 
         app.MapGet("/api/v1/admin/input-gates", GetInputGates);
         app.MapPost("/api/v1/admin/input-gates", SetInputGates);
-        app.MapPost("/api/v1/admin/input/visual-attention", PostVisualAttention);
 
         return app;
     }
@@ -39,37 +38,4 @@ internal static class AdminInputControlRoutes
         });
     }
 
-    internal static IResult PostVisualAttention(VisualAttentionInputRequest request, SimulationState state)
-    {
-        if (request is null)
-        {
-            return Results.BadRequest(new
-            {
-                Error = "Request payload missing."
-            });
-        }
-
-        if (request.LeftFieldSaliency is null && request.RightFieldSaliency is null)
-        {
-            return Results.BadRequest(new
-            {
-                Error = "Provide leftFieldSaliency and/or rightFieldSaliency."
-            });
-        }
-
-        var runtime = state.RegisterVisualAttentionObservation(request.LeftFieldSaliency, request.RightFieldSaliency);
-        return Results.Ok(new
-        {
-            runtime.LeftBottomUp,
-            runtime.RightBottomUp,
-            runtime.LeftIntegrated,
-            runtime.RightIntegrated,
-            runtime.FocusedField,
-            runtime.FocusedHemisphere,
-            runtime.FocusConfidence,
-            runtime.LastInputTick,
-            runtime.LastSaccadeTick,
-            runtime.HoldTicksRemaining
-        });
-    }
 }

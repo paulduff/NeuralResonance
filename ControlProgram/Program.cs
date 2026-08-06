@@ -52,6 +52,7 @@ builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
 builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
 builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
+builder.Services.AddSingleton<NeuronalVisualAttentionRuntime>();
 builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
 builder.Services.AddSingleton<NeuronalLanguageGroundingRuntime>();
 builder.Services.AddSingleton<NeuronalAffectValuationRuntime>();
@@ -288,6 +289,8 @@ app.MapGet("/api/v1/neuronal-memory", (NeuronalMemoryRuntime memory) =>
     Results.Ok(memory.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-attention-workspace", (NeuronalAttentionWorkspaceRuntime attentionWorkspace) =>
     Results.Ok(attentionWorkspace.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-visual-attention", (NeuronalVisualAttentionRuntime visualAttention) =>
+    Results.Ok(visualAttention.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-sleep-consolidation", (NeuronalSleepConsolidationRuntime sleepConsolidation) =>
     Results.Ok(sleepConsolidation.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRuntime languageGrounding) =>
@@ -547,6 +550,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
     AdminInputRestartGate recoveryGate,
     IConfiguration configuration,
     SimulationState state,
+    NeuronalVisualAttentionRuntime neuronalVisualAttention,
     InputIngressRuntime ingress,
     CancellationToken ct) =>
 {
@@ -585,7 +589,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
 
     if (AdminInputSource.IsAvatarSource(inputSource) && !state.IsAvatarVisionEnabled())
     {
-        var blockedVisualAttention = state.GetVisualAttentionRuntime();
+        var blockedVisualAttention = neuronalVisualAttention.GetSnapshot().VisualAttention;
         state.AppendOutputLog(
             $"Visual input blocked by avatar vision gate: pattern={pattern}, source={sourceStructure}, target={targetStructure}, inputSource={inputSource}.");
         return Results.Ok(new
@@ -612,22 +616,7 @@ app.MapPost("/api/v1/admin/input/visual", async (
         });
     }
 
-    var hasAttentionSignal = request.LeftFieldSaliency is not null || request.RightFieldSaliency is not null;
-    var visualAttention = hasAttentionSignal
-        ? state.RegisterVisualAttentionObservation(request.LeftFieldSaliency, request.RightFieldSaliency)
-        : state.GetVisualAttentionRuntime();
-    var visualObservation = Math.Clamp(
-        (intensity / 3.0f * 0.58f) +
-        (visualAttention.FocusConfidence * 0.24f) +
-        (((request.LeftFieldSaliency ?? 0f) + (request.RightFieldSaliency ?? 0f)) * 0.09f),
-        0f,
-        1f);
-    var predictivePerception = state.ObservePredictivePerception(
-        "visual",
-        $"{inputSource}:{pattern}",
-        visualObservation,
-        Math.Clamp(0.52f + (visualAttention.FocusConfidence * 0.34f), 0f, 1f),
-        inputSource);
+    var visualAttention = neuronalVisualAttention.GetSnapshot().VisualAttention;
     var useAttentionRouting = request.UseAttentionRouting.GetValueOrDefault(true);
     var hemisphereHint = requestedHemisphereHint;
     if (hemisphereHint is null && useAttentionRouting)
@@ -666,7 +655,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
             AttentionFocusField = visualAttention.FocusedField,
             AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
             AttentionFocusConfidence = visualAttention.FocusConfidence,
-            PredictiveSurprise = predictivePerception.Surprise,
             AttentionAppliedHemisphere = hemisphereHint ?? "both",
             InputSource = inputSource,
             Accepted = AdminInputSource.IsAvatarSource(inputSource),
@@ -699,7 +687,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
             AttentionFocusField = visualAttention.FocusedField,
             AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
             AttentionFocusConfidence = visualAttention.FocusConfidence,
-            PredictiveSurprise = predictivePerception.Surprise,
             AttentionAppliedHemisphere = hemisphereHint ?? "both",
             PausedDueToSleep = true,
             SleepState = "sleeping",
@@ -718,6 +705,10 @@ app.MapPost("/api/v1/admin/input/visual", async (
             instance =>
             {
                 var hemisphere = instance.HemisphereNormalized;
+                var sensoryGain = NeuronalVisualAttentionDecoder.GetContralateralSensoryGain(
+                    hemisphere,
+                    request.LeftFieldSaliency,
+                    request.RightFieldSaliency);
                 return BuildVisualStimulusSpikes(
                     tick,
                     timestampMs,
@@ -725,8 +716,8 @@ app.MapPost("/api/v1/admin/input/visual", async (
                     targetStructure,
                     hemisphere,
                     pattern,
-                    intensity,
-                    burstCount,
+                    (float)(intensity * sensoryGain),
+                    Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
                     neuromod);
             },
             clientFactory,
@@ -755,7 +746,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
             AttentionFocusField = visualAttention.FocusedField,
             AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
             AttentionFocusConfidence = visualAttention.FocusConfidence,
-            PredictiveSurprise = predictivePerception.Surprise,
             AttentionAppliedHemisphere = hemisphereHint ?? "both",
             InputSource = inputSource,
             Accepted = true,
@@ -769,6 +759,10 @@ app.MapPost("/api/v1/admin/input/visual", async (
         instance =>
         {
             var hemisphere = instance.HemisphereNormalized;
+            var sensoryGain = NeuronalVisualAttentionDecoder.GetContralateralSensoryGain(
+                hemisphere,
+                request.LeftFieldSaliency,
+                request.RightFieldSaliency);
             return BuildVisualStimulusSpikes(
                 tick,
                 timestampMs,
@@ -776,8 +770,8 @@ app.MapPost("/api/v1/admin/input/visual", async (
                 targetStructure,
                 hemisphere,
                 pattern,
-                intensity,
-                burstCount,
+                (float)(intensity * sensoryGain),
+                Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
                 neuromod);
         },
         clientFactory,
@@ -826,6 +820,10 @@ app.MapPost("/api/v1/admin/input/visual", async (
                     instance =>
                     {
                         var hemisphere = instance.HemisphereNormalized;
+                        var sensoryGain = NeuronalVisualAttentionDecoder.GetContralateralSensoryGain(
+                            hemisphere,
+                            request.LeftFieldSaliency,
+                            request.RightFieldSaliency);
                         return BuildVisualStimulusSpikes(
                             tick,
                             timestampMs,
@@ -833,8 +831,8 @@ app.MapPost("/api/v1/admin/input/visual", async (
                             targetStructure,
                             hemisphere,
                             pattern,
-                            intensity,
-                            burstCount,
+                            (float)(intensity * sensoryGain),
+                            Math.Max(1, (int)Math.Round(burstCount * sensoryGain)),
                             neuromod);
                     },
                     clientFactory,
@@ -884,8 +882,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
         AttentionFocusField = visualAttention.FocusedField,
         AttentionFocusHemisphere = visualAttention.FocusedHemisphere,
         AttentionFocusConfidence = visualAttention.FocusConfidence,
-        PredictiveSurprise = predictivePerception.Surprise,
-        PredictiveCue = predictivePerception.LastCue,
         AttentionAppliedHemisphere = hemisphereHint ?? "both",
         InputSource = inputSource,
         Errors = errors
@@ -3363,9 +3359,9 @@ static string BuildBodyStateTargetLabel(
     return string.Join(", ", labels.Distinct(StringComparer.OrdinalIgnoreCase));
 }
 
-static string? ResolveVisualAttentionTargetHemisphere(VisualAttentionRuntime runtime)
+static string? ResolveVisualAttentionTargetHemisphere(NeuronalVisualAttentionDecision runtime)
 {
-    if (runtime.FocusConfidence < 0.12f)
+    if (!runtime.Active || runtime.FocusConfidence < 0.12)
     {
         return null;
     }
@@ -3841,7 +3837,7 @@ internal sealed class SimulationState
     public PersistentPerceptRuntime PersistentPercepts { get; private set; } = PersistentPerceptRuntime.Default;
     public EmbodiedAttentionSpotlightRuntime EmbodiedAttentionSpotlight { get; private set; } = EmbodiedAttentionSpotlightRuntime.Default;
     public PlaceMemoryRuntime PlaceMemory { get; private set; } = PlaceMemoryRuntime.Default;
-    public VisualAttentionRuntime VisualAttention { get; private set; } = VisualAttentionRuntime.Default;
+    public NeuronalVisualAttentionDecision VisualAttention { get; private set; } = NeuronalVisualAttentionDecision.Unavailable;
     public BiologicalAttentionRuntime AttentionState { get; private set; } = BiologicalAttentionRuntime.Default;
     public LimbicRuntimeState LimbicState { get; private set; } = LimbicRuntimeState.Default;
     public EmotionRuntimeState EmotionState { get; private set; } = EmotionRuntimeState.Default;
@@ -5430,11 +5426,12 @@ internal sealed class SimulationState
         }
     }
 
-    public VisualAttentionRuntime GetVisualAttentionRuntime()
+    public void UpdateNeuronalVisualAttention(NeuronalVisualAttentionDecision decision)
     {
+        ArgumentNullException.ThrowIfNull(decision);
         lock (_gate)
         {
-            return VisualAttention;
+            VisualAttention = decision;
         }
     }
 
@@ -16862,117 +16859,6 @@ internal sealed class SimulationState
         };
     }
 
-    public VisualAttentionRuntime RegisterVisualAttentionObservation(float? leftFieldSaliency, float? rightFieldSaliency)
-    {
-        lock (_gate)
-        {
-            var runtime = VisualAttention;
-            var requestedLeft = Math.Clamp(leftFieldSaliency ?? runtime.LeftBottomUp, 0f, 1f);
-            var requestedRight = Math.Clamp(rightFieldSaliency ?? runtime.RightBottomUp, 0f, 1f);
-            const float alpha = 0.34f;
-            var leftBottomUp = ((1f - alpha) * runtime.LeftBottomUp) + (alpha * requestedLeft);
-            var rightBottomUp = ((1f - alpha) * runtime.RightBottomUp) + (alpha * requestedRight);
-            VisualAttention = runtime with
-            {
-                LeftBottomUp = Math.Clamp(leftBottomUp, 0f, 1f),
-                RightBottomUp = Math.Clamp(rightBottomUp, 0f, 1f),
-                LastInputTick = Tick
-            };
-
-            return VisualAttention;
-        }
-    }
-
-    public VisualAttentionRuntime AdvanceVisualAttentionWta(float leftTopDown, float rightTopDown, float trnGate)
-    {
-        lock (_gate)
-        {
-            var runtime = VisualAttention;
-            var clampedLeftTopDown = Math.Clamp(leftTopDown, 0f, 1f);
-            var clampedRightTopDown = Math.Clamp(rightTopDown, 0f, 1f);
-            var clampedTrnGate = Math.Clamp(trnGate, 0f, 1f);
-
-            var targetLeft = Math.Clamp((runtime.LeftBottomUp * 0.68f) + (clampedLeftTopDown * 0.32f), 0f, 1f);
-            var targetRight = Math.Clamp((runtime.RightBottomUp * 0.68f) + (clampedRightTopDown * 0.32f), 0f, 1f);
-            const float integrationAlpha = 0.28f;
-            var integratedLeft = ((1f - integrationAlpha) * runtime.LeftIntegrated) + (integrationAlpha * targetLeft);
-            var integratedRight = ((1f - integrationAlpha) * runtime.RightIntegrated) + (integrationAlpha * targetRight);
-            integratedLeft = Math.Clamp(integratedLeft, 0f, 1f);
-            integratedRight = Math.Clamp(integratedRight, 0f, 1f);
-
-            var difference = integratedLeft - integratedRight;
-            var margin = Math.Clamp(0.05f + (0.10f * clampedTrnGate), 0.05f, 0.18f);
-            var holdTicksRemaining = Math.Max(0, runtime.HoldTicksRemaining - 1);
-            var focusedField = runtime.FocusedField;
-            var switched = false;
-
-            if (!string.Equals(focusedField, "left", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(focusedField, "right", StringComparison.OrdinalIgnoreCase))
-            {
-                if (difference > margin)
-                {
-                    focusedField = "left";
-                    switched = true;
-                }
-                else if (difference < -margin)
-                {
-                    focusedField = "right";
-                    switched = true;
-                }
-                else
-                {
-                    focusedField = "neutral";
-                }
-            }
-            else if (holdTicksRemaining <= 0)
-            {
-                if (string.Equals(focusedField, "left", StringComparison.OrdinalIgnoreCase) && difference < -margin)
-                {
-                    focusedField = "right";
-                    switched = true;
-                }
-                else if (string.Equals(focusedField, "right", StringComparison.OrdinalIgnoreCase) && difference > margin)
-                {
-                    focusedField = "left";
-                    switched = true;
-                }
-            }
-
-            var focusConfidence = Math.Clamp((Math.Abs(difference) - (margin * 0.35f)) / Math.Max(0.05f, margin * 1.65f), 0f, 1f);
-            if (string.Equals(focusedField, "neutral", StringComparison.OrdinalIgnoreCase))
-            {
-                focusConfidence = Math.Clamp(focusConfidence * 0.45f, 0f, 0.40f);
-            }
-
-            var focusedHemisphere = focusedField switch
-            {
-                "left" => "R",
-                "right" => "L",
-                _ => "M"
-            };
-
-            var lastSaccadeTick = runtime.LastSaccadeTick;
-            if (switched)
-            {
-                lastSaccadeTick = Tick;
-                holdTicksRemaining = 8 + (int)Math.Round(clampedTrnGate * 8.0);
-            }
-
-            VisualAttention = runtime with
-            {
-                LeftIntegrated = integratedLeft,
-                RightIntegrated = integratedRight,
-                FocusedField = focusedField,
-                FocusedHemisphere = focusedHemisphere,
-                FocusConfidence = focusConfidence,
-                LastSaccadeTick = lastSaccadeTick,
-                HoldTicksRemaining = Math.Max(0, holdTicksRemaining)
-            };
-
-            return VisualAttention;
-        }
-    }
-
     public SleepTransitionResult AdvanceSleepHomeostasis(SleepTickInput input)
         => AdvanceSleepHomeostasis(
             input,
@@ -17842,7 +17728,7 @@ internal sealed class SimulationState
             PersistentPercepts = PersistentPerceptRuntime.Default;
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Default;
             PlaceMemory = PlaceMemoryRuntime.Default;
-            VisualAttention = VisualAttentionRuntime.Default;
+            VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
             GlobalAttentionBias = BiologicalAttentionRuntime.Default.SensoryBias;
             AttentionState = BiologicalAttentionRuntime.Default;
             LimbicState = LimbicRuntimeState.Default;
@@ -20385,16 +20271,22 @@ internal sealed class SimulationState
         }).ToList(),
         VisualAttention = new
         {
-            VisualAttention.LeftBottomUp,
-            VisualAttention.RightBottomUp,
-            VisualAttention.LeftIntegrated,
-            VisualAttention.RightIntegrated,
+            Authority = NeuronalVisualAttentionDecision.Authority,
+            VisualAttention.Available,
+            VisualAttention.Active,
+            VisualAttention.LeftFieldDrive,
+            VisualAttention.RightFieldDrive,
+            VisualAttention.LeftHemisphereTrnSuppression,
+            VisualAttention.RightHemisphereTrnSuppression,
             VisualAttention.FocusedField,
             VisualAttention.FocusedHemisphere,
             VisualAttention.FocusConfidence,
-            VisualAttention.LastInputTick,
-            VisualAttention.LastSaccadeTick,
-            VisualAttention.HoldTicksRemaining
+            VisualAttention.SelectionMargin,
+            VisualAttention.CircuitCoverage,
+            VisualAttention.SustainedSelectionTicks,
+            VisualAttention.LastSelectionTick,
+            CanAcceptAttentionOverrides = false,
+            LegacyWinnerEnabled = false
         },
         AttentionState = new
         {
@@ -21291,7 +21183,6 @@ internal sealed class SimulationState
                 InteroceptiveCore = InteroceptiveCore,
                 PainProtection = PainProtection,
                 BodyPresence = BodyPresence,
-                VisualAttention = VisualAttention,
                 PersistentPercepts = PersistentPercepts,
                 EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlight,
                 AttentionState = AttentionState,
@@ -21457,7 +21348,6 @@ internal sealed class SimulationState
             var importedInteroceptiveCore = document.InteroceptiveCore ?? InteroceptiveCoreRuntime.Default;
             var importedPainProtection = document.PainProtection ?? PainProtectionRuntime.Default;
             var importedBodyPresence = document.BodyPresence ?? BodyPresenceRuntime.Default;
-            var importedVisualAttention = document.VisualAttention ?? VisualAttentionRuntime.Default;
             var importedPersistentPercepts = document.PersistentPercepts ?? PersistentPerceptRuntime.Default;
             var importedEmbodiedAttentionSpotlight = document.EmbodiedAttentionSpotlight ?? EmbodiedAttentionSpotlightRuntime.Default;
             var importedAttentionState = document.AttentionState ?? BiologicalAttentionRuntime.Default;
@@ -21510,7 +21400,6 @@ internal sealed class SimulationState
             InteroceptiveCore = InteroceptiveCoreRuntime.Normalize(importedInteroceptiveCore);
             PainProtection = PainProtectionRuntime.Normalize(importedPainProtection);
             BodyPresence = BodyPresenceRuntime.Normalize(importedBodyPresence);
-            VisualAttention = ClampVisualAttention(importedVisualAttention);
             PersistentPercepts = PersistentPerceptRuntime.Normalize(importedPersistentPercepts);
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Normalize(importedEmbodiedAttentionSpotlight);
             AttentionState = BiologicalAttentionRuntime.Normalize(importedAttentionState);
@@ -21891,36 +21780,6 @@ internal sealed class SimulationState
             Auditory: Math.Clamp(attention.Auditory, 0f, 1f),
             Somatosensory: Math.Clamp(attention.Somatosensory, 0f, 1f),
             Interoceptive: Math.Clamp(attention.Interoceptive, 0f, 1f));
-    }
-
-    private static VisualAttentionRuntime ClampVisualAttention(VisualAttentionRuntime visualAttention)
-    {
-        var focusedField = visualAttention.FocusedField switch
-        {
-            "left" => "left",
-            "right" => "right",
-            _ => "neutral"
-        };
-        var focusedHemisphere = focusedField switch
-        {
-            "left" => "R",
-            "right" => "L",
-            _ => "M"
-        };
-
-        return visualAttention with
-        {
-            LeftBottomUp = Math.Clamp(visualAttention.LeftBottomUp, 0f, 1f),
-            RightBottomUp = Math.Clamp(visualAttention.RightBottomUp, 0f, 1f),
-            LeftIntegrated = Math.Clamp(visualAttention.LeftIntegrated, 0f, 1f),
-            RightIntegrated = Math.Clamp(visualAttention.RightIntegrated, 0f, 1f),
-            FocusedField = focusedField,
-            FocusedHemisphere = focusedHemisphere,
-            FocusConfidence = Math.Clamp(visualAttention.FocusConfidence, 0f, 1f),
-            LastInputTick = Math.Max(0, visualAttention.LastInputTick),
-            LastSaccadeTick = Math.Max(0, visualAttention.LastSaccadeTick),
-            HoldTicksRemaining = Math.Max(0, visualAttention.HoldTicksRemaining)
-        };
     }
 
     private static void ReplaceRuntimeLogQueue(Queue<RuntimeLogEntry> queue, List<RuntimeLogEntry> source)
@@ -22897,6 +22756,7 @@ internal sealed class TickCoordinator(
     NeuronalPerceptionRuntime neuronalPerception,
     NeuronalMemoryRuntime neuronalMemory,
     NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
+    NeuronalVisualAttentionRuntime neuronalVisualAttention,
     NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
     NeuronalLanguageGroundingRuntime neuronalLanguageGrounding,
     NeuronalAffectValuationRuntime neuronalAffectValuation,
@@ -23702,6 +23562,8 @@ internal sealed class TickCoordinator(
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
             var neuronalMemoryDecision = neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalVisualAttentionDecision = neuronalVisualAttention.Update(tickSignal.Tick, processedSnapshots);
+            state.UpdateNeuronalVisualAttention(neuronalVisualAttentionDecision);
             var neuronalSleep = neuronalSleepConsolidation.Update(tickSignal.Tick, processedSnapshots);
             var neuronalValuation = neuronalAffectValuation.Update(tickSignal.Tick, processedSnapshots);
             var neuronalLanguage = neuronalLanguageGrounding.Update(
@@ -23758,6 +23620,7 @@ internal sealed class TickCoordinator(
                 neuronalPercept,
                 neuronalMemoryDecision,
                 neuronalAttention,
+                neuronalVisualAttentionDecision,
                 neuronalSleep,
                 neuronalLanguage,
                 neuronalValuation,
@@ -23765,8 +23628,6 @@ internal sealed class TickCoordinator(
                 neuronalMotor);
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(neuronalAttention);
-            var (leftVisualTopDown, rightVisualTopDown, visualTrnGate) = ComputeVisualHemifieldTopDown(processedSnapshots);
-            var visualAttentionRuntime = state.AdvanceVisualAttentionWta(leftVisualTopDown, rightVisualTopDown, visualTrnGate);
             var capturedEngrams = sleepRuntimeAtTickStart.IsSleeping
                 ? 0
                 : CaptureSignificantEngrams(
@@ -23814,7 +23675,7 @@ internal sealed class TickCoordinator(
                     spontaneousNoiseBenchmarkMode,
                     spontaneousNoiseForceFallback || IsTransportSilent(previousTransport),
                     attentionBiasForNoise,
-                    visualAttentionRuntime,
+                    neuronalVisualAttentionDecision,
                     effectiveTickIoTimeoutMs,
                     dispatchBatchChunkSize,
                     stoppingToken);
@@ -23834,7 +23695,7 @@ internal sealed class TickCoordinator(
                     grpcSpikeTransports,
                     useHttpSpikeTransportFallback,
                     activePathways,
-                    visualAttentionRuntime,
+                    neuronalVisualAttentionDecision,
                     perceptionLanguageMinVisualFocusConfidence,
                     perceptionLanguageMinAuditoryRateHz,
                     perceptionLanguageBurstPerToken,
@@ -28829,7 +28690,7 @@ internal sealed class TickCoordinator(
         IReadOnlyDictionary<string, IStructureSpikeTransport> grpcSpikeTransports,
         bool useHttpSpikeTransportFallback,
         ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         double minVisualFocusConfidence,
         double minAuditoryRateHz,
         int burstPerToken,
@@ -29081,7 +28942,7 @@ internal sealed class TickCoordinator(
     }
 
     private static IReadOnlyList<string> BuildPerceptionLanguageTokens(
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         double auditoryRateHz,
         int perceptEnsemble,
         int maxTokens)
@@ -29103,7 +28964,7 @@ internal sealed class TickCoordinator(
             $"hemi_{hemisphere}",
             $"focus_{focusBucket}",
             $"aud_{auditoryBucket}",
-            visualAttention.HoldTicksRemaining > 0 ? "stable" : "saccade"
+            visualAttention.SustainedSelectionTicks > 1 ? "stable" : "new_selection"
         };
 
         if (auditoryRateHz >= 18.0)
@@ -29138,7 +28999,7 @@ internal sealed class TickCoordinator(
     }
 
     private static (string Mode, string Hemisphere) ResolvePerceptionLanguageRoute(
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         double auditoryRateHz)
     {
         var hemisphere = NormalizeHemisphereHintForDispatch(visualAttention.FocusedHemisphere);
@@ -29407,7 +29268,7 @@ internal sealed class TickCoordinator(
         bool benchmarkMode,
         bool forceFallbackWhenSilent,
         AttentionVector attentionBias,
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         int tickIoTimeoutMs,
         int maxSpikesPerDispatchRequest,
         CancellationToken stoppingToken)
@@ -29499,7 +29360,7 @@ internal sealed class TickCoordinator(
         double tickDurationSeconds,
         int maxEventsPerTick,
         AttentionVector attentionBias,
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         ConcurrentDictionary<string, ConcurrentQueue<QueuedDispatchBatch>> dispatchQueue,
         DispatchQueueMetrics dispatchQueueMetrics,
         int dispatchQueueMaxBatches,
@@ -29694,7 +29555,7 @@ internal sealed class TickCoordinator(
         double tickDurationSeconds,
         double scale,
         AttentionVector attentionBias,
-        VisualAttentionRuntime visualAttention)
+        NeuronalVisualAttentionDecision visualAttention)
     {
         var lateralizationWeight = GetHemisphereLateralizationWeight(sourceInstance.StructureId, sourceInstance.Hemisphere);
         var attentionWeight = GetAttentionWeightForStructure(sourceInstance.StructureId, attentionBias);
@@ -29812,55 +29673,6 @@ internal sealed class TickCoordinator(
             IsFeedback = isFeedback,
             ModulationContext = tickSignal.GlobalNeuromodState
         };
-    }
-
-    private static (float LeftTopDown, float RightTopDown, float TrnGate) ComputeVisualHemifieldTopDown(
-        IReadOnlyList<InstanceStructureSnapshot> snapshots)
-    {
-        if (snapshots.Count == 0)
-        {
-            return (0.5f, 0.5f, 0f);
-        }
-
-        static float MeanRate(
-            IReadOnlyList<InstanceStructureSnapshot> values,
-            StructureId structureId,
-            string hemisphere)
-        {
-            var selected = values
-                .Where(s =>
-                    s.StructureId == structureId &&
-                    string.Equals((s.Instance.Hemisphere ?? string.Empty).Trim(), hemisphere, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (selected.Count == 0)
-            {
-                return 0f;
-            }
-
-            return Math.Max(0f, selected.Average(s => s.MeanFiringRateHz));
-        }
-
-        static float NormalizeRate(float value)
-            => Math.Clamp(value / 55f, 0f, 1f);
-
-        var leftPpc = NormalizeRate(MeanRate(snapshots, StructureId.Ppc, "L"));
-        var rightPpc = NormalizeRate(MeanRate(snapshots, StructureId.Ppc, "R"));
-        var leftPfc = NormalizeRate(MeanRate(snapshots, StructureId.Pfc, "L"));
-        var rightPfc = NormalizeRate(MeanRate(snapshots, StructureId.Pfc, "R"));
-        var leftPulvinar = NormalizeRate(MeanRate(snapshots, StructureId.Pulvinar, "L"));
-        var rightPulvinar = NormalizeRate(MeanRate(snapshots, StructureId.Pulvinar, "R"));
-
-        // Contralateral retinotopy: right hemisphere control networks bias left visual hemifield, and vice versa.
-        var leftFieldTopDown = Math.Clamp((0.46f * rightPpc) + (0.36f * rightPfc) + (0.18f * rightPulvinar), 0f, 1f);
-        var rightFieldTopDown = Math.Clamp((0.46f * leftPpc) + (0.36f * leftPfc) + (0.18f * leftPulvinar), 0f, 1f);
-
-        var trnSamples = snapshots
-            .Where(s => s.StructureId == StructureId.Trn)
-            .Select(s => s.MeanFiringRateHz)
-            .ToList();
-        var trnRate = trnSamples.Count == 0 ? 0f : Math.Max(0f, trnSamples.Average());
-        var trnGate = Math.Clamp(trnRate / 35f, 0f, 1f);
-        return (leftFieldTopDown, rightFieldTopDown, trnGate);
     }
 
     private static AttentionVector ComputeTrnDrivenAttentionBias(
@@ -29983,7 +29795,7 @@ internal sealed class TickCoordinator(
         IReadOnlyList<InstanceStructureSnapshot> snapshots,
         IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
         BiologicalAttentionRuntime previous,
-        VisualAttentionRuntime visualAttention,
+        NeuronalVisualAttentionDecision visualAttention,
         PredictivePerceptionRuntime predictivePerception,
         LimbicRuntimeState limbic,
         SleepMemoryRuntime sleepRuntime,
@@ -30618,7 +30430,7 @@ internal sealed class TickCoordinator(
     private static double GetVisualFieldHemisphereWeight(
         StructureId structureId,
         string hemisphere,
-        VisualAttentionRuntime visualAttention)
+        NeuronalVisualAttentionDecision visualAttention)
     {
         if (!IsVisualAttentionDrivenStructure(structureId))
         {
@@ -35115,7 +34927,6 @@ internal sealed class NetworkStateDocument
     public InteroceptiveCoreRuntime? InteroceptiveCore { get; set; } = InteroceptiveCoreRuntime.Default;
     public PainProtectionRuntime? PainProtection { get; set; } = PainProtectionRuntime.Default;
     public BodyPresenceRuntime? BodyPresence { get; set; } = BodyPresenceRuntime.Default;
-    public VisualAttentionRuntime VisualAttention { get; set; } = VisualAttentionRuntime.Default;
     public PersistentPerceptRuntime? PersistentPercepts { get; set; } = PersistentPerceptRuntime.Default;
     public EmbodiedAttentionSpotlightRuntime? EmbodiedAttentionSpotlight { get; set; } = EmbodiedAttentionSpotlightRuntime.Default;
     public BiologicalAttentionRuntime? AttentionState { get; set; } = BiologicalAttentionRuntime.Default;
@@ -37733,30 +37544,6 @@ internal sealed record LimbicRuntimeState(
             NorepinephrineLevel = 0.32f
         },
         LastUpdatedTick: 0);
-}
-internal sealed record VisualAttentionRuntime(
-    float LeftBottomUp,
-    float RightBottomUp,
-    float LeftIntegrated,
-    float RightIntegrated,
-    string FocusedField,
-    string FocusedHemisphere,
-    float FocusConfidence,
-    long LastInputTick,
-    long LastSaccadeTick,
-    int HoldTicksRemaining)
-{
-    public static VisualAttentionRuntime Default { get; } = new(
-        LeftBottomUp: 0.50f,
-        RightBottomUp: 0.50f,
-        LeftIntegrated: 0.50f,
-        RightIntegrated: 0.50f,
-        FocusedField: "neutral",
-        FocusedHemisphere: "M",
-        FocusConfidence: 0f,
-        LastInputTick: 0,
-        LastSaccadeTick: 0,
-        HoldTicksRemaining: 0);
 }
 internal sealed record SleepMemoryRuntime(
     bool IsSleeping,

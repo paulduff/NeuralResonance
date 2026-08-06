@@ -330,6 +330,11 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     [InlineData("/api/v1/room-state")]
     [InlineData("/api/v1/inhabitance")]
     [InlineData("/api/v1/biological-teaching-loop")]
+    [InlineData("/api/v1/admin/object-memory")]
+    [InlineData("/api/v1/admin/reasoning/schemas")]
+    [InlineData("/api/v1/admin/reasoning/world-model")]
+    [InlineData("/api/v1/admin/reasoning/counterfactual")]
+    [InlineData("/api/v1/admin/reasoning/consolidation")]
     public async Task Legacy_Cognition_Endpoints_Are_Removed(string path)
     {
         using var response = await _fixture.Client.GetAsync(path);
@@ -338,12 +343,9 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task Reasoning_And_Telemetry_Routes_Are_Reachable()
+    public async Task Telemetry_Routes_Are_Reachable()
     {
         var client = _fixture.Client;
-
-        var schemas = await client.GetAsync("/api/v1/admin/reasoning/schemas?limit=4");
-        Assert.Equal(HttpStatusCode.OK, schemas.StatusCode);
 
         var startup = await client.GetAsync("/api/v1/admin/startup-health?maxNonOkDetails=4");
         Assert.Equal(HttpStatusCode.OK, startup.StatusCode);

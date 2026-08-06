@@ -487,17 +487,11 @@ public partial class MainWindow
         var cerebellarInput = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentInputSpikes") : 0;
         var cerebellarOutput = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentOutputSpikes") : 0;
         var cerebellarLastTick = cerebellum.ValueKind == JsonValueKind.Object ? GetLong(cerebellum, "lastSpikeTick") : long.MinValue;
-        var consolidationStage = consolidation.ValueKind == JsonValueKind.Object ? GetString(consolidation, "stage") : "-";
-        var engramCount = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "engramCount") : 0;
-        var replayReady = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replayReadyEngrams") : 0;
-        var protectedEngrams = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "protectedEngrams") : 0;
-        var replaySupported = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replaySupportedEngrams") : 0;
-        var motorSuppressed = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "motorSuppressedEngrams") : 0;
-        var schemaCount = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "schemaCount") : 0;
-        var activeSchemas = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "activeSchemas") : 0;
-        var replayGenerated = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replayGenerated") : 0;
-        var replayDelivered = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replayDelivered") : 0;
-        var deliveryRatio = consolidation.ValueKind == JsonValueKind.Object ? GetDouble(consolidation, "deliveryRatio") : 0.0;
+        var consolidationAuthority = consolidation.ValueKind == JsonValueKind.Object ? GetString(consolidation, "authority") : "-";
+        var synapticMemory = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "structureLocalSynapticMemory");
+        var localReplay = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "structureLocalSleepReplay");
+        var neuronalReplayActive = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "neuronalReplayActive");
+        var neuronalReplayEnsemble = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "neuronalReplayEnsemble") : -1;
 
         return string.Join(Environment.NewLine, new[]
         {
@@ -521,10 +515,9 @@ public partial class MainWindow
             $"  Recent window: {cerebellarWindow} ticks | input spikes: {cerebellarInput} | output spikes: {cerebellarOutput}",
             $"  Last cerebellar spike tick: {(cerebellarLastTick > 0 ? cerebellarLastTick.ToString() : "n/a")}",
             string.Empty,
-            "Memory consolidation:",
-            $"  Stage: {BlankAsDash(consolidationStage)} | engrams {engramCount} | replay-ready {replayReady} | protected {protectedEngrams}",
-            $"  Replay-supported: {replaySupported} | motor-suppressed during sleep: {motorSuppressed}",
-            $"  Schemas: {schemaCount} total | active {activeSchemas} | replay delivery {replayDelivered}/{replayGenerated} ({deliveryRatio:P0})",
+            "Neuronal memory consolidation:",
+            $"  Authority: {BlankAsDash(consolidationAuthority)} | structure-local synaptic memory: {(synapticMemory ? "active" : "unavailable")}",
+            $"  Structure-local sleep replay: {(localReplay ? "active" : "unavailable")} | neuronal replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
             string.Empty,
             "Language:",
             $"  Intent: {BlankAsDash(intent)} | command: {BlankAsDash(commandKey)} | directive: {BlankAsDash(motorDirective)} | strength: {languageStrength:0.000}",
@@ -2217,11 +2210,8 @@ public partial class MainWindow
         var dispatchedSpikes = 0;
         var droppedByBudget = 0;
         var topQueries = 0;
-        var engramsCaptured = 0;
         var spontaneousGenerated = 0;
         var spontaneousDelivered = 0;
-        var engramReplayGenerated = 0;
-        var engramReplayDelivered = 0;
         var spontaneousDispatchErrors = 0;
         var totalSpontaneousGenerated = 0L;
         var totalSpontaneousDelivered = 0L;
@@ -2267,8 +2257,6 @@ public partial class MainWindow
         var tickWallP99Ms = 0.0;
         var degradeSignal = "none";
         var sleepReplayStage = "awake";
-        var sleepReplaySelected = 0;
-        var sleepReplayDeliveryRatio = 0.0;
         var sleepInhibitoryScale = 1.0;
         var sleepExcitatoryScale = 1.0;
         var perceptionLanguageGenerated = 0;
@@ -2285,11 +2273,8 @@ public partial class MainWindow
             dispatchedSpikes = GetInt(transport, "dispatchedSpikes");
             droppedByBudget = GetInt(transport, "droppedByBudget");
             topQueries = GetInt(transport, "topQueries");
-            engramsCaptured = GetInt(transport, "engramsCaptured");
             spontaneousGenerated = GetInt(transport, "spontaneousGenerated");
             spontaneousDelivered = GetInt(transport, "spontaneousDelivered");
-            engramReplayGenerated = GetInt(transport, "engramReplayGenerated");
-            engramReplayDelivered = GetInt(transport, "engramReplayDelivered");
             spontaneousDispatchErrors = GetInt(transport, "spontaneousDispatchErrors");
             totalSpontaneousGenerated = GetLong(transport, "totalSpontaneousGenerated");
             totalSpontaneousDelivered = GetLong(transport, "totalSpontaneousDelivered");
@@ -2335,8 +2320,6 @@ public partial class MainWindow
             tickWallP99Ms = GetDouble(transport, "tickWallP99Ms");
             degradeSignal = GetString(transport, "degradeSignal");
             sleepReplayStage = GetString(transport, "sleepReplayStage");
-            sleepReplaySelected = GetInt(transport, "sleepReplaySelected");
-            sleepReplayDeliveryRatio = GetDouble(transport, "sleepReplayDeliveryRatio");
             sleepInhibitoryScale = GetDouble(transport, "sleepInhibitoryScale");
             sleepExcitatoryScale = GetDouble(transport, "sleepExcitatoryScale");
             perceptionLanguageGenerated = GetInt(transport, "perceptionLanguageGenerated");
@@ -2374,10 +2357,10 @@ public partial class MainWindow
         var sleepExitBlockedAlerts = 0;
         var lastAlert = string.Empty;
         var lastAlertTick = 0L;
-        var engramCount = 0;
-        var schemaCount = 0;
-        var totalEngramsCaptured = 0L;
-        var totalEngramsReplayed = 0L;
+        var neuronalAuthorityActive = false;
+        var neuronalStateChannel = 0;
+        var neuronalReplayActive = false;
+        var neuronalReplayEnsemble = -1;
         if (TryGetProperty(root, "sleepMemory", out var sleepMemory) && sleepMemory.ValueKind == JsonValueKind.Object)
         {
             if (TryGetProperty(sleepMemory, "isSleeping", out var isSleepingProp) && isSleepingProp.ValueKind is JsonValueKind.True or JsonValueKind.False)
@@ -2405,16 +2388,10 @@ public partial class MainWindow
             sleepExitBlockedAlerts = GetInt(sleepMemory, "sleepExitBlockedAlerts");
             lastAlert = GetString(sleepMemory, "lastAlert");
             lastAlertTick = GetLong(sleepMemory, "lastAlertTick");
-            engramCount = GetInt(sleepMemory, "engramCount");
-            schemaCount = GetInt(sleepMemory, "schemaCount");
-            totalEngramsCaptured = GetLong(sleepMemory, "totalEngramsCaptured");
-            totalEngramsReplayed = GetLong(sleepMemory, "totalEngramsReplayed");
-        }
-
-        var topSchemas = ParseTopSchemaDisplay(root);
-        if (schemaCount <= 0)
-        {
-            schemaCount = topSchemas.SchemaCount;
+            neuronalAuthorityActive = GetBool(sleepMemory, "neuronalAuthorityActive");
+            neuronalStateChannel = GetInt(sleepMemory, "neuronalStateChannel");
+            neuronalReplayActive = GetBool(sleepMemory, "neuronalReplayActive");
+            neuronalReplayEnsemble = GetInt(sleepMemory, "neuronalReplayEnsemble");
         }
 
         return string.Join(Environment.NewLine, new[]
@@ -2426,7 +2403,7 @@ public partial class MainWindow
             $"Last snapshot: {snapshotStatus}",
             $"Snapshot age: {snapshotAgeStatus}",
             string.Empty,
-            "Sleep/memory:",
+            "Sleep and neuronal memory:",
             $"  State: {sleepStateLabel} | ATP: {atpBudget:0.000}",
             $"  Wake duty: observed {observedWakeDuty:0.000} / target {targetWakeDuty:0.000} | wakeTicks: {wakeTicks}",
             $"  Wake guardrails: min awake {minWakeTicks} ticks | sleep pressure enter {sleepPressureEnterThreshold:0.000} | wake inertia remaining {wakeInertiaTicksRemaining} ticks",
@@ -2434,9 +2411,8 @@ public partial class MainWindow
             $"  Durations (ticks): last wake {lastWakeDurationTicks}, last sleep {lastSleepDurationTicks}, wake EWMA {wakeDurationEwmaTicks:0.0}, sleep EWMA {sleepDurationEwmaTicks:0.0}",
             $"  Alerts: short wake {shortWakeAlerts} (consecutive {consecutiveShortWakeEpisodes}, threshold {shortWakeThresholdTicks}) | blocked exit {sleepExitBlockedAlerts} (ticks {sleepExitBlockedTicks})",
             $"  Last alert: {(string.IsNullOrWhiteSpace(lastAlert) ? "-" : $"{lastAlert} @ tick {lastAlertTick}")}",
-            $"  Engrams: {engramCount} | captured: {totalEngramsCaptured} | replayed: {totalEngramsReplayed}",
-            $"  Schemas: {schemaCount}",
-            topSchemas.Text,
+            $"  Neuronal authority: {(neuronalAuthorityActive ? "active" : "not observed")} | state channel {neuronalStateChannel}",
+            $"  Structure-local replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
             string.Empty,
             "Transport (last tick):",
             $"  Active services: {activeServices}",
@@ -2446,11 +2422,8 @@ public partial class MainWindow
             $"  Dispatched spikes: {dispatchedSpikes}",
             $"  Dropped by budget: {droppedByBudget}",
             $"  Top queries: {topQueries}",
-            $"  Engrams captured: {engramsCaptured}",
             $"  Spontaneous generated: {spontaneousGenerated}",
             $"  Spontaneous delivered: {spontaneousDelivered}",
-            $"  Engram replay generated: {engramReplayGenerated}",
-            $"  Engram replay delivered: {engramReplayDelivered}",
             $"  Spontaneous dispatch errors: {spontaneousDispatchErrors}",
             $"  Spontaneous totals: gen {totalSpontaneousGenerated} | del {totalSpontaneousDelivered} | err {totalSpontaneousDispatchErrors}",
             $"  Spontaneous last error: {(string.IsNullOrWhiteSpace(spontaneousLastError) ? "-" : spontaneousLastError)}",
@@ -2499,9 +2472,8 @@ public partial class MainWindow
             $"  500-1000ms: {ackLatency500To1000Ms}",
             $"  >=1000ms: {ackLatencyGte1000Ms}",
             string.Empty,
-            "Sleep replay validation:",
+            "Neuronal sleep modulation:",
             $"  Stage: {sleepReplayStage}",
-            $"  Replay selected: {sleepReplaySelected} | delivery ratio: {sleepReplayDeliveryRatio:0.000}",
             $"  Inhibitory scale: {sleepInhibitoryScale:0.000} | excitatory scale: {sleepExcitatoryScale:0.000}",
             string.Empty,
             "Perception-language conditioning:",
@@ -2581,47 +2553,6 @@ public partial class MainWindow
             modeLines.Count == 0 ? "-" : string.Join(" || ", modeLines));
     }
 
-    private static TopSchemaDisplay ParseTopSchemaDisplay(JsonElement root)
-    {
-        if (!TryGetProperty(root, "relationalSchemas", out var relationalSchemas) || relationalSchemas.ValueKind != JsonValueKind.Array)
-        {
-            return TopSchemaDisplay.Empty;
-        }
-
-        var topSchemaLines = new List<string>(6);
-        var rank = 1;
-        foreach (var schema in relationalSchemas.EnumerateArray().Take(6))
-        {
-            var source = GetString(schema, "source");
-            var target = GetString(schema, "target");
-            var circuitClass = GetString(schema, "circuitClass");
-            var hemisphereRelation = GetString(schema, "hemisphereRelation");
-            var neurotransmitter = GetString(schema, "neurotransmitter");
-            var isFeedback = false;
-            if (TryGetProperty(schema, "isFeedback", out var isFeedbackProp) &&
-                isFeedbackProp.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                isFeedback = isFeedbackProp.GetBoolean();
-            }
-
-            var strength = GetDouble(schema, "strength");
-            var novelty = GetDouble(schema, "noveltyScore");
-            var salience = GetDouble(schema, "meanSalience");
-            var captureCount = GetInt(schema, "captureCount");
-            var replaySupportCount = GetInt(schema, "replaySupportCount");
-            var feedbackTag = isFeedback ? ", fb" : string.Empty;
-            topSchemaLines.Add(
-                $"#{rank} {source}->{target} ({circuitClass}, {hemisphereRelation}, {neurotransmitter}{feedbackTag}) | str {strength:0.000}, nov {novelty:0.000}, sal {salience:0.000}, cap {captureCount}, rep {replaySupportCount}");
-            rank++;
-        }
-
-        var text = topSchemaLines.Count == 0
-            ? "  Top schemas: -"
-            : string.Join(
-                Environment.NewLine,
-                new[] { "  Top schemas:" }.Concat(topSchemaLines.Select(line => $"    {line}")));
-        return new TopSchemaDisplay(relationalSchemas.GetArrayLength(), text);
-    }
 
     private sealed record LanguageBackoffDisplay(
         long Attempts,
@@ -2633,11 +2564,6 @@ public partial class MainWindow
         string ModesText)
     {
         public static LanguageBackoffDisplay Empty { get; } = new(0, 0, 0, 0, "-", "-", "-");
-    }
-
-    private sealed record TopSchemaDisplay(int SchemaCount, string Text)
-    {
-        public static TopSchemaDisplay Empty { get; } = new(0, "  Top schemas: -");
     }
 
     private static string AppendFrameSpikeMetrics(string baseStatsText, FrameSpikeMetrics metrics)

@@ -41,12 +41,9 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public async Task Reasoning_And_Telemetry_Handlers_Return_Ok()
+    public async Task Telemetry_Handlers_Return_Ok()
     {
         var state = CreateState();
-
-        var schemas = await ExecuteJsonResultAsync(AdminReasoningRoutes.GetSchemas(state, 4));
-        Assert.Equal(StatusCodes.Status200OK, schemas.StatusCode);
 
         var startup = await ExecuteJsonResultAsync(AdminTelemetryRoutes.GetStartupHealth(state, 4));
         Assert.Equal(StatusCodes.Status200OK, startup.StatusCode);
@@ -60,16 +57,17 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public async Task Counterfactual_Handler_Rejects_Null_Request()
+    public void Conventional_Reasoning_Handlers_Are_Physically_Absent()
     {
-        var state = CreateState();
+        var methodNames = typeof(AdminReasoningRoutes)
+            .GetMethods()
+            .Select(static method => method.Name)
+            .ToHashSet(StringComparer.Ordinal);
 
-        var result = AdminReasoningRoutes.PostCounterfactual(null!, state);
-        var (status, body) = await ExecuteJsonResultAsync(result);
-
-        Assert.Equal(StatusCodes.Status400BadRequest, status);
-        Assert.NotNull(body);
-        Assert.Contains("payload", GetString(body.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GetSchemas", methodNames);
+        Assert.DoesNotContain("GetWorldModel", methodNames);
+        Assert.DoesNotContain("PostCounterfactual", methodNames);
+        Assert.DoesNotContain("GetConsolidation", methodNames);
     }
 
     [Fact]

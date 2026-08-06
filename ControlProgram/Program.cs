@@ -846,7 +846,7 @@ app.MapPost("/api/v1/admin/input/object", (
             GeneratedSpikes = 0,
             DeliveredSpikes = 0,
             Targets = Array.Empty<object>(),
-            Memory = (ObjectMemoryTrace?)null,
+            Memory = (object?)null,
             BlockedByInputGate = true,
             InputSource = inputSource,
             Errors = Array.Empty<string>()
@@ -870,7 +870,7 @@ app.MapPost("/api/v1/admin/input/object", (
             GeneratedSpikes = 0,
             DeliveredSpikes = 0,
             Targets = Array.Empty<object>(),
-            Memory = (ObjectMemoryTrace?)null,
+            Memory = (object?)null,
             PausedDueToSleep = true,
             SleepState = "sleeping",
             InputSource = inputSource,
@@ -901,7 +901,7 @@ app.MapPost("/api/v1/admin/input/object", (
         GeneratedSpikes = 0,
         DeliveredSpikes = 0,
         Targets = Array.Empty<object>(),
-        Memory = (ObjectMemoryTrace?)null,
+        Memory = (object?)null,
         Accepted = true,
         DispatchDeferred = false,
         BlockedByInputGate = false,
@@ -913,11 +913,6 @@ app.MapPost("/api/v1/admin/input/object", (
         Errors = Array.Empty<string>()
     });
 
-});
-app.MapGet("/api/v1/admin/object-memory", (SimulationState state, int? limit) =>
-{
-    var max = Math.Clamp(limit.GetValueOrDefault(128), 8, 2048);
-    return Results.Ok(state.GetObjectMemorySnapshot(max));
 });
 app.MapPost("/api/v1/admin/input/auditory", async (
     AuditoryInputRequest request,
@@ -3354,16 +3349,6 @@ internal sealed class SimulationState
     private readonly Dictionary<StructureId, int> _dispatchLifetimeIn = new();
     private readonly Dictionary<StructureId, long> _dispatchLastOutTick = new();
     private readonly Dictionary<StructureId, long> _dispatchLastInTick = new();
-    private readonly List<MemoryEngram> _engramBank = [];
-    private readonly Dictionary<string, ObjectMemoryTrace> _objectMemory = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<RelationalSchema> _schemaBank = [];
-    private readonly Dictionary<string, WorldModelTransition> _worldModelTransitions = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ActionMemoryTrace> _actionMemory = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, WorldLearningMapEntry> _worldLearningMap = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, EpisodicMemoryTrace> _episodicMemory = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, SemanticMemoryTrace> _semanticMemory = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, DopamineLearningTrace> _dopamineLearning = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, LanguageCommandMemoryTrace> _languageCommandMemory = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<CurriculumTaskAccumulator> _curriculumTasks = CurriculumTaskAccumulator.CreateDefaults();
     private long _cachedCircuitAuditTick = -1;
     private int _cachedCircuitAuditWarningLimit;
@@ -3374,23 +3359,12 @@ internal sealed class SimulationState
     private object? _cachedBrainBehaviorSnapshot;
     private long _cachedProsodyTelemetryTick = -1;
     private object? _cachedProsodyTelemetrySnapshot;
-    private long _cachedRelationalSchemasTick = -1;
-    private IReadOnlyList<RelationalSchema>? _cachedRelationalSchemas;
     private const int MaxRuntimeLogEntries = 500;
     private const int MaxDispatchTraceEntries = 20000;
     private const int MaxDyadLanguageCandidateReviews = 256;
     private const int MaxIssuedDyadPrompts = 256;
     private static readonly TimeSpan IssuedDyadPromptLifetime = TimeSpan.FromMinutes(10);
     private const int MaxPopulationDispatchTracePerBatch = 96;
-    private const int MaxObjectMemoryEntries = 2048;
-    private const int MaxWorldModelTransitions = 2048;
-    private const int MaxActionMemoryEntries = 1024;
-    private const int MaxWorldLearningMapEntries = 2048;
-    private const int MaxEpisodicMemoryEntries = 4096;
-    private const int MaxSemanticMemoryEntries = 2048;
-    private const int MaxDopamineLearningEntries = 2048;
-    private const int MaxPlaceMemoryEntries = 256;
-    private const int CachedRelationalSchemaCount = 24;
     private const float WakeDutyEmaAlpha = 0.010f;
     private const float WakeDurationEwmaAlpha = 0.20f;
     private const float SleepDurationEwmaAlpha = 0.20f;
@@ -3403,12 +3377,6 @@ internal sealed class SimulationState
     private long _restartGeneration;
     private int _curriculumStageIndex;
     private long _curriculumLastStageTransitionTick;
-    private bool _worldModelHasPreviousObservation;
-    private string _worldModelPendingActionKey = "idle";
-    private StructureId _worldModelPendingSource = StructureId.Thalamus;
-    private StructureId _worldModelPendingTarget = StructureId.Thalamus;
-    private NTEnum _worldModelPendingNt = NTEnum.GLUTAMATE;
-    private bool _worldModelPendingFeedback;
 
     public double SimulationClockMs { get; private set; }
     public double TickDurationMs { get; private set; } = 1.0;
@@ -3443,27 +3411,14 @@ internal sealed class SimulationState
     public InteroceptiveCoreRuntime InteroceptiveCore { get; private set; } = InteroceptiveCoreRuntime.Default;
     public PainProtectionRuntime PainProtection { get; private set; } = PainProtectionRuntime.Default;
     public BodyPresenceRuntime BodyPresence { get; private set; } = BodyPresenceRuntime.Default;
-    public PredictivePerceptionRuntime PredictivePerception { get; private set; } = PredictivePerceptionRuntime.Default;
-    public PersistentPerceptRuntime PersistentPercepts { get; private set; } = PersistentPerceptRuntime.Default;
-    public PlaceMemoryRuntime PlaceMemory { get; private set; } = PlaceMemoryRuntime.Default;
     public NeuronalVisualAttentionDecision VisualAttention { get; private set; } = NeuronalVisualAttentionDecision.Unavailable;
     public BiologicalAttentionRuntime AttentionState { get; private set; } = BiologicalAttentionRuntime.Default;
     public LimbicRuntimeState LimbicState { get; private set; } = LimbicRuntimeState.Default;
     public EmotionRuntimeState EmotionState { get; private set; } = EmotionRuntimeState.Default;
-    public WorldModelRuntime WorldModel { get; private set; } = WorldModelRuntime.Default;
-    public ActionMemoryRuntime ActionMemory { get; private set; } = ActionMemoryRuntime.Default;
-    public ActionCompletionFeedbackRuntime ActionCompletionFeedback { get; private set; } = ActionCompletionFeedbackRuntime.Default;
-    public WorldLearningMapRuntime WorldLearningMap { get; private set; } = WorldLearningMapRuntime.Default;
-    public EpisodicMemoryRuntime EpisodicMemory { get; private set; } = EpisodicMemoryRuntime.Default;
-    public UnifiedEventMemoryRuntime UnifiedEventMemory { get; private set; } = UnifiedEventMemoryRuntime.Default;
-    public SemanticMemoryRuntime SemanticMemory { get; private set; } = SemanticMemoryRuntime.Default;
-    public DopamineLearningRuntime DopamineLearning { get; private set; } = DopamineLearningRuntime.Default;
-    public DreamConsolidationRuntime DreamConsolidation { get; private set; } = DreamConsolidationRuntime.Default;
     public CerebellumRuntime Cerebellum { get; private set; } = CerebellumRuntime.Default;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
     public NeuronalLanguageGroundingDecision NeuronalLanguageGrounding { get; private set; } = NeuronalLanguageGroundingDecision.Unavailable;
     public CurriculumRuntime Curriculum { get; private set; } = CurriculumRuntime.Default;
-    public ConsolidationControlSettings ConsolidationControl { get; private set; } = ConsolidationControlSettings.Default;
     public Dictionary<StructureId, ServiceRuntimeTelemetry> ServiceTelemetry { get; } = new();
     public TransportRuntimeStats TransportStats { get; private set; } = TransportRuntimeStats.Empty;
 
@@ -3910,151 +3865,8 @@ internal sealed class SimulationState
         _cachedBrainBehaviorSnapshot = null;
         _cachedProsodyTelemetryTick = -1;
         _cachedProsodyTelemetrySnapshot = null;
-        _cachedRelationalSchemasTick = -1;
-        _cachedRelationalSchemas = null;
     }
 
-    public object GetEpisodicMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshEpisodicMemorySnapshotLocked(Tick);
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                EpisodicMemory.Count,
-                EpisodicMemory.LastEventType,
-                EpisodicMemory.LastSummary,
-                EpisodicMemory.BestRecallSummary,
-                EpisodicMemory.HippocampalBinding,
-                EpisodicMemory.EntorhinalInput,
-                EpisodicMemory.DentatePatternSeparation,
-                EpisodicMemory.CA3PatternCompletion,
-                EpisodicMemory.CA1Mismatch,
-                EpisodicMemory.SubiculumOutput,
-                EpisodicMemory.RecallConfidence,
-                EpisodicMemory.LastUpdatedTick,
-                Top = _episodicMemory.Values
-                    .OrderByDescending(trace => (trace.Salience * 0.44f) + (trace.Confidence * 0.28f) + (trace.Novelty * 0.18f))
-                    .ThenByDescending(trace => trace.LastTick)
-                    .Take(Math.Clamp(maxCount, 1, MaxEpisodicMemoryEntries))
-                    .ToArray()
-            };
-        }
-    }
-
-    public object GetUnifiedEventMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshEpisodicMemorySnapshotLocked(Tick);
-            RefreshUnifiedEventMemorySnapshotLocked(Tick);
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                UnifiedEventMemory.Count,
-                UnifiedEventMemory.WorldObjectEvents,
-                UnifiedEventMemory.EnvironmentEvents,
-                UnifiedEventMemory.BodyEvents,
-                UnifiedEventMemory.LanguageEvents,
-                UnifiedEventMemory.ActionEvents,
-                UnifiedEventMemory.RewardEvents,
-                UnifiedEventMemory.RecentEventKey,
-                UnifiedEventMemory.RecentSummary,
-                UnifiedEventMemory.BestRecallSummary,
-                UnifiedEventMemory.ActiveScene,
-                UnifiedEventMemory.EventBinding,
-                UnifiedEventMemory.CrossModalBinding,
-                UnifiedEventMemory.HippocampalIndex,
-                UnifiedEventMemory.PfcRetrievalGate,
-                UnifiedEventMemory.Coverage,
-                UnifiedEventMemory.Confidence,
-                UnifiedEventMemory.LastUpdatedTick,
-                UnifiedEventMemory.Evidence,
-                Top = SelectTopByScore(
-                        _episodicMemory.Values,
-                        Math.Clamp(maxCount, 1, MaxEpisodicMemoryEntries),
-                        ScoreUnifiedEventTrace,
-                        trace => trace.LastTick)
-                    .ToArray()
-            };
-        }
-    }
-
-    public object GetSemanticMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            UpdateSemanticMemoryLocked(Tick);
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                SemanticMemory.Count,
-                SemanticMemory.DominantConceptKey,
-                SemanticMemory.ActiveCategory,
-                SemanticMemory.DominantMeaning,
-                SemanticMemory.TemporalAssociationBinding,
-                SemanticMemory.ParahippocampalContext,
-                SemanticMemory.RetrosplenialSceneBinding,
-                SemanticMemory.PpcAffordanceBinding,
-                SemanticMemory.PfcConceptControl,
-                SemanticMemory.SemanticConfidence,
-                SemanticMemory.LastUpdatedTick,
-                Top = _semanticMemory.Values
-                    .OrderByDescending(ScoreSemanticTrace)
-                    .ThenByDescending(trace => trace.LastUpdatedTick)
-                    .Take(Math.Clamp(maxCount, 1, MaxSemanticMemoryEntries))
-                    .ToArray()
-            };
-        }
-    }
-
-    public object GetDopamineLearningSnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshDopamineLearningSnapshotLocked(Tick);
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                DopamineLearning.Count,
-                DopamineLearning.LastActionKey,
-                DopamineLearning.LastGoalKey,
-                DopamineLearning.LastConceptKey,
-                DopamineLearning.ExpectedValue,
-                DopamineLearning.ObservedValue,
-                DopamineLearning.RewardPredictionError,
-                DopamineLearning.VtaPhasicDopamine,
-                DopamineLearning.SncActionReinforcement,
-                DopamineLearning.NucleusAccumbensIncentive,
-                DopamineLearning.OrbitofrontalExpectedValue,
-                DopamineLearning.HabenulaNegativeTeaching,
-                DopamineLearning.TeachingSignal,
-                DopamineLearning.LearnedValue,
-                DopamineLearning.AvoidancePenalty,
-                DopamineLearning.Confidence,
-                DopamineLearning.LastUpdatedTick,
-                Top = _dopamineLearning.Values
-                    .OrderByDescending(ScoreDopamineLearningTrace)
-                    .ThenByDescending(trace => trace.LastObservedTick)
-                    .Take(Math.Clamp(maxCount, 1, MaxDopamineLearningEntries))
-                    .ToArray()
-            };
-        }
-    }
 
 
     public object GetCircuitHealthPanelSnapshot(int maxWarnings)
@@ -4097,8 +3909,6 @@ internal sealed class SimulationState
                 SleepMemory.MinWakeTicks,
                 SleepMemory.WakeInertiaTicksRemaining,
                 SleepMemory.SleepEpisodes,
-                SleepMemory.SignificantSalienceThreshold,
-                SleepMemory.ReplayBurstsPerTick,
                 SleepMemory.TargetWakeDutyCycle,
                 SleepMemory.ObservedWakeDutyCycle,
                 SleepMemory.AdaptiveAwakeDrainScale,
@@ -4114,15 +3924,13 @@ internal sealed class SimulationState
                 SleepMemory.SleepExitBlockedAlerts,
                 SleepMemory.LastAlert,
                 SleepMemory.LastAlertTick,
-                SleepMemory.TotalEngramsCaptured,
-                SleepMemory.TotalEngramsReplayed,
                 SleepMemory.LastTransitionTick,
                 SleepMemory.NeuronalAuthorityActive,
                 SleepMemory.NeuronalStateChannel,
                 SleepMemory.NeuronalReplayActive,
                 SleepMemory.NeuronalReplayEnsemble,
-                EngramCount = _engramBank.Count,
-                SchemaCount = _schemaBank.Count
+                StructureLocalSynapticMemory = true,
+                StructureLocalSleepReplay = true
             };
         }
     }
@@ -4268,63 +4076,6 @@ internal sealed class SimulationState
     }
 
 
-    public object GetObjectMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            var take = Math.Clamp(maxCount, 1, MaxObjectMemoryEntries);
-            var items = _objectMemory.Values
-                .OrderByDescending(item => item.LastSeenTick)
-                .ThenByDescending(item => item.Familiarity)
-                .Take(take)
-                .ToList();
-
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                Count = _objectMemory.Count,
-                Items = items
-            };
-        }
-    }
-
-    public object GetPlaceMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshPlaceMemorySnapshotLocked(Tick);
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                PlaceMemory.Count,
-                PlaceMemory.ActivePlaceKey,
-                PlaceMemory.ActiveLabel,
-                PlaceMemory.ActiveCategory,
-                PlaceMemory.RecentSummary,
-                PlaceMemory.BestRecallSummary,
-                PlaceMemory.MapCoverage,
-                PlaceMemory.HippocampalPlaceBinding,
-                PlaceMemory.RetrosplenialSceneBinding,
-                PlaceMemory.Safety,
-                PlaceMemory.Threat,
-                PlaceMemory.Confidence,
-                PlaceMemory.LastUpdatedTick,
-                Top = PlaceMemory.Top
-                    .OrderByDescending(ScorePlaceMemoryTrace)
-                    .ThenByDescending(trace => trace.LastTick)
-                    .Take(Math.Clamp(maxCount, 1, MaxPlaceMemoryEntries))
-                    .ToArray()
-            };
-        }
-    }
 
     public object GetProsodyTelemetrySnapshot()
     {
@@ -4461,150 +4212,7 @@ internal sealed class SimulationState
         };
     }
 
-    public object GetRelationalSchemaSnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            var clamped = Math.Clamp(maxCount, 1, 256);
-            var topSchemas = GetTopSchemasSnapshot(clamped);
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                SchemaCount = _schemaBank.Count,
-                Schemas = topSchemas.Select(schema => new
-                {
-                    schema.Key,
-                    Source = schema.SourceStructure.ToString(),
-                    Target = schema.TargetStructure.ToString(),
-                    schema.CircuitClass,
-                    schema.HemisphereRelation,
-                    Neurotransmitter = schema.Neurotransmitter.ToString(),
-                    schema.IsFeedback,
-                    schema.Strength,
-                    schema.NoveltyScore,
-                    schema.MeanSalience,
-                    schema.CaptureCount,
-                    schema.ReplaySupportCount,
-                    schema.FirstCapturedTick,
-                    schema.LastCapturedTick,
-                    schema.LastReplayTick
-                }).ToList()
-            };
-        }
-    }
 
-    public object GetWorldModelSnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            var clamped = Math.Clamp(maxCount, 1, 512);
-            var transitions = _worldModelTransitions.Values
-                .OrderByDescending(t => t.Samples)
-                .ThenByDescending(t => Math.Abs(t.ExpectedRewardDelta))
-                .ThenByDescending(t => Math.Abs(t.ExpectedDispatchDelta))
-                .Take(clamped)
-                .Select(t => new
-                {
-                    t.ActionKey,
-                    Summary = BuildWorldModelActionSummary(t.SourceStructure, t.TargetStructure, t.Neurotransmitter, t.IsFeedback),
-                    Source = t.SourceStructure.ToString(),
-                    Target = t.TargetStructure.ToString(),
-                    Neurotransmitter = t.Neurotransmitter.ToString(),
-                    t.IsFeedback,
-                    t.ExpectedDispatchDelta,
-                    t.ExpectedPathwayDelta,
-                    t.ExpectedRewardDelta,
-                    t.ExpectedSleepPressureDelta,
-                    t.PredictionError,
-                    t.Samples,
-                    t.LastTick
-                })
-                .ToList();
-
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                WorldModel.Enabled,
-                WorldModel.ObservationCount,
-                WorldModel.LearnedTransitions,
-                WorldModel.LastActionKey,
-                WorldModel.LastActionSummary,
-                WorldModel.LastObservedDispatchedSpikes,
-                WorldModel.LastObservedActivePathways,
-                WorldModel.LastObservedReward,
-                WorldModel.LastObservedSleepPressure,
-                WorldModel.MeanPredictionError,
-                Transitions = transitions
-            };
-        }
-    }
-
-    public object GetActionMemorySnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshActionMemorySnapshotLocked(Tick);
-            var clamped = Math.Clamp(maxCount, 1, 256);
-            return new
-            {
-                Authority = "LegacyTelemetry",
-                CanAuthorizeRecall = false,
-                AuthoritativeEndpoint = "/api/v1/neuronal-memory",
-                Tick,
-                SimulationClockMs,
-                ActionMemory.Count,
-                ActionMemory.BestActionKey,
-                ActionMemory.BestSuccess,
-                ActionMemory.LastActionKey,
-                ActionMemory.LastOutcome,
-                ActionMemory.LastUpdatedTick,
-                Top = _actionMemory.Values
-                    .OrderByDescending(t => t.Confidence * Math.Max(0.05f, t.SuccessEma))
-                    .ThenByDescending(t => t.LastObservedTick)
-                    .Take(clamped)
-                    .ToList()
-            };
-        }
-    }
-
-    public object GetWorldLearningMapSnapshot(int maxCount)
-    {
-        lock (_gate)
-        {
-            RefreshWorldLearningMapSnapshotLocked(Tick);
-            var clamped = Math.Clamp(maxCount, 1, 256);
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                WorldLearningMap.Count,
-                WorldLearningMap.SafePlaces,
-                WorldLearningMap.FoodSources,
-                WorldLearningMap.WeaponSources,
-                WorldLearningMap.ThreatSources,
-                WorldLearningMap.BestShelterKey,
-                WorldLearningMap.BestFoodKey,
-                WorldLearningMap.BestWeaponKey,
-                WorldLearningMap.MostDangerousKey,
-                WorldLearningMap.LastUpdatedTick,
-                Top = _worldLearningMap.Values
-                    .OrderByDescending(entry => entry.Salience + entry.Confidence + Math.Abs(entry.Valence))
-                    .ThenByDescending(entry => entry.LastObservedTick)
-                    .Take(clamped)
-                    .ToList()
-            };
-        }
-    }
-
-    public DreamConsolidationRuntime GetDreamConsolidationSnapshot()
-    {
-        lock (_gate)
-        {
-            return DreamConsolidation;
-        }
-    }
 
     public BodySchemaRuntime GetBodySchemaSnapshot()
     {
@@ -4658,107 +4266,6 @@ internal sealed class SimulationState
         }
     }
 
-    public object EvaluateCounterfactual(WorldModelCounterfactualRequest request)
-    {
-        lock (_gate)
-        {
-            var horizon = Math.Clamp(request.HorizonSteps ?? 3, 1, 16);
-            if (!TryResolveCounterfactualActionKey(request, out var actionKey, out var reason))
-            {
-                return new
-                {
-                    Found = false,
-                    Reason = reason,
-                    HorizonSteps = horizon,
-                    SuggestedActions = _worldModelTransitions.Values
-                        .OrderByDescending(t => t.Samples)
-                        .ThenByDescending(t => t.ExpectedRewardDelta)
-                        .Take(12)
-                        .Select(t => t.ActionKey)
-                        .ToList()
-                };
-            }
-
-            if (!_worldModelTransitions.TryGetValue(actionKey, out var transition))
-            {
-                return new
-                {
-                    Found = false,
-                    Reason = $"No learned transition for action '{actionKey}'.",
-                    ActionKey = actionKey,
-                    HorizonSteps = horizon
-                };
-            }
-
-            const double decay = 0.66;
-            var cumulativeDispatchDelta = 0.0;
-            var cumulativePathwayDelta = 0.0;
-            var cumulativeRewardDelta = 0.0;
-            var cumulativeSleepPressureDelta = 0.0;
-            for (var step = 0; step < horizon; step++)
-            {
-                var multiplier = Math.Pow(decay, step);
-                cumulativeDispatchDelta += transition.ExpectedDispatchDelta * multiplier;
-                cumulativePathwayDelta += transition.ExpectedPathwayDelta * multiplier;
-                cumulativeRewardDelta += transition.ExpectedRewardDelta * multiplier;
-                cumulativeSleepPressureDelta += transition.ExpectedSleepPressureDelta * multiplier;
-            }
-
-            var confidence = Math.Clamp(
-                (Math.Log10(Math.Max(2, transition.Samples + 1)) / 2.0) - (transition.PredictionError * 0.22),
-                0.05,
-                0.99);
-
-            var alternatives = _worldModelTransitions.Values
-                .Where(t => !string.Equals(t.ActionKey, transition.ActionKey, StringComparison.Ordinal))
-                .OrderByDescending(t => t.ExpectedRewardDelta)
-                .ThenByDescending(t => t.Samples)
-                .Take(6)
-                .Select(t => new
-                {
-                    t.ActionKey,
-                    t.ExpectedRewardDelta,
-                    t.ExpectedDispatchDelta,
-                    t.ExpectedPathwayDelta,
-                    t.ExpectedSleepPressureDelta,
-                    t.PredictionError,
-                    t.Samples
-                })
-                .ToList();
-
-            return new
-            {
-                Found = true,
-                Action = new
-                {
-                    transition.ActionKey,
-                    Source = transition.SourceStructure.ToString(),
-                    Target = transition.TargetStructure.ToString(),
-                    Neurotransmitter = transition.Neurotransmitter.ToString(),
-                    transition.IsFeedback
-                },
-                HorizonSteps = horizon,
-                OneStep = new
-                {
-                    transition.ExpectedDispatchDelta,
-                    transition.ExpectedPathwayDelta,
-                    transition.ExpectedRewardDelta,
-                    transition.ExpectedSleepPressureDelta
-                },
-                MultiStep = new
-                {
-                    DispatchDelta = cumulativeDispatchDelta,
-                    PathwayDelta = cumulativePathwayDelta,
-                    RewardDelta = cumulativeRewardDelta,
-                    SleepPressureDelta = cumulativeSleepPressureDelta
-                },
-                Confidence = confidence,
-                transition.PredictionError,
-                transition.Samples,
-                Alternatives = alternatives
-            };
-        }
-    }
 
     public object GetCurriculumSnapshot()
     {
@@ -4808,975 +4315,8 @@ internal sealed class SimulationState
         }
     }
 
-    public object GetConsolidationControlSnapshot()
-    {
-        lock (_gate)
-        {
-            return ConsolidationControl;
-        }
-    }
 
-    public bool TrySetConsolidationControl(ConsolidationControlRequest request, out ConsolidationControlSettings settings, out string? error)
-    {
-        lock (_gate)
-        {
-            error = null;
-            var resolved = ConsolidationControl with
-            {
-                Enabled = request.Enabled ?? ConsolidationControl.Enabled,
-                ReplayWeightEarlyHippocampal = Math.Clamp(request.ReplayWeightEarlyHippocampal ?? ConsolidationControl.ReplayWeightEarlyHippocampal, 0.2f, 4.0f),
-                ReplayWeightLateCortical = Math.Clamp(request.ReplayWeightLateCortical ?? ConsolidationControl.ReplayWeightLateCortical, 0.2f, 4.0f),
-                SchemaConsolidationGain = Math.Clamp(request.SchemaConsolidationGain ?? ConsolidationControl.SchemaConsolidationGain, 0.2f, 4.0f),
-                EngramDecayPerTick = Math.Clamp(request.EngramDecayPerTick ?? ConsolidationControl.EngramDecayPerTick, 0f, 0.50f),
-                SchemaDecayPerTick = Math.Clamp(request.SchemaDecayPerTick ?? ConsolidationControl.SchemaDecayPerTick, 0f, 0.25f),
-                ProtectedSalienceThreshold = Math.Clamp(request.ProtectedSalienceThreshold ?? ConsolidationControl.ProtectedSalienceThreshold, 0f, 100f),
-                ProtectedEngramBudget = Math.Clamp(request.ProtectedEngramBudget ?? ConsolidationControl.ProtectedEngramBudget, 32, 65536),
-                AntiForgettingHomeostasis = Math.Clamp(request.AntiForgettingHomeostasis ?? ConsolidationControl.AntiForgettingHomeostasis, 0f, 1f)
-            };
 
-            ConsolidationControl = resolved;
-            settings = ConsolidationControl;
-            return true;
-        }
-    }
-    private bool TryResolveCounterfactualActionKey(WorldModelCounterfactualRequest request, out string actionKey, out string reason)
-    {
-        actionKey = string.Empty;
-        reason = string.Empty;
-
-        if (!string.IsNullOrWhiteSpace(request.ActionKey))
-        {
-            actionKey = request.ActionKey.Trim();
-            return true;
-        }
-
-        if (string.IsNullOrWhiteSpace(request.SourceStructure) || string.IsNullOrWhiteSpace(request.TargetStructure))
-        {
-            reason = "Provide actionKey, or both sourceStructure and targetStructure.";
-            return false;
-        }
-
-        if (!Enum.TryParse<StructureId>(request.SourceStructure, ignoreCase: true, out var source))
-        {
-            reason = $"Unknown sourceStructure '{request.SourceStructure}'.";
-            return false;
-        }
-
-        if (!Enum.TryParse<StructureId>(request.TargetStructure, ignoreCase: true, out var target))
-        {
-            reason = $"Unknown targetStructure '{request.TargetStructure}'.";
-            return false;
-        }
-
-        var nt = NTEnum.GLUTAMATE;
-        if (!string.IsNullOrWhiteSpace(request.Neurotransmitter) &&
-            !Enum.TryParse<NTEnum>(request.Neurotransmitter, ignoreCase: true, out nt))
-        {
-            reason = $"Unknown neurotransmitter '{request.Neurotransmitter}'.";
-            return false;
-        }
-
-        actionKey = BuildWorldModelActionKey(source, target, nt, request.IsFeedback.GetValueOrDefault(false));
-        return true;
-    }
-
-    private static string BuildWorldModelActionKey(StructureId source, StructureId target, NTEnum nt, bool isFeedback)
-        => $"{source}->{target}|{nt}|fb={(isFeedback ? 1 : 0)}";
-
-    private static string BuildWorldModelActionSummary(StructureId source, StructureId target, NTEnum nt, bool isFeedback)
-    {
-        var route = DescribeWorldModelRoute(source, target);
-        var modulation = DescribeNeurotransmitterEffect(nt);
-        return isFeedback
-            ? $"{route}; checking feedback with {modulation}"
-            : $"{route}; {modulation}";
-    }
-
-    private static string DescribeWorldModelRoute(StructureId source, StructureId target)
-    {
-        if (IsSensoryStructure(source) || IsSensoryStructure(target))
-        {
-            return "focus sensory attention";
-        }
-
-        if (IsLanguageStructure(source) || IsLanguageStructure(target))
-        {
-            return "shape language and meaning";
-        }
-
-        if (IsMemoryStructure(source) || IsMemoryStructure(target))
-        {
-            return "bind memory and place";
-        }
-
-        if (IsMotorStructure(source) || IsMotorStructure(target))
-        {
-            return "prepare coordinated movement";
-        }
-
-        if (IsActionSelectionStructure(source) || IsActionSelectionStructure(target))
-        {
-            return "choose a motivated action";
-        }
-
-        if (IsAffectiveBodyStructure(source) || IsAffectiveBodyStructure(target))
-        {
-            return "weigh safety and body state";
-        }
-
-        if (IsAttentionGateStructure(source) || IsAttentionGateStructure(target))
-        {
-            return "gate attention";
-        }
-
-        if (source == StructureId.CorpusCallosum || target == StructureId.CorpusCallosum)
-        {
-            return "coordinate both hemispheres";
-        }
-
-        return "integrate brain state";
-    }
-
-    private static string DescribeNeurotransmitterEffect(NTEnum nt) => nt switch
-    {
-        NTEnum.GABA => "calming inhibition",
-        NTEnum.DOPAMINE => "reward-guided bias",
-        NTEnum.SEROTONIN => "stability bias",
-        NTEnum.ACETYLCHOLINE => "attention gain",
-        NTEnum.NOREPINEPHRINE => "alertness gain",
-        _ => "excitatory evidence"
-    };
-
-    private static bool IsSensoryStructure(StructureId structure) => structure is
-        StructureId.Retina or
-        StructureId.V1 or
-        StructureId.V2 or
-        StructureId.V4 or
-        StructureId.Mt or
-        StructureId.Cochlea or
-        StructureId.CochlearNucleus or
-        StructureId.SuperiorOlive or
-        StructureId.InferiorColliculus or
-        StructureId.A1 or
-        StructureId.S1 or
-        StructureId.OlfactoryBulb or
-        StructureId.SuperiorColliculus;
-
-    private static bool IsLanguageStructure(StructureId structure) => structure is
-        StructureId.BrocaBa44Ba45 or
-        StructureId.WernickePstgPsts or
-        StructureId.ArcuateFasciculus or
-        StructureId.SupramarginalAngular or
-        StructureId.TemporalAssociation;
-
-    private static bool IsMemoryStructure(StructureId structure) => structure is
-        StructureId.EntorhinalCortex or
-        StructureId.DentateGyrus or
-        StructureId.CA3 or
-        StructureId.CA2 or
-        StructureId.CA1 or
-        StructureId.Subiculum or
-        StructureId.Presubiculum or
-        StructureId.Parasubiculum or
-        StructureId.ParahippocampalCortex or
-        StructureId.PerirhinalCortex or
-        StructureId.PosteriorCingulate or
-        StructureId.RetrosplenialCortex;
-
-    private static bool IsMotorStructure(StructureId structure) => structure is
-        StructureId.PremotorCortex or
-        StructureId.Sma or
-        StructureId.M1 or
-        StructureId.MotorThalamus or
-        StructureId.SpinalCordMotor or
-        StructureId.CerebellarGranule or
-        StructureId.CerebellarVermis or
-        StructureId.CerebellarLobules or
-        StructureId.PurkinjeCellLayer or
-        StructureId.DeepCerebellarNuclei or
-        StructureId.InferiorOlive or
-        StructureId.VestibularNuclei;
-
-    private static bool IsActionSelectionStructure(StructureId structure) => structure is
-        StructureId.Striatum or
-        StructureId.GlobusPallidus or
-        StructureId.GPe or
-        StructureId.GPi or
-        StructureId.Stn or
-        StructureId.Snr or
-        StructureId.Snc or
-        StructureId.Vta or
-        StructureId.NucleusAccumbens or
-        StructureId.VentralPallidum;
-
-    private static bool IsAffectiveBodyStructure(StructureId structure) => structure is
-        StructureId.Amygdala or
-        StructureId.Hypothalamus or
-        StructureId.Habenula or
-        StructureId.Acc or
-        StructureId.Insula or
-        StructureId.OrbitofrontalCortex or
-        StructureId.NucleusTractusSolitarius or
-        StructureId.PeriaqueductalGray or
-        StructureId.LocusCoeruleus or
-        StructureId.RapheNuclei or
-        StructureId.BasalForebrain;
-
-    private static bool IsAttentionGateStructure(StructureId structure) => structure is
-        StructureId.Thalamus or
-        StructureId.Trn or
-        StructureId.Pulvinar or
-        StructureId.MediodorsalThalamus or
-        StructureId.IntralaminarThalamus or
-        StructureId.Pfc or
-        StructureId.Ppc or
-        StructureId.ReticularFormation or
-        StructureId.Pons or
-        StructureId.Medulla;
-
-
-    private void UpsertEpisodicEventLocked(
-        long tick,
-        string eventType,
-        string eventKey,
-        string summary,
-        string objectId,
-        string label,
-        string goalKey,
-        string actionKey,
-        float valence,
-        float salience,
-        float novelty,
-        float confidence)
-    {
-        var normalizedType = NormalizeEpisodicText(eventType, "event", 48);
-        var key = NormalizeEpisodicKey(eventKey, normalizedType, tick);
-        var normalizedSummary = NormalizeEpisodicText(summary, $"{normalizedType} happened", 180);
-        var normalizedObject = NormalizeEpisodicText(objectId, "none", 96);
-        var normalizedLabel = NormalizeEpisodicText(label, normalizedObject, 96);
-        var normalizedGoal = NormalizeEpisodicText(goalKey, "observe", 96);
-        var normalizedAction = NormalizeEpisodicText(actionKey, "idle", 96);
-        var emotion = NormalizeEpisodicText(EmotionState.DominantEmotion, "neutral", 48);
-        var placeKey = ResolveEpisodicPlaceKeyLocked(normalizedGoal, normalizedLabel);
-        var clampedValence = Math.Clamp(valence, -1f, 1f);
-        var clampedSalience = Clamp01(salience);
-        var clampedNovelty = Clamp01(novelty);
-        var clampedConfidence = Clamp01(confidence);
-
-        if (!_episodicMemory.TryGetValue(key, out var existing))
-        {
-            if (_episodicMemory.Count >= MaxEpisodicMemoryEntries)
-            {
-                var evict = _episodicMemory.Values
-                    .OrderBy(ScoreEpisodicTraceForRecall)
-                    .ThenBy(t => t.LastTick)
-                    .FirstOrDefault();
-                if (evict is not null)
-                {
-                    _episodicMemory.Remove(evict.EventKey);
-                }
-            }
-
-            existing = new EpisodicMemoryTrace(
-                EventKey: key,
-                EventType: normalizedType,
-                Summary: normalizedSummary,
-                ObjectId: normalizedObject,
-                Label: normalizedLabel,
-                GoalKey: normalizedGoal,
-                ActionKey: normalizedAction,
-                DominantEmotion: emotion,
-                PlaceKey: placeKey,
-                Valence: clampedValence,
-                Salience: clampedSalience,
-                Novelty: clampedNovelty,
-                Confidence: 0f,
-                EntorhinalInput: 0f,
-                DentatePatternSeparation: 0f,
-                CA3PatternCompletion: 0f,
-                CA1Mismatch: 0f,
-                SubiculumOutput: 0f,
-                FirstTick: tick,
-                LastTick: tick,
-                RecallCount: 0);
-        }
-
-        var familiarSupport = Clamp01(existing.RecallCount / 8f);
-        var attentionBinding = Clamp01(
-            AttentionState.Memory * 0.26f +
-            AttentionState.Salience * 0.22f +
-            AttentionState.FocusConfidence * 0.18f +
-            AttentionState.Visual * 0.12f +
-            AttentionState.Language * 0.12f +
-            Math.Abs(LimbicState.RewardPredictionError) * 0.10f);
-        var entorhinalInput = Clamp01(
-            clampedSalience * 0.32f +
-            clampedConfidence * 0.24f +
-            attentionBinding * 0.22f +
-            0.04f +
-            Math.Abs(clampedValence) * 0.10f);
-        var dentatePatternSeparation = Clamp01(
-            clampedNovelty * 0.48f +
-            (1f - familiarSupport) * 0.20f +
-            clampedSalience * 0.16f +
-            AttentionState.Memory * 0.16f);
-        var ca3PatternCompletion = Clamp01(
-            existing.CA3PatternCompletion * 0.56f +
-            familiarSupport * 0.22f +
-            clampedConfidence * 0.14f +
-            WorldLearningMap.Top.Count * 0.004f);
-        var ca1Mismatch = Clamp01(
-            Math.Abs(clampedValence - existing.Valence) * 0.30f +
-            Math.Abs(clampedSalience - existing.Salience) * 0.22f +
-            clampedNovelty * 0.22f +
-            Math.Abs(LimbicState.RewardPredictionError) * 0.18f +
-            OutcomeState.AversiveOutcome * 0.08f);
-        var subiculumOutput = Clamp01(
-            entorhinalInput * 0.28f +
-            dentatePatternSeparation * 0.18f +
-            ca3PatternCompletion * 0.20f +
-            (1f - ca1Mismatch) * 0.10f +
-            clampedConfidence * 0.16f +
-            clampedSalience * 0.08f);
-        const float alpha = 0.30f;
-        _episodicMemory[key] = existing with
-        {
-            EventType = normalizedType,
-            Summary = normalizedSummary,
-            ObjectId = normalizedObject,
-            Label = normalizedLabel,
-            GoalKey = normalizedGoal,
-            ActionKey = normalizedAction,
-            DominantEmotion = emotion,
-            PlaceKey = placeKey,
-            Valence = Math.Clamp(Lerp(existing.Valence, clampedValence, alpha), -1f, 1f),
-            Salience = Clamp01(Lerp(existing.Salience, clampedSalience, alpha)),
-            Novelty = Clamp01(Lerp(existing.Novelty, clampedNovelty, alpha)),
-            Confidence = Clamp01(existing.Confidence + (clampedConfidence * 0.18f * (1f - existing.Confidence))),
-            EntorhinalInput = Clamp01(Lerp(existing.EntorhinalInput, entorhinalInput, 0.38f)),
-            DentatePatternSeparation = Clamp01(Lerp(existing.DentatePatternSeparation, dentatePatternSeparation, 0.38f)),
-            CA3PatternCompletion = Clamp01(Lerp(existing.CA3PatternCompletion, ca3PatternCompletion, 0.34f)),
-            CA1Mismatch = Clamp01(Lerp(existing.CA1Mismatch, ca1Mismatch, 0.34f)),
-            SubiculumOutput = Clamp01(Lerp(existing.SubiculumOutput, subiculumOutput, 0.36f)),
-            LastTick = tick,
-            RecallCount = existing.RecallCount + 1
-        };
-    }
-
-    private void RefreshEpisodicMemorySnapshotLocked(long tick)
-    {
-        if (_episodicMemory.Count == 0)
-        {
-            EpisodicMemory = EpisodicMemoryRuntime.Default;
-            UnifiedEventMemory = UnifiedEventMemoryRuntime.Default with
-            {
-                LastUpdatedTick = Math.Max(0, tick)
-            };
-            return;
-        }
-
-        var top = SelectTopByScore(_episodicMemory.Values, 16, ScoreEpisodicTraceForRecall, trace => trace.LastTick);
-        var last = _episodicMemory.Values.MaxBy(trace => trace.LastTick);
-        var best = top.FirstOrDefault();
-        var metrics = AggregateEpisodicTopMetrics(top);
-
-        EpisodicMemory = EpisodicMemoryRuntime.Normalize(new EpisodicMemoryRuntime(
-            Count: _episodicMemory.Count,
-            LastEventType: last?.EventType ?? "none",
-            LastSummary: last?.Summary ?? "none",
-            BestRecallSummary: best?.Summary ?? "none",
-            HippocampalBinding: best is null ? 0f : Clamp01((best.EntorhinalInput + best.DentatePatternSeparation + best.CA3PatternCompletion + best.SubiculumOutput) / 4f),
-            EntorhinalInput: metrics.EntorhinalInput,
-            DentatePatternSeparation: metrics.DentatePatternSeparation,
-            CA3PatternCompletion: metrics.CA3PatternCompletion,
-            CA1Mismatch: metrics.CA1Mismatch,
-            SubiculumOutput: metrics.SubiculumOutput,
-            RecallConfidence: best is null ? 0f : Clamp01(best.Confidence),
-            LastUpdatedTick: tick,
-            Top: top));
-        RefreshUnifiedEventMemorySnapshotLocked(tick);
-    }
-
-    private void RefreshUnifiedEventMemorySnapshotLocked(long tick)
-    {
-        if (_episodicMemory.Count == 0)
-        {
-            UnifiedEventMemory = UnifiedEventMemoryRuntime.Default with
-            {
-                LastUpdatedTick = Math.Max(0, tick)
-            };
-            return;
-        }
-
-        var traces = _episodicMemory.Values.ToArray();
-        var recent = traces.MaxBy(trace => trace.LastTick);
-        var top = SelectTopByScore(traces, 16, ScoreUnifiedEventTrace, trace => trace.LastTick);
-        var best = top.FirstOrDefault();
-        var metrics = AggregateUnifiedEventMetrics(traces);
-        var worldObjectEvents = metrics.WorldObjectEvents;
-        var environmentEvents = metrics.EnvironmentEvents;
-        var bodyEvents = metrics.BodyEvents;
-        var languageEvents = metrics.LanguageEvents;
-        var actionEvents = metrics.ActionEvents;
-        var rewardEvents = metrics.RewardEvents;
-        var representedDomains = 0;
-        representedDomains += worldObjectEvents > 0 || environmentEvents > 0 ? 1 : 0;
-        representedDomains += bodyEvents > 0 ? 1 : 0;
-        representedDomains += languageEvents > 0 ? 1 : 0;
-        representedDomains += actionEvents > 0 ? 1 : 0;
-        representedDomains += rewardEvents > 0 ? 1 : 0;
-        var coverage = Clamp01(representedDomains / 5f);
-        var crossModalBinding = Clamp01(
-            coverage * 0.48f +
-            (metrics.DistinctEventTypes / 8f * 0.30f) +
-            (SemanticMemory.SemanticConfidence * 0.22f));
-        var eventBinding = Clamp01(
-            EpisodicMemory.HippocampalBinding * 0.34f +
-            EpisodicMemory.SubiculumOutput * 0.24f +
-            AttentionState.Memory * 0.16f +
-            Math.Min(1f, traces.Length / 24f) * 0.14f +
-            coverage * 0.12f);
-        var pfcRetrievalGate = Clamp01(
-            ((float)NeuronalLanguageGrounding.AttentionConfidence * 0.50f) +
-            ((float)NeuronalLanguageGrounding.LanguageAttention * 0.50f));
-        var hippocampalIndex = Clamp01(
-            EpisodicMemory.EntorhinalInput * 0.24f +
-            EpisodicMemory.DentatePatternSeparation * 0.20f +
-            EpisodicMemory.CA3PatternCompletion * 0.24f +
-            EpisodicMemory.SubiculumOutput * 0.22f +
-            EpisodicMemory.RecallConfidence * 0.10f);
-        var confidence = Clamp01(
-            eventBinding * 0.32f +
-            crossModalBinding * 0.24f +
-            hippocampalIndex * 0.20f +
-            pfcRetrievalGate * 0.14f +
-            coverage * 0.10f);
-
-        UnifiedEventMemory = UnifiedEventMemoryRuntime.Normalize(new UnifiedEventMemoryRuntime(
-            Count: traces.Length,
-            WorldObjectEvents: worldObjectEvents,
-            EnvironmentEvents: environmentEvents,
-            BodyEvents: bodyEvents,
-            LanguageEvents: languageEvents,
-            ActionEvents: actionEvents,
-            RewardEvents: rewardEvents,
-            RecentEventKey: recent?.EventKey ?? "none",
-            RecentSummary: recent?.Summary ?? "none",
-            BestRecallSummary: best?.Summary ?? "none",
-            ActiveScene: ResolveUnifiedEventScene(best, recent),
-            EventBinding: eventBinding,
-            CrossModalBinding: crossModalBinding,
-            HippocampalIndex: hippocampalIndex,
-            PfcRetrievalGate: pfcRetrievalGate,
-            Coverage: coverage,
-            Confidence: confidence,
-            LastUpdatedTick: tick,
-            Evidence: $"EC-DG-CA3-CA1-subiculum indexed {traces.Length} events; domains={representedDomains}/5; recent={recent?.EventType ?? "none"}",
-            Top: top.ToArray()));
-    }
-
-    private static string ResolveUnifiedEventScene(EpisodicMemoryTrace? best, EpisodicMemoryTrace? recent)
-    {
-        var candidate = best ?? recent;
-        if (candidate is null)
-        {
-            return "none";
-        }
-
-        if (!string.IsNullOrWhiteSpace(candidate.PlaceKey) &&
-            !candidate.PlaceKey.Equals("place.unknown", StringComparison.OrdinalIgnoreCase))
-        {
-            return candidate.PlaceKey;
-        }
-
-        return candidate.GoalKey;
-    }
-
-    private void RefreshPlaceMemorySnapshotLocked(long tick)
-    {
-        var traces = new Dictionary<string, PlaceMemoryTrace>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in _episodicMemory.Values
-                     .Where(trace => !string.IsNullOrWhiteSpace(trace.PlaceKey))
-                     .GroupBy(trace => NormalizeEpisodicText(trace.PlaceKey, "place.unknown", 96), StringComparer.OrdinalIgnoreCase)
-                     .Take(MaxPlaceMemoryEntries))
-        {
-            var episodes = group.ToArray();
-            if (episodes.Length == 0)
-            {
-                continue;
-            }
-
-            var placeKey = group.Key;
-            _worldLearningMap.TryGetValue(placeKey, out var map);
-            var recent = episodes.MaxBy(trace => trace.LastTick)!;
-            var best = SelectTopByScore(episodes, 1, ScoreEpisodicTraceForRecall, trace => trace.LastTick)[0];
-            var category = ResolvePlaceMemoryCategory(map, episodes);
-            traces[placeKey] = BuildPlaceMemoryTrace(placeKey, map, episodes, recent, best, category);
-        }
-
-        var placeLikeMaps = _worldLearningMap.Values
-            .Where(entry => IsPlaceLikeWorldMapEntry(entry));
-        foreach (var map in SelectTopByScore(placeLikeMaps, MaxPlaceMemoryEntries, ScoreWorldLearningMapEntry, entry => entry.LastObservedTick))
-        {
-            if (traces.ContainsKey(map.Key))
-            {
-                continue;
-            }
-
-            traces[map.Key] = new PlaceMemoryTrace(
-                PlaceKey: map.Key,
-                Label: map.Label,
-                Category: NormalizeEpisodicText(map.Category, "place", 48),
-                RecentSummary: $"I know {map.Label} as {map.Category}.",
-                BestRecallSummary: $"I know {map.Label} as {map.Category}.",
-                EpisodeCount: 0,
-                ObjectEvents: map.Observations,
-                BodyEvents: 0,
-                LanguageEvents: 0,
-                ActionEvents: 0,
-                Safety: map.Safety,
-                Threat: map.Threat,
-                Food: map.Food,
-                Shelter: map.Shelter,
-                Valence: map.Valence,
-                Familiarity: map.Familiarity,
-                Confidence: map.Confidence,
-                HippocampalBinding: 0f,
-                RetrosplenialBinding: map.Category is "shelter" or "safe" or "threat" ? map.Confidence : map.Confidence * 0.55f,
-                FirstTick: map.LastObservedTick,
-                LastTick: map.LastObservedTick);
-        }
-
-        var top = SelectTopByScore(traces.Values, 16, ScorePlaceMemoryTrace, trace => trace.LastTick).ToArray();
-        if (top.Length == 0)
-        {
-            PlaceMemory = PlaceMemoryRuntime.Default with { LastUpdatedTick = tick };
-            return;
-        }
-
-        var active = ResolveActivePlaceMemoryTrace(top);
-        var metrics = AggregatePlaceMemoryTopMetrics(top);
-        var mapCoverage = metrics.MapCoverage;
-        var hippocampal = metrics.HippocampalBinding;
-        var retrosplenial = metrics.RetrosplenialBinding;
-        var safety = metrics.Safety;
-        var threat = metrics.Threat;
-        var confidence = Clamp01(
-            (active.Confidence * 0.34f) +
-            (hippocampal * 0.22f) +
-            (retrosplenial * 0.20f) +
-            (mapCoverage * 0.14f) +
-            (Clamp01(top.Length / 8f) * 0.10f));
-
-        PlaceMemory = PlaceMemoryRuntime.Normalize(new PlaceMemoryRuntime(
-            Count: traces.Count,
-            ActivePlaceKey: active.PlaceKey,
-            ActiveLabel: active.Label,
-            ActiveCategory: active.Category,
-            RecentSummary: active.RecentSummary,
-            BestRecallSummary: top[0].BestRecallSummary,
-            MapCoverage: mapCoverage,
-            HippocampalPlaceBinding: hippocampal,
-            RetrosplenialSceneBinding: retrosplenial,
-            Safety: safety,
-            Threat: threat,
-            Confidence: confidence,
-            LastUpdatedTick: tick,
-            Top: top));
-    }
-
-    private PlaceMemoryTrace BuildPlaceMemoryTrace(
-        string placeKey,
-        WorldLearningMapEntry? map,
-        IReadOnlyList<EpisodicMemoryTrace> episodes,
-        EpisodicMemoryTrace recent,
-        EpisodicMemoryTrace best,
-        string category)
-    {
-        var episodeCount = Math.Max(1, episodes.Count);
-        var metrics = AggregatePlaceEpisodeMetrics(episodes);
-        var confidence = Clamp01(
-            ((map?.Confidence ?? 0f) * 0.34f) +
-            (metrics.Confidence * 0.28f) +
-            (metrics.SubiculumOutput * 0.18f) +
-            (Clamp01(episodeCount / 10f) * 0.20f));
-        var hippocampal = Clamp01(
-            (metrics.EntorhinalInput * 0.18f) +
-            (metrics.CA3PatternCompletion * 0.26f) +
-            (metrics.SubiculumOutput * 0.28f) +
-            (metrics.Confidence * 0.18f) +
-            (Clamp01(episodeCount / 12f) * 0.10f));
-        var retrosplenial = Clamp01(
-            (map?.Confidence * 0.24f ?? 0f) +
-            (category is "shelter" or "safe" or "threat" ? 0.18f : 0f) +
-            (SemanticMemory.RetrosplenialSceneBinding * 0.20f) +
-            (hippocampal * 0.24f) +
-            (Clamp01(episodeCount / 8f) * 0.14f));
-        var safety = Clamp01(map?.Safety ?? (category is "shelter" or "safe" ? 0.48f : 0.12f));
-        var threat = Clamp01(map?.Threat ?? (category == "threat" ? Math.Max(0.42f, metrics.Salience) : 0f));
-        var food = Clamp01(map?.Food ?? (category == "food" ? Math.Max(0.35f, metrics.Salience) : 0f));
-        var shelter = Clamp01(map?.Shelter ?? (category == "shelter" ? Math.Max(0.35f, metrics.Salience) : 0f));
-        var label = map?.Label;
-        if (string.IsNullOrWhiteSpace(label))
-        {
-            label = category is "context" or "place" ? placeKey : $"{category} place";
-        }
-
-        return new PlaceMemoryTrace(
-            PlaceKey: placeKey,
-            Label: NormalizeEpisodicText(label, placeKey, 96),
-            Category: category,
-            RecentSummary: recent.Summary,
-            BestRecallSummary: best.Summary,
-            EpisodeCount: episodeCount,
-            ObjectEvents: metrics.ObjectEvents,
-            BodyEvents: metrics.BodyEvents,
-            LanguageEvents: metrics.LanguageEvents,
-            ActionEvents: metrics.ActionEvents,
-            Safety: safety,
-            Threat: threat,
-            Food: food,
-            Shelter: shelter,
-            Valence: Math.Clamp(map?.Valence ?? metrics.Valence, -1f, 1f),
-            Familiarity: Clamp01(map?.Familiarity ?? episodeCount / 12f),
-            Confidence: confidence,
-            HippocampalBinding: hippocampal,
-            RetrosplenialBinding: retrosplenial,
-            FirstTick: metrics.FirstTick,
-            LastTick: metrics.LastTick);
-    }
-
-    private PlaceMemoryTrace ResolveActivePlaceMemoryTrace(IReadOnlyList<PlaceMemoryTrace> top)
-    {
-        if (top.Count == 0)
-        {
-            return PlaceMemoryTrace.Default;
-        }
-
-        if (!string.IsNullOrWhiteSpace(UnifiedEventMemory.ActiveScene) &&
-            !UnifiedEventMemory.ActiveScene.Equals("none", StringComparison.OrdinalIgnoreCase))
-        {
-            var scene = top.FirstOrDefault(trace => trace.PlaceKey.Equals(UnifiedEventMemory.ActiveScene, StringComparison.OrdinalIgnoreCase));
-            if (scene is not null)
-            {
-                return scene;
-            }
-        }
-
-        return top[0];
-    }
-
-    private static bool IsPlaceLikeWorldMapEntry(WorldLearningMapEntry entry)
-        => entry.Key.StartsWith("place.", StringComparison.OrdinalIgnoreCase) ||
-           entry.Category is "shelter" or "safe" or "threat" ||
-           entry.Safety >= 0.45f ||
-           entry.Threat >= 0.45f;
-
-    private static float ScoreWorldLearningMapEntry(WorldLearningMapEntry entry)
-        => Clamp01(
-            (entry.Confidence * 0.24f) +
-            (entry.Familiarity * 0.18f) +
-            (entry.Salience * 0.18f) +
-            (Math.Abs(entry.Valence) * 0.12f) +
-            (entry.Safety * 0.10f) +
-            (entry.Threat * 0.10f) +
-            (Math.Max(entry.Food, Math.Max(entry.Shelter, entry.Weapon)) * 0.08f));
-
-    private static string ResolvePlaceMemoryCategory(WorldLearningMapEntry? map, IReadOnlyList<EpisodicMemoryTrace> episodes)
-    {
-        if (!string.IsNullOrWhiteSpace(map?.Category))
-        {
-            return NormalizeEpisodicText(map.Category, "place", 48);
-        }
-
-        var text = string.Join(' ', episodes.Select(trace => $"{trace.EventType} {trace.Label} {trace.Summary} {trace.GoalKey}"));
-        var category = ClassifyWorldLearningCategory(text);
-        return category == "object" ? "context" : category;
-    }
-
-    private static float ScorePlaceMemoryTrace(PlaceMemoryTrace trace)
-        => Clamp01(
-            (trace.Confidence * 0.26f) +
-            (trace.HippocampalBinding * 0.20f) +
-            (trace.RetrosplenialBinding * 0.18f) +
-            (Math.Abs(trace.Valence) * 0.12f) +
-            (trace.Familiarity * 0.10f) +
-            (trace.Safety * 0.06f) +
-            (trace.Threat * 0.08f));
-
-    private static float ScoreUnifiedEventTrace(EpisodicMemoryTrace trace)
-        => Clamp01(
-            trace.Salience * 0.28f +
-            trace.Confidence * 0.22f +
-            trace.SubiculumOutput * 0.18f +
-            trace.EntorhinalInput * 0.12f +
-            trace.CA3PatternCompletion * 0.10f +
-            trace.Novelty * 0.06f +
-            Math.Abs(trace.Valence) * 0.04f);
-
-    private void ReplaceEpisodicMemory(IEnumerable<EpisodicMemoryTrace> traces)
-    {
-        _episodicMemory.Clear();
-        var validTraces = traces.Where(t => t is not null && !string.IsNullOrWhiteSpace(t.EventKey));
-        foreach (var trace in SelectTopByScore(validTraces, MaxEpisodicMemoryEntries, ScoreEpisodicTraceForRecall, t => t.LastTick))
-        {
-            var key = NormalizeEpisodicKey(trace.EventKey, trace.EventType, trace.LastTick);
-            _episodicMemory[key] = trace with
-            {
-                EventKey = key,
-                EventType = NormalizeEpisodicText(trace.EventType, "event", 48),
-                Summary = NormalizeEpisodicText(trace.Summary, "event happened", 180),
-                ObjectId = NormalizeEpisodicText(trace.ObjectId, "none", 96),
-                Label = NormalizeEpisodicText(trace.Label, "none", 96),
-                GoalKey = NormalizeEpisodicText(trace.GoalKey, "Observe", 96),
-                ActionKey = NormalizeEpisodicText(trace.ActionKey, "idle", 96),
-                DominantEmotion = NormalizeEpisodicText(trace.DominantEmotion, "neutral", 48),
-                PlaceKey = NormalizeEpisodicText(trace.PlaceKey, "place.unknown", 96),
-                Valence = Math.Clamp(trace.Valence, -1f, 1f),
-                Salience = Clamp01(trace.Salience),
-                Novelty = Clamp01(trace.Novelty),
-                Confidence = Clamp01(trace.Confidence),
-                EntorhinalInput = Clamp01(trace.EntorhinalInput),
-                DentatePatternSeparation = Clamp01(trace.DentatePatternSeparation),
-                CA3PatternCompletion = Clamp01(trace.CA3PatternCompletion),
-                CA1Mismatch = Clamp01(trace.CA1Mismatch),
-                SubiculumOutput = Clamp01(trace.SubiculumOutput),
-                FirstTick = Math.Max(0, trace.FirstTick),
-                LastTick = Math.Max(0, trace.LastTick),
-                RecallCount = Math.Max(0, trace.RecallCount)
-            };
-        }
-    }
-
-    private string ResolveEpisodicPlaceKeyLocked(string goalKey, string label)
-    {
-        if (goalKey.Contains("Food", StringComparison.OrdinalIgnoreCase) && WorldLearningMap.BestFoodKey != "none")
-        {
-            return WorldLearningMap.BestFoodKey;
-        }
-
-        if ((goalKey.Contains("Shelter", StringComparison.OrdinalIgnoreCase) || EnvironmentalState.InShelter > 0.25f) &&
-            WorldLearningMap.BestShelterKey != "none")
-        {
-            return WorldLearningMap.BestShelterKey;
-        }
-
-        if ((goalKey.Contains("Threat", StringComparison.OrdinalIgnoreCase) || label.Contains("bear", StringComparison.OrdinalIgnoreCase)) &&
-            WorldLearningMap.MostDangerousKey != "none")
-        {
-            return WorldLearningMap.MostDangerousKey;
-        }
-
-        return $"context.{Math.Max(0, Tick / 600)}";
-    }
-
-    private static float ScoreEpisodicTraceForRecall(EpisodicMemoryTrace trace)
-        => Clamp01(
-            trace.Salience * 0.30f +
-            trace.Confidence * 0.22f +
-            trace.SubiculumOutput * 0.20f +
-            trace.CA3PatternCompletion * 0.14f +
-            trace.Novelty * 0.08f +
-            Math.Abs(trace.Valence) * 0.06f);
-
-    private static string NormalizeEpisodicKey(string eventKey, string eventType, long tick)
-    {
-        var seed = string.IsNullOrWhiteSpace(eventKey) ? $"{eventType}:{tick}" : eventKey.Trim();
-        var key = Regex.Replace(seed.ToLowerInvariant(), @"[^a-z0-9_:\.-]+", "_").Trim('_');
-        return string.IsNullOrWhiteSpace(key) ? $"event:{Math.Max(0, tick)}" : key;
-    }
-
-    private static string NormalizeEpisodicText(string? value, string fallback, int maxLength)
-    {
-        var text = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-        if (text.Length > maxLength)
-        {
-            text = text[..maxLength];
-        }
-
-        return text;
-    }
-
-    private readonly record struct EpisodicTopMetrics(
-        float EntorhinalInput,
-        float DentatePatternSeparation,
-        float CA3PatternCompletion,
-        float CA1Mismatch,
-        float SubiculumOutput);
-
-    private static EpisodicTopMetrics AggregateEpisodicTopMetrics(IReadOnlyList<EpisodicMemoryTrace> traces)
-    {
-        if (traces.Count == 0)
-        {
-            return default;
-        }
-
-        var entorhinalInput = 0f;
-        var dentatePatternSeparation = 0f;
-        var ca3PatternCompletion = 0f;
-        var ca1Mismatch = 0f;
-        var subiculumOutput = 0f;
-        foreach (var trace in traces)
-        {
-            entorhinalInput += trace.EntorhinalInput;
-            dentatePatternSeparation += trace.DentatePatternSeparation;
-            ca3PatternCompletion += trace.CA3PatternCompletion;
-            ca1Mismatch += trace.CA1Mismatch;
-            subiculumOutput += trace.SubiculumOutput;
-        }
-
-        var denominator = traces.Count;
-        return new EpisodicTopMetrics(
-            Clamp01(entorhinalInput / denominator),
-            Clamp01(dentatePatternSeparation / denominator),
-            Clamp01(ca3PatternCompletion / denominator),
-            Clamp01(ca1Mismatch / denominator),
-            Clamp01(subiculumOutput / denominator));
-    }
-
-    private readonly record struct UnifiedEventMetrics(
-        int WorldObjectEvents,
-        int EnvironmentEvents,
-        int BodyEvents,
-        int LanguageEvents,
-        int ActionEvents,
-        int RewardEvents,
-        int DistinctEventTypes);
-
-    private static UnifiedEventMetrics AggregateUnifiedEventMetrics(IReadOnlyList<EpisodicMemoryTrace> traces)
-    {
-        var worldObjectEvents = 0;
-        var environmentEvents = 0;
-        var bodyEvents = 0;
-        var languageEvents = 0;
-        var actionEvents = 0;
-        var rewardEvents = 0;
-        var distinctEventTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var trace in traces)
-        {
-            var eventType = trace.EventType;
-            distinctEventTypes.Add(eventType);
-            worldObjectEvents += ContainsAny(eventType, "object", "world", "maze") ? 1 : 0;
-            environmentEvents += eventType.Contains("environment", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            bodyEvents += ContainsAny(eventType, "body", "touch", "collision", "proprioception") ? 1 : 0;
-            languageEvents += ContainsAny(eventType, "language", "editor", "user") ? 1 : 0;
-            actionEvents += ContainsAny(eventType, "action_outcome", "action") ? 1 : 0;
-            rewardEvents += ContainsAny(eventType, "reward", "dopamine", "outcome") ? 1 : 0;
-        }
-
-        return new UnifiedEventMetrics(
-            worldObjectEvents,
-            environmentEvents,
-            bodyEvents,
-            languageEvents,
-            actionEvents,
-            rewardEvents,
-            distinctEventTypes.Count);
-    }
-
-    private readonly record struct PlaceEpisodeMetrics(
-        float Confidence,
-        float SubiculumOutput,
-        float EntorhinalInput,
-        float CA3PatternCompletion,
-        float Salience,
-        float Valence,
-        int ObjectEvents,
-        int BodyEvents,
-        int LanguageEvents,
-        int ActionEvents,
-        long FirstTick,
-        long LastTick);
-
-    private static PlaceEpisodeMetrics AggregatePlaceEpisodeMetrics(IReadOnlyList<EpisodicMemoryTrace> episodes)
-    {
-        if (episodes.Count == 0)
-        {
-            return default;
-        }
-
-        var confidence = 0f;
-        var subiculumOutput = 0f;
-        var entorhinalInput = 0f;
-        var ca3PatternCompletion = 0f;
-        var salience = 0f;
-        var valence = 0f;
-        var objectEvents = 0;
-        var bodyEvents = 0;
-        var languageEvents = 0;
-        var actionEvents = 0;
-        var firstTick = long.MaxValue;
-        var lastTick = long.MinValue;
-
-        foreach (var trace in episodes)
-        {
-            confidence += trace.Confidence;
-            subiculumOutput += trace.SubiculumOutput;
-            entorhinalInput += trace.EntorhinalInput;
-            ca3PatternCompletion += trace.CA3PatternCompletion;
-            salience += trace.Salience;
-            valence += trace.Valence;
-            objectEvents += trace.EventType.Contains("object", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            bodyEvents += ContainsAny(trace.EventType, "body", "collision") ? 1 : 0;
-            languageEvents += ContainsAny(trace.EventType, "language", "teaching") ? 1 : 0;
-            actionEvents += trace.EventType.Contains("action", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            firstTick = Math.Min(firstTick, trace.FirstTick);
-            lastTick = Math.Max(lastTick, trace.LastTick);
-        }
-
-        var denominator = episodes.Count;
-        return new PlaceEpisodeMetrics(
-            Clamp01(confidence / denominator),
-            Clamp01(subiculumOutput / denominator),
-            Clamp01(entorhinalInput / denominator),
-            Clamp01(ca3PatternCompletion / denominator),
-            Clamp01(salience / denominator),
-            Math.Clamp(valence / denominator, -1f, 1f),
-            objectEvents,
-            bodyEvents,
-            languageEvents,
-            actionEvents,
-            firstTick,
-            lastTick);
-    }
-
-    private readonly record struct PlaceMemoryTopMetrics(
-        float MapCoverage,
-        float HippocampalBinding,
-        float RetrosplenialBinding,
-        float Safety,
-        float Threat);
-
-    private static PlaceMemoryTopMetrics AggregatePlaceMemoryTopMetrics(IReadOnlyList<PlaceMemoryTrace> traces)
-    {
-        if (traces.Count == 0)
-        {
-            return default;
-        }
-
-        var mapped = 0;
-        var hippocampalBinding = 0f;
-        var retrosplenialBinding = 0f;
-        var safety = 0f;
-        var threat = 0f;
-        foreach (var trace in traces)
-        {
-            mapped += trace.Safety > 0f || trace.Threat > 0f || trace.Food > 0f || trace.Shelter > 0f ? 1 : 0;
-            hippocampalBinding += trace.HippocampalBinding;
-            retrosplenialBinding += trace.RetrosplenialBinding;
-            safety += trace.Safety;
-            threat += trace.Threat;
-        }
-
-        var denominator = traces.Count;
-        return new PlaceMemoryTopMetrics(
-            Clamp01(mapped / (float)denominator),
-            Clamp01(hippocampalBinding / denominator),
-            Clamp01(retrosplenialBinding / denominator),
-            Clamp01(safety / denominator),
-            Clamp01(threat / denominator));
-    }
 
     private static bool ContainsAny(string value, string first, string second)
         => value.Contains(first, StringComparison.OrdinalIgnoreCase) ||
@@ -5797,898 +4337,6 @@ internal sealed class SimulationState
         => ContainsAny(value, first, second, third, fourth) ||
            value.Contains(fifth, StringComparison.OrdinalIgnoreCase);
 
-    private readonly record struct ScoredTopItem<T>(T Value, float Score, long Recency);
-
-    private static List<T> SelectTopByScore<T>(
-        IEnumerable<T> source,
-        int maxCount,
-        Func<T, float> scoreSelector,
-        Func<T, long> recencySelector)
-    {
-        var take = Math.Max(0, maxCount);
-        var top = new List<T>(take);
-        if (take == 0)
-        {
-            return top;
-        }
-
-        var scoredTop = new List<ScoredTopItem<T>>(take);
-        foreach (var item in source)
-        {
-            InsertTopByScore(scoredTop, new ScoredTopItem<T>(item, scoreSelector(item), recencySelector(item)), take);
-        }
-
-        foreach (var item in scoredTop)
-        {
-            top.Add(item.Value);
-        }
-
-        return top;
-    }
-
-    private static void InsertTopByScore<T>(
-        List<ScoredTopItem<T>> top,
-        ScoredTopItem<T> item,
-        int maxCount)
-    {
-        var insertAt = top.Count;
-        for (var index = 0; index < top.Count; index++)
-        {
-            var existing = top[index];
-            if (item.Score > existing.Score ||
-                (Math.Abs(item.Score - existing.Score) < 0.0001f && item.Recency > existing.Recency))
-            {
-                insertAt = index;
-                break;
-            }
-        }
-
-        if (insertAt >= maxCount)
-        {
-            return;
-        }
-
-        top.Insert(insertAt, item);
-        if (top.Count > maxCount)
-        {
-            top.RemoveAt(top.Count - 1);
-        }
-    }
-
-    private void UpdateSemanticMemoryLocked(long tick)
-    {
-        var semanticCircuitEvidence = ResolveSemanticCircuitEvidenceLocked(tick);
-        if (semanticCircuitEvidence <= 0.10f && _semanticMemory.Count == 0)
-        {
-            RefreshSemanticMemorySnapshotLocked(tick);
-            return;
-        }
-
-        foreach (var entry in SelectTopByScore(
-                     _worldLearningMap.Values,
-                     96,
-                     e => e.Confidence + e.Salience + Math.Abs(e.Valence),
-                     e => e.LastObservedTick))
-        {
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey: entry.Key,
-                label: entry.Label,
-                category: entry.Category,
-                meaning: BuildSemanticMeaningForWorldEntry(entry),
-                associatedGoal: ResolveSemanticGoalForCategory(entry.Category),
-                associatedAction: ResolveSemanticActionForCategory(entry.Category),
-                sourceCircuit: $"temporal-association/parahippocampal/retrosplenial; circuit={semanticCircuitEvidence:0.00}",
-                objectSupport: entry.Observations,
-                episodeSupport: 0,
-                actionSupport: 0,
-                languageSupport: 0,
-                threat: entry.Threat,
-                food: entry.Food,
-                shelter: entry.Shelter,
-                weapon: entry.Weapon,
-                valence: entry.Valence,
-                confidence: ApplyCircuitGate(entry.Confidence, semanticCircuitEvidence),
-                familiarity: ApplyCircuitGate(entry.Familiarity, semanticCircuitEvidence));
-        }
-
-        foreach (var episode in SelectTopByScore(
-                     _episodicMemory.Values,
-                     96,
-                     ScoreEpisodicTraceForRecall,
-                     e => e.LastTick))
-        {
-            var category = ResolveSemanticCategoryForEpisode(episode);
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey: BuildSemanticConceptKeyForEpisode(episode, category),
-                label: episode.Label,
-                category: category,
-                meaning: episode.Summary,
-                associatedGoal: string.IsNullOrWhiteSpace(episode.GoalKey) ? ResolveSemanticGoalForCategory(category) : episode.GoalKey,
-                associatedAction: string.IsNullOrWhiteSpace(episode.ActionKey) ? ResolveSemanticActionForCategory(category) : episode.ActionKey,
-                sourceCircuit: $"entorhinal-hippocampal/subiculum-cortex; circuit={semanticCircuitEvidence:0.00}",
-                objectSupport: 0,
-                episodeSupport: 1 + episode.RecallCount,
-                actionSupport: 0,
-                languageSupport: string.Equals(episode.EventType, "language", StringComparison.OrdinalIgnoreCase) ? 1 : 0,
-                threat: category == "threat" ? Math.Max(0.35f, episode.Salience) : 0f,
-                food: category == "food" ? Math.Max(0.35f, episode.Salience) : 0f,
-                shelter: category == "shelter" ? Math.Max(0.35f, episode.Salience) : 0f,
-                weapon: category == "weapon" ? Math.Max(0.35f, episode.Salience) : 0f,
-                valence: episode.Valence,
-                confidence: ApplyCircuitGate(Math.Max(episode.Confidence, episode.SubiculumOutput), semanticCircuitEvidence),
-                familiarity: ApplyCircuitGate(Clamp01(episode.RecallCount / 12f), semanticCircuitEvidence));
-        }
-
-        foreach (var trace in SelectTopByScore(
-                     _actionMemory.Values,
-                     96,
-                     t => t.Confidence + Math.Abs(t.RewardEma) + t.SuccessEma,
-                     t => t.LastObservedTick))
-        {
-            var category = ResolveSemanticCategoryForAction(trace.ActionKey, trace.GoalKey);
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey: $"action.{NormalizeSemanticKey(trace.ActionKey)}",
-                label: trace.ActionKey,
-                category: category,
-                meaning: BuildSemanticMeaningForAction(trace),
-                associatedGoal: trace.GoalKey,
-                associatedAction: trace.ActionKey,
-                sourceCircuit: $"ppc-pfc/action-schema; circuit={semanticCircuitEvidence:0.00}",
-                objectSupport: 0,
-                episodeSupport: 0,
-                actionSupport: trace.Samples,
-                languageSupport: 0,
-                threat: trace.ThreatEma,
-                food: category == "food" ? trace.SuccessEma : 0f,
-                shelter: category == "shelter" ? Math.Max(trace.SafetyEma, trace.SuccessEma) : 0f,
-                weapon: category == "weapon" ? trace.SuccessEma : 0f,
-                valence: trace.RewardEma,
-                confidence: ApplyCircuitGate(trace.Confidence, semanticCircuitEvidence),
-                familiarity: ApplyCircuitGate(Clamp01(trace.Samples / 24f), semanticCircuitEvidence));
-        }
-
-        foreach (var trace in SelectTopByScore(
-                     _languageCommandMemory.Values,
-                     64,
-                     t => t.LearnedBias + Math.Min(1f, t.TotalActivations / 10f),
-                     t => t.LastUpdatedTick))
-        {
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey: $"language.{NormalizeSemanticKey(trace.CommandKey)}",
-                label: trace.CommandKey,
-                category: "language",
-                meaning: $"The command {trace.CommandKey} maps to an intended goal/action.",
-                associatedGoal: "FollowCommand",
-                associatedAction: "motor_follow_command",
-                sourceCircuit: $"wernicke-temporal-association-pfc; circuit={semanticCircuitEvidence:0.00}",
-                objectSupport: 0,
-                episodeSupport: 0,
-                actionSupport: 0,
-                languageSupport: (int)Math.Min(int.MaxValue, Math.Max(0L, trace.TotalActivations)),
-                threat: 0f,
-                food: 0f,
-                shelter: 0f,
-                weapon: 0f,
-                valence: 0f,
-                confidence: ApplyCircuitGate(trace.LearnedBias, semanticCircuitEvidence),
-                familiarity: ApplyCircuitGate(Clamp01(trace.TotalActivations / 16f), semanticCircuitEvidence));
-        }
-
-        RefreshSemanticMemorySnapshotLocked(tick);
-    }
-
-    private void UpsertSemanticConceptLocked(
-        long tick,
-        string conceptKey,
-        string label,
-        string category,
-        string meaning,
-        string associatedGoal,
-        string associatedAction,
-        string sourceCircuit,
-        int objectSupport,
-        int episodeSupport,
-        int actionSupport,
-        int languageSupport,
-        float threat,
-        float food,
-        float shelter,
-        float weapon,
-        float valence,
-        float confidence,
-        float familiarity)
-    {
-        var key = NormalizeSemanticKey(conceptKey);
-        if (!_semanticMemory.TryGetValue(key, out var existing))
-        {
-            if (_semanticMemory.Count >= MaxSemanticMemoryEntries)
-            {
-                var evict = _semanticMemory.Values
-                    .OrderBy(ScoreSemanticTrace)
-                    .ThenBy(t => t.LastUpdatedTick)
-                    .FirstOrDefault();
-                if (evict is not null)
-                {
-                    _semanticMemory.Remove(evict.ConceptKey);
-                }
-            }
-
-            existing = new SemanticMemoryTrace(
-                ConceptKey: key,
-                Label: NormalizeEpisodicText(label, key, 96),
-                Category: NormalizeEpisodicText(category, "unknown", 48),
-                Meaning: NormalizeEpisodicText(meaning, "meaning unknown", 180),
-                AssociatedGoal: NormalizeEpisodicText(associatedGoal, "Observe", 96),
-                AssociatedAction: NormalizeEpisodicText(associatedAction, "idle", 96),
-                SourceCircuit: NormalizeEpisodicText(sourceCircuit, "semantic-cortex", 96),
-                ObjectSupport: 0,
-                EpisodeSupport: 0,
-                ActionSupport: 0,
-                LanguageSupport: 0,
-                Threat: 0f,
-                Food: 0f,
-                Shelter: 0f,
-                Weapon: 0f,
-                Valence: 0f,
-                Confidence: 0f,
-                Familiarity: 0f,
-                LastUpdatedTick: tick);
-        }
-
-        const float alpha = 0.22f;
-        _semanticMemory[key] = existing with
-        {
-            Label = NormalizeEpisodicText(label, existing.Label, 96),
-            Category = NormalizeEpisodicText(category, existing.Category, 48),
-            Meaning = ResolvePreferredSemanticMeaning(existing.Meaning, meaning, confidence, existing.Confidence),
-            AssociatedGoal = NormalizeEpisodicText(associatedGoal, existing.AssociatedGoal, 96),
-            AssociatedAction = NormalizeEpisodicText(associatedAction, existing.AssociatedAction, 96),
-            SourceCircuit = NormalizeEpisodicText(sourceCircuit, existing.SourceCircuit, 96),
-            ObjectSupport = Math.Min(1_000_000, existing.ObjectSupport + Math.Max(0, objectSupport)),
-            EpisodeSupport = Math.Min(1_000_000, existing.EpisodeSupport + Math.Max(0, episodeSupport)),
-            ActionSupport = Math.Min(1_000_000, existing.ActionSupport + Math.Max(0, actionSupport)),
-            LanguageSupport = Math.Min(1_000_000, existing.LanguageSupport + Math.Max(0, languageSupport)),
-            Threat = Clamp01(Lerp(existing.Threat, threat, alpha)),
-            Food = Clamp01(Lerp(existing.Food, food, alpha)),
-            Shelter = Clamp01(Lerp(existing.Shelter, shelter, alpha)),
-            Weapon = Clamp01(Lerp(existing.Weapon, weapon, alpha)),
-            Valence = Math.Clamp(Lerp(existing.Valence, valence, alpha), -1f, 1f),
-            Confidence = Clamp01(existing.Confidence + (Clamp01(confidence) * 0.10f * (1f - existing.Confidence))),
-            Familiarity = Clamp01(existing.Familiarity + (Clamp01(familiarity) * 0.08f * (1f - existing.Familiarity))),
-            LastUpdatedTick = tick
-        };
-    }
-
-    private void RefreshSemanticMemorySnapshotLocked(long tick)
-    {
-        if (_semanticMemory.Count == 0)
-        {
-            SemanticMemory = SemanticMemoryRuntime.Default;
-            return;
-        }
-
-        var top = SelectTopByScore(_semanticMemory.Values, 16, ScoreSemanticTrace, t => t.LastUpdatedTick);
-        var dominant = top.FirstOrDefault();
-        var confidenceSum = 0f;
-        var contextSum = 0f;
-        var sceneSum = 0f;
-        var goalRelevantCount = 0;
-        var actionRelevantCount = 0;
-        var goalRelevantScore = 0f;
-        var actionRelevantScore = 0f;
-        foreach (var trace in top)
-        {
-            confidenceSum += trace.Confidence;
-            contextSum += Math.Max(trace.Shelter, Math.Abs(trace.Valence));
-            sceneSum += trace.ObjectSupport > 0 || trace.Category == "place" || trace.Category == "shelter" ? trace.Confidence : 0f;
-
-        }
-
-        SemanticMemory = SemanticMemoryRuntime.Normalize(new SemanticMemoryRuntime(
-            Count: _semanticMemory.Count,
-            DominantConceptKey: dominant?.ConceptKey ?? "none",
-            ActiveCategory: dominant?.Category ?? "none",
-            DominantMeaning: dominant?.Meaning ?? "none",
-            TemporalAssociationBinding: top.Count == 0 ? 0f : Clamp01(confidenceSum / top.Count),
-            ParahippocampalContext: top.Count == 0 ? 0f : Clamp01(contextSum / top.Count),
-            RetrosplenialSceneBinding: top.Count == 0 ? 0f : Clamp01(sceneSum / top.Count),
-            PpcAffordanceBinding: actionRelevantCount == 0 ? 0f : Clamp01(actionRelevantScore / actionRelevantCount),
-            PfcConceptControl: goalRelevantCount == 0 ? (dominant is null ? 0f : Clamp01(dominant.Confidence * 0.35f)) : Clamp01(goalRelevantScore / goalRelevantCount),
-            SemanticConfidence: dominant is null ? 0f : Clamp01(dominant.Confidence),
-            LastUpdatedTick: tick,
-            Top: top));
-    }
-
-    private void ReplaceSemanticMemory(IEnumerable<SemanticMemoryTrace> traces)
-    {
-        _semanticMemory.Clear();
-        foreach (var trace in traces
-                     .Where(t => t is not null && !string.IsNullOrWhiteSpace(t.ConceptKey))
-                     .OrderByDescending(ScoreSemanticTrace)
-                     .Take(MaxSemanticMemoryEntries))
-        {
-            var key = NormalizeSemanticKey(trace.ConceptKey);
-            _semanticMemory[key] = trace with
-            {
-                ConceptKey = key,
-                Label = NormalizeEpisodicText(trace.Label, key, 96),
-                Category = NormalizeEpisodicText(trace.Category, "unknown", 48),
-                Meaning = NormalizeEpisodicText(trace.Meaning, "meaning unknown", 180),
-                AssociatedGoal = NormalizeEpisodicText(trace.AssociatedGoal, "Observe", 96),
-                AssociatedAction = NormalizeEpisodicText(trace.AssociatedAction, "idle", 96),
-                SourceCircuit = NormalizeEpisodicText(trace.SourceCircuit, "semantic-cortex", 96),
-                ObjectSupport = Math.Max(0, trace.ObjectSupport),
-                EpisodeSupport = Math.Max(0, trace.EpisodeSupport),
-                ActionSupport = Math.Max(0, trace.ActionSupport),
-                LanguageSupport = Math.Max(0, trace.LanguageSupport),
-                Threat = Clamp01(trace.Threat),
-                Food = Clamp01(trace.Food),
-                Shelter = Clamp01(trace.Shelter),
-                Weapon = Clamp01(trace.Weapon),
-                Valence = Math.Clamp(trace.Valence, -1f, 1f),
-                Confidence = Clamp01(trace.Confidence),
-                Familiarity = Clamp01(trace.Familiarity),
-                LastUpdatedTick = Math.Max(0, trace.LastUpdatedTick)
-            };
-        }
-    }
-
-    private static string BuildSemanticMeaningForWorldEntry(WorldLearningMapEntry entry)
-        => entry.Category switch
-        {
-            "food" => $"{entry.Label} is associated with hunger relief.",
-            "shelter" => $"{entry.Label} is associated with safety and rest.",
-            "threat" => $"{entry.Label} is associated with danger and avoidance.",
-            "weapon" => $"{entry.Label} is associated with defensive capability.",
-            _ => $"{entry.Label} is a remembered world object."
-        };
-
-    private static string BuildSemanticMeaningForAction(ActionMemoryTrace trace)
-    {
-        var outcome = trace.RewardEma >= 0.08f ? "usually helps" : trace.RewardEma <= -0.08f ? "can be costly" : "has uncertain value";
-        return $"{trace.ActionKey} {outcome} when pursuing {trace.GoalKey}.";
-    }
-
-    private static string ResolveSemanticCategoryForEpisode(EpisodicMemoryTrace episode)
-    {
-        var text = $"{episode.EventType} {episode.Label} {episode.Summary} {episode.GoalKey} {episode.ActionKey}";
-        var category = ClassifyWorldLearningCategory(text);
-        if (category != "object")
-        {
-            return category;
-        }
-
-        if (text.Contains("language", StringComparison.OrdinalIgnoreCase) || text.Contains("command", StringComparison.OrdinalIgnoreCase))
-        {
-            return "language";
-        }
-
-        if (text.Contains("action", StringComparison.OrdinalIgnoreCase) || text.Contains("motor", StringComparison.OrdinalIgnoreCase))
-        {
-            return "action";
-        }
-
-        return "object";
-    }
-
-    private static string ResolveSemanticCategoryForAction(string actionKey, string goalKey)
-    {
-        var text = $"{actionKey} {goalKey}";
-        if (text.Contains("shelter", StringComparison.OrdinalIgnoreCase) || text.Contains("rest", StringComparison.OrdinalIgnoreCase))
-        {
-            return "shelter";
-        }
-
-        if (text.Contains("food", StringComparison.OrdinalIgnoreCase) || text.Contains("eat", StringComparison.OrdinalIgnoreCase))
-        {
-            return "food";
-        }
-
-        if (text.Contains("threat", StringComparison.OrdinalIgnoreCase) || text.Contains("avoid", StringComparison.OrdinalIgnoreCase))
-        {
-            return "threat";
-        }
-
-        if (text.Contains("weapon", StringComparison.OrdinalIgnoreCase))
-        {
-            return "weapon";
-        }
-
-        return "action";
-    }
-
-    private static string BuildSemanticConceptKeyForEpisode(EpisodicMemoryTrace episode, string category)
-    {
-        var baseKey = !string.Equals(episode.ObjectId, "none", StringComparison.OrdinalIgnoreCase)
-            ? episode.ObjectId
-            : !string.IsNullOrWhiteSpace(episode.Label) && !string.Equals(episode.Label, "none", StringComparison.OrdinalIgnoreCase)
-                ? episode.Label
-                : episode.ActionKey;
-        return $"{category}.{NormalizeSemanticKey(baseKey)}";
-    }
-
-    private static string ResolveSemanticGoalForCategory(string category)
-        => category switch
-        {
-            "food" => "FindFood",
-            "shelter" => "FindShelter",
-            "threat" => "AvoidThreat",
-            "weapon" => "SeekWeapon",
-            "language" => "FollowCommand",
-            _ => "Observe"
-        };
-
-    private static string ResolveSemanticActionForCategory(string category)
-        => category switch
-        {
-            "food" => "motor_seek_food",
-            "shelter" => "motor_seek_shelter",
-            "threat" => "motor_about_face_escape",
-            "weapon" => "motor_seek_weapon",
-            "language" => "motor_follow_command",
-            _ => "motor_explore"
-        };
-
-    private static string ResolvePreferredSemanticMeaning(string existing, string candidate, float candidateConfidence, float existingConfidence)
-    {
-        if (string.IsNullOrWhiteSpace(existing) || string.Equals(existing, "meaning unknown", StringComparison.OrdinalIgnoreCase))
-        {
-            return NormalizeEpisodicText(candidate, "meaning unknown", 180);
-        }
-
-        return candidateConfidence > existingConfidence + 0.08f
-            ? NormalizeEpisodicText(candidate, existing, 180)
-            : existing;
-    }
-
-    private static float ScoreSemanticTrace(SemanticMemoryTrace trace)
-        => Clamp01(
-            trace.Confidence * 0.30f +
-            trace.Familiarity * 0.16f +
-            Math.Min(1f, (trace.ObjectSupport + trace.EpisodeSupport + trace.ActionSupport + trace.LanguageSupport) / 24f) * 0.20f +
-            Math.Max(Math.Max(trace.Food, trace.Shelter), Math.Max(trace.Threat, trace.Weapon)) * 0.18f +
-            Math.Abs(trace.Valence) * 0.10f +
-            (trace.LastUpdatedTick > 0 ? 0.06f : 0f));
-
-    private static string NormalizeSemanticKey(string? value)
-    {
-        var seed = string.IsNullOrWhiteSpace(value) ? "concept.unknown" : value.Trim();
-        var key = Regex.Replace(seed.ToLowerInvariant(), @"[^a-z0-9_:\.-]+", "_").Trim('_');
-        return string.IsNullOrWhiteSpace(key) ? "concept.unknown" : key;
-    }
-
-    private void RefreshActionMemorySnapshotLocked(long tick)
-    {
-        var top = SelectTopByScore(
-            _actionMemory.Values,
-            16,
-            t => (t.SuccessEma * 0.62f) + (Math.Max(0f, t.RewardEma) * 0.22f) + (t.Confidence * 0.16f),
-            t => t.LastObservedTick);
-        var best = top.FirstOrDefault();
-        ActionMemoryTrace? last = null;
-        foreach (var trace in _actionMemory.Values)
-        {
-            if (last is null || trace.LastObservedTick > last.LastObservedTick)
-            {
-                last = trace;
-            }
-        }
-
-        ActionMemory = new ActionMemoryRuntime(
-            Count: _actionMemory.Count,
-            BestActionKey: best?.ActionKey ?? "none",
-            BestSuccess: best?.SuccessEma ?? 0f,
-            LastActionKey: last?.ActionKey ?? "none",
-            LastOutcome: last?.RewardEma ?? 0f,
-            LastUpdatedTick: tick,
-            Top: top);
-    }
-
-
-    private void RefreshDopamineLearningSnapshotLocked(long tick)
-    {
-        if (_dopamineLearning.Count == 0)
-        {
-            DopamineLearning = DopamineLearningRuntime.Default;
-            return;
-        }
-
-        var top = SelectTopByScore(_dopamineLearning.Values, 16, ScoreDopamineLearningTrace, t => t.LastObservedTick);
-        DopamineLearningTrace? last = null;
-        var vtaSum = 0f;
-        var sncSum = 0f;
-        var accumbensSum = 0f;
-        var habenulaSum = 0f;
-        var confidenceSum = 0f;
-        foreach (var trace in _dopamineLearning.Values)
-        {
-            if (last is null || trace.LastObservedTick > last.LastObservedTick)
-            {
-                last = trace;
-            }
-        }
-
-        foreach (var trace in top)
-        {
-            vtaSum += trace.VtaPhasicDopamine;
-            sncSum += trace.SncActionReinforcement;
-            accumbensSum += trace.NucleusAccumbensIncentive;
-            habenulaSum += trace.HabenulaNegativeTeaching;
-            confidenceSum += trace.Confidence;
-        }
-
-        var dominant = last ?? top.FirstOrDefault();
-        DopamineLearning = DopamineLearningRuntime.Normalize(new DopamineLearningRuntime(
-            Count: _dopamineLearning.Count,
-            LastActionKey: dominant?.ActionKey ?? "none",
-            LastGoalKey: dominant?.GoalKey ?? "none",
-            LastConceptKey: dominant?.ConceptKey ?? "none",
-            ExpectedValue: dominant?.ExpectedValue ?? 0f,
-            ObservedValue: dominant?.ObservedValue ?? 0f,
-            RewardPredictionError: dominant?.RewardPredictionError ?? 0f,
-            VtaPhasicDopamine: top.Count == 0 ? 0f : Clamp01(vtaSum / top.Count),
-            SncActionReinforcement: top.Count == 0 ? 0f : Clamp01(sncSum / top.Count),
-            NucleusAccumbensIncentive: top.Count == 0 ? 0f : Clamp01(accumbensSum / top.Count),
-            OrbitofrontalExpectedValue: dominant?.OrbitofrontalExpectedValue ?? 0f,
-            HabenulaNegativeTeaching: top.Count == 0 ? 0f : Clamp01(habenulaSum / top.Count),
-            TeachingSignal: dominant?.TeachingSignal ?? 0f,
-            LearnedValue: dominant?.LearnedValue ?? 0f,
-            AvoidancePenalty: dominant?.AvoidancePenalty ?? 0f,
-            Confidence: top.Count == 0 ? 0f : Clamp01(confidenceSum / top.Count),
-            LastUpdatedTick: tick,
-            Top: top));
-    }
-
-    private void ReplaceDopamineLearning(IEnumerable<DopamineLearningTrace> traces)
-    {
-        _dopamineLearning.Clear();
-        foreach (var trace in traces
-                     .Where(t => t is not null && !string.IsNullOrWhiteSpace(t.Key))
-                     .OrderByDescending(ScoreDopamineLearningTrace)
-                     .Take(MaxDopamineLearningEntries))
-        {
-            var key = NormalizeDopamineKey(trace.Key, "dopamine.unknown");
-            _dopamineLearning[key] = DopamineLearningTrace.Normalize(trace with
-            {
-                Key = key,
-                ActionKey = NormalizeDopamineKey(trace.ActionKey, "idle"),
-                GoalKey = NormalizeDopamineKey(trace.GoalKey, "observe"),
-                ConceptKey = NormalizeSemanticKey(trace.ConceptKey)
-            });
-        }
-    }
-
-
-    private string ResolveDopamineConceptKeyLocked(string goalKey, string actionKey)
-    {
-        SemanticMemoryTrace? match = null;
-        var matchScore = 0f;
-        foreach (var concept in _semanticMemory.Values)
-        {
-            if (!actionKey.Contains(concept.AssociatedAction, StringComparison.OrdinalIgnoreCase) &&
-                !concept.AssociatedAction.Contains(actionKey, StringComparison.OrdinalIgnoreCase) &&
-                !goalKey.Contains(concept.AssociatedGoal, StringComparison.OrdinalIgnoreCase) &&
-                !concept.AssociatedGoal.Contains(goalKey, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var score = ScoreSemanticTrace(concept);
-            if (match is null || score > matchScore)
-            {
-                match = concept;
-                matchScore = score;
-            }
-        }
-
-        return match?.ConceptKey
-            ?? (!string.IsNullOrWhiteSpace(SemanticMemory.DominantConceptKey) ? SemanticMemory.DominantConceptKey : "none");
-    }
-
-    private static float ScoreDopamineLearningTrace(DopamineLearningTrace trace)
-        => Clamp01(
-            (Math.Abs(trace.LearnedValue) * 0.28f) +
-            (trace.NucleusAccumbensIncentive * 0.18f) +
-            (trace.SncActionReinforcement * 0.16f) +
-            (trace.VtaPhasicDopamine * 0.14f) +
-            (trace.Confidence * 0.14f) +
-            (Math.Abs(trace.RewardPredictionError) * 0.06f) -
-            (trace.AvoidancePenalty * 0.10f) +
-            (trace.LastObservedTick > 0 ? 0.04f : 0f));
-
-    private static string NormalizeDopamineKey(string? value, string fallback)
-    {
-        var seed = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-        var key = Regex.Replace(seed.ToLowerInvariant(), @"[^a-z0-9_:\.-]+", "_").Trim('_');
-        return string.IsNullOrWhiteSpace(key) ? fallback : key;
-    }
-
-
-    private void UpsertWorldLearningMapFromObjectLocked(ObjectMemoryTrace trace, long tick, bool replayReinforcement)
-    {
-        var category = ClassifyWorldLearningCategory(trace.Label);
-        var key = $"object.{trace.ObjectId}";
-        var confidence = Clamp01(trace.ConfidenceEma);
-        var salience = Clamp01(trace.SalienceEma);
-        var threat = category == "threat" ? Clamp01(0.45f + (salience * 0.45f)) : Clamp01(EnvironmentalState.PredatorThreat * 0.25f);
-        var shelter = category == "shelter" ? Clamp01(0.46f + (confidence * 0.42f)) : 0f;
-        var food = category == "food" ? Clamp01(0.46f + (confidence * 0.42f)) : 0f;
-        var weapon = category == "weapon" ? Clamp01(0.46f + (confidence * 0.42f)) : 0f;
-        var safety = category == "threat"
-            ? Clamp01(0.20f - (threat * 0.12f))
-            : Clamp01(Math.Max(EnvironmentalState.ShelterSafety, 0.32f + (confidence * 0.34f) - (EnvironmentalState.PredatorThreat * 0.24f)));
-        var valence = Math.Clamp((safety + food + shelter + weapon) - threat, -1f, 1f);
-
-        if (!_worldLearningMap.TryGetValue(key, out var entry))
-        {
-            if (_worldLearningMap.Count >= MaxWorldLearningMapEntries)
-            {
-                var evict = _worldLearningMap.Values
-                    .OrderBy(e => e.Confidence + e.Salience + Math.Abs(e.Valence))
-                    .ThenBy(e => e.LastObservedTick)
-                    .FirstOrDefault();
-                if (evict is not null)
-                {
-                    _worldLearningMap.Remove(evict.Key);
-                }
-            }
-
-            entry = new WorldLearningMapEntry(
-                Key: key,
-                Label: trace.Label,
-                Category: category,
-                DominantHemisphere: trace.DominantHemisphere,
-                Familiarity: trace.Familiarity,
-                Salience: salience,
-                Confidence: confidence,
-                Safety: safety,
-                Threat: threat,
-                Food: food,
-                Shelter: shelter,
-                Weapon: weapon,
-                Valence: valence,
-                Observations: 0,
-                DreamReplayCount: 0,
-                LastObservedTick: tick,
-                LastDreamTick: 0);
-        }
-
-        var alpha = replayReinforcement ? 0.08f : 0.24f;
-        _worldLearningMap[key] = entry with
-        {
-            Label = trace.Label,
-            Category = category,
-            DominantHemisphere = trace.DominantHemisphere,
-            Familiarity = Clamp01(Lerp(entry.Familiarity, trace.Familiarity, alpha)),
-            Salience = Clamp01(Lerp(entry.Salience, salience, alpha)),
-            Confidence = Clamp01(Lerp(entry.Confidence, confidence, alpha) + (replayReinforcement ? 0.004f : 0f)),
-            Safety = Clamp01(Lerp(entry.Safety, safety, alpha)),
-            Threat = Clamp01(Lerp(entry.Threat, threat, alpha)),
-            Food = Clamp01(Lerp(entry.Food, food, alpha)),
-            Shelter = Clamp01(Lerp(entry.Shelter, shelter, alpha)),
-            Weapon = Clamp01(Lerp(entry.Weapon, weapon, alpha)),
-            Valence = Math.Clamp(Lerp(entry.Valence, valence, alpha), -1f, 1f),
-            Observations = entry.Observations + (replayReinforcement ? 0 : 1),
-            DreamReplayCount = entry.DreamReplayCount + (replayReinforcement ? 1 : 0),
-            LastObservedTick = tick,
-            LastDreamTick = replayReinforcement ? tick : entry.LastDreamTick
-        };
-    }
-
-    private void ReinforceWorldLearningMapFromActionLocked(ActionMemoryTrace trace, long tick)
-    {
-        if (_worldLearningMap.Count == 0)
-        {
-            return;
-        }
-
-        var category = trace.GoalKey switch
-        {
-            "FindShelter" or "Rest" => "shelter",
-            "FindFood" => "food",
-            "SeekWeapon" => "weapon",
-            "AvoidThreat" => "threat",
-            _ => string.Empty
-        };
-        if (string.IsNullOrWhiteSpace(category))
-        {
-            return;
-        }
-
-        var entries = _worldLearningMap.Values
-            .Where(e => string.Equals(e.Category, category, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(e => e.LastObservedTick)
-            .Take(6)
-            .ToList();
-        foreach (var entry in entries)
-        {
-            var safetyTarget = trace.SuccessEma > 0.55f ? Math.Max(entry.Safety, trace.SafetyEma) : entry.Safety * 0.97f;
-            var threatTarget = string.Equals(category, "threat", StringComparison.OrdinalIgnoreCase)
-                ? Math.Max(entry.Threat, trace.ThreatEma)
-                : entry.Threat * (trace.SuccessEma > 0.55f ? 0.96f : 1.02f);
-            var valenceTarget = Math.Clamp(entry.Valence + ((trace.SuccessEma - 0.50f) * 0.16f), -1f, 1f);
-            _worldLearningMap[entry.Key] = entry with
-            {
-                Confidence = Clamp01(entry.Confidence + (trace.Confidence * 0.012f)),
-                Safety = Clamp01(Lerp(entry.Safety, safetyTarget, 0.10f)),
-                Threat = Clamp01(Lerp(entry.Threat, threatTarget, 0.10f)),
-                Valence = Math.Clamp(Lerp(entry.Valence, valenceTarget, 0.12f), -1f, 1f),
-                LastObservedTick = Math.Max(entry.LastObservedTick, tick)
-            };
-        }
-    }
-
-    private void RefreshWorldLearningMapSnapshotLocked(long tick)
-    {
-        var top = SelectTopByScore(
-            _worldLearningMap.Values,
-            16,
-            e => e.Salience + e.Confidence + Math.Abs(e.Valence),
-            e => e.LastObservedTick);
-        WorldLearningMapEntry? bestShelter = null;
-        WorldLearningMapEntry? bestFood = null;
-        WorldLearningMapEntry? bestWeapon = null;
-        WorldLearningMapEntry? danger = null;
-        var safePlaces = 0;
-        var foodSources = 0;
-        var weaponSources = 0;
-        var threatSources = 0;
-        foreach (var entry in _worldLearningMap.Values)
-        {
-            if (entry.Safety >= 0.55f) safePlaces++;
-            if (entry.Food >= 0.45f) foodSources++;
-            if (entry.Weapon >= 0.45f) weaponSources++;
-            if (entry.Threat >= 0.45f) threatSources++;
-
-            if (entry.Shelter > 0.15f && IsBetterWorldEntry(entry, bestShelter, e => (e.Shelter * 0.55f) + (e.Safety * 0.30f) + (e.Confidence * 0.15f)))
-            {
-                bestShelter = entry;
-            }
-
-            if (entry.Food > 0.15f && IsBetterWorldEntry(entry, bestFood, e => (e.Food * 0.62f) + (e.Confidence * 0.22f) + (e.Safety * 0.16f)))
-            {
-                bestFood = entry;
-            }
-
-            if (entry.Weapon > 0.15f && IsBetterWorldEntry(entry, bestWeapon, e => (e.Weapon * 0.62f) + (e.Confidence * 0.22f) + (e.Safety * 0.16f)))
-            {
-                bestWeapon = entry;
-            }
-
-            if (entry.Threat > 0.10f && IsBetterWorldEntry(entry, danger, e => (e.Threat * 0.70f) + (e.Salience * 0.18f) + (e.Confidence * 0.12f)))
-            {
-                danger = entry;
-            }
-        }
-
-        WorldLearningMap = new WorldLearningMapRuntime(
-            Count: _worldLearningMap.Count,
-            SafePlaces: safePlaces,
-            FoodSources: foodSources,
-            WeaponSources: weaponSources,
-            ThreatSources: threatSources,
-            BestShelterKey: bestShelter?.Key ?? "none",
-            BestFoodKey: bestFood?.Key ?? "none",
-            BestWeaponKey: bestWeapon?.Key ?? "none",
-            MostDangerousKey: danger?.Key ?? "none",
-            LastUpdatedTick: tick,
-            Top: top);
-    }
-
-    private void RefreshPersistentPerceptsLocked(long tick)
-    {
-        if (_objectMemory.Count == 0)
-        {
-            PersistentPercepts = PersistentPerceptRuntime.Default with { LastUpdatedTick = tick };
-            return;
-        }
-
-        var traces = _objectMemory.Values
-            .Select(trace => BuildPersistentPerceptTraceLocked(trace, tick))
-            .Where(trace => trace.ObjectPermanence > 0.03f)
-            .OrderByDescending(trace => trace.SpatialIntention + trace.ObjectPermanence)
-            .ThenByDescending(trace => trace.LastSeenTick)
-            .Take(24)
-            .ToList();
-
-        var active = traces.FirstOrDefault();
-        PersistentPercepts = PersistentPerceptRuntime.Normalize(new PersistentPerceptRuntime(
-            Count: _objectMemory.Count,
-            ActiveObjectId: active?.ObjectId ?? "none",
-            ActiveLabel: active?.Label ?? "none",
-            ActiveCategory: active?.Category ?? "none",
-            ActiveHemisphere: active?.DominantHemisphere ?? "M",
-            ObjectPermanence: active?.ObjectPermanence ?? 0f,
-            SpatialIntention: active?.SpatialIntention ?? 0f,
-            GoalSupport: active?.GoalSupport ?? 0f,
-            LastSeenTick: active?.LastSeenTick ?? 0,
-            LastUpdatedTick: tick,
-            Top: traces));
-    }
-
-    private PersistentPerceptTrace BuildPersistentPerceptTraceLocked(ObjectMemoryTrace trace, long tick)
-    {
-        var category = ClassifyWorldLearningCategory(trace.Label);
-        var mapKey = $"object.{trace.ObjectId}";
-        if (_worldLearningMap.TryGetValue(mapKey, out var entry) && !string.IsNullOrWhiteSpace(entry.Category))
-        {
-            category = entry.Category;
-        }
-
-        var ticksSinceSeen = Math.Max(0, tick - trace.LastSeenTick);
-        var retention = ticksSinceSeen == 0
-            ? 1f
-            : Clamp01((float)Math.Exp(-ticksSinceSeen / 3600.0));
-        if (ticksSinceSeen > 7200)
-        {
-            retention *= 0.35f;
-        }
-
-        var goalSupport = ComputePersistentPerceptGoalSupportLocked(category);
-        var objectPermanence = Clamp01(
-            (trace.Familiarity * 0.40f) +
-            (trace.ConfidenceEma * 0.26f) +
-            (trace.SalienceEma * 0.18f) +
-            (retention * 0.16f));
-        var spatialIntention = Clamp01(
-            (objectPermanence * 0.38f) +
-            (goalSupport * 0.34f) +
-            (trace.SalienceEma * 0.16f) +
-            (AttentionState.Memory * 0.12f));
-        var biologicalSource = category switch
-        {
-            "food" => "hippocampal object permanence for hypothalamic food seeking",
-            "shelter" or "safe" => "hippocampal object permanence for shelter seeking",
-            "weapon" => "hippocampal object permanence for defensive tool seeking",
-            "threat" => "amygdala-hippocampal threat permanence",
-            _ => "hippocampal-parietal object permanence"
-        };
-
-        return new PersistentPerceptTrace(
-            ObjectId: trace.ObjectId,
-            Label: trace.Label,
-            Category: category,
-            DominantHemisphere: trace.DominantHemisphere,
-            Familiarity: Clamp01(trace.Familiarity),
-            Salience: Clamp01(trace.SalienceEma),
-            Confidence: Clamp01(trace.ConfidenceEma),
-            Retention: Clamp01(retention),
-            ObjectPermanence: objectPermanence,
-            SpatialIntention: spatialIntention,
-            GoalSupport: goalSupport,
-            LastIntensity: Math.Clamp(trace.IntensityEma, 0f, 5f),
-            SeenCount: Math.Max(0, trace.SeenCount),
-            TicksSinceSeen: ticksSinceSeen,
-            LastSeenTick: Math.Max(0, trace.LastSeenTick),
-            BiologicalSource: biologicalSource);
-    }
-
-    private float ComputePersistentPerceptGoalSupportLocked(string category)
-    {
-        var needSupport = category switch
-        {
-            "food" => Math.Max(EnvironmentalState.Hunger, Math.Max(LimbicState.InteroceptiveDrive, InteroceptiveCore.HungerDrive)),
-            "shelter" or "safe" => Math.Max(EnvironmentalState.ShelterNeed, Math.Max(LimbicState.TiredDrive, InteroceptiveCore.ShelterDrive)),
-            "weapon" => Math.Max(EnvironmentalState.PredatorThreat, LimbicState.Threat),
-            "threat" => Math.Max(EnvironmentalState.PredatorThreat, Math.Max(LimbicState.Threat, LimbicState.AversiveDrive)),
-            _ => AttentionState.Visual
-        };
-        return Clamp01(needSupport);
-    }
-
-    private float GetBestPersistentPerceptScoreLocked(string category)
-    {
-        RefreshPersistentPerceptsLocked(Tick);
-        return PersistentPercepts.Top
-            .Where(p => string.Equals(p.Category, category, StringComparison.OrdinalIgnoreCase))
-            .Select(p => Clamp01((p.ObjectPermanence * 0.48f) + (p.SpatialIntention * 0.36f) + (p.Confidence * 0.16f)))
-            .DefaultIfEmpty(0f)
-            .Max();
-    }
 
 
     private float GetRecentStructureSpikeSupportLocked(long tick, params StructureId[] structures)
@@ -6722,214 +4370,12 @@ internal sealed class SimulationState
     }
 
     private float ResolveGlobalCircuitFallback()
-        => Clamp01(
-            (WorldModel.LastObservedDispatchedSpikes / 96f * 0.55f) +
-            (WorldModel.LastObservedActivePathways / 24f * 0.45f));
+        => 0f;
 
     private static float ApplyCircuitGate(float value, float circuitEvidence)
         => Clamp01(value * (0.40f + (0.60f * Clamp01(circuitEvidence))));
 
 
-    private float ResolveEpisodicCircuitEvidenceLocked(long tick)
-    {
-        var recent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.EntorhinalCortex,
-            StructureId.DentateGyrus,
-            StructureId.CA3,
-            StructureId.CA2,
-            StructureId.CA1,
-            StructureId.Subiculum,
-            StructureId.Presubiculum,
-            StructureId.Parasubiculum,
-            StructureId.ParahippocampalCortex,
-            StructureId.RetrosplenialCortex);
-        var integrated = Clamp01(
-            (AttentionState.Memory * 0.22f) +
-            (EpisodicMemory.HippocampalBinding * 0.18f) +
-            (EpisodicMemory.EntorhinalInput * 0.14f) +
-            (EpisodicMemory.DentatePatternSeparation * 0.12f) +
-            (EpisodicMemory.CA3PatternCompletion * 0.12f) +
-            (EpisodicMemory.SubiculumOutput * 0.12f) +
-            (SemanticMemory.RetrosplenialSceneBinding * 0.06f) +
-            (ResolveGlobalCircuitFallback() * 0.04f));
-        return Clamp01(Math.Max(recent, integrated));
-    }
-
-
-    private float ResolvePredictivePerceptionCircuitEvidenceLocked(long tick, string channel)
-    {
-        var modalityRecent = channel switch
-        {
-            "visual" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.Retina,
-                StructureId.V1,
-                StructureId.V2,
-                StructureId.V4,
-                StructureId.Mt,
-                StructureId.Pulvinar,
-                StructureId.SuperiorColliculus),
-            "auditory" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.Cochlea,
-                StructureId.CochlearNucleus,
-                StructureId.SuperiorOlive,
-                StructureId.InferiorColliculus,
-                StructureId.A1,
-                StructureId.WernickePstgPsts),
-            "somatosensory" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.S1,
-                StructureId.Ppc,
-                StructureId.VestibularNuclei,
-                StructureId.MotorThalamus,
-                StructureId.CerebellarVermis),
-            "interoceptive" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.NucleusTractusSolitarius,
-                StructureId.Hypothalamus,
-                StructureId.Insula,
-                StructureId.Acc,
-                StructureId.Amygdala),
-            _ => ResolveGlobalCircuitFallback()
-        };
-        var predictiveRecent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.Pfc,
-            StructureId.Acc,
-            StructureId.LocusCoeruleus,
-            StructureId.EntorhinalCortex,
-            StructureId.CA1,
-            StructureId.CA3,
-            StructureId.Subiculum);
-        var attentionSupport = channel switch
-        {
-            "visual" => AttentionState.Visual,
-            "auditory" => AttentionState.Auditory,
-            "somatosensory" => AttentionState.Somatosensory,
-            "interoceptive" => AttentionState.Interoceptive,
-            _ => AttentionState.FocusConfidence
-        };
-        var integrated = Clamp01(
-            (attentionSupport * 0.26f) +
-            (AttentionState.FocusConfidence * 0.14f) +
-            (AttentionState.Salience * 0.12f) +
-            (PredictivePerception.LocusCoeruleusAlert * 0.10f) +
-            (PredictivePerception.HippocampalEncodingGate * 0.10f) +
-            (PredictivePerception.AccConflictSignal * 0.08f) +
-            (EpisodicMemory.HippocampalBinding * 0.08f) +
-            (ResolveGlobalCircuitFallback() * 0.12f));
-        return Clamp01(Math.Max(Math.Max(modalityRecent, predictiveRecent), integrated));
-    }
-
-    private float ResolveStimulusAdaptationCircuitEvidenceLocked(long tick, string channel)
-    {
-        var modalityRecent = channel switch
-        {
-            "visual" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.Retina,
-                StructureId.V1,
-                StructureId.V2,
-                StructureId.V4,
-                StructureId.Mt,
-                StructureId.Pulvinar,
-                StructureId.SuperiorColliculus),
-            "auditory" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.Cochlea,
-                StructureId.CochlearNucleus,
-                StructureId.InferiorColliculus,
-                StructureId.A1,
-                StructureId.Thalamus),
-            "somatosensory" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.S1,
-                StructureId.Ppc,
-                StructureId.MotorThalamus,
-                StructureId.CerebellarVermis),
-            "interoceptive" => GetRecentStructureSpikeSupportLocked(
-                tick,
-                StructureId.NucleusTractusSolitarius,
-                StructureId.Insula,
-                StructureId.Acc,
-                StructureId.Hypothalamus),
-            _ => ResolveGlobalCircuitFallback()
-        };
-        var neuromodulatoryRecent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.BasalForebrain,
-            StructureId.LocusCoeruleus,
-            StructureId.Acc,
-            StructureId.Amygdala,
-            StructureId.EntorhinalCortex,
-            StructureId.CA3,
-            StructureId.CA1,
-            StructureId.Vta,
-            StructureId.Snc);
-        var integrated = Clamp01(
-            (ResolvePredictivePerceptionCircuitEvidenceLocked(tick, channel) * 0.22f) +
-            (AttentionState.BasalForebrainGain * 0.14f) +
-            (AttentionState.ThalamicRelayGain * 0.10f) +
-            ((1f - AttentionState.TrnInhibition) * 0.08f) +
-            (PredictivePerception.LocusCoeruleusAlert * 0.12f) +
-            (PredictivePerception.HippocampalEncodingGate * 0.12f) +
-            (PredictivePerception.AccConflictSignal * 0.08f) +
-            (Math.Abs(PredictivePerception.DopamineTeachingSignal) * 0.06f) +
-            (GlobalNeuromodState.AcetylcholineLevel * 0.04f) +
-            (GlobalNeuromodState.NorepinephrineLevel * 0.04f));
-        return Clamp01(Math.Max(Math.Max(modalityRecent, neuromodulatoryRecent), integrated));
-    }
-
-    private float ResolveSemanticCircuitEvidenceLocked(long tick)
-    {
-        var recent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.TemporalAssociation,
-            StructureId.ParahippocampalCortex,
-            StructureId.RetrosplenialCortex,
-            StructureId.Ppc,
-            StructureId.Pfc,
-            StructureId.EntorhinalCortex,
-            StructureId.CA1,
-            StructureId.Subiculum,
-            StructureId.WernickePstgPsts);
-        var integrated = Clamp01(
-            (EpisodicMemory.HippocampalBinding * 0.18f) +
-            (EpisodicMemory.RecallConfidence * 0.14f) +
-            (AttentionState.Memory * 0.14f) +
-            (AttentionState.Language * 0.10f) +
-            ((float)NeuronalLanguageGrounding.GroundingConfidence * 0.22f) +
-            (WorldLearningMap.Count > 0 ? 0.16f : 0f) +
-            (_semanticMemory.Count > 0 ? 0.08f : 0f) +
-            (ResolveGlobalCircuitFallback() * 0.08f));
-        return Clamp01(Math.Max(recent, integrated));
-    }
-
-    private float ResolveDopamineCircuitEvidenceLocked(long tick)
-    {
-        var recent = GetRecentStructureSpikeSupportLocked(
-            tick,
-            StructureId.Vta,
-            StructureId.Snc,
-            StructureId.NucleusAccumbens,
-            StructureId.VentralPallidum,
-            StructureId.OrbitofrontalCortex,
-            StructureId.Habenula,
-            StructureId.Striatum,
-            StructureId.Acc,
-            StructureId.Pfc);
-        var integrated = Clamp01(
-            (GlobalNeuromodState.DopamineLevel * 0.28f) +
-            (Math.Abs(LimbicState.RewardPredictionError) * 0.14f) +
-            (OutcomeState.LastInputTick >= 0 && tick - OutcomeState.LastInputTick <= 1600 ? 0.14f : 0f) +
-            (SemanticMemory.SemanticConfidence * 0.10f) +
-            ((float)NeuronalMotor.ActionSelectionConfidence * 0.10f) +
-            (_dopamineLearning.Count > 0 ? 0.08f : 0f) +
-            (ResolveGlobalCircuitFallback() * 0.08f));
-        return Clamp01(Math.Max(recent, integrated));
-    }
 
     private float ResolveCerebellarCircuitEvidenceLocked(
         long tick,
@@ -6997,120 +4443,6 @@ internal sealed class SimulationState
 
 
 
-    private static bool IsBetterWorldEntry(
-        WorldLearningMapEntry candidate,
-        WorldLearningMapEntry? existing,
-        Func<WorldLearningMapEntry, float> scoreSelector)
-    {
-        if (existing is null)
-        {
-            return true;
-        }
-
-        var candidateScore = scoreSelector(candidate);
-        var existingScore = scoreSelector(existing);
-        return candidateScore > existingScore ||
-               (Math.Abs(candidateScore - existingScore) < 0.0001f && candidate.LastObservedTick > existing.LastObservedTick);
-    }
-
-    private void UpsertCurrentPlaceLearningLocked(long tick)
-    {
-        var safety = Clamp01(Math.Max(EnvironmentalState.InShelter, EnvironmentalState.ShelterSafety));
-        var bodySafety = Clamp01((BodySchema.PostureStability * 0.34f) + (BodySchema.BalanceConfidence * 0.28f) + ((1f - BodySchema.Damage) * 0.20f) + ((1f - Cerebellum.BalanceError) * 0.18f));
-        var embodiedSafety = Clamp01((safety * 0.72f) + (bodySafety * 0.28f));
-        var bodyDanger = Clamp01((BodySchema.MotorConflict * 0.28f) + (BodySchema.Damage * 0.26f) + (Cerebellum.BalanceError * 0.24f) + (BodySchema.ShelterExposure * 0.22f));
-        var exposureThreat = Clamp01(EnvironmentalState.PredatorThreat * (1f - safety));
-        var combinedThreat = Clamp01(Math.Max(exposureThreat, bodyDanger * Math.Max(0.15f, 1f - safety)));
-        var darkShelterDrive = Clamp01(Math.Max(EnvironmentalState.Darkness, BodySchema.ShelterExposure) * Math.Max(EnvironmentalState.ShelterNeed, 1f - safety));
-        if (embodiedSafety < 0.20f && combinedThreat < 0.20f && darkShelterDrive < 0.20f)
-        {
-            return;
-        }
-
-        var category = combinedThreat > 0.45f ? "threat" : embodiedSafety > 0.45f ? "shelter" : "safe";
-        var key = $"place.{category}.current";
-        var label = category switch
-        {
-            "threat" => "remembered danger place",
-            "shelter" => "remembered shelter",
-            _ => "remembered safe place"
-        };
-        var existing = _worldLearningMap.TryGetValue(key, out var current)
-            ? current
-            : new WorldLearningMapEntry(
-                Key: key,
-                Label: label,
-                Category: category,
-                DominantHemisphere: "M",
-                Familiarity: 0f,
-                Salience: Math.Max(exposureThreat, darkShelterDrive),
-                Confidence: 0.10f,
-                Safety: embodiedSafety,
-                Threat: combinedThreat,
-                Food: 0f,
-                Shelter: category == "shelter" ? embodiedSafety : 0f,
-                Weapon: 0f,
-                Valence: embodiedSafety - combinedThreat,
-                Observations: 0,
-                DreamReplayCount: 0,
-                LastObservedTick: tick,
-                LastDreamTick: 0);
-
-        const float alpha = 0.14f;
-        _worldLearningMap[key] = existing with
-        {
-            Label = label,
-            Category = category,
-            Familiarity = Clamp01(existing.Familiarity + 0.012f),
-            Salience = Clamp01(Lerp(existing.Salience, Math.Max(combinedThreat, darkShelterDrive), alpha)),
-            Confidence = Clamp01(existing.Confidence + 0.006f),
-            Safety = Clamp01(Lerp(existing.Safety, embodiedSafety, alpha)),
-            Threat = Clamp01(Lerp(existing.Threat, combinedThreat, alpha)),
-            Shelter = Clamp01(Lerp(existing.Shelter, category == "shelter" ? embodiedSafety : darkShelterDrive * 0.35f, alpha)),
-            Valence = Math.Clamp(Lerp(existing.Valence, embodiedSafety - combinedThreat, alpha), -1f, 1f),
-            Observations = existing.Observations + 1,
-            LastObservedTick = tick
-        };
-    }
-
-    private static string ClassifyWorldLearningCategory(string label)
-    {
-        var text = (label ?? string.Empty).Trim().ToLowerInvariant();
-        if (text.Contains("predator", StringComparison.Ordinal) ||
-            text.Contains("bear", StringComparison.Ordinal) ||
-            text.Contains("enemy", StringComparison.Ordinal) ||
-            text.Contains("danger", StringComparison.Ordinal) ||
-            text.Contains("hazard", StringComparison.Ordinal))
-        {
-            return "threat";
-        }
-
-        if (text.Contains("shelter", StringComparison.Ordinal) ||
-            text.Contains("home", StringComparison.Ordinal) ||
-            text.Contains("den", StringComparison.Ordinal) ||
-            text.Contains("safe", StringComparison.Ordinal))
-        {
-            return "shelter";
-        }
-
-        if (text.Contains("food", StringComparison.Ordinal) ||
-            text.Contains("berry", StringComparison.Ordinal) ||
-            text.Contains("water", StringComparison.Ordinal) ||
-            text.Contains("meal", StringComparison.Ordinal))
-        {
-            return "food";
-        }
-
-        if (text.Contains("weapon", StringComparison.Ordinal) ||
-            text.Contains("sword", StringComparison.Ordinal) ||
-            text.Contains("spear", StringComparison.Ordinal) ||
-            text.Contains("tool", StringComparison.Ordinal))
-        {
-            return "weapon";
-        }
-
-        return "unknown";
-    }
 
     private void UpdateBodySchemaLocked(long tick)
     {
@@ -7493,17 +4825,7 @@ internal sealed class SimulationState
         };
 
     private string InferCarriedItemStateLocked()
-    {
-        if (_objectMemory.Values.Any(o =>
-                o.LastSeenTick >= Math.Max(0, Tick - 3600) &&
-                ClassifyWorldLearningCategory(o.Label) == "weapon" &&
-                o.ConfidenceEma >= 0.45f))
-        {
-            return "defensive_tool_remembered";
-        }
-
-        return "none";
-    }
+        => "none";
 
 
 
@@ -7548,44 +4870,6 @@ internal sealed class SimulationState
 
 
 
-    private void UpdateCurriculumLocked(long tick, int dispatchedSpikes, int activePathwayCount, float rewardPredictionError)
-    {
-        var dispatchScore = Math.Clamp(dispatchedSpikes / 160.0, 0.0, 1.0);
-        var pathwayScore = Math.Clamp(activePathwayCount / 24.0, 0.0, 1.0);
-        var rewardStability = Math.Clamp(1.0 - Math.Abs(rewardPredictionError), 0.0, 1.0);
-        var transitionFidelity = _worldModelTransitions.Count == 0
-            ? 0.0
-            : Math.Clamp(_worldModelTransitions.Values.Average(t => Math.Max(0.0, 1.0 - t.PredictionError)), 0.0, 1.0);
-
-        foreach (var task in _curriculumTasks)
-        {
-            var score = task.StageIndex switch
-            {
-                0 => (0.55 * dispatchScore) + (0.45 * pathwayScore),
-                1 => (0.50 * dispatchScore) + (0.20 * pathwayScore) + (0.30 * rewardStability),
-                2 => (0.40 * dispatchScore) + (0.20 * pathwayScore) + (0.40 * transitionFidelity),
-                _ => (0.30 * dispatchScore) + (0.20 * pathwayScore) + (0.25 * rewardStability) + (0.25 * transitionFidelity)
-            };
-            task.Observe((float)Math.Clamp(score, 0.0, 1.0), tick);
-        }
-
-        if (Curriculum.Enabled)
-        {
-            var currentStageTasks = _curriculumTasks.Where(t => t.StageIndex == _curriculumStageIndex).ToList();
-            var stageReady = currentStageTasks.Count > 0 &&
-                             currentStageTasks.All(t => t.SampleCount >= 40 && t.ScoreEma >= 0.58f);
-            var stageDurationTicks = Math.Max(0, tick - _curriculumLastStageTransitionTick);
-            if (stageReady &&
-                stageDurationTicks >= 240 &&
-                _curriculumStageIndex < (CurriculumTaskAccumulator.StageNames.Count - 1))
-            {
-                _curriculumStageIndex++;
-                _curriculumLastStageTransitionTick = tick;
-            }
-        }
-
-        RefreshCurriculumSnapshotLocked(tick);
-    }
 
     private void RefreshCurriculumSnapshotLocked(long tick)
     {
@@ -7620,552 +4904,6 @@ internal sealed class SimulationState
         };
     }
 
-    private void ApplyConsolidationDecayLocked()
-    {
-        if (!ConsolidationControl.Enabled)
-        {
-            return;
-        }
-
-        var antiForgetting = Math.Clamp(ConsolidationControl.AntiForgettingHomeostasis, 0f, 1f);
-        var protectedKeys = _engramBank
-            .Where(e => e.Salience >= ConsolidationControl.ProtectedSalienceThreshold)
-            .OrderByDescending(e => e.Salience)
-            .Take(ConsolidationControl.ProtectedEngramBudget)
-            .Select(e => e.Key)
-            .ToHashSet(StringComparer.Ordinal);
-        var sleepConsolidationScale = SleepMemory.IsSleeping ? 1.0f : 0.12f;
-        var engramDecay = ConsolidationControl.EngramDecayPerTick * sleepConsolidationScale * (1f - (0.75f * antiForgetting));
-        var protectedEngramDecay = engramDecay * (SleepMemory.IsSleeping ? 0.04f : 0.02f);
-        for (var i = 0; i < _engramBank.Count; i++)
-        {
-            var engram = _engramBank[i];
-            var decay = protectedKeys.Contains(engram.Key) ? protectedEngramDecay : engramDecay;
-            if (decay <= 0f)
-            {
-                continue;
-            }
-
-            var decayedSalience = Math.Clamp(engram.Salience * (1f - decay), 0f, 100f);
-            _engramBank[i] = engram with
-            {
-                Salience = decayedSalience
-            };
-        }
-
-        var schemaDecay = ConsolidationControl.SchemaDecayPerTick * sleepConsolidationScale * (1f - (0.65f * antiForgetting));
-        for (var i = 0; i < _schemaBank.Count; i++)
-        {
-            var schema = _schemaBank[i];
-            if (schemaDecay > 0f)
-            {
-                var decayedStrength = Math.Clamp(schema.Strength * (1f - (schemaDecay * 0.45f)), 0.05f, 20f);
-                var decayedNovelty = Math.Clamp(schema.NoveltyScore * (1f - schemaDecay), 0.04f, 1f);
-                _schemaBank[i] = schema with
-                {
-                    Strength = decayedStrength,
-                    NoveltyScore = decayedNovelty
-                };
-            }
-        }
-
-    }
-
-    private readonly record struct ActionMemoryAggregate(int ProtectedCount, float MeanSuccess);
-
-    private static ActionMemoryAggregate AggregateActionMemory(IReadOnlyDictionary<string, ActionMemoryTrace> traces)
-    {
-        if (traces.Count == 0)
-        {
-            return default;
-        }
-
-        var protectedCount = 0;
-        var success = 0f;
-        foreach (var trace in traces.Values)
-        {
-            protectedCount += trace.SuccessEma >= 0.58f || trace.ThreatEma >= 0.62f ? 1 : 0;
-            success += trace.SuccessEma;
-        }
-
-        return new ActionMemoryAggregate(protectedCount, Clamp01(success / traces.Count));
-    }
-
-    private readonly record struct WorldLearningMapAggregate(int ProtectedCount, float MeanConfidence);
-
-    private static WorldLearningMapAggregate AggregateWorldLearningMap(IReadOnlyDictionary<string, WorldLearningMapEntry> entries)
-    {
-        if (entries.Count == 0)
-        {
-            return default;
-        }
-
-        var protectedCount = 0;
-        var confidence = 0f;
-        foreach (var entry in entries.Values)
-        {
-            protectedCount += entry.Confidence >= 0.62f || entry.Threat >= 0.62f ? 1 : 0;
-            confidence += entry.Confidence;
-        }
-
-        return new WorldLearningMapAggregate(protectedCount, Clamp01(confidence / entries.Count));
-    }
-
-    private void ApplyDreamConsolidationLocked(long tick)
-    {
-        var actionAggregate = AggregateActionMemory(_actionMemory);
-        var mapAggregate = AggregateWorldLearningMap(_worldLearningMap);
-        if (!SleepMemory.IsSleeping)
-        {
-            DreamConsolidation = DreamConsolidation with
-            {
-                Active = false,
-                ProtectedActionCount = actionAggregate.ProtectedCount,
-                ProtectedMapCount = mapAggregate.ProtectedCount,
-                MeanActionSuccess = actionAggregate.MeanSuccess,
-                MeanMapConfidence = mapAggregate.MeanConfidence
-            };
-            return;
-        }
-
-        if (SleepMemory.NeuronalAuthorityActive)
-        {
-            DreamConsolidation = DreamConsolidation with
-            {
-                Active = SleepMemory.NeuronalReplayActive,
-                LastDreamTick = SleepMemory.NeuronalReplayActive ? tick : DreamConsolidation.LastDreamTick,
-                LastDreamTheme = SleepMemory.NeuronalReplayActive
-                    ? $"neuronal ensemble {SleepMemory.NeuronalReplayEnsemble}"
-                    : "neuronal replay quiet",
-                ProtectedActionCount = actionAggregate.ProtectedCount,
-                ProtectedMapCount = mapAggregate.ProtectedCount,
-                MeanActionSuccess = actionAggregate.MeanSuccess,
-                MeanMapConfidence = mapAggregate.MeanConfidence,
-                ConsolidationSummary = SleepMemory.NeuronalReplayActive
-                    ? $"Distributed hippocampal-thalamocortical replay selected numeric ensemble {SleepMemory.NeuronalReplayEnsemble}."
-                    : "Distributed sleep circuits did not authorize replay this tick."
-            };
-            return;
-        }
-
-        var replayBudget = Math.Clamp(SleepMemory.ReplayBurstsPerTick, 1, 24);
-        var actionReplays = 0;
-        var mapReplays = 0;
-        var actionCandidates = _actionMemory.Values
-            .OrderByDescending(t => Math.Abs(t.RewardEma) + t.ThreatEma + t.SuccessEma + t.Confidence)
-            .ThenBy(t => t.DreamReplayCount)
-            .Take(Math.Max(1, replayBudget / 2))
-            .ToList();
-        foreach (var trace in actionCandidates)
-        {
-            var protectedTrace = trace.SuccessEma >= 0.58f || trace.ThreatEma >= 0.62f || trace.Confidence >= 0.70f;
-            var confidenceGain = protectedTrace ? 0.010f : 0.005f;
-            var successTarget = trace.SuccessEma >= 0.50f
-                ? Math.Min(1f, trace.SuccessEma + 0.010f)
-                : Math.Max(0f, trace.SuccessEma - 0.004f);
-            _actionMemory[trace.ActionKey] = trace with
-            {
-                SuccessEma = Clamp01(Lerp(trace.SuccessEma, successTarget, 0.18f)),
-                Confidence = Clamp01(trace.Confidence + confidenceGain),
-                DreamReplayCount = trace.DreamReplayCount + 1,
-                LastObservedTick = Math.Max(trace.LastObservedTick, tick)
-            };
-            actionReplays++;
-        }
-
-        var mapCandidates = _worldLearningMap.Values
-            .OrderByDescending(e => e.Salience + Math.Abs(e.Valence) + e.Threat + e.Shelter + e.Food + e.Weapon)
-            .ThenBy(e => e.DreamReplayCount)
-            .Take(Math.Max(1, replayBudget / 2))
-            .ToList();
-        foreach (var entry in mapCandidates)
-        {
-            var protectedEntry = entry.Threat >= 0.62f || entry.Shelter >= 0.55f || entry.Food >= 0.55f || entry.Weapon >= 0.55f;
-            var confidenceGain = protectedEntry ? 0.010f : 0.004f;
-            var safety = entry.Category == "threat"
-                ? Math.Max(0f, entry.Safety - 0.003f)
-                : Math.Min(1f, entry.Safety + 0.004f);
-            var threat = entry.Category == "threat"
-                ? Math.Min(1f, entry.Threat + 0.004f)
-                : Math.Max(0f, entry.Threat - 0.003f);
-            _worldLearningMap[entry.Key] = entry with
-            {
-                Confidence = Clamp01(entry.Confidence + confidenceGain),
-                Safety = Clamp01(safety),
-                Threat = Clamp01(threat),
-                Valence = Math.Clamp((entry.Valence * 0.985f) + ((safety - threat) * 0.015f), -1f, 1f),
-                DreamReplayCount = entry.DreamReplayCount + 1,
-                LastDreamTick = tick
-            };
-            mapReplays++;
-        }
-
-        var theme = mapCandidates.FirstOrDefault()?.Category
-                    ?? actionCandidates.FirstOrDefault()?.GoalKey
-                    ?? "quiet memory";
-        var primaryAction = actionCandidates.FirstOrDefault();
-        var primaryMap = mapCandidates.FirstOrDefault();
-        var simulatedGoal = ResolveOfflineSimulationGoal(primaryAction, primaryMap);
-        var simulatedAction = ResolveOfflineSimulationAction(primaryAction, simulatedGoal);
-        var hippocampalReplay = Clamp01(
-            (SleepMemory.ReplayBurstsPerTick / 24f * 0.20f) +
-            (EpisodicMemory.HippocampalBinding * 0.20f) +
-            (EpisodicMemory.RecallConfidence * 0.16f) +
-            (primaryMap?.Confidence * 0.18f ?? 0f) +
-            (primaryAction?.Confidence * 0.16f ?? 0f) +
-            (SleepMemory.SleepTicks > 0 ? 0.10f : 0f));
-        var pfcCounterfactual = Clamp01(
-            (primaryAction?.Confidence * 0.24f ?? 0f) +
-            (GetRecentStructureSpikeSupportLocked(tick, StructureId.Pfc, StructureId.Acc, StructureId.OrbitofrontalCortex) * 0.20f) +
-            ((float)NeuronalMotor.ActionSelectionConfidence * 0.16f) +
-            (ActionMemory.BestSuccess * 0.16f) +
-            (WorldModel.Enabled ? 0.12f : 0f) +
-            (SleepMemory.IsSleeping ? 0.12f : 0f));
-        var amygdalaThreatReplay = Clamp01(
-            (primaryMap?.Threat * 0.36f ?? 0f) +
-            (primaryAction?.ThreatEma * 0.24f ?? 0f) +
-            (LimbicState.Threat * 0.18f) +
-            (EmotionState.Anxiety * 0.12f) +
-            (LimbicState.AversiveDrive * 0.10f));
-        var cerebellarReplay = Clamp01(
-            (Cerebellum.BalanceError * 0.30f) +
-            (Cerebellum.PredictionError * 0.26f) +
-            (BodySchema.MotorConflict * 0.18f) +
-            (BodySchema.ProprioceptiveConfidence * 0.14f) +
-            (actionCandidates.Count > 0 ? actionCandidates.Average(t => t.Confidence) * 0.12f : 0f));
-        var dopamineRevaluation = ClampSigned01(
-            ((primaryAction?.RewardEma ?? 0f) * 0.36f) +
-            (((primaryAction?.SuccessEma ?? 0.5f) - 0.5f) * 0.28f) +
-            ((primaryMap?.Valence ?? 0f) * 0.22f) -
-            (amygdalaThreatReplay * 0.18f) -
-            ((primaryAction?.SleepPressureEma ?? 0f) * 0.06f));
-        var offlinePredictionError = Clamp01(
-            Math.Abs(dopamineRevaluation - DopamineLearning.LearnedValue) * 0.38f +
-            (WorldModel.MeanPredictionError * 0.22f) +
-            (Cerebellum.PredictionError * 0.18f) +
-            (primaryAction is null || primaryMap is null ? 0.12f : 0f) +
-            ((1f - hippocampalReplay) * 0.10f));
-        ApplyOfflineDopamineRevaluationLocked(tick, primaryAction, primaryMap, dopamineRevaluation, offlinePredictionError);
-        if (cerebellarReplay > 0f)
-        {
-            var learnedCorrection = Clamp01(Lerp(Cerebellum.LearnedCorrection, cerebellarReplay, 0.035f));
-            Cerebellum = CerebellumRuntime.Normalize(Cerebellum with
-            {
-                LearnedCorrection = learnedCorrection,
-                MotorSmoothing = Clamp01(Lerp(Cerebellum.MotorSmoothing, learnedCorrection, 0.045f)),
-                TimingPrediction = Clamp01(Lerp(Cerebellum.TimingPrediction, learnedCorrection, 0.035f)),
-                LastUpdatedTick = tick
-            });
-        }
-        var simulatedScene = BuildOfflineSimulatedScene(primaryMap, primaryAction, theme);
-        var simulatedOutcome = BuildOfflineSimulatedOutcome(simulatedGoal, simulatedAction, dopamineRevaluation, offlinePredictionError, amygdalaThreatReplay);
-        var primarySelfEpisode = EpisodicMemory.Top.FirstOrDefault();
-        var primarySemantic = SemanticMemory.Top.FirstOrDefault();
-        var autobiographicalReplays = primarySelfEpisode is null ? 0 : Math.Max(1, replayBudget / 4);
-        var semanticReplays = primarySemantic is null ? 0 : Math.Max(1, replayBudget / 4);
-        var autobiographicalContinuityGain = Clamp01(
-            (hippocampalReplay * 0.30f) +
-            (EpisodicMemory.RecallConfidence * 0.24f) +
-            (GetRecentStructureSpikeSupportLocked(tick, StructureId.Pfc, StructureId.RetrosplenialCortex) * 0.20f) +
-            (EpisodicMemory.HippocampalBinding * 0.16f) +
-            (primarySelfEpisode?.Confidence * 0.10f ?? 0f));
-        var semanticStabilization = Clamp01(
-            (SemanticMemory.SemanticConfidence * 0.30f) +
-            (primarySemantic?.Confidence * 0.24f ?? 0f) +
-            (hippocampalReplay * 0.18f) +
-            (pfcCounterfactual * 0.16f) +
-            (SemanticMemory.TemporalAssociationBinding * 0.12f));
-        var actionValueStabilization = Clamp01(
-            ((primaryAction?.Confidence ?? 0f) * 0.28f) +
-            ((primaryAction?.SuccessEma ?? 0f) * 0.22f) +
-            (Math.Abs(dopamineRevaluation) * 0.18f) +
-            ((1f - offlinePredictionError) * 0.18f) +
-            (DopamineLearning.Confidence * 0.14f));
-        var consolidatedConceptKey = primarySemantic?.ConceptKey
-                                     ?? primaryMap?.Key
-                                     ?? primaryAction?.ActionKey
-                                     ?? "none";
-        var consolidatedIdentityThread = primarySelfEpisode?.Summary ?? "no episodic replay selected";
-        var consolidatedActionValue = $"action={simulatedAction}; value={dopamineRevaluation:+0.00;-0.00;0.00}; error={offlinePredictionError:0.00}";
-        var consolidationSummary = BuildDreamConsolidationSummary(
-            theme,
-            primarySelfEpisode,
-            primarySemantic,
-            simulatedAction,
-            dopamineRevaluation,
-            offlinePredictionError);
-
-        if (semanticReplays > 0 && primarySemantic is not null)
-        {
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey: primarySemantic.ConceptKey,
-                label: primarySemantic.Label,
-                category: primarySemantic.Category,
-                meaning: primarySemantic.Meaning,
-                associatedGoal: primarySemantic.AssociatedGoal,
-                associatedAction: primarySemantic.AssociatedAction,
-                sourceCircuit: $"sleep-replay/hippocampus-temporal-cortex; theme={theme}",
-                objectSupport: 0,
-                episodeSupport: semanticReplays,
-                actionSupport: primaryAction is null ? 0 : 1,
-                languageSupport: 0,
-                threat: primarySemantic.Threat,
-                food: primarySemantic.Food,
-                shelter: primarySemantic.Shelter,
-                weapon: primarySemantic.Weapon,
-                valence: primarySemantic.Valence,
-                confidence: semanticStabilization,
-                familiarity: semanticStabilization);
-            RefreshSemanticMemorySnapshotLocked(tick);
-        }
-
-        var postReplayActionAggregate = AggregateActionMemory(_actionMemory);
-        var postReplayMapAggregate = AggregateWorldLearningMap(_worldLearningMap);
-        DreamConsolidation = new DreamConsolidationRuntime(
-            Active: true,
-            LastDreamTick: tick,
-            LastDreamTheme: theme,
-            ActionMemoryReplays: DreamConsolidation.ActionMemoryReplays + actionReplays,
-            WorldMapReplays: DreamConsolidation.WorldMapReplays + mapReplays,
-            EngramSchemaReplays: DreamConsolidation.EngramSchemaReplays + _schemaBank.Count(s => tick - s.LastReplayTick <= 120),
-            AutobiographicalReplays: DreamConsolidation.AutobiographicalReplays + autobiographicalReplays,
-            SemanticReplays: DreamConsolidation.SemanticReplays + semanticReplays,
-            ProtectedActionCount: postReplayActionAggregate.ProtectedCount,
-            ProtectedMapCount: postReplayMapAggregate.ProtectedCount,
-            MeanActionSuccess: postReplayActionAggregate.MeanSuccess,
-            MeanMapConfidence: postReplayMapAggregate.MeanConfidence,
-            SimulatedScene: simulatedScene,
-            SimulatedGoalKey: simulatedGoal,
-            SimulatedActionKey: simulatedAction,
-            SimulatedOutcome: simulatedOutcome,
-            ConsolidatedIdentityThread: consolidatedIdentityThread,
-            ConsolidatedConceptKey: consolidatedConceptKey,
-            ConsolidatedActionValue: consolidatedActionValue,
-            ConsolidationSummary: consolidationSummary,
-            HippocampalReplay: hippocampalReplay,
-            PfcCounterfactual: pfcCounterfactual,
-            AmygdalaThreatReplay: amygdalaThreatReplay,
-            CerebellarMotorReplay: cerebellarReplay,
-            DopamineRevaluation: dopamineRevaluation,
-            OfflinePredictionError: offlinePredictionError,
-            AutobiographicalContinuityGain: autobiographicalContinuityGain,
-            SemanticStabilization: semanticStabilization,
-            ActionValueStabilization: actionValueStabilization,
-            OfflineSimulationCount: DreamConsolidation.OfflineSimulationCount + 1);
-
-        RefreshActionMemorySnapshotLocked(tick);
-        RefreshWorldLearningMapSnapshotLocked(tick);
-    }
-
-    private static string BuildDreamConsolidationSummary(
-        string theme,
-        EpisodicMemoryTrace? selfEpisode,
-        SemanticMemoryTrace? semantic,
-        string simulatedAction,
-        float dopamineRevaluation,
-        float offlinePredictionError)
-    {
-        var memory = selfEpisode is null
-            ? "no autobiographical episode selected"
-            : selfEpisode.Summary;
-        var concept = semantic is null
-            ? "no semantic concept selected"
-            : $"{semantic.ConceptKey} ({semantic.Category})";
-        return $"Sleep replay protected {memory}; stabilized {concept}; tested {simulatedAction} with value {dopamineRevaluation:+0.00;-0.00;0.00} and prediction error {offlinePredictionError:0.00}; theme={theme}.";
-    }
-
-    private void ApplyOfflineDopamineRevaluationLocked(
-        long tick,
-        ActionMemoryTrace? action,
-        WorldLearningMapEntry? map,
-        float dopamineRevaluation,
-        float offlinePredictionError)
-    {
-        if (action is null || _dopamineLearning.Count == 0)
-        {
-            return;
-        }
-
-        var actionKey = NormalizeDopamineKey(action.ActionKey, "idle");
-        var goalKey = NormalizeDopamineKey(action.GoalKey, "observe");
-        var trace = _dopamineLearning.Values
-            .Where(t => t.ActionKey.Equals(actionKey, StringComparison.OrdinalIgnoreCase) ||
-                        t.GoalKey.Equals(goalKey, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(ScoreDopamineLearningTrace)
-            .FirstOrDefault();
-        if (trace is null)
-        {
-            return;
-        }
-
-        var threatPenalty = Clamp01(Math.Max(action.ThreatEma, map?.Threat ?? 0f) * 0.20f);
-        var teaching = ClampSigned01((dopamineRevaluation * 0.72f) - (offlinePredictionError * 0.22f) - threatPenalty);
-        var positiveTeaching = Clamp01(Math.Max(0f, teaching));
-        var negativeTeaching = Clamp01(Math.Max(0f, -teaching));
-        _dopamineLearning[trace.Key] = DopamineLearningTrace.Normalize(trace with
-        {
-            ExpectedValue = ClampSigned01(Lerp(trace.ExpectedValue, dopamineRevaluation, 0.08f)),
-            RewardPredictionError = ClampSigned01(Lerp(trace.RewardPredictionError, dopamineRevaluation - trace.ExpectedValue, 0.10f)),
-            VtaPhasicDopamine = Clamp01(Lerp(trace.VtaPhasicDopamine, positiveTeaching, 0.10f)),
-            SncActionReinforcement = Clamp01(Lerp(trace.SncActionReinforcement, action.SuccessEma, 0.08f)),
-            NucleusAccumbensIncentive = Clamp01(Lerp(trace.NucleusAccumbensIncentive, Math.Max(0f, dopamineRevaluation), 0.08f)),
-            OrbitofrontalExpectedValue = ClampSigned01(Lerp(trace.OrbitofrontalExpectedValue, dopamineRevaluation, 0.08f)),
-            HabenulaNegativeTeaching = Clamp01(Lerp(trace.HabenulaNegativeTeaching, negativeTeaching + threatPenalty, 0.08f)),
-            TeachingSignal = teaching,
-            LearnedValue = ClampSigned01(Lerp(trace.LearnedValue, ClampSigned01(trace.LearnedValue + teaching), 0.06f)),
-            AvoidancePenalty = Clamp01(Lerp(trace.AvoidancePenalty, negativeTeaching + threatPenalty, 0.07f)),
-            Confidence = Clamp01(trace.Confidence + (0.006f * (1f - trace.Confidence))),
-            LastObservedTick = Math.Max(trace.LastObservedTick, tick)
-        });
-        RefreshDopamineLearningSnapshotLocked(tick);
-    }
-
-    private static string ResolveOfflineSimulationGoal(ActionMemoryTrace? action, WorldLearningMapEntry? map)
-    {
-        if (action is not null && !string.IsNullOrWhiteSpace(action.GoalKey))
-        {
-            return action.GoalKey.Trim();
-        }
-
-        return map?.Category switch
-        {
-            "food" => "FindFood",
-            "shelter" => "FindShelter",
-            "threat" => "AvoidThreat",
-            "weapon" => "SeekWeapon",
-            _ => "Observe"
-        };
-    }
-
-    private static string ResolveOfflineSimulationAction(ActionMemoryTrace? action, string goalKey)
-    {
-        if (action is not null && !string.IsNullOrWhiteSpace(action.ActionKey))
-        {
-            return action.ActionKey.Trim();
-        }
-
-        return goalKey switch
-        {
-            "FindFood" => "goal.FindFood",
-            "FindShelter" => "goal.FindShelter",
-            "AvoidThreat" => "goal.AvoidThreat",
-            "SeekWeapon" => "goal.SeekWeapon",
-            "Rest" => "goal.Rest",
-            _ => "idle"
-        };
-    }
-
-    private static string BuildOfflineSimulatedScene(WorldLearningMapEntry? map, ActionMemoryTrace? action, string theme)
-    {
-        var place = map is null ? "unmapped space" : $"{map.Category}:{map.Label}";
-        var actionKey = action?.ActionKey ?? "idle";
-        return $"hippocampus replays {place}; PFC tests {actionKey}; theme={theme}";
-    }
-
-    private static string BuildOfflineSimulatedOutcome(
-        string goalKey,
-        string actionKey,
-        float dopamineRevaluation,
-        float offlinePredictionError,
-        float threatReplay)
-    {
-        if (threatReplay > 0.58f)
-        {
-            return $"threat rehearsal for {goalKey}; strengthen avoidance before {actionKey}";
-        }
-
-        if (offlinePredictionError > 0.42f)
-        {
-            return $"uncertain dream outcome for {actionKey}; keep model plastic";
-        }
-
-        return dopamineRevaluation >= 0f
-            ? $"offline reward supports {actionKey} for {goalKey}"
-            : $"offline correction warns against {actionKey} for {goalKey}";
-    }
-
-    private void ReplaceWorldModelTransitions(IEnumerable<WorldModelTransition> transitions)
-    {
-        _worldModelTransitions.Clear();
-        foreach (var transition in transitions
-                     .Where(t => t is not null && !string.IsNullOrWhiteSpace(t.ActionKey))
-                     .OrderByDescending(t => t.Samples)
-                     .Take(MaxWorldModelTransitions))
-        {
-            _worldModelTransitions[transition.ActionKey] = transition with
-            {
-                ExpectedDispatchDelta = Math.Clamp(transition.ExpectedDispatchDelta, -10000f, 10000f),
-                ExpectedPathwayDelta = Math.Clamp(transition.ExpectedPathwayDelta, -1024f, 1024f),
-                ExpectedRewardDelta = Math.Clamp(transition.ExpectedRewardDelta, -4f, 4f),
-                ExpectedSleepPressureDelta = Math.Clamp(transition.ExpectedSleepPressureDelta, -4f, 4f),
-                PredictionError = Math.Clamp(transition.PredictionError, 0f, 100f),
-                Samples = Math.Max(1, transition.Samples),
-                LastTick = Math.Max(0, transition.LastTick)
-            };
-        }
-    }
-
-    private void ReplaceActionMemory(IEnumerable<ActionMemoryTrace> traces)
-    {
-        _actionMemory.Clear();
-        foreach (var trace in traces
-                     .Where(t => t is not null && !string.IsNullOrWhiteSpace(t.ActionKey))
-                     .OrderByDescending(t => t.Confidence * Math.Max(0.05f, t.SuccessEma))
-                     .Take(MaxActionMemoryEntries))
-        {
-            var key = trace.ActionKey.Trim();
-            _actionMemory[key] = trace with
-            {
-                ActionKey = key,
-                GoalKey = string.IsNullOrWhiteSpace(trace.GoalKey) ? "Observe" : trace.GoalKey.Trim(),
-                DominantEmotion = string.IsNullOrWhiteSpace(trace.DominantEmotion) ? "neutral" : trace.DominantEmotion.Trim(),
-                SuccessEma = Clamp01(trace.SuccessEma),
-                RewardEma = Math.Clamp(trace.RewardEma, -1f, 1f),
-                SafetyEma = Clamp01(trace.SafetyEma),
-                ThreatEma = Clamp01(trace.ThreatEma),
-                HungerEma = Clamp01(trace.HungerEma),
-                SleepPressureEma = Clamp01(trace.SleepPressureEma),
-                Confidence = Clamp01(trace.Confidence),
-                Samples = Math.Max(0, trace.Samples),
-                FirstObservedTick = Math.Max(0, trace.FirstObservedTick),
-                LastObservedTick = Math.Max(0, trace.LastObservedTick),
-                DreamReplayCount = Math.Max(0, trace.DreamReplayCount)
-            };
-        }
-    }
-
-    private void ReplaceWorldLearningMap(IEnumerable<WorldLearningMapEntry> entries)
-    {
-        _worldLearningMap.Clear();
-        foreach (var entry in entries
-                     .Where(e => e is not null && !string.IsNullOrWhiteSpace(e.Key))
-                     .OrderByDescending(e => e.Confidence + e.Salience + Math.Abs(e.Valence))
-                     .Take(MaxWorldLearningMapEntries))
-        {
-            var key = entry.Key.Trim();
-            _worldLearningMap[key] = entry with
-            {
-                Key = key,
-                Label = string.IsNullOrWhiteSpace(entry.Label) ? key : entry.Label.Trim(),
-                Category = string.IsNullOrWhiteSpace(entry.Category) ? ClassifyWorldLearningCategory(entry.Label) : entry.Category.Trim(),
-                DominantHemisphere = string.IsNullOrWhiteSpace(entry.DominantHemisphere) ? "M" : entry.DominantHemisphere.Trim().ToUpperInvariant(),
-                Familiarity = Clamp01(entry.Familiarity),
-                Salience = Clamp01(entry.Salience),
-                Confidence = Clamp01(entry.Confidence),
-                Safety = Clamp01(entry.Safety),
-                Threat = Clamp01(entry.Threat),
-                Food = Clamp01(entry.Food),
-                Shelter = Clamp01(entry.Shelter),
-                Weapon = Clamp01(entry.Weapon),
-                Valence = Math.Clamp(entry.Valence, -1f, 1f),
-                Observations = Math.Max(0, entry.Observations),
-                DreamReplayCount = Math.Max(0, entry.DreamReplayCount),
-                LastObservedTick = Math.Max(0, entry.LastObservedTick),
-                LastDreamTick = Math.Max(0, entry.LastDreamTick)
-            };
-        }
-    }
 
     private void RestoreCurriculumFromSnapshot(CurriculumRuntime runtime)
     {
@@ -8210,21 +4948,9 @@ internal sealed class SimulationState
         };
     }
 
-    public SleepTransitionResult AdvanceSleepHomeostasis(SleepTickInput input)
-        => AdvanceSleepHomeostasis(
-            input,
-            NeuronalSleepConsolidationDecision.Unavailable,
-            allowLegacyAuthority: true);
-
     public SleepTransitionResult AdvanceSleepHomeostasis(
         SleepTickInput input,
         NeuronalSleepConsolidationDecision neuronalDecision)
-        => AdvanceSleepHomeostasis(input, neuronalDecision, allowLegacyAuthority: false);
-
-    private SleepTransitionResult AdvanceSleepHomeostasis(
-        SleepTickInput input,
-        NeuronalSleepConsolidationDecision neuronalDecision,
-        bool allowLegacyAuthority)
     {
         lock (_gate)
         {
@@ -8287,7 +5013,7 @@ internal sealed class SimulationState
                 var baseRecovery = runtime.SleepRecoveryPerTick * adaptiveSleepRecoveryScale * homeostasisRateScale;
                 // Keep ATP recovery robust during replay: replay should tax recovery,
                 // but not collapse it to near-zero for long stretches.
-                var replayPenaltyRaw = input.ReplayDispatchedSpikes * runtime.ReplayEnergyPenaltyPerSpike * homeostasisRateScale;
+                var replayPenaltyRaw = input.NeuronalReplaySpikes * runtime.NeuronalReplayEnergyPenaltyPerSpike * homeostasisRateScale;
                 var replayPenaltyCap = baseRecovery * 0.55f;
                 var replayPenalty = Math.Min(replayPenaltyRaw, replayPenaltyCap);
                 var minRecoveryFloor = baseRecovery * 0.45f;
@@ -8295,7 +5021,7 @@ internal sealed class SimulationState
                 atp = Math.Min(runtime.MaxAtpBudget, atp + recovery);
                 var pressureRecovery = Math.Max(
                     0f,
-                    (runtime.SleepPressureRecoveryPerTick - (input.ReplayDispatchedSpikes * runtime.ReplayPressurePenaltyPerSpike)) * homeostasisRateScale);
+                    (runtime.SleepPressureRecoveryPerTick - (input.NeuronalReplaySpikes * runtime.NeuronalReplayPressurePenaltyPerSpike)) * homeostasisRateScale);
                 sleepPressure = Math.Max(0f, sleepPressure - pressureRecovery);
                 sleepTicks++;
                 wakeTicks = 0;
@@ -8400,92 +5126,6 @@ internal sealed class SimulationState
                 atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
                 wakeInertiaTicksRemaining = minWakeTicks;
             }
-            else if (allowLegacyAuthority && !neuronalCircuitObserved && !runtime.IsSleeping &&
-                wakeInertiaTicksRemaining <= 0 &&
-                !unsafeToSleep &&
-                (atp <= runtime.SleepEnterThreshold && sleepPressure >= sleepPressureEnterThreshold))
-            {
-                enteredSleep = true;
-                var wakeTicksAfterCooldown = Math.Max(0, wakeTicks - minWakeTicks + 1);
-                var effectiveWakeTicks = Math.Max(1, wakeTicksAfterCooldown);
-                lastWakeDurationTicks = effectiveWakeTicks;
-                wakeDurationEwmaTicks = wakeDurationEwmaTicks <= 0f
-                    ? effectiveWakeTicks
-                    : ((1.0f - WakeDurationEwmaAlpha) * wakeDurationEwmaTicks) + (WakeDurationEwmaAlpha * effectiveWakeTicks);
-
-                var isShortWake = wakeTicksAfterCooldown > 0 && wakeTicksAfterCooldown < shortWakeThresholdTicks;
-                if (isShortWake)
-                {
-                    consecutiveShortWakeEpisodes++;
-                    shortWakeAlerts++;
-                    var shortfall = (shortWakeThresholdTicks - wakeTicksAfterCooldown) / (float)shortWakeThresholdTicks;
-                    var adaptStep = Math.Clamp(0.03f + (shortfall * 0.09f), 0.03f, 0.12f);
-                    adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale * (1.0f - adaptStep), MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                    adaptiveSleepRecoveryScale = Math.Clamp(adaptiveSleepRecoveryScale * (1.0f + (adaptStep * 0.80f)), MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale);
-                    lastAlert = $"Short wake window at tick {Tick}: wakeTicks={wakeTicksAfterCooldown}, threshold={shortWakeThresholdTicks}, ATP={atp:0.000}, pressure={sleepPressure:0.000}, recoveryScale={adaptiveSleepRecoveryScale:0.000}, awakeDrainScale={adaptiveAwakeDrainScale:0.000}.";
-                    lastAlertTick = Tick;
-                    AppendLog(_outputLog, lastAlert);
-                }
-                else
-                {
-                    consecutiveShortWakeEpisodes = 0;
-                    if (observedWakeDuty > targetWakeDuty + 0.06f)
-                    {
-                        adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale + 0.01f, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                    }
-                    else if (observedWakeDuty < targetWakeDuty - 0.06f)
-                    {
-                        adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale - 0.01f, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                    }
-                    else
-                    {
-                        adaptiveAwakeDrainScale = MoveTowards(adaptiveAwakeDrainScale, 1.0f, 0.005f);
-                    }
-
-                    adaptiveSleepRecoveryScale = MoveTowards(adaptiveSleepRecoveryScale, 1.0f, 0.01f);
-                }
-
-                wakeTicks = 0;
-                sleepTicks = 0;
-            }
-            else if (allowLegacyAuthority && !neuronalCircuitObserved && runtime.IsSleeping &&
-                ((sleepTicks >= runtime.MinSleepTicks &&
-                  atp >= runtime.SleepExitThreshold &&
-                  sleepPressure <= sleepPressureExitThreshold) ||
-                 unsafeArousalFromSleep))
-            {
-                exitedSleep = true;
-                lastSleepDurationTicks = sleepTicks;
-                sleepDurationEwmaTicks = sleepDurationEwmaTicks <= 0f
-                    ? sleepTicks
-                    : ((1.0f - SleepDurationEwmaAlpha) * sleepDurationEwmaTicks) + (SleepDurationEwmaAlpha * sleepTicks);
-                sleepTicks = 0;
-                wakeTicks = 0;
-                sleepExitBlockedTicks = 0;
-
-                // Add wake reserve so the system does not immediately re-enter sleep.
-                var reserveFactor = Math.Clamp(0.22f + ((1.0f - adaptiveAwakeDrainScale) * 0.55f), 0.20f, 0.55f);
-                var wakeReserve = (runtime.MaxAtpBudget - runtime.SleepExitThreshold) * reserveFactor;
-                atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
-                wakeInertiaTicksRemaining = minWakeTicks;
-                if (unsafeArousalFromSleep)
-                {
-                    lastAlert = $"Unsafe sleep arousal at tick {Tick}: exposure={environmentalExposure:0.00}, shelterNeed={environmentalShelterNeed:0.00}, safety={environmentalSafety:0.00}, pressure={sleepPressure:0.000}.";
-                    lastAlertTick = Tick;
-                    AppendLog(_outputLog, lastAlert);
-                }
-
-                if (observedWakeDuty < targetWakeDuty - 0.05f)
-                {
-                    adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale - 0.015f, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                    adaptiveSleepRecoveryScale = Math.Clamp(adaptiveSleepRecoveryScale + 0.015f, MinAdaptiveSleepRecoveryScale, MaxAdaptiveSleepRecoveryScale);
-                }
-                else if (observedWakeDuty > targetWakeDuty + 0.05f)
-                {
-                    adaptiveAwakeDrainScale = Math.Clamp(adaptiveAwakeDrainScale + 0.01f, MinAdaptiveAwakeDrainScale, MaxAdaptiveAwakeDrainScale);
-                    adaptiveSleepRecoveryScale = MoveTowards(adaptiveSleepRecoveryScale, 1.0f, 0.01f);
-                }
-            }
 
             runtime = runtime with
             {
@@ -8513,8 +5153,6 @@ internal sealed class SimulationState
                 LastAlert = lastAlert,
                 LastAlertTick = lastAlertTick,
                 SleepEpisodes = runtime.SleepEpisodes + (enteredSleep ? 1 : 0),
-                TotalEngramsCaptured = runtime.TotalEngramsCaptured + Math.Max(0, input.EngramsCaptured),
-                TotalEngramsReplayed = runtime.TotalEngramsReplayed + Math.Max(0, input.ReplayedEngrams),
                 LastTransitionTick = (enteredSleep || exitedSleep) ? Tick : runtime.LastTransitionTick,
                 NeuronalAuthorityActive = neuronalCircuitObserved,
                 NeuronalStateChannel = neuronalAuthorityAvailable ? (int)neuronalDecision.State : runtime.NeuronalStateChannel,
@@ -8545,243 +5183,10 @@ internal sealed class SimulationState
                 enteredSleep,
                 exitedSleep,
                 runtime.AtpBudget,
-                runtime.SleepTicks,
-                _engramBank.Count);
+                runtime.SleepTicks);
         }
     }
 
-    public int RecordSignificantEngrams(long tick, IReadOnlyList<MemoryEngramSeed> seeds)
-    {
-        if (seeds.Count == 0)
-        {
-            return 0;
-        }
-
-        lock (_gate)
-        {
-            var added = 0;
-            foreach (var seed in seeds.OrderByDescending(s => s.Salience))
-            {
-                if (seed.Salience < SleepMemory.SignificantSalienceThreshold)
-                {
-                    continue;
-                }
-
-                var key = BuildEngramKey(seed);
-                var existingIndex = _engramBank.FindIndex(e => string.Equals(e.Key, key, StringComparison.Ordinal));
-                if (existingIndex >= 0)
-                {
-                    var existing = _engramBank[existingIndex];
-                    _engramBank[existingIndex] = existing with
-                    {
-                        Salience = Math.Clamp((existing.Salience * 0.72f) + (seed.Salience * 0.28f), 0f, 100f),
-                        VesicleQuanta = Math.Clamp((existing.VesicleQuanta * 0.7f) + (seed.VesicleQuanta * 0.3f), 0.05f, 16f),
-                        ReuptakeRate = Math.Clamp((existing.ReuptakeRate * 0.7f) + (seed.ReuptakeRate * 0.3f), 0.5f, 120f),
-                        LastCapturedTick = tick,
-                        CaptureCount = existing.CaptureCount + 1
-                    };
-                    UpsertRelationalSchema(seed, tick, replayReinforcement: false);
-                    continue;
-                }
-
-                if (_engramBank.Count >= SleepMemory.MaxEngrams)
-                {
-                    RemoveWeakestEngram();
-                }
-
-                _engramBank.Add(new MemoryEngram(
-                    key,
-                    seed.SourceStructure,
-                    seed.SourceHemisphere,
-                    seed.TargetStructure,
-                    seed.TargetHemisphere,
-                    seed.SourceNeuronId,
-                    seed.TargetNeuronId,
-                    seed.Neurotransmitter,
-                    seed.SynapseId,
-                    seed.IsFeedback,
-                    Math.Clamp(seed.VesicleQuanta, 0.05f, 16f),
-                    Math.Clamp(seed.ReuptakeRate, 0.5f, 120f),
-                    Math.Clamp(seed.Salience, 0f, 100f),
-                    tick,
-                    tick,
-                    LastReplayTick: 0,
-                    CaptureCount: 1,
-                    ReplayCount: 0));
-                UpsertRelationalSchema(seed, tick, replayReinforcement: false);
-                added++;
-            }
-
-            return added;
-        }
-    }
-
-    public IReadOnlyList<MemoryEngram> SelectEngramsForReplay(int maxCount)
-        => SelectEngramsForReplay(maxCount, SleepReplayStage.EarlyHippocampal);
-
-    public IReadOnlyList<MemoryEngram> SelectEngramsForReplay(int maxCount, SleepReplayStage stage)
-    {
-        lock (_gate)
-        {
-            if (!SleepMemory.IsSleeping || maxCount <= 0 || _engramBank.Count == 0)
-            {
-                return [];
-            }
-
-            var replayCandidates = _engramBank
-                .Where(e => !IsSleepReplaySuppressedEngram(e))
-                .ToList();
-            if (replayCandidates.Count == 0)
-            {
-                return [];
-            }
-
-            var take = Math.Min(maxCount, replayCandidates.Count);
-            var schemaByKey = _schemaBank.ToDictionary(s => s.Key, StringComparer.Ordinal);
-            return replayCandidates
-                .OrderByDescending(e =>
-                {
-                    schemaByKey.TryGetValue(BuildSchemaKey(e), out var schema);
-                    return ScoreEngramForReplay(e, schema, stage);
-                })
-                .ThenBy(e => e.LastReplayTick <= 0 ? long.MinValue : e.LastReplayTick)
-                .Take(take)
-                .Select(e => e with { })
-                .ToList();
-        }
-    }
-
-    public bool IsEngramSuppressedDuringSleepReplay(MemoryEngram engram)
-        => IsSleepReplaySuppressedEngram(engram);
-
-    private float ScoreEngramForReplay(MemoryEngram engram, RelationalSchema? schema, SleepReplayStage stage)
-    {
-        var recencyBias = engram.LastReplayTick <= 0 ? 2.4f : 0.5f;
-        var replayWeight = stage switch
-        {
-            SleepReplayStage.EarlyHippocampal => ConsolidationControl.ReplayWeightEarlyHippocampal,
-            SleepReplayStage.LateCorticalConsolidation => ConsolidationControl.ReplayWeightLateCortical,
-            _ => 1.0f
-        };
-        var stageWeight = stage switch
-        {
-            SleepReplayStage.EarlyHippocampal => IsHippocampalCircuit(engram.SourceStructure, engram.TargetStructure) ? 3.4f : 0.65f,
-            SleepReplayStage.LateCorticalConsolidation => IsCorticalCircuit(engram.SourceStructure, engram.TargetStructure) ? 3.2f : 0.70f,
-            _ => 1.0f
-        };
-        var replayPenalty = Math.Min(engram.ReplayCount, 10) * 0.14f;
-        var captureBoost = Math.Min(engram.CaptureCount, 16) * 0.14f;
-        var salience = Math.Clamp(engram.Salience, 0f, 100f) * 0.055f;
-        var schemaStrengthBoost = schema is null ? 0f : Math.Clamp(schema.Strength, 0f, 20f) * (0.045f * ConsolidationControl.SchemaConsolidationGain);
-        var schemaNoveltyBoost = schema is null ? 0f : Math.Clamp(schema.NoveltyScore, 0f, 1f) * 0.85f;
-        var schemaReplayBoost = schema is null ? 0f : Math.Min(schema.ReplaySupportCount, 32) * 0.050f;
-        var stageSchemaBias = stage switch
-        {
-            SleepReplayStage.EarlyHippocampal => schema is not null && string.Equals(schema.CircuitClass, "hippocampal", StringComparison.OrdinalIgnoreCase) ? 0.60f : 0.0f,
-            SleepReplayStage.LateCorticalConsolidation => schema is not null && string.Equals(schema.CircuitClass, "cortical", StringComparison.OrdinalIgnoreCase) ? 0.68f : 0.0f,
-            _ => 0.0f
-        };
-        var antiForgettingBoost = ConsolidationControl.AntiForgettingHomeostasis * 0.30f;
-        var motorPenalty = IsSleepReplaySuppressedEngram(engram) ? 100f : 0f;
-        return (salience + recencyBias + captureBoost + (stageWeight * replayWeight) + schemaStrengthBoost + schemaNoveltyBoost + schemaReplayBoost + stageSchemaBias + antiForgettingBoost) - replayPenalty - motorPenalty;
-    }
-
-    private static bool IsSleepReplaySuppressedEngram(MemoryEngram engram)
-        => IsMotorOutputMemoryStructure(engram.SourceStructure)
-            || IsMotorOutputMemoryStructure(engram.TargetStructure)
-            || engram.TargetStructure == StructureId.SpinalCordMotor;
-
-    private static bool IsMotorOutputMemoryStructure(StructureId structure)
-        => structure is StructureId.PremotorCortex
-            or StructureId.Sma
-            or StructureId.M1
-            or StructureId.MotorThalamus
-            or StructureId.SpinalCordMotor;
-
-    private static bool IsHippocampalCircuit(StructureId source, StructureId target)
-        => IsHippocampalStructure(source) || IsHippocampalStructure(target);
-
-    private static bool IsCorticalCircuit(StructureId source, StructureId target)
-        => IsCorticalStructure(source) || IsCorticalStructure(target);
-
-    private static bool IsHippocampalStructure(StructureId id)
-        => id is StructureId.EntorhinalCortex
-            or StructureId.DentateGyrus
-            or StructureId.CA3
-            or StructureId.CA2
-            or StructureId.CA1
-            or StructureId.Subiculum
-            or StructureId.Presubiculum
-            or StructureId.Parasubiculum;
-
-    private static bool IsCorticalStructure(StructureId id)
-        => id is StructureId.Pfc
-            or StructureId.BrocaBa44Ba45
-            or StructureId.WernickePstgPsts
-            or StructureId.SupramarginalAngular
-            or StructureId.OrbitofrontalCortex
-            or StructureId.Insula
-            or StructureId.Ppc
-            or StructureId.TemporalAssociation
-            or StructureId.PremotorCortex
-            or StructureId.ParahippocampalCortex
-            or StructureId.PerirhinalCortex
-            or StructureId.PosteriorCingulate
-            or StructureId.RetrosplenialCortex
-            or StructureId.Acc
-            or StructureId.V1
-            or StructureId.V2
-            or StructureId.V4
-            or StructureId.Mt
-            or StructureId.A1
-            or StructureId.S1
-            or StructureId.M1
-            or StructureId.Sma;
-
-    public void RecordEngramReplayDelivery(long tick, IReadOnlyCollection<string> deliveredEngramKeys)
-    {
-        if (deliveredEngramKeys.Count == 0)
-        {
-            return;
-        }
-
-        lock (_gate)
-        {
-            var deliveredSet = deliveredEngramKeys as HashSet<string> ?? new HashSet<string>(deliveredEngramKeys, StringComparer.Ordinal);
-            for (var i = 0; i < _engramBank.Count; i++)
-            {
-                var engram = _engramBank[i];
-                if (!deliveredSet.Contains(engram.Key))
-                {
-                    continue;
-                }
-
-                _engramBank[i] = engram with
-                {
-                    LastReplayTick = tick,
-                    ReplayCount = engram.ReplayCount + 1,
-                    Salience = Math.Clamp((engram.Salience * 1.04f) + 0.06f, 0f, 100f)
-                };
-
-                UpsertRelationalSchema(
-                    new MemoryEngramSeed(
-                        engram.SourceStructure,
-                        engram.SourceHemisphere,
-                        engram.TargetStructure,
-                        engram.TargetHemisphere,
-                        engram.SourceNeuronId,
-                        engram.TargetNeuronId,
-                        engram.Neurotransmitter,
-                        engram.SynapseId,
-                        engram.IsFeedback,
-                        engram.VesicleQuanta,
-                        engram.ReuptakeRate,
-                        engram.Salience),
-                    tick,
-                    replayReinforcement: true);
-            }
-        }
-    }
 
     public bool TrySetMemoryControl(string mode, float? blend, out MemoryControlSettings settings, out string? error)
     {
@@ -9075,48 +5480,20 @@ internal sealed class SimulationState
             InteroceptiveCore = InteroceptiveCoreRuntime.Default;
             PainProtection = PainProtectionRuntime.Default;
             BodyPresence = BodyPresenceRuntime.Default;
-            PredictivePerception = PredictivePerceptionRuntime.Default;
-            PersistentPercepts = PersistentPerceptRuntime.Default;
-            PlaceMemory = PlaceMemoryRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
             AttentionState = BiologicalAttentionRuntime.Default;
             LimbicState = LimbicRuntimeState.Default;
             EmotionState = EmotionRuntimeState.Default;
-            WorldModel = WorldModelRuntime.Default;
-            ActionMemory = ActionMemoryRuntime.Default;
-            ActionCompletionFeedback = ActionCompletionFeedbackRuntime.Default;
-            WorldLearningMap = WorldLearningMapRuntime.Default;
-            EpisodicMemory = EpisodicMemoryRuntime.Default;
-            UnifiedEventMemory = UnifiedEventMemoryRuntime.Default;
-            SemanticMemory = SemanticMemoryRuntime.Default;
-            DopamineLearning = DopamineLearningRuntime.Default;
-            DreamConsolidation = DreamConsolidationRuntime.Default;
             Cerebellum = CerebellumRuntime.Default;
             Curriculum = CurriculumRuntime.Default;
-            ConsolidationControl = ConsolidationControlSettings.Default;
             TransportStats = TransportRuntimeStats.Empty;
             ServiceTelemetry.Clear();
-            _engramBank.Clear();
-            _schemaBank.Clear();
-            _objectMemory.Clear();
-            _worldModelTransitions.Clear();
-            _actionMemory.Clear();
-            _worldLearningMap.Clear();
-            _episodicMemory.Clear();
-            _semanticMemory.Clear();
-            _dopamineLearning.Clear();
             _dispatchLifetimeOut.Clear();
             _dispatchLifetimeIn.Clear();
             _dispatchLastOutTick.Clear();
             _dispatchLastInTick.Clear();
             _dyadLanguageCandidateReviews.Clear();
             InvalidateCompositeSnapshotCachesLocked();
-            _worldModelHasPreviousObservation = false;
-            _worldModelPendingActionKey = "idle";
-            _worldModelPendingSource = StructureId.Thalamus;
-            _worldModelPendingTarget = StructureId.Thalamus;
-            _worldModelPendingNt = NTEnum.GLUTAMATE;
-            _worldModelPendingFeedback = false;
             _curriculumStageIndex = 0;
             _curriculumLastStageTransitionTick = Tick;
             foreach (var task in _curriculumTasks)
@@ -9469,107 +5846,19 @@ internal sealed class SimulationState
 
     private object BuildConsolidationTelemetrySnapshotLocked()
     {
-        var protectedEngrams = 0;
-        var replayReadyEngrams = 0;
-        var hippocampalEngrams = 0;
-        var corticalEngrams = 0;
-        var cerebellarEngrams = 0;
-        var motorSuppressedEngrams = 0;
-        var replaySupportedEngrams = 0;
-        var recentReplayWindowStart = Math.Max(0, Tick - 1200);
-        var recentlyReplayedEngrams = 0;
-        var totalReplayCount = 0;
-        var salienceSum = 0.0;
-
-        foreach (var engram in _engramBank)
-        {
-            var protectedBySalience = engram.Salience >= ConsolidationControl.ProtectedSalienceThreshold;
-            var suppressedForReplay = IsSleepReplaySuppressedEngram(engram);
-            if (protectedBySalience)
-            {
-                protectedEngrams++;
-            }
-
-            if (!suppressedForReplay && engram.Salience >= SleepMemory.SignificantSalienceThreshold)
-            {
-                replayReadyEngrams++;
-            }
-
-            if (suppressedForReplay)
-            {
-                motorSuppressedEngrams++;
-            }
-
-            if (IsHippocampalCircuit(engram.SourceStructure, engram.TargetStructure))
-            {
-                hippocampalEngrams++;
-            }
-
-            if (IsCorticalCircuit(engram.SourceStructure, engram.TargetStructure))
-            {
-                corticalEngrams++;
-            }
-
-            if (IsCerebellarStructure(engram.SourceStructure) || IsCerebellarStructure(engram.TargetStructure))
-            {
-                cerebellarEngrams++;
-            }
-
-            if (engram.ReplayCount > 0)
-            {
-                replaySupportedEngrams++;
-                totalReplayCount += engram.ReplayCount;
-            }
-
-            if (engram.LastReplayTick >= recentReplayWindowStart)
-            {
-                recentlyReplayedEngrams++;
-            }
-
-            salienceSum += engram.Salience;
-        }
-
-        var activeSchemas = _schemaBank.Count(schema =>
-            schema.Strength >= 1.0f ||
-            schema.ReplaySupportCount > 0 ||
-            schema.MeanSalience >= ConsolidationControl.ProtectedSalienceThreshold);
-        var replaySupportedSchemas = _schemaBank.Count(schema => schema.ReplaySupportCount > 0);
-        var generated = Math.Max(0, TransportStats.EngramReplayGenerated);
-        var delivered = Math.Max(0, TransportStats.EngramReplayDelivered);
-        var deliveryRatio = generated <= 0 ? 0.0 : delivered / (double)Math.Max(1, generated);
-
         return new
         {
-            Enabled = ConsolidationControl.Enabled,
-            Stage = SleepMemory.IsSleeping
-                ? (SleepMemory.SleepTicks < (SleepMemory.MinSleepTicks / 2)
-                    ? SleepReplayStage.EarlyHippocampal.ToString()
-                    : SleepReplayStage.LateCorticalConsolidation.ToString())
-                : "AwakeEncoding",
+            Authority = "DistributedNeuronal",
+            StructureLocalSynapticMemory = true,
+            StructureLocalSleepReplay = true,
             IsSleeping = SleepMemory.IsSleeping,
-            EngramCount = _engramBank.Count,
-            ProtectedEngrams = protectedEngrams,
-            ReplayReadyEngrams = replayReadyEngrams,
-            ReplaySupportedEngrams = replaySupportedEngrams,
-            RecentlyReplayedEngrams = recentlyReplayedEngrams,
-            MotorSuppressedEngrams = motorSuppressedEngrams,
-            HippocampalEngrams = hippocampalEngrams,
-            CorticalEngrams = corticalEngrams,
-            CerebellarEngrams = cerebellarEngrams,
-            MeanSalience = _engramBank.Count == 0 ? 0.0 : salienceSum / _engramBank.Count,
-            TotalReplayCount = totalReplayCount,
-            SchemaCount = _schemaBank.Count,
-            ActiveSchemas = activeSchemas,
-            ReplaySupportedSchemas = replaySupportedSchemas,
-            DeliveryRatio = deliveryRatio,
-            ReplayGenerated = generated,
-            ReplayDelivered = delivered,
-            ConsolidationGain = ConsolidationControl.SchemaConsolidationGain,
-            AntiForgetting = ConsolidationControl.AntiForgettingHomeostasis,
-            EngramDecayPerTick = ConsolidationControl.EngramDecayPerTick,
-            SchemaDecayPerTick = ConsolidationControl.SchemaDecayPerTick
+            SleepMemory.NeuronalAuthorityActive,
+            SleepMemory.NeuronalStateChannel,
+            SleepMemory.NeuronalReplayActive,
+            SleepMemory.NeuronalReplayEnsemble
         };
     }
+
 
 
     private object BuildBrainBehaviorSnapshot()
@@ -9732,43 +6021,6 @@ internal sealed class SimulationState
                 StructureId.Sma,
                 StructureId.M1),
 
-            BuildFunctionalCircuitSupportEntry(
-                "predictive_perception",
-                "Predictive perception",
-                PredictivePerception.Active,
-                ResolvePredictivePerceptionCircuitEvidenceLocked(tick, PredictivePerception.LastChannel),
-                "sensory cortex plus PFC/ACC/LC/hippocampal prediction-error loop",
-                StructureId.Pfc,
-                StructureId.Acc,
-                StructureId.LocusCoeruleus,
-                StructureId.EntorhinalCortex,
-                StructureId.CA1,
-                StructureId.CA3,
-                StructureId.Subiculum,
-                StructureId.Pulvinar),
-            BuildFunctionalCircuitSupportEntry(
-                "stimulus_adaptation",
-                "Stimulus adaptation",
-                PredictivePerception.Active &&
-                (PredictivePerception.HabituationGate > 0.04f ||
-                 PredictivePerception.SensitizationGate > 0.04f ||
-                 PredictivePerception.NoveltyEncodingDrive > 0.04f),
-                ResolveStimulusAdaptationCircuitEvidenceLocked(tick, PredictivePerception.LastChannel),
-                "sensory cortex/TRN-pulvinar gating with basal-forebrain ACh, LC-NE, ACC, hippocampal novelty, and VTA/SNc teaching",
-                StructureId.V1,
-                StructureId.A1,
-                StructureId.S1,
-                StructureId.Pulvinar,
-                StructureId.Trn,
-                StructureId.BasalForebrain,
-                StructureId.LocusCoeruleus,
-                StructureId.Acc,
-                StructureId.Amygdala,
-                StructureId.EntorhinalCortex,
-                StructureId.CA3,
-                StructureId.CA1,
-                StructureId.Vta,
-                StructureId.Snc),
             BuildFunctionalCircuitSupportEntry(
                 "body_schema",
                 "Body schema",
@@ -10536,66 +6788,6 @@ internal sealed class SimulationState
         }
     }
 
-    public IReadOnlyList<MemoryEngram> SelectEngramsForNeuronalReplay(int maxCount, int ensemble)
-    {
-        lock (_gate)
-        {
-            if (!SleepMemory.IsSleeping || maxCount <= 0 || ensemble is < 0 or >= 8 || _engramBank.Count == 0)
-            {
-                return [];
-            }
-
-            var schemaByKey = _schemaBank.ToDictionary(static schema => schema.Key, StringComparer.Ordinal);
-            return _engramBank
-                .Where(engram => !IsSleepReplaySuppressedEngram(engram))
-                .Where(engram => ResolveEngramEnsemble(engram) == ensemble)
-                .OrderByDescending(engram =>
-                {
-                    schemaByKey.TryGetValue(BuildSchemaKey(engram), out var schema);
-                    var unreplayed = engram.LastReplayTick <= 0 ? 1.8f : 0.25f;
-                    var salience = Math.Clamp(engram.Salience, 0f, 100f) * 0.06f;
-                    var capture = Math.Min(engram.CaptureCount, 16) * 0.16f;
-                    var replayPenalty = Math.Min(engram.ReplayCount, 12) * 0.16f;
-                    var schemaStrength = schema is null ? 0f : Math.Clamp(schema.Strength, 0f, 20f) * 0.05f;
-                    var schemaNovelty = schema is null ? 0f : Math.Clamp(schema.NoveltyScore, 0f, 1f) * 0.70f;
-                    return unreplayed + salience + capture + schemaStrength + schemaNovelty - replayPenalty;
-                })
-                .ThenBy(static engram => engram.LastReplayTick <= 0 ? long.MinValue : engram.LastReplayTick)
-                .Take(Math.Min(maxCount, _engramBank.Count))
-                .Select(static engram => engram with { })
-                .ToList();
-        }
-    }
-
-    private static int ResolveEngramEnsemble(MemoryEngram engram)
-    {
-        if (!TryParseNeuronSuffix(engram.SourceNeuronId, out var neuronIndex) &&
-            !TryParseNeuronSuffix(engram.TargetNeuronId, out neuronIndex))
-        {
-            var bytes = engram.SynapseId.ToByteArray();
-            neuronIndex = BitConverter.ToInt32(bytes, 0) & int.MaxValue;
-        }
-
-        return (Math.Max(0, neuronIndex) / 4) % 8;
-    }
-
-    private static bool TryParseNeuronSuffix(string? neuronId, out int index)
-    {
-        index = 0;
-        if (string.IsNullOrWhiteSpace(neuronId))
-        {
-            return false;
-        }
-
-        var end = neuronId.Length - 1;
-        while (end >= 0 && char.IsDigit(neuronId[end]))
-        {
-            end--;
-        }
-
-        return end < neuronId.Length - 1 &&
-            int.TryParse(neuronId.AsSpan(end + 1), out index);
-    }
 
     private object BuildDiagnosticsLocked(AutoProfileSettings? autoProfile) => new
     {
@@ -10615,7 +6807,6 @@ internal sealed class SimulationState
         AutoProfile = autoProfile ?? AutoProfileSettings.Default,
         InputGates,
         MemoryControl,
-        ConsolidationControl,
           BodyState = new
           {
               BodyState.ForwardVelocity,
@@ -10630,7 +6821,6 @@ internal sealed class SimulationState
           InteroceptiveCore,
           PainProtection,
           BodyPresence,
-          PlaceMemory,
           Cerebellum,
           EnvironmentalState = new
           {
@@ -10678,29 +6868,13 @@ internal sealed class SimulationState
             SleepMemory.SleepExitBlockedAlerts,
             SleepMemory.LastAlert,
             SleepMemory.LastAlertTick,
-            SleepMemory.TotalEngramsCaptured,
-            SleepMemory.TotalEngramsReplayed,
             SleepMemory.LastTransitionTick,
-            EngramCount = _engramBank.Count,
-            SchemaCount = _schemaBank.Count
+            StructureLocalSynapticMemory = true,
+            StructureLocalSleepReplay = true,
+            SleepMemory.NeuronalAuthorityActive,
+            SleepMemory.NeuronalReplayActive,
+            SleepMemory.NeuronalReplayEnsemble
         },
-        RelationalSchemas = GetTopSchemasSnapshot(CachedRelationalSchemaCount).Select(schema => new
-        {
-            schema.Key,
-            Source = schema.SourceStructure.ToString(),
-            Target = schema.TargetStructure.ToString(),
-            schema.CircuitClass,
-            schema.HemisphereRelation,
-            Neurotransmitter = schema.Neurotransmitter.ToString(),
-            schema.IsFeedback,
-            schema.Strength,
-            schema.NoveltyScore,
-            schema.MeanSalience,
-            schema.CaptureCount,
-            schema.ReplaySupportCount,
-            schema.LastCapturedTick,
-            schema.LastReplayTick
-        }).ToList(),
         VisualAttention = new
         {
             Authority = NeuronalVisualAttentionDecision.Authority,
@@ -10719,28 +6893,6 @@ internal sealed class SimulationState
             VisualAttention.LastSelectionTick,
             CanAcceptAttentionOverrides = false,
             LegacyWinnerEnabled = false
-        },
-                ObjectMemory = new
-                {
-            Count = _objectMemory.Count,
-            Top = _objectMemory.Values
-                .OrderByDescending(item => item.LastSeenTick)
-                .ThenByDescending(item => item.Familiarity)
-                .Take(32)
-                .Select(item => new
-                {
-                    item.ObjectId,
-                    item.Label,
-                    item.DominantHemisphere,
-                    item.Familiarity,
-                    item.SalienceEma,
-                    item.ConfidenceEma,
-                    item.IntensityEma,
-                    item.SeenCount,
-                    item.LastSeenTick,
-                        item.LastSeenSimulationMs
-                    })
-                    .ToList()
         },
         LimbicState = new
         {
@@ -10821,11 +6973,8 @@ internal sealed class SimulationState
             TransportStats.DispatchedSpikes,
             TransportStats.DroppedByBudget,
             TransportStats.TopQueries,
-            TransportStats.EngramsCaptured,
             TransportStats.SpontaneousGenerated,
             TransportStats.SpontaneousDelivered,
-            TransportStats.EngramReplayGenerated,
-            TransportStats.EngramReplayDelivered,
             TransportStats.SpontaneousDispatchErrors,
             TransportStats.SpontaneousLastError,
             TotalSpontaneousGenerated,
@@ -10871,8 +7020,6 @@ internal sealed class SimulationState
             TransportStats.TickWallP99Ms,
             TransportStats.DegradeSignal,
             TransportStats.SleepReplayStage,
-            TransportStats.SleepReplaySelected,
-            TransportStats.SleepReplayDeliveryRatio,
             TransportStats.SleepInhibitoryScale,
             TransportStats.SleepExcitatoryScale,
             TransportStats.PerceptionLanguageGenerated,
@@ -11528,7 +7675,6 @@ internal sealed class SimulationState
                 RewardPredictionError = RewardPredictionError,
                 PerformanceProfileName = string.IsNullOrWhiteSpace(PerformanceProfileName) ? "normal" : PerformanceProfileName,
                 MemoryControl = MemoryControl,
-                ConsolidationControl = ConsolidationControl,
                 InputGates = InputGates,
                 SleepMemory = SleepMemory,
                 BodySchema = BodySchema,
@@ -11642,7 +7788,6 @@ internal sealed class SimulationState
             }
 
             MemoryControl = memoryControl;
-            ConsolidationControl = ConsolidationControlSettings.Normalize(document.ConsolidationControl ?? ConsolidationControlSettings.Default);
             InputGates = InputGateRuntime.Normalize(document.InputGates ?? InputGateRuntime.Default);
             var importedSleepMemory = document.SleepMemory ?? SleepMemoryRuntime.Default;
             var importedBodySchema = document.BodySchema ?? BodySchemaRuntime.Default;
@@ -11735,30 +7880,6 @@ internal sealed class SimulationState
                 }
             }
 
-            _engramBank.Clear();
-            _schemaBank.Clear();
-            _objectMemory.Clear();
-            _worldModelTransitions.Clear();
-            _actionMemory.Clear();
-            _worldLearningMap.Clear();
-            _episodicMemory.Clear();
-            _semanticMemory.Clear();
-            _dopamineLearning.Clear();
-            WorldModel = WorldModelRuntime.Default;
-            ActionMemory = ActionMemoryRuntime.Default;
-            ActionCompletionFeedback = ActionCompletionFeedbackRuntime.Default;
-            WorldLearningMap = WorldLearningMapRuntime.Default;
-            EpisodicMemory = EpisodicMemoryRuntime.Default;
-            UnifiedEventMemory = UnifiedEventMemoryRuntime.Default;
-            SemanticMemory = SemanticMemoryRuntime.Default;
-            DopamineLearning = DopamineLearningRuntime.Default;
-            DreamConsolidation = DreamConsolidationRuntime.Default;
-            _worldModelHasPreviousObservation = false;
-            _worldModelPendingActionKey = "idle";
-            _worldModelPendingSource = StructureId.Thalamus;
-            _worldModelPendingTarget = StructureId.Thalamus;
-            _worldModelPendingNt = NTEnum.GLUTAMATE;
-            _worldModelPendingFeedback = false;
 
 
 
@@ -12016,33 +8137,6 @@ internal sealed class SimulationState
         });
     }
 
-    private static NeuromodState ApplyDopamineLearningNeuromod(NeuromodState baseline, DopamineLearningRuntime learning)
-    {
-        if (learning.Count <= 0)
-        {
-            return baseline;
-        }
-
-        var dopamineTarget = Clamp01(
-            baseline.DopamineLevel +
-            (learning.VtaPhasicDopamine * 0.11f) +
-            (learning.SncActionReinforcement * 0.07f) +
-            (Math.Max(0f, learning.TeachingSignal) * 0.05f) -
-            (learning.HabenulaNegativeTeaching * 0.10f));
-        var norepinephrineTarget = Clamp01(
-            baseline.NorepinephrineLevel +
-            (Math.Abs(learning.RewardPredictionError) * 0.04f) +
-            (learning.HabenulaNegativeTeaching * 0.03f));
-
-        return NeuromodState.Clamp(new NeuromodState
-        {
-            DopamineLevel = Lerp(baseline.DopamineLevel, dopamineTarget, 0.22f),
-            SerotoninLevel = baseline.SerotoninLevel,
-            AcetylcholineLevel = baseline.AcetylcholineLevel,
-            NorepinephrineLevel = Lerp(baseline.NorepinephrineLevel, norepinephrineTarget, 0.12f)
-        });
-    }
-
     private static NeuromodState ApplySleepStateNeuromod(NeuromodState baseline, SleepMemoryRuntime sleepMemory)
     {
         if (!sleepMemory.IsSleeping)
@@ -12094,10 +8188,7 @@ internal sealed class SimulationState
                 ActivePathwayDrain = 0.00008f,
                 SpontaneousDrainPerEvent = 0.00010f,
                 SleepRecoveryPerTick = 0.0088f,
-                ReplayEnergyPenaltyPerSpike = 0.00006f,
                 MinSleepTicks = 140,
-                ReplayBurstsPerTick = 9,
-                SignificantSalienceThreshold = 2.2f,
                     TargetWakeDutyCycle = 0.74f,
                 ShortWakeThresholdTicks = 90,
                     MinWakeTicks = 280
@@ -12121,10 +8212,7 @@ internal sealed class SimulationState
             ActivePathwayDrain = 0.00006f,
             SpontaneousDrainPerEvent = 0.00008f,
             SleepRecoveryPerTick = 0.0062f,
-            ReplayEnergyPenaltyPerSpike = 0.00005f,
             MinSleepTicks = 130,
-            ReplayBurstsPerTick = 6,
-            SignificantSalienceThreshold = 2.6f,
             TargetWakeDutyCycle = 0.70f,
             ShortWakeThresholdTicks = 80,
             MinWakeTicks = 220
@@ -12138,343 +8226,6 @@ internal sealed class SimulationState
         };
     }
 
-    private void RemoveWeakestEngram()
-    {
-        if (_engramBank.Count == 0)
-        {
-            return;
-        }
-
-        var weakestIndex = 0;
-        var weakestScore = ScoreEngramForEviction(_engramBank[0]);
-        for (var i = 1; i < _engramBank.Count; i++)
-        {
-            var score = ScoreEngramForEviction(_engramBank[i]);
-            if (score < weakestScore)
-            {
-                weakestScore = score;
-                weakestIndex = i;
-            }
-        }
-
-        _engramBank.RemoveAt(weakestIndex);
-    }
-
-    private float ScoreEngramForEviction(MemoryEngram engram)
-    {
-        if (engram.Salience >= ConsolidationControl.ProtectedSalienceThreshold)
-        {
-            return 10_000f + engram.Salience;
-        }
-
-        var replayProtection = Math.Min(engram.ReplayCount, 12) * 0.08f;
-        var captureBoost = Math.Min(engram.CaptureCount, 16) * 0.03f;
-        var homeostasisBoost = ConsolidationControl.AntiForgettingHomeostasis * 0.25f;
-        return (engram.Salience + replayProtection + captureBoost + homeostasisBoost) - (engram.LastCapturedTick * 0.00001f);
-    }
-
-    private IReadOnlyList<RelationalSchema> GetTopSchemasSnapshot(int maxCount)
-    {
-        if (maxCount <= 0 || _schemaBank.Count == 0)
-        {
-            return [];
-        }
-
-        if (maxCount == CachedRelationalSchemaCount &&
-            _cachedRelationalSchemas is not null &&
-            _cachedRelationalSchemasTick == Tick)
-        {
-            return _cachedRelationalSchemas;
-        }
-
-        var top = _schemaBank
-            .OrderByDescending(s => s.Strength)
-            .ThenByDescending(s => s.ReplaySupportCount)
-            .ThenByDescending(s => s.CaptureCount)
-            .Take(maxCount)
-            .Select(s => s with { })
-            .ToList();
-        if (maxCount == CachedRelationalSchemaCount)
-        {
-            _cachedRelationalSchemas = top;
-            _cachedRelationalSchemasTick = Tick;
-        }
-
-        return top;
-    }
-
-    private void UpsertRelationalSchema(MemoryEngramSeed seed, long tick, bool replayReinforcement)
-    {
-        var sourceHemisphere = NormalizeHemisphereToken(seed.SourceHemisphere);
-        var targetHemisphere = NormalizeHemisphereToken(seed.TargetHemisphere);
-        var schemaKey = BuildSchemaKey(
-            seed.SourceStructure,
-            sourceHemisphere,
-            seed.TargetStructure,
-            targetHemisphere,
-            seed.Neurotransmitter,
-            seed.IsFeedback);
-        var existingIndex = _schemaBank.FindIndex(s => string.Equals(s.Key, schemaKey, StringComparison.Ordinal));
-        var circuitClass = ClassifyCircuit(seed.SourceStructure, seed.TargetStructure);
-        var hemisphereRelation = DescribeHemisphereRelation(sourceHemisphere, targetHemisphere);
-
-        if (existingIndex >= 0)
-        {
-            var existing = _schemaBank[existingIndex];
-            var captureCount = existing.CaptureCount + (replayReinforcement ? 0 : 1);
-            var replaySupport = existing.ReplaySupportCount + (replayReinforcement ? 1 : 0);
-            var salienceBlend = replayReinforcement ? 0.12f : 0.28f;
-            var quantaBlend = replayReinforcement ? 0.06f : 0.22f;
-            var reuptakeBlend = replayReinforcement ? 0.06f : 0.20f;
-            var strengthDelta = replayReinforcement ? 0.30f : 0.10f;
-            var salienceSample = Math.Clamp(seed.Salience, 0f, 100f);
-            var strength = Math.Clamp((existing.Strength * 0.90f) + (salienceSample * 0.07f) + strengthDelta, 0.05f, 20f);
-            var novelty = ComputeSchemaNovelty(captureCount, replaySupport, existing.LastCapturedTick, tick, replayReinforcement);
-
-            _schemaBank[existingIndex] = existing with
-            {
-                SourceStructure = seed.SourceStructure,
-                TargetStructure = seed.TargetStructure,
-                Neurotransmitter = seed.Neurotransmitter,
-                IsFeedback = seed.IsFeedback,
-                SourceHemisphere = sourceHemisphere,
-                TargetHemisphere = targetHemisphere,
-                HemisphereRelation = hemisphereRelation,
-                CircuitClass = circuitClass,
-                MeanSalience = Math.Clamp(Lerp(existing.MeanSalience, salienceSample, salienceBlend), 0f, 100f),
-                MeanVesicleQuanta = Math.Clamp(Lerp(existing.MeanVesicleQuanta, seed.VesicleQuanta, quantaBlend), 0.05f, 16f),
-                MeanReuptakeRate = Math.Clamp(Lerp(existing.MeanReuptakeRate, seed.ReuptakeRate, reuptakeBlend), 0.5f, 120f),
-                Strength = strength,
-                NoveltyScore = novelty,
-                LastCapturedTick = tick,
-                LastReplayTick = replayReinforcement ? tick : existing.LastReplayTick,
-                CaptureCount = captureCount,
-                ReplaySupportCount = replaySupport
-            };
-            return;
-        }
-
-        if (_schemaBank.Count >= Math.Max(SleepMemory.MaxEngrams, 512))
-        {
-            RemoveWeakestSchema();
-        }
-
-        var seededCaptureCount = 1;
-        var seededReplaySupport = replayReinforcement ? 1 : 0;
-        var initialSalience = Math.Clamp(seed.Salience, 0f, 100f);
-        _schemaBank.Add(new RelationalSchema(
-            schemaKey,
-            seed.SourceStructure,
-            seed.TargetStructure,
-            seed.Neurotransmitter,
-            seed.IsFeedback,
-            sourceHemisphere,
-            targetHemisphere,
-            hemisphereRelation,
-            circuitClass,
-            MeanSalience: initialSalience,
-            MeanVesicleQuanta: Math.Clamp(seed.VesicleQuanta, 0.05f, 16f),
-            MeanReuptakeRate: Math.Clamp(seed.ReuptakeRate, 0.5f, 120f),
-            Strength: Math.Clamp(0.65f + (initialSalience * 0.035f) + (replayReinforcement ? 0.20f : 0f), 0.05f, 20f),
-            NoveltyScore: ComputeSchemaNovelty(seededCaptureCount, seededReplaySupport, tick, tick, replayReinforcement),
-            FirstCapturedTick: tick,
-            LastCapturedTick: tick,
-            LastReplayTick: replayReinforcement ? tick : 0,
-            CaptureCount: seededCaptureCount,
-            ReplaySupportCount: seededReplaySupport));
-    }
-
-    private void RemoveWeakestSchema()
-    {
-        if (_schemaBank.Count == 0)
-        {
-            return;
-        }
-
-        var weakestIndex = 0;
-        var weakestScore = ScoreSchemaForEviction(_schemaBank[0]);
-        for (var i = 1; i < _schemaBank.Count; i++)
-        {
-            var score = ScoreSchemaForEviction(_schemaBank[i]);
-            if (score < weakestScore)
-            {
-                weakestScore = score;
-                weakestIndex = i;
-            }
-        }
-
-        _schemaBank.RemoveAt(weakestIndex);
-    }
-
-    private float ScoreSchemaForEviction(RelationalSchema schema)
-    {
-        var replayProtection = Math.Min(schema.ReplaySupportCount, 24) * 0.09f;
-        var captureBoost = Math.Min(schema.CaptureCount, 32) * 0.04f;
-        var homeostasisBoost = ConsolidationControl.AntiForgettingHomeostasis * 0.20f;
-        return (schema.Strength + replayProtection + captureBoost + (schema.NoveltyScore * 0.9f) + homeostasisBoost) - (schema.LastCapturedTick * 0.00001f);
-    }
-
-    private static float ComputeSchemaNovelty(int captureCount, int replaySupportCount, long lastCapturedTick, long tick, bool replayReinforcement)
-    {
-        var exposure = Math.Max(1f, captureCount + (replaySupportCount * 0.85f));
-        var baseNovelty = 1f / (1f + (0.055f * exposure));
-        var recencyBoost = tick > lastCapturedTick
-            ? Math.Min((tick - lastCapturedTick) * 0.00045f, 0.25f)
-            : 0f;
-        var replayPenalty = replayReinforcement ? 0.04f : 0f;
-        return Math.Clamp(baseNovelty + recencyBoost - replayPenalty, 0.04f, 1f);
-    }
-
-    private static string BuildSchemaKey(MemoryEngram engram)
-        => BuildSchemaKey(
-            engram.SourceStructure,
-            NormalizeHemisphereToken(engram.SourceHemisphere),
-            engram.TargetStructure,
-            NormalizeHemisphereToken(engram.TargetHemisphere),
-            engram.Neurotransmitter,
-            engram.IsFeedback);
-
-    private static string BuildSchemaKey(
-        StructureId sourceStructure,
-        string sourceHemisphere,
-        StructureId targetStructure,
-        string targetHemisphere,
-        NTEnum neurotransmitter,
-        bool isFeedback)
-    {
-        var hemisphereRelation = DescribeHemisphereRelation(sourceHemisphere, targetHemisphere);
-        var circuitClass = ClassifyCircuit(sourceStructure, targetStructure);
-        return string.Join(
-            "|",
-            sourceStructure.ToString(),
-            sourceHemisphere,
-            targetStructure.ToString(),
-            targetHemisphere,
-            neurotransmitter.ToString(),
-            isFeedback ? "fb" : "ff",
-            circuitClass,
-            hemisphereRelation);
-    }
-
-    private static string ClassifyCircuit(StructureId source, StructureId target)
-    {
-        if (IsHippocampalCircuit(source, target))
-        {
-            return "hippocampal";
-        }
-
-        if (IsCorticalCircuit(source, target))
-        {
-            return "cortical";
-        }
-
-        if (IsThalamicStructure(source) || IsThalamicStructure(target))
-        {
-            return "thalamic";
-        }
-
-        if (IsBasalGangliaStructure(source) || IsBasalGangliaStructure(target))
-        {
-            return "basal_ganglia";
-        }
-
-        if (IsLimbicStructure(source) || IsLimbicStructure(target))
-        {
-            return "limbic";
-        }
-
-        if (IsCerebellarStructure(source) || IsCerebellarStructure(target))
-        {
-            return "cerebellar";
-        }
-
-        if (IsBrainstemStructure(source) || IsBrainstemStructure(target))
-        {
-            return "brainstem";
-        }
-
-        return "mixed";
-    }
-
-    private static bool IsThalamicStructure(StructureId id)
-        => id is StructureId.Thalamus
-            or StructureId.Trn
-            or StructureId.Pulvinar
-            or StructureId.MediodorsalThalamus
-            or StructureId.IntralaminarThalamus
-            or StructureId.MotorThalamus;
-
-    private static bool IsBasalGangliaStructure(StructureId id)
-        => id is StructureId.Striatum
-            or StructureId.NucleusAccumbens
-            or StructureId.GlobusPallidus
-            or StructureId.GPe
-            or StructureId.GPi
-            or StructureId.VentralPallidum
-            or StructureId.Stn
-            or StructureId.Snr
-            or StructureId.Snc
-            or StructureId.Vta;
-
-    private static bool IsLimbicStructure(StructureId id)
-        => id is StructureId.Amygdala
-            or StructureId.Acc
-            or StructureId.Hypothalamus
-            or StructureId.Habenula
-            or StructureId.OlfactoryBulb;
-
-    private static bool IsCerebellarStructure(StructureId id)
-        => id is StructureId.CerebellarGranule
-            or StructureId.CerebellarVermis
-            or StructureId.CerebellarLobules
-            or StructureId.PurkinjeCellLayer
-            or StructureId.DeepCerebellarNuclei
-            or StructureId.InferiorOlive;
-
-    private static bool IsBrainstemStructure(StructureId id)
-        => id is StructureId.Pons
-            or StructureId.Medulla
-            or StructureId.LocusCoeruleus
-            or StructureId.RapheNuclei
-            or StructureId.SuperiorColliculus;
-
-    private static string DescribeHemisphereRelation(string sourceHemisphere, string targetHemisphere)
-    {
-        var src = NormalizeHemisphereToken(sourceHemisphere);
-        var dst = NormalizeHemisphereToken(targetHemisphere);
-        if (src == "M" || dst == "M")
-        {
-            return "midline";
-        }
-
-        return string.Equals(src, dst, StringComparison.OrdinalIgnoreCase)
-            ? "ipsilateral"
-            : "contralateral";
-    }
-
-    private static string BuildEngramKey(MemoryEngramSeed seed)
-    {
-        return string.Join(
-            "|",
-            seed.SourceHemisphere.Trim(),
-            seed.SourceStructure.ToString(),
-            seed.SourceNeuronId.Trim(),
-            seed.TargetHemisphere.Trim(),
-            seed.TargetStructure.ToString(),
-            seed.TargetNeuronId.Trim(),
-            seed.Neurotransmitter.ToString());
-    }
-
-    private static string NormalizeHemisphereToken(string? hemisphere)
-    {
-        if (string.IsNullOrWhiteSpace(hemisphere))
-        {
-            return "M";
-        }
-
-        var token = hemisphere.Trim().ToUpperInvariant();
-        return token is "L" or "R" or "M" ? token : "M";
-    }
 
     private static float Lerp(float a, float b, float t) => a + ((b - a) * t);
 
@@ -13661,7 +9412,6 @@ internal sealed class TickCoordinator(
                 activePathways,
                 effectiveTickIoTimeoutMs,
                 dispatchBatchChunkSize,
-                onReplayDelivered: null,
                 stoppingToken);
             dispatchedSpikeCount += queueFlush.DeliveredSpikes;
             if (queueFlush.DispatchErrors > 0)
@@ -13703,14 +9453,6 @@ internal sealed class TickCoordinator(
                 neuronalMotor);
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(neuronalAttention);
-            var capturedEngrams = sleepRuntimeAtTickStart.IsSleeping
-                ? 0
-                : CaptureSignificantEngrams(
-                    tickSignal.Tick,
-                    state,
-                    processedSnapshots,
-                    activePathways);
-
             var spontaneousSpikingEnabled = state.IsSpontaneousSpikingEnabled();
             if (!sleepRuntimeAtTickStart.IsSleeping && IsTransportSilent(previousTransport))
             {
@@ -13784,21 +9526,6 @@ internal sealed class TickCoordinator(
                 }
             }
 
-            var replayStats = await ReplayEngramsDuringSleepAsync(
-                tickSignal,
-                state,
-                healthySources,
-                dispatchSemaphore,
-                clients,
-                grpcSpikeTransports,
-                useHttpSpikeTransportFallback,
-                instancesByStructure,
-                activePathways,
-                spontaneousNeuronIdsByStructure,
-                effectiveTickIoTimeoutMs,
-                dispatchBatchChunkSize,
-                stoppingToken);
-
             snapshots.AddRange(MergeSpontaneousNeuronHighlights(aggregatedSnapshots, spontaneousNeuronIdsByStructure));
             foreach (var structureId in registry.Keys)
             {
@@ -13855,11 +9582,10 @@ internal sealed class TickCoordinator(
 
             if (dispatchedSpikeCount > 0 ||
                 spontaneousStats.Delivered > 0 ||
-                replayStats.Delivered > 0 ||
                 perceptionLanguageStats.Delivered > 0)
             {
                 state.AppendSpikeLog(
-                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, replay={replayStats.Delivered}/{replayStats.Generated}, pathways={activePathways.Count}");
+                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, pathways={activePathways.Count}");
             }
 
             var sleepTransition = state.AdvanceSleepHomeostasis(new SleepTickInput(
@@ -13873,9 +9599,7 @@ internal sealed class TickCoordinator(
                 DispatchedSpikes: generatedSpikeCount,
                 ActivePathways: activePathways.Count,
                 SpontaneousGenerated: spontaneousStats.Generated,
-                EngramsCaptured: capturedEngrams,
-                ReplayedEngrams: replayStats.Delivered,
-                ReplayDispatchedSpikes: replayStats.Delivered,
+                NeuronalReplaySpikes: 0,
                 // Neural spikes update at millisecond scale; ATP and sleep pressure do not.
                 // Integrate homeostatic chemistry against a slow reference interval so a
                 // faster neural clock cannot compress a wake/sleep cycle into minutes.
@@ -13885,7 +9609,7 @@ internal sealed class TickCoordinator(
             if (sleepTransition.EnteredSleep)
             {
                 state.AppendOutputLog(
-                    $"Sleep entered at tick {tickSignal.Tick}: ATP={sleepTransition.AtpBudget:0.000}, engrams={sleepTransition.EngramCount}.");
+                    $"Sleep entered at tick {tickSignal.Tick}: ATP={sleepTransition.AtpBudget:0.000}; authority=neuronal.");
             }
             else if (sleepTransition.ExitedSleep)
             {
@@ -13924,9 +9648,6 @@ internal sealed class TickCoordinator(
             var sleepReplayStageLabel = sleepRuntimeAtTickStart.IsSleeping
                 ? (sleepReplayStage == SleepReplayStage.EarlyHippocampal ? "early_hippocampal" : "late_cortical")
                 : "awake";
-            var sleepReplayDeliveryRatio = replayStats.Selected > 0
-                ? replayStats.Delivered / (double)replayStats.Selected
-                : 0.0;
             var sleepInhibitoryScale = ComputeSleepInhibitoryScale(sleepRuntimeAtTickStart, sleepReplayStage, isReplay: false);
             var sleepExcitatoryScale = ComputeSleepExcitatoryScale(sleepRuntimeAtTickStart, sleepReplayStage, isReplay: false);
             tickWallStopwatch.Stop();
@@ -13946,7 +9667,6 @@ internal sealed class TickCoordinator(
             var languageBackoffDispatchErrors = queueFlush.DispatchErrors +
                                                 spontaneousStats.DispatchErrors +
                                                 perceptionLanguageStats.DispatchErrors +
-                                                replayStats.DispatchErrors +
                                                 dispatchQueueMetrics.DroppedBatches;
             languageBackoffPolicy.ObserveTick(
                 tickSignal.Tick,
@@ -13964,13 +9684,10 @@ internal sealed class TickCoordinator(
                 dispatchedSpikeCount,
                 droppedByBudgetCount,
                 topQueryCount,
-                capturedEngrams,
                 spontaneousStats.Generated,
                 spontaneousStats.Delivered,
-                replayStats.Generated,
-                replayStats.Delivered,
-                spontaneousStats.DispatchErrors + replayStats.DispatchErrors,
-                replayStats.LastError ?? spontaneousStats.LastError,
+                spontaneousStats.DispatchErrors,
+                spontaneousStats.LastError,
                 activePathways.Count,
                 dispatchQueueMetrics.QueuedBatches,
                 dispatchQueueMetrics.QueuedSpikes,
@@ -14011,8 +9728,6 @@ internal sealed class TickCoordinator(
                 tickWallP99Ms,
                 degradeSignalLabel,
                 sleepReplayStageLabel,
-                replayStats.Selected,
-                sleepReplayDeliveryRatio,
                 sleepInhibitoryScale,
                 sleepExcitatoryScale,
                 perceptionLanguageStats.Generated,
@@ -14752,319 +10467,6 @@ internal sealed class TickCoordinator(
         List<ServiceInstance> Participants,
         bool Throttled);
 
-    private int CaptureSignificantEngrams(
-        long tick,
-        SimulationState state,
-        IReadOnlyList<InstanceStructureSnapshot> instanceSnapshots,
-        ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways)
-    {
-        if (instanceSnapshots.Count == 0 || activePathways.IsEmpty)
-        {
-            return 0;
-        }
-
-        var recentDispatch = state.GetRecentDispatchedSpikesForTick(tick, 8192);
-        if (recentDispatch.Count == 0)
-        {
-            return 0;
-        }
-
-        var neuronRates = BuildNeuronRateLookup(instanceSnapshots);
-        var seeds = BuildMemoryEngramSeeds(state, recentDispatch, activePathways, neuronRates);
-        return state.RecordSignificantEngrams(tick, seeds);
-    }
-
-    private static Dictionary<(StructureId Structure, string NeuronId), float> BuildNeuronRateLookup(
-        IReadOnlyList<InstanceStructureSnapshot> instanceSnapshots)
-    {
-        var neuronRates = new Dictionary<(StructureId Structure, string NeuronId), float>();
-        foreach (var snapshot in instanceSnapshots)
-        {
-            foreach (var neuron in snapshot.TopActiveNeurons)
-            {
-                var key = (snapshot.StructureId, neuron.NeuronId);
-                if (!neuronRates.TryGetValue(key, out var existing) ||
-                    neuron.FiringRateHz > existing)
-                {
-                    neuronRates[key] = neuron.FiringRateHz;
-                }
-            }
-        }
-
-        return neuronRates;
-    }
-
-    private static List<MemoryEngramSeed> BuildMemoryEngramSeeds(
-        SimulationState state,
-        IReadOnlyList<DispatchedSpikeTrace> recentDispatch,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        IReadOnlyDictionary<(StructureId Structure, string NeuronId), float> neuronRates)
-    {
-        var seeds = new List<MemoryEngramSeed>();
-        var grouped = recentDispatch.GroupBy(s => new EngramDispatchKey(
-            s.SourceStructure,
-            s.SourceHemisphere,
-            s.SourceNeuronId,
-            s.TargetStructure,
-            s.TargetHemisphere,
-            s.TargetNeuronId,
-            s.Neurotransmitter));
-
-        foreach (var group in grouped)
-        {
-            if (TryBuildMemoryEngramSeed(state, group, activePathways, neuronRates, out var seed))
-            {
-                seeds.Add(seed);
-            }
-        }
-
-        return seeds;
-    }
-
-    private static bool TryBuildMemoryEngramSeed(
-        SimulationState state,
-        IGrouping<EngramDispatchKey, DispatchedSpikeTrace> group,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        IReadOnlyDictionary<(StructureId Structure, string NeuronId), float> neuronRates,
-        out MemoryEngramSeed seed)
-    {
-        seed = default!;
-        var count = group.Count();
-        if (count <= 0)
-        {
-            return false;
-        }
-
-        if (!state.ConnectivityMap.TryGetValue(group.Key.SourceStructure, out var sourceRoutes) || sourceRoutes.Count == 0)
-        {
-            return false;
-        }
-
-        var route = sourceRoutes.FirstOrDefault(r =>
-                r.Target == group.Key.TargetStructure &&
-                r.Neurotransmitter == group.Key.Neurotransmitter)
-            ?? sourceRoutes.FirstOrDefault(r => r.Target == group.Key.TargetStructure)
-            ?? sourceRoutes[0];
-
-        var sourceNeuronId = NormalizeForReplay(group.Key.SourceNeuronId);
-        var targetNeuronId = NormalizeForReplay(group.Key.TargetNeuronId);
-        if (string.IsNullOrWhiteSpace(sourceNeuronId) || string.IsNullOrWhiteSpace(targetNeuronId))
-        {
-            return false;
-        }
-
-        neuronRates.TryGetValue((group.Key.SourceStructure, group.Key.SourceNeuronId), out var sourceRate);
-        neuronRates.TryGetValue((group.Key.TargetStructure, group.Key.TargetNeuronId), out var targetRate);
-        activePathways.TryGetValue((group.Key.SourceStructure, group.Key.TargetStructure, group.Key.Neurotransmitter), out var pathwayVolume);
-
-        var salience = (count * 1.0f)
-            + (pathwayVolume * 0.35f)
-            + ((sourceRate + targetRate) * 0.08f);
-
-        var vesicleQuanta = Math.Clamp(1.2f + (count * 0.35f) + ((sourceRate + targetRate) * 0.02f), 0.05f, 16f);
-        seed = new MemoryEngramSeed(
-            group.Key.SourceStructure,
-            NormalizeHemisphere(group.Key.SourceHemisphere),
-            route.Target,
-            NormalizeHemisphere(group.Key.TargetHemisphere),
-            sourceNeuronId,
-            targetNeuronId,
-            route.Neurotransmitter,
-            route.SynapseId,
-            (route.ProjectionType ?? string.Empty).Contains("feedback", StringComparison.OrdinalIgnoreCase),
-            vesicleQuanta,
-            GetReuptakeRateForNt(route.Neurotransmitter),
-            salience);
-        return true;
-    }
-
-    private readonly record struct EngramDispatchKey(
-        StructureId SourceStructure,
-        string SourceHemisphere,
-        string SourceNeuronId,
-        StructureId TargetStructure,
-        string TargetHemisphere,
-        string TargetNeuronId,
-        NTEnum Neurotransmitter);
-
-    private async Task<EngramReplayStats> ReplayEngramsDuringSleepAsync(
-        TickSignal tickSignal,
-        SimulationState state,
-        IReadOnlyList<ServiceInstance> activeServices,
-        SemaphoreSlim dispatchSemaphore,
-        IReadOnlyDictionary<string, HttpClient> clients,
-        IReadOnlyDictionary<string, IStructureSpikeTransport> grpcSpikeTransports,
-        bool useHttpSpikeTransportFallback,
-        IReadOnlyDictionary<StructureId, List<ServiceInstance>> instancesByStructure,
-        ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        IDictionary<StructureId, HashSet<string>> highlightNeuronIdsByStructure,
-        int tickIoTimeoutMs,
-        int maxSpikesPerDispatchRequest,
-        CancellationToken stoppingToken)
-    {
-        var sleep = state.GetSleepMemoryRuntime();
-        if (!sleep.IsSleeping || sleep.ReplayBurstsPerTick <= 0 || activeServices.Count == 0)
-        {
-            return EngramReplayStats.Empty;
-        }
-
-        if (sleep.NeuronalAuthorityActive &&
-            (!sleep.NeuronalReplayActive || sleep.NeuronalReplayEnsemble is < 0 or >= 8))
-        {
-            return EngramReplayStats.Empty;
-        }
-
-        var replayStage = ResolveSleepReplayStage(sleep);
-        var replayEngrams = sleep.NeuronalAuthorityActive
-            ? state.SelectEngramsForNeuronalReplay(sleep.ReplayBurstsPerTick, sleep.NeuronalReplayEnsemble)
-            : state.SelectEngramsForReplay(sleep.ReplayBurstsPerTick, replayStage);
-        if (replayEngrams.Count == 0)
-        {
-            return EngramReplayStats.Empty;
-        }
-
-        var generated = 0;
-        var dispatchQueue = new ConcurrentDictionary<string, ConcurrentQueue<QueuedDispatchBatch>>(StringComparer.OrdinalIgnoreCase);
-        var dispatchQueueMetrics = new DispatchQueueMetrics();
-        var previousTransport = state.TransportStats;
-        var queuePressure = DispatchQueueRuntime.ComputePressure(previousTransport);
-        var (dispatchQueueMaxBatches, dispatchQueueMaxSpikes) = DispatchQueueRuntime.ComputeLimits(
-            Math.Max(48, replayEngrams.Count * 4),
-            Math.Max(256, replayEngrams.Count * 16),
-            previousTransport.AdaptivePressure,
-            queuePressure,
-            previousTransport.DispatchQueueDroppedBatches,
-            previousTransport.DispatchQueueDroppedSpikes,
-            replayEngrams.Count,
-            maxGrowthScale: 2.80);
-        var deliveredKeys = new HashSet<string>(StringComparer.Ordinal);
-        var deliveredKeysGate = new object();
-
-        foreach (var engram in replayEngrams)
-        {
-            if (state.IsEngramSuppressedDuringSleepReplay(engram))
-            {
-                continue;
-            }
-
-            var sourceInstance = activeServices.FirstOrDefault(s =>
-                    s.StructureId == engram.SourceStructure &&
-                    string.Equals(s.Hemisphere, engram.SourceHemisphere, StringComparison.OrdinalIgnoreCase))
-                ?? activeServices.FirstOrDefault(s => s.StructureId == engram.SourceStructure);
-            if (sourceInstance is null)
-            {
-                continue;
-            }
-
-            var targetInstances = ResolveTargetInstances(engram.TargetStructure, sourceInstance.Hemisphere, instancesByStructure)
-                .Where(t => string.Equals(engram.TargetHemisphere, "M", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(t.Hemisphere, engram.TargetHemisphere, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (targetInstances.Count == 0)
-            {
-                continue;
-            }
-
-            var vesicleScale = replayStage == SleepReplayStage.EarlyHippocampal ? 1.10f : 0.94f;
-            var replaySpike = ApplySleepInhibitoryGating(
-                new SpikeMessage
-                {
-                    MessageId = Guid.NewGuid(),
-                    TimestampMs = tickSignal.TimestampMs,
-                    SourceStructure = engram.SourceStructure,
-                    TargetStructure = engram.TargetStructure,
-                    SourceNeuronId = engram.SourceNeuronId,
-                    TargetNeuronId = engram.TargetNeuronId,
-                    SynapseId = engram.SynapseId,
-                    Neurotransmitter = engram.Neurotransmitter,
-                    VesicleQuanta = Math.Clamp(engram.VesicleQuanta * vesicleScale, 0.05f, 16f),
-                    ReuptakeRate = Math.Clamp(engram.ReuptakeRate, 0.5f, 120f),
-                    SpikeType = SpikeTypeEnum.BURST,
-                    IsFeedback = engram.IsFeedback,
-                    ModulationContext = tickSignal.GlobalNeuromodState
-                },
-                sleep,
-                replayStage,
-                isReplay: true);
-
-            foreach (var target in targetInstances)
-            {
-                if (!clients.ContainsKey(target.InstanceKey))
-                {
-                    continue;
-                }
-
-                generated++;
-                var queued = DispatchQueueRuntime.TryEnqueue(
-                    dispatchQueue,
-                    target.InstanceKey,
-                    new QueuedDispatchBatch(
-                        sourceInstance.InstanceKey,
-                        sourceInstance.Hemisphere,
-                        target.Hemisphere,
-                        [replaySpike],
-                        engram.Key),
-                    dispatchQueueMetrics,
-                    dispatchQueueMaxBatches,
-                    dispatchQueueMaxSpikes);
-                if (!queued)
-                {
-                    logger.LogDebug(
-                        "Sleep replay queue saturated at tick {Tick}: dropped engram batch {SourceInstance}->{TargetInstance}",
-                        tickSignal.Tick,
-                        sourceInstance.InstanceKey,
-                        target.InstanceKey);
-                    continue;
-                }
-                RecordSpontaneousNeuron(
-                    highlightNeuronIdsByStructure,
-                    replaySpike.SourceStructure,
-                    sourceInstance.Hemisphere,
-                    replaySpike.SourceNeuronId);
-                RecordSpontaneousNeuron(
-                    highlightNeuronIdsByStructure,
-                    replaySpike.TargetStructure,
-                    target.Hemisphere,
-                    replaySpike.TargetNeuronId);
-            }
-        }
-
-        var flush = await FlushQueuedDispatchBatchesAsync(
-            tickSignal,
-            state,
-            dispatchSemaphore,
-            dispatchQueue,
-            grpcSpikeTransports,
-            clients,
-                useHttpSpikeTransportFallback,
-                activePathways,
-                tickIoTimeoutMs,
-                maxSpikesPerDispatchRequest,
-                key =>
-                {
-                    lock (deliveredKeysGate)
-                    {
-                        deliveredKeys.Add(key);
-                    }
-                },
-                stoppingToken);
-
-        var delivered = flush.DeliveredSpikes;
-        var dispatchErrors = flush.DispatchErrors;
-        var lastError = flush.LastError;
-        if (dispatchQueueMetrics.DroppedBatches > 0)
-        {
-            dispatchErrors += dispatchQueueMetrics.DroppedBatches;
-            lastError ??= $"sleep replay queue saturated: dropped {dispatchQueueMetrics.DroppedBatches} batch(es) / {dispatchQueueMetrics.DroppedSpikes} spike(s)";
-        }
-
-        if (delivered > 0 && deliveredKeys.Count > 0)
-        {
-            state.RecordEngramReplayDelivery(tickSignal.Tick, deliveredKeys);
-        }
-
-        return new EngramReplayStats(generated, delivered, dispatchErrors, lastError, replayEngrams.Count);
-    }
 
     private static SleepReplayStage ResolveSleepReplayStage(SleepMemoryRuntime sleep)
     {
@@ -19407,7 +14809,6 @@ internal sealed class TickCoordinator(
                 activePathways,
                 tickIoTimeoutMs,
                 maxSpikesPerDispatchRequest,
-                onReplayDelivered: null,
                 stoppingToken);
 
         var dispatchErrors = flush.DispatchErrors + dispatchQueueMetrics.DroppedBatches;
@@ -19535,7 +14936,6 @@ internal sealed class TickCoordinator(
            stats.DeliveredSpikes <= 0 &&
            stats.ActivePathways <= 0 &&
            stats.SpontaneousDelivered <= 0 &&
-           stats.EngramReplayDelivered <= 0 &&
            stats.PerceptionLanguageDelivered <= 0;
 
     private int QueueFallbackSpontaneousSpike(
@@ -20370,7 +15770,6 @@ internal sealed class TickCoordinator(
         ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
         int tickIoTimeoutMs,
         int maxSpikesPerDispatchRequest,
-        Action<string>? onReplayDelivered,
         CancellationToken stoppingToken)
     {
         if (dispatchQueueByTarget.IsEmpty)
@@ -20410,7 +15809,6 @@ internal sealed class TickCoordinator(
                 activePathways,
                 tickIoTimeoutMs,
                 maxSpikesPerDispatchRequest,
-                onReplayDelivered,
                 stoppingToken,
                 delivered =>
                 {
@@ -20460,7 +15858,6 @@ internal sealed class TickCoordinator(
         ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
         int tickIoTimeoutMs,
         int maxSpikesPerDispatchRequest,
-        Action<string>? onReplayDelivered,
         CancellationToken stoppingToken,
         Action<int> onDelivered,
         Action<string> onDispatchError)
@@ -20540,12 +15937,6 @@ internal sealed class TickCoordinator(
                     targetInstanceKey,
                     batch.Spikes,
                     acceptedForBatch);
-                if (acceptedForBatch > 0 &&
-                    onReplayDelivered is not null &&
-                    !string.IsNullOrWhiteSpace(batch.ReplayEngramKey))
-                {
-                    onReplayDelivered(batch.ReplayEngramKey);
-                }
                 remaining -= acceptedForBatch;
             }
 
@@ -21201,11 +16592,8 @@ internal sealed record TransportRuntimeStats(
     int DispatchedSpikes,
     int DroppedByBudget,
     int TopQueries,
-    int EngramsCaptured,
     int SpontaneousGenerated,
     int SpontaneousDelivered,
-    int EngramReplayGenerated,
-    int EngramReplayDelivered,
     int SpontaneousDispatchErrors,
     string? SpontaneousLastError,
     int ActivePathways,
@@ -21248,8 +16636,6 @@ internal sealed record TransportRuntimeStats(
     double TickWallP99Ms,
     string DegradeSignal,
     string SleepReplayStage,
-    int SleepReplaySelected,
-    double SleepReplayDeliveryRatio,
     double SleepInhibitoryScale,
     double SleepExcitatoryScale,
     int PerceptionLanguageGenerated,
@@ -21265,20 +16651,71 @@ internal sealed record TransportRuntimeStats(
     IReadOnlyList<LanguageBackoffModeStateSnapshot> LanguageBackoffModeStates)
 {
     public static TransportRuntimeStats Empty { get; } = new(
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null,
-        0, 0, 0, 0, 0, 0, 0,
-        0.0, 1.0,
-        0, 0, 0,
-        0, 0, 0, 0,
-        0.0, 0, 0, 0, 0, 0,
-        0.0, 0.0, 0.0, 0.0, "none",
-        "awake", 0, 0.0, 1.0, 1.0,
-        0, 0, 0, null,
-        0, 0, 0, 0,
-        Array.Empty<LanguageBackoffEdgeSnapshot>(),
-        Array.Empty<LanguageBackoffGraphSnapshot>(),
-        Array.Empty<LanguageBackoffModeStateSnapshot>());
+        Tick: 0,
+        ActiveServices: 0,
+        SuccessfulAcks: 0,
+        DrainCalls: 0,
+        DrainedSpikes: 0,
+        DispatchedSpikes: 0,
+        DroppedByBudget: 0,
+        TopQueries: 0,
+        SpontaneousGenerated: 0,
+        SpontaneousDelivered: 0,
+        SpontaneousDispatchErrors: 0,
+        SpontaneousLastError: null,
+        ActivePathways: 0,
+        DispatchQueueQueuedBatches: 0,
+        DispatchQueueQueuedSpikes: 0,
+        DispatchQueuePeakBatches: 0,
+        DispatchQueuePeakSpikes: 0,
+        DispatchQueueDroppedBatches: 0,
+        DispatchQueueDroppedSpikes: 0,
+        DispatchQueueFlushedBatches: 0,
+        DispatchQueueFlushActiveTargets: 0,
+        DispatchQueueFlushMaxTargetBurstSpikes: 0,
+        DispatchQueueDispatchErrors: 0,
+        DispatchQueueLastError: null,
+        GeneratedSpikes: 0,
+        RoutedSpikes: 0,
+        DeliveredSpikes: 0,
+        RouteDroppedNoConnectivity: 0,
+        RouteDroppedNoTargets: 0,
+        RouteDroppedTargetUnavailable: 0,
+        RouteDroppedByBackpressure: 0,
+        AdaptivePressure: 0.0,
+        AdaptiveScale: 1.0,
+        EffectiveMaxSpikeDispatchPerServicePerTick: 0,
+        EffectiveMaxSpikeDispatchTotalPerTick: 0,
+        EffectiveMaxTopQueriesPerTick: 0,
+        EffectiveTickAckTimeoutMs: 0,
+        EffectiveTickIoTimeoutMs: 0,
+        EffectiveTickPublishWaitMs: 0,
+        EffectiveTickPublishSettleMs: 0,
+        AckLatencyEwmaMs: 0.0,
+        AckLatencyLt100Ms: 0,
+        AckLatency100To250Ms: 0,
+        AckLatency250To500Ms: 0,
+        AckLatency500To1000Ms: 0,
+        AckLatencyGte1000Ms: 0,
+        TickWallMs: 0.0,
+        TickWallP50Ms: 0.0,
+        TickWallP95Ms: 0.0,
+        TickWallP99Ms: 0.0,
+        DegradeSignal: "none",
+        SleepReplayStage: "awake",
+        SleepInhibitoryScale: 1.0,
+        SleepExcitatoryScale: 1.0,
+        PerceptionLanguageGenerated: 0,
+        PerceptionLanguageDelivered: 0,
+        PerceptionLanguageDispatchErrors: 0,
+        PerceptionLanguageLastError: null,
+        LanguageBackoffAttempts: 0,
+        LanguageBackoffResolved: 0,
+        LanguageBackoffFallbackSelections: 0,
+        LanguageBackoffDispatchErrors: 0,
+        LanguageBackoffTopEdges: Array.Empty<LanguageBackoffEdgeSnapshot>(),
+        LanguageBackoffGraphs: Array.Empty<LanguageBackoffGraphSnapshot>(),
+        LanguageBackoffModeStates: Array.Empty<LanguageBackoffModeStateSnapshot>());
 }
 
 internal sealed record PerceptionLanguageConditioningStats(int Generated, int Delivered, int DispatchErrors, string? LastError)
@@ -21291,19 +16728,12 @@ internal sealed record SpontaneousInjectionStats(int Generated, int Delivered, i
     public static SpontaneousInjectionStats Empty { get; } = new(0, 0, 0, null);
 }
 
-internal sealed record EngramReplayStats(int Generated, int Delivered, int DispatchErrors, string? LastError, int Selected)
-{
-    public static EngramReplayStats Empty { get; } = new(0, 0, 0, null, 0);
-}
-
 internal sealed record SleepTickInput(
     int DrainedSpikes,
     int DispatchedSpikes,
     int ActivePathways,
     int SpontaneousGenerated,
-    int EngramsCaptured,
-    int ReplayedEngrams,
-    int ReplayDispatchedSpikes,
+    int NeuronalReplaySpikes,
     float HomeostasisRateScale = 1.0f);
 
 internal sealed record SleepTransitionResult(
@@ -21311,8 +16741,7 @@ internal sealed record SleepTransitionResult(
     bool EnteredSleep,
     bool ExitedSleep,
     float AtpBudget,
-    int SleepTicks,
-    int EngramCount);
+    int SleepTicks);
 
 internal sealed record EnvironmentalStateRuntime(
     float Darkness,
@@ -21397,163 +16826,6 @@ internal sealed record BodyStateRuntime(
         LastInputTick: long.MinValue);
 }
 
-internal sealed record PredictivePerceptionRuntime(
-    bool Active,
-    string LastChannel,
-    string LastCue,
-    string InputSource,
-    float VisualPrediction,
-    float VisualObservation,
-    float AuditoryPrediction,
-    float AuditoryObservation,
-    float SomatosensoryPrediction,
-    float SomatosensoryObservation,
-    float InteroceptivePrediction,
-    float InteroceptiveObservation,
-    float PredictionError,
-    float Surprise,
-    float Novelty,
-    float Confidence,
-    float SalienceBias,
-    float LocusCoeruleusAlert,
-    float HippocampalEncodingGate,
-    float AccConflictSignal,
-    float DopamineTeachingSignal,
-    float HabituationGate,
-    float SensitizationGate,
-    float RepetitionSuppression,
-    float NoveltyEncodingDrive,
-    float StimulusAdaptationGain,
-    string AdaptationMode,
-    string AdaptationEvidence,
-    AttentionVector SensoryBias,
-    string ExpectedChannel,
-    string ExpectedCue,
-    string ExpectedAction,
-    float ForwardModelConfidence,
-    float CerebellarForwardModel,
-    float HippocampalPatternCompletion,
-    float PfcTopDownExpectation,
-    string SimulationEvidence,
-    long LastSimulationTick,
-    long LastUpdatedTick)
-{
-    public static PredictivePerceptionRuntime Default { get; } = new(
-        Active: false,
-        LastChannel: "none",
-        LastCue: "baseline",
-        InputSource: "none",
-        VisualPrediction: 0.22f,
-        VisualObservation: 0f,
-        AuditoryPrediction: 0.14f,
-        AuditoryObservation: 0f,
-        SomatosensoryPrediction: 0.12f,
-        SomatosensoryObservation: 0f,
-        InteroceptivePrediction: 0.18f,
-        InteroceptiveObservation: 0f,
-        PredictionError: 0f,
-        Surprise: 0f,
-        Novelty: 0f,
-        Confidence: 0f,
-        SalienceBias: 0f,
-        LocusCoeruleusAlert: 0f,
-        HippocampalEncodingGate: 0f,
-        AccConflictSignal: 0f,
-        DopamineTeachingSignal: 0f,
-        HabituationGate: 0f,
-        SensitizationGate: 0f,
-        RepetitionSuppression: 0f,
-        NoveltyEncodingDrive: 0f,
-        StimulusAdaptationGain: 0f,
-        AdaptationMode: "stable",
-        AdaptationEvidence: "none",
-        SensoryBias: new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f),
-        ExpectedChannel: "none",
-        ExpectedCue: "baseline",
-        ExpectedAction: "observe",
-        ForwardModelConfidence: 0f,
-        CerebellarForwardModel: 0f,
-        HippocampalPatternCompletion: 0f,
-        PfcTopDownExpectation: 0f,
-        SimulationEvidence: "none",
-        LastSimulationTick: 0,
-        LastUpdatedTick: 0);
-
-    public static PredictivePerceptionRuntime Normalize(PredictivePerceptionRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        var sensoryBias = NormalizeAttentionVector(value.SensoryBias);
-        return value with
-        {
-            LastChannel = NormalizeText(value.LastChannel, Default.LastChannel).ToLowerInvariant(),
-            LastCue = NormalizeText(value.LastCue, Default.LastCue),
-            InputSource = NormalizeText(value.InputSource, Default.InputSource),
-            VisualPrediction = Math.Clamp(value.VisualPrediction, 0f, 1f),
-            VisualObservation = Math.Clamp(value.VisualObservation, 0f, 1f),
-            AuditoryPrediction = Math.Clamp(value.AuditoryPrediction, 0f, 1f),
-            AuditoryObservation = Math.Clamp(value.AuditoryObservation, 0f, 1f),
-            SomatosensoryPrediction = Math.Clamp(value.SomatosensoryPrediction, 0f, 1f),
-            SomatosensoryObservation = Math.Clamp(value.SomatosensoryObservation, 0f, 1f),
-            InteroceptivePrediction = Math.Clamp(value.InteroceptivePrediction, 0f, 1f),
-            InteroceptiveObservation = Math.Clamp(value.InteroceptiveObservation, 0f, 1f),
-            PredictionError = Math.Clamp(value.PredictionError, 0f, 1f),
-            Surprise = Math.Clamp(value.Surprise, 0f, 1f),
-            Novelty = Math.Clamp(value.Novelty, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            SalienceBias = Math.Clamp(value.SalienceBias, 0f, 1f),
-            LocusCoeruleusAlert = Math.Clamp(value.LocusCoeruleusAlert, 0f, 1f),
-            HippocampalEncodingGate = Math.Clamp(value.HippocampalEncodingGate, 0f, 1f),
-            AccConflictSignal = Math.Clamp(value.AccConflictSignal, 0f, 1f),
-            DopamineTeachingSignal = Math.Clamp(value.DopamineTeachingSignal, -1f, 1f),
-            HabituationGate = Math.Clamp(value.HabituationGate, 0f, 1f),
-            SensitizationGate = Math.Clamp(value.SensitizationGate, 0f, 1f),
-            RepetitionSuppression = Math.Clamp(value.RepetitionSuppression, 0f, 1f),
-            NoveltyEncodingDrive = Math.Clamp(value.NoveltyEncodingDrive, 0f, 1f),
-            StimulusAdaptationGain = Math.Clamp(value.StimulusAdaptationGain, 0f, 1f),
-            AdaptationMode = NormalizeText(value.AdaptationMode, Default.AdaptationMode).ToLowerInvariant(),
-            AdaptationEvidence = NormalizeText(value.AdaptationEvidence, Default.AdaptationEvidence),
-            SensoryBias = sensoryBias,
-            ExpectedChannel = NormalizeText(value.ExpectedChannel, Default.ExpectedChannel).ToLowerInvariant(),
-            ExpectedCue = NormalizeText(value.ExpectedCue, Default.ExpectedCue),
-            ExpectedAction = NormalizeText(value.ExpectedAction, Default.ExpectedAction),
-            ForwardModelConfidence = Math.Clamp(value.ForwardModelConfidence, 0f, 1f),
-            CerebellarForwardModel = Math.Clamp(value.CerebellarForwardModel, 0f, 1f),
-            HippocampalPatternCompletion = Math.Clamp(value.HippocampalPatternCompletion, 0f, 1f),
-            PfcTopDownExpectation = Math.Clamp(value.PfcTopDownExpectation, 0f, 1f),
-            SimulationEvidence = NormalizeText(value.SimulationEvidence, Default.SimulationEvidence),
-            LastSimulationTick = Math.Max(0, value.LastSimulationTick),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick)
-        };
-    }
-
-    private static AttentionVector NormalizeAttentionVector(AttentionVector? value)
-    {
-        if (value is null)
-        {
-            return Default.SensoryBias;
-        }
-
-        var visual = Math.Clamp(value.Visual, 0f, 1f);
-        var auditory = Math.Clamp(value.Auditory, 0f, 1f);
-        var somatosensory = Math.Clamp(value.Somatosensory, 0f, 1f);
-        var interoceptive = Math.Clamp(value.Interoceptive, 0f, 1f);
-        var total = visual + auditory + somatosensory + interoceptive;
-        return total <= 0.0001f
-            ? Default.SensoryBias
-            : new AttentionVector(
-                visual / total,
-                auditory / total,
-                somatosensory / total,
-                interoceptive / total);
-    }
-
-    private static string NormalizeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
 internal sealed record BodySchemaRuntime(
     float PostureStability,
@@ -21871,60 +17143,6 @@ internal enum SleepReplayStage
     LateCorticalConsolidation
 }
 
-internal sealed record MemoryEngramSeed(
-    StructureId SourceStructure,
-    string SourceHemisphere,
-    StructureId TargetStructure,
-    string TargetHemisphere,
-    string SourceNeuronId,
-    string TargetNeuronId,
-    NTEnum Neurotransmitter,
-    Guid SynapseId,
-    bool IsFeedback,
-    float VesicleQuanta,
-    float ReuptakeRate,
-    float Salience);
-
-internal sealed record MemoryEngram(
-    string Key,
-    StructureId SourceStructure,
-    string SourceHemisphere,
-    StructureId TargetStructure,
-    string TargetHemisphere,
-    string SourceNeuronId,
-    string TargetNeuronId,
-    NTEnum Neurotransmitter,
-    Guid SynapseId,
-    bool IsFeedback,
-    float VesicleQuanta,
-    float ReuptakeRate,
-    float Salience,
-    long FirstCapturedTick,
-    long LastCapturedTick,
-    long LastReplayTick,
-    int CaptureCount,
-    int ReplayCount);
-
-internal sealed record RelationalSchema(
-    string Key,
-    StructureId SourceStructure,
-    StructureId TargetStructure,
-    NTEnum Neurotransmitter,
-    bool IsFeedback,
-    string SourceHemisphere,
-    string TargetHemisphere,
-    string HemisphereRelation,
-    string CircuitClass,
-    float MeanSalience,
-    float MeanVesicleQuanta,
-    float MeanReuptakeRate,
-    float Strength,
-    float NoveltyScore,
-    long FirstCapturedTick,
-    long LastCapturedTick,
-    long LastReplayTick,
-    int CaptureCount,
-    int ReplaySupportCount);
 
 internal sealed record DispatchedSpikeTrace(
     long Tick,
@@ -21939,87 +17157,6 @@ internal sealed record DispatchedSpikeTrace(
     NTEnum Neurotransmitter,
     string TargetInstanceKey);
 
-internal sealed record ObjectMemoryTrace(
-    string ObjectId,
-    string Label,
-    string DominantHemisphere,
-    float Familiarity,
-    float SalienceEma,
-    float ConfidenceEma,
-    float IntensityEma,
-    int SeenCount,
-    int LeftEvidence,
-    int RightEvidence,
-    int MidEvidence,
-    long LastSeenTick,
-    double LastSeenSimulationMs);
-
-internal sealed record PersistentPerceptTrace(
-    string ObjectId,
-    string Label,
-    string Category,
-    string DominantHemisphere,
-    float Familiarity,
-    float Salience,
-    float Confidence,
-    float Retention,
-    float ObjectPermanence,
-    float SpatialIntention,
-    float GoalSupport,
-    float LastIntensity,
-    int SeenCount,
-    long TicksSinceSeen,
-    long LastSeenTick,
-    string BiologicalSource);
-
-internal sealed record PersistentPerceptRuntime(
-    int Count,
-    string ActiveObjectId,
-    string ActiveLabel,
-    string ActiveCategory,
-    string ActiveHemisphere,
-    float ObjectPermanence,
-    float SpatialIntention,
-    float GoalSupport,
-    long LastSeenTick,
-    long LastUpdatedTick,
-    IReadOnlyList<PersistentPerceptTrace> Top)
-{
-    public static PersistentPerceptRuntime Default { get; } = new(
-        Count: 0,
-        ActiveObjectId: "none",
-        ActiveLabel: "none",
-        ActiveCategory: "none",
-        ActiveHemisphere: "M",
-        ObjectPermanence: 0f,
-        SpatialIntention: 0f,
-        GoalSupport: 0f,
-        LastSeenTick: 0,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static PersistentPerceptRuntime Normalize(PersistentPerceptRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            ActiveObjectId = string.IsNullOrWhiteSpace(value.ActiveObjectId) ? "none" : value.ActiveObjectId.Trim(),
-            ActiveLabel = string.IsNullOrWhiteSpace(value.ActiveLabel) ? "none" : value.ActiveLabel.Trim(),
-            ActiveCategory = string.IsNullOrWhiteSpace(value.ActiveCategory) ? "none" : value.ActiveCategory.Trim(),
-            ActiveHemisphere = NormalizePersistentHemisphere(value.ActiveHemisphere),
-            ObjectPermanence = Math.Clamp(value.ObjectPermanence, 0f, 1f),
-            SpatialIntention = Math.Clamp(value.SpatialIntention, 0f, 1f),
-            GoalSupport = Math.Clamp(value.GoalSupport, 0f, 1f),
-            LastSeenTick = Math.Max(0, value.LastSeenTick),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-
-    private static string NormalizePersistentHemisphere(string value)
-    {
-        var normalized = string.IsNullOrWhiteSpace(value) ? "M" : value.Trim().ToUpperInvariant();
-        return normalized is "L" or "R" or "M" ? normalized : "M";
-    }
-}
 
 internal sealed record EmbodiedAttentionSpotlightRuntime(
     bool Active,
@@ -22121,95 +17258,6 @@ internal sealed record EmbodiedAttentionSpotlightRuntime(
     }
 }
 
-internal sealed record EpisodicMemoryTrace(
-    string EventKey,
-    string EventType,
-    string Summary,
-    string ObjectId,
-    string Label,
-    string GoalKey,
-    string ActionKey,
-    string DominantEmotion,
-    string PlaceKey,
-    float Valence,
-    float Salience,
-    float Novelty,
-    float Confidence,
-    float EntorhinalInput,
-    float DentatePatternSeparation,
-    float CA3PatternCompletion,
-    float CA1Mismatch,
-    float SubiculumOutput,
-    long FirstTick,
-    long LastTick,
-    int RecallCount);
-
-internal sealed record SemanticMemoryTrace(
-    string ConceptKey,
-    string Label,
-    string Category,
-    string Meaning,
-    string AssociatedGoal,
-    string AssociatedAction,
-    string SourceCircuit,
-    int ObjectSupport,
-    int EpisodeSupport,
-    int ActionSupport,
-    int LanguageSupport,
-    float Threat,
-    float Food,
-    float Shelter,
-    float Weapon,
-    float Valence,
-    float Confidence,
-    float Familiarity,
-    long LastUpdatedTick);
-
-internal sealed record DopamineLearningTrace(
-    string Key,
-    string ActionKey,
-    string GoalKey,
-    string ConceptKey,
-    float ExpectedValue,
-    float ObservedValue,
-    float RewardPredictionError,
-    float VtaPhasicDopamine,
-    float SncActionReinforcement,
-    float NucleusAccumbensIncentive,
-    float OrbitofrontalExpectedValue,
-    float HabenulaNegativeTeaching,
-    float TeachingSignal,
-    float LearnedValue,
-    float AvoidancePenalty,
-    float Confidence,
-    int Samples,
-    long FirstObservedTick,
-    long LastObservedTick)
-{
-    public static DopamineLearningTrace Normalize(DopamineLearningTrace value)
-        => value with
-        {
-            Key = string.IsNullOrWhiteSpace(value.Key) ? "dopamine.unknown" : value.Key.Trim(),
-            ActionKey = string.IsNullOrWhiteSpace(value.ActionKey) ? "idle" : value.ActionKey.Trim(),
-            GoalKey = string.IsNullOrWhiteSpace(value.GoalKey) ? "observe" : value.GoalKey.Trim(),
-            ConceptKey = string.IsNullOrWhiteSpace(value.ConceptKey) ? "none" : value.ConceptKey.Trim(),
-            ExpectedValue = Math.Clamp(value.ExpectedValue, -1f, 1f),
-            ObservedValue = Math.Clamp(value.ObservedValue, -1f, 1f),
-            RewardPredictionError = Math.Clamp(value.RewardPredictionError, -1f, 1f),
-            VtaPhasicDopamine = Math.Clamp(value.VtaPhasicDopamine, 0f, 1f),
-            SncActionReinforcement = Math.Clamp(value.SncActionReinforcement, 0f, 1f),
-            NucleusAccumbensIncentive = Math.Clamp(value.NucleusAccumbensIncentive, 0f, 1f),
-            OrbitofrontalExpectedValue = Math.Clamp(value.OrbitofrontalExpectedValue, -1f, 1f),
-            HabenulaNegativeTeaching = Math.Clamp(value.HabenulaNegativeTeaching, 0f, 1f),
-            TeachingSignal = Math.Clamp(value.TeachingSignal, -1f, 1f),
-            LearnedValue = Math.Clamp(value.LearnedValue, -1f, 1f),
-            AvoidancePenalty = Math.Clamp(value.AvoidancePenalty, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Samples = Math.Max(0, value.Samples),
-            FirstObservedTick = Math.Max(0, value.FirstObservedTick),
-            LastObservedTick = Math.Max(0, value.LastObservedTick)
-        };
-}
 
 internal sealed class LanguageBackoffPolicy
 {
@@ -23440,196 +18488,10 @@ internal sealed record BiologicalTeachingEvent(
 }
 internal sealed record PhoneticGenerationRequest(int? TokenCount, string? Mode, float? NoveltyBias, string? SeedText);
 internal sealed record RestartServiceRequest(string? StructureId, string? Hemisphere, string? InstanceKey);
-internal sealed record WorldModelCounterfactualRequest(
-    string? ActionKey,
-    string? SourceStructure,
-    string? TargetStructure,
-    string? Neurotransmitter,
-    bool? IsFeedback,
-    int? HorizonSteps);
 internal sealed record CurriculumControlRequest(
     bool? Enabled,
     int? StageIndex,
     bool? ResetProgress);
-internal sealed record ConsolidationControlRequest(
-    bool? Enabled,
-    float? ReplayWeightEarlyHippocampal,
-    float? ReplayWeightLateCortical,
-    float? SchemaConsolidationGain,
-    float? EngramDecayPerTick,
-    float? SchemaDecayPerTick,
-    float? ProtectedSalienceThreshold,
-    int? ProtectedEngramBudget,
-    float? AntiForgettingHomeostasis);
-internal sealed record WorldModelTransition(
-    string ActionKey,
-    StructureId SourceStructure,
-    StructureId TargetStructure,
-    NTEnum Neurotransmitter,
-    bool IsFeedback,
-    float ExpectedDispatchDelta,
-    float ExpectedPathwayDelta,
-    float ExpectedRewardDelta,
-    float ExpectedSleepPressureDelta,
-    float PredictionError,
-    int Samples,
-    long LastTick);
-internal sealed record WorldModelRuntime(
-    bool Enabled,
-    long ObservationCount,
-    int LearnedTransitions,
-    string LastActionKey,
-    string LastActionSummary,
-    int LastObservedDispatchedSpikes,
-    int LastObservedActivePathways,
-    float LastObservedReward,
-    float LastObservedSleepPressure,
-    float MeanPredictionError)
-{
-    public static WorldModelRuntime Default { get; } = new(
-        Enabled: true,
-        ObservationCount: 0,
-        LearnedTransitions: 0,
-        LastActionKey: "idle",
-        LastActionSummary: "idle",
-        LastObservedDispatchedSpikes: 0,
-        LastObservedActivePathways: 0,
-        LastObservedReward: 0f,
-        LastObservedSleepPressure: 0f,
-        MeanPredictionError: 0f);
-}
-internal sealed record ActionMemoryTrace(
-    string ActionKey,
-    string GoalKey,
-    string DominantEmotion,
-    float SuccessEma,
-    float RewardEma,
-    float SafetyEma,
-    float ThreatEma,
-    float HungerEma,
-    float SleepPressureEma,
-    float CompletionEma,
-    float StallEma,
-    string LastCompletionStatus,
-    float Confidence,
-    int Samples,
-    long FirstObservedTick,
-    long LastObservedTick,
-    int DreamReplayCount);
-internal sealed record ActionMemoryRuntime(
-    int Count,
-    string BestActionKey,
-    float BestSuccess,
-    string LastActionKey,
-    float LastOutcome,
-    long LastUpdatedTick,
-    IReadOnlyList<ActionMemoryTrace> Top)
-{
-    public static ActionMemoryRuntime Default { get; } = new(
-        Count: 0,
-        BestActionKey: "none",
-        BestSuccess: 0f,
-        LastActionKey: "none",
-        LastOutcome: 0f,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static ActionMemoryRuntime Normalize(ActionMemoryRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            BestActionKey = string.IsNullOrWhiteSpace(value.BestActionKey) ? "none" : value.BestActionKey.Trim(),
-            BestSuccess = Math.Clamp(value.BestSuccess, 0f, 1f),
-            LastActionKey = string.IsNullOrWhiteSpace(value.LastActionKey) ? "none" : value.LastActionKey.Trim(),
-            LastOutcome = Math.Clamp(value.LastOutcome, -1f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-}
-internal sealed record ActionCompletionFeedbackRuntime(
-    bool Active,
-    string IntentionKey,
-    string GoalKey,
-    string ActionKey,
-    string MotorDirective,
-    string Status,
-    float ExpectedMovement,
-    float ObservedMovement,
-    float Progress,
-    float Completion,
-    float Stall,
-    float Blocked,
-    float Mismatch,
-    float PfcExpectation,
-    float AccError,
-    float CerebellarPredictionError,
-    float BasalGangliaCredit,
-    float DopamineTeachingBias,
-    float ConfidenceDelta,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence)
-{
-    public static ActionCompletionFeedbackRuntime Default { get; } = new(
-        Active: false,
-        IntentionKey: "Observe:idle",
-        GoalKey: "Observe",
-        ActionKey: "idle",
-        MotorDirective: "motor_idle",
-        Status: "quiet",
-        ExpectedMovement: 0f,
-        ObservedMovement: 0f,
-        Progress: 0f,
-        Completion: 0f,
-        Stall: 0f,
-        Blocked: 0f,
-        Mismatch: 0f,
-        PfcExpectation: 0f,
-        AccError: 0f,
-        CerebellarPredictionError: 0f,
-        BasalGangliaCredit: 0f,
-        DopamineTeachingBias: 0f,
-        ConfidenceDelta: 0f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "quiet action monitor");
-
-    public static ActionCompletionFeedbackRuntime Normalize(ActionCompletionFeedbackRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            IntentionKey = NormalizeCompletionText(value.IntentionKey, Default.IntentionKey),
-            GoalKey = NormalizeCompletionText(value.GoalKey, "Observe"),
-            ActionKey = NormalizeCompletionText(value.ActionKey, "idle"),
-            MotorDirective = NormalizeCompletionText(value.MotorDirective, "motor_idle"),
-            Status = NormalizeCompletionText(value.Status, "quiet").ToLowerInvariant(),
-            ExpectedMovement = Math.Clamp(value.ExpectedMovement, 0f, 1f),
-            ObservedMovement = Math.Clamp(value.ObservedMovement, 0f, 1f),
-            Progress = Math.Clamp(value.Progress, 0f, 1f),
-            Completion = Math.Clamp(value.Completion, 0f, 1f),
-            Stall = Math.Clamp(value.Stall, 0f, 1f),
-            Blocked = Math.Clamp(value.Blocked, 0f, 1f),
-            Mismatch = Math.Clamp(value.Mismatch, 0f, 1f),
-            PfcExpectation = Math.Clamp(value.PfcExpectation, 0f, 1f),
-            AccError = Math.Clamp(value.AccError, 0f, 1f),
-            CerebellarPredictionError = Math.Clamp(value.CerebellarPredictionError, 0f, 1f),
-            BasalGangliaCredit = Math.Clamp(value.BasalGangliaCredit, 0f, 1f),
-            DopamineTeachingBias = Math.Clamp(value.DopamineTeachingBias, -1f, 1f),
-            ConfidenceDelta = Math.Clamp(value.ConfidenceDelta, -1f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeCompletionText(value.Evidence, Default.Evidence)
-        };
-    }
-
-    private static string NormalizeCompletionText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 internal sealed record SelfMonitoringLoopRuntime(
     bool Active,
     string MonitorState,
@@ -23708,434 +18570,6 @@ internal sealed record SelfMonitoringLoopRuntime(
     private static string NormalizeSelfMonitoringText(string? value, string fallback)
         => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 }
-internal sealed record WorldLearningMapEntry(
-    string Key,
-    string Label,
-    string Category,
-    string DominantHemisphere,
-    float Familiarity,
-    float Salience,
-    float Confidence,
-    float Safety,
-    float Threat,
-    float Food,
-    float Shelter,
-    float Weapon,
-    float Valence,
-    int Observations,
-    int DreamReplayCount,
-    long LastObservedTick,
-    long LastDreamTick);
-internal sealed record WorldLearningMapRuntime(
-    int Count,
-    int SafePlaces,
-    int FoodSources,
-    int WeaponSources,
-    int ThreatSources,
-    string BestShelterKey,
-    string BestFoodKey,
-    string BestWeaponKey,
-    string MostDangerousKey,
-    long LastUpdatedTick,
-    IReadOnlyList<WorldLearningMapEntry> Top)
-{
-    public static WorldLearningMapRuntime Default { get; } = new(
-        Count: 0,
-        SafePlaces: 0,
-        FoodSources: 0,
-        WeaponSources: 0,
-        ThreatSources: 0,
-        BestShelterKey: "none",
-        BestFoodKey: "none",
-        BestWeaponKey: "none",
-        MostDangerousKey: "none",
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static WorldLearningMapRuntime Normalize(WorldLearningMapRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            SafePlaces = Math.Max(0, value.SafePlaces),
-            FoodSources = Math.Max(0, value.FoodSources),
-            WeaponSources = Math.Max(0, value.WeaponSources),
-            ThreatSources = Math.Max(0, value.ThreatSources),
-            BestShelterKey = string.IsNullOrWhiteSpace(value.BestShelterKey) ? "none" : value.BestShelterKey.Trim(),
-            BestFoodKey = string.IsNullOrWhiteSpace(value.BestFoodKey) ? "none" : value.BestFoodKey.Trim(),
-            BestWeaponKey = string.IsNullOrWhiteSpace(value.BestWeaponKey) ? "none" : value.BestWeaponKey.Trim(),
-            MostDangerousKey = string.IsNullOrWhiteSpace(value.MostDangerousKey) ? "none" : value.MostDangerousKey.Trim(),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-}
-internal sealed record EpisodicMemoryRuntime(
-    int Count,
-    string LastEventType,
-    string LastSummary,
-    string BestRecallSummary,
-    float HippocampalBinding,
-    float EntorhinalInput,
-    float DentatePatternSeparation,
-    float CA3PatternCompletion,
-    float CA1Mismatch,
-    float SubiculumOutput,
-    float RecallConfidence,
-    long LastUpdatedTick,
-    IReadOnlyList<EpisodicMemoryTrace> Top)
-{
-    public static EpisodicMemoryRuntime Default { get; } = new(
-        Count: 0,
-        LastEventType: "none",
-        LastSummary: "none",
-        BestRecallSummary: "none",
-        HippocampalBinding: 0f,
-        EntorhinalInput: 0f,
-        DentatePatternSeparation: 0f,
-        CA3PatternCompletion: 0f,
-        CA1Mismatch: 0f,
-        SubiculumOutput: 0f,
-        RecallConfidence: 0f,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static EpisodicMemoryRuntime Normalize(EpisodicMemoryRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            LastEventType = string.IsNullOrWhiteSpace(value.LastEventType) ? "none" : value.LastEventType.Trim(),
-            LastSummary = string.IsNullOrWhiteSpace(value.LastSummary) ? "none" : value.LastSummary.Trim(),
-            BestRecallSummary = string.IsNullOrWhiteSpace(value.BestRecallSummary) ? "none" : value.BestRecallSummary.Trim(),
-            HippocampalBinding = Math.Clamp(value.HippocampalBinding, 0f, 1f),
-            EntorhinalInput = Math.Clamp(value.EntorhinalInput, 0f, 1f),
-            DentatePatternSeparation = Math.Clamp(value.DentatePatternSeparation, 0f, 1f),
-            CA3PatternCompletion = Math.Clamp(value.CA3PatternCompletion, 0f, 1f),
-            CA1Mismatch = Math.Clamp(value.CA1Mismatch, 0f, 1f),
-            SubiculumOutput = Math.Clamp(value.SubiculumOutput, 0f, 1f),
-            RecallConfidence = Math.Clamp(value.RecallConfidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-}
-
-internal sealed record UnifiedEventMemoryRuntime(
-    int Count,
-    int WorldObjectEvents,
-    int EnvironmentEvents,
-    int BodyEvents,
-    int LanguageEvents,
-    int ActionEvents,
-    int RewardEvents,
-    string RecentEventKey,
-    string RecentSummary,
-    string BestRecallSummary,
-    string ActiveScene,
-    float EventBinding,
-    float CrossModalBinding,
-    float HippocampalIndex,
-    float PfcRetrievalGate,
-    float Coverage,
-    float Confidence,
-    long LastUpdatedTick,
-    string Evidence,
-    IReadOnlyList<EpisodicMemoryTrace> Top)
-{
-    public static UnifiedEventMemoryRuntime Default { get; } = new(
-        Count: 0,
-        WorldObjectEvents: 0,
-        EnvironmentEvents: 0,
-        BodyEvents: 0,
-        LanguageEvents: 0,
-        ActionEvents: 0,
-        RewardEvents: 0,
-        RecentEventKey: "none",
-        RecentSummary: "none",
-        BestRecallSummary: "none",
-        ActiveScene: "none",
-        EventBinding: 0f,
-        CrossModalBinding: 0f,
-        HippocampalIndex: 0f,
-        PfcRetrievalGate: 0f,
-        Coverage: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Evidence: "no unified event memory indexed yet",
-        Top: []);
-
-    public static UnifiedEventMemoryRuntime Normalize(UnifiedEventMemoryRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            Count = Math.Max(0, value.Count),
-            WorldObjectEvents = Math.Max(0, value.WorldObjectEvents),
-            EnvironmentEvents = Math.Max(0, value.EnvironmentEvents),
-            BodyEvents = Math.Max(0, value.BodyEvents),
-            LanguageEvents = Math.Max(0, value.LanguageEvents),
-            ActionEvents = Math.Max(0, value.ActionEvents),
-            RewardEvents = Math.Max(0, value.RewardEvents),
-            RecentEventKey = NormalizeUnifiedEventText(value.RecentEventKey, "none"),
-            RecentSummary = NormalizeUnifiedEventText(value.RecentSummary, "none"),
-            BestRecallSummary = NormalizeUnifiedEventText(value.BestRecallSummary, "none"),
-            ActiveScene = NormalizeUnifiedEventText(value.ActiveScene, "none"),
-            EventBinding = Math.Clamp(value.EventBinding, 0f, 1f),
-            CrossModalBinding = Math.Clamp(value.CrossModalBinding, 0f, 1f),
-            HippocampalIndex = Math.Clamp(value.HippocampalIndex, 0f, 1f),
-            PfcRetrievalGate = Math.Clamp(value.PfcRetrievalGate, 0f, 1f),
-            Coverage = Math.Clamp(value.Coverage, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Evidence = NormalizeUnifiedEventText(value.Evidence, Default.Evidence),
-            Top = (value.Top ?? []).Take(16).ToArray()
-        };
-    }
-
-    private static string NormalizeUnifiedEventText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record PlaceMemoryTrace(
-    string PlaceKey,
-    string Label,
-    string Category,
-    string RecentSummary,
-    string BestRecallSummary,
-    int EpisodeCount,
-    int ObjectEvents,
-    int BodyEvents,
-    int LanguageEvents,
-    int ActionEvents,
-    float Safety,
-    float Threat,
-    float Food,
-    float Shelter,
-    float Valence,
-    float Familiarity,
-    float Confidence,
-    float HippocampalBinding,
-    float RetrosplenialBinding,
-    long FirstTick,
-    long LastTick)
-{
-    public static PlaceMemoryTrace Default { get; } = new(
-        PlaceKey: "none",
-        Label: "none",
-        Category: "none",
-        RecentSummary: "none",
-        BestRecallSummary: "none",
-        EpisodeCount: 0,
-        ObjectEvents: 0,
-        BodyEvents: 0,
-        LanguageEvents: 0,
-        ActionEvents: 0,
-        Safety: 0f,
-        Threat: 0f,
-        Food: 0f,
-        Shelter: 0f,
-        Valence: 0f,
-        Familiarity: 0f,
-        Confidence: 0f,
-        HippocampalBinding: 0f,
-        RetrosplenialBinding: 0f,
-        FirstTick: 0,
-        LastTick: 0);
-
-    public static PlaceMemoryTrace Normalize(PlaceMemoryTrace value)
-        => value with
-        {
-            PlaceKey = NormalizePlaceText(value.PlaceKey, "none"),
-            Label = NormalizePlaceText(value.Label, "none"),
-            Category = NormalizePlaceText(value.Category, "none"),
-            RecentSummary = NormalizePlaceText(value.RecentSummary, "none"),
-            BestRecallSummary = NormalizePlaceText(value.BestRecallSummary, "none"),
-            EpisodeCount = Math.Max(0, value.EpisodeCount),
-            ObjectEvents = Math.Max(0, value.ObjectEvents),
-            BodyEvents = Math.Max(0, value.BodyEvents),
-            LanguageEvents = Math.Max(0, value.LanguageEvents),
-            ActionEvents = Math.Max(0, value.ActionEvents),
-            Safety = Math.Clamp(value.Safety, 0f, 1f),
-            Threat = Math.Clamp(value.Threat, 0f, 1f),
-            Food = Math.Clamp(value.Food, 0f, 1f),
-            Shelter = Math.Clamp(value.Shelter, 0f, 1f),
-            Valence = Math.Clamp(value.Valence, -1f, 1f),
-            Familiarity = Math.Clamp(value.Familiarity, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            HippocampalBinding = Math.Clamp(value.HippocampalBinding, 0f, 1f),
-            RetrosplenialBinding = Math.Clamp(value.RetrosplenialBinding, 0f, 1f),
-            FirstTick = Math.Max(0, value.FirstTick),
-            LastTick = Math.Max(0, value.LastTick)
-        };
-
-    private static string NormalizePlaceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record PlaceMemoryRuntime(
-    int Count,
-    string ActivePlaceKey,
-    string ActiveLabel,
-    string ActiveCategory,
-    string RecentSummary,
-    string BestRecallSummary,
-    float MapCoverage,
-    float HippocampalPlaceBinding,
-    float RetrosplenialSceneBinding,
-    float Safety,
-    float Threat,
-    float Confidence,
-    long LastUpdatedTick,
-    IReadOnlyList<PlaceMemoryTrace> Top)
-{
-    public static PlaceMemoryRuntime Default { get; } = new(
-        Count: 0,
-        ActivePlaceKey: "none",
-        ActiveLabel: "none",
-        ActiveCategory: "none",
-        RecentSummary: "none",
-        BestRecallSummary: "none",
-        MapCoverage: 0f,
-        HippocampalPlaceBinding: 0f,
-        RetrosplenialSceneBinding: 0f,
-        Safety: 0f,
-        Threat: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static PlaceMemoryRuntime Normalize(PlaceMemoryRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            ActivePlaceKey = NormalizePlaceText(value.ActivePlaceKey, "none"),
-            ActiveLabel = NormalizePlaceText(value.ActiveLabel, "none"),
-            ActiveCategory = NormalizePlaceText(value.ActiveCategory, "none"),
-            RecentSummary = NormalizePlaceText(value.RecentSummary, "none"),
-            BestRecallSummary = NormalizePlaceText(value.BestRecallSummary, "none"),
-            MapCoverage = Math.Clamp(value.MapCoverage, 0f, 1f),
-            HippocampalPlaceBinding = Math.Clamp(value.HippocampalPlaceBinding, 0f, 1f),
-            RetrosplenialSceneBinding = Math.Clamp(value.RetrosplenialSceneBinding, 0f, 1f),
-            Safety = Math.Clamp(value.Safety, 0f, 1f),
-            Threat = Math.Clamp(value.Threat, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = (value.Top ?? []).Select(PlaceMemoryTrace.Normalize).Take(16).ToArray()
-        };
-
-    private static string NormalizePlaceText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record SemanticMemoryRuntime(
-    int Count,
-    string DominantConceptKey,
-    string ActiveCategory,
-    string DominantMeaning,
-    float TemporalAssociationBinding,
-    float ParahippocampalContext,
-    float RetrosplenialSceneBinding,
-    float PpcAffordanceBinding,
-    float PfcConceptControl,
-    float SemanticConfidence,
-    long LastUpdatedTick,
-    IReadOnlyList<SemanticMemoryTrace> Top)
-{
-    public static SemanticMemoryRuntime Default { get; } = new(
-        Count: 0,
-        DominantConceptKey: "none",
-        ActiveCategory: "none",
-        DominantMeaning: "none",
-        TemporalAssociationBinding: 0f,
-        ParahippocampalContext: 0f,
-        RetrosplenialSceneBinding: 0f,
-        PpcAffordanceBinding: 0f,
-        PfcConceptControl: 0f,
-        SemanticConfidence: 0f,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static SemanticMemoryRuntime Normalize(SemanticMemoryRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            DominantConceptKey = string.IsNullOrWhiteSpace(value.DominantConceptKey) ? "none" : value.DominantConceptKey.Trim(),
-            ActiveCategory = string.IsNullOrWhiteSpace(value.ActiveCategory) ? "none" : value.ActiveCategory.Trim(),
-            DominantMeaning = string.IsNullOrWhiteSpace(value.DominantMeaning) ? "none" : value.DominantMeaning.Trim(),
-            TemporalAssociationBinding = Math.Clamp(value.TemporalAssociationBinding, 0f, 1f),
-            ParahippocampalContext = Math.Clamp(value.ParahippocampalContext, 0f, 1f),
-            RetrosplenialSceneBinding = Math.Clamp(value.RetrosplenialSceneBinding, 0f, 1f),
-            PpcAffordanceBinding = Math.Clamp(value.PpcAffordanceBinding, 0f, 1f),
-            PfcConceptControl = Math.Clamp(value.PfcConceptControl, 0f, 1f),
-            SemanticConfidence = Math.Clamp(value.SemanticConfidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-}
-internal sealed record DopamineLearningRuntime(
-    int Count,
-    string LastActionKey,
-    string LastGoalKey,
-    string LastConceptKey,
-    float ExpectedValue,
-    float ObservedValue,
-    float RewardPredictionError,
-    float VtaPhasicDopamine,
-    float SncActionReinforcement,
-    float NucleusAccumbensIncentive,
-    float OrbitofrontalExpectedValue,
-    float HabenulaNegativeTeaching,
-    float TeachingSignal,
-    float LearnedValue,
-    float AvoidancePenalty,
-    float Confidence,
-    long LastUpdatedTick,
-    IReadOnlyList<DopamineLearningTrace> Top)
-{
-    public static DopamineLearningRuntime Default { get; } = new(
-        Count: 0,
-        LastActionKey: "none",
-        LastGoalKey: "none",
-        LastConceptKey: "none",
-        ExpectedValue: 0f,
-        ObservedValue: 0f,
-        RewardPredictionError: 0f,
-        VtaPhasicDopamine: 0f,
-        SncActionReinforcement: 0f,
-        NucleusAccumbensIncentive: 0f,
-        OrbitofrontalExpectedValue: 0f,
-        HabenulaNegativeTeaching: 0f,
-        TeachingSignal: 0f,
-        LearnedValue: 0f,
-        AvoidancePenalty: 0f,
-        Confidence: 0f,
-        LastUpdatedTick: 0,
-        Top: []);
-
-    public static DopamineLearningRuntime Normalize(DopamineLearningRuntime value)
-        => value with
-        {
-            Count = Math.Max(0, value.Count),
-            LastActionKey = string.IsNullOrWhiteSpace(value.LastActionKey) ? "none" : value.LastActionKey.Trim(),
-            LastGoalKey = string.IsNullOrWhiteSpace(value.LastGoalKey) ? "none" : value.LastGoalKey.Trim(),
-            LastConceptKey = string.IsNullOrWhiteSpace(value.LastConceptKey) ? "none" : value.LastConceptKey.Trim(),
-            ExpectedValue = Math.Clamp(value.ExpectedValue, -1f, 1f),
-            ObservedValue = Math.Clamp(value.ObservedValue, -1f, 1f),
-            RewardPredictionError = Math.Clamp(value.RewardPredictionError, -1f, 1f),
-            VtaPhasicDopamine = Math.Clamp(value.VtaPhasicDopamine, 0f, 1f),
-            SncActionReinforcement = Math.Clamp(value.SncActionReinforcement, 0f, 1f),
-            NucleusAccumbensIncentive = Math.Clamp(value.NucleusAccumbensIncentive, 0f, 1f),
-            OrbitofrontalExpectedValue = Math.Clamp(value.OrbitofrontalExpectedValue, -1f, 1f),
-            HabenulaNegativeTeaching = Math.Clamp(value.HabenulaNegativeTeaching, 0f, 1f),
-            TeachingSignal = Math.Clamp(value.TeachingSignal, -1f, 1f),
-            LearnedValue = Math.Clamp(value.LearnedValue, -1f, 1f),
-            AvoidancePenalty = Math.Clamp(value.AvoidancePenalty, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Top = value.Top ?? []
-        };
-}
 internal sealed record BiologicalTeachingLoopRuntime(
     bool Active,
     int Count,
@@ -24200,107 +18634,6 @@ internal sealed record BiologicalTeachingLoopRuntime(
     }
 
     private static string NormalizeTeachingRuntimeText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-internal sealed record DreamConsolidationRuntime(
-    bool Active,
-    long LastDreamTick,
-    string LastDreamTheme,
-    long ActionMemoryReplays,
-    long WorldMapReplays,
-    long EngramSchemaReplays,
-    long AutobiographicalReplays,
-    long SemanticReplays,
-    int ProtectedActionCount,
-    int ProtectedMapCount,
-    float MeanActionSuccess,
-    float MeanMapConfidence,
-    string SimulatedScene,
-    string SimulatedGoalKey,
-    string SimulatedActionKey,
-    string SimulatedOutcome,
-    string ConsolidatedIdentityThread,
-    string ConsolidatedConceptKey,
-    string ConsolidatedActionValue,
-    string ConsolidationSummary,
-    float HippocampalReplay,
-    float PfcCounterfactual,
-    float AmygdalaThreatReplay,
-    float CerebellarMotorReplay,
-    float DopamineRevaluation,
-    float OfflinePredictionError,
-    float AutobiographicalContinuityGain,
-    float SemanticStabilization,
-    float ActionValueStabilization,
-    long OfflineSimulationCount)
-{
-    public static DreamConsolidationRuntime Default { get; } = new(
-        Active: false,
-        LastDreamTick: 0,
-        LastDreamTheme: "none",
-        ActionMemoryReplays: 0,
-        WorldMapReplays: 0,
-        EngramSchemaReplays: 0,
-        AutobiographicalReplays: 0,
-        SemanticReplays: 0,
-        ProtectedActionCount: 0,
-        ProtectedMapCount: 0,
-        MeanActionSuccess: 0f,
-        MeanMapConfidence: 0f,
-        SimulatedScene: "none",
-        SimulatedGoalKey: "Observe",
-        SimulatedActionKey: "idle",
-        SimulatedOutcome: "none",
-        ConsolidatedIdentityThread: "none",
-        ConsolidatedConceptKey: "none",
-        ConsolidatedActionValue: "none",
-        ConsolidationSummary: "no sleep replay yet",
-        HippocampalReplay: 0f,
-        PfcCounterfactual: 0f,
-        AmygdalaThreatReplay: 0f,
-        CerebellarMotorReplay: 0f,
-        DopamineRevaluation: 0f,
-        OfflinePredictionError: 0f,
-        AutobiographicalContinuityGain: 0f,
-        SemanticStabilization: 0f,
-        ActionValueStabilization: 0f,
-        OfflineSimulationCount: 0);
-
-    public static DreamConsolidationRuntime Normalize(DreamConsolidationRuntime value)
-        => value with
-        {
-            LastDreamTick = Math.Max(0, value.LastDreamTick),
-            LastDreamTheme = string.IsNullOrWhiteSpace(value.LastDreamTheme) ? "none" : value.LastDreamTheme.Trim(),
-            ActionMemoryReplays = Math.Max(0, value.ActionMemoryReplays),
-            WorldMapReplays = Math.Max(0, value.WorldMapReplays),
-            EngramSchemaReplays = Math.Max(0, value.EngramSchemaReplays),
-            AutobiographicalReplays = Math.Max(0, value.AutobiographicalReplays),
-            SemanticReplays = Math.Max(0, value.SemanticReplays),
-            ProtectedActionCount = Math.Max(0, value.ProtectedActionCount),
-            ProtectedMapCount = Math.Max(0, value.ProtectedMapCount),
-            MeanActionSuccess = Math.Clamp(value.MeanActionSuccess, 0f, 1f),
-            MeanMapConfidence = Math.Clamp(value.MeanMapConfidence, 0f, 1f),
-            SimulatedScene = NormalizeDreamText(value.SimulatedScene, "none"),
-            SimulatedGoalKey = NormalizeDreamText(value.SimulatedGoalKey, "Observe"),
-            SimulatedActionKey = NormalizeDreamText(value.SimulatedActionKey, "idle"),
-            SimulatedOutcome = NormalizeDreamText(value.SimulatedOutcome, "none"),
-            ConsolidatedIdentityThread = NormalizeDreamText(value.ConsolidatedIdentityThread, "none"),
-            ConsolidatedConceptKey = NormalizeDreamText(value.ConsolidatedConceptKey, "none"),
-            ConsolidatedActionValue = NormalizeDreamText(value.ConsolidatedActionValue, "none"),
-            ConsolidationSummary = NormalizeDreamText(value.ConsolidationSummary, "no sleep replay yet"),
-            HippocampalReplay = Math.Clamp(value.HippocampalReplay, 0f, 1f),
-            PfcCounterfactual = Math.Clamp(value.PfcCounterfactual, 0f, 1f),
-            AmygdalaThreatReplay = Math.Clamp(value.AmygdalaThreatReplay, 0f, 1f),
-            CerebellarMotorReplay = Math.Clamp(value.CerebellarMotorReplay, 0f, 1f),
-            DopamineRevaluation = Math.Clamp(value.DopamineRevaluation, -1f, 1f),
-            OfflinePredictionError = Math.Clamp(value.OfflinePredictionError, 0f, 1f),
-            AutobiographicalContinuityGain = Math.Clamp(value.AutobiographicalContinuityGain, 0f, 1f),
-            SemanticStabilization = Math.Clamp(value.SemanticStabilization, 0f, 1f),
-            ActionValueStabilization = Math.Clamp(value.ActionValueStabilization, 0f, 1f),
-            OfflineSimulationCount = Math.Max(0, value.OfflineSimulationCount)
-        };
-
-    private static string NormalizeDreamText(string? value, string fallback)
         => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 }
 internal sealed record PlanningActionCandidate(
@@ -24568,43 +18901,6 @@ internal sealed record CurriculumRuntime(
         StageTicks: 0,
         Tasks: []);
 }
-internal sealed record ConsolidationControlSettings(
-    bool Enabled,
-    float ReplayWeightEarlyHippocampal,
-    float ReplayWeightLateCortical,
-    float SchemaConsolidationGain,
-    float EngramDecayPerTick,
-    float SchemaDecayPerTick,
-    float ProtectedSalienceThreshold,
-    int ProtectedEngramBudget,
-    float AntiForgettingHomeostasis)
-{
-    public static ConsolidationControlSettings Default { get; } = new(
-        Enabled: true,
-        ReplayWeightEarlyHippocampal: 1.00f,
-        ReplayWeightLateCortical: 1.00f,
-        SchemaConsolidationGain: 1.00f,
-        EngramDecayPerTick: 0.0008f,
-        SchemaDecayPerTick: 0.0004f,
-        ProtectedSalienceThreshold: 42.0f,
-        ProtectedEngramBudget: 1024,
-        AntiForgettingHomeostasis: 0.45f);
-
-    public static ConsolidationControlSettings Normalize(ConsolidationControlSettings value)
-    {
-        return value with
-        {
-            ReplayWeightEarlyHippocampal = Math.Clamp(value.ReplayWeightEarlyHippocampal, 0.2f, 4.0f),
-            ReplayWeightLateCortical = Math.Clamp(value.ReplayWeightLateCortical, 0.2f, 4.0f),
-            SchemaConsolidationGain = Math.Clamp(value.SchemaConsolidationGain, 0.2f, 4.0f),
-            EngramDecayPerTick = Math.Clamp(value.EngramDecayPerTick, 0f, 0.50f),
-            SchemaDecayPerTick = Math.Clamp(value.SchemaDecayPerTick, 0f, 0.25f),
-            ProtectedSalienceThreshold = Math.Clamp(value.ProtectedSalienceThreshold, 0f, 100f),
-            ProtectedEngramBudget = Math.Clamp(value.ProtectedEngramBudget, 32, 65536),
-            AntiForgettingHomeostasis = Math.Clamp(value.AntiForgettingHomeostasis, 0f, 1f)
-        };
-    }
-}
 internal sealed class CurriculumTaskAccumulator
 {
     public static IReadOnlyList<string> StageNames { get; } =
@@ -24709,7 +19005,6 @@ internal sealed class NetworkStateDocument
     public float RewardPredictionError { get; set; }
     public string PerformanceProfileName { get; set; } = "normal";
     public MemoryControlSettings MemoryControl { get; set; } = MemoryControlSettings.Default;
-    public ConsolidationControlSettings ConsolidationControl { get; set; } = ConsolidationControlSettings.Default;
     public InputGateRuntime? InputGates { get; set; } = InputGateRuntime.Default;
     public SleepMemoryRuntime SleepMemory { get; set; } = SleepMemoryRuntime.Default;
     public BodySchemaRuntime? BodySchema { get; set; } = BodySchemaRuntime.Default;
@@ -24843,20 +19138,6 @@ internal sealed record EnglishLexeme(
     string PhonemeForm,
     string SemanticClass);
 
-internal sealed record LanguageCommandMemoryTrace(
-    string CommandKey,
-    int RepetitionCount,
-    long TotalActivations,
-    float LearnedBias,
-    long LastUpdatedTick)
-{
-    public static LanguageCommandMemoryTrace Create(string commandKey) => new(
-        string.IsNullOrWhiteSpace(commandKey) ? "language.unknown" : commandKey,
-        RepetitionCount: 0,
-        TotalActivations: 0,
-        LearnedBias: 0.0f,
-        LastUpdatedTick: 0);
-}
 
 internal sealed record LanguageIntentRuntime(
     bool Active,
@@ -25410,150 +19691,6 @@ internal sealed record GlobalWorkspaceRuntime(
         => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 }
 
-internal sealed record AutobiographicalSelfRuntime(
-    bool Active,
-    string CurrentChapter,
-    string IdentityThread,
-    string RecentSelfEpisodeKey,
-    string RecentSelfEpisodeSummary,
-    string DefiningMemoryKey,
-    string DefiningMemorySummary,
-    string PlaceContext,
-    float GoalContinuity,
-    float AgencyContinuity,
-    float EmotionalContinuity,
-    float HippocampalIndex,
-    float RetrosplenialContext,
-    float PfcSelfContinuity,
-    float AccAgencyBinding,
-    float LanguageSelfBinding,
-    float AutobiographicalSalience,
-    float Confidence,
-    long LastUpdatedTick,
-    long Sequence,
-    string Evidence,
-    IReadOnlyList<EpisodicMemoryTrace> TopSelfEpisodes)
-{
-    public static AutobiographicalSelfRuntime Default { get; } = new(
-        Active: false,
-        CurrentChapter: "observing",
-        IdentityThread: "I am gathering experience and keeping continuity.",
-        RecentSelfEpisodeKey: "none",
-        RecentSelfEpisodeSummary: "none",
-        DefiningMemoryKey: "none",
-        DefiningMemorySummary: "none",
-        PlaceContext: "unknown",
-        GoalContinuity: 0.15f,
-        AgencyContinuity: 0.20f,
-        EmotionalContinuity: 0.15f,
-        HippocampalIndex: 0.0f,
-        RetrosplenialContext: 0.0f,
-        PfcSelfContinuity: 0.20f,
-        AccAgencyBinding: 0.20f,
-        LanguageSelfBinding: 0.15f,
-        AutobiographicalSalience: 0.0f,
-        Confidence: 0.20f,
-        LastUpdatedTick: 0,
-        Sequence: 0,
-        Evidence: "no autobiographical episode indexed yet",
-        TopSelfEpisodes: []);
-
-    public static AutobiographicalSelfRuntime Normalize(AutobiographicalSelfRuntime value)
-        => value with
-        {
-            CurrentChapter = NormalizeAutobiographicalText(value.CurrentChapter, Default.CurrentChapter),
-            IdentityThread = NormalizeAutobiographicalText(value.IdentityThread, Default.IdentityThread),
-            RecentSelfEpisodeKey = NormalizeAutobiographicalText(value.RecentSelfEpisodeKey, "none"),
-            RecentSelfEpisodeSummary = NormalizeAutobiographicalText(value.RecentSelfEpisodeSummary, "none"),
-            DefiningMemoryKey = NormalizeAutobiographicalText(value.DefiningMemoryKey, "none"),
-            DefiningMemorySummary = NormalizeAutobiographicalText(value.DefiningMemorySummary, "none"),
-            PlaceContext = NormalizeAutobiographicalText(value.PlaceContext, "unknown"),
-            GoalContinuity = Math.Clamp(value.GoalContinuity, 0f, 1f),
-            AgencyContinuity = Math.Clamp(value.AgencyContinuity, 0f, 1f),
-            EmotionalContinuity = Math.Clamp(value.EmotionalContinuity, 0f, 1f),
-            HippocampalIndex = Math.Clamp(value.HippocampalIndex, 0f, 1f),
-            RetrosplenialContext = Math.Clamp(value.RetrosplenialContext, 0f, 1f),
-            PfcSelfContinuity = Math.Clamp(value.PfcSelfContinuity, 0f, 1f),
-            AccAgencyBinding = Math.Clamp(value.AccAgencyBinding, 0f, 1f),
-            LanguageSelfBinding = Math.Clamp(value.LanguageSelfBinding, 0f, 1f),
-            AutobiographicalSalience = Math.Clamp(value.AutobiographicalSalience, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence),
-            Evidence = NormalizeAutobiographicalText(value.Evidence, Default.Evidence),
-            TopSelfEpisodes = (value.TopSelfEpisodes ?? []).Take(16).ToArray()
-        };
-
-    private static string NormalizeAutobiographicalText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
-
-internal sealed record AutobiographicalContinuityRuntime(
-    bool Active,
-    string ContinuityThread,
-    string RecentEpisode,
-    string DefiningMemory,
-    string CurrentChapter,
-    string PlaceContext,
-    string NextRememberedNeed,
-    float IdentityCoherence,
-    float RecencyBinding,
-    float SemanticBridge,
-    float GoalContinuity,
-    float AgencyContinuity,
-    float Confidence,
-    string Evidence,
-    long LastUpdatedTick,
-    long Sequence)
-{
-    public static AutobiographicalContinuityRuntime Default { get; } = new(
-        Active: false,
-        ContinuityThread: "Continuity: I am still gathering recent experience.",
-        RecentEpisode: "none",
-        DefiningMemory: "none",
-        CurrentChapter: "observing",
-        PlaceContext: "unknown",
-        NextRememberedNeed: "observation",
-        IdentityCoherence: 0f,
-        RecencyBinding: 0f,
-        SemanticBridge: 0f,
-        GoalContinuity: 0.15f,
-        AgencyContinuity: 0.20f,
-        Confidence: 0.20f,
-        Evidence: "no autobiographical continuity indexed yet",
-        LastUpdatedTick: 0,
-        Sequence: 0);
-
-    public static AutobiographicalContinuityRuntime Normalize(AutobiographicalContinuityRuntime? value)
-    {
-        if (value is null)
-        {
-            return Default;
-        }
-
-        return value with
-        {
-            ContinuityThread = NormalizeContinuityText(value.ContinuityThread, Default.ContinuityThread),
-            RecentEpisode = NormalizeContinuityText(value.RecentEpisode, "none"),
-            DefiningMemory = NormalizeContinuityText(value.DefiningMemory, "none"),
-            CurrentChapter = NormalizeContinuityText(value.CurrentChapter, "observing"),
-            PlaceContext = NormalizeContinuityText(value.PlaceContext, "unknown"),
-            NextRememberedNeed = NormalizeContinuityText(value.NextRememberedNeed, "observation"),
-            IdentityCoherence = Math.Clamp(value.IdentityCoherence, 0f, 1f),
-            RecencyBinding = Math.Clamp(value.RecencyBinding, 0f, 1f),
-            SemanticBridge = Math.Clamp(value.SemanticBridge, 0f, 1f),
-            GoalContinuity = Math.Clamp(value.GoalContinuity, 0f, 1f),
-            AgencyContinuity = Math.Clamp(value.AgencyContinuity, 0f, 1f),
-            Confidence = Math.Clamp(value.Confidence, 0f, 1f),
-            Evidence = NormalizeContinuityText(value.Evidence, Default.Evidence),
-            LastUpdatedTick = Math.Max(0, value.LastUpdatedTick),
-            Sequence = Math.Max(0, value.Sequence)
-        };
-    }
-
-    private static string NormalizeContinuityText(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-}
 
 internal sealed record NarrativeSelfModelRuntime(
     bool Active,
@@ -26871,14 +21008,14 @@ internal sealed record SleepMemoryRuntime(
     float WakePressurePerActivePathway,
     float WakePressurePerSpontaneousEvent,
     float SleepPressureRecoveryPerTick,
-    float ReplayPressurePenaltyPerSpike,
+    float NeuronalReplayPressurePenaltyPerSpike,
     float AwakeBaseDrain,
     float DispatchDrainPerSpike,
     float InboundDrainPerSpike,
     float ActivePathwayDrain,
     float SpontaneousDrainPerEvent,
     float SleepRecoveryPerTick,
-    float ReplayEnergyPenaltyPerSpike,
+    float NeuronalReplayEnergyPenaltyPerSpike,
     int MinSleepTicks,
     int MinWakeTicks,
     int SleepTicks,
@@ -26899,12 +21036,7 @@ internal sealed record SleepMemoryRuntime(
     int SleepExitBlockedAlerts,
     string LastAlert,
     long LastAlertTick,
-    int MaxEngrams,
-    int ReplayBurstsPerTick,
-    float SignificantSalienceThreshold,
     long SleepEpisodes,
-    long TotalEngramsCaptured,
-    long TotalEngramsReplayed,
     long LastTransitionTick,
     bool NeuronalAuthorityActive = false,
     int NeuronalStateChannel = 0,
@@ -26927,14 +21059,14 @@ internal sealed record SleepMemoryRuntime(
         WakePressurePerActivePathway: 0.000050f,
         WakePressurePerSpontaneousEvent: 0.000080f,
         SleepPressureRecoveryPerTick: 0.0055f,
-        ReplayPressurePenaltyPerSpike: 0.000010f,
+        NeuronalReplayPressurePenaltyPerSpike: 0.000010f,
         AwakeBaseDrain: 0.0009f,
         DispatchDrainPerSpike: 0.00007f,
         InboundDrainPerSpike: 0.00005f,
         ActivePathwayDrain: 0.00006f,
         SpontaneousDrainPerEvent: 0.00008f,
         SleepRecoveryPerTick: 0.0062f,
-        ReplayEnergyPenaltyPerSpike: 0.00005f,
+        NeuronalReplayEnergyPenaltyPerSpike: 0.00005f,
         MinSleepTicks: 130,
         MinWakeTicks: 220,
         SleepTicks: 0,
@@ -26955,12 +21087,7 @@ internal sealed record SleepMemoryRuntime(
         SleepExitBlockedAlerts: 0,
         LastAlert: string.Empty,
         LastAlertTick: 0,
-        MaxEngrams: 4096,
-        ReplayBurstsPerTick: 6,
-        SignificantSalienceThreshold: 2.6f,
         SleepEpisodes: 0,
-        TotalEngramsCaptured: 0,
-        TotalEngramsReplayed: 0,
         LastTransitionTick: 0);
 }
 

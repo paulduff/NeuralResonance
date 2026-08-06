@@ -233,10 +233,10 @@ The final semantic actuation paths have been removed from the runtime:
 - Entity and DNNE fallback narration cannot emit without a grounded neuronal language circuit, neuronal language attention, a complete speech chain, acceptable uncertainty, and wake-state authorization.
 - The deterministic symbolic survival replay and its hosted routes have been deleted.
 - Missing neuronal attention produces no selection rather than restoring the old scalar winner.
-- The production sleep overload can update metabolic substrate but cannot enter or exit sleep through ATP/pressure thresholds; only the neuronal state circuit may transition it. The one-argument threshold overload remains solely for the historical sleep harness.
+- The production sleep method can update metabolic substrate but cannot enter or exit sleep through ATP/pressure thresholds; only the neuronal state circuit may transition it. The one-argument threshold overload and its historical harness have been deleted.
 - The maze's goal-coordinate navigator is disabled by default and its runtime endpoint returns HTTP 410. Its session code remains an offline benchmark artifact, not a brain or world authority. The rendered maze consumes raw brain/avatar motor traffic.
 
-The old narration, speech-intention, cognitive-language-workspace, inner-speech, intentional-action, self-monitoring, autobiographical-self, narrative-self, identity, room-state, and inhabitance endpoints have been deleted. The synthetic `ObserveCognitiveRuntime` driver and deterministic survival benchmark have also been deleted, so tests cannot manufacture cognition through a fixed scalar update sequence. Predictive perception, persistent percepts, scalar attention, prefrontal working memory, consciousness rhythm, and global workspace have already lost their public routes, update roots, diagnostics, and checkpoint state. Conventional memory dictionaries remain checkpoint and audit material pending their own deletion rung; language, replay, attention, and action decisions do not read them as authority.
+The old narration, speech-intention, cognitive-language-workspace, inner-speech, intentional-action, self-monitoring, autobiographical-self, narrative-self, identity, room-state, and inhabitance endpoints have been deleted. The synthetic `ObserveCognitiveRuntime` driver and deterministic survival benchmark have also been deleted, so tests cannot manufacture cognition through a fixed scalar update sequence. Predictive perception, persistent percepts, scalar attention, prefrontal working memory, consciousness rhythm, and global workspace have already lost their public routes, update roots, diagnostics, and checkpoint state. Conventional memory dictionaries, schemas, world transitions, counterfactual evaluation, and central replay dispatch have been physically deleted; language, replay, attention, and action decisions have no alternate host-memory authority to consult.
 
 The former English grammar/command parser and keyword-based teaching detector
 have since been deleted from the live ingress path. Dyad grounding has no
@@ -265,6 +265,12 @@ the state API, functional audit, or checkpoints; they no longer bias the
 global neuromodulator wire; and handcrafted dream replay is no longer invoked.
 Durable memory and replay authority now belongs to structure synapses and the
 dedicated neuronal memory and sleep-consolidation decoders.
+
+Entry 085 completes that migration by deleting the isolated conventional
+memory implementation, record types, routes, checkpoint fields, central replay
+callbacks, and obsolete telemetry. Structure-local synapses are now the only
+durable learning substrate, and sleep transitions require measured neuronal
+sleep-circuit authority.
 
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 

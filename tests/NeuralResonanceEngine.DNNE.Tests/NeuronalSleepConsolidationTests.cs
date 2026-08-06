@@ -109,31 +109,34 @@ public sealed class NeuronalSleepConsolidationTests
     }
 
     [Fact]
-    public void ReplayTransportFiltersEngramsByNumericPopulationMembership()
+    public void CentralMemoryAndReplayApisArePhysicallyAbsent()
     {
-        var state = new SimulationState();
-        var exported = state.ExportNetworkState();
-        exported.SleepMemory = SleepMemoryRuntime.Default with
+        var methodNames = typeof(SimulationState)
+            .GetMethods()
+            .Select(static method => method.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var retiredMethod in new[]
         {
-            IsSleeping = true,
-            NeuronalAuthorityActive = true,
-            NeuronalStateChannel = (int)NeuronalSleepState.Nrem,
-            NeuronalReplayActive = true,
-            NeuronalReplayEnsemble = 3
-        };
-        Assert.True(state.TryImportNetworkState(exported, out var error), error);
-        state.RecordSignificantEngrams(1,
-        [
-            Engram("numeric-population-12", 9.0f),
-            Engram("numeric-population-4", 12.0f),
-            Engram("numeric-population-44", 8.0f)
-        ]);
+            "RecordSignificantEngrams",
+            "SelectEngramsForReplay",
+            "SelectEngramsForNeuronalReplay",
+            "RecordEngramReplayDelivery",
+            "GetEpisodicMemorySnapshot",
+            "GetSemanticMemorySnapshot",
+            "GetObjectMemorySnapshot",
+            "EvaluateCounterfactual"
+        })
+        {
+            Assert.DoesNotContain(retiredMethod, methodNames);
+        }
 
-        var selected = state.SelectEngramsForNeuronalReplay(8, 3);
-
-        Assert.Equal(2, selected.Count);
-        Assert.All(selected, static engram =>
-            Assert.Contains(engram.SourceNeuronId, new[] { "numeric-population-12", "numeric-population-44" }));
+        var sleepOverloads = typeof(SimulationState)
+            .GetMethods()
+            .Where(static method => method.Name == nameof(SimulationState.AdvanceSleepHomeostasis))
+            .ToArray();
+        Assert.Single(sleepOverloads);
+        Assert.Equal(2, sleepOverloads[0].GetParameters().Length);
     }
 
     private static SleepTickInput IdleTick()
@@ -142,24 +145,7 @@ public sealed class NeuronalSleepConsolidationTests
             DispatchedSpikes: 0,
             ActivePathways: 0,
             SpontaneousGenerated: 0,
-            EngramsCaptured: 0,
-            ReplayedEngrams: 0,
-            ReplayDispatchedSpikes: 0);
-
-    private static MemoryEngramSeed Engram(string sourceNeuronId, float salience)
-        => new(
-            SourceStructure: StructureId.CA3,
-            SourceHemisphere: "L",
-            TargetStructure: StructureId.CA1,
-            TargetHemisphere: "L",
-            SourceNeuronId: sourceNeuronId,
-            TargetNeuronId: "numeric-target-0",
-            Neurotransmitter: NTEnum.GLUTAMATE,
-            SynapseId: Guid.NewGuid(),
-            IsFeedback: true,
-            VesicleQuanta: 1.2f,
-            ReuptakeRate: 8f,
-            Salience: salience);
+            NeuronalReplaySpikes: 0);
 
     private static IReadOnlyList<InstanceStructureSnapshot> CreateNremCircuit(
         int selectedEnsemble,

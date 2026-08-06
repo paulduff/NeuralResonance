@@ -114,9 +114,7 @@ public sealed class NeuronalCognitionAuthorityTests
             DispatchedSpikes: 80,
             ActivePathways: 20,
             SpontaneousGenerated: 2,
-            EngramsCaptured: 0,
-            ReplayedEngrams: 0,
-            ReplayDispatchedSpikes: 0);
+            NeuronalReplaySpikes: 0);
 
     private static SimulationState CreateState()
     {

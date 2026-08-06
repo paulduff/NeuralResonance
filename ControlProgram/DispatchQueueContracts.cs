@@ -4,8 +4,7 @@ internal sealed record QueuedDispatchBatch(
     string SourceInstanceKey,
     string SourceHemisphere,
     string TargetHemisphere,
-    IReadOnlyList<SpikeMessage> Spikes,
-    string? ReplayEngramKey = null);
+    IReadOnlyList<SpikeMessage> Spikes);
 
 internal sealed class DispatchQueueMetrics
 {

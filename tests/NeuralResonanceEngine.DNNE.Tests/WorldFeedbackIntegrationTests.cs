@@ -73,75 +73,6 @@ public sealed class WorldFeedbackIntegrationTests
         Assert.Equal(state.Tick, environment.LastInputTick);
     }
 
-    [Fact]
-    public void Predator_Threat_Delays_Sleep_When_Avatar_Is_Exposed()
-    {
-        var exposed = CreateState();
-        var sheltered = CreateState();
-
-        exposed.UpdateEnvironmentalState(
-            darkness: 1.0f,
-            shelterNeed: 1.0f,
-            anxiety: 1.0f,
-            hunger: 0.0f,
-            predatorThreat: 1.0f,
-            inShelter: 0.0f,
-            health: 1.0f,
-            shelterSafety: 0.0f);
-        sheltered.UpdateEnvironmentalState(
-            darkness: 1.0f,
-            shelterNeed: 1.0f,
-            anxiety: 0.25f,
-            hunger: 0.0f,
-            predatorThreat: 0.0f,
-            inShelter: 1.0f,
-            health: 1.0f,
-            shelterSafety: 1.0f);
-
-        var exposedSleepTick = -1;
-        var shelteredSleepTick = -1;
-        for (var i = 0; i < 512; i++)
-        {
-            exposed.AdvanceClockAndCreateTickSignal();
-            sheltered.AdvanceClockAndCreateTickSignal();
-            exposed.UpdateEnvironmentalState(
-                darkness: 1.0f,
-                shelterNeed: 1.0f,
-                anxiety: 1.0f,
-                hunger: 0.0f,
-                predatorThreat: 1.0f,
-                inShelter: 0.0f,
-                health: 1.0f,
-                shelterSafety: 0.0f);
-            sheltered.UpdateEnvironmentalState(
-                darkness: 1.0f,
-                shelterNeed: 1.0f,
-                anxiety: 0.25f,
-                hunger: 0.0f,
-                predatorThreat: 0.0f,
-                inShelter: 1.0f,
-                health: 1.0f,
-                shelterSafety: 1.0f);
-            if (exposedSleepTick < 0 && Step(exposed).IsSleeping)
-            {
-                exposedSleepTick = i;
-            }
-
-            if (shelteredSleepTick < 0 && Step(sheltered).IsSleeping)
-            {
-                shelteredSleepTick = i;
-            }
-
-            if (shelteredSleepTick >= 0 && exposedSleepTick >= 0)
-            {
-                break;
-            }
-        }
-
-        Assert.True(shelteredSleepTick >= 0);
-        Assert.True(exposedSleepTick < 0 || exposedSleepTick > shelteredSleepTick);
-    }
-
     private static SimulationState CreateState()
     {
         var state = new SimulationState();
@@ -160,14 +91,4 @@ public sealed class WorldFeedbackIntegrationTests
             rewardPredictionError: 0.0f);
         return state;
     }
-
-    private static SleepTransitionResult Step(SimulationState state)
-        => state.AdvanceSleepHomeostasis(new SleepTickInput(
-            DrainedSpikes: 34,
-            DispatchedSpikes: 34,
-            ActivePathways: 10,
-            SpontaneousGenerated: 1,
-            EngramsCaptured: 0,
-            ReplayedEngrams: 0,
-            ReplayDispatchedSpikes: 0));
 }

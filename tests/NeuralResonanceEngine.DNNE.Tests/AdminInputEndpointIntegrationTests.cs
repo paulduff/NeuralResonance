@@ -80,6 +80,48 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
+    public async Task RetinalFrame_AvatarSource_Is_Blocked_When_AvatarVision_Gate_Is_Disabled()
+    {
+        var client = _fixture.Client;
+        await SetAvatarVisionGateAsync(client, enabled: false);
+        const int width = 16;
+        const int height = 12;
+        const int stride = width * 4;
+        using var content = new ByteArrayContent(new byte[stride * height]);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+
+        var response = await client.PostAsync(
+            $"/api/v1/admin/input/visual-frame?width={width}&height={height}&stride={stride}&pixelFormat=Bgra32&inputSource=avatar_vision",
+            content);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var doc = await ReadJsonAsync(response);
+        Assert.True(GetBool(doc.RootElement, "blockedByInputGate"));
+        Assert.False(GetBool(doc.RootElement, "accepted"));
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal("Retina", GetString(doc.RootElement, "target"));
+    }
+
+    [Fact]
+    public async Task RetinalFrame_Rejects_Malformed_Payload_Length()
+    {
+        var client = _fixture.Client;
+        await SetAvatarVisionGateAsync(client, enabled: true);
+        const int width = 16;
+        const int height = 12;
+        const int stride = width * 4;
+        using var content = new ByteArrayContent(new byte[(stride * height) - 1]);
+
+        var response = await client.PostAsync(
+            $"/api/v1/admin/input/visual-frame?width={width}&height={height}&stride={stride}&pixelFormat=Bgra32&inputSource=avatar_vision",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var doc = await ReadJsonAsync(response);
+        Assert.Contains("exactly", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task VisualInput_NonAvatarSource_Uses_Normal_Path_Instead_Of_Gate_Blocking()
     {
         var client = _fixture.Client;

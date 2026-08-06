@@ -337,6 +337,14 @@ health, collision, predator strikes, shelter occupancy, lighting, and sleep
 metabolism remain physical substrate. Discrete weapon use is intentionally
 inert until a neuronal action pathway can own it.
 
+Entry 094 establishes the raw retinal receptor boundary. Binary Bgra32/Rgb24
+frames are transformed into bounded retinotopic ON/OFF ganglion spikes with
+local center-surround contrast, temporal adaptation, stable receptor synapses,
+and contralateral field projection. The route exposes no semantic pattern,
+salience, target, hemisphere, attention, reward, or action authority. The
+structured visual compatibility route remains only until all producers move to
+the raw receptor path in the next rung.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

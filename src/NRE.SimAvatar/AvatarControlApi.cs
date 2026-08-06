@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace NRE.SimAvatar;
@@ -11,6 +12,7 @@ public static class AvatarControlApi
     public const string BodyStatePath = "/api/v1/admin/input/body-state";
     public const string AuditoryInputPath = "/api/v1/admin/input/auditory";
     public const string LanguageInputPath = "/api/v1/admin/input/language";
+    public const string RetinalFrameInputPath = "/api/v1/admin/input/visual-frame";
 
     public static Uri BuildUri(Uri endpoint, string relativePath) => new(endpoint, relativePath);
 
@@ -51,6 +53,22 @@ public static class AvatarControlApi
 
     public static Task<AvatarLanguageCommandResult> PostLanguageCommandAsync(HttpClient client, string endpoint, AvatarLanguageCommand command, CancellationToken cancellationToken = default) =>
         PostLanguageCommandCoreAsync(client, BuildUri(endpoint, LanguageInputPath), command, cancellationToken);
+
+    public static Task<AvatarRetinalFrameDispatchResult> PostRetinalFrameAsync(
+        HttpClient client,
+        Uri endpoint,
+        AvatarSightFrame frame,
+        string inputSource = AvatarRuntimeDefaults.UnifiedVisualInputSource,
+        CancellationToken cancellationToken = default) =>
+        PostRetinalFrameCoreAsync(client, endpoint, frame, inputSource, cancellationToken);
+
+    public static Task<AvatarRetinalFrameDispatchResult> PostRetinalFrameAsync(
+        HttpClient client,
+        string endpoint,
+        AvatarSightFrame frame,
+        string inputSource = AvatarRuntimeDefaults.UnifiedVisualInputSource,
+        CancellationToken cancellationToken = default) =>
+        PostRetinalFrameCoreAsync(client, new Uri(endpoint), frame, inputSource, cancellationToken);
 
     private static async Task PostBodyStateCoreAsync(HttpClient client, Uri uri, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default)
     {
@@ -135,6 +153,50 @@ public static class AvatarControlApi
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         return ParseLanguageCommandResult(document.RootElement);
+    }
+
+    private static async Task<AvatarRetinalFrameDispatchResult> PostRetinalFrameCoreAsync(
+        HttpClient client,
+        Uri endpoint,
+        AvatarSightFrame frame,
+        string inputSource,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(endpoint);
+        ArgumentNullException.ThrowIfNull(frame);
+        frame.Validate();
+
+        var source = string.IsNullOrWhiteSpace(inputSource)
+            ? AvatarRuntimeDefaults.UnifiedVisualInputSource
+            : inputSource.Trim();
+        var path = $"{RetinalFrameInputPath}?width={frame.Width}&height={frame.Height}&stride={frame.Stride}" +
+                   $"&pixelFormat={Uri.EscapeDataString(frame.PixelFormat)}&inputSource={Uri.EscapeDataString(source)}";
+        using var content = new ByteArrayContent(frame.Pixels, 0, checked(frame.Stride * frame.Height));
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using var response = await client.PostAsync(BuildUri(endpoint, path), content, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Retinal frame input failed: HTTP {(int)response.StatusCode} {payload}");
+        }
+
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        return new AvatarRetinalFrameDispatchResult(
+            Accepted: AvatarJson.GetBool(root, "accepted"),
+            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"),
+            BlockedByInputGate: AvatarJson.GetBool(root, "blockedByInputGate"),
+            GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
+            DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
+            TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
+            SampleColumns: AvatarJson.GetInt(root, "sampleColumns"),
+            SampleRows: AvatarJson.GetInt(root, "sampleRows"),
+            OnChannelSpikes: AvatarJson.GetInt(root, "onChannelSpikes"),
+            OffChannelSpikes: AvatarJson.GetInt(root, "offChannelSpikes"),
+            MeanLuminance: (float)AvatarJson.GetDouble(root, "meanLuminance"),
+            MeanTemporalChange: (float)AvatarJson.GetDouble(root, "meanTemporalChange"));
     }
 
     public static AvatarLanguageCommandResult ParseLanguageCommandResult(JsonElement root)

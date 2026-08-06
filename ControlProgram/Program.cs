@@ -71,6 +71,7 @@ builder.Services.AddSingleton<AdminInputRestartGate>();
 builder.Services.AddSingleton<FramePayloadFactory>();
 builder.Services.AddSingleton<HippocampalNavigationSessionManager>();
 builder.Services.AddSingleton<InputIngressRuntime>();
+builder.Services.AddSingleton<RetinalFrameTransducerRuntime>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
 builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
@@ -369,6 +370,148 @@ app.MapGet("/api/v1/admin/metabolic-physiology", (SimulationState state) =>
 });
 app.MapAdminInputControlRoutes();
 app.MapGet("/api/v1/admin/input/ingress", (InputIngressRuntime ingress) => Results.Ok(ingress.GetSnapshot()));
+app.MapPost("/api/v1/admin/input/visual-frame", async (
+    HttpRequest request,
+    RuntimeInstanceCatalog catalog,
+    IHttpClientFactory clientFactory,
+    SimulationState state,
+    RetinalFrameTransducerRuntime transducer,
+    InputIngressRuntime ingress,
+    CancellationToken ct) =>
+{
+    if (!int.TryParse(request.Query["width"], out var width) ||
+        !int.TryParse(request.Query["height"], out var height) ||
+        !int.TryParse(request.Query["stride"], out var stride))
+    {
+        return Results.BadRequest(new { Error = "Width, height, and stride query parameters are required integers." });
+    }
+
+    if (!RetinalFrameDescriptor.TryCreate(
+            width,
+            height,
+            stride,
+            request.Query["pixelFormat"],
+            request.Query["inputSource"],
+            out var descriptor,
+            out var descriptorError) ||
+        descriptor is null)
+    {
+        return Results.BadRequest(new { Error = descriptorError ?? "Invalid retinal frame descriptor." });
+    }
+
+    if (request.ContentLength is not null && request.ContentLength.Value != descriptor.RequiredBytes)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Frame payload length must be exactly {descriptor.RequiredBytes} bytes."
+        });
+    }
+
+    if (!ingress.TryEnter(AdminInputIngressKind.Video, out var ingressLease, out var ingressSnapshot))
+    {
+        return Results.Json(new
+        {
+            Error = "Retinal frame input is temporarily throttled due to ingress backpressure.",
+            InputSource = descriptor.InputSource,
+            Ingress = ingressSnapshot
+        }, statusCode: StatusCodes.Status429TooManyRequests);
+    }
+    using var _ = ingressLease;
+
+    if (AdminInputSource.IsAvatarSource(descriptor.InputSource) && !state.IsAvatarVisionEnabled())
+    {
+        return Results.Ok(new
+        {
+            Accepted = false,
+            DispatchDeferred = false,
+            BlockedByInputGate = true,
+            InputSource = descriptor.InputSource,
+            Target = StructureId.Retina.ToString(),
+            TargetInstances = 0,
+            GeneratedSpikes = 0,
+            DeliveredSpikes = 0,
+            Errors = Array.Empty<string>()
+        });
+    }
+
+    var payload = new byte[descriptor.RequiredBytes];
+    try
+    {
+        await request.Body.ReadExactlyAsync(payload, ct);
+    }
+    catch (EndOfStreamException)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Frame payload ended before {descriptor.RequiredBytes} bytes were read."
+        });
+    }
+
+    if (request.ContentLength is null)
+    {
+        var trailing = new byte[1];
+        if (await request.Body.ReadAsync(trailing, ct) > 0)
+        {
+            return Results.BadRequest(new
+            {
+                Error = $"Frame payload length must be exactly {descriptor.RequiredBytes} bytes."
+            });
+        }
+    }
+
+    var knownTargets = catalog.GetByStructureWithKnownFallback(StructureId.Retina, hemisphere: null);
+    if (knownTargets.Count == 0)
+    {
+        return Results.NotFound(new
+        {
+            Error = "No active service instances found for Retina (both)."
+        });
+    }
+
+    var liveTargets = catalog.GetByStructure(StructureId.Retina, hemisphere: null);
+    var transduction = transducer.Transduce(payload, descriptor, state.Tick, state.SimulationClockMs);
+    var generatedForTargets = 0;
+    for (var i = 0; i < liveTargets.Count; i++)
+    {
+        generatedForTargets += transduction.ForHemisphere(liveTargets[i].HemisphereNormalized).Count;
+    }
+
+    if (liveTargets.Count > 0 && generatedForTargets > 0)
+    {
+        DispatchStimulusToInstancesInBackground(
+            "Retinal frame input",
+            liveTargets,
+            instance => transduction.ForHemisphere(instance.HemisphereNormalized),
+            clientFactory,
+            state,
+            state.Tick,
+            state.SimulationClockMs,
+            logSuccess: false);
+    }
+
+    return Results.Ok(new
+    {
+        Accepted = true,
+        DispatchDeferred = liveTargets.Count > 0 && generatedForTargets > 0,
+        BlockedByInputGate = false,
+        InputSource = descriptor.InputSource,
+        Target = StructureId.Retina.ToString(),
+        TargetInstances = liveTargets.Count,
+        KnownTargetInstances = knownTargets.Count,
+        LiveTargetInstances = liveTargets.Count,
+        GeneratedSpikes = generatedForTargets,
+        DeliveredSpikes = 0,
+        SampleColumns = transduction.SampleColumns,
+        SampleRows = transduction.SampleRows,
+        OnChannelSpikes = transduction.OnChannelSpikes,
+        OffChannelSpikes = transduction.OffChannelSpikes,
+        MeanLuminance = transduction.MeanLuminance,
+        MeanTemporalChange = transduction.MeanTemporalChange,
+        Errors = liveTargets.Count == 0
+            ? new[] { "No live Retina service instances are currently available." }
+            : Array.Empty<string>()
+    });
+});
 app.MapPost("/api/v1/admin/input/visual", async (
     VisualInputRequest request,
     RuntimeInstanceCatalog catalog,
@@ -2231,7 +2374,8 @@ static void DispatchStimulusToInstancesInBackground(
     IHttpClientFactory clientFactory,
     SimulationState state,
     long tick,
-    double timestampMs)
+    double timestampMs,
+    bool logSuccess = true)
 {
     if (targetInstances.Count == 0)
     {
@@ -2251,12 +2395,20 @@ static void DispatchStimulusToInstancesInBackground(
                 timestampMs,
                 CancellationToken.None);
 
-            state.AppendOutputLog(
-                $"{label} deferred dispatch completed: generated={result.GeneratedSpikes}, delivered={result.DeliveredSpikes}, targets={targetInstances.Count}, errors={result.Errors.Count}.");
-            if (result.DeliveredSpikes > 0)
+            if (logSuccess)
             {
-                state.AppendSpikeLog(
-                    $"{label}: deferred delivered {result.DeliveredSpikes}/{result.GeneratedSpikes} spikes across {targetInstances.Count} targets.");
+                state.AppendOutputLog(
+                    $"{label} deferred dispatch completed: generated={result.GeneratedSpikes}, delivered={result.DeliveredSpikes}, targets={targetInstances.Count}, errors={result.Errors.Count}.");
+                if (result.DeliveredSpikes > 0)
+                {
+                    state.AppendSpikeLog(
+                        $"{label}: deferred delivered {result.DeliveredSpikes}/{result.GeneratedSpikes} spikes across {targetInstances.Count} targets.");
+                }
+            }
+            else if (result.Errors.Count > 0)
+            {
+                state.AppendOutputLog(
+                    $"{label} deferred dispatch completed with {result.Errors.Count} error(s) across {targetInstances.Count} targets.");
             }
         }
         catch (Exception ex)

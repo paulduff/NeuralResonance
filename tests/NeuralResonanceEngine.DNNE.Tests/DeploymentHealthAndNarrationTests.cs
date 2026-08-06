@@ -93,21 +93,15 @@ public sealed class DeploymentHealthAndNarrationTests
     }
 
     [Fact]
-    public void Narration_Labels_A_Stale_Action_As_A_Transition()
+    public void Legacy_Narrative_Composition_Helpers_Are_Absent()
     {
-        var actionNeed = global::SimulationState.ResolveNarrativeActionNeed("goal.FindFood", "FindShelter");
+        const System.Reflection.BindingFlags allMethods =
+            System.Reflection.BindingFlags.Static |
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic;
 
-        var narration = global::SimulationState.BuildNarrativeSelfStatement(
-            "comfortable",
-            "shelter",
-            "goal.FindFood",
-            actionNeed,
-            "I remember food at object.food_2");
-
-        Assert.Equal("food", actionNeed);
-        Assert.Contains("I need shelter", narration, StringComparison.Ordinal);
-        Assert.Contains("my current plan is still", narration, StringComparison.Ordinal);
-        Assert.Contains("because I remember food", narration, StringComparison.Ordinal);
+        Assert.Null(typeof(global::SimulationState).GetMethod("ResolveNarrativeActionNeed", allMethods));
+        Assert.Null(typeof(global::SimulationState).GetMethod("BuildNarrativeSelfStatement", allMethods));
     }
 
     private static ServiceRuntimeTelemetry Telemetry(

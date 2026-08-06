@@ -313,6 +313,65 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Null(typeof(SimulationState).GetMethod("GetLanguageIntentSnapshot", allMethods));
         Assert.Null(typeof(SimulationState).GetMethod("GetBiologicalTeachingLoopSnapshot", allMethods));
 
+        string[] removedStateProperties =
+        [
+            "BiologicalTeachingLoop",
+            "PlanningWorkspace",
+            "GoalIntent",
+            "MotivationArbitration",
+            "LanguageIntent",
+            "CognitiveLanguageWorkspace",
+            "InnerSpeechLoop",
+            "PrefrontalWorkingMemory",
+            "IntentionalActionLoop",
+            "SelfMonitoringLoop",
+            "ConsciousnessRhythm",
+            "GlobalWorkspace",
+            "AutobiographicalSelf",
+            "AutobiographicalContinuity",
+            "NarrativeSelfModel",
+            "IdentityBoundary",
+            "RoomState",
+            "PendingPromises",
+            "ContinuityJournal",
+            "HabitablePlaceModel",
+            "AttentionAffordance",
+            "PreferenceTemperament",
+            "SelfMaintenance",
+            "WorldAtmosphere",
+            "WorkingMemoryShelf",
+            "SleepDreamDigest",
+            "BrainNarration",
+            "SpeechIntention",
+            "EmbodiedAttentionSpotlight"
+        ];
+        Assert.All(
+            removedStateProperties,
+            property => Assert.Null(typeof(SimulationState).GetProperty(property, allMethods)));
+
+        string[] removedStateMethods =
+        [
+            "GetBrainNarrationSnapshot",
+            "GetSpeechIntentionSnapshot",
+            "GetCognitiveLanguageWorkspaceSnapshot",
+            "GetInnerSpeechLoopSnapshot",
+            "GetIntentionalActionLoopSnapshot",
+            "GetSelfMonitoringLoopSnapshot",
+            "GetAutobiographicalSelfSnapshot",
+            "GetAutobiographicalContinuitySnapshot",
+            "GetNarrativeSelfModelSnapshot",
+            "GetIdentityBoundarySnapshot",
+            "GetRoomStateSnapshot",
+            "GetInhabitanceSnapshot",
+            "GetGoalIntentRuntime",
+            "GetGoalIntentSnapshot",
+            "GetMotivationArbitrationSnapshot",
+            "GetEmbodiedAttentionSpotlightSnapshot"
+        ];
+        Assert.All(
+            removedStateMethods,
+            method => Assert.Null(typeof(SimulationState).GetMethod(method, allMethods)));
+
         var assembly = typeof(SimulationState).Assembly;
         Assert.Null(assembly.GetType("EnglishGrammarAnalysis"));
         Assert.Null(assembly.GetType("EnglishCommandIntent"));
@@ -350,6 +409,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             "SleepDreamDigest",
             "BrainNarration",
             "SpeechIntention",
+            "EmbodiedAttentionSpotlight",
             "PendingPromiseItems",
             "ContinuityJournalEntries"
         ];

@@ -140,7 +140,7 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public async Task DyadEntityGeneration_Handler_Uses_Dnne_Narration_When_Entity_Is_Unavailable()
+    public async Task DyadEntityGeneration_Handler_Defers_Without_Symbolic_Narration_When_Entity_Is_Unavailable()
     {
         var state = CreateState();
         var entityClient = new StubEntityLanguageClient(EntityLanguageCandidateResult.Unavailable("test outage"));
@@ -158,7 +158,7 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.False(response.Emitted);
         Assert.Equal("dnne-deferred", response.Origin);
         Assert.Empty(response.Text);
-        Assert.Equal("I am watching and waiting.", response.CandidateText);
+        Assert.Empty(response.CandidateText);
         Assert.Null(response.Review);
         Assert.Empty(state.GetDyadLanguageCandidateReviews(8));
     }

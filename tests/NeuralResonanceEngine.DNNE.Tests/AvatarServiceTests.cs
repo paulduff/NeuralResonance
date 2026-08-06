@@ -100,22 +100,6 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void ObjectTransportDoesNotChooseBySalience()
-    {
-        using var service = CreateService();
-        var observations = new[]
-        {
-            new AvatarObjectObservation("first", "neutral", 0.1, 0.2, 0.1, 2, 4.0, "L"),
-            new AvatarObjectObservation("second", "threat", 1.0, 1.0, 1.0, 32, 0.5, "R")
-        };
-
-        service.PostObjectCandidates(observations, maxObservations: 1);
-
-        var observation = WaitForObjectObservation(service);
-        Assert.Equal("first", observation.ObjectId);
-    }
-
-    [Fact]
     public void ServiceTransportsBodyPacketsUnchanged()
     {
         using var service = CreateService();
@@ -266,9 +250,6 @@ public sealed class AvatarServiceTests
 
     private static AvatarBodyStateInput WaitForBodyInput(AvatarService service)
         => WaitForQueue<AvatarBodyStateInput>(service.TryDequeueBodyInput, "body input");
-
-    private static AvatarObjectObservation WaitForObjectObservation(AvatarService service)
-        => WaitForQueue<AvatarObjectObservation>(service.TryDequeueObjectObservation, "object observation");
 
     private static AvatarSightFrame WaitForSightOutput(
         AvatarService service,

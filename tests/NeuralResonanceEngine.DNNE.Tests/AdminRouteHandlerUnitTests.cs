@@ -53,7 +53,9 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.Equal(StatusCodes.Status200OK, transport.StatusCode);
         Assert.NotNull(transport.Body);
         Assert.True(TryGetProperty(transport.Body.RootElement, "inputIngress", out var inputIngress));
-        Assert.True(TryGetProperty(inputIngress, "object", out _));
+        Assert.True(TryGetProperty(inputIngress, "sensory", out _));
+        Assert.True(TryGetProperty(inputIngress, "video", out _));
+        Assert.False(TryGetProperty(inputIngress, "object", out _));
     }
 
     [Fact]

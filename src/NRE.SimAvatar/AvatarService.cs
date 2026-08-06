@@ -14,7 +14,6 @@ public sealed class AvatarService : IDisposable
     private const int MaxPublishedSignals = 64;
     private const int MaxPublishedAuditoryInputs = 32;
     private const int MaxPublishedBodyInputs = 32;
-    private const int MaxPublishedObjectObservations = 64;
     private const int MaxPublishedSightOutputs = 3;
     private const int MaxPublishedActionOutputs = 16;
 
@@ -26,7 +25,6 @@ public sealed class AvatarService : IDisposable
     private readonly BoundedOutputQueue<AvatarNervousSystemSignal> _publishedSignals = new(MaxPublishedSignals);
     private readonly BoundedOutputQueue<AvatarAuditoryCue> _publishedAuditoryInputs = new(MaxPublishedAuditoryInputs);
     private readonly BoundedOutputQueue<AvatarBodyStateInput> _publishedBodyInputs = new(MaxPublishedBodyInputs);
-    private readonly BoundedOutputQueue<AvatarObjectObservation> _publishedObjectObservations = new(MaxPublishedObjectObservations);
     private readonly BoundedOutputQueue<AvatarSightFrame> _publishedSightOutputs = new(MaxPublishedSightOutputs);
     private readonly BoundedOutputQueue<AvatarActionOutput> _publishedActionOutputs = new(MaxPublishedActionOutputs);
     private readonly Thread _workerThread;
@@ -128,9 +126,6 @@ public sealed class AvatarService : IDisposable
     public bool TryDequeueBodyInput(out AvatarBodyStateInput input)
         => _publishedBodyInputs.TryDequeue(out input);
 
-    public bool TryDequeueObjectObservation(out AvatarObjectObservation observation)
-        => _publishedObjectObservations.TryDequeue(out observation);
-
     public bool TryDequeueSightOutput(out AvatarSightFrame frame)
         => _publishedSightOutputs.TryDequeue(out frame);
 
@@ -166,12 +161,6 @@ public sealed class AvatarService : IDisposable
 
     public void PostBodyInput(AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile)
         => Post(new BodyInputCommand(new AvatarBodyStateInput(telemetry, profile)));
-
-    public void PostObjectCandidates(IEnumerable<AvatarObjectObservation> observations, int maxObservations = 1)
-    {
-        ArgumentNullException.ThrowIfNull(observations);
-        Post(new ObjectInputCommand(observations.ToArray(), Math.Clamp(maxObservations, 1, 8)));
-    }
 
     public void PostSightInputFrame(AvatarSightFrame frame)
     {
@@ -481,24 +470,6 @@ public sealed class AvatarService : IDisposable
         public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
         {
             service._publishedBodyInputs.Enqueue(Input);
-            return service.CurrentSignal();
-        }
-    }
-
-    private sealed record ObjectInputCommand(
-        IReadOnlyList<AvatarObjectObservation> Observations,
-        int MaxObservations) : IAvatarServiceCommand
-    {
-        public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
-        {
-            foreach (var observation in Observations
-                         .Where(static item => !string.IsNullOrWhiteSpace(item.ObjectId) &&
-                                               !string.IsNullOrWhiteSpace(item.Label))
-                         .Take(MaxObservations))
-            {
-                service._publishedObjectObservations.Enqueue(observation);
-            }
-
             return service.CurrentSignal();
         }
     }

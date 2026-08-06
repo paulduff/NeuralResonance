@@ -320,6 +320,15 @@ trains enter through medulla/NTS and reach hypothalamic and insular circuits;
 threat, safety, novelty, progress, reward, and social meaning must now be
 derived by neuronal circuits rather than supplied by a world label.
 
+Entry 092 deletes host-authored semantic exteroception. The object request,
+HTTP endpoint, avatar queue, simulator classifiers, survival-cue dispatcher,
+semantic salience calculation, and recognized-object controls are gone. The
+maze and world expose rendered sensory evidence but cannot identify food,
+danger, shelter, tools, goals, obstacles, water, hazards, or checkpoints for
+the brain. Identity, familiarity, context, value, and word binding must emerge
+through visual, temporal, hippocampal, limbic, prefrontal, and language
+circuits.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

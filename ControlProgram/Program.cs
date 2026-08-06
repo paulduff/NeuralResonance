@@ -682,102 +682,6 @@ app.MapPost("/api/v1/admin/input/visual", async (
         Errors = errors
     });
 });
-app.MapPost("/api/v1/admin/input/object", (
-    ObjectInputRequest request,
-    SimulationState state,
-    NeuronalPerceptionRuntime neuronalPerception,
-    InputIngressRuntime ingress) =>
-{
-    if (request is null)
-    {
-        return Results.BadRequest(new { Error = "Request payload missing." });
-    }
-
-    var label = string.IsNullOrWhiteSpace(request.Label) ? "unknown_object" : request.Label.Trim();
-    if (label.Length > 96)
-    {
-        label = label[..96];
-    }
-
-    var objectKey = NormalizeObjectKey(request.ObjectId, label);
-    var salience = Math.Clamp(request.Salience.GetValueOrDefault(0.72f), 0.05f, 1.0f);
-    var confidence = Math.Clamp(request.Confidence.GetValueOrDefault(0.64f), 0.05f, 1.0f);
-    var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(0.90f + (salience * 0.60f)), 0.2f, 3.5f);
-    var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(20), 4, 128);
-    var inputSource = AdminInputSource.Normalize(request.InputSource);
-    if (!ingress.TryEnter(AdminInputIngressKind.Object, out var ingressLease, out var ingressSnapshot))
-    {
-        state.AppendOutputLog(
-            $"Object input throttled by ingress gate: key={objectKey}, label={label}, inputSource={inputSource}.");
-        return Results.Json(new
-        {
-            Error = "Object input is temporarily throttled due to ingress backpressure.",
-            InputSource = inputSource,
-            Ingress = ingressSnapshot
-        }, statusCode: StatusCodes.Status429TooManyRequests);
-    }
-    using var _ = ingressLease;
-
-    if (AdminInputSource.IsAvatarSource(inputSource) && !state.IsAvatarVisionEnabled())
-    {
-        state.AppendOutputLog(
-            $"Object input blocked by avatar vision gate: key={objectKey}, label={label}, inputSource={inputSource}.");
-        return Results.Ok(new
-        {
-            ObjectId = objectKey,
-            Label = label,
-            Salience = salience,
-            Confidence = confidence,
-            Intensity = intensity,
-            BurstCount = burstCount,
-            Hemisphere = "both",
-            RouteStages = 0,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Targets = Array.Empty<object>(),
-            Memory = (object?)null,
-            BlockedByInputGate = true,
-            InputSource = inputSource,
-            Errors = Array.Empty<string>()
-        });
-    }
-
-    var perceptSnapshot = neuronalPerception.GetSnapshot();
-    var annotationAccepted = neuronalPerception.TryAttachLanguageAnnotation(
-        objectKey,
-        label,
-        confidence,
-        out var languageAnnotation,
-        out var annotationError);
-    state.AppendOutputLog(annotationAccepted
-        ? $"Object label attached after neuronal perception: ensemble={languageAnnotation!.EnsembleIndex}, label={label}, key={objectKey}."
-        : $"Object label withheld because no neuronal percept exists: label={label}, key={objectKey}, reason={annotationError}");
-    return Results.Ok(new
-    {
-        ObjectId = objectKey,
-        Label = label,
-        Salience = salience,
-        Confidence = confidence,
-        Intensity = intensity,
-        BurstCount = burstCount,
-        Hemisphere = request.Hemisphere ?? "both",
-        RouteStages = 0,
-        GeneratedSpikes = 0,
-        DeliveredSpikes = 0,
-        Targets = Array.Empty<object>(),
-        Memory = (object?)null,
-        Accepted = true,
-        DispatchDeferred = false,
-        BlockedByInputGate = false,
-        AnnotationAccepted = annotationAccepted,
-        Annotation = languageAnnotation,
-        AnnotationError = annotationError,
-        Percept = perceptSnapshot.Percept,
-        InputSource = inputSource,
-        Errors = Array.Empty<string>()
-    });
-
-});
 app.MapPost("/api/v1/admin/input/auditory", async (
     AuditoryInputRequest request,
     RuntimeInstanceCatalog catalog,
@@ -1953,14 +1857,6 @@ static List<SpikeMessage> BuildVisualStimulusSpikes(
     }
 
     return spikes;
-}
-
-static string NormalizeObjectKey(string? objectId, string label)
-{
-    var candidate = string.IsNullOrWhiteSpace(objectId) ? label : objectId;
-    var normalized = Regex.Replace(candidate.Trim().ToLowerInvariant(), @"[^a-z0-9_]+", "_");
-    normalized = normalized.Trim('_');
-    return string.IsNullOrWhiteSpace(normalized) ? "object_unknown" : normalized;
 }
 
 static List<SpikeMessage> BuildAuditoryStimulusSpikes(

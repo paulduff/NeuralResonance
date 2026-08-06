@@ -48,7 +48,6 @@ public partial class MainWindow : Window
     private const double WallProbeSideAngleDeg = 34.0;
     private static readonly TimeSpan HazardDamageCooldown = TimeSpan.FromMilliseconds(820);
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
-    private static readonly TimeSpan ObjectStimulusCooldown = TimeSpan.FromMilliseconds(450);
     private const int BodyStateDispatchIntervalMs = 350;
     private const int EnvironmentAudioDispatchIntervalMs = 1800;
     private const double MazeWalkMaxForwardSpeed = 3.2;
@@ -121,8 +120,6 @@ public partial class MainWindow : Window
     private readonly TranslateTransform3D _avatarTranslate = new();
     private readonly List<string> _logLines = [];
     private readonly List<VisionSprite> _visionSprites = new(24);
-    private readonly Dictionary<string, DateTime> _lastObjectStimulusUtc = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, double> _lastObjectStimulusSalience = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _mazeSeed;
     private readonly Random _mazeRandom;
     private readonly WriteableBitmap _visionBitmap;
@@ -521,10 +518,8 @@ public partial class MainWindow : Window
         var analysis = RenderAvatarVisionFrame();
         VisionSignalText.Text = $"Vision signal: i={analysis.Intensity:0.00} b={analysis.BurstCount} L={analysis.LeftSaliency:0.00} R={analysis.RightSaliency:0.00} m={analysis.MotionSignal:0.00} p={analysis.Pattern}";
 
-        // Pixel-vision dispatch (in addition to the symbolic path below). Fires
-        // off the same rendered frame but uses a separate in-flight flag + HTTP
-        // client so a slow/down NRE.Api can't block the symbolic ControlProgram
-        // dispatch. The two channels are independent.
+        // Pixel-vision dispatch fires from the same rendered frame using a
+        // separate in-flight flag and HTTP client.
         if (PixelVisionCheckBox?.IsChecked == true
             && !_pixelVisionDispatchInFlight
             && !string.IsNullOrWhiteSpace(_pixelVisionEndpoint))
@@ -549,10 +544,8 @@ public partial class MainWindow : Window
         try
         {
             var visualDispatch = await SendAvatarVisualStimulusAsync(endpoint, analysis, token);
-            var objectDispatch = await SendAvatarObjectStimuliAsync(endpoint, token);
             SetVisionInputStatus(
-                $"Visual input: gen={visualDispatch.Generated} del={visualDispatch.Delivered} tgt={visualDispatch.TargetCount} | " +
-                $"obj={objectDispatch.Delivered}/{objectDispatch.Generated} vis={objectDispatch.VisibleObjects} err={objectDispatch.Errors}");
+                $"Visual input: gen={visualDispatch.Generated} del={visualDispatch.Delivered} tgt={visualDispatch.TargetCount}");
         }
         catch (OperationCanceledException)
         {
@@ -722,34 +715,10 @@ public partial class MainWindow : Window
             }
         }
 
-        var visibleObjects = BuildVisibleObjectObservations();
-        foreach (var observation in visibleObjects)
-        {
-            var objectBoost = Math.Clamp(observation.Salience * 0.72, 0.0, 1.0);
-            allSum += objectBoost;
-            if (string.Equals(observation.Hemisphere, "M", StringComparison.OrdinalIgnoreCase))
-            {
-                leftSum += objectBoost * 0.5;
-                rightSum += objectBoost * 0.5;
-                leftCount++;
-                rightCount++;
-            }
-            else if (string.Equals(observation.Hemisphere, "L", StringComparison.OrdinalIgnoreCase))
-            {
-                rightSum += objectBoost;
-                rightCount++;
-            }
-            else
-            {
-                leftSum += objectBoost;
-                leftCount++;
-            }
-        }
-
         var motionSignal = Math.Clamp((Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed) + (Math.Abs(_lastTurnRateDeg) / 280.0) + (Math.Abs(_avatarHeadYawDeg) / AvatarHeadMaxYawDeg * 0.22), 0.0, 1.0);
         var leftSaliency = Math.Clamp(leftSum / Math.Max(1, leftCount), 0.0, 1.0);
         var rightSaliency = Math.Clamp(rightSum / Math.Max(1, rightCount), 0.0, 1.0);
-        var luminanceSignal = Math.Clamp(allSum / Math.Max(1, rayCount + visibleObjects.Count), 0.0, 1.0);
+        var luminanceSignal = Math.Clamp(allSum / rayCount, 0.0, 1.0);
         var intensity = (float)Math.Clamp(0.15 + (0.55 * Math.Max(leftSaliency, rightSaliency)) + (0.30 * motionSignal), 0.05, 1.0);
         var burstCount = Math.Clamp((int)Math.Round(4 + (intensity * 20.0) + (motionSignal * 8.0)), 4, 40);
 
@@ -1058,323 +1027,6 @@ public partial class MainWindow : Window
             response.GeneratedSpikes,
             response.DeliveredSpikes,
             response.TargetInstances);
-    }
-
-    private async Task<ObjectStimulusDispatchResult> SendAvatarObjectStimuliAsync(Uri baseUri, CancellationToken token)
-    {
-        var visibleObjects = BuildVisibleObjectObservations();
-        if (visibleObjects.Count == 0)
-        {
-            return new ObjectStimulusDispatchResult(0, 0, 0, 0);
-        }
-
-        _avatarService.PostObjectCandidates(visibleObjects.Select(ToAvatarObjectObservation), maxObservations: visibleObjects.Count);
-        var avatarObservations = await DrainAvatarObjectObservationsAsync(visibleObjects.Count, token);
-        if (avatarObservations.Count == 0)
-        {
-            return new ObjectStimulusDispatchResult(0, 0, visibleObjects.Count, 0);
-        }
-
-        var generated = 0;
-        var delivered = 0;
-        var errors = 0;
-        var now = DateTime.UtcNow;
-
-        foreach (var observation in avatarObservations)
-        {
-            if (!ShouldDispatchObjectObservation(observation, now))
-            {
-                continue;
-            }
-
-            var request = new
-            {
-                ObjectId = observation.ObjectId,
-                Label = observation.Label,
-                Salience = (float)Math.Clamp(observation.Salience, 0.05, 1.0),
-                Confidence = (float)Math.Clamp(observation.Confidence, 0.05, 1.0),
-                Intensity = (float)Math.Clamp(observation.Intensity, 0.2, 3.5),
-                BurstCount = observation.BurstCount,
-                Hemisphere = observation.Hemisphere,
-                EncodeMemory = observation.EncodeMemory,
-                InputSource = observation.InputSource
-            };
-
-            try
-            {
-                using var response = await _httpClient.PostAsJsonAsync(
-                    new Uri(baseUri, "/api/v1/admin/input/object"),
-                    request,
-                    token);
-                var payload = await response.Content.ReadAsStringAsync(token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    errors++;
-                    continue;
-                }
-
-                var localGenerated = 0;
-                var localDelivered = 0;
-                try
-                {
-                    using var doc = JsonDocument.Parse(payload);
-                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                    {
-                        localGenerated = GetInt(doc.RootElement, "generatedSpikes");
-                        localDelivered = GetInt(doc.RootElement, "deliveredSpikes");
-                    }
-                }
-                catch
-                {
-                    // best effort parse only
-                }
-
-                generated += localGenerated;
-                delivered += localDelivered;
-                _lastObjectStimulusUtc[observation.ObjectId] = now;
-                _lastObjectStimulusSalience[observation.ObjectId] = observation.Salience;
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                errors++;
-            }
-        }
-
-        return new ObjectStimulusDispatchResult(generated, delivered, avatarObservations.Count, errors);
-    }
-
-    private async Task<List<AvatarObjectObservation>> DrainAvatarObjectObservationsAsync(int maxObservations, CancellationToken token)
-    {
-        var observations = new List<AvatarObjectObservation>(Math.Clamp(maxObservations, 1, 8));
-        while (observations.Count < maxObservations && _avatarService.TryDequeueObjectObservation(out var observation))
-        {
-            observations.Add(observation);
-        }
-
-        if (observations.Count > 0)
-        {
-            return observations;
-        }
-
-        await Task.Delay(1, token);
-        while (observations.Count < maxObservations && _avatarService.TryDequeueObjectObservation(out var observation))
-        {
-            observations.Add(observation);
-        }
-
-        return observations;
-    }
-
-    private static AvatarObjectObservation ToAvatarObjectObservation(ObjectObservation observation)
-        => new(
-            observation.ObjectId,
-            observation.Label,
-            observation.Salience,
-            observation.Confidence,
-            observation.Intensity,
-            observation.BurstCount,
-            observation.DistanceMeters,
-            observation.Hemisphere,
-            EncodeMemory: true);
-
-    private List<ObjectObservation> BuildVisibleObjectObservations()
-    {
-        var observations = new List<ObjectObservation>(4);
-
-        if (TryBuildObjectObservation("goal.main", "goal", _goalWorld, salienceBias: 0.26, out var goalObservation))
-        {
-            observations.Add(goalObservation);
-        }
-
-        if (TryBuildNearestFoodObservation(out var foodObservation))
-        {
-            observations.Add(foodObservation);
-        }
-
-        if (TryBuildNearestHazardObservation(out var hazardObservation))
-        {
-            observations.Add(hazardObservation);
-        }
-
-        if (TryBuildNearestCheckpointObservation(out var checkpointObservation))
-        {
-            observations.Add(checkpointObservation);
-        }
-
-        return observations;
-    }
-
-    private bool TryBuildNearestFoodObservation(out ObjectObservation observation)
-    {
-        observation = default;
-        var found = false;
-        var bestDistance = double.MaxValue;
-        for (var i = 0; i < _foodEntities.Count; i++)
-        {
-            var entity = _foodEntities[i];
-            if (entity.Collected)
-            {
-                continue;
-            }
-
-            if (!TryBuildObjectObservation($"food.{entity.Id}", "food", entity.World, salienceBias: 0.12, out var current))
-            {
-                continue;
-            }
-
-            if (current.DistanceMeters < bestDistance)
-            {
-                bestDistance = current.DistanceMeters;
-                observation = current;
-                found = true;
-            }
-        }
-
-        return found;
-    }
-
-    private bool TryBuildNearestHazardObservation(out ObjectObservation observation)
-    {
-        observation = default;
-        var found = false;
-        var bestDistance = double.MaxValue;
-        for (var i = 0; i < _hazardEntities.Count; i++)
-        {
-            var entity = _hazardEntities[i];
-            if (!TryBuildObjectObservation($"hazard.{entity.Id}", "hazard", entity.World, salienceBias: 0.20, out var current))
-            {
-                continue;
-            }
-
-            if (current.DistanceMeters < bestDistance)
-            {
-                bestDistance = current.DistanceMeters;
-                observation = current;
-                found = true;
-            }
-        }
-
-        return found;
-    }
-
-    private bool TryBuildNearestCheckpointObservation(out ObjectObservation observation)
-    {
-        observation = default;
-        var found = false;
-        var bestDistance = double.MaxValue;
-        for (var i = 0; i < _checkpointEntities.Count; i++)
-        {
-            var entity = _checkpointEntities[i];
-            if (entity.Activated)
-            {
-                continue;
-            }
-
-            if (!TryBuildObjectObservation($"checkpoint.{entity.Id}", "checkpoint", entity.World, salienceBias: 0.08, out var current))
-            {
-                continue;
-            }
-
-            if (current.DistanceMeters < bestDistance)
-            {
-                bestDistance = current.DistanceMeters;
-                observation = current;
-                found = true;
-            }
-        }
-
-        return found;
-    }
-
-    private bool TryBuildObjectObservation(
-        string objectId,
-        string label,
-        Point world,
-        double salienceBias,
-        out ObjectObservation observation)
-    {
-        observation = default;
-        var headingRad = GetAvatarLookHeadingRad();
-        var fovRad = VisionFovDegrees * Math.PI / 180.0;
-
-        var dx = world.X - _avatarX;
-        var dz = world.Y - _avatarZ;
-        var distance = Math.Sqrt((dx * dx) + (dz * dz));
-        if (distance <= 0.08 || distance > VisionRange)
-        {
-            return false;
-        }
-
-        var objectAngle = Math.Atan2(dx, dz);
-        var delta = NormalizeRadians(objectAngle - headingRad);
-        var fovLimit = fovRad * 0.58;
-        if (Math.Abs(delta) > fovLimit)
-        {
-            return false;
-        }
-
-        var ray = TraceVisionRay(Math.Sin(objectAngle), Math.Cos(objectAngle), distance);
-        if (ray.HitWall && ray.Distance < Math.Max(0.08, distance - 0.10))
-        {
-            return false;
-        }
-
-        var distanceNorm = Math.Clamp(1.0 - (distance / VisionRange), 0.0, 1.0);
-        var centerBias = 1.0 - Math.Clamp(Math.Abs(delta) / Math.Max(0.001, fovLimit), 0.0, 1.0);
-        var salience = Math.Clamp(0.34 + (0.50 * distanceNorm) + (0.22 * centerBias) + salienceBias, 0.05, 1.0);
-        var confidence = Math.Clamp(0.48 + (0.44 * distanceNorm) + (0.14 * centerBias), 0.05, 1.0);
-        var intensity = Math.Clamp(0.42 + (salience * 1.15) + (confidence * 0.65), 0.2, 3.5);
-        var burstCount = Math.Clamp((int)Math.Round(7 + (salience * 18.0) + (confidence * 10.0)), 6, 48);
-
-        observation = new ObjectObservation(
-            ObjectId: objectId,
-            Label: label,
-            Hemisphere: ResolveObjectStimulusHemisphere(delta, fovLimit),
-            Salience: salience,
-            Confidence: confidence,
-            Intensity: intensity,
-            BurstCount: burstCount,
-            DistanceMeters: distance);
-        return true;
-    }
-
-    private bool ShouldDispatchObjectObservation(AvatarObjectObservation observation, DateTime now)
-    {
-        if (!_lastObjectStimulusUtc.TryGetValue(observation.ObjectId, out var lastUtc))
-        {
-            return true;
-        }
-
-        var elapsed = now - lastUtc;
-        if (elapsed >= ObjectStimulusCooldown)
-        {
-            return true;
-        }
-
-        var previousSalience = _lastObjectStimulusSalience.TryGetValue(observation.ObjectId, out var salience)
-            ? salience
-            : 0.0;
-        if (Math.Abs(previousSalience - observation.Salience) >= 0.15 && elapsed >= TimeSpan.FromMilliseconds(110))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private static string ResolveObjectStimulusHemisphere(double deltaRadians, double fovLimitRadians)
-    {
-        if (Math.Abs(deltaRadians) <= fovLimitRadians * 0.08)
-        {
-            return "M";
-        }
-
-        // Contralateral cortical mapping for visual field input.
-        return deltaRadians >= 0.0 ? "L" : "R";
     }
 
     private void SetVisionInputStatus(string status)
@@ -2992,9 +2644,6 @@ public partial class MainWindow : Window
         _bestDistanceToGoal = Math.Sqrt(DistanceSquared(_startWorld.X, _startWorld.Y, _goalWorld.X, _goalWorld.Y));
         _learningSamples.Clear();
         _lastLearningSampleTick = -1;
-        _lastObjectStimulusUtc.Clear();
-        _lastObjectStimulusSalience.Clear();
-
         BuildScene();
         ResetAvatarPose(logMessage: false);
         UpdateHud();
@@ -3420,16 +3069,6 @@ public partial class MainWindow : Window
     private readonly record struct WallBounds(double XMin, double XMax, double ZMin, double ZMax);
     private readonly record struct LearningSample(long Tick, int Score);
     private readonly record struct VisualStimulusDispatchResult(int Generated, int Delivered, int TargetCount);
-    private readonly record struct ObjectStimulusDispatchResult(int Generated, int Delivered, int VisibleObjects, int Errors);
-    private readonly record struct ObjectObservation(
-        string ObjectId,
-        string Label,
-        string Hemisphere,
-        double Salience,
-        double Confidence,
-        double Intensity,
-        int BurstCount,
-        double DistanceMeters);
 }
 
 

@@ -29,17 +29,6 @@ public static class AdminInputSource
 
 public sealed record InputGateControlRequest(bool? AvatarVisionEnabled, bool? SpontaneousSpikingEnabled);
 
-public sealed record ObjectInputRequest(
-    string? ObjectId,
-    string? Label,
-    float? Salience,
-    float? Confidence,
-    float? Intensity,
-    int? BurstCount,
-    string? Hemisphere,
-    bool? EncodeMemory,
-    string? InputSource);
-
 public sealed record VisualInputRequest(
     string? Pattern,
     float? Intensity,

@@ -196,93 +196,15 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task ObjectInput_AvatarSource_Is_Blocked_When_AvatarVision_Gate_Is_Disabled()
+    public async Task Legacy_Object_Input_Endpoint_Is_Removed()
     {
         var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: false);
 
         var response = await client.PostAsJsonAsync(
             "/api/v1/admin/input/object",
-            new ObjectInputRequest(
-                ObjectId: "obj-1",
-                Label: "rock",
-                Salience: 0.8f,
-                Confidence: 0.7f,
-                Intensity: 1.0f,
-                BurstCount: 12,
-                Hemisphere: null,
-                EncodeMemory: true,
-                InputSource: "avatar_object"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            new { objectId = "food-1", label = "food", salience = 1.0f });
 
-        using var doc = await ReadJsonAsync(response);
-        Assert.True(GetBool(doc.RootElement, "blockedByInputGate"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-
-        var ingressResponse = await client.GetAsync("/api/v1/admin/input/ingress");
-        Assert.Equal(HttpStatusCode.OK, ingressResponse.StatusCode);
-        using var ingressDoc = await ReadJsonAsync(ingressResponse);
-        Assert.True(TryGetProperty(ingressDoc.RootElement, "object", out var objectIngress));
-        Assert.True(GetInt(objectIngress, "accepted") >= 1);
-    }
-
-    [Fact]
-    public async Task ObjectInput_AvatarSource_Cannot_Create_Percept_Or_Memory_When_Gate_Enabled()
-    {
-        var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: true);
-
-        var response = await client.PostAsJsonAsync(
-            "/api/v1/admin/input/object",
-            new ObjectInputRequest(
-                ObjectId: "food-1",
-                Label: "food",
-                Salience: 0.82f,
-                Confidence: 0.74f,
-                Intensity: 1.0f,
-                BurstCount: 12,
-                Hemisphere: null,
-                EncodeMemory: true,
-                InputSource: "avatar_object"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var doc = await ReadJsonAsync(response);
-        Assert.True(GetBool(doc.RootElement, "accepted"));
-        Assert.False(GetBool(doc.RootElement, "dispatchDeferred"));
-        Assert.False(GetBool(doc.RootElement, "annotationAccepted"));
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-        Assert.True(TryGetProperty(doc.RootElement, "memory", out var memory));
-        Assert.Equal(JsonValueKind.Null, memory.ValueKind);
-    }
-
-    [Fact]
-    public async Task ObjectInput_NonAvatarSource_Is_Also_Annotation_Only()
-    {
-        var client = _fixture.Client;
-        await SetAvatarVisionGateAsync(client, enabled: false);
-
-        var response = await client.PostAsJsonAsync(
-            "/api/v1/admin/input/object",
-            new ObjectInputRequest(
-                ObjectId: "obj-2",
-                Label: "tree",
-                Salience: 0.75f,
-                Confidence: 0.68f,
-                Intensity: 1.0f,
-                BurstCount: 10,
-                Hemisphere: "L",
-                EncodeMemory: true,
-                InputSource: "world_map_editor"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var doc = await ReadJsonAsync(response);
-        Assert.False(GetBool(doc.RootElement, "blockedByInputGate"));
-        Assert.False(GetBool(doc.RootElement, "annotationAccepted"));
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
-        Assert.Equal(0, GetArrayLength(doc.RootElement, "errors"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -341,7 +263,9 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(HttpStatusCode.OK, transport.StatusCode);
         using var transportDoc = await ReadJsonAsync(transport);
         Assert.True(TryGetProperty(transportDoc.RootElement, "inputIngress", out var inputIngress));
-        Assert.True(TryGetProperty(inputIngress, "object", out _));
+        Assert.True(TryGetProperty(inputIngress, "sensory", out _));
+        Assert.True(TryGetProperty(inputIngress, "video", out _));
+        Assert.False(TryGetProperty(inputIngress, "object", out _));
     }
 
     [Fact]
@@ -479,7 +403,7 @@ public sealed class ControlProgramProcessFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         var repoRoot = ResolveRepoRoot();
-        var dllPath = Path.Combine(repoRoot, "ControlProgram", "bin", "Release", "net8.0", "NeuralResonanceEngine.ControlProgram.dll");
+        var dllPath = typeof(AdminInputControlRoutes).Assembly.Location;
         if (!File.Exists(dllPath))
         {
             throw new FileNotFoundException($"ControlProgram assembly not found: {dllPath}");

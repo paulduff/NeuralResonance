@@ -43,8 +43,6 @@ public partial class MainWindow : Window
     private const double FlightEpisodeCooldownSec = 1.35;
     private const double DefaultPredatorSenseRadius = 10.0;
     private const double DefaultShelterRadius = 4.8;
-    private const double SurvivalCueCooldownSeconds = 0.85;
-    private const double ObjectRecognitionCooldownSeconds = 1.75;
     private const int TrailPointCapacity = 80;
     private const double TrailSampleSeconds = 0.18;
     private const int AvatarPreviewWidth = 96;
@@ -59,7 +57,6 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorHeight = 1.10;
     private const double AvatarVisionPredatorLength = 1.85;
     private const int AvatarVisionDispatchTimeoutMs = 3000;
-    private const int ObjectCueDispatchTimeoutMs = 9000;
     private const int MaxLogLines = 220;
     private const int MapStimulusDebounceMs = 110;
     private const double SpawnSearchRadiusMin = 1.2;
@@ -92,10 +89,8 @@ public partial class MainWindow : Window
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyStateDispatchIntervalMs = 350;
     private const int BodyStateDispatchTimeoutMs = 1800;
-    private const int DefaultObjectDispatchMaxCuesPerCycle = 1;
     private const double HungerStressEnter = 0.62;
     private const double HungerStressFull = 0.92;
-    private const double HungerForagePriority = 0.58;
     private const double DayNightCycleSeconds = 240.0;
     private const double NightSleepPressureBonus = 0.42;
     private const double NightShelterNeedBonus = 0.72;
@@ -161,7 +156,7 @@ public partial class MainWindow : Window
         Interval = TimeSpan.FromMilliseconds(MapStimulusDebounceMs)
     };
 
-    // Independent clients keep slow telemetry/object/sensory calls from blocking each other.
+    // Independent clients keep slow telemetry and sensory calls from blocking each other.
     private readonly HttpClient _httpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
     private readonly VisualInputDispatchClient _visualInputClient;
@@ -169,8 +164,6 @@ public partial class MainWindow : Window
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4000) });
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(9000) });
-    private readonly HttpClient _objectDispatchHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(12000) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
     private readonly HttpClient _objectMemoryHttpClient = NreHttpClientFactory.Create(
@@ -324,8 +317,6 @@ public partial class MainWindow : Window
     private double _weaponAttackCooldownRemaining;
     private int _homesBuilt;
     private int _explorableTerrainCells;
-    private double _survivalCueCooldown;
-    private double _objectRecognitionCooldown;
     private double _hungerRate = 1.0;
     private double _threatDecayRate = 1.0;
     private double _predatorSpeedScale = 1.0;
@@ -334,7 +325,6 @@ public partial class MainWindow : Window
     private double _shelterRadius = DefaultShelterRadius;
     private int _foodSpawnTarget = 12;
     private int _predatorSpawnTarget = 3;
-    private int _objectDispatchMaxCuesPerCycle = DefaultObjectDispatchMaxCuesPerCycle;
     private bool _showThreatField = true;
     private bool _showPatrolPaths;
     private double _lastFrameSeconds;
@@ -378,12 +368,9 @@ public partial class MainWindow : Window
     private byte[]? _avatarPreviewPixels;
     private bool _logTextInitialized;
     private readonly AvatarWarningGate _visionDispatchWarningGate = new();
-    private bool _objectDispatchInFlight;
     private bool _environmentAudioInFlight;
-    private readonly AvatarRetryBackoff _objectDispatchBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 2000);
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
     private readonly Dictionary<string, AvatarInputPressureGate> _brainInputPressureGates = new(StringComparer.OrdinalIgnoreCase);
-    private readonly AvatarWarningGate _objectDispatchWarningGate = new(minimumIntervalMs: 15000);
     private readonly AvatarWarningGate _environmentAudioWarningGate = new(minimumIntervalMs: 15000);
     private readonly AvatarWarningGate _optionalBrainInputPressureWarningGate = new(minimumIntervalMs: 8000);
     private bool _objectMemoryInFlight;
@@ -527,7 +514,6 @@ public partial class MainWindow : Window
         _httpClient.Dispose();
         _sensoryInputHttpClient.Dispose();
         _auditoryInputHttpClient.Dispose();
-        _objectDispatchHttpClient.Dispose();
         _telemetryHttpClient.Dispose();
         _objectMemoryHttpClient.Dispose();
         _pixelVisionHttpClient.Dispose();
@@ -553,12 +539,8 @@ public partial class MainWindow : Window
         _collisionPulse = 0.0;
         _spawnValidationRetries = 0;
         _shelterDoorCorridorClears = 0;
-        _objectRecognitionCooldown = 0.0;
-        _objectDispatchInFlight = false;
         _environmentAudioInFlight = false;
         _lastEnvironmentAudioDispatchMs = 0;
-        _objectDispatchBackoff.Reset();
-        _objectDispatchWarningGate.Reset();
         _environmentAudioBackoff.Reset();
         _environmentAudioWarningGate.Reset();
         ResetBrainInputPressureGates();
@@ -572,7 +554,7 @@ public partial class MainWindow : Window
         _lastTelemetrySuccessUtc = DateTime.MinValue;
         _telemetryFailureStreak = 0;
         _endpointValidationWarningGate.Reset();
-        ResetObjectRecognitionUi("Object recognition: reconnecting...");
+        ResetObjectMemoryUi();
         ResetAvatarPose(logMessage: false);
         _ = PollFrameAsync(forceLogOnFailure: true);
         _ = PollTelemetryAsync(forceLogOnFailure: true);
@@ -700,12 +682,6 @@ public partial class MainWindow : Window
         RequestWorldRespawn();
     }
 
-    private void ObjectDispatchMaxCuesSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _objectDispatchMaxCuesPerCycle = Math.Max(1, (int)Math.Round(e.NewValue));
-        RefreshSurvivalTuningLabels();
-    }
-
     private void ShowThreatFieldCheckBox_OnChecked(object sender, RoutedEventArgs e)
     {
         _showThreatField = true;
@@ -765,9 +741,6 @@ public partial class MainWindow : Window
         _shelterRadius = ShelterRadiusSlider?.Value > 0 ? ShelterRadiusSlider.Value : _shelterRadius;
         _foodSpawnTarget = FoodSpawnSlider?.Value > 0 ? (int)Math.Round(FoodSpawnSlider.Value) : _foodSpawnTarget;
         _predatorSpawnTarget = PredatorSpawnSlider?.Value > 0 ? (int)Math.Round(PredatorSpawnSlider.Value) : _predatorSpawnTarget;
-        _objectDispatchMaxCuesPerCycle = ObjectDispatchMaxCuesSlider?.Value > 0
-            ? Math.Max(1, (int)Math.Round(ObjectDispatchMaxCuesSlider.Value))
-            : _objectDispatchMaxCuesPerCycle;
         _showThreatField = ShowThreatFieldCheckBox?.IsChecked ?? _showThreatField;
         _showPatrolPaths = ShowPatrolPathsCheckBox?.IsChecked ?? _showPatrolPaths;
     }
@@ -782,7 +755,6 @@ public partial class MainWindow : Window
         var shelterRadius = ShelterRadiusValueText;
         var foodSpawn = FoodSpawnValueText;
         var predatorSpawn = PredatorSpawnValueText;
-        var objectDispatchMaxCues = ObjectDispatchMaxCuesValueText;
         if (hunger is null ||
             threatDecay is null ||
             predatorSpeed is null ||
@@ -790,8 +762,7 @@ public partial class MainWindow : Window
             weaponEffect is null ||
             shelterRadius is null ||
             foodSpawn is null ||
-            predatorSpawn is null ||
-            objectDispatchMaxCues is null)
+            predatorSpawn is null)
         {
             return;
         }
@@ -804,42 +775,12 @@ public partial class MainWindow : Window
         shelterRadius.Text = $"{_shelterRadius:0.0} units";
         foodSpawn.Text = _foodSpawnTarget.ToString(CultureInfo.InvariantCulture);
         predatorSpawn.Text = _predatorSpawnTarget.ToString(CultureInfo.InvariantCulture);
-        objectDispatchMaxCues.Text = _objectDispatchMaxCuesPerCycle.ToString(CultureInfo.InvariantCulture);
     }
 
-    private void ResetObjectRecognitionUi(string status)
+    private void ResetObjectMemoryUi()
     {
-        ObjectRecognitionText.Text = status;
-        UpdateRecognizedCueLines(Array.Empty<RecognizedObjectCue>());
         ObjectMemoryStatusText.Text = "Object memory: awaiting telemetry";
         ObjectMemoryTextBox.Text = "No object memory samples yet.";
-    }
-
-    private void UpdateRecognizedCueLines(IReadOnlyList<RecognizedObjectCue> cues)
-    {
-        ObjectCueFoodText.Text = FormatCueLine("Food", cues, "food");
-        ObjectCueDangerText.Text = FormatCueLine("Danger", cues, "danger_predator", "danger_darkness");
-        ObjectCueShelterText.Text = FormatCueLine("Shelter", cues, "shelter");
-        ObjectCueToolText.Text = FormatCueLine("Tool", cues, "tool_weapon");
-        ObjectCueObstacleText.Text = FormatCueLine("Obstacle", cues, "obstacle");
-        ObjectCueWaterText.Text = FormatCueLine("Water", cues, "water");
-    }
-
-    private static string FormatCueLine(string title, IReadOnlyList<RecognizedObjectCue> cues, params string[] labels)
-    {
-        for (var i = 0; i < cues.Count; i++)
-        {
-            var cue = cues[i];
-            if (!labels.Any(label => cue.Label.Equals(label, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            var hemisphere = string.IsNullOrWhiteSpace(cue.Hemisphere) ? "M" : cue.Hemisphere!;
-            return $"{title}: s {cue.Salience:0.00}, c {cue.Confidence:0.00}, d {cue.Distance:0.0}, h {hemisphere}";
-        }
-
-        return $"{title}: -";
     }
 
     private void RequestWorldRespawn()
@@ -929,13 +870,8 @@ public partial class MainWindow : Window
         _flightPressure = 0.0;
         _lastFlightEpisodeUtc = DateTime.MinValue;
         _weaponAttackCooldownRemaining = 0.0;
-        _survivalCueCooldown = 0.0;
-        _objectRecognitionCooldown = 0.0;
-        _objectDispatchInFlight = false;
         _environmentAudioInFlight = false;
         _lastEnvironmentAudioDispatchMs = 0;
-        _objectDispatchBackoff.Reset();
-        _objectDispatchWarningGate.Reset();
         _environmentAudioBackoff.Reset();
         _environmentAudioWarningGate.Reset();
         ResetBrainInputPressureGates();
@@ -990,7 +926,7 @@ public partial class MainWindow : Window
         SurvivalShelterText.Text = "Shelter: not reached";
         SurvivalPredatorText.Text = "Predators: 0 active";
         DayNightText.Text = "Light cycle: day";
-        ResetObjectRecognitionUi("Object recognition: awaiting cues");
+        ResetObjectMemoryUi();
         AvatarPoseText.Text = "Avatar pose: x 0.00, y 0.00, z 0.00, body 0.0 deg, head 0.0 deg";
         MapEditorHintText.Text = _mapEditorEnabled
             ? "Editor on. Left-click terrain to paint using selected brush."
@@ -3030,20 +2966,6 @@ public partial class MainWindow : Window
 
         ConsumeNearbyPickups();
 
-        _survivalCueCooldown = Math.Max(0.0, _survivalCueCooldown - dt);
-        if (_survivalCueCooldown <= 0.001)
-        {
-            _survivalCueCooldown = SurvivalCueCooldownSeconds;
-            _ = DispatchSurvivalCueAsync(_shutdown.Token);
-        }
-
-        _objectRecognitionCooldown = Math.Max(0.0, _objectRecognitionCooldown - dt);
-        if (_objectRecognitionCooldown <= 0.001)
-        {
-            _objectRecognitionCooldown = ObjectRecognitionCooldownSeconds;
-            _ = DispatchRecognizedObjectsAsync(_shutdown.Token);
-        }
-
         if (nowSeconds < _nextSurvivalHudUpdateSeconds)
         {
             return;
@@ -3377,278 +3299,20 @@ public partial class MainWindow : Window
         return Math.Sqrt(bestSq);
     }
 
-    private async Task DispatchSurvivalCueAsync(CancellationToken token)
-    {
-        if (_heights is null)
-        {
-            return;
-        }
-
-        var nearestFood = FindNearest(_foodPickups);
-        var nearestPredator = FindNearest(_predators);
-        var nearestWeapon = FindNearest(_weaponPickups);
-        var shelterDistance = GetNearestShelterDistance();
-        var weaponProfile = GetActiveWeaponRangeProfile();
-        var fightBias = GetWeaponFightBias(weaponProfile);
-        var flightSuppression = GetWeaponFlightSuppression(weaponProfile);
-        var engageRange = GetWeaponEngageRange(weaponProfile);
-
-        var hungerSaliency = ComputeNeedDrive(_hunger, 0.34, 0.90);
-        var threatSaliency = Math.Clamp(Math.Max(_threat, _environmentAnxiety * 0.86), 0.0, 1.0);
-        var foodSaliency = nearestFood.Distance <= 0.01
-            ? 0.0
-            : Math.Clamp((1.0 - (nearestFood.Distance / 20.0)) * (0.62 + (0.60 * hungerSaliency)), 0.0, 1.0);
-        var weaponNeed = GetWeaponNeedPressure();
-        var weaponSaliency = nearestWeapon.Distance <= 0.01
-            ? 0.0
-            : Math.Clamp((1.0 - (nearestWeapon.Distance / 22.0)) * (0.45 + (0.85 * weaponNeed) + (0.35 * threatSaliency)), 0.0, 1.0);
-        var shelterMotivation = Math.Clamp(
-            (_limbicTiredDrive * 0.62) +
-            (_environmentSleepPressure * 0.52) +
-            (_environmentShelterNeed * 0.78),
-            0.0,
-            1.0);
-        var shelterSaliency = shelterMotivation > 0.02
-            ? Math.Clamp((0.18 * _environmentShelterNeed) + ((1.0 - (shelterDistance / 18.0)) * shelterMotivation), 0.0, 1.0)
-            : 0.0;
-        var predatorSaliency = nearestPredator.Distance <= 0.01
-            ? 0.0
-            : Math.Clamp(1.0 - (nearestPredator.Distance / (_predatorSenseRadius * 1.2)), 0.0, 1.0);
-        var effectiveThreat = Math.Clamp(Math.Max(threatSaliency, predatorSaliency) * (1.0 - flightSuppression), 0.0, 1.0);
-        var engageDrive = Math.Clamp(
-            fightBias *
-            (0.55 + (0.45 * _weaponEffectiveness)) *
-            (nearestPredator.Distance <= engageRange ? 1.0 : 0.45) *
-            Math.Max(predatorSaliency, threatSaliency * 0.8),
-            0.0,
-            1.0);
-
-        var pattern = "Forage";
-        var intensity = (float)Math.Clamp(0.6 + (hungerSaliency * 1.1) + (foodSaliency * 0.8), 0.2, 2.4);
-        var left = (float)Math.Clamp(foodSaliency + (hungerSaliency * 0.3), 0.0, 1.0);
-        var right = left;
-
-        if (nearestPredator.Distance < _predatorSenseRadius * 1.2)
-        {
-            if (engageDrive > (effectiveThreat + 0.10))
-            {
-                pattern = "ThreatEngage";
-                intensity = (float)Math.Clamp(0.85 + (engageDrive * 1.6) + (predatorSaliency * 0.5), 0.4, 3.0);
-                left = (float)Math.Clamp(engageDrive, 0.0, 1.0);
-                right = left;
-            }
-            else
-            {
-                pattern = "Threat";
-                intensity = (float)Math.Clamp(0.8 + (effectiveThreat * 1.35), 0.35, 2.8);
-                left = (float)Math.Clamp(effectiveThreat, 0.0, 1.0);
-                right = left;
-                if (_weaponCharges <= 0 && effectiveThreat >= 0.36)
-                {
-                    RegisterFlightEpisode(0.55, "threat visual route");
-                }
-            }
-        }
-        else if (_weaponCharges <= 0 &&
-                 weaponNeed > 0.22 &&
-                 weaponSaliency > 0.10 &&
-                 (hungerSaliency < 0.70 || weaponNeed > (hungerSaliency + 0.12)))
-        {
-            pattern = "ToolSeek";
-            intensity = (float)Math.Clamp(0.55 + (weaponNeed * 1.15) + (weaponSaliency * 1.05), 0.25, 2.8);
-            left = (float)Math.Clamp(weaponSaliency, 0.0, 1.0);
-            right = left;
-        }
-        else if (hungerSaliency >= HungerForagePriority && foodSaliency > 0.08)
-        {
-            pattern = "Forage";
-            intensity = (float)Math.Clamp(0.75 + (hungerSaliency * 1.30) + (foodSaliency * 0.95), 0.3, 2.8);
-            left = (float)Math.Clamp(foodSaliency + (hungerSaliency * 0.40), 0.0, 1.0);
-            right = left;
-        }
-        else if (shelterSaliency > 0.05)
-        {
-            pattern = "Shelter";
-            intensity = (float)Math.Clamp(0.6 + (shelterSaliency * 1.1), 0.2, 2.0);
-            left = (float)Math.Clamp(shelterSaliency, 0.0, 1.0);
-            right = left;
-        }
-
-        var visualSignal = AvatarVisualSignalFactory.FromRenderedFrame(
-            pattern,
-            intensity,
-            (int)Math.Clamp(16 + (int)(threatSaliency * 24) + (int)(hungerSaliency * 14), 8, 52),
-            left,
-            right,
-            motionSignal: 0.0,
-            luminanceSignal: Math.Max(left, right));
-        var request = visualSignal.ToVisualInputRequest(targetStructure: "V1", sourceStructure: "Thalamus");
-
-        try
-        {
-            var endpoint = GetSelectedEndpoint();
-            await _visualInputClient.DispatchWithHemisphereFallbackAsync(
-                new Uri(endpoint),
-                request,
-                ex => VisualInputDispatchClient.ShouldRetryHemisphereFallback(ex, "V1"),
-                token);
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // Shutdown path.
-        }
-        catch
-        {
-            // Survival cues are best-effort.
-        }
-    }
-
-    private async Task DispatchRecognizedObjectsAsync(CancellationToken token)
-    {
-        if (_heights is null)
-        {
-            return;
-        }
-
-        var cues = BuildRecognizedObjectCues();
-        ObjectRecognitionText.Text = cues.Count == 0
-            ? "Object recognition: none salient"
-            : $"Object recognition: {FormatRecognizedCueSummary(cues)}";
-        UpdateRecognizedCueLines(cues);
-
-        if (cues.Count == 0 || _objectDispatchInFlight)
-        {
-            return;
-        }
-
-        if (ShouldPauseOptionalBrainInput("object recognition", Environment.TickCount64, out _))
-        {
-            return;
-        }
-
-        var cueLimit = Math.Min(cues.Count, Math.Max(1, _objectDispatchMaxCuesPerCycle));
-        _avatarService.PostObjectCandidates(cues.Select(ToAvatarObjectObservation), cueLimit);
-        var cuesToDispatch = (await DrainAvatarObjectObservationsAsync(cueLimit, token))
-            .Select(ToRecognizedObjectCue)
-            .ToList();
-
-        if (cuesToDispatch.Count == 0)
-        {
-            return;
-        }
-
-        var nowMs = Environment.TickCount64;
-        if (_objectDispatchBackoff.IsBlocked(nowMs))
-        {
-            return;
-        }
-
-        _objectDispatchInFlight = true;
-        var successCount = 0;
-        var failureCount = 0;
-        var lastFailure = string.Empty;
-
-        try
-        {
-            var endpoint = GetSelectedEndpoint();
-            var uri = new Uri(new Uri(endpoint), "/api/v1/admin/input/object");
-            for (var i = 0; i < cuesToDispatch.Count; i++)
-            {
-                var cue = cuesToDispatch[i];
-                var request = new ObjectAdminInputRequest(
-                    cue.ObjectId,
-                    cue.Label,
-                    cue.Salience,
-                    cue.Confidence,
-                    cue.Intensity,
-                    cue.BurstCount,
-                    cue.Hemisphere,
-                    cue.EncodeMemory,
-                    "avatar_object");
-
-                var (success, error) = await TryPostObjectCueAsync(uri, request, token);
-                if (success)
-                {
-                    successCount++;
-                    continue;
-                }
-
-                failureCount++;
-                lastFailure = error ?? "unknown object dispatch failure";
-            }
-
-            if (successCount > 0)
-            {
-                _objectDispatchBackoff.Reset();
-                RegisterOptionalBrainInputSuccess("object recognition");
-                if (failureCount > 0)
-                {
-                    LogObjectDispatchWarning($"Partial object dispatch failure ({failureCount}/{cuesToDispatch.Count}): {lastFailure}");
-                }
-            }
-            else if (failureCount > 0)
-            {
-                RegisterObjectDispatchFailure(lastFailure);
-            }
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // Shutdown path.
-        }
-        catch (Exception ex)
-        {
-            RegisterObjectDispatchFailure($"{ex.GetType().Name}: {TrimForLog(ex.Message, 180)}");
-        }
-        finally
-        {
-            _objectDispatchInFlight = false;
-        }
-    }
-
-    private async Task<(bool Success, string? Error)> TryPostObjectCueAsync(Uri uri, ObjectAdminInputRequest request, CancellationToken token)
-    {
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-            timeout.CancelAfter(TimeSpan.FromMilliseconds(ObjectCueDispatchTimeoutMs));
-            using var response = await _objectDispatchHttpClient.PostAsJsonAsync(uri, request, timeout.Token);
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, null);
-            }
-
-            var body = await response.Content.ReadAsStringAsync(timeout.Token);
-            var retryableSuffix =
-                response.StatusCode == HttpStatusCode.RequestTimeout ||
-                response.StatusCode == HttpStatusCode.TooManyRequests ||
-                response.StatusCode == HttpStatusCode.BadGateway ||
-                response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                response.StatusCode == HttpStatusCode.GatewayTimeout
-                    ? " (engine busy; backing off)"
-                    : string.Empty;
-            return (false, $"HTTP {(int)response.StatusCode}: {TrimForLog(body, 180)}{retryableSuffix}");
-        }
-        catch (TaskCanceledException) when (token.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (TaskCanceledException)
-        {
-            return (false, "timeout posting recognized object cue");
-        }
-        catch (Exception ex)
-        {
-            return (false, $"{ex.GetType().Name}: {TrimForLog(ex.Message, 180)}");
-        }
-    }
-
-    private async Task<bool> TryPostEnvironmentAudioCueAsync(string endpoint, AvatarAuditoryCue cue, CancellationToken token)
+    private async Task<bool> TryPostEnvironmentAudioCueAsync(
+        string endpoint,
+        AvatarAuditoryCue cue,
+        CancellationToken token)
     {
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(EnvironmentAudioDispatchTimeoutMs));
-            var result = await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cue, timeout.Token);
+            var result = await AvatarControlApi.PostAuditoryCueAsync(
+                _auditoryInputHttpClient,
+                endpoint,
+                cue,
+                timeout.Token);
             if (result.Accepted && result.DispatchDeferred)
             {
                 RegisterOptionalBrainInputSuccess("environment audio");
@@ -3681,251 +3345,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<List<AvatarObjectObservation>> DrainAvatarObjectObservationsAsync(int maxObservations, CancellationToken token)
-    {
-        var observations = new List<AvatarObjectObservation>(Math.Clamp(maxObservations, 1, 8));
-        while (observations.Count < maxObservations && _avatarService.TryDequeueObjectObservation(out var observation))
-        {
-            observations.Add(observation);
-        }
-
-        if (observations.Count > 0)
-        {
-            return observations;
-        }
-
-        await Task.Delay(1, token);
-        while (observations.Count < maxObservations && _avatarService.TryDequeueObjectObservation(out var observation))
-        {
-            observations.Add(observation);
-        }
-
-        return observations;
-    }
-
-    private static AvatarObjectObservation ToAvatarObjectObservation(RecognizedObjectCue cue)
-        => new(
-            cue.ObjectId,
-            cue.Label,
-            cue.Salience,
-            cue.Confidence,
-            cue.Intensity,
-            cue.BurstCount,
-            cue.Distance,
-            cue.Hemisphere,
-            cue.EncodeMemory);
-
-    private static RecognizedObjectCue ToRecognizedObjectCue(AvatarObjectObservation observation)
-        => new(
-            observation.ObjectId,
-            observation.Label,
-            (float)Math.Clamp(observation.Salience, 0.05, 1.0),
-            (float)Math.Clamp(observation.Confidence, 0.05, 1.0),
-            (float)Math.Clamp(observation.Intensity, 0.2, 3.5),
-            Math.Clamp(observation.BurstCount, 4, 96),
-            (float)Math.Max(0.0, observation.DistanceMeters),
-            observation.Hemisphere,
-            observation.EncodeMemory);
-
-    private List<RecognizedObjectCue> BuildRecognizedObjectCues()
-    {
-        var cues = new List<RecognizedObjectCue>(6);
-        var nearestFood = FindNearest(_foodPickups);
-        var nearestPredator = FindNearest(_predators);
-        var nearestWeapon = FindNearest(_weaponPickups);
-        var nearestShelter = FindNearestShelter();
-        var weaponProfile = GetActiveWeaponRangeProfile();
-        var fightBias = GetWeaponFightBias(weaponProfile);
-        var flightSuppression = GetWeaponFlightSuppression(weaponProfile);
-        var engageRange = GetWeaponEngageRange(weaponProfile);
-
-        if (nearestFood.Distance < 24.0)
-        {
-            var proximity = Math.Clamp(1.0 - (nearestFood.Distance / 24.0), 0.0, 1.0);
-            var hungerDrive = ComputeNeedDrive(_hunger, 0.34, 0.90);
-            var salience = Math.Clamp((proximity * 0.62) + (hungerDrive * 0.82), 0.08, 1.0);
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("food", nearestFood.Position),
-                Label: "food",
-                Salience: (float)salience,
-                Confidence: (float)Math.Clamp(0.54 + (proximity * 0.34), 0.24, 0.98),
-                Intensity: (float)Math.Clamp(0.45 + (salience * 1.45), 0.2, 2.5),
-                BurstCount: (int)Math.Clamp(14 + (salience * 24), 8, 64),
-                Distance: (float)nearestFood.Distance,
-                Hemisphere: ResolveCueHemisphereHint(nearestFood.Position),
-                EncodeMemory: true));
-        }
-
-        if (nearestPredator.Distance < (_predatorSenseRadius * 1.45))
-        {
-            var proximity = Math.Clamp(1.0 - (nearestPredator.Distance / Math.Max(0.4, _predatorSenseRadius * 1.45)), 0.0, 1.0);
-            var threat = Math.Clamp(((_threat * 0.55) + (proximity * 0.85)) * (1.0 - flightSuppression), 0.06, 1.0);
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("danger_predator", nearestPredator.Position),
-                Label: "danger_predator",
-                Salience: (float)threat,
-                Confidence: (float)Math.Clamp(0.60 + (proximity * 0.32), 0.30, 0.99),
-                Intensity: (float)Math.Clamp(0.8 + (threat * 1.9), 0.4, 3.3),
-                BurstCount: (int)Math.Clamp(18 + (threat * 40), 10, 96),
-                Distance: (float)nearestPredator.Distance,
-                Hemisphere: ResolveCueHemisphereHint(nearestPredator.Position),
-                EncodeMemory: true));
-
-            if (weaponProfile != WeaponRangeProfile.None)
-            {
-                var engageGain = Math.Clamp(
-                    fightBias *
-                    (0.55 + (0.45 * _weaponEffectiveness)) *
-                    (nearestPredator.Distance <= (engageRange * 1.25) ? 1.0 : 0.45) *
-                    Math.Max(proximity, _threat * 0.7),
-                    0.0,
-                    1.0);
-                if (engageGain > 0.12)
-                {
-                    cues.Add(new RecognizedObjectCue(
-                        ObjectId: BuildObjectId("target_predator", nearestPredator.Position),
-                        Label: "target_predator",
-                        Salience: (float)Math.Clamp(engageGain, 0.08, 1.0),
-                        Confidence: (float)Math.Clamp(0.56 + (engageGain * 0.36), 0.25, 0.99),
-                        Intensity: (float)Math.Clamp(0.55 + (engageGain * 1.6), 0.25, 3.0),
-                        BurstCount: (int)Math.Clamp(12 + (engageGain * 34), 8, 88),
-                        Distance: (float)nearestPredator.Distance,
-                        Hemisphere: ResolveCueHemisphereHint(nearestPredator.Position),
-                        EncodeMemory: true));
-                }
-            }
-        }
-
-        if (_limbicTiredDrive >= 0.46 ||
-            _environmentShelterNeed >= 0.16 ||
-            nearestShelter.Distance < (_shelterRadius * 4.5))
-        {
-            var proximity = nearestShelter.Distance <= 0.01
-                ? 1.0
-                : Math.Clamp(1.0 - (nearestShelter.Distance / Math.Max(1.0, _shelterRadius * 4.5)), 0.0, 1.0);
-            var tiredBias = _limbicTiredDrive * 0.16;
-            var darknessBias = (_environmentShelterNeed * 0.30) + (_environmentSleepPressure * 0.18);
-            var salience = Math.Clamp((proximity * 0.70) + tiredBias + darknessBias, 0.05, 1.0);
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("shelter", nearestShelter.Position),
-                Label: "shelter",
-                Salience: (float)salience,
-                Confidence: (float)Math.Clamp(0.66 + (proximity * 0.26), 0.35, 0.98),
-                Intensity: (float)Math.Clamp(0.55 + (salience * 1.2), 0.2, 2.2),
-                BurstCount: (int)Math.Clamp(12 + (salience * 20), 8, 52),
-                Distance: (float)nearestShelter.Distance,
-                Hemisphere: ResolveCueHemisphereHint(nearestShelter.Position),
-                EncodeMemory: true));
-        }
-
-        if (_environmentAnxiety > 0.12)
-        {
-            var darknessPoint = new Point3D(_avatarX, _avatarY, _avatarZ);
-            var salience = Math.Clamp(_environmentAnxiety + (_darkness01 * 0.18), 0.06, 1.0);
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("danger_darkness", darknessPoint),
-                Label: "danger_darkness",
-                Salience: (float)salience,
-                Confidence: (float)Math.Clamp(0.48 + (_darkness01 * 0.36), 0.24, 0.92),
-                Intensity: (float)Math.Clamp(0.48 + (salience * 1.25), 0.20, 2.2),
-                BurstCount: (int)Math.Clamp(10 + (salience * 20), 8, 52),
-                Distance: 0.0f,
-                Hemisphere: null,
-                EncodeMemory: false));
-        }
-
-        if (_weaponCharges <= 0 && nearestWeapon.Distance < 18.0)
-        {
-            var proximity = Math.Clamp(1.0 - (nearestWeapon.Distance / 18.0), 0.0, 1.0);
-            var threatNeed = Math.Clamp(_threat + 0.12, 0.0, 1.0);
-            var weaponNeed = GetWeaponNeedPressure();
-            var salience = Math.Clamp((proximity * 0.52) + (threatNeed * 0.30) + (weaponNeed * 0.62), 0.06, 1.0);
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("tool_weapon", nearestWeapon.Position),
-                Label: "tool_weapon",
-                Salience: (float)salience,
-                Confidence: (float)Math.Clamp(0.58 + (proximity * 0.30), 0.28, 0.98),
-                Intensity: (float)Math.Clamp(0.45 + (salience * 1.3), 0.2, 2.4),
-                BurstCount: (int)Math.Clamp(10 + (salience * 18), 8, 48),
-                Distance: (float)nearestWeapon.Distance,
-                Hemisphere: ResolveCueHemisphereHint(nearestWeapon.Position),
-                EncodeMemory: true));
-        }
-
-        var avatarForward = GetAvatarVisualForward();
-        var frontDistance = TraceCollisionDistance(avatarForward.X, avatarForward.Z, 4.0);
-        if (frontDistance < 1.40)
-        {
-            var obstacleSalience = Math.Clamp(1.0 - (frontDistance / 1.40), 0.06, 1.0);
-            var obstaclePoint = new Point3D(
-                _avatarX + (avatarForward.X * frontDistance),
-                _avatarY,
-                _avatarZ + (avatarForward.Z * frontDistance));
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("obstacle", obstaclePoint),
-                Label: "obstacle",
-                Salience: (float)obstacleSalience,
-                Confidence: (float)Math.Clamp(0.52 + (obstacleSalience * 0.34), 0.22, 0.97),
-                Intensity: (float)Math.Clamp(0.40 + (obstacleSalience * 1.20), 0.2, 2.2),
-                BurstCount: (int)Math.Clamp(8 + (obstacleSalience * 16), 6, 40),
-                Distance: (float)frontDistance,
-                Hemisphere: null,
-                EncodeMemory: true));
-        }
-
-        if (TryClassifyAheadTerrain(2.0, out var aheadKind) && aheadKind == BlockKind.Water)
-        {
-            var waterPoint = new Point3D(
-                _avatarX + (avatarForward.X * 2.0),
-                _avatarY,
-                _avatarZ + (avatarForward.Z * 2.0));
-            cues.Add(new RecognizedObjectCue(
-                ObjectId: BuildObjectId("water", waterPoint),
-                Label: "water",
-                Salience: 0.46f,
-                Confidence: 0.68f,
-                Intensity: 0.92f,
-                BurstCount: 14,
-                Distance: 2.0f,
-                Hemisphere: null,
-                EncodeMemory: true));
-        }
-
-        cues.Sort((a, b) => b.Salience.CompareTo(a.Salience));
-        if (cues.Count > 3)
-        {
-            cues.RemoveRange(3, cues.Count - 3);
-        }
-
-        return cues;
-    }
-
-    private string FormatRecognizedCueSummary(IReadOnlyList<RecognizedObjectCue> cues)
-    {
-        var max = Math.Min(cues.Count, 3);
-        var builder = new StringBuilder();
-        for (var i = 0; i < max; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(", ");
-            }
-
-            var cue = cues[i];
-            var hemisphere = string.IsNullOrWhiteSpace(cue.Hemisphere) ? "both" : cue.Hemisphere!;
-            builder
-                .Append(cue.Label)
-                .Append('(')
-                .Append(hemisphere)
-                .Append(", s=")
-                .Append(cue.Salience.ToString("0.00", CultureInfo.InvariantCulture))
-                .Append(')');
-        }
-
-        return builder.ToString();
-    }
-
-    private string? ResolveCueHemisphereHint(Point3D position)
+    private string? ResolveSoundHemisphereHint(Point3D position)
     {
         var forward = GetAvatarVisualForward();
         var dx = position.X - _avatarX;
@@ -3943,13 +3363,6 @@ public partial class MainWindow : Window
         }
 
         return lateral > 0 ? "left" : "right";
-    }
-
-    private static string BuildObjectId(string label, Point3D position)
-    {
-        var x = (int)Math.Round(position.X * 2.0);
-        var z = (int)Math.Round(position.Z * 2.0);
-        return $"{label}_{x}_{z}";
     }
 
     private (Point3D Position, double Distance) FindNearest(IReadOnlyList<WeaponPickup> pickups)
@@ -5957,7 +5370,7 @@ public partial class MainWindow : Window
         if (nearestPredator.Distance < (_predatorSenseRadius * 1.55))
         {
             var proximity = Math.Clamp(1.0 - (nearestPredator.Distance / Math.Max(0.5, _predatorSenseRadius * 1.55)), 0.0, 1.0);
-            var hemisphere = ResolveCueHemisphereHint(nearestPredator.Position);
+            var hemisphere = ResolveSoundHemisphereHint(nearestPredator.Position);
             cues.Add(new AvatarAuditoryCue(
                 Pattern: "BearGrassRustle",
                 Intensity: (float)Math.Clamp(0.22 + (proximity * 1.35), 0.20, 2.15),
@@ -7329,25 +6742,6 @@ public partial class MainWindow : Window
         LogVisionDispatchWarning($"{message} (streak {_visionDispatchBackoff.FailureStreak}, backoff {backoffMs}ms)");
     }
 
-    private void LogObjectDispatchWarning(string message)
-    {
-        var now = Environment.TickCount64;
-        if (!_objectDispatchWarningGate.ShouldLog(message, CreateDispatchWarningKey("object-recognition", message), now))
-        {
-            return;
-        }
-
-        Log($"Object recognition dispatch warning: {message}");
-    }
-
-    private void RegisterObjectDispatchFailure(string message)
-    {
-        var now = Environment.TickCount64;
-        var backoffMs = _objectDispatchBackoff.RegisterFailure(now);
-        RegisterOptionalBrainInputFailure("object recognition", message, now);
-        LogObjectDispatchWarning($"{message} (streak {_objectDispatchBackoff.FailureStreak}, backoff {backoffMs}ms)");
-    }
-
     private void RegisterOptionalBrainInputFailure(string channel, string message, long nowMs)
     {
         var severe = IsControlEndpointPressureFailure(message);
@@ -8197,27 +7591,6 @@ public partial class MainWindow : Window
     private readonly record struct CaveAnchor(double X, double Y, double Z);
     private readonly record struct ShelterSite(double X, double BaseY, double Z, double Radius);
     private readonly record struct PendingMapStimulus(double WorldX, double WorldZ, string Brush, int Radius, int Strength);
-    private readonly record struct RecognizedObjectCue(
-        string ObjectId,
-        string Label,
-        float Salience,
-        float Confidence,
-        float Intensity,
-        int BurstCount,
-        float Distance,
-        string? Hemisphere,
-        bool EncodeMemory);
-    private sealed record ObjectAdminInputRequest(
-        string ObjectId,
-        string Label,
-        float Salience,
-        float Confidence,
-        float Intensity,
-        int BurstCount,
-        string? Hemisphere,
-        bool EncodeMemory,
-        string? InputSource);
-
     private readonly record struct CollisionBox(
         double MinX,
         double MaxX,

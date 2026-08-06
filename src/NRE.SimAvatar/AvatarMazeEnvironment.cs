@@ -217,27 +217,6 @@ public sealed class AvatarMazeEnvironment
             PainLevel: transition?.Collision == true ? 0.18 : 0.0);
     }
 
-    public AvatarObjectObservation CreateGoalObservation()
-    {
-        AvatarMazeObservation observation = Observe();
-        double salience = Math.Clamp(0.42 + (1.0 / Math.Max(1.0, observation.DistanceToGoal)), 0.0, 0.98);
-        string hemisphere = observation.GoalBearingDeg switch
-        {
-            < -6.0 => "R",
-            > 6.0 => "L",
-            _ => "M"
-        };
-        return new AvatarObjectObservation(
-            $"maze.{Seed}.goal",
-            "navigation goal",
-            salience,
-            0.96,
-            1.1,
-            24,
-            observation.DistanceToGoal,
-            hemisphere);
-    }
-
     public static double HeadingDegreesForQuarter(int headingQuarter)
         => NavigationCoordinateFrame.NormalizeQuarter(headingQuarter) * 90.0;
 

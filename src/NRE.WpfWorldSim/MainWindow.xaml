@@ -114,23 +114,6 @@
                                 Content="Send English Command"
                                 Click="SendEnglishCommandButton_OnClick" />
                         <TextBlock x:Name="EnglishCommandStatusText" Margin="0,3,0,0" Text="Command: idle" TextWrapping="Wrap" />
-                        <TextBlock x:Name="ObjectRecognitionText" Margin="0,4,0,0" Text="Object recognition: -" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,8,0,0" Text="Recognized Objects" FontWeight="SemiBold" />
-                        <TextBlock x:Name="ObjectCueFoodText" Margin="0,4,0,0" Text="Food: -" />
-                        <TextBlock x:Name="ObjectCueDangerText" Margin="0,2,0,0" Text="Danger: -" />
-                        <TextBlock x:Name="ObjectCueShelterText" Margin="0,2,0,0" Text="Shelter: -" />
-                        <TextBlock x:Name="ObjectCueToolText" Margin="0,2,0,0" Text="Tool: -" />
-                        <TextBlock x:Name="ObjectCueObstacleText" Margin="0,2,0,0" Text="Obstacle: -" />
-                        <TextBlock x:Name="ObjectCueWaterText" Margin="0,2,0,0" Text="Water: -" />
-                        <TextBlock Margin="0,8,0,0" Text="Max Object Cues / Cycle" />
-                        <Slider x:Name="ObjectDispatchMaxCuesSlider"
-                                Minimum="1"
-                                Maximum="6"
-                                Value="2"
-                                TickFrequency="1"
-                                IsSnapToTickEnabled="True"
-                                ValueChanged="ObjectDispatchMaxCuesSlider_OnValueChanged" />
-                        <TextBlock x:Name="ObjectDispatchMaxCuesValueText" Margin="0,2,0,0" Text="2" />
                         <TextBlock x:Name="ObjectMemoryStatusText" Margin="0,8,0,0" Text="Object memory: -" TextWrapping="Wrap" />
                         <Border Margin="0,4,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#030E24" CornerRadius="3">
                             <TextBox x:Name="ObjectMemoryTextBox"

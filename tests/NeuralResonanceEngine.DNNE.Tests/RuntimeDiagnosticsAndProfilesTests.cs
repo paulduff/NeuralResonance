@@ -8,6 +8,27 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class RuntimeDiagnosticsAndProfilesTests
 {
     [Theory]
+    [InlineData("working", 0.8f, 2, "motor_seek_shelter")]
+    [InlineData("stalled", 0.2f, 2, "motor_turn_left")]
+    [InlineData("stalled", 0.2f, 3, "motor_turn_right")]
+    [InlineData("stalled", 0.8f, 2, "motor_about_face_left")]
+    [InlineData("stalled", 0.8f, 3, "motor_about_face_right")]
+    public void MotorRecoveryTurnsAStalledLocomotionIntent(
+        string monitorState,
+        float blocked,
+        long sequence,
+        string expected)
+    {
+        var directive = SimulationState.ApplyMotorRecoveryDirective(
+            "motor_seek_shelter",
+            monitorState,
+            blocked,
+            sequence);
+
+        Assert.Equal(expected, directive);
+    }
+
+    [Theory]
     [InlineData("stable", 12, true)]
     [InlineData("diagnostic", 2, true)]
     [InlineData("normal", 6, true)]

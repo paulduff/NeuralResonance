@@ -354,6 +354,8 @@ public partial class MainWindow : Window
     private string _brainGoalKey = string.Empty;
     private string _brainActionTarget = string.Empty;
     private long _dispatchSinceMs;
+    private long _lastNeuronalMotorTick = -1;
+    private string _neuronalMotorMode = "Shadow";
     private long _engineServiceNonOkCount;
     private double _engineInputPressure;
     private bool _sleepState;
@@ -618,6 +620,7 @@ public partial class MainWindow : Window
     {
         SetConnectionStatus(AvatarControlStatusText.Reconnecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         _dispatchSinceMs = 0;
+        _lastNeuronalMotorTick = -1;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
         _orientingScanPhaseDeg = 0.0;
@@ -7878,9 +7881,11 @@ public partial class MainWindow : Window
                 return;
             }
             var root = doc.RootElement;
+            var brainState = default(JsonElement);
 
             if (TryGetProperty(root, "state", out var stateElement) && stateElement.ValueKind == JsonValueKind.Object)
             {
+                brainState = stateElement;
                 _sleepState = IsSleepingState(stateElement);
                 UpdateLimbicFromState(stateElement);
                 UpdateBrainNarrationFromState(stateElement);
@@ -7892,6 +7897,18 @@ public partial class MainWindow : Window
             if (maxWallClockMs > _dispatchSinceMs)
             {
                 _dispatchSinceMs = maxWallClockMs;
+            }
+
+            dispatches = AvatarNeuronalMotorBridge.Compose(
+                brainState,
+                dispatches,
+                _lastNeuronalMotorTick,
+                out _lastNeuronalMotorTick,
+                out var neuronalMotor);
+            if (!string.Equals(_neuronalMotorMode, neuronalMotor.Mode, StringComparison.OrdinalIgnoreCase))
+            {
+                _neuronalMotorMode = neuronalMotor.Mode;
+                Log($"Neuronal motor bridge: {_neuronalMotorMode} mode, confidence {neuronalMotor.Confidence:0.000}.");
             }
 
             UpdateMotorPathwayAuditFromFrame(root, dispatches);

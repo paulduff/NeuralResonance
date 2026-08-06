@@ -47,6 +47,8 @@ builder.Configuration
     .AddJsonFile(Path.Combine(AppContext.BaseDirectory, $"appsettings.{builder.Environment.EnvironmentName}.json"), optional: true, reloadOnChange: true)
     .AddCommandLine(args);
 builder.Services.AddSingleton<SimulationState>();
+builder.Services.AddSingleton(NeuronalMotorControlState.FromConfiguration(builder.Configuration));
+builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -212,6 +214,44 @@ app.MapGet("/api/v1/cognitive-language-workspace", (SimulationState state) => Re
 app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(state.GetInnerSpeechLoopSnapshot()));
 app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Results.Ok(state.GetPrefrontalWorkingMemorySnapshot()));
 app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(state.GetIntentionalActionLoopSnapshot()));
+app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
+{
+    Control = control.GetSnapshot(),
+    Runtime = state.GetNeuronalMotorSnapshot()
+}));
+app.MapPost("/api/v1/admin/neuronal-motor", (
+    NeuronalMotorModeRequest request,
+    SimulationState state,
+    NeuronalMotorControlState control) =>
+{
+    if (request is null)
+    {
+        return Results.BadRequest(new { Error = "Request payload is required." });
+    }
+
+    if (!control.TryApplyMode(
+            request.Mode,
+            state.GetNeuronalMotorSnapshot(),
+            out var snapshot,
+            out var error))
+    {
+        return Results.BadRequest(new
+        {
+            Error = error,
+            Control = snapshot,
+            Runtime = state.GetNeuronalMotorSnapshot()
+        });
+    }
+
+    state.AppendOutputLog(
+        $"Neuronal motor mode set to {snapshot.Settings.Mode} (generation {snapshot.Generation}).");
+    return Results.Ok(new
+    {
+        Applied = true,
+        Control = snapshot,
+        Runtime = state.GetNeuronalMotorSnapshot()
+    });
+});
 app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok(state.GetSelfMonitoringLoopSnapshot()));
 // /api/v1/active-inference: route was registered but GetActiveInferenceSnapshot()
 // is not implemented on SimulationState and no client references this URL. Removed
@@ -4107,6 +4147,8 @@ internal sealed class SimulationState
     private const float WakeDutyEmaAlpha = 0.010f;
     private const float WakeDurationEwmaAlpha = 0.20f;
     private const float SleepDurationEwmaAlpha = 0.20f;
+    private const float SleepHomeostasisReferenceIntervalMs = 20_000f;
+    private const float MinSleepHomeostasisRateScale = 0.000001f;
     private const float MinAdaptiveAwakeDrainScale = 0.30f;
     private const float MaxAdaptiveAwakeDrainScale = 1.25f;
     private const float MinAdaptiveSleepRecoveryScale = 0.70f;
@@ -4182,6 +4224,7 @@ internal sealed class SimulationState
     public InnerSpeechLoopRuntime InnerSpeechLoop { get; private set; } = InnerSpeechLoopRuntime.Default;
     public PrefrontalWorkingMemoryRuntime PrefrontalWorkingMemory { get; private set; } = PrefrontalWorkingMemoryRuntime.Default;
     public IntentionalActionLoopRuntime IntentionalActionLoop { get; private set; } = IntentionalActionLoopRuntime.Default;
+    public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
     public SelfMonitoringLoopRuntime SelfMonitoringLoop { get; private set; } = SelfMonitoringLoopRuntime.Default;
     public ConsciousnessRhythmRuntime ConsciousnessRhythm { get; private set; } = ConsciousnessRhythmRuntime.Default;
     public GlobalWorkspaceRuntime GlobalWorkspace { get; private set; } = GlobalWorkspaceRuntime.Default;
@@ -4792,6 +4835,23 @@ internal sealed class SimulationState
         {
             UpdateIntentionalActionLoopLocked(Tick);
             return IntentionalActionLoop;
+        }
+    }
+
+    public NeuronalMotorRuntime GetNeuronalMotorSnapshot()
+    {
+        lock (_gate)
+        {
+            return NeuronalMotor;
+        }
+    }
+
+    public void UpdateNeuronalMotor(NeuronalMotorRuntime runtime)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        lock (_gate)
+        {
+            NeuronalMotor = runtime;
         }
     }
 
@@ -13073,7 +13133,12 @@ internal sealed class SimulationState
             .FirstOrDefault(candidate => string.Equals(candidate.ActionKey, selectedAction, StringComparison.OrdinalIgnoreCase));
         var hasSelectedAction = !selectedAction.Equals("idle", StringComparison.OrdinalIgnoreCase);
         var goalKey = useHeldIntent ? prefrontal.HeldGoalKey : goal.Active ? goal.GoalKey : prefrontal.SelectedGoal;
-        var motorDirective = ResolveIntentionalMotorDirective(goal, LanguageIntent, selectedAction);
+        var motorDirective = ApplyMotorRecoveryDirective(
+            ResolveIntentionalMotorDirective(goal, LanguageIntent, selectedAction),
+            SelfMonitoringLoop.MonitorState,
+            ActionCompletionFeedback.Blocked,
+            ActionCompletionFeedback.Sequence,
+            BodyState.LastInputTick >= 0 && tick - BodyState.LastInputTick <= 1200);
         var expectedValue = Clamp01(
             (goal.Confidence * 0.24f) +
             (goal.Drive * 0.20f) +
@@ -13202,6 +13267,39 @@ internal sealed class SimulationState
             _ => "motor_idle"
         };
     }
+
+    internal static string ApplyMotorRecoveryDirective(
+        string currentDirective,
+        string monitorState,
+        float blocked,
+        long recoverySequence,
+        bool bodyFeedbackFresh = true)
+    {
+        var directive = string.IsNullOrWhiteSpace(currentDirective)
+            ? "motor_idle"
+            : currentDirective.Trim();
+        if (!bodyFeedbackFresh ||
+            !string.Equals(monitorState, "stalled", StringComparison.OrdinalIgnoreCase) ||
+            ContainsAny(directive, "rest", "stop", "guard", "immobilize", "idle") ||
+            ContainsAny(directive, "turn", "reorient", "about_face", "avoid", "escape"))
+        {
+            return directive;
+        }
+
+        var turnLeft = (recoverySequence & 1L) == 0;
+        if (blocked > 0.34f)
+        {
+            return turnLeft ? "motor_about_face_left" : "motor_about_face_right";
+        }
+
+        return turnLeft ? "motor_turn_left" : "motor_turn_right";
+    }
+
+    internal static float ResolveSleepHomeostasisRateScale(double tickDurationMs)
+        => (float)Math.Clamp(
+            tickDurationMs / SleepHomeostasisReferenceIntervalMs,
+            MinSleepHomeostasisRateScale,
+            4.0);
 
     private string ResolveIntentionalActionTarget(string goalKey)
         => goalKey switch
@@ -17070,6 +17168,8 @@ internal sealed class SimulationState
         lock (_gate)
         {
             var runtime = SleepMemory;
+            var homeostasisRateScale = Math.Clamp(input.HomeostasisRateScale, MinSleepHomeostasisRateScale, 4.0f);
+            var wakeDutyAlpha = 1f - MathF.Pow(1f - WakeDutyEmaAlpha, homeostasisRateScale);
             var atp = runtime.AtpBudget;
             var maxSleepPressure = Math.Max(0.1f, runtime.MaxSleepPressure);
             var sleepPressure = Math.Clamp(runtime.SleepPressure, 0f, maxSleepPressure);
@@ -17119,21 +17219,23 @@ internal sealed class SimulationState
 
             if (runtime.IsSleeping)
             {
-                var baseRecovery = runtime.SleepRecoveryPerTick * adaptiveSleepRecoveryScale;
+                var baseRecovery = runtime.SleepRecoveryPerTick * adaptiveSleepRecoveryScale * homeostasisRateScale;
                 // Keep ATP recovery robust during replay: replay should tax recovery,
                 // but not collapse it to near-zero for long stretches.
-                var replayPenaltyRaw = input.ReplayDispatchedSpikes * runtime.ReplayEnergyPenaltyPerSpike;
+                var replayPenaltyRaw = input.ReplayDispatchedSpikes * runtime.ReplayEnergyPenaltyPerSpike * homeostasisRateScale;
                 var replayPenaltyCap = baseRecovery * 0.55f;
                 var replayPenalty = Math.Min(replayPenaltyRaw, replayPenaltyCap);
                 var minRecoveryFloor = baseRecovery * 0.45f;
                 var recovery = Math.Max(minRecoveryFloor, baseRecovery - replayPenalty);
                 atp = Math.Min(runtime.MaxAtpBudget, atp + recovery);
-                var pressureRecovery = Math.Max(0f, runtime.SleepPressureRecoveryPerTick - (input.ReplayDispatchedSpikes * runtime.ReplayPressurePenaltyPerSpike));
+                var pressureRecovery = Math.Max(
+                    0f,
+                    (runtime.SleepPressureRecoveryPerTick - (input.ReplayDispatchedSpikes * runtime.ReplayPressurePenaltyPerSpike)) * homeostasisRateScale);
                 sleepPressure = Math.Max(0f, sleepPressure - pressureRecovery);
                 sleepTicks++;
                 wakeTicks = 0;
                 wakeInertiaTicksRemaining = 0;
-                observedWakeDuty = (1.0f - WakeDutyEmaAlpha) * observedWakeDuty;
+                observedWakeDuty = (1.0f - wakeDutyAlpha) * observedWakeDuty;
 
                 if (sleepTicks >= runtime.MinSleepTicks &&
                     (atp < runtime.SleepExitThreshold || sleepPressure > sleepPressureExitThreshold))
@@ -17162,7 +17264,7 @@ internal sealed class SimulationState
                     + (input.DrainedSpikes * runtime.InboundDrainPerSpike)
                     + (input.ActivePathways * runtime.ActivePathwayDrain)
                     + (input.SpontaneousGenerated * runtime.SpontaneousDrainPerEvent);
-                drain *= adaptiveAwakeDrainScale;
+                drain *= adaptiveAwakeDrainScale * homeostasisRateScale;
                 var inWakeInertiaPhase = wakeInertiaTicksRemaining > 0;
                 if (inWakeInertiaPhase)
                 {
@@ -17188,11 +17290,12 @@ internal sealed class SimulationState
                     // Cooldown should primarily preserve wake continuity, so pressure ramps slower here.
                     pressureRise *= 0.18f;
                 }
+                pressureRise *= homeostasisRateScale;
                 sleepPressure = Math.Min(maxSleepPressure, sleepPressure + Math.Max(0f, pressureRise));
                 wakeTicks++;
                 sleepTicks = 0;
                 sleepExitBlockedTicks = 0;
-                observedWakeDuty = ((1.0f - WakeDutyEmaAlpha) * observedWakeDuty) + WakeDutyEmaAlpha;
+                observedWakeDuty = ((1.0f - wakeDutyAlpha) * observedWakeDuty) + wakeDutyAlpha;
             }
 
             atp = Math.Clamp(atp, 0f, runtime.MaxAtpBudget);
@@ -20485,6 +20588,7 @@ internal sealed class SimulationState
           InnerSpeechLoop,
           PrefrontalWorkingMemory,
           IntentionalActionLoop,
+          NeuronalMotor,
           GlobalWorkspace,
           AutobiographicalContinuity,
           NarrativeSelfModel,
@@ -22859,6 +22963,8 @@ internal sealed class TickCoordinator(
     AutoProfileRuntimeState autoProfileState,
     ServicePublishBuffer publishBuffer,
     LanguageBackoffPolicy languageBackoffPolicy,
+    NeuronalMotorControlState neuronalMotorControl,
+    NeuronalMotorPopulationWindow neuronalMotorPopulationWindow,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23674,6 +23780,33 @@ internal sealed class TickCoordinator(
             }
 
             var aggregatedSnapshots = AggregateInstanceSnapshots(processedSnapshots);
+            var intentionalAction = state.GetIntentionalActionLoopSnapshot();
+            var previousNeuronalMotor = state.GetNeuronalMotorSnapshot();
+            var neuronalControl = neuronalMotorControl.GetSnapshot();
+            var neuronalMotorPopulation = neuronalMotorPopulationWindow.UpdateAndGet(
+                tickSignal.Tick,
+                processedSnapshots,
+                neuronalControl.Settings.PopulationSnapshotMaxAgeTicks);
+            var neuronalMotor = NeuronalMotorPopulationDecoder.Decode(
+                tickSignal.Tick,
+                neuronalMotorPopulation,
+                intentionalAction,
+                sleepRuntimeAtTickStart.IsSleeping,
+                neuronalControl,
+                previousNeuronalMotor);
+            state.UpdateNeuronalMotor(neuronalMotor);
+            if (previousNeuronalMotor.ControlGeneration != neuronalMotor.ControlGeneration ||
+                !string.Equals(previousNeuronalMotor.Mode, neuronalMotor.Mode, StringComparison.Ordinal))
+            {
+                state.AppendOutputLog(
+                    $"Neuronal motor control active in {neuronalMotor.Mode} mode (generation {neuronalMotor.ControlGeneration}).");
+            }
+
+            if (!previousNeuronalMotor.PromotionReady && neuronalMotor.PromotionReady)
+            {
+                state.AppendOutputLog(
+                    $"Neuronal motor promotion gate passed at tick {tickSignal.Tick}: agreement={neuronalMotor.AgreementEma:0.000}, confidence={neuronalMotor.ConfidenceEma:0.000}, coverage={neuronalMotor.MotorCircuitCoverage:0.000}, samples={neuronalMotor.ActiveEvaluationSamples}.");
+            }
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, state.GlobalAttentionBias);
             var (leftVisualTopDown, rightVisualTopDown, visualTrnGate) = ComputeVisualHemifieldTopDown(processedSnapshots);
@@ -23836,10 +23969,11 @@ internal sealed class TickCoordinator(
                     ? 6
                     : 3;
             if (!sleepRuntimeAtTickStart.IsSleeping &&
+                !string.Equals(neuronalMotor.Mode, NeuronalMotorModes.Primary, StringComparison.Ordinal) &&
                 (tickSignal.Tick - lastIntentionalMotorDispatchTick) >= intentionalMotorCooldownTicks)
             {
                 intentionalMotorStats = await DispatchIntentionalActionMotorSpikesAsync(
-                    state.GetIntentionalActionLoopSnapshot(),
+                    intentionalAction,
                     runtimeCatalog,
                     state,
                     tickSignal.Tick,
@@ -23889,7 +24023,11 @@ internal sealed class TickCoordinator(
                 SpontaneousGenerated: spontaneousStats.Generated,
                 EngramsCaptured: capturedEngrams,
                 ReplayedEngrams: replayStats.Delivered,
-                ReplayDispatchedSpikes: replayStats.Delivered));
+                ReplayDispatchedSpikes: replayStats.Delivered,
+                // Neural spikes update at millisecond scale; ATP and sleep pressure do not.
+                // Integrate homeostatic chemistry against a slow reference interval so a
+                // faster neural clock cannot compress a wake/sleep cycle into minutes.
+                HomeostasisRateScale: SimulationState.ResolveSleepHomeostasisRateScale(tickSignal.TickDurationMs)));
 
             if (sleepTransition.EnteredSleep)
             {
@@ -31490,7 +31628,8 @@ internal sealed record SleepTickInput(
     int SpontaneousGenerated,
     int EngramsCaptured,
     int ReplayedEngrams,
-    int ReplayDispatchedSpikes);
+    int ReplayDispatchedSpikes,
+    float HomeostasisRateScale = 1.0f);
 
 internal sealed record SleepTransitionResult(
     bool IsSleeping,

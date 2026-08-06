@@ -7,6 +7,35 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class SleepMemoryEngramHarnessTests
 {
     [Fact]
+    public void OneMillisecondClockScalePreventsRapidSleepCycle()
+    {
+        var state = CreateState();
+        SleepTransitionResult transition = default!;
+        var rateScale = SimulationState.ResolveSleepHomeostasisRateScale(1.0);
+
+        for (var i = 0; i < 20_000; i++)
+        {
+            state.AdvanceClockAndCreateTickSignal();
+            transition = state.AdvanceSleepHomeostasis(new SleepTickInput(
+                DrainedSpikes: 30,
+                DispatchedSpikes: 30,
+                ActivePathways: 10,
+                SpontaneousGenerated: 1,
+                EngramsCaptured: 0,
+                ReplayedEngrams: 0,
+                ReplayDispatchedSpikes: 0,
+                HomeostasisRateScale: rateScale));
+        }
+
+        var runtime = state.GetSleepMemoryRuntime();
+        Assert.Equal(0.00005f, rateScale, 6);
+        Assert.False(transition.IsSleeping);
+        Assert.Equal(0, runtime.SleepEpisodes);
+        Assert.True(runtime.AtpBudget > runtime.SleepEnterThreshold);
+        Assert.True(runtime.SleepPressure < runtime.SleepPressureEnterThreshold);
+    }
+
+    [Fact]
     public void Sleep_Homeostasis_Captures_And_Replays_Engrams()
     {
         var state = CreateState();

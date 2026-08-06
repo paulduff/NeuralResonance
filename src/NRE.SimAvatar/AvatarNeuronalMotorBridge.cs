@@ -1,0 +1,161 @@
+using System.Text.Json;
+
+namespace NRE.SimAvatar;
+
+public sealed record AvatarNeuronalMotorState(
+    string Mode,
+    bool Active,
+    bool Sleeping,
+    long Tick,
+    long Sequence,
+    double LeftDrive,
+    double RightDrive,
+    double Confidence,
+    double MinimumOutputConfidence,
+    int MaxPopulationEventsPerSide,
+    bool PromotionReady)
+{
+    public static AvatarNeuronalMotorState ShadowDefault { get; } = new(
+        Mode: "Shadow",
+        Active: false,
+        Sleeping: false,
+        Tick: 0,
+        Sequence: 0,
+        LeftDrive: 0.0,
+        RightDrive: 0.0,
+        Confidence: 0.0,
+        MinimumOutputConfidence: 1.0,
+        MaxPopulationEventsPerSide: 12,
+        PromotionReady: false);
+}
+
+/// <summary>
+/// Converts read-only neuronal motor telemetry into a body population code.
+/// Goal names and symbolic directives are never read while creating output.
+/// </summary>
+public static class AvatarNeuronalMotorBridge
+{
+    public static List<AvatarDispatchSpike> Compose(
+        JsonElement stateElement,
+        IReadOnlyList<AvatarDispatchSpike> originalDispatches,
+        long lastNeuronalTick,
+        out long nextNeuronalTick,
+        out AvatarNeuronalMotorState neuronalState)
+    {
+        ArgumentNullException.ThrowIfNull(originalDispatches);
+        neuronalState = Parse(stateElement);
+        nextNeuronalTick = lastNeuronalTick;
+
+        var primary = neuronalState.Mode.Equals("Primary", StringComparison.OrdinalIgnoreCase);
+        var assist = neuronalState.Mode.Equals("Assist", StringComparison.OrdinalIgnoreCase);
+        var result = primary
+            ? FilterSymbolicMotorAuthority(originalDispatches)
+            : new List<AvatarDispatchSpike>(originalDispatches);
+
+        if ((!primary && !assist) ||
+            neuronalState.Tick <= lastNeuronalTick ||
+            neuronalState.Sleeping ||
+            !neuronalState.Active ||
+            neuronalState.Confidence < neuronalState.MinimumOutputConfidence)
+        {
+            return result;
+        }
+
+        nextNeuronalTick = neuronalState.Tick;
+        AppendPopulationEvents(result, neuronalState, "L", neuronalState.LeftDrive);
+        AppendPopulationEvents(result, neuronalState, "R", neuronalState.RightDrive);
+        return result;
+    }
+
+    public static AvatarNeuronalMotorState Parse(JsonElement stateElement)
+    {
+        if (!AvatarJson.TryGetProperty(stateElement, "neuronalMotor", out var motor) ||
+            motor.ValueKind != JsonValueKind.Object)
+        {
+            return AvatarNeuronalMotorState.ShadowDefault;
+        }
+
+        var mode = AvatarJson.GetString(motor, "mode");
+        if (!mode.Equals("Shadow", StringComparison.OrdinalIgnoreCase) &&
+            !mode.Equals("Assist", StringComparison.OrdinalIgnoreCase) &&
+            !mode.Equals("Primary", StringComparison.OrdinalIgnoreCase))
+        {
+            mode = "Shadow";
+        }
+
+        return new AvatarNeuronalMotorState(
+            Mode: mode,
+            Active: AvatarJson.GetBool(motor, "active"),
+            Sleeping: AvatarJson.GetBool(motor, "sleeping"),
+            Tick: Math.Max(0, AvatarJson.GetLong(motor, "tick")),
+            Sequence: Math.Max(0, AvatarJson.GetLong(motor, "sequence")),
+            LeftDrive: Math.Clamp(AvatarJson.GetDouble(motor, "leftDrive"), -1.0, 1.0),
+            RightDrive: Math.Clamp(AvatarJson.GetDouble(motor, "rightDrive"), -1.0, 1.0),
+            Confidence: Math.Clamp(AvatarJson.GetDouble(motor, "confidence"), 0.0, 1.0),
+            MinimumOutputConfidence: Math.Clamp(AvatarJson.GetDouble(motor, "minimumOutputConfidence"), 0.0, 1.0),
+            MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64),
+            PromotionReady: AvatarJson.GetBool(motor, "promotionReady"));
+    }
+
+    private static List<AvatarDispatchSpike> FilterSymbolicMotorAuthority(
+        IReadOnlyList<AvatarDispatchSpike> originalDispatches)
+    {
+        var result = new List<AvatarDispatchSpike>(originalDispatches.Count);
+        for (var i = 0; i < originalDispatches.Count; i++)
+        {
+            var dispatch = originalDispatches[i];
+            if (!AvatarMotorCatalog.IsMotorStructure(dispatch.SourceStructure) || IsToolSignal(dispatch.SourceNeuronId))
+            {
+                result.Add(dispatch);
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsToolSignal(string sourceNeuronId)
+    {
+        if (string.IsNullOrWhiteSpace(sourceNeuronId))
+        {
+            return false;
+        }
+
+        var value = sourceNeuronId.Trim();
+        return value.Contains("tool", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("dig", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("mine", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("excavate", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("build", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("place", StringComparison.OrdinalIgnoreCase) ||
+               value.Contains("construct", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void AppendPopulationEvents(
+        List<AvatarDispatchSpike> output,
+        AvatarNeuronalMotorState state,
+        string hemisphere,
+        double drive)
+    {
+        var magnitude = Math.Clamp(Math.Abs(drive), 0.0, 1.0);
+        if (magnitude < 0.01)
+        {
+            return;
+        }
+
+        var eventCount = Math.Clamp(
+            (int)Math.Round(magnitude * state.MaxPopulationEventsPerSide, MidpointRounding.AwayFromZero),
+            1,
+            state.MaxPopulationEventsPerSide);
+        var polarity = drive >= 0.0 ? "excitatory" : "inhibitory";
+        var wallClockMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        for (var i = 0; i < eventCount; i++)
+        {
+            output.Add(new AvatarDispatchSpike(
+                SourceStructure: "SpinalCordMotor",
+                SourceHemisphere: hemisphere,
+                WallClockUnixMs: wallClockMs,
+                SourceNeuronId: $"population:{hemisphere.ToLowerInvariant()}:{polarity}:{state.Tick}:{i}"));
+        }
+    }
+}
+

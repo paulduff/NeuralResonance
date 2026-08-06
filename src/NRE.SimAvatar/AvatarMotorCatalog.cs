@@ -64,6 +64,11 @@ public static class AvatarMotorCatalog
 
             motorEvents++;
             var weight = ResolveMotorWeight(dispatch.SourceStructure);
+            if (TryApplyPopulationCode(dispatch, weight, ref leftInput, ref rightInput))
+            {
+                continue;
+            }
+
             if (TryApplyExplicitMotorDirective(dispatch.SourceNeuronId, weight, ref leftInput, ref rightInput, ref inPlaceTurnEvents))
             {
                 continue;
@@ -85,6 +90,39 @@ public static class AvatarMotorCatalog
         }
 
         return new AvatarMotorDriveSummary(leftInput, rightInput, motorEvents, inPlaceTurnEvents);
+    }
+
+    private static bool TryApplyPopulationCode(
+        AvatarDispatchSpike dispatch,
+        double weight,
+        ref double leftInput,
+        ref double rightInput)
+    {
+        if (string.IsNullOrWhiteSpace(dispatch.SourceNeuronId) ||
+            !dispatch.SourceNeuronId.StartsWith("population:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var sign = dispatch.SourceNeuronId.Contains(":inhibitory:", StringComparison.OrdinalIgnoreCase)
+            ? -1.0
+            : 1.0;
+        var contribution = weight * sign;
+        switch (dispatch.SourceHemisphere)
+        {
+            case "L":
+                leftInput += contribution;
+                break;
+            case "R":
+                rightInput += contribution;
+                break;
+            default:
+                leftInput += contribution * 0.5;
+                rightInput += contribution * 0.5;
+                break;
+        }
+
+        return true;
     }
 
     private static bool TryApplyExplicitMotorDirective(

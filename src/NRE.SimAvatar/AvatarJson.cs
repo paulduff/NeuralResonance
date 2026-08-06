@@ -233,28 +233,38 @@ public static class AvatarJson
 
     public static string ParseAnyStructureId(JsonElement element, params string[] propertyNames)
     {
-        var raw = GetString(element, propertyNames);
-        if (!string.IsNullOrWhiteSpace(raw))
-        {
-            return NormalizeStructure(raw);
-        }
-
         for (var i = 0; i < propertyNames.Length; i++)
         {
-            if (!TryGetProperty(element, propertyNames[i], out var value) || value.ValueKind != JsonValueKind.Number)
+            if (!TryGetProperty(element, propertyNames[i], out var value))
             {
                 continue;
             }
 
-            if (!value.TryGetInt32(out var enumOrdinal))
-            {
-                continue;
-            }
-
-            if (Enum.IsDefined(typeof(StructureId), enumOrdinal))
+            if (value.ValueKind == JsonValueKind.Number &&
+                value.TryGetInt32(out var enumOrdinal) &&
+                Enum.IsDefined(typeof(StructureId), enumOrdinal))
             {
                 return ((StructureId)enumOrdinal).ToString();
             }
+
+            if (value.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var raw = value.GetString();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out enumOrdinal) &&
+                Enum.IsDefined(typeof(StructureId), enumOrdinal))
+            {
+                return ((StructureId)enumOrdinal).ToString();
+            }
+
+            return NormalizeStructure(raw);
         }
 
         return string.Empty;

@@ -165,6 +165,8 @@ public partial class MainWindow : Window
     private int _lastMotorDispatchCount;
     private long _lastTick;
     private long _dispatchSinceMs;
+    private long _lastNeuronalMotorTick = -1;
+    private string _neuronalMotorMode = "Shadow";
     private bool _sleepState;
     private bool _brainPollInFlight;
     private bool _navigationPollInFlight;
@@ -540,8 +542,10 @@ public partial class MainWindow : Window
             }
 
             var root = doc.RootElement;
+            var brainState = default(JsonElement);
             if (TryGetProperty(root, "state", out var stateElement) && stateElement.ValueKind == JsonValueKind.Object)
             {
+                brainState = stateElement;
                 _lastTick = GetLong(stateElement, "tick");
                 UpdateLimbicFromState(stateElement);
                 UpdateObjectMemoryFromState(stateElement);
@@ -558,6 +562,18 @@ public partial class MainWindow : Window
             if (maxWallClockMs > _dispatchSinceMs)
             {
                 _dispatchSinceMs = maxWallClockMs;
+            }
+
+            dispatches = AvatarNeuronalMotorBridge.Compose(
+                brainState,
+                dispatches,
+                _lastNeuronalMotorTick,
+                out _lastNeuronalMotorTick,
+                out var neuronalMotor);
+            if (!string.Equals(_neuronalMotorMode, neuronalMotor.Mode, StringComparison.OrdinalIgnoreCase))
+            {
+                _neuronalMotorMode = neuronalMotor.Mode;
+                Log($"Neuronal motor bridge: {_neuronalMotorMode} mode, confidence {neuronalMotor.Confidence:0.000}.");
             }
 
             if (SpatialNavigationCheckBox.IsChecked != true)
@@ -3376,6 +3392,7 @@ public partial class MainWindow : Window
     private void ReconnectButton_OnClick(object sender, RoutedEventArgs e)
     {
         _dispatchSinceMs = 0;
+        _lastNeuronalMotorTick = -1;
         _lastTick = 0;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));

@@ -1,9 +1,45 @@
+using System.Text.Json;
+using NeuralResonanceEngine.Protocol;
 using NRE.SimAvatar;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
 public sealed class AvatarNervousSystemTests
 {
+    [Fact]
+    public void NumericProtocolStructureIdProducesMotorDrive()
+    {
+        var frame = JsonSerializer.SerializeToElement(new
+        {
+            dispatchSpikes = new[]
+            {
+                new
+                {
+                    wallClockUnixMs = 101L,
+                    sourceStructure = StructureId.M1,
+                    sourceHemisphere = "L",
+                    sourceNeuronId = "motor_forward"
+                },
+                new
+                {
+                    wallClockUnixMs = 102L,
+                    sourceStructure = StructureId.M1,
+                    sourceHemisphere = "R",
+                    sourceNeuronId = "motor_forward"
+                }
+            }
+        });
+
+        var dispatches = AvatarDispatchSpikeParser.ParseDispatchSpikes(frame, 0, out var cursor);
+        var signal = CreateNervousSystem().InterpretBrainSignals(dispatches, AwakeBody);
+
+        Assert.Equal(102L, cursor);
+        Assert.All(dispatches, dispatch => Assert.Equal("M1", dispatch.SourceStructure));
+        Assert.Equal(2, signal.MotorEvents);
+        Assert.True(signal.LeftMotorDrive > 0);
+        Assert.True(signal.RightMotorDrive > 0);
+    }
+
     [Fact]
     public void InterpretBrainSignalsIntegratesMotorDrive()
     {
@@ -53,6 +89,24 @@ public sealed class AvatarNervousSystemTests
 
         Assert.True(signal.Tool.HasAction);
         Assert.Equal(AvatarToolAction.Dig, signal.Tool.Action);
+    }
+
+    [Fact]
+    public void LocomotionIntentDoesNotBecomeToolAction()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var dispatches = new[]
+        {
+            new AvatarDispatchSpike("PremotorCortex", "L", 100, "L:motor_seek_shelter_20_0"),
+            new AvatarDispatchSpike("Sma", "R", 101, "R:motor_seek_shelter_20_1"),
+            new AvatarDispatchSpike("M1", "L", 102, "L:motor_seek_shelter_20_2")
+        };
+
+        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
+
+        Assert.True(signal.LeftMotorDrive > 0);
+        Assert.True(signal.RightMotorDrive > 0);
+        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
     }
 
     [Fact]

@@ -170,6 +170,33 @@ public sealed class AvatarNervousSystem
 
     private static AvatarToolAction ResolveToolActionType(AvatarDispatchSpike dispatch)
     {
+        if (string.IsNullOrWhiteSpace(dispatch.SourceNeuronId))
+        {
+            return AvatarToolAction.None;
+        }
+
+        var directive = dispatch.SourceNeuronId.Trim().ToLowerInvariant();
+        if (directive.Contains("dig", StringComparison.Ordinal) ||
+            directive.Contains("mine", StringComparison.Ordinal) ||
+            directive.Contains("excavate", StringComparison.Ordinal))
+        {
+            return AvatarToolAction.Dig;
+        }
+
+        if (directive.Contains("build", StringComparison.Ordinal) ||
+            directive.Contains("place", StringComparison.Ordinal) ||
+            directive.Contains("construct", StringComparison.Ordinal))
+        {
+            return AvatarToolAction.Build;
+        }
+
+        // Generic locomotion spikes from SMA, premotor cortex, and M1 must not
+        // become destructive tool actions merely because they share motor areas.
+        if (!directive.Contains("tool", StringComparison.Ordinal))
+        {
+            return AvatarToolAction.None;
+        }
+
         if (dispatch.SourceStructure.Equals("Sma", StringComparison.OrdinalIgnoreCase))
         {
             return AvatarToolAction.Build;

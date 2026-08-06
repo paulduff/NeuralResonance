@@ -258,7 +258,6 @@ app.MapGet("/api/v1/dopamine-learning", (SimulationState state, int? max) => Res
     AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
     State = state.GetDopamineLearningSnapshot(max ?? 32)
 }));
-app.MapGet("/api/v1/biological-teaching-loop", (SimulationState state) => Results.Ok(state.GetBiologicalTeachingLoopSnapshot()));
 app.MapGet("/api/v1/circuit-health", (SimulationState state, int? maxWarnings) => Results.Ok(state.GetCircuitHealthPanelSnapshot(maxWarnings ?? 96)));
 app.MapAdminReasoningRoutes();
 app.MapAdminTelemetryRoutes();
@@ -2014,10 +2013,7 @@ app.MapPost("/api/v1/admin/input/language", async (
             ReusedLexemes = 0,
             GeneratedSpikes = 0,
             DeliveredSpikes = 0,
-            Grammar = (EnglishGrammarAnalysis?)null,
-            LanguageIntent = state.GetLanguageIntentSnapshot(),
-            BrainNarration = state.GetBrainNarrationSnapshot(),
-            TeachingLoop = state.GetBiologicalTeachingLoopSnapshot(),
+            NeuronalLanguageGrounding = state.GetNeuronalLanguageGroundingSnapshot(),
             Backoff = backoffPolicy.GetSnapshot(12),
             Dialogue = pausedDialogue,
             DeliveredByTarget = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
@@ -2048,20 +2044,12 @@ app.MapPost("/api/v1/admin/input/language", async (
         return Results.BadRequest(new { Error = "Unable to generate emergent phonetic tokens for language routing." });
     }
 
-    var englishGrammar = string.Equals(mode, "english", StringComparison.OrdinalIgnoreCase)
-        ? EnglishLanguageLexicon.AnalyzeGrammar(tokens)
-        : null;
-    var brainTokens = englishGrammar is null
-        ? tokens
-        : EnglishLanguageLexicon.BuildBrainTokens(tokens, englishGrammar).ToArray();
+    // Text ingress is a sensory transducer. It may tokenize and phoneticize the
+    // input, but it must not infer goals, commands, rewards, or memory writes.
+    var brainTokens = tokens;
 
     var tick = state.Tick;
-    var languageIntent = englishGrammar is null
-        ? state.GetLanguageIntentSnapshot()
-        : state.ObserveLanguageIntent(englishGrammar, tokens, tick);
-    var dialogueTurn = dialogueTurns.ObserveInput(mode, text, brainTokens, englishGrammar, languageIntent, tick);
-    var teachingEvent = DetectBiologicalTeachingEvent(text, tokens, englishGrammar, languageIntent);
-    var teachingLoop = state.ObserveBiologicalTeachingEvent(teachingEvent, englishGrammar, tokens, tick);
+    var dialogueTurn = dialogueTurns.ObserveInput(mode, text, brainTokens, tick);
     var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
     var plan = GetLanguageStimulusPlan(mode);
     var errors = new List<string>();
@@ -2091,7 +2079,7 @@ app.MapPost("/api/v1/admin/input/language", async (
         {
             Error = $"No active service instances found for language route targets (mode={mode}, hemisphere={(hemisphereHint ?? "auto")}).",
             Dialogue = failedDialogue,
-            TeachingLoop = teachingLoop
+            NeuronalLanguageGrounding = state.GetNeuronalLanguageGroundingSnapshot()
         });
     }
 
@@ -2164,16 +2152,8 @@ app.MapPost("/api/v1/admin/input/language", async (
     var dialogue = dialogueTurns.RecordDelivery(dialogueTurn, generatedSpikes, deliveredSpikes, errors, tick);
 
     var summaryText = lexicalization.Utterance.Length <= 72 ? lexicalization.Utterance : $"{lexicalization.Utterance[..72]}...";
-    var grammarSummary = englishGrammar is null
-        ? string.Empty
-        : $", grammar={englishGrammar.Intent}/{englishGrammar.Mood}";
     state.AppendOutputLog(
-        $"Language input injected: mode={mode}, tokens={tokens.Length}, brainTokens={brainTokens.Length}{grammarSummary}, generated={generatedSpikes}, delivered={deliveredSpikes}, targets={targets.Count}, errors={errors.Count}, utterance=\"{summaryText}\".");
-    if (teachingEvent.Active)
-    {
-        state.AppendOutputLog(
-            $"Biological teaching loop observed: kind={teachingEvent.Kind}, concept={teachingEvent.ConceptKey}, reward={teachingEvent.Reward:0.00}, evidence=\"{teachingEvent.Evidence}\".");
-    }
+        $"Language input injected: mode={mode}, tokens={tokens.Length}, brainTokens={brainTokens.Length}, generated={generatedSpikes}, delivered={deliveredSpikes}, targets={targets.Count}, errors={errors.Count}, utterance=\"{summaryText}\".");
     if (deliveredSpikes > 0)
     {
         state.AppendSpikeLog(
@@ -2194,10 +2174,7 @@ app.MapPost("/api/v1/admin/input/language", async (
         GeneratedUtterance = lexicalization.Utterance,
         SurfaceTokens = lexicalization.SurfaceTokens,
         PhonemeTokens = lexicalization.PhonemeTokens,
-        Grammar = englishGrammar,
-        LanguageIntent = languageIntent,
-        BrainNarration = state.GetBrainNarrationSnapshot(),
-        TeachingLoop = teachingLoop,
+        NeuronalLanguageGrounding = state.GetNeuronalLanguageGroundingSnapshot(),
         Dialogue = dialogue,
         MotorIntentTargets = 0,
         MotorIntentGeneratedSpikes = 0,
@@ -2590,13 +2567,9 @@ static float ResolveLanguageReuptakeRate(string mode, int channel)
 
 static string BuildLanguageTargetNeuronId(string hemisphere, string prefix, string mode, string token, int tokenIndex, int channel)
 {
-    if (!mode.Equals("english", StringComparison.OrdinalIgnoreCase))
-    {
-        return $"{hemisphere}:{prefix}_tok_{tokenIndex}_cell_{channel}";
-    }
-
-    var classKey = EnglishLanguageLexicon.ResolveSemanticClassForTarget(token);
-    return $"{hemisphere}:{prefix}_{classKey}_tok_{tokenIndex}_cell_{channel}";
+    var lexicalKey = Regex.Replace(token.Trim().ToLowerInvariant(), @"[^a-z0-9']+", string.Empty);
+    lexicalKey = string.IsNullOrWhiteSpace(lexicalKey) ? "silence" : lexicalKey[..Math.Min(32, lexicalKey.Length)];
+    return $"{hemisphere}:{prefix}_lex_{lexicalKey}_tok_{tokenIndex}_cell_{channel}";
 }
 
 static string[] TokenizeLanguageInput(string text)
@@ -2613,197 +2586,6 @@ static string[] TokenizeLanguageInput(string text)
     return tokens;
 }
 
-static BiologicalTeachingEvent DetectBiologicalTeachingEvent(
-    string text,
-    IReadOnlyList<string> surfaceTokens,
-    EnglishGrammarAnalysis? grammar,
-    LanguageIntentRuntime languageIntent)
-{
-    var tokens = surfaceTokens.Count > 0 ? surfaceTokens.Select(t => t.ToLowerInvariant()).ToArray() : TokenizeLanguageInput(text);
-    if (tokens.Length == 0)
-    {
-        return BiologicalTeachingEvent.Inactive;
-    }
-
-    var lower = (text ?? string.Empty).Trim().ToLowerInvariant();
-    var positive = tokens.Any(t => t is "yes" or "good" or "correct" or "right" or "excellent" or "great" or "done");
-    var negative = tokens.Any(t => t is "no" or "wrong" or "incorrect" or "bad" or "stop" or "again");
-    var remember = tokens.Any(t => t is "remember" or "learn" or "store" or "teach");
-    var label = ExtractTeachingLabel(tokens, grammar);
-    var isLabel = !string.IsNullOrWhiteSpace(label) &&
-                  (tokens.Contains("is") || tokens.Contains("means") || tokens.Contains("called"));
-
-    if (!positive && !negative && !remember && !isLabel)
-    {
-        return BiologicalTeachingEvent.Inactive;
-    }
-
-    var kind = negative
-        ? "correction"
-        : positive
-            ? "reward"
-            : remember
-                ? "remember"
-                : "label";
-    var category = kind is "reward" or "correction"
-        ? "feedback"
-        : ClassifyTeachingCategory(lower);
-    var resolvedLabel = kind switch
-    {
-        "reward" or "correction" when languageIntent.Active => languageIntent.CommandKey,
-        "reward" => "recent action",
-        "correction" => "recent action",
-        _ => string.IsNullOrWhiteSpace(label) ? string.Join(" ", tokens.Take(4)) : label
-    };
-    var goalKey = kind switch
-    {
-        "reward" or "correction" when languageIntent.Active => languageIntent.CommandKey,
-        "reward" or "correction" => "FollowFeedback",
-        _ => ResolveTeachingGoal(category)
-    };
-    var actionKey = kind switch
-    {
-        "reward" or "correction" when languageIntent.Active => languageIntent.MotorDirective,
-        "reward" or "correction" => "adjust_recent_action",
-        _ => ResolveTeachingAction(category)
-    };
-    var reward = kind switch
-    {
-        "reward" => 0.70f,
-        "correction" => -0.48f,
-        "remember" => 0.26f,
-        _ => 0.18f
-    };
-    var success = kind switch
-    {
-        "reward" => 0.84f,
-        "correction" => 0.18f,
-        _ => 0.62f
-    };
-    var threat = category == "threat" || kind == "correction" ? 0.30f : 0.0f;
-    var valence = Math.Clamp(reward - threat, -1.0f, 1.0f);
-    var salience = kind is "reward" or "correction" ? 0.72f : 0.62f;
-    var confidence = remember || isLabel ? 0.76f : 0.66f;
-    var meaning = kind switch
-    {
-        "reward" => $"Positive teaching feedback was associated with {resolvedLabel}.",
-        "correction" => $"Corrective teaching feedback was associated with {resolvedLabel}.",
-        "remember" => $"The user asked the system to remember {resolvedLabel}.",
-        _ => $"The user labeled {resolvedLabel} as {category}."
-    };
-
-    return new BiologicalTeachingEvent(
-        Active: true,
-        Kind: kind,
-        ConceptKey: $"teaching.{category}.{NormalizeTeachingKey(resolvedLabel)}",
-        Label: resolvedLabel,
-        Category: category,
-        Meaning: meaning,
-        GoalKey: goalKey,
-        ActionKey: actionKey,
-        Reward: reward,
-        Success: success,
-        Threat: threat,
-        Valence: valence,
-        Salience: salience,
-        Confidence: confidence,
-        Evidence: $"A1/Wernicke language input classified as {kind}; PFC/Hippocampus/VTA/Habenula update requested.");
-}
-
-static string ExtractTeachingLabel(IReadOnlyList<string> tokens, EnglishGrammarAnalysis? grammar)
-{
-    if (!string.IsNullOrWhiteSpace(grammar?.Object))
-    {
-        return grammar.Object!;
-    }
-
-    if (!string.IsNullOrWhiteSpace(grammar?.Qualifier))
-    {
-        return grammar.Qualifier!;
-    }
-
-    var markerIndex = -1;
-    for (var i = 0; i < tokens.Count; i++)
-    {
-        if (tokens[i] is "is" or "means" or "called" or "remember" or "learn" or "store" or "teach")
-        {
-            markerIndex = i;
-            break;
-        }
-    }
-
-    if (markerIndex < 0 || markerIndex >= tokens.Count - 1)
-    {
-        return string.Empty;
-    }
-
-    var labelTokens = tokens
-        .Skip(markerIndex + 1)
-        .Where(t => t is not ("a" or "an" or "the" or "to" or "this" or "that"))
-        .Take(5)
-        .ToArray();
-    return labelTokens.Length == 0 ? string.Empty : string.Join(" ", labelTokens);
-}
-
-static string ClassifyTeachingCategory(string text)
-{
-    if (text.Contains("danger", StringComparison.Ordinal) ||
-        text.Contains("threat", StringComparison.Ordinal) ||
-        text.Contains("predator", StringComparison.Ordinal) ||
-        text.Contains("unsafe", StringComparison.Ordinal))
-    {
-        return "threat";
-    }
-
-    if (text.Contains("food", StringComparison.Ordinal) ||
-        text.Contains("eat", StringComparison.Ordinal) ||
-        text.Contains("berry", StringComparison.Ordinal) ||
-        text.Contains("apple", StringComparison.Ordinal) ||
-        text.Contains("water", StringComparison.Ordinal))
-    {
-        return "food";
-    }
-
-    if (text.Contains("safe", StringComparison.Ordinal) ||
-        text.Contains("shelter", StringComparison.Ordinal) ||
-        text.Contains("home", StringComparison.Ordinal))
-    {
-        return "shelter";
-    }
-
-    if (text.Contains("tool", StringComparison.Ordinal) ||
-        text.Contains("weapon", StringComparison.Ordinal))
-    {
-        return "weapon";
-    }
-
-    return "language";
-}
-
-static string ResolveTeachingGoal(string category) => category switch
-{
-    "food" => "FindFood",
-    "shelter" => "FindShelter",
-    "threat" => "AvoidThreat",
-    "weapon" => "FindTool",
-    _ => "RememberInstruction"
-};
-
-static string ResolveTeachingAction(string category) => category switch
-{
-    "food" => "approach_food",
-    "shelter" => "approach_shelter",
-    "threat" => "avoid_threat",
-    "weapon" => "inspect_tool",
-    _ => "encode_language_teaching"
-};
-
-static string NormalizeTeachingKey(string value)
-{
-    var normalized = Regex.Replace((value ?? string.Empty).Trim().ToLowerInvariant(), @"[^a-z0-9]+", ".");
-    normalized = normalized.Trim('.');
-    return string.IsNullOrWhiteSpace(normalized) ? "unknown" : normalized;
-}
 
 static string NormalizeLanguageMode(string? mode)
 {
@@ -3835,232 +3617,9 @@ internal sealed class SimulationState
         }
     }
 
-    public LanguageIntentRuntime ObserveLanguageIntent(
-        EnglishGrammarAnalysis? grammar,
-        IReadOnlyList<string> surfaceTokens,
-        long tick)
-    {
-        lock (_gate)
-        {
-            if (grammar is null)
-            {
-                return LanguageIntent;
-            }
 
-            var resolved = EnglishLanguageLexicon.ResolveCommandIntent(grammar, surfaceTokens);
-            if (!resolved.Active)
-            {
-                LanguageIntent = LanguageIntent with
-                {
-                    Active = false,
-                    Strength = Math.Max(0.0f, LanguageIntent.Strength * 0.4f),
-                    LastUpdatedTick = tick
-                };
-                UpdateBrainNarrationLocked(tick, resolved.Narration);
-                return LanguageIntent;
-            }
 
-            var memoryTrace = UpdateLanguageCommandMemoryLocked(resolved.CommandKey, tick);
-            var learnedStrength = Math.Clamp(
-                resolved.Strength + (memoryTrace.LearnedBias * 0.34f),
-                0.15f,
-                2.35f);
-            LanguageIntent = new LanguageIntentRuntime(
-                Active: true,
-                Intent: grammar.Intent,
-                Mood: grammar.Mood,
-                Subject: grammar.Subject,
-                Verb: grammar.Verb,
-                Object: grammar.Object,
-                Qualifier: grammar.Qualifier,
-                Strength: learnedStrength,
-                LastUpdatedTick: tick,
-                ExpiresAtTick: tick + 2400,
-                CommandKey: resolved.CommandKey,
-                MotorDirective: resolved.MotorDirective,
-                RepetitionCount: memoryTrace.RepetitionCount,
-                LearnedBias: memoryTrace.LearnedBias);
 
-            UpsertEpisodicEventLocked(
-                tick,
-                "language",
-                $"language:{resolved.CommandKey}:{tick / 240}",
-                $"User asked me to {SummarizeLanguageInstruction(LanguageIntent)}.",
-                objectId: resolved.CommandKey,
-                label: SummarizeLanguageInstruction(LanguageIntent),
-                goalKey: GoalIntent.Active ? GoalIntent.GoalKey : "FollowCommand",
-                actionKey: resolved.MotorDirective,
-                valence: 0.0f,
-                salience: Math.Clamp(0.42f + (learnedStrength * 0.20f), 0.0f, 1.0f),
-                novelty: Math.Clamp(1.0f - memoryTrace.LearnedBias, 0.0f, 1.0f),
-                confidence: Math.Clamp(0.48f + (learnedStrength * 0.16f), 0.0f, 1.0f));
-            RefreshEpisodicMemorySnapshotLocked(tick);
-            UpdateBodySchemaLocked(tick);
-            UpdateInteroceptiveCoreLocked(tick);
-            UpdatePainProtectionLocked(tick);
-            UpdateBodyPresenceLocked(tick);
-            UpdateSemanticMemoryLocked(tick);
-            UpdateAutobiographicalSelfLocked(tick);
-            UpdateAutobiographicalContinuityLocked(tick);
-            UpdateCognitiveLanguageWorkspaceLocked(tick);
-            UpdateInnerSpeechLoopLocked(tick);
-            EnsureExplicitInnerSpeechCommandLocked(tick);
-            UpdateIntentionalActionLoopLocked(tick);
-            UpdateSelfMonitoringLoopLocked(tick);
-            UpdateNarrativeSelfModelLocked(tick);
-            UpdateIdentityBoundaryLocked(tick);
-            UpdateRoomStateLocked(tick);
-            if (!IsInnerSpeechLanguageIntent(LanguageIntent))
-            {
-                UpdateBrainNarrationLocked(tick, resolved.Narration);
-            }
-            return LanguageIntent;
-        }
-    }
-
-    public BiologicalTeachingLoopRuntime ObserveBiologicalTeachingEvent(
-        BiologicalTeachingEvent teaching,
-        EnglishGrammarAnalysis? grammar,
-        IReadOnlyList<string> surfaceTokens,
-        long tick)
-    {
-        if (!teaching.Active)
-        {
-            return GetBiologicalTeachingLoopSnapshot();
-        }
-
-        lock (_gate)
-        {
-            var category = NormalizeEpisodicText(teaching.Category, "language", 48);
-            var label = NormalizeEpisodicText(teaching.Label, "teaching", 96);
-            var conceptKey = NormalizeSemanticKey(teaching.ConceptKey);
-            var goalKey = NormalizeEpisodicText(teaching.GoalKey, ResolveSemanticGoalForCategory(category), 96);
-            var actionKey = NormalizeEpisodicText(teaching.ActionKey, ResolveSemanticActionForCategory(category), 96);
-            var confidence = Clamp01(teaching.Confidence);
-            var salience = Clamp01(teaching.Salience);
-            var valence = ClampSigned01(teaching.Valence);
-            var threat = category == "threat" ? Math.Max(0.42f, teaching.Threat) : Clamp01(teaching.Threat);
-            var food = category == "food" ? Math.Max(0.46f, salience) : 0f;
-            var shelter = category == "shelter" ? Math.Max(0.46f, salience) : 0f;
-            var weapon = category == "weapon" ? Math.Max(0.46f, salience) : 0f;
-            var languageSupport = Math.Max(1, surfaceTokens?.Count ?? 0);
-
-            UpsertSemanticConceptLocked(
-                tick,
-                conceptKey,
-                label,
-                category,
-                NormalizeEpisodicText(teaching.Meaning, $"User taught {label}.", 180),
-                goalKey,
-                actionKey,
-                "A1/Wernicke/arcuate/Broca/temporal-association/PFC/hippocampus",
-                objectSupport: 0,
-                episodeSupport: 1,
-                actionSupport: teaching.Kind is "reward" or "correction" ? 1 : 0,
-                languageSupport: languageSupport,
-                threat: threat,
-                food: food,
-                shelter: shelter,
-                weapon: weapon,
-                valence: valence,
-                confidence: confidence,
-                familiarity: 0.64f);
-
-            UpsertEpisodicEventLocked(
-                tick,
-                eventType: "teaching",
-                eventKey: $"teaching:{teaching.Kind}:{conceptKey}:{tick / 120}",
-                summary: NormalizeEpisodicText(teaching.Meaning, $"User taught {label}.", 180),
-                objectId: conceptKey,
-                label: label,
-                goalKey: goalKey,
-                actionKey: actionKey,
-                valence: valence,
-                salience: salience,
-                novelty: 0.58f,
-                confidence: confidence);
-
-            UpdateDopamineLearningLocked(
-                tick,
-                actionKey,
-                goalKey,
-                reward: ClampSigned01(teaching.Reward),
-                success: Clamp01(teaching.Success),
-                threat: threat,
-                hunger: 0f,
-                pressureNorm: Clamp01(SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure)),
-                shelterSafety: shelter,
-                appetitiveOutcome: Math.Max(0f, teaching.Reward),
-                aversiveOutcome: Math.Max(0f, -teaching.Reward) + threat,
-                rewardPredictionError: ClampSigned01(teaching.Reward));
-
-            RefreshEpisodicMemorySnapshotLocked(tick);
-            RefreshUnifiedEventMemorySnapshotLocked(tick);
-            RefreshPlaceMemorySnapshotLocked(tick);
-            UpdateSemanticMemoryLocked(tick);
-            RefreshDopamineLearningSnapshotLocked(tick);
-            UpdateAutobiographicalSelfLocked(tick);
-            UpdateAutobiographicalContinuityLocked(tick);
-            UpdateCognitiveLanguageWorkspaceLocked(tick);
-            UpdateInnerSpeechLoopLocked(tick);
-            UpdateNarrativeSelfModelLocked(tick);
-            UpdateIdentityBoundaryLocked(tick);
-
-            BiologicalTeachingLoop = BiologicalTeachingLoopRuntime.Normalize(new BiologicalTeachingLoopRuntime(
-                Active: true,
-                Count: BiologicalTeachingLoop.Count + 1,
-                LastKind: teaching.Kind,
-                LastConceptKey: conceptKey,
-                LastLabel: label,
-                LastCategory: category,
-                LastGoalKey: goalKey,
-                LastActionKey: actionKey,
-                LastReward: ClampSigned01(teaching.Reward),
-                LastValence: valence,
-                SemanticConceptCount: SemanticMemory.Count,
-                EpisodicEventCount: EpisodicMemory.Count,
-                DopamineTraceCount: DopamineLearning.Count,
-                SourceCircuit: "A1/Wernicke/arcuate/Broca/temporal-association/PFC/hippocampus/VTA/SNc/habenula/NAcc/OFC/ACC",
-                Evidence: teaching.Evidence,
-                LastUpdatedTick: tick));
-
-            UpdateRoomStateLocked(tick);
-            return BiologicalTeachingLoop;
-        }
-    }
-
-    private LanguageCommandMemoryTrace UpdateLanguageCommandMemoryLocked(string commandKey, long tick)
-    {
-        if (string.IsNullOrWhiteSpace(commandKey))
-        {
-            commandKey = "language.unknown";
-        }
-
-        _languageCommandMemory.TryGetValue(commandKey, out var previous);
-        previous ??= LanguageCommandMemoryTrace.Create(commandKey);
-        var repeatedRecently = previous.LastUpdatedTick > 0 && tick - previous.LastUpdatedTick <= 3600;
-        var repetitionCount = repeatedRecently
-            ? Math.Min(previous.RepetitionCount + 1, 64)
-            : 1;
-        var repetitionBias = Math.Clamp((float)Math.Log2(repetitionCount + 1) / 6.0f, 0.0f, 0.75f);
-        var trace = previous with
-        {
-            RepetitionCount = repetitionCount,
-            TotalActivations = previous.TotalActivations + 1,
-            LearnedBias = Math.Clamp((previous.LearnedBias * 0.82f) + (repetitionBias * 0.18f), 0.0f, 1.0f),
-            LastUpdatedTick = tick
-        };
-        _languageCommandMemory[commandKey] = trace;
-        return trace;
-    }
-
-    public LanguageIntentRuntime GetLanguageIntentSnapshot()
-    {
-        lock (_gate)
-        {
-            return LanguageIntent;
-        }
-    }
 
     public BrainNarrationRuntime GetBrainNarrationSnapshot()
     {
@@ -4319,34 +3878,7 @@ internal sealed class SimulationState
 
     private DyadLanguageGroundingSnapshot BuildDyadLanguageGroundingSnapshotLocked()
     {
-        if (NeuronalLanguageGrounding.CircuitObserved)
-        {
-            return BuildNeuronalDyadLanguageGroundingSnapshotLocked(NeuronalLanguageGrounding);
-        }
-
-        var workspace = CognitiveLanguageWorkspace;
-        var speech = SpeechIntention;
-        var communicationIntent = BuildDyadCommunicationIntentLocked();
-        return new DyadLanguageGroundingSnapshot(
-            Tick,
-            SleepMemory.IsSleeping,
-            workspace.Active,
-            workspace.Confidence,
-            workspace.WorkingMemoryStability,
-            workspace.BoundGoalKey,
-            workspace.SemanticFocus,
-            workspace.NeedState,
-            workspace.AffectiveState,
-            AttentionState.Language,
-            AttentionState.FocusConfidence,
-            speech.Mode,
-            speech.SpokenEligible,
-            speech.Confidence,
-            speech.ReleaseGate,
-            speech.Suppression,
-            workspace.Evidence,
-            BuildDyadVerifiedMemoryExcerptsLocked(),
-            communicationIntent);
+        return BuildNeuronalDyadLanguageGroundingSnapshotLocked(NeuronalLanguageGrounding);
     }
 
     private DyadLanguageGroundingSnapshot BuildNeuronalDyadLanguageGroundingSnapshotLocked(
@@ -4432,77 +3964,6 @@ internal sealed class SimulationState
 
     private const string NeuronalPerceptDecisionAuthority = "DistributedPerceptEnsembleCompetition";
 
-    private IReadOnlyList<DyadVerifiedMemoryExcerpt> BuildDyadVerifiedMemoryExcerptsLocked()
-    {
-        var workingMemory = PrefrontalWorkingMemory;
-        var excerpts = new List<DyadVerifiedMemoryExcerpt>(4)
-        {
-            new(
-                "prefrontal-working-memory",
-                $"Task={SummarizeDyadLanguageText(workingMemory.CurrentTaskSet, 96)}; question={SummarizeDyadLanguageText(workingMemory.CurrentQuestion, 160)}; plan={SummarizeDyadLanguageText(workingMemory.CurrentPlan, 128)}.",
-                workingMemory.Confidence,
-                workingMemory.LastUpdatedTick,
-                SummarizeDyadLanguageText(workingMemory.Evidence, 160))
-        };
-
-        if (EpisodicMemory.Count > 0)
-        {
-            excerpts.Add(new DyadVerifiedMemoryExcerpt(
-                "episodic-memory",
-                SummarizeDyadLanguageText(EpisodicMemory.BestRecallSummary, 220),
-                EpisodicMemory.RecallConfidence,
-                EpisodicMemory.LastUpdatedTick,
-                $"event={SummarizeDyadLanguageText(EpisodicMemory.LastEventType, 72)}; hippocampal-binding={EpisodicMemory.HippocampalBinding:0.00}"));
-        }
-
-        if (SemanticMemory.Count > 0)
-        {
-            excerpts.Add(new DyadVerifiedMemoryExcerpt(
-                "semantic-memory",
-                $"Concept={SummarizeDyadLanguageText(SemanticMemory.DominantConceptKey, 96)}; meaning={SummarizeDyadLanguageText(SemanticMemory.DominantMeaning, 220)}.",
-                SemanticMemory.SemanticConfidence,
-                SemanticMemory.LastUpdatedTick,
-                $"category={SummarizeDyadLanguageText(SemanticMemory.ActiveCategory, 72)}; pfc-control={SemanticMemory.PfcConceptControl:0.00}"));
-        }
-
-        if (PlaceMemory.Count > 0)
-        {
-            excerpts.Add(new DyadVerifiedMemoryExcerpt(
-                "place-memory",
-                $"Place={SummarizeDyadLanguageText(PlaceMemory.ActiveLabel, 120)}; recall={SummarizeDyadLanguageText(PlaceMemory.BestRecallSummary, 180)}.",
-                PlaceMemory.Confidence,
-                PlaceMemory.LastUpdatedTick,
-                $"safety={PlaceMemory.Safety:0.00}; threat={PlaceMemory.Threat:0.00}; category={SummarizeDyadLanguageText(PlaceMemory.ActiveCategory, 72)}"));
-        }
-
-        return excerpts;
-    }
-
-    private DyadCommunicationIntentSnapshot BuildDyadCommunicationIntentLocked()
-    {
-        var languageIntent = LanguageIntent;
-        var innerSpeech = InnerSpeechLoop;
-        var workspace = CognitiveLanguageWorkspace;
-        return new DyadCommunicationIntentSnapshot(
-            languageIntent.Active || innerSpeech.Active || SpeechIntention.SpokenEligible,
-            SummarizeDyadLanguageText(languageIntent.Intent, 96),
-            SummarizeDyadLanguageText(languageIntent.Mood, 96),
-            SummarizeDyadLanguageText(languageIntent.Subject, 120),
-            Math.Max(languageIntent.Strength, innerSpeech.Confidence),
-            SummarizeDyadLanguageText(
-                innerSpeech.Active ? innerSpeech.Evidence : workspace.Evidence,
-                160));
-    }
-
-    private static string SummarizeDyadLanguageText(string? value, int maximumLength)
-    {
-        var normalized = string.IsNullOrWhiteSpace(value)
-            ? "none"
-            : string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return normalized.Length <= maximumLength
-            ? normalized
-            : normalized[..Math.Max(1, maximumLength - 3)] + "...";
-    }
 
     public InnerSpeechLoopRuntime GetInnerSpeechLoopSnapshot()
     {
@@ -4545,6 +4006,14 @@ internal sealed class SimulationState
         lock (_gate)
         {
             NeuronalLanguageGrounding = grounding;
+        }
+    }
+
+    public NeuronalLanguageGroundingDecision GetNeuronalLanguageGroundingSnapshot()
+    {
+        lock (_gate)
+        {
+            return NeuronalLanguageGrounding;
         }
     }
 
@@ -5099,13 +4568,6 @@ internal sealed class SimulationState
         }
     }
 
-    public BiologicalTeachingLoopRuntime GetBiologicalTeachingLoopSnapshot()
-    {
-        lock (_gate)
-        {
-            return BiologicalTeachingLoop;
-        }
-    }
 
     public object GetCircuitHealthPanelSnapshot(int maxWarnings)
     {
@@ -27742,13 +27204,9 @@ internal sealed class TickCoordinator(
 
     private static string BuildLanguageTargetNeuronId(string hemisphere, string prefix, string mode, string token, int tokenIndex, int channel)
     {
-        if (!mode.Equals("english", StringComparison.OrdinalIgnoreCase))
-        {
-            return $"{hemisphere}:{prefix}_tok_{tokenIndex}_cell_{channel}";
-        }
-
-        var classKey = EnglishLanguageLexicon.ResolveSemanticClassForTarget(token);
-        return $"{hemisphere}:{prefix}_{classKey}_tok_{tokenIndex}_cell_{channel}";
+        var lexicalKey = Regex.Replace(token.Trim().ToLowerInvariant(), @"[^a-z0-9']+", string.Empty);
+        lexicalKey = string.IsNullOrWhiteSpace(lexicalKey) ? "silence" : lexicalKey[..Math.Min(32, lexicalKey.Length)];
+        return $"{hemisphere}:{prefix}_lex_{lexicalKey}_tok_{tokenIndex}_cell_{channel}";
     }
 
     private static double ComputePercentile(IReadOnlyList<double> values, double quantile)
@@ -33337,24 +32795,6 @@ internal sealed record EnglishLexeme(
     string Surface,
     string PhonemeForm,
     string SemanticClass);
-internal sealed record EnglishGrammarAnalysis(
-    string Mood,
-    string Intent,
-    string? Subject,
-    string? Verb,
-    string? Object,
-    string? Qualifier,
-    bool IsQuestion,
-    bool IsCommand,
-    bool IsMemoryReference,
-    bool IsInnerSpeech,
-    IReadOnlyList<string> Features);
-internal sealed record EnglishCommandIntent(
-    bool Active,
-    string CommandKey,
-    string MotorDirective,
-    string Narration,
-    float Strength);
 
 internal sealed record LanguageCommandMemoryTrace(
     string CommandKey,
@@ -35071,34 +34511,6 @@ internal static class EnglishLanguageLexicon
             ["imagine"] = new("imagine", "ih m ae j ih n", "inner"),
             ["say"] = new("say", "s ey", "language")
         };
-    private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "a", "an", "and", "the", "to", "of", "in", "on", "with", "is", "are", "am", "be", "being", "been", "do", "does", "did", "can", "could", "should", "would", "will", "please"
-    };
-    private static readonly HashSet<string> QuestionWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "what", "where", "when", "why", "how", "who", "which", "can", "could", "should", "would", "will", "do", "does", "did", "is", "are"
-    };
-    private static readonly HashSet<string> VerbWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "go", "move", "run", "turn", "look", "see", "hear", "stop", "wait", "stay", "hold", "pause", "resume", "sleep", "rest", "fight", "attack", "approach", "flight", "find", "seek", "get", "take", "collect", "eat", "drink", "remember", "recall", "think", "imagine", "say", "repeat", "use", "avoid", "escape", "hide", "retreat", "arm"
-    };
-    private static readonly HashSet<string> CommandWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "go", "move", "run", "turn", "look", "stop", "wait", "stay", "hold", "pause", "resume", "sleep", "rest", "fight", "attack", "approach", "find", "seek", "get", "take", "collect", "eat", "drink", "remember", "recall", "say", "repeat", "use", "avoid", "escape", "hide", "retreat", "arm"
-    };
-    private static readonly HashSet<string> MemoryWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "remember", "recall", "memory", "forgot", "forget", "store", "learn", "known", "past"
-    };
-    private static readonly HashSet<string> InnerSpeechWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "think", "imagine", "say", "repeat", "inner", "quietly", "myself", "mind"
-    };
-    private static readonly HashSet<string> Pronouns = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "i", "me", "my", "you", "we", "us", "avatar", "brain", "it", "they"
-    };
 
     public static PhoneticLexicalization Lexicalize(IReadOnlyList<string> sourceTokens)
     {
@@ -35124,239 +34536,6 @@ internal static class EnglishLanguageLexicon
             ReusedLexemes: surfaceTokens.Count);
     }
 
-    public static string ResolveSemanticClass(string token)
-    {
-        var normalized = NormalizeSurface(token);
-        if (normalized.StartsWith("route_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "route";
-        }
-
-        return Resolve(normalized).SemanticClass;
-    }
-
-    public static EnglishGrammarAnalysis AnalyzeGrammar(IReadOnlyList<string> sourceTokens)
-    {
-        var tokens = sourceTokens
-            .Select(NormalizeSurface)
-            .Where(t => !string.IsNullOrWhiteSpace(t) && t != "silence")
-            .ToArray();
-        if (tokens.Length == 0)
-        {
-            return new EnglishGrammarAnalysis("empty", "none", null, null, null, null, false, false, false, false, Array.Empty<string>());
-        }
-
-        var first = tokens[0];
-        var questionWord = tokens.FirstOrDefault(t => QuestionWords.Contains(t));
-        var isQuestion = QuestionWords.Contains(first);
-        var isCommand = CommandWords.Contains(first) || (first == "please" && tokens.Length > 1 && CommandWords.Contains(tokens[1]));
-        var isMemory = tokens.Any(t => MemoryWords.Contains(t));
-        var isInnerSpeech = tokens.Any(t => InnerSpeechWords.Contains(t));
-        var verbIndex = Array.FindIndex(tokens, t => VerbWords.Contains(t));
-        var verb = verbIndex >= 0 ? tokens[verbIndex] : null;
-        var subject = ResolveSubject(tokens, verbIndex, isCommand);
-        var obj = ResolveObject(tokens, verbIndex);
-        var qualifier = ResolveQualifier(tokens, obj);
-        var mood = isQuestion
-            ? "interrogative"
-            : isCommand ? "imperative" : "declarative";
-        var intent = ResolveIntent(tokens, isQuestion, isCommand, isMemory, isInnerSpeech);
-        var features = BuildGrammarFeatureTokens(mood, intent, subject, verb, obj, qualifier, questionWord, isMemory, isInnerSpeech);
-
-        return new EnglishGrammarAnalysis(
-            mood,
-            intent,
-            subject,
-            verb,
-            obj,
-            qualifier,
-            isQuestion,
-            isCommand,
-            isMemory,
-            isInnerSpeech,
-            features);
-    }
-
-    public static IReadOnlyList<string> BuildBrainTokens(IReadOnlyList<string> surfaceTokens, EnglishGrammarAnalysis grammar)
-    {
-        var output = new List<string>(Math.Min(48, surfaceTokens.Count + grammar.Features.Count));
-        foreach (var token in surfaceTokens)
-        {
-            var normalized = NormalizeSurface(token);
-            if (normalized != "silence")
-            {
-                output.Add(normalized);
-            }
-        }
-
-        foreach (var feature in grammar.Features)
-        {
-            if (output.Count >= 48)
-            {
-                break;
-            }
-
-            output.Add(feature);
-        }
-
-        return output;
-    }
-
-    public static EnglishCommandIntent ResolveCommandIntent(EnglishGrammarAnalysis grammar, IReadOnlyList<string> surfaceTokens)
-    {
-        var tokens = surfaceTokens
-            .Select(NormalizeSurface)
-            .Where(t => !string.IsNullOrWhiteSpace(t) && t != "silence")
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var verb = NormalizeOptional(grammar.Verb);
-        var obj = NormalizeOptional(grammar.Object);
-        var qualifier = NormalizeOptional(grammar.Qualifier);
-        var hasActionIntent = grammar.IsCommand ||
-                              grammar.Intent is "survival_statement" or "inner_speech" ||
-                              tokens.Overlaps(["hungry", "hunger", "food", "water", "tired", "sleep", "shelter", "safe", "home", "rest", "danger", "predator", "bear", "weapon", "tool", "fight", "attack", "escape", "hide"]);
-        if (!hasActionIntent)
-        {
-            return new EnglishCommandIntent(false, "language.observe", "motor_idle", BuildNarrationForStatement(grammar, tokens), 0.0f);
-        }
-
-        var strength = grammar.IsCommand ? 1.0f : 0.68f;
-        if (tokens.Contains("please"))
-        {
-            strength += 0.05f;
-        }
-
-        if (verb is "stop" or "wait" or "stay" or "hold" or "pause" || tokens.Contains("no"))
-        {
-            return new EnglishCommandIntent(true, "language.stop", "motor_stop", "I am stopping.", strength + 0.18f);
-        }
-
-        if (tokens.Contains("left") || qualifier == "left" || obj == "left")
-        {
-            return new EnglishCommandIntent(true, "language.turn_left", "motor_turn_left", "I am turning left.", strength);
-        }
-
-        if (tokens.Contains("right") || qualifier == "right" || obj == "right")
-        {
-            return new EnglishCommandIntent(true, "language.turn_right", "motor_turn_right", "I am turning right.", strength);
-        }
-
-        if (tokens.Contains("back") || tokens.Contains("flight") || tokens.Contains("escape") || tokens.Contains("retreat") || verb is "avoid" or "escape" or "retreat")
-        {
-            return new EnglishCommandIntent(true, "language.avoid_threat", "motor_retreat", "I am moving away from danger.", strength + 0.12f);
-        }
-
-        if (tokens.Contains("shelter") || tokens.Contains("safe") || tokens.Contains("home") || tokens.Contains("hide") || tokens.Contains("tired") || tokens.Contains("sleep") || tokens.Contains("rest"))
-        {
-            return new EnglishCommandIntent(true, "language.seek_shelter", "motor_seek", "I am looking for shelter.", strength + 0.14f);
-        }
-
-        if (tokens.Contains("food") || tokens.Contains("hungry") || tokens.Contains("hunger") || verb is "eat" or "drink" or "collect")
-        {
-            return new EnglishCommandIntent(true, "language.seek_food", "motor_seek", "I am looking for food.", strength + 0.10f);
-        }
-
-        if (tokens.Contains("weapon") || tokens.Contains("tool") || verb == "arm")
-        {
-            return new EnglishCommandIntent(true, "language.seek_weapon", "motor_seek", "I am looking for a weapon.", strength + 0.10f);
-        }
-
-        if (tokens.Contains("fight") || tokens.Contains("attack") || tokens.Contains("approach") || verb is "fight" or "attack" or "approach")
-        {
-            return new EnglishCommandIntent(true, "language.fight_threat", "motor_approach", "I am preparing to fight.", strength + 0.10f);
-        }
-
-        if (tokens.Contains("danger") || tokens.Contains("predator") || tokens.Contains("bear"))
-        {
-            return new EnglishCommandIntent(true, "language.avoid_threat", "motor_retreat", "I am moving away from danger.", strength + 0.16f);
-        }
-
-        if (tokens.Contains("forward") || verb is "go" or "move" or "run" or "resume")
-        {
-            return new EnglishCommandIntent(true, "language.move_forward", "motor_forward", "I am moving forward.", strength);
-        }
-
-        if (grammar.IsInnerSpeech || verb is "say" or "repeat" or "think")
-        {
-            return new EnglishCommandIntent(true, "language.inner_speech", "motor_idle", "I am thinking in words.", strength * 0.5f);
-        }
-
-        return new EnglishCommandIntent(false, "language.observe", "motor_idle", BuildNarrationForStatement(grammar, tokens), 0.0f);
-    }
-
-    private static string NormalizeOptional(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var normalized = NormalizeSurface(value);
-        return normalized == "silence" ? string.Empty : normalized;
-    }
-
-    private static string BuildNarrationForStatement(EnglishGrammarAnalysis grammar, HashSet<string> tokens)
-    {
-        if (grammar.IsQuestion)
-        {
-            return "I am considering the question.";
-        }
-
-        if (tokens.Contains("happy"))
-        {
-            return "I feel positive.";
-        }
-
-        if (tokens.Contains("sad") || tokens.Contains("pain"))
-        {
-            return "I feel discomfort.";
-        }
-
-        return "I heard the words.";
-    }
-
-    public static string ResolveSemanticClassForTarget(string token)
-    {
-        var normalized = NormalizeSurface(token);
-        if (normalized.StartsWith("intent_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "intent";
-        }
-
-        if (normalized.StartsWith("mood_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "mood";
-        }
-
-        if (normalized.StartsWith("subject_", StringComparison.OrdinalIgnoreCase) ||
-            normalized.StartsWith("verb_", StringComparison.OrdinalIgnoreCase) ||
-            normalized.StartsWith("object_", StringComparison.OrdinalIgnoreCase) ||
-            normalized.StartsWith("qualifier_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "syntax";
-        }
-
-        if (normalized.StartsWith("question_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "question";
-        }
-
-        if (normalized.StartsWith("memory_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "memory";
-        }
-
-        if (normalized.StartsWith("inner_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "inner";
-        }
-
-        if (normalized.StartsWith("class_", StringComparison.OrdinalIgnoreCase))
-        {
-            return "semantic";
-        }
-
-        return ResolveSemanticClass(normalized);
-    }
 
     private static EnglishLexeme Resolve(string token)
     {
@@ -35391,155 +34570,6 @@ internal static class EnglishLanguageLexicon
         return surface.Length <= 2 ? "function" : "object";
     }
 
-    private static string? ResolveSubject(IReadOnlyList<string> tokens, int verbIndex, bool isCommand)
-    {
-        if (isCommand)
-        {
-            return "avatar";
-        }
-
-        var end = verbIndex >= 0 ? verbIndex : tokens.Count;
-        for (var i = 0; i < end; i++)
-        {
-            var token = tokens[i];
-            if (FunctionWords.Contains(token) || QuestionWords.Contains(token))
-            {
-                continue;
-            }
-
-            return token;
-        }
-
-        return tokens.FirstOrDefault(t => Pronouns.Contains(t));
-    }
-
-    private static string? ResolveObject(IReadOnlyList<string> tokens, int verbIndex)
-    {
-        var start = verbIndex >= 0 ? verbIndex + 1 : 0;
-        for (var i = start; i < tokens.Count; i++)
-        {
-            var token = tokens[i];
-            if (FunctionWords.Contains(token) || QuestionWords.Contains(token) || VerbWords.Contains(token))
-            {
-                continue;
-            }
-
-            return token;
-        }
-
-        return null;
-    }
-
-    private static string? ResolveQualifier(IReadOnlyList<string> tokens, string? currentObject)
-    {
-        foreach (var token in tokens)
-        {
-            if (string.Equals(token, currentObject, StringComparison.OrdinalIgnoreCase) ||
-                FunctionWords.Contains(token) ||
-                QuestionWords.Contains(token) ||
-                VerbWords.Contains(token))
-            {
-                continue;
-            }
-
-            var semanticClass = ResolveSemanticClass(token);
-            if (semanticClass is "direction" or "attribute" or "time" or "need" or "threat" or "safety")
-            {
-                return token;
-            }
-        }
-
-        return null;
-    }
-
-    private static string ResolveIntent(IReadOnlyList<string> tokens, bool isQuestion, bool isCommand, bool isMemory, bool isInnerSpeech)
-    {
-        if (isMemory)
-        {
-            return tokens.Any(t => t is "remember" or "store" or "learn")
-                ? "memory_encode"
-                : "memory_recall";
-        }
-
-        if (isInnerSpeech)
-        {
-            return "inner_speech";
-        }
-
-        if (isQuestion)
-        {
-            return "question";
-        }
-
-        if (isCommand)
-        {
-            return "command";
-        }
-
-        if (tokens.Any(t => ResolveSemanticClass(t) is "need" or "sleep" or "threat" or "safety"))
-        {
-            return "survival_statement";
-        }
-
-        return "statement";
-    }
-
-    private static IReadOnlyList<string> BuildGrammarFeatureTokens(
-        string mood,
-        string intent,
-        string? subject,
-        string? verb,
-        string? obj,
-        string? qualifier,
-        string? questionWord,
-        bool isMemory,
-        bool isInnerSpeech)
-    {
-        var features = new List<string>(12)
-        {
-            $"mood_{mood}",
-            $"intent_{intent}",
-            "route_english_grammar"
-        };
-
-        if (!string.IsNullOrWhiteSpace(subject))
-        {
-            features.Add($"subject_{subject}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(verb))
-        {
-            features.Add($"verb_{verb}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(obj))
-        {
-            features.Add($"object_{obj}");
-            features.Add($"class_{ResolveSemanticClass(obj)}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(qualifier))
-        {
-            features.Add($"qualifier_{qualifier}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(questionWord))
-        {
-            features.Add($"question_{questionWord}");
-        }
-
-        if (isMemory)
-        {
-            features.Add("memory_reference");
-        }
-
-        if (isInnerSpeech)
-        {
-            features.Add("inner_speech");
-        }
-
-        return features;
-    }
 
     private static string GuessPhonemes(string surface)
     {
@@ -37113,33 +36143,26 @@ internal sealed class DialogueTurnManager
         string mode,
         string text,
         IReadOnlyList<string> brainTokens,
-        EnglishGrammarAnalysis? grammar,
-        object? languageIntent,
         long tick)
     {
         lock (_gate)
         {
             _sequence++;
             var tokenCount = brainTokens?.Count ?? 0;
-            var confidence = EstimateConfidence(text, tokenCount, grammar);
-            var phase = confidence < 0.35f ? "clarifying" : "grounding";
-            var needsClarification = confidence < 0.35f || IsAmbiguous(text, grammar);
-            var prompt = needsClarification
-                ? BuildClarificationPrompt(text, grammar)
-                : string.Empty;
+            var confidence = tokenCount > 0 ? 1.0f : 0.0f;
 
             _snapshot = _snapshot with
             {
                 Sequence = _sequence,
-                Phase = phase,
+                Phase = "sensory-ingress",
                 Mode = string.IsNullOrWhiteSpace(mode) ? "auto" : mode,
                 LastUserText = text ?? string.Empty,
-                LastIntent = grammar?.Intent ?? "semantic",
-                LastMood = grammar?.Mood ?? "none",
+                LastIntent = "uninterpreted",
+                LastMood = "none",
                 TokenCount = tokenCount,
                 Confidence = confidence,
-                PendingClarification = needsClarification,
-                ClarificationPrompt = prompt,
+                PendingClarification = false,
+                ClarificationPrompt = string.Empty,
                 LastGeneratedSpikes = 0,
                 LastDeliveredSpikes = 0,
                 LastErrorCount = 0,
@@ -37226,62 +36249,7 @@ internal sealed class DialogueTurnManager
         }
     }
 
-    private static float EstimateConfidence(string text, int tokenCount, EnglishGrammarAnalysis? grammar)
-    {
-        if (tokenCount <= 0)
-        {
-            return 0f;
-        }
-        var confidence = Math.Clamp(tokenCount / 6f, 0.25f, 1f);
-        if (grammar is not null)
-        {
-            confidence += 0.18f;
-            if (!string.IsNullOrWhiteSpace(grammar.Intent) && !string.Equals(grammar.Intent, "unknown", StringComparison.OrdinalIgnoreCase))
-            {
-                confidence += 0.12f;
-            }
-            if (string.Equals(grammar.Mood, "question", StringComparison.OrdinalIgnoreCase))
-            {
-                confidence -= 0.18f;
-            }
-        }
-        if (!string.IsNullOrWhiteSpace(text) && text.Trim().EndsWith("?", StringComparison.Ordinal))
-        {
-            confidence -= 0.12f;
-        }
-        return Math.Clamp(confidence, 0f, 1f);
-    }
 
-    private static bool IsAmbiguous(string text, EnglishGrammarAnalysis? grammar)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return true;
-        }
-        var trimmed = text.Trim();
-        if (trimmed.Length <= 3)
-        {
-            return true;
-        }
-        if (trimmed.EndsWith("?", StringComparison.Ordinal))
-        {
-            return true;
-        }
-        return grammar is not null && string.Equals(grammar.Intent, "unknown", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildClarificationPrompt(string text, EnglishGrammarAnalysis? grammar)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return "I need a little more language input before I can ground that.";
-        }
-        if (grammar is not null && string.Equals(grammar.Mood, "question", StringComparison.OrdinalIgnoreCase))
-        {
-            return "This looks like a question; hold it in working memory and seek the missing answer.";
-        }
-        return "The instruction is ambiguous; keep it active and ask for a clearer goal if routing fails.";
-    }
 }
 
 internal readonly record struct DialogueTurnSnapshot(

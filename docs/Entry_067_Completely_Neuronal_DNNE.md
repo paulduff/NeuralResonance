@@ -226,6 +226,7 @@ Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-
 The final semantic actuation paths have been removed from the runtime:
 
 - English parsing can stimulate auditory and language populations but cannot construct or dispatch motor spikes.
+- Hosted language ingress no longer parses commands, assigns semantic intent, detects teaching keywords, or writes conventional memories. It only tokenizes and phoneticizes the stimulus before spike delivery.
 - The live motor decoder does not receive the central intentional-action record and cannot compare against or imitate a named directive.
 - The avatar discards all motor-structure traffic that is not a numeric population code, including semantic tool commands.
 - Runtime `Shadow`, `Assist`, promotion, rollback, and motor-mode administration paths have been deleted.
@@ -236,6 +237,11 @@ The final semantic actuation paths have been removed from the runtime:
 - The maze's goal-coordinate navigator is disabled by default and its runtime endpoint returns HTTP 410. Its session code remains an offline benchmark artifact, not a brain or world authority. The rendered maze consumes raw brain/avatar motor traffic.
 
 The old narration, speech-intention, cognitive-language-workspace, inner-speech, intentional-action, self-monitoring, autobiographical-self, narrative-self, identity, room-state, and inhabitance endpoints have been deleted. The synthetic `ObserveCognitiveRuntime` driver and deterministic survival benchmark have also been deleted, so tests cannot manufacture cognition through a fixed scalar update sequence. Predictive perception, persistent percepts, scalar attention, prefrontal working memory, consciousness rhythm, and global workspace have already lost their public routes, update roots, diagnostics, and checkpoint state. Conventional memory dictionaries remain checkpoint and audit material pending their own deletion rung; language, replay, attention, and action decisions do not read them as authority.
+
+The former English grammar/command parser and keyword-based teaching detector
+have since been deleted from the live ingress path. Dyad grounding has no
+scalar fallback: absent neuronal evidence yields an explicit deferred result
+with no synthetic workspace or memory excerpt.
 
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 

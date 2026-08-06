@@ -300,7 +300,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
 
 
     [Fact]
-    public void Legacy_Symbolic_Cognition_Harness_Is_Absent()
+    public void Legacy_Symbolic_Cognition_And_Language_Harnesses_Are_Absent()
     {
         const System.Reflection.BindingFlags allMethods =
             System.Reflection.BindingFlags.Instance |
@@ -308,6 +308,28 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             System.Reflection.BindingFlags.NonPublic;
 
         Assert.Null(typeof(SimulationState).GetMethod("ObserveCognitiveRuntime", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("ObserveLanguageIntent", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("ObserveBiologicalTeachingEvent", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetLanguageIntentSnapshot", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetBiologicalTeachingLoopSnapshot", allMethods));
+
+        var assembly = typeof(SimulationState).Assembly;
+        Assert.Null(assembly.GetType("EnglishGrammarAnalysis"));
+        Assert.Null(assembly.GetType("EnglishCommandIntent"));
+
+        var lexicon = assembly.GetType("EnglishLanguageLexicon");
+        Assert.NotNull(lexicon);
+        Assert.Null(lexicon!.GetMethod("AnalyzeGrammar", allMethods));
+        Assert.Null(lexicon.GetMethod("BuildBrainTokens", allMethods));
+        Assert.Null(lexicon.GetMethod("ResolveCommandIntent", allMethods));
+
+        var observeInput = Assert.Single(
+            typeof(DialogueTurnManager).GetMethods(allMethods),
+            static method => method.Name == "ObserveInput");
+        Assert.Equal(4, observeInput.GetParameters().Length);
+        Assert.DoesNotContain(
+            observeInput.GetParameters(),
+            static parameter => parameter.ParameterType.Name.Contains("Grammar", StringComparison.Ordinal));
     }
 
     private static void AdvanceTicks(SimulationState state, int count)

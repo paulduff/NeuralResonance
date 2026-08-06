@@ -329,6 +329,7 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     [InlineData("/api/v1/identity-boundary")]
     [InlineData("/api/v1/room-state")]
     [InlineData("/api/v1/inhabitance")]
+    [InlineData("/api/v1/biological-teaching-loop")]
     public async Task Legacy_Cognition_Endpoints_Are_Removed(string path)
     {
         using var response = await _fixture.Client.GetAsync(path);

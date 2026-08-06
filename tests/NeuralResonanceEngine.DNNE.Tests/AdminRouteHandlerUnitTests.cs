@@ -89,26 +89,26 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public void DyadCandidate_Handler_Records_A_Grounded_Review_Without_Changing_Language_Intent()
+    public void DyadCandidate_Handler_Records_A_Neuronal_Only_Review_Without_Symbolic_Fallback()
     {
         var state = CreateState();
-        var languageIntentBefore = state.GetLanguageIntentSnapshot();
 
         var result = DyadLanguageRoutes.PostCandidate(CreateDyadRequest(), state);
         var value = Assert.IsAssignableFrom<IValueHttpResult>(result).Value;
         var response = Assert.IsType<DyadLanguageCandidateResponse>(value);
 
         Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Decision);
-        Assert.Equal(languageIntentBefore, state.GetLanguageIntentSnapshot());
         Assert.False(response.Grounding.IsSleeping);
+        Assert.Equal(NeuronalLanguageGroundingDecision.Authority, response.Grounding.Authority);
+        Assert.False(response.Grounding.NeuronalCircuitObserved);
+        Assert.False(response.Grounding.NeuronalGrounded);
         Assert.Contains("did not issue", response.DecisionReason, StringComparison.OrdinalIgnoreCase);
 
         var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
         Assert.Equal("entity-25m-bpe-v1", audit.Proposal.EntityVersion);
         Assert.Equal("hello from Entity", audit.Proposal.CandidateText);
         Assert.Equal(response.Decision, audit.Decision);
-        Assert.NotEmpty(response.Grounding.MemoryExcerpts);
-        Assert.Equal("prefrontal-working-memory", response.Grounding.MemoryExcerpts[0].MemorySystem);
+        Assert.Empty(response.Grounding.MemoryExcerpts);
     }
 
     [Fact]
@@ -164,10 +164,9 @@ public sealed class AdminRouteHandlerUnitTests
     }
 
     [Fact]
-    public async Task DyadEntityGeneration_Handler_Reviews_An_Entity_Candidate_Without_Issuing_An_Action()
+    public async Task DyadEntityGeneration_Handler_Reviews_An_Entity_Candidate_Without_Symbolic_Fallback()
     {
         var state = CreateState();
-        var languageIntentBefore = state.GetLanguageIntentSnapshot();
         var entityClient = new StubEntityLanguageClient(new EntityLanguageCandidateResult(
             true,
             "test candidate",
@@ -188,7 +187,8 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.True(response.EntityAvailable);
         Assert.NotNull(response.Review);
         Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Review.Decision);
-        Assert.Equal(languageIntentBefore, state.GetLanguageIntentSnapshot());
+        Assert.False(response.Review.Grounding.NeuronalCircuitObserved);
+        Assert.Empty(response.Review.Grounding.MemoryExcerpts);
 
         var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
         Assert.Contains("You are Entity, the language component of Dyad.", audit.Proposal.PromptText);

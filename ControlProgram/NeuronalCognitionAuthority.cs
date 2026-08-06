@@ -32,6 +32,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         NeuronalSleepConsolidationDecision sleep,
         NeuronalLanguageGroundingDecision language,
         NeuronalAffectValuationDecision valuation,
+        NeuronalExecutiveDecision executive,
         NeuronalMotorRuntime motor)
     {
         ArgumentNullException.ThrowIfNull(percept);
@@ -40,6 +41,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         ArgumentNullException.ThrowIfNull(sleep);
         ArgumentNullException.ThrowIfNull(language);
         ArgumentNullException.ThrowIfNull(valuation);
+        ArgumentNullException.ThrowIfNull(executive);
         ArgumentNullException.ThrowIfNull(motor);
 
         var domains = new[]
@@ -62,6 +64,9 @@ internal sealed class NeuronalCognitionAuthorityRuntime
             Domain("affect-valuation", valuation.Available, valuation.Available, valuation.Active,
                 "/api/v1/neuronal-affect-valuation",
                 $"observer=read-only;channel={valuation.DominantChannel};coverage={valuation.CircuitCoverage:0.000};confidence={valuation.Confidence:0.000}"),
+            Domain("executive-control", executive.Available, executive.Available, executive.Active,
+                "/api/v1/neuronal-executive",
+                $"observer=read-only;action={executive.SelectedActionChannel};context={executive.MaintainedContextChannel};coverage={executive.CircuitCoverage:0.000};confidence={executive.Confidence:0.000}"),
             Domain("action-selection", motor.ActionCircuitObserved, motor.ActionCircuitObserved, motor.SelectedActionChannel >= 0,
                 "/api/v1/neuronal-motor",
                 $"channel={motor.SelectedActionChannel};coverage={motor.ActionCircuitCoverage:0.000}"),

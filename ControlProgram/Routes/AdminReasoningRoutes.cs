@@ -10,8 +10,6 @@ internal static class AdminReasoningRoutes
         app.MapGet("/api/v1/admin/reasoning/schemas", GetSchemas);
         app.MapGet("/api/v1/admin/reasoning/world-model", GetWorldModel);
         app.MapPost("/api/v1/admin/reasoning/counterfactual", PostCounterfactual);
-        app.MapGet("/api/v1/admin/reasoning/planning", GetPlanning);
-        app.MapPost("/api/v1/admin/reasoning/planning", PostPlanning);
         app.MapGet("/api/v1/admin/reasoning/curriculum", GetCurriculum);
         app.MapPost("/api/v1/admin/reasoning/curriculum", PostCurriculum);
         app.MapGet("/api/v1/admin/reasoning/consolidation", GetConsolidation);
@@ -34,28 +32,6 @@ internal static class AdminReasoningRoutes
         }
 
         return Results.Ok(state.EvaluateCounterfactual(request));
-    }
-
-    internal static IResult GetPlanning(SimulationState state)
-        => Results.Ok(state.GetPlanningWorkspaceSnapshot());
-
-    internal static IResult PostPlanning(PlanningWorkspaceControlRequest request, SimulationState state)
-    {
-        if (request is null)
-        {
-            return Results.BadRequest(new { Error = "Request payload is required." });
-        }
-
-        if (!state.TrySetPlanningWorkspace(request, out var workspace, out var error))
-        {
-            return Results.BadRequest(new { Error = error ?? "Unable to update planning workspace settings." });
-        }
-
-        return Results.Ok(new
-        {
-            Applied = true,
-            PlanningWorkspace = workspace
-        });
     }
 
     internal static IResult GetCurriculum(SimulationState state)

@@ -178,7 +178,6 @@ public partial class MainWindow : Window
     private bool _sensoryHealthCheckInFlight;
     private bool _visualRouteRecoveryInFlight;
     private bool _suppressReasoningControlEvents;
-    private bool _reasoningApplyPlanningInFlight;
     private bool _reasoningApplyCurriculumInFlight;
     private bool _reasoningApplyConsolidationInFlight;
     private bool _reasoningCounterfactualInFlight;

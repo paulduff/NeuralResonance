@@ -9,7 +9,7 @@ namespace NRE.WpfEditor;
 
 // Control-panel handlers: performance profile buttons, auto-profile sliders,
 // sleep-pressure / min-wake-ticks controls, input-gates checkboxes, reasoning
-// sliders + planning/curriculum/consolidation/counterfactual apply actions,
+// curriculum/consolidation/counterfactual apply actions,
 // structure restart helpers.
 // Extracted from MainWindow.xaml.cs.
 public partial class MainWindow
@@ -93,8 +93,7 @@ public partial class MainWindow
 
     private void SyncReasoningControlsFromState(JsonElement root)
     {
-        if (_reasoningApplyPlanningInFlight ||
-            _reasoningApplyCurriculumInFlight ||
+        if (_reasoningApplyCurriculumInFlight ||
             _reasoningApplyConsolidationInFlight ||
             _reasoningCounterfactualInFlight)
         {
@@ -110,27 +109,6 @@ public partial class MainWindow
         _suppressReasoningControlEvents = true;
         try
         {
-            if (TryGetProperty(root, "planningWorkspace", out var planning) && planning.ValueKind == JsonValueKind.Object)
-            {
-                foundAny = true;
-                var goal = GetString(planning, "goal");
-                if (!string.IsNullOrWhiteSpace(goal) && ReasoningGoalTextBox is not null && !string.Equals(ReasoningGoalTextBox.Text, goal, StringComparison.Ordinal))
-                {
-                    ReasoningGoalTextBox.Text = goal;
-                }
-
-                if (ReasoningGoalActiveCheckBox is not null)
-                {
-                    ReasoningGoalActiveCheckBox.IsChecked = GetBool(planning, "goalActive", true);
-                }
-
-                SetSliderValue(ReasoningHorizonSlider, GetInt(planning, "horizonSteps"));
-                SetSliderValue(ReasoningBranchingSlider, GetInt(planning, "maxBranching"));
-                SetSliderValue(ReasoningExplorationSlider, GetDouble(planning, "explorationTemperature"));
-                SetSliderValue(ReasoningDopamineSlider, GetDouble(planning, "dopamineBias"));
-                SetSliderValue(ReasoningInhibitorySlider, GetDouble(planning, "inhibitoryGate"));
-            }
-
             if (TryGetProperty(root, "curriculum", out var curriculum) && curriculum.ValueKind == JsonValueKind.Object)
             {
                 foundAny = true;
@@ -177,31 +155,6 @@ public partial class MainWindow
 
     private void UpdateReasoningSliderLabels()
     {
-        if (ReasoningHorizonText is not null && ReasoningHorizonSlider is not null)
-        {
-            ReasoningHorizonText.Text = ((int)Math.Round(ReasoningHorizonSlider.Value)).ToString();
-        }
-
-        if (ReasoningBranchingText is not null && ReasoningBranchingSlider is not null)
-        {
-            ReasoningBranchingText.Text = ((int)Math.Round(ReasoningBranchingSlider.Value)).ToString();
-        }
-
-        if (ReasoningExplorationText is not null && ReasoningExplorationSlider is not null)
-        {
-            ReasoningExplorationText.Text = ReasoningExplorationSlider.Value.ToString("0.00");
-        }
-
-        if (ReasoningDopamineText is not null && ReasoningDopamineSlider is not null)
-        {
-            ReasoningDopamineText.Text = ReasoningDopamineSlider.Value.ToString("0.00");
-        }
-
-        if (ReasoningInhibitoryText is not null && ReasoningInhibitorySlider is not null)
-        {
-            ReasoningInhibitoryText.Text = ReasoningInhibitorySlider.Value.ToString("0.00");
-        }
-
         if (ReasoningCurriculumStageText is not null && ReasoningCurriculumStageSlider is not null)
         {
             ReasoningCurriculumStageText.Text = ((int)Math.Round(ReasoningCurriculumStageSlider.Value)).ToString();
@@ -344,85 +297,6 @@ public partial class MainWindow
         catch
         {
             return payload;
-        }
-    }
-
-    private async Task ApplyReasoningPlanningAsync()
-    {
-        if (_reasoningApplyPlanningInFlight)
-        {
-            AddOutputLog("Reasoning planning update already in progress.");
-            return;
-        }
-
-        _reasoningApplyPlanningInFlight = true;
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5000));
-        try
-        {
-            var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
-            if (baseUri is null)
-            {
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = "Reasoning planning: control endpoint unavailable";
-                }
-                AddOutputLog("Reasoning planning update skipped: Control Program endpoint not available.");
-                return;
-            }
-
-            var request = new
-            {
-                Goal = ReasoningGoalTextBox?.Text?.Trim(),
-                GoalActive = ReasoningGoalActiveCheckBox?.IsChecked ?? true,
-                HorizonSteps = (int)Math.Round(ReasoningHorizonSlider?.Value ?? 6),
-                MaxBranching = (int)Math.Round(ReasoningBranchingSlider?.Value ?? 8),
-                ExplorationTemperature = (float)(ReasoningExplorationSlider?.Value ?? 0.40),
-                DopamineBias = (float)(ReasoningDopamineSlider?.Value ?? 1.00),
-                InhibitoryGate = (float)(ReasoningInhibitorySlider?.Value ?? 1.00)
-            };
-
-            using var response = await _httpClient.PostAsJsonAsync(new Uri(baseUri, "/api/v1/admin/reasoning/planning"), request, cts.Token);
-            var payload = await response.Content.ReadAsStringAsync(cts.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                NoteControlEndpointFailure();
-                if (ReasoningStatusText is not null)
-                {
-                    ReasoningStatusText.Text = $"Reasoning planning: HTTP {(int)response.StatusCode}";
-                }
-                AddOutputLog($"Reasoning planning update failed: HTTP {(int)response.StatusCode}. {TrimForStatus(payload, 220)}");
-                return;
-            }
-
-            NoteControlEndpointSuccess(baseUri);
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = "Reasoning planning: applied";
-            }
-            AddOutputLog("Reasoning planning workspace updated.");
-
-            if (!string.IsNullOrWhiteSpace(payload))
-            {
-                using var doc = JsonDocument.Parse(payload);
-                if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                {
-                    SetReasoningText(FormatReasoningState(doc.RootElement));
-                    SyncReasoningControlsFromState(doc.RootElement);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            NoteControlEndpointFailure();
-            if (ReasoningStatusText is not null)
-            {
-                ReasoningStatusText.Text = $"Reasoning planning: error ({ex.GetType().Name})";
-            }
-            AddOutputLog($"Reasoning planning update failed: {ex.Message}");
-        }
-        finally
-        {
-            _reasoningApplyPlanningInFlight = false;
         }
     }
 
@@ -688,9 +562,6 @@ public partial class MainWindow
     // Async-void button handlers wrap the awaited work in SafeHandlerAsync so an
     // HTTP failure inside the body becomes a log line instead of crashing the
     // WPF dispatcher (which would tear down the whole editor).
-    private async void ReasoningApplyPlanningButton_OnClick(object sender, RoutedEventArgs e)
-        => await SafeHandlerAsync(ApplyReasoningPlanningAsync, "Apply reasoning planning");
-
     private async void ReasoningApplyCurriculumButton_OnClick(object sender, RoutedEventArgs e)
         => await SafeHandlerAsync(ApplyReasoningCurriculumAsync, "Apply reasoning curriculum");
 

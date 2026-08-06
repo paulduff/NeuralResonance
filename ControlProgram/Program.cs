@@ -55,6 +55,7 @@ builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
 builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
 builder.Services.AddSingleton<NeuronalLanguageGroundingRuntime>();
 builder.Services.AddSingleton<NeuronalAffectValuationRuntime>();
+builder.Services.AddSingleton<NeuronalExecutiveRuntime>();
 builder.Services.AddSingleton<NeuronalCognitionAuthorityRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
@@ -329,6 +330,8 @@ app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRunt
     Results.Ok(languageGrounding.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-affect-valuation", (NeuronalAffectValuationRuntime affectValuation) =>
     Results.Ok(affectValuation.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-executive", (NeuronalExecutiveRuntime executive) =>
+    Results.Ok(executive.GetSnapshot()));
 app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cognitionAuthority) =>
     Results.Ok(cognitionAuthority.GetSnapshot()));
 app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok(state.GetSelfMonitoringLoopSnapshot()));
@@ -6807,87 +6810,6 @@ internal sealed class SimulationState
         }
     }
 
-    public object GetPlanningWorkspaceSnapshot()
-    {
-        lock (_gate)
-        {
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                PlanningWorkspace.Goal,
-                PlanningWorkspace.GoalActive,
-                PlanningWorkspace.HorizonSteps,
-                PlanningWorkspace.MaxBranching,
-                PlanningWorkspace.ExplorationTemperature,
-                PlanningWorkspace.DopamineBias,
-                PlanningWorkspace.InhibitoryGate,
-                PlanningWorkspace.SelectedActionKey,
-                PlanningWorkspace.SelectedUtility,
-                PlanningWorkspace.SelectedConfidence,
-                PlanningWorkspace.LastPlanTick,
-                PlanningWorkspace.PlanRevision,
-                PlanningWorkspace.CandidateActions,
-                PlanningWorkspace.ProposedPlan
-            };
-        }
-    }
-
-    public bool TrySetPlanningWorkspace(PlanningWorkspaceControlRequest request, out PlanningWorkspaceRuntime runtime, out string? error)
-    {
-        lock (_gate)
-        {
-            error = null;
-            var goal = request.Goal;
-            if (goal is not null)
-            {
-                goal = goal.Trim();
-                if (goal.Length > 96)
-                {
-                    runtime = PlanningWorkspace;
-                    error = "Goal must be 96 characters or fewer.";
-                    return false;
-                }
-            }
-
-            var horizon = request.HorizonSteps ?? PlanningWorkspace.HorizonSteps;
-            if (horizon is < 1 or > 16)
-            {
-                runtime = PlanningWorkspace;
-                error = "HorizonSteps must be between 1 and 16.";
-                return false;
-            }
-
-            var maxBranching = request.MaxBranching ?? PlanningWorkspace.MaxBranching;
-            if (maxBranching is < 1 or > 32)
-            {
-                runtime = PlanningWorkspace;
-                error = "MaxBranching must be between 1 and 32.";
-                return false;
-            }
-
-            var exploration = Math.Clamp(request.ExplorationTemperature ?? (float)PlanningWorkspace.ExplorationTemperature, 0.05f, 2.0f);
-            var dopamineBias = Math.Clamp(request.DopamineBias ?? (float)PlanningWorkspace.DopamineBias, 0f, 2.5f);
-            var inhibitoryGate = Math.Clamp(request.InhibitoryGate ?? (float)PlanningWorkspace.InhibitoryGate, 0f, 2.5f);
-            var goalActive = request.GoalActive ?? PlanningWorkspace.GoalActive;
-
-            PlanningWorkspace = PlanningWorkspace with
-            {
-                Goal = string.IsNullOrWhiteSpace(goal) ? PlanningWorkspace.Goal : goal!,
-                GoalActive = goalActive,
-                HorizonSteps = horizon,
-                MaxBranching = maxBranching,
-                ExplorationTemperature = exploration,
-                DopamineBias = dopamineBias,
-                InhibitoryGate = inhibitoryGate
-            };
-
-            UpdatePlanningWorkspaceLocked(Tick);
-            runtime = PlanningWorkspace;
-            return true;
-        }
-    }
-
     public object GetCurriculumSnapshot()
     {
         lock (_gate)
@@ -6968,6 +6890,8 @@ internal sealed class SimulationState
         }
     }
 
+    // Offline checkpoint/benchmark compatibility only. Production ticks never
+    // invoke this scalar cognition harness.
     public void ObserveCognitiveRuntime(
         long tick,
         int dispatchedSpikes,
@@ -23012,6 +22936,7 @@ internal sealed class TickCoordinator(
     NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
     NeuronalLanguageGroundingRuntime neuronalLanguageGrounding,
     NeuronalAffectValuationRuntime neuronalAffectValuation,
+    NeuronalExecutiveRuntime neuronalExecutive,
     NeuronalCognitionAuthorityRuntime neuronalCognitionAuthority,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
@@ -23859,6 +23784,11 @@ internal sealed class TickCoordinator(
                 neuronalControl,
                 previousNeuronalMotor);
             state.UpdateNeuronalMotor(neuronalMotor);
+            var neuronalExecutiveDecision = neuronalExecutive.Update(
+                tickSignal.Tick,
+                processedSnapshots,
+                neuronalAttention,
+                neuronalMotor);
             neuronalCognitionAuthority.Update(
                 tickSignal.Tick,
                 neuronalPercept,
@@ -23867,6 +23797,7 @@ internal sealed class TickCoordinator(
                 neuronalSleep,
                 neuronalLanguage,
                 neuronalValuation,
+                neuronalExecutiveDecision,
                 neuronalMotor);
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, state.GlobalAttentionBias);
@@ -24228,39 +24159,6 @@ internal sealed class TickCoordinator(
             state.UpdateLimbicState(limbicState);
             state.UpdateAttentionState(biologicalAttention);
             state.UpdateNeuromod(limbicState.NeuromodState, limbicState.RewardPredictionError, biologicalAttention.SensoryBias);
-            (StructureId Source, StructureId Target, NTEnum Nt)? dominantPathwayHint = null;
-            var hasDominantPathway = false;
-            (StructureId Source, StructureId Target, NTEnum Nt) dominantPathwayKey = default;
-            var dominantPathwayVolume = int.MinValue;
-            foreach (var pathway in activePathways)
-            {
-                var key = pathway.Key;
-                var isTieBreakerBetter =
-                    Comparer<StructureId>.Default.Compare(key.Source, dominantPathwayKey.Source) < 0 ||
-                    (key.Source == dominantPathwayKey.Source &&
-                     Comparer<StructureId>.Default.Compare(key.Target, dominantPathwayKey.Target) < 0);
-                if (!hasDominantPathway ||
-                    pathway.Value > dominantPathwayVolume ||
-                    (pathway.Value == dominantPathwayVolume && isTieBreakerBetter))
-                {
-                    hasDominantPathway = true;
-                    dominantPathwayKey = key;
-                    dominantPathwayVolume = pathway.Value;
-                }
-            }
-
-            if (hasDominantPathway)
-            {
-                dominantPathwayHint = dominantPathwayKey;
-            }
-
-            state.ObserveCognitiveRuntime(
-                tickSignal.Tick,
-                dispatchedSpikeCount,
-                activePathways.Count,
-                limbicState.RewardPredictionError,
-                dominantPathwayHint);
-
             if (tickSignal.Tick % snapshotEvery == 0)
             {
                 var brainSnapshot = new BrainSnapshot(
@@ -34015,14 +33913,6 @@ internal sealed record WorldModelCounterfactualRequest(
     string? Neurotransmitter,
     bool? IsFeedback,
     int? HorizonSteps);
-internal sealed record PlanningWorkspaceControlRequest(
-    string? Goal,
-    bool? GoalActive,
-    int? HorizonSteps,
-    int? MaxBranching,
-    float? ExplorationTemperature,
-    float? DopamineBias,
-    float? InhibitoryGate);
 internal sealed record CurriculumControlRequest(
     bool? Enabled,
     int? StageIndex,

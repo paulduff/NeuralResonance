@@ -51,6 +51,7 @@ builder.Services.AddSingleton(NeuronalMotorControlState.FromConfiguration(builde
 builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
 builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
 builder.Services.AddSingleton<NeuronalMemoryRuntime>();
+builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -195,7 +196,13 @@ app.MapGet("/api/v1/validation", (SimulationState state, int? maxSnapshotAgeTick
 app.MapGet("/api/v1/service-health", (SimulationState state) => Results.Ok(state.GetServiceHealthSnapshot()));
 app.MapGet("/api/v1/limbic", (SimulationState state) => Results.Ok(state.GetLimbicSnapshot()));
 app.MapGet("/api/v1/emotion", (SimulationState state) => Results.Ok(state.GetEmotionSnapshot()));
-app.MapGet("/api/v1/attention", (SimulationState state) => Results.Ok(state.GetAttentionSnapshot()));
+app.MapGet("/api/v1/attention", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeSelection = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
+    State = state.GetAttentionSnapshot()
+}));
 app.MapGet("/api/v1/goal-intent", (SimulationState state) => Results.Ok(state.GetGoalIntentSnapshot()));
 app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.Ok(state.GetMotivationArbitrationSnapshot()));
 app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
@@ -214,7 +221,13 @@ app.MapGet("/api/v1/narration", (SimulationState state) => Results.Ok(state.GetB
 app.MapGet("/api/v1/speech-intention", (SimulationState state) => Results.Ok(state.GetSpeechIntentionSnapshot()));
 app.MapGet("/api/v1/cognitive-language-workspace", (SimulationState state) => Results.Ok(state.GetCognitiveLanguageWorkspaceSnapshot()));
 app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(state.GetInnerSpeechLoopSnapshot()));
-app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Results.Ok(state.GetPrefrontalWorkingMemorySnapshot()));
+app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeSelection = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
+    State = state.GetPrefrontalWorkingMemorySnapshot()
+}));
 app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(state.GetIntentionalActionLoopSnapshot()));
 app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
 {
@@ -225,6 +238,8 @@ app.MapGet("/api/v1/neuronal-perception", (NeuronalPerceptionRuntime perception)
     Results.Ok(perception.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-memory", (NeuronalMemoryRuntime memory) =>
     Results.Ok(memory.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-attention-workspace", (NeuronalAttentionWorkspaceRuntime attentionWorkspace) =>
+    Results.Ok(attentionWorkspace.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -263,7 +278,13 @@ app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok
 // is not implemented on SimulationState and no client references this URL. Removed
 // so the engine can build/start; reintroduce alongside a real snapshot method if needed.
 app.MapGet("/api/v1/consciousness-rhythm", (SimulationState state) => Results.Ok(state.GetConsciousnessRhythmSnapshot()));
-app.MapGet("/api/v1/global-workspace", (SimulationState state) => Results.Ok(state.GetGlobalWorkspaceSnapshot()));
+app.MapGet("/api/v1/global-workspace", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeSelection = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
+    State = state.GetGlobalWorkspaceSnapshot()
+}));
 app.MapGet("/api/v1/autobiographical-self", (SimulationState state) => Results.Ok(state.GetAutobiographicalSelfSnapshot()));
 app.MapGet("/api/v1/autobiographical-continuity", (SimulationState state) => Results.Ok(state.GetAutobiographicalContinuitySnapshot()));
 app.MapGet("/api/v1/narrative-self-model", (SimulationState state) => Results.Ok(state.GetNarrativeSelfModelSnapshot()));
@@ -22707,6 +22728,7 @@ internal sealed class TickCoordinator(
     NeuronalMotorPopulationWindow neuronalMotorPopulationWindow,
     NeuronalPerceptionRuntime neuronalPerception,
     NeuronalMemoryRuntime neuronalMemory,
+    NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23499,12 +23521,14 @@ internal sealed class TickCoordinator(
                     ack.VisualObjectRecognitionDiagnostics,
                     ack.ActionSelectionDiagnostics,
                     ack.PerceptEnsembleDiagnostics,
-                    ack.SynapticMemoryDiagnostics);
+                    ack.SynapticMemoryDiagnostics,
+                    ack.NeuronalAttentionWorkspaceDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
             neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
             var queueFlush = await FlushQueuedDispatchBatchesAsync(
                 tickSignal,
                 state,
@@ -23931,7 +23955,7 @@ internal sealed class TickCoordinator(
                 sleepRuntimeForLimbic,
                 state.EnvironmentalState,
                 state.OutcomeState);
-            var biologicalAttention = ComputeBiologicalAttentionRuntime(
+            var legacyBiologicalAttention = ComputeBiologicalAttentionRuntime(
                 tickSignal.Tick,
                 processedSnapshots,
                 activePathways,
@@ -23944,6 +23968,11 @@ internal sealed class TickCoordinator(
                 state.BodyState,
                 state.LanguageIntent,
                 trnDrivenAttentionBias);
+            var biologicalAttention = NeuronalAttentionWorkspaceDecoder.ApplyAuthority(
+                tickSignal.Tick,
+                legacyBiologicalAttention,
+                state.AttentionState,
+                neuronalAttention);
             state.UpdateLimbicState(limbicState);
             state.UpdateAttentionState(biologicalAttention);
             state.UpdateNeuromod(limbicState.NeuromodState, limbicState.RewardPredictionError, biologicalAttention.SensoryBias);
@@ -26061,7 +26090,8 @@ internal sealed class TickCoordinator(
                 AverageVisualObjectRecognitionDiagnostics(members),
                 AverageActionSelectionDiagnostics(members),
                 AveragePerceptEnsembleDiagnostics(members),
-                AverageSynapticMemoryDiagnostics(members)));
+                AverageSynapticMemoryDiagnostics(members),
+                AverageNeuronalAttentionWorkspaceDiagnostics(members)));
         }
 
         return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
@@ -26150,7 +26180,8 @@ internal sealed class TickCoordinator(
                 snapshot.VisualObjectRecognitionDiagnostics,
                 snapshot.ActionSelectionDiagnostics,
                 snapshot.PerceptEnsembleDiagnostics,
-                snapshot.SynapticMemoryDiagnostics));
+                snapshot.SynapticMemoryDiagnostics,
+                snapshot.NeuronalAttentionWorkspaceDiagnostics));
         }
 
         return merged;
@@ -26500,6 +26531,59 @@ internal sealed class TickCoordinator(
             (float)diagnostics.Average(static item => item.HippocampalDependence),
             (float)diagnostics.Average(static item => item.CorticalConsolidation),
             diagnostics.Sum(static item => item.LearnedSynapseCount));
+    }
+
+    private static NeuronalAttentionWorkspaceDiagnostics? AverageNeuronalAttentionWorkspaceDiagnostics(
+        IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(static member => member.NeuronalAttentionWorkspaceDiagnostics)
+            .Where(static item => item is not null)
+            .Cast<NeuronalAttentionWorkspaceDiagnostics>()
+            .ToArray();
+        if (diagnostics.Length == 0)
+        {
+            return null;
+        }
+
+        var channels = new AttentionWorkspaceChannelActivity[7];
+        for (var channel = 0; channel < channels.Length; channel++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.Channels)
+                .Where(item => item.ChannelIndex == channel)
+                .ToArray();
+            channels[channel] = values.Length == 0
+                ? new AttentionWorkspaceChannelActivity(channel, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+                : new AttentionWorkspaceChannelActivity(
+                    channel,
+                    (float)values.Average(static item => item.SensoryDrive),
+                    (float)values.Average(static item => item.PulvinarPriority),
+                    (float)values.Average(static item => item.TrnSuppression),
+                    (float)values.Average(static item => item.ThalamicRelay),
+                    (float)values.Average(static item => item.MediodorsalSupport),
+                    (float)values.Average(static item => item.PfcMaintenance),
+                    (float)values.Average(static item => item.IntralaminarBroadcast),
+                    (float)values.Average(static item => item.CompetitionScore));
+        }
+
+        var ranked = channels
+            .OrderByDescending(static item => item.CompetitionScore)
+            .ThenBy(static item => item.ChannelIndex)
+            .ToArray();
+        var margin = Math.Max(0f, ranked[0].CompetitionScore - ranked[1].CompetitionScore);
+        var maintained = diagnostics
+            .SelectMany(static item => item.MaintainedChannels)
+            .Distinct()
+            .Take(4)
+            .ToArray();
+        return new NeuronalAttentionWorkspaceDiagnostics(
+            members[0].StructureId,
+            channels,
+            ranked[0].CompetitionScore > 0f && margin > 0f ? ranked[0].ChannelIndex : -1,
+            margin,
+            maintained,
+            (float)diagnostics.Average(static item => item.DistractorSuppression));
     }
 
     private static IReadOnlyList<StructureSnapshot> EnrichActionSelectionDiagnostics(
@@ -37989,7 +38073,8 @@ internal sealed record InstanceStructureSnapshot(
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
-    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

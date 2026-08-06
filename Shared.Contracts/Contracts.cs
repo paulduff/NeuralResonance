@@ -56,7 +56,8 @@ public sealed record TickAck(
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
-    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -185,6 +186,25 @@ public sealed record ThalamicAttentionGateDiagnostics(
     float SensoryGain,
     float CorticalAccess,
     float RelaySelectionBias);
+
+public sealed record AttentionWorkspaceChannelActivity(
+    int ChannelIndex,
+    float SensoryDrive,
+    float PulvinarPriority,
+    float TrnSuppression,
+    float ThalamicRelay,
+    float MediodorsalSupport,
+    float PfcMaintenance,
+    float IntralaminarBroadcast,
+    float CompetitionScore);
+
+public sealed record NeuronalAttentionWorkspaceDiagnostics(
+    StructureId SourceStructure,
+    IReadOnlyList<AttentionWorkspaceChannelActivity> Channels,
+    int SelectedChannel,
+    float SelectionMargin,
+    IReadOnlyList<int> MaintainedChannels,
+    float DistractorSuppression);
 
 public sealed record HypothalamicHomeostasisDiagnostics(
     string HomeostasisMode,
@@ -384,7 +404,8 @@ public sealed record StructureSnapshot(
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
-    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null);
+    SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

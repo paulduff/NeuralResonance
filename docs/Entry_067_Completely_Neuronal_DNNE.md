@@ -131,6 +131,23 @@ Replace central focus selection and workspace fields with thalamocortical compet
 
 Acceptance requires limited capacity, distractor competition, attention-dependent perception, and causal effects from TRN/pulvinar/PFC perturbation.
 
+#### Implemented vertical slice
+
+Rung 5 replaces the authoritative named-channel ranking with seven anonymous neuronal lanes. Sensory populations, pulvinar, thalamic relay, TRN inhibition, mediodorsal support, recurrent PFC maintenance, and intralaminar broadcast now contribute firing-derived lane evidence. Human-readable channel names exist only in the controller's read-only compatibility projection.
+
+The authoritative endpoint is `/api/v1/neuronal-attention-workspace`. The older attention, prefrontal-working-memory, and global-workspace endpoints are explicitly marked `LegacyTelemetry` and cannot authorize a selection. When neuronal diagnostics are present, the neuronal winner or neuronal failure-to-select overrides the legacy scalar winner; the legacy path remains only when no neuronal evidence exists at all.
+
+The first vertical slice deliberately claims bounded access competition, not consciousness. It distinguishes:
+
+- local thalamocortical selection;
+- TRN-mediated distractor suppression;
+- a maximum of four concurrently maintained PFC lanes;
+- intralaminar broadcast, which can be lesioned without erasing local selection.
+
+The existing populations are sufficient for the first slice: each thalamic structure provides 320 neurons, about 45 cells per lane, while PFC provides 384 neurons, about 54 cells per lane. Population growth remains available if measured lane starvation or maintenance instability appears; it is not used as a substitute for causal evidence.
+
+Causal tests cover stable lane projection, distractor competition, targeted TRN suppression, pulvinar ablation, PFC ablation, intralaminar ablation, core thalamic ablation, and the inability of semantic labels to choose a neuronal lane.
+
 ### Rung 6 - Neuronal Sleep And Consolidation
 
 Let hypothalamic and brainstem sleep-wake populations respond to homeostatic chemistry; let hippocampal replay, spindles, slow oscillation, and neuromodulatory state drive consolidation. The scheduler may advance time but may not decide dream content or memories to retain.

@@ -102,6 +102,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly int[] _synapticMemoryLearnedCounts = new int[SynapticMemoryTopology.EnsembleCount];
 
+	private readonly float[] _attentionChannelRateSums = new float[AttentionWorkspaceTopology.ChannelCount];
+
+	private readonly int[] _attentionChannelRateCounts = new int[AttentionWorkspaceTopology.ChannelCount];
+
+	private readonly float[] _attentionMaintenanceTrace = new float[AttentionWorkspaceTopology.ChannelCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -255,6 +261,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
 			var perceptCircuit = PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId);
 			var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
+			var attentionCircuit = AttentionWorkspaceTopology.EmitsAttentionDiagnostics(_profile.StructureId);
 			if (actionCircuit)
 			{
 				Array.Clear(_actionChannelRateSums);
@@ -268,6 +275,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			{
 				Array.Clear(_perceptEnsembleRateSums);
 				Array.Clear(_perceptEnsembleRateCounts);
+			}
+			if (attentionCircuit)
+			{
+				Array.Clear(_attentionChannelRateSums);
+				Array.Clear(_attentionChannelRateCounts);
 			}
 			int num = 0;
 			int num2 = 0;
@@ -326,6 +338,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 					_perceptEnsembleRateSums[ensemble] += modelNeuron.FiringRateHz;
 					_perceptEnsembleRateCounts[ensemble]++;
 				}
+				if (attentionCircuit)
+				{
+					var channel = AttentionWorkspaceTopology.ChannelForNeuron(modelNeuron.Index, _profile.StructureId);
+					_attentionChannelRateSums[channel] += modelNeuron.FiringRateHz;
+					_attentionChannelRateCounts[channel]++;
+				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
 				transportSupportTotal += (double)modelNeuron.MicrotubuleTransportSupport;
@@ -373,7 +391,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var actionSelection = BuildActionSelectionDiagnostics(tickSignal.GlobalNeuromodState);
 			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(tickSignal.GlobalNeuromodState);
 			var synapticMemory = BuildSynapticMemoryDiagnostics();
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory);
+			var neuronalAttentionWorkspace = BuildNeuronalAttentionWorkspaceDiagnostics();
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -505,6 +524,23 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private int ResolveInboundNeuronIndex(SpikeMessage message)
 	{
+		if (AttentionWorkspaceTopology.IsAttentionSourceStructure(message.SourceStructure) &&
+			AttentionWorkspaceTopology.IsAttentionCircuitStructure(message.TargetStructure))
+		{
+			var sourceIndex = TopographicMap.ResolveSignalIndex(
+				message.SourceNeuronId,
+				message.TargetNeuronId,
+				message.SynapseId,
+				message.SourceStructure,
+				message.TargetStructure);
+			return AttentionWorkspaceTopology.Project(
+				sourceIndex,
+				message.SourceStructure,
+				_neurons.Length,
+				message.TargetStructure,
+				message.IsFeedback ? 181 : 179);
+		}
+
 		return _kernel.ResolveInboundNeuronIndex(message, _neurons.Length, _circuit);
 	}
 
@@ -776,7 +812,15 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private SpikeMessage BuildOutboundSpike(ModelNeuron source, TickSignal tickSignal, StructureId target, NTEnum neurotransmitter, bool isFeedback)
 	{
-		int num = _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
+		int num = AttentionWorkspaceTopology.IsAttentionSourceStructure(_profile.StructureId) &&
+			AttentionWorkspaceTopology.IsAttentionCircuitStructure(target)
+			? AttentionWorkspaceTopology.Project(
+				source.Index,
+				_profile.StructureId,
+				Math.Max(16, _circuit.TargetMapModulo),
+				target,
+				isFeedback ? 191 : 187)
+			: _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
 		string targetNeuronId = $"auto-{target}-{num:000}";
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
 		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError, tickSignal.TimestampMs);
@@ -2179,6 +2223,86 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 
 		return "Idle";
+	}
+
+	private NeuronalAttentionWorkspaceDiagnostics? BuildNeuronalAttentionWorkspaceDiagnostics()
+	{
+		if (!AttentionWorkspaceTopology.EmitsAttentionDiagnostics(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var count = AttentionWorkspaceTopology.ChannelCount;
+		var local = new float[count];
+		var scores = new float[count];
+		for (var channel = 0; channel < count; channel++)
+		{
+			local[channel] = NormalizePerceptRate(AverageChannel(
+				_attentionChannelRateSums,
+				_attentionChannelRateCounts,
+				channel));
+			var maintenanceInput = _profile.StructureId == StructureId.Pfc ? local[channel] : 0f;
+			_attentionMaintenanceTrace[channel] = Math.Clamp(
+				(_attentionMaintenanceTrace[channel] * 0.88f) + (maintenanceInput * 0.24f),
+				0f,
+				1f);
+		}
+
+		var activities = new AttentionWorkspaceChannelActivity[count];
+		for (var channel = 0; channel < count; channel++)
+		{
+			var sensory = AttentionWorkspaceTopology.IsAttentionCircuitStructure(_profile.StructureId)
+				? 0f
+				: local[channel];
+			var pulvinar = _profile.StructureId == StructureId.Pulvinar ? local[channel] : 0f;
+			var trn = _profile.StructureId == StructureId.Trn ? local[channel] : 0f;
+			var relay = _profile.StructureId == StructureId.Thalamus ? local[channel] : 0f;
+			var mediodorsal = _profile.StructureId == StructureId.MediodorsalThalamus ? local[channel] : 0f;
+			var pfc = _profile.StructureId == StructureId.Pfc ? _attentionMaintenanceTrace[channel] : 0f;
+			var broadcast = _profile.StructureId == StructureId.IntralaminarThalamus ? local[channel] : 0f;
+			var score = Math.Clamp(
+				(sensory * 0.32f) +
+				(pulvinar * 0.26f) +
+				(relay * 0.22f) +
+				(mediodorsal * 0.14f) +
+				(pfc * 0.20f) +
+				(broadcast * 0.10f) -
+				(trn * 0.62f),
+				0f,
+				1f);
+			scores[channel] = score;
+			activities[channel] = new AttentionWorkspaceChannelActivity(
+				channel,
+				sensory,
+				pulvinar,
+				trn,
+				relay,
+				mediodorsal,
+				pfc,
+				broadcast,
+				score);
+		}
+
+		var ranked = Enumerable.Range(0, count)
+			.OrderByDescending(channel => scores[channel])
+			.ThenBy(static channel => channel)
+			.ToArray();
+		var best = ranked[0];
+		var margin = Math.Max(0f, scores[best] - scores[ranked[1]]);
+		var maintained = _profile.StructureId == StructureId.Pfc
+			? ranked.Where(channel => _attentionMaintenanceTrace[channel] > 0.015f).Take(4).ToArray()
+			: Array.Empty<int>();
+		var distractorSuppression = _profile.StructureId == StructureId.Trn
+			? ranked.Skip(1).Select(channel => local[channel]).DefaultIfEmpty(0f).Average()
+			: 0f;
+
+		return new NeuronalAttentionWorkspaceDiagnostics(
+			_profile.StructureId,
+			activities,
+			scores[best] > 0.0001f && margin > 0.00001f ? best : -1,
+			margin,
+			maintained,
+			distractorSuppression);
 	}
 
 	private HypothalamicHomeostasisDiagnostics? BuildHypothalamicHomeostasisDiagnostics(NeuromodState neuromod)

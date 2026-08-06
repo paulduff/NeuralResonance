@@ -84,19 +84,17 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void AuditoryTransportDoesNotChooseByIntensity()
+    public void AudioTransportPreservesRawPcmFrame()
     {
         using var service = CreateService();
-        var cues = new[]
-        {
-            new AvatarAuditoryCue("first_quiet", 0.1f, 4, Hemisphere: "L"),
-            new AvatarAuditoryCue("second_loud", 1.0f, 32, Hemisphere: "R")
-        };
+        var pcm = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+        var expected = new AvatarAudioFrame(7, 1234, 16000, 1, 2, pcm);
 
-        service.PostAuditoryInputCandidates(cues, maxCues: 1);
+        service.PostAudioInputFrame(expected);
 
-        var cue = WaitForAuditoryInput(service);
-        Assert.Equal("first_quiet", cue.Pattern);
+        var actual = WaitForAudioInput(service);
+        Assert.Same(expected, actual);
+        Assert.Equal(pcm, actual.Pcm16Le);
     }
 
     [Fact]
@@ -245,8 +243,8 @@ public sealed class AvatarServiceTests
         throw new TimeoutException("Avatar service did not publish the expected signal.");
     }
 
-    private static AvatarAuditoryCue WaitForAuditoryInput(AvatarService service)
-        => WaitForQueue<AvatarAuditoryCue>(service.TryDequeueAuditoryInput, "auditory input");
+    private static AvatarAudioFrame WaitForAudioInput(AvatarService service)
+        => WaitForQueue<AvatarAudioFrame>(service.TryDequeueAudioInput, "audio input");
 
     private static AvatarBodyStateInput WaitForBodyInput(AvatarService service)
         => WaitForQueue<AvatarBodyStateInput>(service.TryDequeueBodyInput, "body input");

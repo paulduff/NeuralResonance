@@ -1,15 +1,17 @@
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
+using System.Buffers.Binary;
 using System.Windows;
 using NAudio.Wave;
+using NRE.SimAvatar;
 
 namespace NRE.WpfEditor;
 
-// Microphone input pipeline: WaveIn capture, RMS/ZCR feature extraction,
-// auditory + language stimulus dispatch, level meter UI. Extracted from MainWindow.xaml.cs.
+// Microphone input remains a peripheral sensor: captured pressure samples are
+// forwarded unchanged. Frequency decomposition and meaning belong to neurons.
 public partial class MainWindow
 {
+    private const int MicrophoneSampleRate = 16000;
+    private const int MicrophoneChannels = 1;
+
     private async void ToggleMicrophoneInputButton_OnClick(object sender, RoutedEventArgs e)
         => await SafeHandlerAsync(ToggleMicrophoneInputAsync, "Toggle microphone input");
 
@@ -38,25 +40,22 @@ public partial class MainWindow
                 return;
             }
 
-            // Defensive: route a stale CTS through StopMicrophoneInputAsync so the
-            // worker task is awaited before disposal, avoiding an ObjectDisposedException
-            // on the token observed by any in-flight loop.
-            if (_microphoneCts is not null)
+            if (_microphoneCts is not null && !await StopMicrophoneInputAsync())
             {
-                if (!await StopMicrophoneInputAsync())
-                {
-                    return;
-                }
+                return;
             }
+
             _microphoneCts = CancellationTokenSource.CreateLinkedTokenSource(_workerCts.Token);
             var token = _microphoneCts.Token;
+            lock (_audioMetricsGate)
+            {
+                _pendingMicrophonePcm = null;
+                _audioRmsEwma = 0;
+                _audioLevelEwma = 0;
+                _lastMicrophoneDataUtc = DateTime.MinValue;
+            }
 
             _microphoneRunning = true;
-            _microphoneLanguageRouteAvailable = true;
-            _audioRmsEwma = 0;
-            _audioZcrEwma = 0;
-            _audioLevelEwma = 0;
-            _lastMicrophoneDataUtc = DateTime.MinValue;
             _lastMicrophoneRecoveryUtc = DateTime.MinValue;
             if (ToggleMicrophoneInputButton is not null)
             {
@@ -66,7 +65,7 @@ public partial class MainWindow
             MicrophoneStatusText.Text = $"Microphone: starting device {deviceIndex}";
             SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Warning, "Microphone pipeline: starting");
             UpdateMicrophoneLevelMeterUi(0, isActive: true);
-            AddOutputLog($"Microphone input starting on device {deviceIndex}.");
+            AddOutputLog($"Microphone PCM input starting on device {deviceIndex}.");
             _microphoneTask = Task.Run(() => MicrophoneInputLoopAsync(deviceIndex, token), token);
         }
         finally
@@ -96,7 +95,6 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            // A faulted task is complete, so its source can now be released.
             AddOutputLog($"Microphone stopped after worker error: {ex.Message}");
         }
 
@@ -106,11 +104,16 @@ public partial class MainWindow
             _microphoneCts = null;
             cts?.Dispose();
         }
+
+        lock (_audioMetricsGate)
+        {
+            _pendingMicrophonePcm = null;
+            _audioRmsEwma = 0;
+            _audioLevelEwma = 0;
+            _lastMicrophoneDataUtc = DateTime.MinValue;
+        }
+
         _microphoneRunning = false;
-        _audioRmsEwma = 0;
-        _audioZcrEwma = 0;
-        _audioLevelEwma = 0;
-        _lastMicrophoneDataUtc = DateTime.MinValue;
         _lastMicrophoneRecoveryUtc = DateTime.MinValue;
         if (ToggleMicrophoneInputButton is not null)
         {
@@ -127,14 +130,13 @@ public partial class MainWindow
     private async Task MicrophoneInputLoopAsync(int deviceIndex, CancellationToken token)
     {
         PostUi(() => MicrophoneStatusText.Text = $"Microphone: opening device {deviceIndex}");
-
         WaveInEvent? waveIn = null;
         try
         {
             waveIn = new WaveInEvent
             {
                 DeviceNumber = deviceIndex,
-                WaveFormat = new WaveFormat(16000, 16, 1),
+                WaveFormat = new WaveFormat(MicrophoneSampleRate, 16, MicrophoneChannels),
                 BufferMilliseconds = 50,
                 NumberOfBuffers = 3
             };
@@ -158,45 +160,8 @@ public partial class MainWindow
 
         using (waveIn)
         {
-            // Written from the UI thread via PostUi inside RecordingStopped; read
-            // on the capture-loop thread. Closure capture promotes the local to a
-            // shared field, but the runtime still needs a memory barrier to make
-            // the write visible across threads. Use an int with Volatile.Read/Write.
             var recordingStoppedFlag = 0;
-            waveIn.DataAvailable += (_, args) =>
-            {
-                var sampleCount = args.BytesRecorded / 2;
-                if (sampleCount <= 0)
-                {
-                    return;
-                }
-
-                double sumSquares = 0;
-                var zeroCrossings = 0;
-                var previous = 0.0;
-                for (var i = 0; i < args.BytesRecorded; i += 2)
-                {
-                    var sample = BitConverter.ToInt16(args.Buffer, i) / 32768.0;
-                    sumSquares += sample * sample;
-                    if (i > 0 && ((sample >= 0 && previous < 0) || (sample < 0 && previous >= 0)))
-                    {
-                        zeroCrossings++;
-                    }
-
-                    previous = sample;
-                }
-
-                var rms = Math.Sqrt(sumSquares / sampleCount);
-                var zcr = Math.Clamp(zeroCrossings / (double)sampleCount, 0.0, 1.0);
-                lock (_audioMetricsGate)
-                {
-                    _audioRmsEwma = (_audioRmsEwma * 0.82) + (rms * 0.18);
-                    _audioZcrEwma = (_audioZcrEwma * 0.82) + (zcr * 0.18);
-                    _audioLevelEwma = (_audioLevelEwma * 0.75) + (rms * 0.25);
-                    _lastMicrophoneDataUtc = DateTime.UtcNow;
-                }
-            };
-
+            waveIn.DataAvailable += (_, args) => CaptureMicrophoneFrame(args.Buffer, args.BytesRecorded);
             waveIn.RecordingStopped += (_, args) =>
             {
                 PostUi(() =>
@@ -215,8 +180,7 @@ public partial class MainWindow
             };
 
             waveIn.StartRecording();
-            PostUi(() => MicrophoneStatusText.Text = $"Microphone: running (device {deviceIndex})");
-
+            PostUi(() => MicrophoneStatusText.Text = $"Microphone: raw PCM active (device {deviceIndex})");
             while (!token.IsCancellationRequested)
             {
                 try
@@ -225,71 +189,53 @@ public partial class MainWindow
                     if (Volatile.Read(ref recordingStoppedFlag) != 0)
                     {
                         Volatile.Write(ref recordingStoppedFlag, 0);
-                        try
-                        {
-                            waveIn.StopRecording();
-                        }
-                        catch
-                        {
-                            // Ignore transient stop races.
-                        }
-
+                        TryStopRecording(waveIn);
                         await Task.Delay(90, token);
                         waveIn.StartRecording();
-                        PostUi(() =>
-                        {
-                            MicrophoneStatusText.Text = $"Microphone: recovered stream (device {deviceIndex})";
-                            AddOutputLog("Microphone input recovered after recording stop.");
-                        });
+                        PostUi(() => AddOutputLog("Microphone input recovered after recording stop."));
                     }
 
-                    if ((now - _lastMicrophoneStimulusUtc) >= MicrophoneStimulusInterval)
+                    byte[]? pcm = null;
+                    double level;
+                    DateTime lastData;
+                    lock (_audioMetricsGate)
                     {
-                        _lastMicrophoneStimulusUtc = now;
-                        double rms;
-                        double zcr;
-                        double level;
-                        DateTime lastData;
-                        lock (_audioMetricsGate)
+                        level = _audioLevelEwma;
+                        lastData = _lastMicrophoneDataUtc;
+                        if ((now - _lastMicrophoneStimulusUtc) >= MicrophoneStimulusInterval)
                         {
-                            rms = _audioRmsEwma;
-                            zcr = _audioZcrEwma;
-                            level = _audioLevelEwma;
-                            lastData = _lastMicrophoneDataUtc;
+                            _lastMicrophoneStimulusUtc = now;
+                            pcm = _pendingMicrophonePcm;
+                            _pendingMicrophonePcm = null;
                         }
-
-                        if ((now - _lastMicrophoneMeterUiUtc) >= TimeSpan.FromMilliseconds(60))
-                        {
-                            _lastMicrophoneMeterUiUtc = now;
-                            var levelPercent = ComputeMicrophoneLevelPercent(level);
-                            PostUi(() => UpdateMicrophoneLevelMeterUi(levelPercent, isActive: _microphoneRunning));
-                        }
-
-                        if (lastData != DateTime.MinValue && (now - lastData) > MicrophoneSignalStallTimeout)
-                        {
-                            PostUi(() => MicrophoneStatusText.Text = $"Microphone: no signal detected on device {deviceIndex}");
-                            if ((now - _lastMicrophoneRecoveryUtc) >= MicrophoneRecoveryCooldown)
-                            {
-                                _lastMicrophoneRecoveryUtc = now;
-                                try
-                                {
-                                    waveIn.StopRecording();
-                                }
-                                catch
-                                {
-                                    // Ignore transient stop races.
-                                }
-
-                                await Task.Delay(80, token);
-                                waveIn.StartRecording();
-                                PostUi(() => AddOutputLog("Microphone input auto-recovered after stalled signal."));
-                            }
-                        }
-
-                        await PushMicrophoneStimulusAsync(rms, zcr, token);
                     }
 
-                    await Task.Delay(40, token);
+                    if ((now - _lastMicrophoneMeterUiUtc) >= TimeSpan.FromMilliseconds(60))
+                    {
+                        _lastMicrophoneMeterUiUtc = now;
+                        var levelPercent = ComputeMicrophoneLevelPercent(level);
+                        PostUi(() => UpdateMicrophoneLevelMeterUi(levelPercent, isActive: _microphoneRunning));
+                    }
+
+                    if (lastData != DateTime.MinValue && (now - lastData) > MicrophoneSignalStallTimeout)
+                    {
+                        PostUi(() => MicrophoneStatusText.Text = $"Microphone: no signal detected on device {deviceIndex}");
+                        if ((now - _lastMicrophoneRecoveryUtc) >= MicrophoneRecoveryCooldown)
+                        {
+                            _lastMicrophoneRecoveryUtc = now;
+                            TryStopRecording(waveIn);
+                            await Task.Delay(80, token);
+                            waveIn.StartRecording();
+                            PostUi(() => AddOutputLog("Microphone input auto-recovered after stalled signal."));
+                        }
+                    }
+
+                    if (pcm is not null)
+                    {
+                        await PushMicrophoneFrameAsync(pcm, token);
+                    }
+
+                    await Task.Delay(25, token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -302,14 +248,7 @@ public partial class MainWindow
                 }
             }
 
-            try
-            {
-                waveIn.StopRecording();
-            }
-            catch
-            {
-                // Ignore shutdown race.
-            }
+            TryStopRecording(waveIn);
         }
 
         PostUi(() =>
@@ -320,7 +259,35 @@ public partial class MainWindow
         });
     }
 
-    private async Task PushMicrophoneStimulusAsync(double rmsSignal, double zcrSignal, CancellationToken token)
+    private void CaptureMicrophoneFrame(byte[] buffer, int bytesRecorded)
+    {
+        var usableBytes = bytesRecorded - (bytesRecorded % sizeof(short));
+        if (usableBytes <= 0)
+        {
+            return;
+        }
+
+        var pcm = new byte[usableBytes];
+        Buffer.BlockCopy(buffer, 0, pcm, 0, usableBytes);
+        var sampleCount = usableBytes / sizeof(short);
+        double sumSquares = 0;
+        for (var offset = 0; offset < usableBytes; offset += sizeof(short))
+        {
+            var sample = BinaryPrimitives.ReadInt16LittleEndian(pcm.AsSpan(offset, sizeof(short))) / 32768.0;
+            sumSquares += sample * sample;
+        }
+
+        var rms = Math.Sqrt(sumSquares / sampleCount);
+        lock (_audioMetricsGate)
+        {
+            _pendingMicrophonePcm = pcm;
+            _audioRmsEwma = (_audioRmsEwma * 0.82) + (rms * 0.18);
+            _audioLevelEwma = (_audioLevelEwma * 0.75) + (rms * 0.25);
+            _lastMicrophoneDataUtc = DateTime.UtcNow;
+        }
+    }
+
+    private async Task PushMicrophoneFrameAsync(byte[] pcm, CancellationToken token)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         cts.CancelAfter(TimeSpan.FromMilliseconds(1900));
@@ -330,165 +297,45 @@ public partial class MainWindow
             return;
         }
 
-        var pattern = ResolveMicrophonePattern(rmsSignal, zcrSignal);
-        var intensity = (float)Math.Clamp(0.2 + (rmsSignal * 14.0), 0.2, 3.0);
-        var burstCount = Math.Clamp((int)Math.Round(6.0 + (rmsSignal * 420.0) + (zcrSignal * 42.0)), 4, 64);
-        var auditoryTask = SendAuditoryStimulusAsync(baseUri, pattern, intensity, burstCount, cts.Token);
+        var frame = new AvatarAudioFrame(
+            Interlocked.Increment(ref _microphoneFrameSequence),
+            Environment.TickCount64,
+            MicrophoneSampleRate,
+            MicrophoneChannels,
+            pcm.Length / (MicrophoneChannels * sizeof(short)),
+            pcm);
+        var result = await AvatarControlApi.PostCochlearFrameAsync(
+            _httpClient,
+            baseUri,
+            frame,
+            inputSource: "editor_microphone",
+            cts.Token);
 
-        LanguageStimulusDispatchResult? languageResult = null;
-        Exception? languageError = null;
-        string? languageUtterance = null;
-        if (_microphoneLanguageRouteAvailable)
-        {
-            var languageMode = ResolveMicrophoneLanguageMode(rmsSignal, zcrSignal);
-            var languageText = BuildMicrophoneUtterance(rmsSignal, zcrSignal);
-            languageUtterance = languageText;
-            var languageIntensity = (float)Math.Clamp(0.55 + (rmsSignal * 9.0) + (zcrSignal * 0.7), 0.2, 3.0);
-            var burstPerToken = Math.Clamp((int)Math.Round(4.0 + (rmsSignal * 110.0) + (zcrSignal * 10.0)), 3, 22);
-            try
-            {
-                languageResult = await SendLanguageStimulusAsync(
-                    baseUri,
-                    languageText,
-                    languageMode,
-                    "L",
-                    languageIntensity,
-                    burstPerToken,
-                    cts.Token);
-            }
-            catch (Exception ex)
-            {
-                languageError = ex;
-                if (ex.Message.Contains("HTTP 404", StringComparison.OrdinalIgnoreCase))
-                {
-                    _microphoneLanguageRouteAvailable = false;
-                }
-            }
-        }
-
-        var result = await auditoryTask;
         PostUi(() =>
         {
-            var languageDelivered = languageResult?.Delivered ?? 0;
-            var levelPercent = ComputeMicrophoneLevelPercent(rmsSignal);
-            var recoveryLabel = result.RecoveryAttempted
-                ? $" rec={result.RecoveryHealthy}/{Math.Max(result.RecoveryRestarted, result.RecoveryRetriedInstances)}"
-                : string.Empty;
-            MicrophoneStatusText.Text = $"Microphone: {result.Pattern} i={intensity:0.00} b={burstCount} del={result.Delivered}{recoveryLabel} | lang={languageDelivered} | lvl={levelPercent:0}%";
+            var levelPercent = ComputeMicrophoneLevelPercent(result.RootMeanSquare);
+            MicrophoneStatusText.Text =
+                $"Microphone: cochlea L={result.ActiveLeftBands}/{result.FrequencyBands} " +
+                $"R={result.ActiveRightBands}/{result.FrequencyBands} rms={result.RootMeanSquare:0.000} " +
+                $"peak={result.PeakAmplitude:0.000} spikes={result.GeneratedSpikes}";
             UpdateMicrophoneLevelMeterUi(levelPercent, isActive: _microphoneRunning);
-            if (result.Delivered > 0)
+            if (result.GeneratedSpikes > 0)
             {
-                AddSpikeLog($"Microphone {result.Pattern}: delivered {result.Delivered} spikes");
-            }
-
-            if (result.RecoveryAttempted)
-            {
-                AddOutputLog(
-                    $"Microphone recovery: restarted={result.RecoveryRestarted}, healthy={result.RecoveryHealthy}, retried={result.RecoveryRetriedInstances}, delivered={result.Delivered}/{result.Generated}.");
-            }
-
-            if (languageResult is not null)
-            {
-                if (languageResult.Delivered > 0)
-                {
-                    var utteranceToRemember = !string.IsNullOrWhiteSpace(languageResult.Utterance)
-                        ? languageResult.Utterance
-                        : languageUtterance;
-                    if (!string.IsNullOrWhiteSpace(utteranceToRemember) &&
-                        ShouldPromoteMicrophoneUtteranceToSpeech(rmsSignal, zcrSignal))
-                    {
-                        RememberLanguageUtterance(utteranceToRemember, force: false);
-                    }
-
-                    AddSpikeLog(
-                        $"Microphone language {languageResult.Mode}: delivered {languageResult.Delivered} spikes ({languageResult.TokenCount} tokens)");
-                }
-            }
-            else if (languageError is not null)
-            {
-                AddOutputLog($"Microphone language routing warning: {languageError.Message}");
-                if (!_microphoneLanguageRouteAvailable)
-                {
-                    AddOutputLog("Microphone language routing disabled (language endpoint unavailable).");
-                }
+                AddSpikeLog($"Microphone cochlear frame: generated {result.GeneratedSpikes} receptor spikes");
             }
         });
     }
 
-    private async Task<AuditoryStimulusDispatchResult> SendAuditoryStimulusAsync(
-        Uri baseUri,
-        string pattern,
-        float intensity,
-        int burstCount,
-        CancellationToken cancellationToken)
+    private static void TryStopRecording(WaveInEvent waveIn)
     {
-        var request = new
-        {
-            Pattern = pattern,
-            Intensity = intensity,
-            BurstCount = burstCount,
-            TargetStructure = "A1",
-            SourceStructure = "Thalamus",
-            Hemisphere = (string?)null
-        };
-
-        using var response = await _httpClient.PostAsJsonAsync(new Uri(baseUri, "/api/v1/admin/input/auditory"), request, cancellationToken);
-        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}. {payload}");
-        }
-
-        var generated = 0;
-        var delivered = 0;
-        var targetCount = 0;
-        var recoveryAttempted = false;
-        var recoveryRestarted = 0;
-        var recoveryHealthy = 0;
-        var recoveryRetriedInstances = 0;
         try
         {
-            using var doc = JsonDocument.Parse(payload);
-            if (doc.RootElement.ValueKind == JsonValueKind.Object)
-            {
-                generated = GetInt(doc.RootElement, "generatedSpikes");
-                delivered = GetInt(doc.RootElement, "deliveredSpikes");
-                targetCount = GetInt(doc.RootElement, "targetInstances");
-                recoveryAttempted = GetBool(doc.RootElement, "recoveryAttempted");
-                recoveryRestarted = GetInt(doc.RootElement, "recoveryRestarted");
-                recoveryHealthy = GetInt(doc.RootElement, "recoveryHealthy");
-                recoveryRetriedInstances = GetInt(doc.RootElement, "recoveryRetriedInstances");
-            }
+            waveIn.StopRecording();
         }
         catch
         {
-            // Best effort details parsing only.
+            // Capture shutdown can race the driver callback.
         }
-
-        return new AuditoryStimulusDispatchResult(
-            pattern,
-            generated,
-            delivered,
-            targetCount,
-            recoveryAttempted,
-            recoveryRestarted,
-            recoveryHealthy,
-            recoveryRetriedInstances);
-    }
-
-    private static string ResolveMicrophonePattern(double rmsSignal, double zcrSignal)
-    {
-        if (rmsSignal >= 0.085)
-        {
-            return "ToneBurst";
-        }
-
-        if (zcrSignal >= 0.16)
-        {
-            return "BroadbandNoise";
-        }
-
-        return "SustainedTone";
     }
 
     private static double ComputeMicrophoneLevelPercent(double rmsSignal)
@@ -510,51 +357,5 @@ public partial class MainWindow
             var suffix = isActive ? string.Empty : " (idle)";
             MicrophoneLevelText.Text = $"{Math.Clamp(levelPercent, 0.0, 100.0):0}%{suffix}";
         }
-    }
-
-    private static string ResolveMicrophoneLanguageMode(double rmsSignal, double zcrSignal)
-    {
-        if (rmsSignal >= 0.08 || zcrSignal >= 0.19)
-        {
-            return "repetition";
-        }
-
-        if (zcrSignal <= 0.06 && rmsSignal >= 0.03)
-        {
-            return "prosody";
-        }
-
-        if (rmsSignal >= 0.045)
-        {
-            return "comprehension";
-        }
-
-        return "production";
-    }
-
-    private static bool ShouldPromoteMicrophoneUtteranceToSpeech(double rmsSignal, double zcrSignal)
-    {
-        return rmsSignal >= MicrophoneUtterancePromoteRmsThreshold ||
-               zcrSignal >= MicrophoneUtterancePromoteZcrThreshold;
-    }
-
-    private static string BuildMicrophoneUtterance(double rmsSignal, double zcrSignal)
-    {
-        var tokenCount = Math.Clamp((int)Math.Round(2.0 + (rmsSignal * 30.0) + (zcrSignal * 8.0)), 2, 7);
-        var syllables = zcrSignal >= 0.16
-            ? new[] { "ka", "ta", "sa", "sha", "cha", "fa", "za" }
-            : rmsSignal >= 0.075
-                ? new[] { "ba", "da", "ga", "ma", "na", "la", "ra" }
-                : new[] { "ah", "oh", "uh", "eh", "mm", "nn", "la" };
-
-        var tokens = new string[tokenCount];
-        var stride = Math.Max(1, (int)Math.Round(1 + (rmsSignal * 7.0)));
-        var start = Math.Max(0, Math.Min(syllables.Length - 1, (int)Math.Round(zcrSignal * 10.0)));
-        for (var i = 0; i < tokenCount; i++)
-        {
-            tokens[i] = syllables[(start + (i * stride)) % syllables.Length];
-        }
-
-        return string.Join(' ', tokens);
     }
 }

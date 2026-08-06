@@ -77,7 +77,7 @@ public partial class MainWindow : Window
     private const double VisionPreviewEyelidCloseRate = 5.8;
     private const double VisionPreviewEyelidOpenRate = 3.4;
     private const int EnvironmentAudioDispatchTimeoutMs = 6000;
-    private const int EnvironmentAudioDispatchIntervalMs = 9000;
+    private const int EnvironmentAudioDispatchIntervalMs = 120;
     private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyStateDispatchIntervalMs = 350;
@@ -341,6 +341,7 @@ public partial class MainWindow : Window
     private double _lastTurnRateDeg;
     private long _lastBodyStateDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
+    private long _environmentAudioFrameSequence;
     private bool _bodyStimulusInFlight;
     private bool _englishCommandInFlight;
     private long _lastBrainNarrationSequence = -1;
@@ -3062,35 +3063,28 @@ public partial class MainWindow : Window
         return Math.Sqrt(bestSq);
     }
 
-    private async Task<bool> TryPostEnvironmentAudioCueAsync(
+    private async Task<bool> TryPostEnvironmentAudioFrameAsync(
         string endpoint,
-        AvatarAuditoryCue cue,
+        AvatarAudioFrame frame,
         CancellationToken token)
     {
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(EnvironmentAudioDispatchTimeoutMs));
-            var result = await AvatarControlApi.PostAuditoryCueAsync(
+            var result = await AvatarControlApi.PostCochlearFrameAsync(
                 _auditoryInputHttpClient,
-                endpoint,
-                cue,
-                timeout.Token);
-            if (result.Accepted && result.DispatchDeferred)
+                new Uri(endpoint),
+                frame,
+                cancellationToken: timeout.Token);
+            if (result.Accepted && result.TargetInstances > 0)
             {
                 RegisterOptionalBrainInputSuccess("environment audio");
                 return true;
             }
 
-            if (result.GeneratedSpikes <= 0 || result.DeliveredSpikes <= 0)
-            {
-                RegisterEnvironmentAudioFailure(
-                    $"auditory cue delivered {result.DeliveredSpikes}/{result.GeneratedSpikes} spikes");
-                return false;
-            }
-
-            RegisterOptionalBrainInputSuccess("environment audio");
-            return true;
+            RegisterEnvironmentAudioFailure("cochlear frame has no live Cochlea dispatch target");
+            return false;
         }
         catch (TaskCanceledException) when (token.IsCancellationRequested)
         {
@@ -3098,7 +3092,7 @@ public partial class MainWindow : Window
         }
         catch (TaskCanceledException)
         {
-            RegisterEnvironmentAudioFailure("timeout posting environment audio cue");
+            RegisterEnvironmentAudioFailure("timeout posting cochlear audio frame");
             return false;
         }
         catch (Exception ex)
@@ -3108,7 +3102,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private string? ResolveSoundHemisphereHint(Point3D position)
+    private double ResolveSoundPan(Point3D position)
     {
         var forward = GetAvatarVisualForward();
         var dx = position.X - _avatarX;
@@ -3116,16 +3110,11 @@ public partial class MainWindow : Window
         var distance = Math.Sqrt((dx * dx) + (dz * dz));
         if (distance < 0.001)
         {
-            return null;
+            return 0.0;
         }
 
         var lateral = ((forward.X * dz) - (forward.Z * dx)) / distance;
-        if (Math.Abs(lateral) < 0.12)
-        {
-            return null;
-        }
-
-        return lateral > 0 ? "left" : "right";
+        return Math.Clamp(-lateral, -1.0, 1.0);
     }
 
     private (Point3D Position, double Distance) FindNearest(IReadOnlyList<WeaponPickup> pickups)
@@ -4803,14 +4792,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var candidateCues = BuildEnvironmentAuditoryCues();
-        if (candidateCues.Count > 0)
+        var acousticSources = BuildEnvironmentAcousticSources();
+        if (acousticSources.Count > 0)
         {
-            _avatarService.PostAuditoryInputCandidates(candidateCues, maxCues: 1);
+            var frame = AvatarAcousticRenderer.RenderFrame(
+                acousticSources,
+                Interlocked.Increment(ref _environmentAudioFrameSequence),
+                nowMs);
+            _avatarService.PostAudioInputFrame(frame);
         }
 
-        var cues = await DrainAvatarAuditoryInputCuesAsync(maxCues: 1, token);
-        if (cues.Count == 0)
+        var audioFrame = await DrainAvatarAudioInputFrameAsync(token);
+        if (audioFrame is null)
         {
             return;
         }
@@ -4819,13 +4812,7 @@ public partial class MainWindow : Window
         _lastEnvironmentAudioDispatchMs = nowMs;
         try
         {
-            var success = true;
-            for (var i = 0; i < cues.Count; i++)
-            {
-                success &= await TryPostEnvironmentAudioCueAsync(endpoint, cues[i], token);
-            }
-
-            if (success)
+            if (await TryPostEnvironmentAudioFrameAsync(endpoint, audioFrame, token))
             {
                 _environmentAudioBackoff.Reset();
             }
@@ -4844,87 +4831,92 @@ public partial class MainWindow : Window
         }
     }
 
-    private List<AvatarAuditoryCue> BuildEnvironmentAuditoryCues()
+    private List<AvatarAcousticSource> BuildEnvironmentAcousticSources()
     {
-        var cues = new List<AvatarAuditoryCue>(7);
+        var sources = new List<AvatarAcousticSource>(7);
         var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / WorldMaxForwardSpeed, 0.0, 1.0);
         if (_collisionPulse > 0.12)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "AvatarImpactBodyThud",
-                Intensity: (float)Math.Clamp(0.35 + (_collisionPulse * 1.45), 0.30, 2.20),
-                BurstCount: (int)Math.Clamp(8 + (_collisionPulse * 28), 6, 42),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 92.0,
+                Amplitude: Math.Clamp(0.08 + (_collisionPulse * 0.38), 0.08, 0.58),
+                NoiseMix: 0.28,
+                HarmonicMix: 0.42,
+                PulseRateHz: 7.0,
+                PulseDutyCycle: 0.18));
         }
 
         if (movement > 0.05 && TryClassifyCurrentTerrain(out var surfaceKind))
         {
-            var pattern = surfaceKind switch
+            var acoustic = surfaceKind switch
             {
-                BlockKind.Water => "AvatarFootstepWaterSlosh",
-                BlockKind.Stone => "AvatarFootstepStoneClick",
-                BlockKind.Dirt => "AvatarFootstepDirtCrunch",
-                BlockKind.Sand => "AvatarFootstepSandScrape",
-                _ => "AvatarFootstepGrassSoft"
+                BlockKind.Water => (Frequency: 170.0, Noise: 0.72, Harmonic: 0.08),
+                BlockKind.Stone => (Frequency: 1450.0, Noise: 0.18, Harmonic: 0.34),
+                BlockKind.Dirt => (Frequency: 360.0, Noise: 0.62, Harmonic: 0.12),
+                BlockKind.Sand => (Frequency: 760.0, Noise: 0.82, Harmonic: 0.05),
+                _ => (Frequency: 520.0, Noise: 0.68, Harmonic: 0.10)
             };
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: pattern,
-                Intensity: (float)Math.Clamp(0.24 + (movement * 0.82), 0.20, 1.35),
-                BurstCount: (int)Math.Clamp(8 + (movement * 18), 6, 32),
-                Hemisphere: null));
-        }
-
-        if (IsInShelter())
-        {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "ShelterHush",
-                Intensity: 0.30f,
-                BurstCount: 7,
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: acoustic.Frequency,
+                Amplitude: Math.Clamp(0.025 + (movement * 0.12), 0.025, 0.16),
+                NoiseMix: acoustic.Noise,
+                HarmonicMix: acoustic.Harmonic,
+                PulseRateHz: Math.Clamp(1.6 + (movement * 2.2), 1.6, 3.8),
+                PulseDutyCycle: 0.22));
         }
 
         var wind = 0.12 + (_darkness01 * 0.12);
         if (wind > 0.08)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "WindAcrossTerrain",
-                Intensity: (float)Math.Clamp(0.18 + (wind * 0.72), 0.18, 1.10),
-                BurstCount: (int)Math.Clamp(5 + (wind * 18), 4, 28),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 240.0,
+                Amplitude: Math.Clamp(0.012 + (wind * 0.055), 0.012, 0.05),
+                NoiseMix: 0.96,
+                HarmonicMix: 0.02,
+                PulseRateHz: 0.35,
+                PulseDutyCycle: 0.72));
         }
 
         var nearestPredator = FindNearest(_predators);
         if (nearestPredator.Distance < (_predatorSenseRadius * 1.55))
         {
             var proximity = Math.Clamp(1.0 - (nearestPredator.Distance / Math.Max(0.5, _predatorSenseRadius * 1.55)), 0.0, 1.0);
-            var hemisphere = ResolveSoundHemisphereHint(nearestPredator.Position);
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "BearGrassRustle",
-                Intensity: (float)Math.Clamp(0.22 + (proximity * 1.35), 0.20, 2.15),
-                BurstCount: (int)Math.Clamp(8 + (proximity * 26), 6, 44),
-                Hemisphere: hemisphere));
+            var pan = ResolveSoundPan(nearestPredator.Position);
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 430.0,
+                Amplitude: Math.Clamp(0.018 + (proximity * 0.15), 0.018, 0.17),
+                Pan: pan,
+                NoiseMix: 0.88,
+                HarmonicMix: 0.08,
+                PulseRateHz: 2.4,
+                PulseDutyCycle: 0.36));
 
             if (nearestPredator.Distance <= _predatorSenseRadius)
             {
-                cues.Add(new AvatarAuditoryCue(
-                    Pattern: "BearGrowl",
-                    Intensity: (float)Math.Clamp(0.62 + (proximity * 1.85), 0.30, 3.0),
-                    BurstCount: (int)Math.Clamp(14 + (proximity * 38), 10, 64),
-                    Hemisphere: hemisphere));
+                sources.Add(new AvatarAcousticSource(
+                    FrequencyHz: 78.0 + (proximity * 28.0),
+                    Amplitude: Math.Clamp(0.09 + (proximity * 0.32), 0.09, 0.42),
+                    Pan: pan,
+                    NoiseMix: 0.16,
+                    HarmonicMix: 0.46,
+                    PulseRateHz: 3.2,
+                    PulseDutyCycle: 0.58));
             }
         }
 
         var waterProximity = EstimateWaterAuditoryProximity(6.0);
         if (waterProximity > 0.04)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "WaterWaveLapping",
-                Intensity: (float)Math.Clamp(0.20 + (waterProximity * 0.95), 0.20, 1.25),
-                BurstCount: (int)Math.Clamp(6 + (waterProximity * 18), 4, 28),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 185.0,
+                Amplitude: Math.Clamp(0.014 + (waterProximity * 0.09), 0.014, 0.105),
+                NoiseMix: 0.73,
+                HarmonicMix: 0.12,
+                PulseRateHz: 1.15,
+                PulseDutyCycle: 0.54));
         }
 
-        return cues;
+        return sources;
     }
 
     private bool TryClassifyCurrentTerrain(out BlockKind kind)
@@ -5009,26 +5001,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<List<AvatarAuditoryCue>> DrainAvatarAuditoryInputCuesAsync(int maxCues, CancellationToken token)
+    private async Task<AvatarAudioFrame?> DrainAvatarAudioInputFrameAsync(CancellationToken token)
     {
-        var cues = new List<AvatarAuditoryCue>(Math.Clamp(maxCues, 1, 8));
-        while (cues.Count < maxCues && _avatarService.TryDequeueAuditoryInput(out var cue))
+        if (_avatarService.TryDequeueAudioInput(out var frame))
         {
-            cues.Add(cue);
-        }
-
-        if (cues.Count > 0)
-        {
-            return cues;
+            return frame;
         }
 
         await Task.Delay(1, token);
-        while (cues.Count < maxCues && _avatarService.TryDequeueAuditoryInput(out var cue))
-        {
-            cues.Add(cue);
-        }
-
-        return cues;
+        return _avatarService.TryDequeueAudioInput(out frame) ? frame : null;
     }
 
     private void UpdateTerrainCellVisual(int gridX, int gridZ)

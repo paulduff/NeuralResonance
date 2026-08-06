@@ -72,6 +72,7 @@ builder.Services.AddSingleton<FramePayloadFactory>();
 builder.Services.AddSingleton<HippocampalNavigationSessionManager>();
 builder.Services.AddSingleton<InputIngressRuntime>();
 builder.Services.AddSingleton<RetinalFrameTransducerRuntime>();
+builder.Services.AddSingleton<CochlearFrameTransducerRuntime>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
 builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
@@ -512,250 +513,133 @@ app.MapPost("/api/v1/admin/input/visual-frame", async (
             : Array.Empty<string>()
     });
 });
-app.MapPost("/api/v1/admin/input/auditory", async (
-    AuditoryInputRequest request,
+app.MapPost("/api/v1/admin/input/audio-frame", async (
+    HttpRequest request,
     RuntimeInstanceCatalog catalog,
     IHttpClientFactory clientFactory,
-    StructureProcessSupervisor supervisor,
-    AdminInputRestartGate recoveryGate,
-    IConfiguration configuration,
     SimulationState state,
+    CochlearFrameTransducerRuntime transducer,
     InputIngressRuntime ingress,
     CancellationToken ct) =>
 {
-    if (request is null)
+    if (!int.TryParse(request.Query["sampleRate"], out var sampleRate) ||
+        !int.TryParse(request.Query["channels"], out var channels) ||
+        !int.TryParse(request.Query["samplesPerChannel"], out var samplesPerChannel))
     {
-        return Results.BadRequest(new { Error = "Request payload missing." });
+        return Results.BadRequest(new
+        {
+            Error = "SampleRate, channels, and samplesPerChannel query parameters are required integers."
+        });
     }
 
-    var pattern = string.IsNullOrWhiteSpace(request.Pattern) ? "ToneBurst" : request.Pattern.Trim();
-    var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(1.0f), 0.2f, 3.0f);
-    var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(24), 4, 64);
-    var targetStructure = string.IsNullOrWhiteSpace(request.TargetStructure)
-        ? StructureId.A1
-        : Enum.TryParse<StructureId>(request.TargetStructure, ignoreCase: true, out var parsedTarget)
-            ? parsedTarget
-            : StructureId.A1;
-    var sourceStructure = string.IsNullOrWhiteSpace(request.SourceStructure)
-        ? StructureId.Thalamus
-        : Enum.TryParse<StructureId>(request.SourceStructure, ignoreCase: true, out var parsedSource)
-            ? parsedSource
-            : StructureId.Thalamus;
-    var inputSource = AdminInputSource.Normalize(request.InputSource);
+    if (!CochlearFrameDescriptor.TryCreate(
+            sampleRate,
+            channels,
+            samplesPerChannel,
+            request.Query["sampleFormat"],
+            request.Query["inputSource"],
+            out var descriptor,
+            out var descriptorError) ||
+        descriptor is null)
+    {
+        return Results.BadRequest(new { Error = descriptorError ?? "Invalid cochlear frame descriptor." });
+    }
+
+    if (request.ContentLength is not null && request.ContentLength.Value != descriptor.RequiredBytes)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Audio frame payload length must be exactly {descriptor.RequiredBytes} bytes."
+        });
+    }
+
     if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
     {
-        state.AppendOutputLog(
-            $"Auditory input throttled by ingress gate: pattern={pattern}, source={sourceStructure}, target={targetStructure}.");
         return Results.Json(new
         {
-            Error = "Auditory input is temporarily throttled due to ingress backpressure.",
+            Error = "Cochlear frame input is temporarily throttled due to ingress backpressure.",
+            InputSource = descriptor.InputSource,
             Ingress = ingressSnapshot
         }, statusCode: StatusCodes.Status429TooManyRequests);
     }
     using var _ = ingressLease;
 
-    var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
-    var targetInstances = catalog.GetByStructureWithKnownFallback(targetStructure, hemisphereHint);
-    var liveTargetInstances = catalog.GetByStructure(targetStructure, hemisphereHint);
-    if (targetInstances.Count == 0)
+    var payload = new byte[descriptor.RequiredBytes];
+    try
+    {
+        await request.Body.ReadExactlyAsync(payload, ct);
+    }
+    catch (EndOfStreamException)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Audio frame payload ended before {descriptor.RequiredBytes} bytes were read."
+        });
+    }
+
+    if (request.ContentLength is null)
+    {
+        var trailing = new byte[1];
+        if (await request.Body.ReadAsync(trailing, ct) > 0)
+        {
+            return Results.BadRequest(new
+            {
+                Error = $"Audio frame payload length must be exactly {descriptor.RequiredBytes} bytes."
+            });
+        }
+    }
+
+    var knownTargets = catalog.GetByStructureWithKnownFallback(StructureId.Cochlea, hemisphere: null);
+    if (knownTargets.Count == 0)
     {
         return Results.NotFound(new
         {
-            Error = $"No active service instances found for {targetStructure} ({(hemisphereHint ?? "both")})."
+            Error = "No active service instances found for Cochlea (both)."
         });
     }
 
-    if (liveTargetInstances.Count == 0)
+    var liveTargets = catalog.GetByStructure(StructureId.Cochlea, hemisphere: null);
+    var transduction = transducer.Transduce(payload, descriptor, state.Tick, state.SimulationClockMs);
+    var generatedForTargets = 0;
+    for (var i = 0; i < liveTargets.Count; i++)
     {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            TargetInstances = targetInstances.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            RecoveryAttempted = false,
-            RecoveryRestarted = 0,
-            RecoveryHealthy = 0,
-            RecoveryRetriedInstances = 0,
-            InputSource = inputSource,
-            Accepted = AdminInputSource.IsAvatarSource(inputSource),
-            DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
-            Errors = new[]
-            {
-                $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
-            }
-        });
+        generatedForTargets += transduction.ForHemisphere(liveTargets[i].HemisphereNormalized).Count;
     }
 
-    var tick = state.Tick;
-    var timestampMs = state.SimulationClockMs;
-    if (AdminInputSource.IsAvatarSource(inputSource))
+    if (liveTargets.Count > 0 && generatedForTargets > 0)
     {
         DispatchStimulusToInstancesInBackground(
-            "Auditory input",
-            liveTargetInstances,
-            instance =>
-            {
-                var hemisphere = instance.HemisphereNormalized;
-                return BuildAuditoryStimulusSpikes(
-                    tick,
-                    timestampMs,
-                    sourceStructure,
-                    targetStructure,
-                    hemisphere,
-                    pattern,
-                    intensity,
-                    burstCount);
-            },
+            "Cochlear frame input",
+            liveTargets,
+            instance => transduction.ForHemisphere(instance.HemisphereNormalized),
             clientFactory,
             state,
-            tick,
-            timestampMs);
-
-        state.AppendOutputLog(
-            $"Auditory input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, target={targetStructure}, inputSource={inputSource}, liveInstances={liveTargetInstances.Count}, knownInstances={targetInstances.Count}.");
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            TargetInstances = liveTargetInstances.Count,
-            KnownTargetInstances = targetInstances.Count,
-            LiveTargetInstances = liveTargetInstances.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            RecoveryAttempted = false,
-            RecoveryRestarted = 0,
-            RecoveryHealthy = 0,
-            RecoveryRetriedInstances = 0,
-            InputSource = inputSource,
-            Accepted = true,
-            DispatchDeferred = true,
-            Errors = Array.Empty<string>()
-        });
-    }
-
-    var initialDispatch = await DispatchStimulusToInstancesAsync(
-        liveTargetInstances,
-        instance =>
-        {
-            var hemisphere = instance.HemisphereNormalized;
-            return BuildAuditoryStimulusSpikes(
-                tick,
-                timestampMs,
-                sourceStructure,
-                targetStructure,
-                hemisphere,
-                pattern,
-                intensity,
-                burstCount);
-        },
-        clientFactory,
-        state,
-        tick,
-        timestampMs,
-        ct);
-
-    var generatedSpikes = initialDispatch.GeneratedSpikes;
-    var deliveredSpikes = initialDispatch.DeliveredSpikes;
-    var errors = new List<string>(initialDispatch.Errors);
-    var recoveryAttempted = false;
-    var recoveryRestarted = 0;
-    var recoveryHealthy = 0;
-    var recoveryRetried = 0;
-
-    var recoveryEnabled = configuration.GetValue<bool>("AdminInputRecovery:Enabled", true);
-    if (recoveryEnabled &&
-        ShouldAttemptSensoryInputRecovery(targetStructure) &&
-        deliveredSpikes <= 0 &&
-        errors.Count > 0)
-    {
-        var restartCooldownMs = Math.Clamp(configuration.GetValue<int>("AdminInputRecovery:RestartCooldownMs", 8000), 500, 60000);
-        var restartCandidates = recoveryGate.SelectRestartCandidates(liveTargetInstances, restartCooldownMs);
-        if (restartCandidates.Count > 0)
-        {
-            recoveryAttempted = true;
-            var restartResult = await supervisor.RestartServicesAsync(restartCandidates, ct);
-            recoveryRestarted = restartResult.Restarted;
-            recoveryHealthy = restartResult.Healthy;
-            state.AppendOutputLog(
-                $"Auditory input recovery: restarted={restartResult.Restarted}/{restartResult.Requested}, healthy={restartResult.Healthy}, target={targetStructure}.");
-
-            var healthyKeys = restartResult.Items
-                .Where(i => i.Healthy)
-                .Select(i => i.InstanceKey)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var retryTargets = healthyKeys.Count > 0
-                ? targetInstances.Where(i => healthyKeys.Contains(i.InstanceKey)).ToList()
-                : targetInstances;
-            if (retryTargets.Count > 0)
-            {
-                recoveryRetried = retryTargets.Count;
-                var retryDispatch = await DispatchStimulusToInstancesAsync(
-                    retryTargets,
-                    instance =>
-                    {
-                        var hemisphere = instance.HemisphereNormalized;
-                        return BuildAuditoryStimulusSpikes(
-                            tick,
-                            timestampMs,
-                            sourceStructure,
-                            targetStructure,
-                            hemisphere,
-                            pattern,
-                            intensity,
-                            burstCount);
-                    },
-                    clientFactory,
-                    state,
-                    tick,
-                    timestampMs,
-                    ct);
-
-                generatedSpikes += retryDispatch.GeneratedSpikes;
-                deliveredSpikes += retryDispatch.DeliveredSpikes;
-                if (retryDispatch.Errors.Count > 0)
-                {
-                    errors.AddRange(retryDispatch.Errors.Select(e => $"retry:{e}"));
-                }
-            }
-        }
-        else if (liveTargetInstances.Count == 0)
-        {
-            errors.Add($"recovery-skipped:{targetStructure}: no live instances available for synchronous restart");
-        }
-    }
-
-    state.AppendOutputLog(
-        $"Auditory input injected: pattern={pattern}, source={sourceStructure}, target={targetStructure}, generated={generatedSpikes}, delivered={deliveredSpikes}, instances={targetInstances.Count}, errors={errors.Count}, recovery={recoveryAttempted}.");
-    if (deliveredSpikes > 0)
-    {
-        state.AppendSpikeLog(
-            $"Auditory input {pattern}: delivered {deliveredSpikes}/{generatedSpikes} spikes to {targetStructure}.");
+            state.Tick,
+            state.SimulationClockMs,
+            logSuccess: false);
     }
 
     return Results.Ok(new
     {
-        Pattern = pattern,
-        Source = sourceStructure.ToString(),
-        Target = targetStructure.ToString(),
-        Intensity = intensity,
-        BurstCount = burstCount,
-        TargetInstances = targetInstances.Count,
-        GeneratedSpikes = generatedSpikes,
-        DeliveredSpikes = deliveredSpikes,
-        RecoveryAttempted = recoveryAttempted,
-        RecoveryRestarted = recoveryRestarted,
-        RecoveryHealthy = recoveryHealthy,
-        RecoveryRetriedInstances = recoveryRetried,
-        InputSource = inputSource,
-        Errors = errors
+        Accepted = true,
+        DispatchDeferred = liveTargets.Count > 0 && generatedForTargets > 0,
+        InputSource = descriptor.InputSource,
+        Target = StructureId.Cochlea.ToString(),
+        TargetInstances = liveTargets.Count,
+        KnownTargetInstances = knownTargets.Count,
+        LiveTargetInstances = liveTargets.Count,
+        GeneratedSpikes = generatedForTargets,
+        DeliveredSpikes = 0,
+        transduction.FrequencyBands,
+        transduction.ActiveLeftBands,
+        transduction.ActiveRightBands,
+        transduction.RootMeanSquare,
+        transduction.PeakAmplitude,
+        transduction.MeanBandAmplitude,
+        transduction.MeanOnset,
+        Errors = liveTargets.Count == 0
+            ? new[] { "No live Cochlea service instances are currently available." }
+            : Array.Empty<string>()
     });
 });
 app.MapPost("/api/v1/admin/input/collision", async (
@@ -1646,49 +1530,6 @@ static int ComputeStableStimulusHash(string text)
     }
 }
 
-static List<SpikeMessage> BuildAuditoryStimulusSpikes(
-    long tick,
-    double timestampMs,
-    StructureId sourceStructure,
-    StructureId targetStructure,
-    string hemisphere,
-    string pattern,
-    float intensity,
-    int burstCount)
-{
-    var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "auditory" : pattern;
-    var patternSeed = ComputeStableStimulusHash(patternLabel);
-    var spikes = new List<SpikeMessage>(burstCount);
-    for (var i = 0; i < burstCount; i++)
-    {
-        var frequencyBand = (patternSeed + (i * 3)) % 24;
-        var channel = (patternSeed + (i * 11)) % 48;
-        var vesicle = Math.Clamp((0.65f + (frequencyBand * 0.025f)) * intensity, 0.05f, 6.0f);
-        var reuptake = Math.Clamp(3.0f + (channel * 0.06f), 1.6f, 10.0f);
-        var spikeType = patternLabel.Contains("Burst", StringComparison.OrdinalIgnoreCase)
-            ? SpikeTypeEnum.BURST
-            : SpikeTypeEnum.ACTION_POTENTIAL;
-        spikes.Add(new SpikeMessage
-        {
-            MessageId = Guid.NewGuid(),
-            TimestampMs = timestampMs,
-            SourceStructure = sourceStructure,
-            TargetStructure = targetStructure,
-            SourceNeuronId = $"{hemisphere}:auditory_{tick}_{frequencyBand}_{i}",
-            TargetNeuronId = $"{hemisphere}:a1_tonotopic_{frequencyBand}_cell_{channel}",
-            SynapseId = Guid.NewGuid(),
-            Neurotransmitter = NTEnum.GLUTAMATE,
-            VesicleQuanta = vesicle,
-            ReuptakeRate = reuptake,
-            SpikeType = spikeType,
-            IsFeedback = false,
-            ModulationContext = null
-        });
-    }
-
-    return spikes;
-}
-
 static List<SpikeMessage> BuildCollisionStimulusSpikes(
     long tick,
     double timestampMs,
@@ -2007,9 +1848,6 @@ static int ParseAcceptedCount(string responsePayload, int fallback)
 
     return fallback;
 }
-
-static bool ShouldAttemptSensoryInputRecovery(StructureId targetStructure) =>
-    targetStructure is StructureId.V1 or StructureId.A1;
 
 static void DispatchStimulusToInstancesInBackground(
     string label,
@@ -15627,7 +15465,6 @@ internal sealed record AutoProfileControlRequest(
     double? RecoveryAckLatencyMs,
     long? RecoverySnapshotAgeTicks,
     int? RecoveryConsecutiveTicks);
-internal sealed record AuditoryInputRequest(string? Pattern, float? Intensity, int? BurstCount, string? TargetStructure, string? SourceStructure, string? Hemisphere, string? InputSource);
 internal sealed record CollisionInputRequest(
     string? Pattern,
     float? Intensity,

@@ -157,7 +157,6 @@ public partial class MainWindow : Window
     private bool _languageInputInFlight;
     private bool _speechOutputEnabled = true;
     private bool _suppressSpeechUiEvents;
-    private bool _microphoneLanguageRouteAvailable = true;
     private string _visualAttentionFocusField = "neutral";
     private string _visualAttentionFocusHemisphere = "M";
     private double _visualAttentionFocusConfidence;
@@ -209,8 +208,9 @@ public partial class MainWindow : Window
     private Task? _webcamTask;
     private Task? _microphoneTask;
     private double _audioRmsEwma;
-    private double _audioZcrEwma;
     private double _audioLevelEwma;
+    private byte[]? _pendingMicrophonePcm;
+    private long _microphoneFrameSequence;
     private AvatarSightFrame? _pendingWebcamSightFrame;
     private DateTime _lastMicrophoneDataUtc = DateTime.MinValue;
     private DateTime _lastMicrophoneMeterUiUtc = DateTime.MinValue;
@@ -226,7 +226,7 @@ public partial class MainWindow : Window
     private static readonly TimeSpan InputGatesUpdateCooldown = TimeSpan.FromMilliseconds(350);
     private static readonly TimeSpan WebcamStimulusInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TimeSpan WebcamPreviewUiInterval = TimeSpan.FromMilliseconds(120);
-    private static readonly TimeSpan MicrophoneStimulusInterval = TimeSpan.FromMilliseconds(180);
+    private static readonly TimeSpan MicrophoneStimulusInterval = TimeSpan.FromMilliseconds(55);
     private static readonly TimeSpan LanguageInputCooldown = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan SpeechCooldown = TimeSpan.FromMilliseconds(6000);
     private static readonly TimeSpan SpeechDuplicateSuppression = TimeSpan.FromSeconds(8);
@@ -262,8 +262,6 @@ public partial class MainWindow : Window
     private const int RetinaRouteRecoveryFailureThreshold = 3;
     private const int MaxNeuronHighlightsPerStructurePerFrame = 1024;
     private const int MaxPathwayActivationsPerFrame = 160;
-    private const double MicrophoneUtterancePromoteRmsThreshold = 0.045;
-    private const double MicrophoneUtterancePromoteZcrThreshold = 0.06;
     private static readonly TimeSpan UiInputRenderYieldWindow = TimeSpan.FromMilliseconds(80);
     private static readonly AvatarNervousSystemOptions EditorNervousSystemOptions = new(
         new AvatarKinematicsOptions(
@@ -4974,15 +4972,6 @@ private sealed record TransportSpikePipeline(int Generated, int Routed, int Deli
 {
     public static TransportSpikePipeline Empty { get; } = new(0, 0, 0);
 }
-private sealed record AuditoryStimulusDispatchResult(
-    string Pattern,
-    int Generated,
-    int Delivered,
-    int TargetCount,
-    bool RecoveryAttempted,
-    int RecoveryRestarted,
-    int RecoveryHealthy,
-    int RecoveryRetriedInstances);
 private sealed record LanguageStimulusDispatchResult(
     string Mode,
     int TokenCount,

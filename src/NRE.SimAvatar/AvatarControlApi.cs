@@ -10,7 +10,7 @@ public static class AvatarControlApi
         => $"/api/v1/frame?dispatch_since_ms={Math.Max(0, dispatchSinceMs)}&include_connectome={(includeConnectome ? "true" : "false")}";
 
     public const string BodyStatePath = "/api/v1/admin/input/body-state";
-    public const string AuditoryInputPath = "/api/v1/admin/input/auditory";
+    public const string CochlearFrameInputPath = "/api/v1/admin/input/audio-frame";
     public const string LanguageInputPath = "/api/v1/admin/input/language";
     public const string RetinalFrameInputPath = "/api/v1/admin/input/visual-frame";
 
@@ -36,11 +36,21 @@ public static class AvatarControlApi
     public static Task PostBodyStateAsync(HttpClient client, string endpoint, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default) =>
         PostBodyStateCoreAsync(client, BuildUri(endpoint, BodyStatePath), telemetry, profile, cancellationToken);
 
-    public static Task<AvatarAuditoryDispatchResult> PostAuditoryCueAsync(HttpClient client, Uri endpoint, AvatarAuditoryCue cue, CancellationToken cancellationToken = default) =>
-        PostAuditoryCueCoreAsync(client, BuildUri(endpoint, AuditoryInputPath), cue, cancellationToken);
+    public static Task<AvatarCochlearFrameDispatchResult> PostCochlearFrameAsync(
+        HttpClient client,
+        Uri endpoint,
+        AvatarAudioFrame frame,
+        string inputSource = AvatarRuntimeDefaults.UnifiedAudioInputSource,
+        CancellationToken cancellationToken = default) =>
+        PostCochlearFrameCoreAsync(client, endpoint, frame, inputSource, cancellationToken);
 
-    public static Task<AvatarAuditoryDispatchResult> PostAuditoryCueAsync(HttpClient client, string endpoint, AvatarAuditoryCue cue, CancellationToken cancellationToken = default) =>
-        PostAuditoryCueCoreAsync(client, BuildUri(endpoint, AuditoryInputPath), cue, cancellationToken);
+    public static Task<AvatarCochlearFrameDispatchResult> PostCochlearFrameAsync(
+        HttpClient client,
+        string endpoint,
+        AvatarAudioFrame frame,
+        string inputSource = AvatarRuntimeDefaults.UnifiedAudioInputSource,
+        CancellationToken cancellationToken = default) =>
+        PostCochlearFrameCoreAsync(client, new Uri(endpoint), frame, inputSource, cancellationToken);
 
     public static Task<AvatarLanguageCommandResult> PostEnglishCommandAsync(HttpClient client, Uri endpoint, string text, CancellationToken cancellationToken = default) =>
         PostLanguageCommandAsync(client, endpoint, new AvatarLanguageCommand(text), cancellationToken);
@@ -81,47 +91,49 @@ public static class AvatarControlApi
         }
     }
 
-    private static async Task<AvatarAuditoryDispatchResult> PostAuditoryCueCoreAsync(
+    private static async Task<AvatarCochlearFrameDispatchResult> PostCochlearFrameCoreAsync(
         HttpClient client,
-        Uri uri,
-        AvatarAuditoryCue cue,
+        Uri endpoint,
+        AvatarAudioFrame frame,
+        string inputSource,
         CancellationToken cancellationToken)
     {
-        var pattern = string.IsNullOrWhiteSpace(cue.Pattern) ? "EnvironmentalSound" : cue.Pattern.Trim();
-        var request = new
-        {
-            Pattern = pattern,
-            Intensity = Math.Clamp(cue.Intensity, 0.2f, 3.0f),
-            BurstCount = Math.Clamp(cue.BurstCount, 4, 64),
-            TargetStructure = string.IsNullOrWhiteSpace(cue.TargetStructure)
-                ? AvatarRuntimeDefaults.UnifiedAudioTargetStructure
-                : cue.TargetStructure,
-            SourceStructure = string.IsNullOrWhiteSpace(cue.SourceStructure)
-                ? AvatarRuntimeDefaults.UnifiedAudioSourceStructure
-                : cue.SourceStructure,
-            cue.Hemisphere,
-            InputSource = string.IsNullOrWhiteSpace(cue.InputSource)
-                ? AvatarRuntimeDefaults.UnifiedAudioInputSource
-                : cue.InputSource
-        };
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(endpoint);
+        ArgumentNullException.ThrowIfNull(frame);
+        frame.Validate();
 
-        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        var source = string.IsNullOrWhiteSpace(inputSource)
+            ? AvatarRuntimeDefaults.UnifiedAudioInputSource
+            : inputSource.Trim();
+        var path = $"{CochlearFrameInputPath}?sampleRate={frame.SampleRate}&channels={frame.Channels}" +
+                   $"&samplesPerChannel={frame.SamplesPerChannel}&sampleFormat=Pcm16Le" +
+                   $"&inputSource={Uri.EscapeDataString(source)}";
+        using var content = new ByteArrayContent(frame.Pcm16Le, 0, frame.RequiredBytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using var response = await client.PostAsync(BuildUri(endpoint, path), content, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var message = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Auditory cue failed: HTTP {(int)response.StatusCode} {message}");
+            throw new InvalidOperationException(
+                $"Cochlear frame input failed: HTTP {(int)response.StatusCode} {payload}");
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        using var document = JsonDocument.Parse(payload);
         var root = document.RootElement;
-        return new AvatarAuditoryDispatchResult(
-            Pattern: AvatarJson.GetString(root, "pattern"),
+        return new AvatarCochlearFrameDispatchResult(
+            Accepted: AvatarJson.GetBool(root, "accepted"),
+            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"),
             GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
             DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
             TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
-            Accepted: AvatarJson.GetBool(root, "accepted"),
-            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"));
+            FrequencyBands: AvatarJson.GetInt(root, "frequencyBands"),
+            ActiveLeftBands: AvatarJson.GetInt(root, "activeLeftBands"),
+            ActiveRightBands: AvatarJson.GetInt(root, "activeRightBands"),
+            RootMeanSquare: (float)AvatarJson.GetDouble(root, "rootMeanSquare"),
+            PeakAmplitude: (float)AvatarJson.GetDouble(root, "peakAmplitude"),
+            MeanBandAmplitude: (float)AvatarJson.GetDouble(root, "meanBandAmplitude"),
+            MeanOnset: (float)AvatarJson.GetDouble(root, "meanOnset"));
     }
 
     private static async Task<AvatarLanguageCommandResult> PostLanguageCommandCoreAsync(HttpClient client, Uri uri, AvatarLanguageCommand command, CancellationToken cancellationToken)

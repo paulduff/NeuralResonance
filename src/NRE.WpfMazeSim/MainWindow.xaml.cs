@@ -49,7 +49,7 @@ public partial class MainWindow : Window
     private static readonly TimeSpan HazardDamageCooldown = TimeSpan.FromMilliseconds(820);
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
     private const int BodyStateDispatchIntervalMs = 350;
-    private const int EnvironmentAudioDispatchIntervalMs = 1800;
+    private const int EnvironmentAudioDispatchIntervalMs = 120;
     private const double MazeMaxForwardSpeed = 3.2;
     private const double AvatarHeadMaxYawDeg = 76.0;
     private const double AvatarHeadReturnRateDeg = 220.0;
@@ -161,6 +161,7 @@ public partial class MainWindow : Window
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
     private long _lastBodyStateDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
+    private long _environmentAudioFrameSequence;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
     private PerspectiveCamera? _mazeCamera;
@@ -1353,14 +1354,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        var candidateCues = BuildEnvironmentAuditoryCues();
-        if (candidateCues.Count > 0)
+        var acousticSources = BuildEnvironmentAcousticSources();
+        if (acousticSources.Count > 0)
         {
-            _avatarService.PostAuditoryInputCandidates(candidateCues, maxCues: 1);
+            var frame = AvatarAcousticRenderer.RenderFrame(
+                acousticSources,
+                Interlocked.Increment(ref _environmentAudioFrameSequence),
+                nowMs);
+            _avatarService.PostAudioInputFrame(frame);
         }
 
-        var cues = await DrainAvatarAuditoryInputCuesAsync(maxCues: 1, token);
-        if (cues.Count == 0)
+        var audioFrame = await DrainAvatarAudioInputFrameAsync(token);
+        if (audioFrame is null)
         {
             return;
         }
@@ -1369,7 +1374,16 @@ public partial class MainWindow : Window
         _lastEnvironmentAudioDispatchMs = nowMs;
         try
         {
-            await AvatarControlApi.PostAuditoryCueAsync(_auditoryInputHttpClient, endpoint, cues[0], token);
+            var result = await AvatarControlApi.PostCochlearFrameAsync(
+                _auditoryInputHttpClient,
+                endpoint,
+                audioFrame,
+                cancellationToken: token);
+            if (!result.Accepted || result.TargetInstances <= 0)
+            {
+                throw new InvalidOperationException("Cochlear frame has no live Cochlea dispatch target.");
+            }
+
             _environmentAudioBackoff.Reset();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -1386,100 +1400,102 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<List<AvatarAuditoryCue>> DrainAvatarAuditoryInputCuesAsync(int maxCues, CancellationToken token)
+    private async Task<AvatarAudioFrame?> DrainAvatarAudioInputFrameAsync(CancellationToken token)
     {
-        var cues = new List<AvatarAuditoryCue>(Math.Clamp(maxCues, 1, 8));
-        while (cues.Count < maxCues && _avatarService.TryDequeueAuditoryInput(out var cue))
+        if (_avatarService.TryDequeueAudioInput(out var frame))
         {
-            cues.Add(cue);
-        }
-
-        if (cues.Count > 0)
-        {
-            return cues;
+            return frame;
         }
 
         await Task.Delay(1, token);
-        while (cues.Count < maxCues && _avatarService.TryDequeueAuditoryInput(out var cue))
-        {
-            cues.Add(cue);
-        }
-
-        return cues;
+        return _avatarService.TryDequeueAudioInput(out frame) ? frame : null;
     }
 
-    private List<AvatarAuditoryCue> BuildEnvironmentAuditoryCues()
+    private List<AvatarAcousticSource> BuildEnvironmentAcousticSources()
     {
-        var cues = new List<AvatarAuditoryCue>(7);
+        var sources = new List<AvatarAcousticSource>(7);
         var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed, 0.0, 1.0);
         if (_lastWallProximity > 0.82)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "WallImpactMazeThud",
-                Intensity: (float)Math.Clamp(0.30 + (_lastWallProximity * 1.30), 0.30, 2.0),
-                BurstCount: (int)Math.Clamp(8 + (_lastWallProximity * 26), 6, 42),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 105.0,
+                Amplitude: Math.Clamp((_lastWallProximity - 0.80) * 0.95, 0.04, 0.22),
+                NoiseMix: 0.24,
+                HarmonicMix: 0.38,
+                PulseRateHz: 8.0,
+                PulseDutyCycle: 0.18));
         }
 
         if (movement > 0.05)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: _lastWallProximity > 0.52 ? "AvatarFootstepMazeNarrowEcho" : "AvatarFootstepMazeFloor",
-                Intensity: (float)Math.Clamp(0.22 + (movement * 0.82), 0.20, 1.25),
-                BurstCount: (int)Math.Clamp(7 + (movement * 18), 5, 30),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: _lastWallProximity > 0.52 ? 620.0 : 430.0,
+                Amplitude: Math.Clamp(0.025 + (movement * 0.12), 0.025, 0.15),
+                NoiseMix: _lastWallProximity > 0.52 ? 0.38 : 0.58,
+                HarmonicMix: _lastWallProximity > 0.52 ? 0.32 : 0.14,
+                PulseRateHz: Math.Clamp(1.8 + (movement * 2.4), 1.8, 4.2),
+                PulseDutyCycle: 0.22));
         }
 
         var corridorAir = Math.Clamp((_lastWallProximity * 0.24) + (Math.Abs(_lastTurnRateDeg) / 260.0 * 0.18), 0.0, 1.0);
         if (corridorAir > 0.08)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "MazeCorridorAir",
-                Intensity: (float)Math.Clamp(0.16 + (corridorAir * 0.68), 0.16, 0.95),
-                BurstCount: (int)Math.Clamp(5 + (corridorAir * 16), 4, 26),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 265.0,
+                Amplitude: Math.Clamp(0.008 + (corridorAir * 0.055), 0.008, 0.065),
+                NoiseMix: 0.94,
+                HarmonicMix: 0.03,
+                PulseRateHz: 0.42,
+                PulseDutyCycle: 0.70));
         }
 
         if (_lastWallProximity > 0.34)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "WallScrapeMazeEcho",
-                Intensity: (float)Math.Clamp(0.20 + (_lastWallProximity * 1.10), 0.20, 1.55),
-                BurstCount: (int)Math.Clamp(6 + (_lastWallProximity * 18), 4, 32),
-                Hemisphere: null));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 910.0,
+                Amplitude: Math.Clamp((_lastWallProximity - 0.30) * 0.12, 0.006, 0.09),
+                NoiseMix: 0.76,
+                HarmonicMix: 0.18));
         }
 
         var hazardProximity = EstimateNearestHazardAudioProximity(CellSize * 4.5);
         if (hazardProximity > 0.04)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "HazardElectricalBuzz",
-                Intensity: (float)Math.Clamp(0.22 + (hazardProximity * 1.30), 0.20, 1.85),
-                BurstCount: (int)Math.Clamp(8 + (hazardProximity * 24), 6, 42),
-                Hemisphere: ResolveHemisphereHint(GetNearestHazardPoint())));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 118.0,
+                Amplitude: Math.Clamp(0.018 + (hazardProximity * 0.24), 0.018, 0.26),
+                Pan: ResolveSoundPan(GetNearestHazardPoint()),
+                NoiseMix: 0.12,
+                HarmonicMix: 0.34,
+                PulseRateHz: 50.0,
+                PulseDutyCycle: 0.52));
         }
 
         var goalProximity = EstimatePointAudioProximity(_goalWorld, CellSize * 7.0);
         if (goalProximity > 0.05)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "GoalShelterHum",
-                Intensity: (float)Math.Clamp(0.18 + (goalProximity * 0.96), 0.18, 1.35),
-                BurstCount: (int)Math.Clamp(6 + (goalProximity * 20), 5, 32),
-                Hemisphere: ResolveHemisphereHint(_goalWorld)));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 247.0,
+                Amplitude: Math.Clamp(0.012 + (goalProximity * 0.15), 0.012, 0.17),
+                Pan: ResolveSoundPan(_goalWorld),
+                NoiseMix: 0.03,
+                HarmonicMix: 0.22));
         }
 
         var checkpointProximity = EstimateNearestCheckpointAudioProximity(CellSize * 5.0, out var checkpointPoint);
         if (checkpointProximity > 0.08)
         {
-            cues.Add(new AvatarAuditoryCue(
-                Pattern: "CheckpointSafeChime",
-                Intensity: (float)Math.Clamp(0.16 + (checkpointProximity * 0.72), 0.16, 1.0),
-                BurstCount: (int)Math.Clamp(4 + (checkpointProximity * 14), 4, 22),
-                Hemisphere: ResolveHemisphereHint(checkpointPoint)));
+            sources.Add(new AvatarAcousticSource(
+                FrequencyHz: 880.0,
+                Amplitude: Math.Clamp(0.010 + (checkpointProximity * 0.11), 0.010, 0.12),
+                Pan: ResolveSoundPan(checkpointPoint),
+                NoiseMix: 0.01,
+                HarmonicMix: 0.25,
+                PulseRateHz: 2.0,
+                PulseDutyCycle: 0.36));
         }
 
-        return cues;
+        return sources;
     }
 
     private double EstimatePointAudioProximity(Point world, double maxDistance)
@@ -1550,7 +1566,7 @@ public partial class MainWindow : Window
         return best;
     }
 
-    private string? ResolveHemisphereHint(Point world)
+    private double ResolveSoundPan(Point world)
     {
         var headingRad = GetAvatarLookHeadingRad();
         var rightX = Math.Sin(headingRad + (Math.PI * 0.5));
@@ -1558,12 +1574,7 @@ public partial class MainWindow : Window
         var toSourceX = world.X - _avatarX;
         var toSourceZ = world.Y - _avatarZ;
         var lateral = (toSourceX * rightX) + (toSourceZ * rightZ);
-        if (Math.Abs(lateral) < 0.08)
-        {
-            return null;
-        }
-
-        return lateral < 0.0 ? "L" : "R";
+        return Math.Clamp(lateral / Math.Max(1.0, CellSize * 4.0), -1.0, 1.0);
     }
 
     private void RespawnToCheckpoint()

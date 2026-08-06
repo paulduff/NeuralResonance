@@ -26,8 +26,8 @@ $ErrorActionPreference = 'Stop'
 $baseUrl = $ControlBaseUrl.TrimEnd('/')
 $stateUrl = "$baseUrl/api/v1/admin/validation?maxSnapshotAgeTicks=$MaxSnapshotAgeTicks&maxNonOkServices=$AllowableNonOkServices"
 $frameUrl = "$baseUrl/api/v1/frame"
-$visualUrl = "$baseUrl/api/v1/admin/input/visual"
-$auditoryUrl = "$baseUrl/api/v1/admin/input/auditory"
+$visualUrl = "$baseUrl/api/v1/admin/input/visual-frame?width=16&height=12&stride=64&pixelFormat=Bgra32&inputSource=burnin_visual"
+$auditoryUrl = "$baseUrl/api/v1/admin/input/audio-frame?sampleRate=16000&channels=1&samplesPerChannel=800&sampleFormat=Pcm16Le&inputSource=burnin_audio"
 $restartSimUrl = "$baseUrl/api/v1/admin/restart-sim"
 
 if ([string]::IsNullOrWhiteSpace($SummaryPath)) {
@@ -157,23 +157,22 @@ function Get-StateSnapshot {
     }
 }
 
-function Invoke-SensoryStimulus {
+function Invoke-RawSensoryFrame {
     param(
         [string]$Uri,
-        [hashtable]$Payload
+        [byte[]]$Payload
     )
 
     try {
-        $json = $Payload | ConvertTo-Json -Compress
-        $response = Invoke-RestMethod -Uri $Uri -Method Post -ContentType 'application/json' -Body $json -TimeoutSec 6
-        $delivered = 0
-        if ($null -ne $response.PSObject.Properties['deliveredSpikes']) {
-            $delivered = [int]$response.deliveredSpikes
+        $response = Invoke-RestMethod -Uri $Uri -Method Post -ContentType 'application/octet-stream' -Body $Payload -TimeoutSec 6
+        $generated = 0
+        if ($null -ne $response.PSObject.Properties['generatedSpikes']) {
+            $generated = [int]$response.generatedSpikes
         }
         return [pscustomobject]@{
             Success   = $true
             Status    = 200
-            Delivered = $delivered
+            Delivered = $generated
             Error     = ''
         }
     }
@@ -186,6 +185,26 @@ function Invoke-SensoryStimulus {
             Error     = $_.Exception.Message
         }
     }
+}
+
+$visualFrame = New-Object byte[] (16 * 12 * 4)
+for ($y = 0; $y -lt 12; $y++) {
+    for ($x = 0; $x -lt 16; $x++) {
+        $value = if ($x -lt 8) { [byte]24 } else { [byte]232 }
+        $offset = (($y * 16) + $x) * 4
+        $visualFrame[$offset] = $value
+        $visualFrame[$offset + 1] = $value
+        $visualFrame[$offset + 2] = $value
+        $visualFrame[$offset + 3] = 255
+    }
+}
+
+$auditoryFrame = New-Object byte[] (800 * 2)
+for ($sampleIndex = 0; $sampleIndex -lt 800; $sampleIndex++) {
+    $sample = [int16]([Math]::Round([Math]::Sin(2.0 * [Math]::PI * 440.0 * $sampleIndex / 16000.0) * 8192.0))
+    $bytes = [BitConverter]::GetBytes($sample)
+    $auditoryFrame[$sampleIndex * 2] = $bytes[0]
+    $auditoryFrame[($sampleIndex * 2) + 1] = $bytes[1]
 }
 
 function Wait-ForRecoveryAfterRestart {
@@ -498,20 +517,8 @@ while ([DateTime]::UtcNow -lt $deadlineUtc) {
     }
 
     if ($nowUtc -ge $nextSensoryUtc) {
-        $visual = Invoke-SensoryStimulus -Uri $visualUrl -Payload @{
-            pattern        = 'BurnInVisual'
-            intensity      = 0.95
-            burstCount     = 12
-            targetStructure = 'V1'
-            sourceStructure = 'Thalamus'
-        }
-        $auditory = Invoke-SensoryStimulus -Uri $auditoryUrl -Payload @{
-            pattern        = 'BurnInTone'
-            intensity      = 0.90
-            burstCount     = 10
-            targetStructure = 'A1'
-            sourceStructure = 'Thalamus'
-        }
+        $visual = Invoke-RawSensoryFrame -Uri $visualUrl -Payload $visualFrame
+        $auditory = Invoke-RawSensoryFrame -Uri $auditoryUrl -Payload $auditoryFrame
 
         foreach ($result in @($visual, $auditory)) {
             if (-not $result.Success) {

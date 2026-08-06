@@ -12,7 +12,7 @@ public sealed class AvatarService : IDisposable
 {
     private const int MaxPendingCommands = 64;
     private const int MaxPublishedSignals = 64;
-    private const int MaxPublishedAuditoryInputs = 32;
+    private const int MaxPublishedAudioFrames = 4;
     private const int MaxPublishedBodyInputs = 32;
     private const int MaxPublishedSightOutputs = 3;
     private const int MaxPublishedActionOutputs = 16;
@@ -23,7 +23,7 @@ public sealed class AvatarService : IDisposable
     private readonly BlockingCollection<IAvatarServiceCommand> _commands =
         new(new ConcurrentQueue<IAvatarServiceCommand>(), MaxPendingCommands);
     private readonly BoundedOutputQueue<AvatarNervousSystemSignal> _publishedSignals = new(MaxPublishedSignals);
-    private readonly BoundedOutputQueue<AvatarAuditoryCue> _publishedAuditoryInputs = new(MaxPublishedAuditoryInputs);
+    private readonly BoundedOutputQueue<AvatarAudioFrame> _publishedAudioFrames = new(MaxPublishedAudioFrames);
     private readonly BoundedOutputQueue<AvatarBodyStateInput> _publishedBodyInputs = new(MaxPublishedBodyInputs);
     private readonly BoundedOutputQueue<AvatarSightFrame> _publishedSightOutputs = new(MaxPublishedSightOutputs);
     private readonly BoundedOutputQueue<AvatarActionOutput> _publishedActionOutputs = new(MaxPublishedActionOutputs);
@@ -120,8 +120,8 @@ public sealed class AvatarService : IDisposable
     public bool TryDequeueSignal(out AvatarNervousSystemSignal signal)
         => _publishedSignals.TryDequeue(out signal);
 
-    public bool TryDequeueAuditoryInput(out AvatarAuditoryCue cue)
-        => _publishedAuditoryInputs.TryDequeue(out cue);
+    public bool TryDequeueAudioInput(out AvatarAudioFrame frame)
+        => _publishedAudioFrames.TryDequeue(out frame);
 
     public bool TryDequeueBodyInput(out AvatarBodyStateInput input)
         => _publishedBodyInputs.TryDequeue(out input);
@@ -153,10 +153,11 @@ public sealed class AvatarService : IDisposable
     public void PostResetMotor()
         => Post(ResetMotorCommand.Instance);
 
-    public void PostAuditoryInputCandidates(IEnumerable<AvatarAuditoryCue> cues, int maxCues = 1)
+    public void PostAudioInputFrame(AvatarAudioFrame frame)
     {
-        ArgumentNullException.ThrowIfNull(cues);
-        Post(new AuditoryInputCommand(cues.ToArray(), Math.Clamp(maxCues, 1, 8)));
+        ArgumentNullException.ThrowIfNull(frame);
+        frame.Validate();
+        Post(new AudioInputFrameCommand(frame));
     }
 
     public void PostBodyInput(AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile)
@@ -443,19 +444,11 @@ public sealed class AvatarService : IDisposable
         }
     }
 
-    private sealed record AuditoryInputCommand(
-        IReadOnlyList<AvatarAuditoryCue> Cues,
-        int MaxCues) : IAvatarServiceCommand
+    private sealed record AudioInputFrameCommand(AvatarAudioFrame Frame) : IAvatarServiceCommand
     {
         public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
         {
-            foreach (var cue in Cues
-                         .Where(static cue => !string.IsNullOrWhiteSpace(cue.Pattern))
-                         .Take(MaxCues))
-            {
-                service._publishedAuditoryInputs.Enqueue(cue);
-            }
-
+            service._publishedAudioFrames.Enqueue(Frame);
             return service.CurrentSignal();
         }
     }

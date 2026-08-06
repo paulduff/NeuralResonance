@@ -109,32 +109,32 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task AuditoryInput_AvatarSource_Accepts_And_Defers_Dispatch()
+    public async Task StructuredAuditoryInputEndpointDoesNotExist()
     {
-        var client = _fixture.Client;
-
-        var response = await client.PostAsJsonAsync(
+        var response = await _fixture.Client.PostAsJsonAsync(
             "/api/v1/admin/input/auditory",
             new
             {
-                Pattern = "EnvironmentalSound",
-                Intensity = 0.7f,
-                BurstCount = 12,
-                TargetStructure = "A1",
-                SourceStructure = "CochlearNucleus",
-                Hemisphere = (string?)null,
-                InputSource = "avatar_audio"
+                Pattern = "PreclassifiedSound",
+                TargetStructure = "A1"
             });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var audioPayload = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(audioPayload);
-        Assert.False(TryGetProperty(doc.RootElement, "predictiveSurprise", out _));
-        Assert.False(TryGetProperty(doc.RootElement, "predictiveCue", out _));
-        Assert.True(GetBool(doc.RootElement, "accepted"), audioPayload);
-        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"), audioPayload);
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CochlearFrame_Rejects_Malformed_Payload_Length()
+    {
+        const int samplesPerChannel = 800;
+        using var content = new ByteArrayContent(new byte[(samplesPerChannel * sizeof(short)) - 1]);
+
+        var response = await _fixture.Client.PostAsync(
+            $"/api/v1/admin/input/audio-frame?sampleRate=16000&channels=1&samplesPerChannel={samplesPerChannel}&sampleFormat=Pcm16Le&inputSource=avatar_audio",
+            content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var doc = await ReadJsonAsync(response);
+        Assert.Contains("exactly", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

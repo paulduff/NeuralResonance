@@ -1477,6 +1477,12 @@ public partial class MainWindow : Window
         var cortexEmissive = anatomyDisplayMode
             ? Color.FromArgb(2, 236, 170, 180)
             : Color.FromArgb(2, 236, 170, 180);
+        var whiteMatterDiffuse = anatomyDisplayMode
+            ? Color.FromArgb(14, 210, 202, 196)
+            : Color.FromArgb(8, 170, 168, 174);
+        var whiteMatterEmissive = anatomyDisplayMode
+            ? Color.FromArgb(1, 238, 230, 224)
+            : Color.FromArgb(1, 220, 216, 224);
         var cerebellumDiffuse = anatomyDisplayMode
             ? Color.FromArgb(48, 168, 108, 120)
             : Color.FromArgb(32, 158, 102, 114);
@@ -1484,6 +1490,19 @@ public partial class MainWindow : Window
             ? Color.FromArgb(48, 176, 126, 106)
             : Color.FromArgb(32, 166, 116, 98);
 
+        // The pial and white surfaces share one topology. Their four-millimetre
+        // separation represents the cortical ribbon while all functional
+        // territories continue to derive from the same pial manifold.
+        AddReferenceMesh(
+            brainContent,
+            BuildCorticalReferenceSurfaceMesh(-1.0, 72, 40, CorticalRibbonThicknessMm),
+            whiteMatterDiffuse,
+            whiteMatterEmissive);
+        AddReferenceMesh(
+            brainContent,
+            BuildCorticalReferenceSurfaceMesh(1.0, 72, 40, CorticalRibbonThicknessMm),
+            whiteMatterDiffuse,
+            whiteMatterEmissive);
         AddReferenceMesh(
             brainContent,
             BuildCorticalReferenceSurfaceMesh(-1.0, 72, 40),

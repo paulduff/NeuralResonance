@@ -24,6 +24,7 @@ public partial class MainWindow
     private const double CortexAnteriorRadiusMm = 86.0;
     private const double CortexPosteriorRadiusMm = 81.0;
     private const double CortexVerticalCenterMm = 4.0;
+    private const double CorticalRibbonThicknessMm = 4.0;
 
     private IEnumerable<Point3D> GenerateNeuronMatrix(StructureDefinition def, StructureLayout effectiveLayout, int targetCount)
     {
@@ -891,35 +892,52 @@ public partial class MainWindow
         // taken from the bundled anterior, lateral, and superior references.
         var frontalLobe = Math.Pow(anterior, 1.18);
         var parietalCrown = Bell(longitudinal, -0.08, 0.24) * Math.Pow(superior, 1.15);
-        var temporalLobe =
-            Bell(longitudinal, 0.04, 0.40) *
-            Bell(vertical, -0.48, 0.22) *
-            (0.28 + (0.72 * lateralShoulder));
+        var temporalRoot =
+            Bell(longitudinal, -0.10, 0.42) *
+            Bell(vertical, -0.43, 0.20) *
+            (0.20 + (0.80 * lateralShoulder));
+        var temporalTongue =
+            Bell(longitudinal, 0.18, 0.56) *
+            Bell(vertical, -0.57, 0.13) *
+            (0.10 + (0.90 * Math.Pow(lateralShoulder, 1.18)));
         var temporalPole =
-            Bell(longitudinal, 0.55, 0.12) *
-            Bell(vertical, -0.34, 0.16) *
+            Bell(longitudinal, 0.66, 0.10) *
+            Bell(vertical, -0.49, 0.12) *
+            (0.20 + (0.80 * Math.Pow(lateralShoulder, 1.08)));
+        var orbitalShelf =
+            Bell(longitudinal, 0.70, 0.17) *
+            Bell(vertical, -0.65, 0.11) *
             (0.34 + (0.66 * lateralShoulder));
         var occipitalLobe = Math.Pow(posterior, 1.15);
 
         var widthRadiusMm = CortexHalfWidthMm *
-            (1.0 + (0.035 * frontalLobe) + (0.115 * temporalLobe) + (0.045 * temporalPole) - (0.060 * occipitalLobe));
+            (1.0 +
+             (0.035 * frontalLobe) +
+             (0.055 * orbitalShelf) +
+             (0.090 * temporalRoot) +
+             (0.105 * temporalTongue) +
+             (0.050 * temporalPole) -
+             (0.060 * occipitalLobe));
         var xMm = hemisphereSign * (CortexMidlineGapMm + (lateral * widthRadiusMm));
 
         var yMm = CortexVerticalCenterMm + (vertical * CortexHalfHeightMm);
         yMm += 3.6 * frontalLobe * (0.30 + (0.70 * superior));
         yMm += 2.4 * parietalCrown;
-        yMm -= 12.5 * temporalLobe;
-        yMm -= 3.0 * temporalPole;
+        yMm -= 8.5 * temporalRoot;
+        yMm -= 10.5 * temporalTongue;
+        yMm -= 4.5 * temporalPole;
         yMm -= 1.8 * Math.Pow(superior, 4.0);
         yMm += 1.4 * Math.Pow(inferior, 5.0);
 
         // Form the orbitofrontal shelf without flattening the whole ventral
         // surface. The temporal lobe remains lower and posterior to this shelf.
-        var orbitalShelf = frontalLobe * Math.Pow(inferior, 1.10) * (0.28 + (0.72 * lateralShoulder));
         if (orbitalShelf > 0.01)
         {
-            var shelfTargetMm = -27.0 - (3.0 * lateralShoulder);
-            var shelfBlend = Math.Clamp(orbitalShelf * 0.64, 0.0, 0.62);
+            // The orbital surface is a real anterior projection, not merely a
+            // flattened underside. A broad, nearly horizontal shelf separates
+            // the frontal pole from the lower and more lateral temporal tongue.
+            var shelfTargetMm = -27.5 - (2.5 * lateralShoulder);
+            var shelfBlend = Math.Clamp(orbitalShelf * 0.82, 0.0, 0.78);
             yMm = (yMm * (1.0 - shelfBlend)) + (shelfTargetMm * shelfBlend);
         }
 
@@ -929,8 +947,10 @@ public partial class MainWindow
         var zMm = longitudinal * longitudinalRadiusMm;
         zMm += 1.8 * frontalLobe;
         zMm -= 1.2 * occipitalLobe;
-        zMm += 2.6 * temporalLobe;
-        zMm += 4.4 * temporalPole;
+        zMm += 7.5 * orbitalShelf;
+        zMm += 2.5 * temporalRoot;
+        zMm += 6.5 * temporalTongue;
+        zMm += 9.5 * temporalPole;
 
         // The lateral (Sylvian) fissure separates the superior temporal gyrus
         // from frontal and parietal cortex. Its posterior end sits higher than

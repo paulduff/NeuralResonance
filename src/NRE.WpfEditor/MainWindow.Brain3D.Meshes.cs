@@ -680,7 +680,11 @@ public partial class MainWindow
             center.Z + (clampedU * rz));
     }
 
-    private static MeshGeometry3D BuildCorticalReferenceSurfaceMesh(double hemisphereSign, int thetaSteps, int phiSteps)
+    private static MeshGeometry3D BuildCorticalReferenceSurfaceMesh(
+        double hemisphereSign,
+        int thetaSteps,
+        int phiSteps,
+        double corticalDepthMm = 0.0)
     {
         var mesh = new MeshGeometry3D();
         const double thetaMin = -1.52;
@@ -694,12 +698,13 @@ public partial class MainWindow
             for (var t = 0; t <= thetaSteps; t++)
             {
                 var theta = thetaMin + ((thetaMax - thetaMin) * (t / (double)thetaSteps));
-                var point = BuildFoldedCorticalReferencePoint(
+                var point = BuildCorticalRibbonPoint(
                     theta,
                     phi,
                     hemisphereSign,
                     t / (double)thetaSteps,
-                    p / (double)phiSteps);
+                    p / (double)phiSteps,
+                    corticalDepthMm);
                 mesh.Positions.Add(point);
                 mesh.TextureCoordinates.Add(new Point(t / (double)thetaSteps, p / (double)phiSteps));
             }
@@ -708,6 +713,34 @@ public partial class MainWindow
         AddGridTriangles(mesh, thetaSteps + 1, phiSteps + 1);
         CalculateSmoothNormals(mesh, hemisphereSign);
         return mesh;
+    }
+
+    private static Point3D BuildCorticalRibbonPoint(
+        double theta,
+        double phi,
+        double hemisphereSign,
+        double normalizedTheta,
+        double normalizedPhi,
+        double corticalDepthMm)
+    {
+        var pialPoint = BuildFoldedCorticalReferencePoint(
+            theta,
+            phi,
+            hemisphereSign,
+            normalizedTheta,
+            normalizedPhi);
+        if (corticalDepthMm <= 0.0)
+        {
+            return pialPoint;
+        }
+
+        var smoothSurface = BuildCorticalSurfacePoint(theta, phi, hemisphereSign);
+        var normal = GetCorticalShellNormal(smoothSurface, hemisphereSign < 0 ? "L" : "R");
+        var depth = MmToRender(Math.Clamp(corticalDepthMm, 0.0, CorticalRibbonThicknessMm));
+        return new Point3D(
+            pialPoint.X - (normal.X * depth),
+            pialPoint.Y - (normal.Y * depth),
+            pialPoint.Z - (normal.Z * depth));
     }
 
     private static Point3D BuildFoldedCorticalReferencePoint(
@@ -853,6 +886,20 @@ public partial class MainWindow
             {
                 var theta = -0.94 + (1.54 * s);
                 var phi = -0.58 - (0.06 * s) + (0.018 * Math.Sin((s * Math.PI * 2.0) - 0.3));
+                return (theta, phi);
+            });
+        AppendCorticalLandmarkCurve(
+            mesh,
+            hemisphereSign,
+            30,
+            radius * 0.72,
+            static s =>
+            {
+                // Lateral edge of the orbitofrontal shelf. This curve turns
+                // forward at the frontal pole and leaves the temporal tongue
+                // visibly separate below the Sylvian fissure.
+                var theta = 0.40 + (0.88 * s);
+                var phi = -0.68 + (0.10 * Math.Sin(s * Math.PI));
                 return (theta, phi);
             });
         AppendCorticalLandmarkCurve(

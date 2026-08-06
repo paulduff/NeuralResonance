@@ -108,6 +108,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly float[] _attentionMaintenanceTrace = new float[AttentionWorkspaceTopology.ChannelCount];
 
+	private readonly float[] _sleepStateRateSums = new float[SleepConsolidationTopology.StateChannelCount];
+
+	private readonly int[] _sleepStateRateCounts = new int[SleepConsolidationTopology.StateChannelCount];
+
+	private readonly float[] _sleepReplayRateSums = new float[SleepConsolidationTopology.ReplayEnsembleCount];
+
+	private readonly int[] _sleepReplayRateCounts = new int[SleepConsolidationTopology.ReplayEnsembleCount];
+
+	private readonly float[] _sleepReplayTrace = new float[SleepConsolidationTopology.ReplayEnsembleCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -262,6 +272,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var perceptCircuit = PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId);
 			var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
 			var attentionCircuit = AttentionWorkspaceTopology.EmitsAttentionDiagnostics(_profile.StructureId);
+			var sleepConsolidationCircuit = SleepConsolidationTopology.EmitsDiagnostics(_profile.StructureId);
 			if (actionCircuit)
 			{
 				Array.Clear(_actionChannelRateSums);
@@ -281,6 +292,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				Array.Clear(_attentionChannelRateSums);
 				Array.Clear(_attentionChannelRateCounts);
 			}
+			if (sleepConsolidationCircuit)
+			{
+				Array.Clear(_sleepStateRateSums);
+				Array.Clear(_sleepStateRateCounts);
+				Array.Clear(_sleepReplayRateSums);
+				Array.Clear(_sleepReplayRateCounts);
+			}
 			int num = 0;
 			int num2 = 0;
 			double num3 = 0.0;
@@ -296,6 +314,17 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			for (int i = 0; i < _neurons.Length; i++)
 			{
 				ModelNeuron modelNeuron = _neurons[i];
+				if (sleepConsolidationCircuit)
+				{
+					SleepConsolidationTopology.ResolveIntrinsicDrive(
+						_profile.StructureId,
+						modelNeuron.Index,
+						tickSignal.HomeostaticSleepDrive,
+						tickSignal.MetabolicWakeReserve,
+						out var intrinsicExcitation,
+						out var intrinsicInhibition);
+					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
+				}
 				if (modelNeuron.Step(tickSignal.TickDurationMs, tickSignal.GlobalNeuromodState))
 				{
 					num++;
@@ -343,6 +372,15 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 					var channel = AttentionWorkspaceTopology.ChannelForNeuron(modelNeuron.Index, _profile.StructureId);
 					_attentionChannelRateSums[channel] += modelNeuron.FiringRateHz;
 					_attentionChannelRateCounts[channel]++;
+				}
+				if (sleepConsolidationCircuit)
+				{
+					var stateChannel = SleepConsolidationTopology.StateChannelForNeuron(modelNeuron.Index, _profile.StructureId);
+					_sleepStateRateSums[stateChannel] += modelNeuron.FiringRateHz;
+					_sleepStateRateCounts[stateChannel]++;
+					var replayEnsemble = SleepConsolidationTopology.ReplayEnsembleForNeuron(modelNeuron.Index);
+					_sleepReplayRateSums[replayEnsemble] += modelNeuron.FiringRateHz;
+					_sleepReplayRateCounts[replayEnsemble]++;
 				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
@@ -392,7 +430,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(tickSignal.GlobalNeuromodState);
 			var synapticMemory = BuildSynapticMemoryDiagnostics();
 			var neuronalAttentionWorkspace = BuildNeuronalAttentionWorkspaceDiagnostics();
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace);
+			var neuronalSleepConsolidation = BuildNeuronalSleepConsolidationDiagnostics();
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -2303,6 +2342,92 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			margin,
 			maintained,
 			distractorSuppression);
+	}
+
+	private NeuronalSleepConsolidationDiagnostics? BuildNeuronalSleepConsolidationDiagnostics()
+	{
+		if (!SleepConsolidationTopology.EmitsDiagnostics(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var stateRates = new float[SleepConsolidationTopology.StateChannelCount];
+		for (var channel = 0; channel < stateRates.Length; channel++)
+		{
+			stateRates[channel] = NormalizePerceptRate(AverageChannel(
+				_sleepStateRateSums,
+				_sleepStateRateCounts,
+				channel));
+		}
+
+		var replayRates = new float[SleepConsolidationTopology.ReplayEnsembleCount];
+		for (var ensemble = 0; ensemble < replayRates.Length; ensemble++)
+		{
+			replayRates[ensemble] = NormalizePerceptRate(AverageChannel(
+				_sleepReplayRateSums,
+				_sleepReplayRateCounts,
+				ensemble));
+			var burstGain = _profile.StructureId == StructureId.CA3 ? 0.36f : 0.18f;
+			var persistence = SynapticMemoryTopology.IsHippocampal(_profile.StructureId) ? 0.86f : 0.78f;
+			_sleepReplayTrace[ensemble] = Math.Clamp(
+				(_sleepReplayTrace[ensemble] * persistence) + (replayRates[ensemble] * burstGain),
+				0f,
+				1f);
+		}
+
+		var replayGate = SynapticMemoryTopology.IsHippocampal(_profile.StructureId)
+			? _sleepReplayTrace.Max()
+			: 0f;
+		var stateActivities = new SleepStateChannelActivity[SleepConsolidationTopology.StateChannelCount];
+		for (var channel = 0; channel < stateActivities.Length; channel++)
+		{
+			var rate = stateRates[channel];
+			stateActivities[channel] = new SleepStateChannelActivity(
+				channel,
+				_profile.StructureId == StructureId.Hypothalamus && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
+				(SleepConsolidationTopology.IsWakeStructure(_profile.StructureId) ||
+				 (_profile.StructureId == StructureId.Hypothalamus && channel == SleepConsolidationTopology.WakeChannel)) ? rate : 0f,
+				SleepConsolidationTopology.IsNremStructure(_profile.StructureId) && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
+				SleepConsolidationTopology.IsRemStructure(_profile.StructureId) && channel == SleepConsolidationTopology.RemChannel ? rate : 0f,
+				SleepConsolidationTopology.IsSpindleStructure(_profile.StructureId) && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
+				SynapticMemoryTopology.IsCorticalConsolidation(_profile.StructureId) && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
+				channel == SleepConsolidationTopology.NremChannel ? replayGate : 0f);
+		}
+
+		var replayActivities = new SleepReplayEnsembleActivity[SleepConsolidationTopology.ReplayEnsembleCount];
+		for (var ensemble = 0; ensemble < replayActivities.Length; ensemble++)
+		{
+			var local = replayRates[ensemble];
+			var support = _synapticMemorySupportingCounts[ensemble];
+			var engram = support > 0
+				? Math.Clamp(_synapticMemoryStrengthSums[ensemble] / support, 0f, 1f)
+				: 0f;
+			var consolidation = support > 0
+				? Math.Clamp(_synapticMemoryConsolidationSums[ensemble] / support, 0f, 1f)
+				: 0f;
+			var competitor = replayRates
+				.Where((_, index) => index != ensemble)
+				.DefaultIfEmpty(0f)
+				.Max();
+			var hippocampalBurst = SynapticMemoryTopology.IsHippocampal(_profile.StructureId)
+				? _sleepReplayTrace[ensemble] * (_profile.StructureId == StructureId.CA3 ? 1f : 0.65f)
+				: 0f;
+			var slowWave = SynapticMemoryTopology.IsCorticalConsolidation(_profile.StructureId) ? local : 0f;
+			replayActivities[ensemble] = new SleepReplayEnsembleActivity(
+				ensemble,
+				hippocampalBurst,
+				SleepConsolidationTopology.IsSpindleStructure(_profile.StructureId) ? local : 0f,
+				slowWave,
+				SynapticMemoryTopology.IsCorticalConsolidation(_profile.StructureId) ? local * (0.35f + (consolidation * 0.65f)) : 0f,
+				engram,
+				Math.Clamp(competitor, 0f, 1f),
+				consolidation);
+		}
+
+		return new NeuronalSleepConsolidationDiagnostics(
+			_profile.StructureId,
+			stateActivities,
+			replayActivities);
 	}
 
 	private HypothalamicHomeostasisDiagnostics? BuildHypothalamicHomeostasisDiagnostics(NeuromodState neuromod)

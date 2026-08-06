@@ -154,6 +154,28 @@ Let hypothalamic and brainstem sleep-wake populations respond to homeostatic che
 
 Acceptance requires state-dependent replay, improved delayed recall, reduced online interference, and predictable consolidation loss after replay disruption.
 
+#### Implemented vertical slice
+
+Rung 6 now separates homeostatic chemistry from sleep authority. ATP reserve and accumulated sleep pressure remain non-neuronal metabolic substrate, but they enter the relevant populations as bounded intrinsic excitatory and inhibitory current. They no longer directly choose a sleep transition whenever neuronal circuit evidence is present.
+
+Three anonymous state populations represent wake, NREM, and REM. The read-only controller decoder combines measured hypothalamic sleep drive, reticular/LC/basal-forebrain/intralaminar wake activity, pontine REM activity, thalamic-TRN spindle synchrony, cortical slow-wave activity, and hippocampal replay gating. A partially observed circuit holds the previous state and forbids replay; it cannot silently restore the threshold state machine.
+
+Replay uses the same eight numeric ensembles as perception and synaptic memory. CA3/CA1 bursts nominate an ensemble, both TRN and thalamus must supply spindle coupling, and cortical slow-wave/echo activity supplies consolidation evidence. The transport replay path then filters engrams by numeric neuronal population membership. It does not rank action names, goals, categories, dream themes, or other semantic fields.
+
+The former dream-consolidation path is retained as `LegacyTelemetry`. Under neuronal authority it cannot reinforce action dictionaries, world-map records, semantic concepts, autobiographical summaries, or cerebellar scalar state. Authoritative consolidation occurs through replay spikes and the persisted synaptic plasticity implemented in rung 4. `/api/v1/neuronal-sleep-consolidation` exposes the authoritative state; the sleep-memory admin endpoint configures metabolic substrate only.
+
+The existing structure sizes remain adequate for this first slice. State structures provide hundreds of cells per state role, while each replay structure provides dozens of cells per ensemble. Population resizing is reserved for measured lane starvation, unstable state separation, or replay capacity limits.
+
+The causal test set pins:
+
+- homeostatic excitation of sleep-promoting neurons and inhibition of wake populations;
+- distributed NREM selection and numeric replay-ensemble selection;
+- wake-system stimulation preventing sleep and replay;
+- loss of spindle coupling and replay after TRN ablation;
+- loss of replay authority after CA3 ablation;
+- no fallback to central thresholds after incomplete neuronal evidence;
+- absence of semantic replay selectors from the neuronal payload.
+
 ### Rung 7 - Neural Language Bridge
 
 Entity remains the trained language cortex and teacher while DNNE supplies grounded percepts, memories, affect, and intentions through learned latent adapters. Entity proposes language; DNNE grounds, values, remembers, and authorizes embodied actions. Training later distils recurrent language representations into cortical populations where practical.

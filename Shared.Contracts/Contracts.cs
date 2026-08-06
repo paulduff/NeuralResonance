@@ -22,7 +22,9 @@ public sealed record TickSignal(
     double TickDurationMs,
     NeuromodState GlobalNeuromodState,
     IReadOnlyDictionary<BrainRhythm, double> PhaseContext,
-    float RewardPredictionError);
+    float RewardPredictionError,
+    float HomeostaticSleepDrive = 0f,
+    float MetabolicWakeReserve = 1f);
 
 public sealed record TickAck(
     StructureId StructureId,
@@ -57,7 +59,8 @@ public sealed record TickAck(
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
-    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
+    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -205,6 +208,31 @@ public sealed record NeuronalAttentionWorkspaceDiagnostics(
     float SelectionMargin,
     IReadOnlyList<int> MaintainedChannels,
     float DistractorSuppression);
+
+public sealed record SleepStateChannelActivity(
+    int StateChannel,
+    float HomeostaticDrive,
+    float WakeDrive,
+    float NremDrive,
+    float RemDrive,
+    float SpindleSynchrony,
+    float SlowWaveSynchrony,
+    float ReplayGate);
+
+public sealed record SleepReplayEnsembleActivity(
+    int EnsembleIndex,
+    float HippocampalBurst,
+    float SpindleCoupling,
+    float SlowWaveCoupling,
+    float CorticalEcho,
+    float EngramStrength,
+    float Interference,
+    float ConsolidationGain);
+
+public sealed record NeuronalSleepConsolidationDiagnostics(
+    StructureId SourceStructure,
+    IReadOnlyList<SleepStateChannelActivity> StateChannels,
+    IReadOnlyList<SleepReplayEnsembleActivity> ReplayEnsembles);
 
 public sealed record HypothalamicHomeostasisDiagnostics(
     string HomeostasisMode,
@@ -405,7 +433,8 @@ public sealed record StructureSnapshot(
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
-    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
+    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

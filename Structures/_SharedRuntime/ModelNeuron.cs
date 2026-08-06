@@ -189,6 +189,21 @@ internal sealed class ModelNeuron
 		_apicalDendriteVoltage = Math.Clamp(_apicalDendriteVoltage, -85.0, -35.0);
 	}
 
+	public void IntegrateIntrinsicDrive(float excitatory, float inhibitory)
+	{
+		if (excitatory > 0f)
+		{
+			_ampaCurrent += Math.Clamp(excitatory, 0f, 1f) * 2.2;
+			_nmdaCurrent += Math.Clamp(excitatory, 0f, 1f) * 0.65;
+		}
+
+		if (inhibitory > 0f)
+		{
+			_gabaACurrent += Math.Clamp(inhibitory, 0f, 1f) * 2.4;
+			_gabaBCurrent += Math.Clamp(inhibitory, 0f, 1f) * 0.55;
+		}
+	}
+
 	public bool Step(double dtMs, NeuromodState neuromod)
 	{
 		AdvanceSynapticKinetics(dtMs);

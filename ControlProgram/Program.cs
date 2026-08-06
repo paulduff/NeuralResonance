@@ -52,6 +52,7 @@ builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
 builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
 builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
+builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -207,7 +208,13 @@ app.MapGet("/api/v1/goal-intent", (SimulationState state) => Results.Ok(state.Ge
 app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.Ok(state.GetMotivationArbitrationSnapshot()));
 app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/world-learning-map", (SimulationState state, int? max) => Results.Ok(state.GetWorldLearningMapSnapshot(max ?? 32)));
-app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(state.GetDreamConsolidationSnapshot()));
+app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeReplay = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-sleep-consolidation",
+    State = state.GetDreamConsolidationSnapshot()
+}));
 app.MapGet("/api/v1/body-schema", (SimulationState state) => Results.Ok(state.GetBodySchemaSnapshot()));
 app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(state.GetInteroceptiveCoreSnapshot()));
 app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
@@ -240,6 +247,8 @@ app.MapGet("/api/v1/neuronal-memory", (NeuronalMemoryRuntime memory) =>
     Results.Ok(memory.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-attention-workspace", (NeuronalAttentionWorkspaceRuntime attentionWorkspace) =>
     Results.Ok(attentionWorkspace.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-sleep-consolidation", (NeuronalSleepConsolidationRuntime sleepConsolidation) =>
+    Results.Ok(sleepConsolidation.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -459,7 +468,13 @@ app.MapPost("/api/v1/admin/memory-control", (MemoryControlRequest request, Simul
 });
 app.MapGet("/api/v1/admin/sleep-memory", (SimulationState state) =>
 {
-    return Results.Ok(state.GetSleepMemorySnapshot());
+    return Results.Ok(new
+    {
+        Authority = "HomeostaticSubstrateConfiguration",
+        CanAuthorizeSleepState = false,
+        AuthoritativeEndpoint = "/api/v1/neuronal-sleep-consolidation",
+        State = state.GetSleepMemorySnapshot()
+    });
 });
 app.MapPost("/api/v1/admin/sleep-memory", (SleepMemoryControlRequest request, SimulationState state) =>
 {
@@ -4016,7 +4031,25 @@ internal sealed class SimulationState
             AdvancePhase(BrainRhythm.ALPHA, 10.0);
             AdvancePhase(BrainRhythm.BETA, 20.0);
             AdvancePhase(BrainRhythm.GAMMA, 40.0);
-            return new TickSignal(Tick, SimulationClockMs, TickDurationMs, GlobalNeuromodState, new Dictionary<BrainRhythm, double>(OscillationPhases), RewardPredictionError);
+            var atpReserve = Math.Clamp(
+                SleepMemory.AtpBudget / Math.Max(0.0001f, SleepMemory.MaxAtpBudget),
+                0f,
+                1f);
+            var pressure = Math.Clamp(
+                SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure),
+                0f,
+                1f);
+            var homeostaticSleepDrive = Math.Clamp((pressure * 0.58f) + ((1f - atpReserve) * 0.42f), 0f, 1f);
+            var metabolicWakeReserve = Math.Clamp(atpReserve * (1f - (pressure * 0.38f)), 0f, 1f);
+            return new TickSignal(
+                Tick,
+                SimulationClockMs,
+                TickDurationMs,
+                GlobalNeuromodState,
+                new Dictionary<BrainRhythm, double>(OscillationPhases),
+                RewardPredictionError,
+                homeostaticSleepDrive,
+                metabolicWakeReserve);
         }
     }
 
@@ -5238,6 +5271,10 @@ internal sealed class SimulationState
                 SleepMemory.TotalEngramsCaptured,
                 SleepMemory.TotalEngramsReplayed,
                 SleepMemory.LastTransitionTick,
+                SleepMemory.NeuronalAuthorityActive,
+                SleepMemory.NeuronalStateChannel,
+                SleepMemory.NeuronalReplayActive,
+                SleepMemory.NeuronalReplayEnsemble,
                 EngramCount = _engramBank.Count,
                 SchemaCount = _schemaBank.Count
             };
@@ -16349,6 +16386,26 @@ internal sealed class SimulationState
             return;
         }
 
+        if (SleepMemory.NeuronalAuthorityActive)
+        {
+            DreamConsolidation = DreamConsolidation with
+            {
+                Active = SleepMemory.NeuronalReplayActive,
+                LastDreamTick = SleepMemory.NeuronalReplayActive ? tick : DreamConsolidation.LastDreamTick,
+                LastDreamTheme = SleepMemory.NeuronalReplayActive
+                    ? $"neuronal ensemble {SleepMemory.NeuronalReplayEnsemble}"
+                    : "neuronal replay quiet",
+                ProtectedActionCount = actionAggregate.ProtectedCount,
+                ProtectedMapCount = mapAggregate.ProtectedCount,
+                MeanActionSuccess = actionAggregate.MeanSuccess,
+                MeanMapConfidence = mapAggregate.MeanConfidence,
+                ConsolidationSummary = SleepMemory.NeuronalReplayActive
+                    ? $"Distributed hippocampal-thalamocortical replay selected numeric ensemble {SleepMemory.NeuronalReplayEnsemble}."
+                    : "Distributed sleep circuits did not authorize replay this tick."
+            };
+            return;
+        }
+
         var replayBudget = Math.Clamp(SleepMemory.ReplayBurstsPerTick, 1, 24);
         var actionReplays = 0;
         var mapReplays = 0;
@@ -16925,10 +16982,19 @@ internal sealed class SimulationState
     }
 
     public SleepTransitionResult AdvanceSleepHomeostasis(SleepTickInput input)
+        => AdvanceSleepHomeostasis(input, NeuronalSleepConsolidationDecision.Unavailable);
+
+    public SleepTransitionResult AdvanceSleepHomeostasis(
+        SleepTickInput input,
+        NeuronalSleepConsolidationDecision neuronalDecision)
     {
         lock (_gate)
         {
+            ArgumentNullException.ThrowIfNull(neuronalDecision);
             var runtime = SleepMemory;
+            var neuronalCircuitObserved = neuronalDecision.CircuitObserved;
+            var neuronalAuthorityAvailable = neuronalDecision.Available && neuronalDecision.StateActive;
+            var neuronalTargetSleeping = neuronalAuthorityAvailable && neuronalDecision.State != NeuronalSleepState.Wake;
             var homeostasisRateScale = Math.Clamp(input.HomeostasisRateScale, MinSleepHomeostasisRateScale, 4.0f);
             var wakeDutyAlpha = 1f - MathF.Pow(1f - WakeDutyEmaAlpha, homeostasisRateScale);
             var atp = runtime.AtpBudget;
@@ -17071,7 +17137,32 @@ internal sealed class SimulationState
                 atp > (runtime.SleepEnterThreshold * 0.65f) &&
                 (dangerWakeHold > 0.35f || shelterSeekingWakeHold > 0.62f);
 
-            if (!runtime.IsSleeping &&
+            if (neuronalAuthorityAvailable && !runtime.IsSleeping && neuronalTargetSleeping)
+            {
+                enteredSleep = true;
+                lastWakeDurationTicks = Math.Max(1, wakeTicks);
+                wakeDurationEwmaTicks = wakeDurationEwmaTicks <= 0f
+                    ? lastWakeDurationTicks
+                    : ((1.0f - WakeDurationEwmaAlpha) * wakeDurationEwmaTicks) + (WakeDurationEwmaAlpha * lastWakeDurationTicks);
+                wakeTicks = 0;
+                sleepTicks = 0;
+                wakeInertiaTicksRemaining = 0;
+            }
+            else if (neuronalAuthorityAvailable && runtime.IsSleeping && !neuronalTargetSleeping)
+            {
+                exitedSleep = true;
+                lastSleepDurationTicks = Math.Max(1, sleepTicks);
+                sleepDurationEwmaTicks = sleepDurationEwmaTicks <= 0f
+                    ? lastSleepDurationTicks
+                    : ((1.0f - SleepDurationEwmaAlpha) * sleepDurationEwmaTicks) + (SleepDurationEwmaAlpha * lastSleepDurationTicks);
+                sleepTicks = 0;
+                wakeTicks = 0;
+                sleepExitBlockedTicks = 0;
+                var wakeReserve = (runtime.MaxAtpBudget - runtime.SleepExitThreshold) * 0.25f;
+                atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
+                wakeInertiaTicksRemaining = minWakeTicks;
+            }
+            else if (!neuronalCircuitObserved && !runtime.IsSleeping &&
                 wakeInertiaTicksRemaining <= 0 &&
                 !unsafeToSleep &&
                 (atp <= runtime.SleepEnterThreshold && sleepPressure >= sleepPressureEnterThreshold))
@@ -17119,7 +17210,7 @@ internal sealed class SimulationState
                 wakeTicks = 0;
                 sleepTicks = 0;
             }
-            else if (runtime.IsSleeping &&
+            else if (!neuronalCircuitObserved && runtime.IsSleeping &&
                 ((sleepTicks >= runtime.MinSleepTicks &&
                   atp >= runtime.SleepExitThreshold &&
                   sleepPressure <= sleepPressureExitThreshold) ||
@@ -17186,7 +17277,13 @@ internal sealed class SimulationState
                 SleepEpisodes = runtime.SleepEpisodes + (enteredSleep ? 1 : 0),
                 TotalEngramsCaptured = runtime.TotalEngramsCaptured + Math.Max(0, input.EngramsCaptured),
                 TotalEngramsReplayed = runtime.TotalEngramsReplayed + Math.Max(0, input.ReplayedEngrams),
-                LastTransitionTick = (enteredSleep || exitedSleep) ? Tick : runtime.LastTransitionTick
+                LastTransitionTick = (enteredSleep || exitedSleep) ? Tick : runtime.LastTransitionTick,
+                NeuronalAuthorityActive = neuronalCircuitObserved,
+                NeuronalStateChannel = neuronalAuthorityAvailable ? (int)neuronalDecision.State : runtime.NeuronalStateChannel,
+                NeuronalReplayActive = neuronalAuthorityAvailable && neuronalDecision.ReplayActive,
+                NeuronalReplayEnsemble = neuronalAuthorityAvailable && neuronalDecision.ReplayActive
+                    ? neuronalDecision.ReplayEnsemble
+                    : -1
             };
 
             SleepMemory = runtime;
@@ -19902,6 +19999,67 @@ internal sealed class SimulationState
         {
             return BuildDiagnosticsLocked(autoProfile);
         }
+    }
+
+    public IReadOnlyList<MemoryEngram> SelectEngramsForNeuronalReplay(int maxCount, int ensemble)
+    {
+        lock (_gate)
+        {
+            if (!SleepMemory.IsSleeping || maxCount <= 0 || ensemble is < 0 or >= 8 || _engramBank.Count == 0)
+            {
+                return [];
+            }
+
+            var schemaByKey = _schemaBank.ToDictionary(static schema => schema.Key, StringComparer.Ordinal);
+            return _engramBank
+                .Where(engram => !IsSleepReplaySuppressedEngram(engram))
+                .Where(engram => ResolveEngramEnsemble(engram) == ensemble)
+                .OrderByDescending(engram =>
+                {
+                    schemaByKey.TryGetValue(BuildSchemaKey(engram), out var schema);
+                    var unreplayed = engram.LastReplayTick <= 0 ? 1.8f : 0.25f;
+                    var salience = Math.Clamp(engram.Salience, 0f, 100f) * 0.06f;
+                    var capture = Math.Min(engram.CaptureCount, 16) * 0.16f;
+                    var replayPenalty = Math.Min(engram.ReplayCount, 12) * 0.16f;
+                    var schemaStrength = schema is null ? 0f : Math.Clamp(schema.Strength, 0f, 20f) * 0.05f;
+                    var schemaNovelty = schema is null ? 0f : Math.Clamp(schema.NoveltyScore, 0f, 1f) * 0.70f;
+                    return unreplayed + salience + capture + schemaStrength + schemaNovelty - replayPenalty;
+                })
+                .ThenBy(static engram => engram.LastReplayTick <= 0 ? long.MinValue : engram.LastReplayTick)
+                .Take(Math.Min(maxCount, _engramBank.Count))
+                .Select(static engram => engram with { })
+                .ToList();
+        }
+    }
+
+    private static int ResolveEngramEnsemble(MemoryEngram engram)
+    {
+        if (!TryParseNeuronSuffix(engram.SourceNeuronId, out var neuronIndex) &&
+            !TryParseNeuronSuffix(engram.TargetNeuronId, out neuronIndex))
+        {
+            var bytes = engram.SynapseId.ToByteArray();
+            neuronIndex = BitConverter.ToInt32(bytes, 0) & int.MaxValue;
+        }
+
+        return (Math.Max(0, neuronIndex) / 4) % 8;
+    }
+
+    private static bool TryParseNeuronSuffix(string? neuronId, out int index)
+    {
+        index = 0;
+        if (string.IsNullOrWhiteSpace(neuronId))
+        {
+            return false;
+        }
+
+        var end = neuronId.Length - 1;
+        while (end >= 0 && char.IsDigit(neuronId[end]))
+        {
+            end--;
+        }
+
+        return end < neuronId.Length - 1 &&
+            int.TryParse(neuronId.AsSpan(end + 1), out index);
     }
 
     private object BuildDiagnosticsLocked(AutoProfileSettings? autoProfile) => new
@@ -22729,6 +22887,7 @@ internal sealed class TickCoordinator(
     NeuronalPerceptionRuntime neuronalPerception,
     NeuronalMemoryRuntime neuronalMemory,
     NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
+    NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23522,13 +23681,15 @@ internal sealed class TickCoordinator(
                     ack.ActionSelectionDiagnostics,
                     ack.PerceptEnsembleDiagnostics,
                     ack.SynapticMemoryDiagnostics,
-                    ack.NeuronalAttentionWorkspaceDiagnostics);
+                    ack.NeuronalAttentionWorkspaceDiagnostics,
+                    ack.NeuronalSleepConsolidationDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
             neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalSleep = neuronalSleepConsolidation.Update(tickSignal.Tick, processedSnapshots);
             var queueFlush = await FlushQueuedDispatchBatchesAsync(
                 tickSignal,
                 state,
@@ -23799,7 +23960,8 @@ internal sealed class TickCoordinator(
                 // Neural spikes update at millisecond scale; ATP and sleep pressure do not.
                 // Integrate homeostatic chemistry against a slow reference interval so a
                 // faster neural clock cannot compress a wake/sleep cycle into minutes.
-                HomeostasisRateScale: SimulationState.ResolveSleepHomeostasisRateScale(tickSignal.TickDurationMs)));
+                HomeostasisRateScale: SimulationState.ResolveSleepHomeostasisRateScale(tickSignal.TickDurationMs)),
+                neuronalSleep);
 
             if (sleepTransition.EnteredSleep)
             {
@@ -25138,8 +25300,16 @@ internal sealed class TickCoordinator(
             return EngramReplayStats.Empty;
         }
 
+        if (sleep.NeuronalAuthorityActive &&
+            (!sleep.NeuronalReplayActive || sleep.NeuronalReplayEnsemble is < 0 or >= 8))
+        {
+            return EngramReplayStats.Empty;
+        }
+
         var replayStage = ResolveSleepReplayStage(sleep);
-        var replayEngrams = state.SelectEngramsForReplay(sleep.ReplayBurstsPerTick, replayStage);
+        var replayEngrams = sleep.NeuronalAuthorityActive
+            ? state.SelectEngramsForNeuronalReplay(sleep.ReplayBurstsPerTick, sleep.NeuronalReplayEnsemble)
+            : state.SelectEngramsForReplay(sleep.ReplayBurstsPerTick, replayStage);
         if (replayEngrams.Count == 0)
         {
             return EngramReplayStats.Empty;
@@ -26091,7 +26261,8 @@ internal sealed class TickCoordinator(
                 AverageActionSelectionDiagnostics(members),
                 AveragePerceptEnsembleDiagnostics(members),
                 AverageSynapticMemoryDiagnostics(members),
-                AverageNeuronalAttentionWorkspaceDiagnostics(members)));
+                AverageNeuronalAttentionWorkspaceDiagnostics(members),
+                AverageNeuronalSleepConsolidationDiagnostics(members)));
         }
 
         return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
@@ -26181,7 +26352,8 @@ internal sealed class TickCoordinator(
                 snapshot.ActionSelectionDiagnostics,
                 snapshot.PerceptEnsembleDiagnostics,
                 snapshot.SynapticMemoryDiagnostics,
-                snapshot.NeuronalAttentionWorkspaceDiagnostics));
+                snapshot.NeuronalAttentionWorkspaceDiagnostics,
+                snapshot.NeuronalSleepConsolidationDiagnostics));
         }
 
         return merged;
@@ -26584,6 +26756,65 @@ internal sealed class TickCoordinator(
             margin,
             maintained,
             (float)diagnostics.Average(static item => item.DistractorSuppression));
+    }
+
+    private static NeuronalSleepConsolidationDiagnostics? AverageNeuronalSleepConsolidationDiagnostics(
+        IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(static member => member.NeuronalSleepConsolidationDiagnostics)
+            .Where(static item => item is not null)
+            .Cast<NeuronalSleepConsolidationDiagnostics>()
+            .ToArray();
+        if (diagnostics.Length == 0)
+        {
+            return null;
+        }
+
+        var stateChannels = new SleepStateChannelActivity[3];
+        for (var channel = 0; channel < stateChannels.Length; channel++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.StateChannels)
+                .Where(item => item.StateChannel == channel)
+                .ToArray();
+            stateChannels[channel] = values.Length == 0
+                ? new SleepStateChannelActivity(channel, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+                : new SleepStateChannelActivity(
+                    channel,
+                    (float)values.Average(static item => item.HomeostaticDrive),
+                    (float)values.Average(static item => item.WakeDrive),
+                    (float)values.Average(static item => item.NremDrive),
+                    (float)values.Average(static item => item.RemDrive),
+                    (float)values.Average(static item => item.SpindleSynchrony),
+                    (float)values.Average(static item => item.SlowWaveSynchrony),
+                    (float)values.Average(static item => item.ReplayGate));
+        }
+
+        var replayEnsembles = new SleepReplayEnsembleActivity[8];
+        for (var ensemble = 0; ensemble < replayEnsembles.Length; ensemble++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.ReplayEnsembles)
+                .Where(item => item.EnsembleIndex == ensemble)
+                .ToArray();
+            replayEnsembles[ensemble] = values.Length == 0
+                ? new SleepReplayEnsembleActivity(ensemble, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+                : new SleepReplayEnsembleActivity(
+                    ensemble,
+                    (float)values.Average(static item => item.HippocampalBurst),
+                    (float)values.Average(static item => item.SpindleCoupling),
+                    (float)values.Average(static item => item.SlowWaveCoupling),
+                    (float)values.Average(static item => item.CorticalEcho),
+                    (float)values.Average(static item => item.EngramStrength),
+                    (float)values.Average(static item => item.Interference),
+                    (float)values.Average(static item => item.ConsolidationGain));
+        }
+
+        return new NeuronalSleepConsolidationDiagnostics(
+            members[0].StructureId,
+            stateChannels,
+            replayEnsembles);
     }
 
     private static IReadOnlyList<StructureSnapshot> EnrichActionSelectionDiagnostics(
@@ -37929,7 +38160,11 @@ internal sealed record SleepMemoryRuntime(
     long SleepEpisodes,
     long TotalEngramsCaptured,
     long TotalEngramsReplayed,
-    long LastTransitionTick)
+    long LastTransitionTick,
+    bool NeuronalAuthorityActive = false,
+    int NeuronalStateChannel = 0,
+    bool NeuronalReplayActive = false,
+    int NeuronalReplayEnsemble = -1)
 {
     public static SleepMemoryRuntime Default { get; } = new(
         IsSleeping: false,
@@ -38074,7 +38309,8 @@ internal sealed record InstanceStructureSnapshot(
     ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
-    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null);
+    NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
+    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

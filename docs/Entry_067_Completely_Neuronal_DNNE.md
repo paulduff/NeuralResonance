@@ -243,6 +243,15 @@ have since been deleted from the live ingress path. Dyad grounding has no
 scalar fallback: absent neuronal evidence yields an explicit deferred result
 with no synthetic workspace or memory excerpt.
 
+Checkpoint and `/api/v1/state` compatibility no longer preserve the scalar
+cognition records either. Planning, goals, motivation, language intent,
+inner speech, narration, intentional action, identity, autobiographical
+summaries, promise/journal state, and biological teaching state are absent
+from the checkpoint schema and public diagnostics. Older checkpoint JSON can
+still be read, but its unknown legacy fields are ignored and cannot rebuild
+the removed scaffold. `brainBehavior` is now a compact observation surface
+whose declared authority is `MeasuredNeuronalDecoders`.
+
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 
 No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.

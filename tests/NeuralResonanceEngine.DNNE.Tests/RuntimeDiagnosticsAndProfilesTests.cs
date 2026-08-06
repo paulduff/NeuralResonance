@@ -323,6 +323,82 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Null(lexicon.GetMethod("BuildBrainTokens", allMethods));
         Assert.Null(lexicon.GetMethod("ResolveCommandIntent", allMethods));
 
+        string[] legacyCheckpointProperties =
+        [
+            "SelfMonitoringLoop",
+            "BiologicalTeachingLoop",
+            "PlanningWorkspace",
+            "GoalIntent",
+            "MotivationArbitration",
+            "LanguageIntent",
+            "CognitiveLanguageWorkspace",
+            "InnerSpeechLoop",
+            "IntentionalActionLoop",
+            "AutobiographicalSelf",
+            "AutobiographicalContinuity",
+            "NarrativeSelfModel",
+            "IdentityBoundary",
+            "RoomState",
+            "PendingPromises",
+            "ContinuityJournal",
+            "HabitablePlaceModel",
+            "AttentionAffordance",
+            "PreferenceTemperament",
+            "SelfMaintenance",
+            "WorldAtmosphere",
+            "WorkingMemoryShelf",
+            "SleepDreamDigest",
+            "BrainNarration",
+            "SpeechIntention",
+            "PendingPromiseItems",
+            "ContinuityJournalEntries"
+        ];
+        Assert.All(
+            legacyCheckpointProperties,
+            property => Assert.Null(typeof(NetworkStateDocument).GetProperty(property)));
+
+        string[] legacyDiagnosticProperties =
+        [
+            "selfMonitoringLoop",
+            "biologicalTeachingLoop",
+            "planningWorkspace",
+            "goalIntent",
+            "motivationArbitration",
+            "languageIntent",
+            "cognitiveLanguageWorkspace",
+            "innerSpeechLoop",
+            "intentionalActionLoop",
+            "autobiographicalSelf",
+            "autobiographicalContinuity",
+            "narrativeSelfModel",
+            "identityBoundary",
+            "roomState",
+            "pendingPromises",
+            "continuityJournal",
+            "habitablePlaceModel",
+            "attentionAffordance",
+            "preferenceTemperament",
+            "selfMaintenance",
+            "worldAtmosphere",
+            "workingMemoryShelf",
+            "sleepDreamDigest",
+            "brainNarration",
+            "speechIntention",
+            "inhabitance"
+        ];
+        using var diagnostics = SerializeDiagnostics(new SimulationState());
+        Assert.All(
+            legacyDiagnosticProperties,
+            property => Assert.False(TryGetProperty(diagnostics.RootElement, property, out _), property));
+
+        var brainBehavior = GetObject(diagnostics.RootElement, "brainBehavior");
+        Assert.Equal("MeasuredNeuronalDecoders", GetString(brainBehavior, "authority"));
+        var language = GetObject(brainBehavior, "language");
+        Assert.Equal("DistributedGroundedLanguageCircuits", GetString(language, "source"));
+        Assert.False(TryGetProperty(brainBehavior, "goalIntent", out _));
+        Assert.False(TryGetProperty(brainBehavior, "motivationArbitration", out _));
+        Assert.False(TryGetProperty(brainBehavior, "intentionalActionLoop", out _));
+
         var observeInput = Assert.Single(
             typeof(DialogueTurnManager).GetMethods(allMethods),
             static method => method.Name == "ObserveInput");

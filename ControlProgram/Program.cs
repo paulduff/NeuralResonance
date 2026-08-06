@@ -16440,397 +16440,51 @@ internal sealed class SimulationState
         };
     }
 
+
     private object BuildBrainBehaviorSnapshot()
     {
         lock (_gate)
         {
-            var sleep = SleepMemory;
-            var limbic = LimbicState;
-            var environment = EnvironmentalState;
-            var outcome = OutcomeState;
-            var body = BodyState;
-            var actionCompletion = ActionCompletionFeedback;
-            var language = LanguageIntent;
-            var workspace = CognitiveLanguageWorkspace;
-            var innerSpeech = InnerSpeechLoop;
-            var intentionalAction = IntentionalActionLoop;
-            var selfMonitoring = SelfMonitoringLoop;
-            var motivation = MotivationArbitration;
-            var episodic = EpisodicMemory;
-            var unifiedEventMemory = UnifiedEventMemory;
-            var semantic = SemanticMemory;
-            var dopamineLearning = DopamineLearning;
-            var autobiographicalSelf = AutobiographicalSelf;
-            var selfModel = NarrativeSelfModel;
-            var goal = GoalIntent;
-            var emotion = EmotionState;
-            var pressureNorm = Clamp01(sleep.SleepPressure / Math.Max(0.0001f, sleep.MaxSleepPressure));
-            var cerebellarWindowStart = Math.Max(0, Tick - 1200);
-            var cerebellarInputSpikes = 0;
-            var cerebellarOutputSpikes = 0;
-            var cerebellarLastSpikeTick = long.MinValue;
-            foreach (var trace in _dispatchSpikeTrace)
-            {
-                if (!IsCerebellarAuditStructure(trace.SourceStructure) &&
-                    !IsCerebellarAuditStructure(trace.TargetStructure))
-                {
-                    continue;
-                }
-
-                cerebellarLastSpikeTick = Math.Max(cerebellarLastSpikeTick, trace.Tick);
-                if (trace.Tick < cerebellarWindowStart)
-                {
-                    continue;
-                }
-
-                if (IsCerebellarAuditStructure(trace.TargetStructure))
-                {
-                    cerebellarInputSpikes++;
-                }
-
-                if (IsCerebellarAuditStructure(trace.SourceStructure))
-                {
-                    cerebellarOutputSpikes++;
-                }
-            }
-
-            var motorInhibition = sleep.IsSleeping
-                ? 1.0f
-                : sleep.WakeInertiaTicksRemaining > 0
-                    ? Clamp01(sleep.WakeInertiaTicksRemaining / (float)Math.Max(1, sleep.MinWakeTicks))
-                    : 0.0f;
-            var anxiety = Math.Max(environment.Anxiety, limbic.AversiveDrive);
-            var fightIntent = Clamp01((limbic.Threat * 0.55f) + (limbic.ExpectedReward * 0.25f) - (pressureNorm * 0.20f));
-            var flightIntent = Clamp01((limbic.Threat * 0.65f) + (anxiety * 0.45f) - (limbic.ExpectedReward * 0.20f));
-            var shelterSafety = Clamp01(Math.Max(environment.InShelter, environment.ShelterSafety));
-            var exposure = 1.0f - shelterSafety;
-            var predatorThreat = Clamp01(environment.PredatorThreat * exposure);
-            var shelterIntent = Clamp01((environment.ShelterNeed * 0.55f) + (environment.Darkness * 0.30f * exposure) + (pressureNorm * 0.45f) + (anxiety * 0.15f) + (predatorThreat * 0.28f));
+            var grounding = NeuronalLanguageGrounding;
+            var groundedLabel = grounding.GroundedLabel == "unlabelled"
+                ? string.Empty
+                : grounding.GroundedLabel;
+            var utterance = grounding.SpeechAuthorized && grounding.Grounded
+                ? groundedLabel
+                : string.Empty;
 
             return new
             {
                 Tick,
+                Authority = "MeasuredNeuronalDecoders",
                 Sleep = new
                 {
-                    sleep.IsSleeping,
-                    sleep.SleepPressure,
-                    sleep.MaxSleepPressure,
-                    PressureNormalized = pressureNorm,
-                    sleep.SleepPressureEnterThreshold,
-                    sleep.SleepPressureExitThreshold,
-                    sleep.SleepTicks,
-                    sleep.WakeTicks,
-                    sleep.WakeInertiaTicksRemaining,
-                    MotorInhibition = motorInhibition,
-                    TiredDrive = Math.Max(pressureNorm, limbic.TiredDrive)
+                    SleepMemory.IsSleeping,
+                    SleepMemory.SleepPressure,
+                    SleepMemory.WakeInertiaTicksRemaining,
+                    Authority = "DistributedNeuronalSleepCircuit"
                 },
-                Drives = new
-                {
-                    limbic.Stage,
-                    limbic.Salience,
-                    limbic.Threat,
-                    HungerThirstDrive = limbic.InteroceptiveDrive,
-                    limbic.TiredDrive,
-                    limbic.AversiveDrive,
-                    limbic.ExpectedReward,
-                    limbic.ObservedReward,
-                    limbic.Valence,
-                    EnvironmentAnxiety = environment.Anxiety,
-                    environment.Darkness,
-                    environment.ShelterNeed,
-                    environment.Hunger,
-                    environment.PredatorThreat,
-                    environment.InShelter,
-                    environment.Health,
-                    environment.ShelterSafety,
-                    OutcomeAppetitiveRelief = outcome.AppetitiveRelief,
-                    OutcomeAversive = outcome.AversiveOutcome,
-                    Exposure = exposure,
-                    FightIntent = fightIntent,
-                    FlightIntent = flightIntent,
-                    ShelterIntent = shelterIntent
-                },
-                Body = new
-                {
-                    body.ForwardVelocity,
-                    body.TurnRateDeg,
-                    body.ContactLevel,
-                    body.LeftMotorDrive,
-                    body.RightMotorDrive,
-                    body.MotorAsymmetry,
-                    body.LastInputTick,
-                    Schema = BodySchema,
-                    InteroceptiveCore
-                },
-                Language = new
-                {
-                    language.Active,
-                    language.Intent,
-                    language.CommandKey,
-                    language.MotorDirective,
-                    language.Strength,
-                    language.RepetitionCount,
-                    BrainNarration.Utterance,
-                    NarrationIntent = BrainNarration.Intent,
-                    BrainNarration.AffectiveState,
-                    BrainNarration.Need,
-                    BrainNarration.Evidence,
-                    BrainNarration.Confidence,
-                    BrainNarration.SpokenEligible,
-                    BrainNarration.SpeechReleaseGate,
-                    BrainNarration.SpeechSuppression,
-                    BrainNarration.NarrativePriority,
-                    BrainNarration.MinimumSpeakIntervalTicks,
-                    BrainNarration.LastSpokenEligibleTick,
-                    BrainNarration.Source,
-                    BrainNarration.Sequence,
-                    SpeechIntention,
-                    Workspace = new
-                    {
-                        workspace.Active,
-                        workspace.CurrentThought,
-                        workspace.RememberedInstruction,
-                        workspace.BoundGoalKey,
-                        workspace.BoundActionKey,
-                        workspace.SemanticFocus,
-                        workspace.NeedState,
-                        workspace.AffectiveState,
-                        workspace.InstructionStrength,
-                        workspace.GoalBinding,
-                        workspace.WorkingMemoryStability,
-                        workspace.Confidence,
-                        workspace.PredictionError,
-                        workspace.OutcomeValence,
-                        workspace.Evidence,
-                        workspace.Sequence,
-                        workspace.LastUpdatedTick
-                    }
-                },
+                Body = BodyState,
                 Sensory = new
                 {
                     ActiveSource = InferActiveSensorySourceLocked(),
                     InputGates.AvatarVisionEnabled,
                     InputGates.SpontaneousSpikingEnabled
                 },
-                PlaceMemory = new
+                VisualAttention,
+                Language = new
                 {
-                    PlaceMemory.Count,
-                    PlaceMemory.ActivePlaceKey,
-                    PlaceMemory.ActiveLabel,
-                    PlaceMemory.ActiveCategory,
-                    PlaceMemory.RecentSummary,
-                    PlaceMemory.HippocampalPlaceBinding,
-                    PlaceMemory.RetrosplenialSceneBinding,
-                    PlaceMemory.Safety,
-                    PlaceMemory.Threat,
-                    PlaceMemory.Confidence,
-                    PlaceMemory.LastUpdatedTick
+                    Utterance = utterance,
+                    Sequence = grounding.SpeechAuthorized ? Tick : 0,
+                    LastUpdatedTick = Tick,
+                    Source = NeuronalLanguageGroundingDecision.Authority,
+                    Grounding = grounding
                 },
-                EmbodiedAttentionSpotlight,
-                GoalIntent = new
-                {
-                    goal.Active,
-                    goal.GoalKey,
-                    goal.DisplayName,
-                    goal.MotorDirective,
-                    goal.BiologicalSource,
-                    goal.Drive,
-                    goal.Urgency,
-                    goal.Confidence,
-                    goal.BasalGangliaGate,
-                    goal.DopamineBias,
-                    goal.InhibitoryTone,
-                    goal.LastUpdatedTick,
-                    goal.ExpiresAtTick,
-                    goal.Candidates
-                },
-                MotivationArbitration = motivation,
-                IntentionalActionLoop = new
-                {
-                    intentionalAction.Active,
-                    intentionalAction.IntentionKey,
-                    intentionalAction.GoalKey,
-                    intentionalAction.ActionKey,
-                    intentionalAction.MotorDirective,
-                    intentionalAction.Target,
-                    intentionalAction.Why,
-                    intentionalAction.PredictedOutcome,
-                    intentionalAction.Commitment,
-                    intentionalAction.Readiness,
-                    intentionalAction.Inhibition,
-                    intentionalAction.BasalGangliaCommit,
-                    intentionalAction.PremotorPlan,
-                    intentionalAction.SmaSequence,
-                    intentionalAction.M1Readiness,
-                    intentionalAction.CerebellarCorrection,
-                    intentionalAction.ExpectedValue,
-                    intentionalAction.ExpectedCost,
-                    intentionalAction.Conflict,
-                    intentionalAction.Confidence,
-                    intentionalAction.LastUpdatedTick,
-                    intentionalAction.Sequence,
-                    intentionalAction.Evidence
-                },
-                ActionCompletionFeedback = actionCompletion,
-                SelfMonitoringLoop = selfMonitoring,
-                InnerSpeechLoop = innerSpeech,
-                EpisodicMemory = new
-                {
-                    episodic.Count,
-                    episodic.LastEventType,
-                    episodic.LastSummary,
-                    episodic.BestRecallSummary,
-                    episodic.HippocampalBinding,
-                    episodic.EntorhinalInput,
-                    episodic.DentatePatternSeparation,
-                    episodic.CA3PatternCompletion,
-                    episodic.CA1Mismatch,
-                    episodic.SubiculumOutput,
-                    episodic.RecallConfidence,
-                    episodic.LastUpdatedTick
-                },
-                UnifiedEventMemory = new
-                {
-                    unifiedEventMemory.Count,
-                    unifiedEventMemory.WorldObjectEvents,
-                    unifiedEventMemory.EnvironmentEvents,
-                    unifiedEventMemory.BodyEvents,
-                    unifiedEventMemory.LanguageEvents,
-                    unifiedEventMemory.ActionEvents,
-                    unifiedEventMemory.RewardEvents,
-                    unifiedEventMemory.RecentEventKey,
-                    unifiedEventMemory.RecentSummary,
-                    unifiedEventMemory.BestRecallSummary,
-                    unifiedEventMemory.ActiveScene,
-                    unifiedEventMemory.EventBinding,
-                    unifiedEventMemory.CrossModalBinding,
-                    unifiedEventMemory.HippocampalIndex,
-                    unifiedEventMemory.PfcRetrievalGate,
-                    unifiedEventMemory.Coverage,
-                    unifiedEventMemory.Confidence,
-                    unifiedEventMemory.LastUpdatedTick,
-                    unifiedEventMemory.Evidence
-                },
-                SemanticMemory = new
-                {
-                    semantic.Count,
-                    semantic.DominantConceptKey,
-                    semantic.ActiveCategory,
-                    semantic.DominantMeaning,
-                    semantic.TemporalAssociationBinding,
-                    semantic.ParahippocampalContext,
-                    semantic.RetrosplenialSceneBinding,
-                    semantic.PpcAffordanceBinding,
-                    semantic.PfcConceptControl,
-                    semantic.SemanticConfidence,
-                    semantic.LastUpdatedTick
-                },
-                DopamineLearning = new
-                {
-                    dopamineLearning.Count,
-                    dopamineLearning.LastActionKey,
-                    dopamineLearning.LastGoalKey,
-                    dopamineLearning.LastConceptKey,
-                    dopamineLearning.ExpectedValue,
-                    dopamineLearning.ObservedValue,
-                    dopamineLearning.RewardPredictionError,
-                    dopamineLearning.VtaPhasicDopamine,
-                    dopamineLearning.SncActionReinforcement,
-                    dopamineLearning.NucleusAccumbensIncentive,
-                    dopamineLearning.OrbitofrontalExpectedValue,
-                    dopamineLearning.HabenulaNegativeTeaching,
-                    dopamineLearning.TeachingSignal,
-                    dopamineLearning.LearnedValue,
-                    dopamineLearning.AvoidancePenalty,
-                    dopamineLearning.Confidence,
-                    dopamineLearning.LastUpdatedTick
-                },
-                AutobiographicalSelf = autobiographicalSelf,
-                NarrativeSelfModel = new
-                {
-                    selfModel.Active,
-                    selfModel.SelfStatement,
-                    selfModel.BodyFeeling,
-                    selfModel.CurrentNeed,
-                    selfModel.CurrentGoal,
-                    selfModel.CurrentAction,
-                    selfModel.Why,
-                    selfModel.FeltValence,
-                    selfModel.InsulaInteroception,
-                    selfModel.AccAgencyMonitoring,
-                    selfModel.PfcSelfContinuity,
-                    selfModel.HippocampalAutobiographicalBinding,
-                    selfModel.LanguageNarrativeBinding,
-                    selfModel.GlobalWorkspaceBinding,
-                    selfModel.Confidence,
-                    selfModel.LastUpdatedTick,
-                    selfModel.Sequence,
-                    selfModel.Evidence
-                },
-                Emotion = new
-                {
-                    emotion.DominantEmotion,
-                    emotion.Anxiety,
-                    emotion.Confidence,
-                    emotion.Safety,
-                    emotion.Frustration,
-                    emotion.Curiosity,
-                    emotion.Comfort,
-                    emotion.Urgency,
-                    emotion.Arousal,
-                    emotion.Valence,
-                    emotion.Stability,
-                    emotion.LastUpdatedTick,
-                    emotion.LastSwitchTick,
-                    emotion.HoldTicksRemaining
-                },
-                Cerebellum = new
-                {
-                    RecentWindowTicks = 1200,
-                    RecentInputSpikes = cerebellarInputSpikes,
-                    RecentOutputSpikes = cerebellarOutputSpikes,
-                    LastSpikeTick = cerebellarLastSpikeTick,
-                    Cerebellum.TimingPrediction,
-                    Cerebellum.MotorSmoothing,
-                    Cerebellum.BalanceError,
-                    Cerebellum.PredictionError,
-                    Cerebellum.LearnedCorrection,
-                    Cerebellum.VermisDrive,
-                    Cerebellum.LobuleDrive,
-                    Cerebellum.PurkinjeInhibition,
-                    Cerebellum.DeepNucleiOutput,
-                    Cerebellum.InferiorOliveTeaching,
-                    Cerebellum.LastUpdatedTick
-                },
-                ActionMemory = new
-                {
-                    ActionMemory.Count,
-                    ActionMemory.BestActionKey,
-                    ActionMemory.BestSuccess,
-                    ActionMemory.LastActionKey,
-                    ActionMemory.LastOutcome,
-                    LastCompletionStatus = actionCompletion.Status,
-                    actionCompletion.Completion,
-                    actionCompletion.Stall,
-                    actionCompletion.AccError
-                },
-                WorldLearningMap = new
-                {
-                    WorldLearningMap.Count,
-                    WorldLearningMap.SafePlaces,
-                    WorldLearningMap.FoodSources,
-                    WorldLearningMap.WeaponSources,
-                    WorldLearningMap.ThreatSources,
-                    WorldLearningMap.BestShelterKey,
-                    WorldLearningMap.BestFoodKey,
-                    WorldLearningMap.BestWeaponKey,
-                    WorldLearningMap.MostDangerousKey
-                },
-                DreamConsolidation,
-                Consolidation = GetCachedConsolidationTelemetrySnapshotLocked()
+                Motor = NeuronalMotor
             };
         }
     }
+
 
     private static bool IsCerebellarAuditStructure(StructureId structure)
         => structure is StructureId.CerebellarGranule
@@ -18067,8 +17721,6 @@ internal sealed class SimulationState
             ActionMemory.Top
         },
         ActionCompletionFeedback,
-        SelfMonitoringLoop,
-        MotivationArbitration,
         WorldLearningMap = new
         {
             WorldLearningMap.Count,
@@ -18158,106 +17810,7 @@ internal sealed class SimulationState
             DopamineLearning.LastUpdatedTick,
             DopamineLearning.Top
         },
-        BiologicalTeachingLoop,
         DreamConsolidation,
-          PlanningWorkspace = new
-          {
-              PlanningWorkspace.Goal,
-              PlanningWorkspace.GoalActive,
-            PlanningWorkspace.HorizonSteps,
-            PlanningWorkspace.MaxBranching,
-            PlanningWorkspace.ExplorationTemperature,
-            PlanningWorkspace.DopamineBias,
-            PlanningWorkspace.InhibitoryGate,
-            PlanningWorkspace.SelectedActionKey,
-            SelectedActionLabel = ActionKeyToReadable(PlanningWorkspace.SelectedActionKey),
-            PlanningWorkspace.SelectedUtility,
-            PlanningWorkspace.SelectedConfidence,
-            PlanningWorkspace.LastPlanTick,
-            PlanningWorkspace.PlanRevision,
-              CandidateActions = PlanningWorkspace.CandidateActions.Select(c => new
-              {
-                  c.ActionKey,
-                  ReadableAction = ActionKeyToReadable(c.ActionKey),
-                  c.Summary,
-                  c.Utility,
-                  c.Confidence,
-                  c.RewardDelta,
-                  c.SleepPressureDelta,
-                  c.PredictionError,
-                  c.Samples
-              }).ToList(),
-              ProposedPlan = PlanningWorkspace.ProposedPlan.Select(ActionKeyToReadable).ToList()
-          },
-          GoalIntent = new
-          {
-              GoalIntent.Active,
-              GoalIntent.GoalKey,
-              GoalIntent.DisplayName,
-              GoalIntent.MotorDirective,
-              GoalIntent.BiologicalSource,
-              GoalIntent.Drive,
-              GoalIntent.Urgency,
-              GoalIntent.Confidence,
-              GoalIntent.BasalGangliaGate,
-              GoalIntent.DopamineBias,
-              GoalIntent.InhibitoryTone,
-              GoalIntent.LastUpdatedTick,
-              GoalIntent.ExpiresAtTick,
-              GoalIntent.Candidates
-          },
-          LanguageIntent = new
-          {
-              LanguageIntent.Active,
-              LanguageIntent.Intent,
-              LanguageIntent.Mood,
-              LanguageIntent.Subject,
-              LanguageIntent.Verb,
-              LanguageIntent.Object,
-              LanguageIntent.Qualifier,
-              LanguageIntent.Strength,
-              LanguageIntent.LastUpdatedTick,
-              LanguageIntent.ExpiresAtTick,
-              LanguageIntent.CommandKey,
-              LanguageIntent.MotorDirective,
-              LanguageIntent.RepetitionCount,
-              LanguageIntent.LearnedBias
-          },
-          BrainNarration = new
-          {
-              BrainNarration.Utterance,
-              BrainNarration.Intent,
-              BrainNarration.AffectiveState,
-              BrainNarration.Need,
-              BrainNarration.Evidence,
-              BrainNarration.Confidence,
-              BrainNarration.SpokenEligible,
-              BrainNarration.SpeechReleaseGate,
-              BrainNarration.SpeechSuppression,
-              BrainNarration.NarrativePriority,
-              BrainNarration.MinimumSpeakIntervalTicks,
-              BrainNarration.LastSpokenEligibleTick,
-              BrainNarration.Sequence,
-              BrainNarration.LastUpdatedTick,
-              BrainNarration.Source
-          },
-          LanguageCommandMemory = new
-          {
-              Count = _languageCommandMemory.Count,
-              Entries = _languageCommandMemory.Values
-                  .OrderByDescending(trace => trace.LastUpdatedTick)
-                  .Take(12)
-                  .Select(trace => new
-                  {
-                      trace.CommandKey,
-                      trace.RepetitionCount,
-                      trace.TotalActivations,
-                      trace.LearnedBias,
-                      trace.LastUpdatedTick
-                  })
-                  .ToArray()
-          },
-          AutobiographicalSelf,
           BodyState = new
           {
               BodyState.ForwardVelocity,
@@ -18420,25 +17973,8 @@ internal sealed class SimulationState
             EmotionState.LastSwitchTick,
             EmotionState.HoldTicksRemaining
         },
-        CognitiveLanguageWorkspace,
-          InnerSpeechLoop,
-          IntentionalActionLoop,
-          NeuronalMotor,
-          AutobiographicalContinuity,
-          NarrativeSelfModel,
-          IdentityBoundary,
-          RoomState,
-          PendingPromises,
-          ContinuityJournal,
-          HabitablePlaceModel,
-          AttentionAffordance,
-          PreferenceTemperament,
-          SelfMaintenance,
-          WorldAtmosphere,
-          WorkingMemoryShelf,
-          SleepDreamDigest,
-          SpeechIntention,
-        Inhabitance = GetCachedInhabitanceSnapshotLocked(),
+        NeuronalMotor,
+        NeuronalLanguageGrounding,
         BrainBehavior = GetCachedBrainBehaviorSnapshot(),
         ConsolidationTelemetry = BuildConsolidationTelemetrySnapshot(),
         CircuitAudit = GetCachedCircuitAuditSnapshot(),
@@ -19201,38 +18737,13 @@ internal sealed class SimulationState
                 WorldModel = WorldModel,
                 ActionMemory = ActionMemory,
                 ActionCompletionFeedback = ActionCompletionFeedback,
-                SelfMonitoringLoop = SelfMonitoringLoop,
                 WorldLearningMap = WorldLearningMap,
                 EpisodicMemory = EpisodicMemory,
                 UnifiedEventMemory = UnifiedEventMemory,
                 SemanticMemory = SemanticMemory,
                 DopamineLearning = DopamineLearning,
-                BiologicalTeachingLoop = BiologicalTeachingLoop,
                 DreamConsolidation = DreamConsolidation,
                 Cerebellum = Cerebellum,
-                PlanningWorkspace = PlanningWorkspace,
-                GoalIntent = GoalIntent,
-                MotivationArbitration = MotivationArbitration,
-                LanguageIntent = LanguageIntent,
-                CognitiveLanguageWorkspace = CognitiveLanguageWorkspace,
-                InnerSpeechLoop = InnerSpeechLoop,
-                IntentionalActionLoop = IntentionalActionLoop,
-                AutobiographicalSelf = AutobiographicalSelf,
-                AutobiographicalContinuity = AutobiographicalContinuity,
-                NarrativeSelfModel = NarrativeSelfModel,
-                IdentityBoundary = IdentityBoundary,
-                RoomState = RoomState,
-                PendingPromises = PendingPromises,
-                ContinuityJournal = ContinuityJournal,
-                HabitablePlaceModel = HabitablePlaceModel,
-                AttentionAffordance = AttentionAffordance,
-                PreferenceTemperament = PreferenceTemperament,
-                SelfMaintenance = SelfMaintenance,
-                WorldAtmosphere = WorldAtmosphere,
-                WorkingMemoryShelf = WorkingMemoryShelf,
-                SleepDreamDigest = SleepDreamDigest,
-                BrainNarration = BrainNarration,
-                SpeechIntention = SpeechIntention,
                 Curriculum = Curriculum,
                 LastSnapshotTick = LastSnapshotTick,
                 LastSnapshotSimulationMs = LastSnapshotSimulationMs,
@@ -19274,8 +18785,6 @@ internal sealed class SimulationState
             document.EpisodicMemoryTraces.AddRange(_episodicMemory.Values);
             document.SemanticMemoryTraces.AddRange(_semanticMemory.Values);
             document.DopamineLearningTraces.AddRange(_dopamineLearning.Values);
-            document.PendingPromiseItems.AddRange(_pendingPromises.Values);
-            document.ContinuityJournalEntries.AddRange(_continuityJournal);
             document.OutputLog.AddRange(_outputLog);
             document.SpikeLog.AddRange(_spikeLog);
             document.DispatchSpikeTrace.AddRange(_dispatchSpikeTrace);
@@ -19361,38 +18870,13 @@ internal sealed class SimulationState
             var importedWorldModel = document.WorldModel ?? WorldModelRuntime.Default;
             var importedActionMemory = document.ActionMemory ?? ActionMemoryRuntime.Default;
             var importedActionCompletionFeedback = document.ActionCompletionFeedback ?? ActionCompletionFeedbackRuntime.Default;
-            var importedSelfMonitoringLoop = document.SelfMonitoringLoop ?? SelfMonitoringLoopRuntime.Default;
             var importedWorldLearningMap = document.WorldLearningMap ?? WorldLearningMapRuntime.Default;
             var importedEpisodicMemory = document.EpisodicMemory ?? EpisodicMemoryRuntime.Default;
             var importedUnifiedEventMemory = document.UnifiedEventMemory ?? UnifiedEventMemoryRuntime.Default;
             var importedSemanticMemory = document.SemanticMemory ?? SemanticMemoryRuntime.Default;
             var importedDopamineLearning = document.DopamineLearning ?? DopamineLearningRuntime.Default;
-            var importedBiologicalTeachingLoop = document.BiologicalTeachingLoop ?? BiologicalTeachingLoopRuntime.Default;
             var importedDreamConsolidation = document.DreamConsolidation ?? DreamConsolidationRuntime.Default;
             var importedCerebellum = document.Cerebellum ?? CerebellumRuntime.Default;
-            var importedPlanningWorkspace = document.PlanningWorkspace ?? PlanningWorkspaceRuntime.Default;
-            var importedGoalIntent = document.GoalIntent ?? GoalIntentRuntime.Default;
-            var importedMotivationArbitration = document.MotivationArbitration ?? MotivationArbitrationRuntime.Default;
-            var importedLanguageIntent = document.LanguageIntent ?? LanguageIntentRuntime.Default;
-            var importedCognitiveLanguageWorkspace = document.CognitiveLanguageWorkspace ?? CognitiveLanguageWorkspaceRuntime.Default;
-            var importedInnerSpeechLoop = document.InnerSpeechLoop ?? InnerSpeechLoopRuntime.Default;
-            var importedIntentionalActionLoop = document.IntentionalActionLoop ?? IntentionalActionLoopRuntime.Default;
-            var importedAutobiographicalSelf = document.AutobiographicalSelf ?? AutobiographicalSelfRuntime.Default;
-            var importedAutobiographicalContinuity = document.AutobiographicalContinuity ?? AutobiographicalContinuityRuntime.Default;
-            var importedNarrativeSelfModel = document.NarrativeSelfModel ?? NarrativeSelfModelRuntime.Default;
-            var importedIdentityBoundary = document.IdentityBoundary ?? IdentityBoundaryRuntime.Default;
-            var importedRoomState = document.RoomState ?? RoomStateRuntime.Default;
-            var importedPendingPromises = document.PendingPromises ?? PendingPromiseRuntime.Default;
-            var importedContinuityJournal = document.ContinuityJournal ?? ContinuityJournalRuntime.Default;
-            var importedHabitablePlaceModel = document.HabitablePlaceModel ?? HabitablePlaceModelRuntime.Default;
-            var importedAttentionAffordance = document.AttentionAffordance ?? AttentionAffordanceRuntime.Default;
-            var importedPreferenceTemperament = document.PreferenceTemperament ?? PreferenceTemperamentRuntime.Default;
-            var importedSelfMaintenance = document.SelfMaintenance ?? SelfMaintenanceRuntime.Default;
-            var importedWorldAtmosphere = document.WorldAtmosphere ?? WorldAtmosphereRuntime.Default;
-            var importedWorkingMemoryShelf = document.WorkingMemoryShelf ?? WorkingMemoryShelfRuntime.Default;
-            var importedSleepDreamDigest = document.SleepDreamDigest ?? SleepDreamDigestRuntime.Default;
-            var importedBrainNarration = document.BrainNarration ?? BrainNarrationRuntime.Default;
-            var importedSpeechIntention = document.SpeechIntention ?? SpeechIntentionRuntime.Default;
             var importedCurriculum = document.Curriculum ?? CurriculumRuntime.Default;
             var importedNeuromod = document.GlobalNeuromodState ?? new NeuromodState();
 
@@ -19419,56 +18903,13 @@ internal sealed class SimulationState
             };
             ActionMemory = ActionMemoryRuntime.Normalize(importedActionMemory);
             ActionCompletionFeedback = ActionCompletionFeedbackRuntime.Normalize(importedActionCompletionFeedback);
-            SelfMonitoringLoop = SelfMonitoringLoopRuntime.Normalize(importedSelfMonitoringLoop);
             WorldLearningMap = WorldLearningMapRuntime.Normalize(importedWorldLearningMap);
             EpisodicMemory = EpisodicMemoryRuntime.Normalize(importedEpisodicMemory);
             UnifiedEventMemory = UnifiedEventMemoryRuntime.Normalize(importedUnifiedEventMemory);
             SemanticMemory = SemanticMemoryRuntime.Normalize(importedSemanticMemory);
             DopamineLearning = DopamineLearningRuntime.Normalize(importedDopamineLearning);
-            BiologicalTeachingLoop = BiologicalTeachingLoopRuntime.Normalize(importedBiologicalTeachingLoop);
             DreamConsolidation = DreamConsolidationRuntime.Normalize(importedDreamConsolidation);
             Cerebellum = CerebellumRuntime.Normalize(importedCerebellum);
-            PlanningWorkspace = importedPlanningWorkspace with
-            {
-                Goal = string.IsNullOrWhiteSpace(importedPlanningWorkspace.Goal)
-                    ? PlanningWorkspaceRuntime.Default.Goal
-                    : importedPlanningWorkspace.Goal.Trim(),
-                GoalActive = importedPlanningWorkspace.GoalActive,
-                HorizonSteps = Math.Clamp(importedPlanningWorkspace.HorizonSteps, 1, 16),
-                MaxBranching = Math.Clamp(importedPlanningWorkspace.MaxBranching, 1, 32),
-                ExplorationTemperature = Math.Clamp(importedPlanningWorkspace.ExplorationTemperature, 0.05, 2.0),
-                DopamineBias = Math.Clamp(importedPlanningWorkspace.DopamineBias, 0.0, 2.5),
-                InhibitoryGate = Math.Clamp(importedPlanningWorkspace.InhibitoryGate, 0.0, 2.5),
-                SelectedActionKey = string.IsNullOrWhiteSpace(importedPlanningWorkspace.SelectedActionKey) ? "idle" : importedPlanningWorkspace.SelectedActionKey,
-                SelectedUtility = importedPlanningWorkspace.SelectedUtility,
-                SelectedConfidence = Math.Clamp(importedPlanningWorkspace.SelectedConfidence, 0.0, 1.0),
-                LastPlanTick = Math.Max(0, importedPlanningWorkspace.LastPlanTick),
-                PlanRevision = Math.Max(0, importedPlanningWorkspace.PlanRevision),
-                CandidateActions = importedPlanningWorkspace.CandidateActions ?? [],
-                ProposedPlan = importedPlanningWorkspace.ProposedPlan ?? []
-            };
-            GoalIntent = GoalIntentRuntime.Normalize(importedGoalIntent);
-            MotivationArbitration = MotivationArbitrationRuntime.Normalize(importedMotivationArbitration);
-            LanguageIntent = importedLanguageIntent;
-            CognitiveLanguageWorkspace = CognitiveLanguageWorkspaceRuntime.Normalize(importedCognitiveLanguageWorkspace);
-            InnerSpeechLoop = InnerSpeechLoopRuntime.Normalize(importedInnerSpeechLoop);
-            IntentionalActionLoop = IntentionalActionLoopRuntime.Normalize(importedIntentionalActionLoop);
-            AutobiographicalSelf = AutobiographicalSelfRuntime.Normalize(importedAutobiographicalSelf);
-            AutobiographicalContinuity = AutobiographicalContinuityRuntime.Normalize(importedAutobiographicalContinuity);
-            NarrativeSelfModel = NarrativeSelfModelRuntime.Normalize(importedNarrativeSelfModel);
-            IdentityBoundary = IdentityBoundaryRuntime.Normalize(importedIdentityBoundary);
-            RoomState = RoomStateRuntime.Normalize(importedRoomState);
-            PendingPromises = PendingPromiseRuntime.Normalize(importedPendingPromises);
-            ContinuityJournal = ContinuityJournalRuntime.Normalize(importedContinuityJournal);
-            HabitablePlaceModel = HabitablePlaceModelRuntime.Normalize(importedHabitablePlaceModel);
-            AttentionAffordance = AttentionAffordanceRuntime.Normalize(importedAttentionAffordance);
-            PreferenceTemperament = PreferenceTemperamentRuntime.Normalize(importedPreferenceTemperament);
-            SelfMaintenance = SelfMaintenanceRuntime.Normalize(importedSelfMaintenance);
-            WorldAtmosphere = WorldAtmosphereRuntime.Normalize(importedWorldAtmosphere);
-            WorkingMemoryShelf = WorkingMemoryShelfRuntime.Normalize(importedWorkingMemoryShelf);
-            SleepDreamDigest = SleepDreamDigestRuntime.Normalize(importedSleepDreamDigest);
-            BrainNarration = importedBrainNarration;
-            SpeechIntention = SpeechIntentionRuntime.Normalize(importedSpeechIntention);
             RestoreCurriculumFromSnapshot(importedCurriculum);
             GlobalNeuromodState = ApplySleepStateNeuromod(
                 ApplyDopamineLearningNeuromod(
@@ -19642,8 +19083,6 @@ internal sealed class SimulationState
             ReplaceEpisodicMemory(document.EpisodicMemoryTraces ?? []);
             ReplaceSemanticMemory(document.SemanticMemoryTraces ?? []);
             ReplaceDopamineLearning(document.DopamineLearningTraces ?? []);
-            ReplacePendingPromises(document.PendingPromiseItems ?? []);
-            ReplaceContinuityJournal(document.ContinuityJournalEntries ?? []);
             if (_worldLearningMap.Count == 0 && _objectMemory.Count > 0)
             {
                 foreach (var trace in _objectMemory.Values.OrderByDescending(t => t.LastSeenTick).Take(64))
@@ -32629,38 +32068,13 @@ internal sealed class NetworkStateDocument
     public WorldModelRuntime WorldModel { get; set; } = WorldModelRuntime.Default;
     public ActionMemoryRuntime? ActionMemory { get; set; } = ActionMemoryRuntime.Default;
     public ActionCompletionFeedbackRuntime? ActionCompletionFeedback { get; set; } = ActionCompletionFeedbackRuntime.Default;
-    public SelfMonitoringLoopRuntime? SelfMonitoringLoop { get; set; } = SelfMonitoringLoopRuntime.Default;
     public WorldLearningMapRuntime? WorldLearningMap { get; set; } = WorldLearningMapRuntime.Default;
     public EpisodicMemoryRuntime? EpisodicMemory { get; set; } = EpisodicMemoryRuntime.Default;
     public UnifiedEventMemoryRuntime? UnifiedEventMemory { get; set; } = UnifiedEventMemoryRuntime.Default;
     public SemanticMemoryRuntime? SemanticMemory { get; set; } = SemanticMemoryRuntime.Default;
     public DopamineLearningRuntime? DopamineLearning { get; set; } = DopamineLearningRuntime.Default;
-    public BiologicalTeachingLoopRuntime? BiologicalTeachingLoop { get; set; } = BiologicalTeachingLoopRuntime.Default;
     public DreamConsolidationRuntime? DreamConsolidation { get; set; } = DreamConsolidationRuntime.Default;
     public CerebellumRuntime? Cerebellum { get; set; } = CerebellumRuntime.Default;
-    public PlanningWorkspaceRuntime PlanningWorkspace { get; set; } = PlanningWorkspaceRuntime.Default;
-    public GoalIntentRuntime? GoalIntent { get; set; } = GoalIntentRuntime.Default;
-    public MotivationArbitrationRuntime? MotivationArbitration { get; set; } = MotivationArbitrationRuntime.Default;
-    public LanguageIntentRuntime? LanguageIntent { get; set; } = LanguageIntentRuntime.Default;
-    public CognitiveLanguageWorkspaceRuntime? CognitiveLanguageWorkspace { get; set; } = CognitiveLanguageWorkspaceRuntime.Default;
-    public InnerSpeechLoopRuntime? InnerSpeechLoop { get; set; } = InnerSpeechLoopRuntime.Default;
-    public IntentionalActionLoopRuntime? IntentionalActionLoop { get; set; } = IntentionalActionLoopRuntime.Default;
-    public AutobiographicalSelfRuntime? AutobiographicalSelf { get; set; } = AutobiographicalSelfRuntime.Default;
-    public AutobiographicalContinuityRuntime? AutobiographicalContinuity { get; set; } = AutobiographicalContinuityRuntime.Default;
-    public NarrativeSelfModelRuntime? NarrativeSelfModel { get; set; } = NarrativeSelfModelRuntime.Default;
-    public IdentityBoundaryRuntime? IdentityBoundary { get; set; } = IdentityBoundaryRuntime.Default;
-    public RoomStateRuntime? RoomState { get; set; } = RoomStateRuntime.Default;
-    public PendingPromiseRuntime? PendingPromises { get; set; } = PendingPromiseRuntime.Default;
-    public ContinuityJournalRuntime? ContinuityJournal { get; set; } = ContinuityJournalRuntime.Default;
-    public HabitablePlaceModelRuntime? HabitablePlaceModel { get; set; } = HabitablePlaceModelRuntime.Default;
-    public AttentionAffordanceRuntime? AttentionAffordance { get; set; } = AttentionAffordanceRuntime.Default;
-    public PreferenceTemperamentRuntime? PreferenceTemperament { get; set; } = PreferenceTemperamentRuntime.Default;
-    public SelfMaintenanceRuntime? SelfMaintenance { get; set; } = SelfMaintenanceRuntime.Default;
-    public WorldAtmosphereRuntime? WorldAtmosphere { get; set; } = WorldAtmosphereRuntime.Default;
-    public WorkingMemoryShelfRuntime? WorkingMemoryShelf { get; set; } = WorkingMemoryShelfRuntime.Default;
-    public SleepDreamDigestRuntime? SleepDreamDigest { get; set; } = SleepDreamDigestRuntime.Default;
-    public BrainNarrationRuntime? BrainNarration { get; set; } = BrainNarrationRuntime.Default;
-    public SpeechIntentionRuntime? SpeechIntention { get; set; } = SpeechIntentionRuntime.Default;
     public CurriculumRuntime Curriculum { get; set; } = CurriculumRuntime.Default;
     public long LastSnapshotTick { get; set; }
     public double LastSnapshotSimulationMs { get; set; }
@@ -32681,8 +32095,6 @@ internal sealed class NetworkStateDocument
     public List<EpisodicMemoryTrace> EpisodicMemoryTraces { get; set; } = [];
     public List<SemanticMemoryTrace> SemanticMemoryTraces { get; set; } = [];
     public List<DopamineLearningTrace> DopamineLearningTraces { get; set; } = [];
-    public List<PendingPromiseItem> PendingPromiseItems { get; set; } = [];
-    public List<ContinuityJournalEntry> ContinuityJournalEntries { get; set; } = [];
     public List<RuntimeLogEntry> OutputLog { get; set; } = [];
     public List<RuntimeLogEntry> SpikeLog { get; set; } = [];
     public List<DispatchedSpikeTrace> DispatchSpikeTrace { get; set; } = [];

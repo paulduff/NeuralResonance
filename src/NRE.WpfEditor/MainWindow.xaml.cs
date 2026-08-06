@@ -276,8 +276,7 @@ public partial class MainWindow : Window
             TurnSpeedCoefficient: 3.2,
             MinForwardSpeed: 0.0,
             MaxForwardSpeed: 3.2,
-            MaxTurnRateDeg: 220.0),
-        IdleMotorFallbackTicks: int.MaxValue);
+            MaxTurnRateDeg: 220.0));
     private static readonly HashSet<string> SpeechLanguageStructures = new(StringComparer.OrdinalIgnoreCase)
     {
         "BrocaBa44Ba45",
@@ -734,7 +733,7 @@ public partial class MainWindow : Window
         SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
         SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
         SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "V1 route: awaiting webcam input");
-        UpdateAvatarSelfDiagnosticsPanel();
+        UpdateAvatarTransportPanel();
         InitializeSpeechControlsUi();
         UpdateReasoningSliderLabels();
         SetRenderStatus("Render: initializing 3D scene");

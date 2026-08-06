@@ -1,9 +1,8 @@
 namespace NRE.SimAvatar;
 
 /// <summary>
-/// Avatar-side nervous system: interprets brain dispatch spikes into body signals.
-/// The DNN remains the brain; this object is the spinal/peripheral layer that keeps
-/// motor drive, idle arousal, and tool/body intent inside the avatar.
+/// Spinal/peripheral motor layer. It integrates neuronal motor population spikes
+/// and exposes no independent goals, reflexes, or semantic action authority.
 /// </summary>
 public sealed class AvatarNervousSystem
 {
@@ -60,13 +59,10 @@ public sealed class AvatarNervousSystem
             turnGain: turnGain,
             forwardScale: forwardScale);
 
-    public AvatarNervousSystemSignal InterpretBrainSignals(
-        IReadOnlyList<AvatarDispatchSpike> dispatches,
-        AvatarNervousSystemBodyState body)
+    public AvatarNervousSystemSignal InterpretBrainSignals(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
         ArgumentNullException.ThrowIfNull(dispatches);
 
-        var tool = AvatarToolSignal.None;
         var left = LeftMotorDrive;
         var right = RightMotorDrive;
         var motorSummary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref left, ref right, _options.Kinematics);
@@ -79,20 +75,12 @@ public sealed class AvatarNervousSystem
         else
         {
             TicksWithoutMotorDispatch++;
-            ApplyIdleFallback(body);
         }
 
         LastMotorDispatchCount = motorSummary.MotorEvents;
-        return CurrentSignal(tool);
+        return CurrentSignal();
     }
 
-    private AvatarNervousSystemSignal CurrentSignal(AvatarToolSignal tool)
-        => new(LeftMotorDrive, RightMotorDrive, LastMotorDispatchCount, TicksWithoutMotorDispatch, tool);
-
-    private void ApplyIdleFallback(AvatarNervousSystemBodyState body)
-    {
-        // Brain-drive only: idle body state must not synthesize locomotion.
-        // Movement is produced only by motor pathway dispatches.
-    }
-
+    private AvatarNervousSystemSignal CurrentSignal()
+        => new(LeftMotorDrive, RightMotorDrive, LastMotorDispatchCount, TicksWithoutMotorDispatch);
 }

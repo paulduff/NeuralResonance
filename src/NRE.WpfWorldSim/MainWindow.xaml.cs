@@ -111,9 +111,6 @@ public partial class MainWindow : Window
     // still excludes residual drive from decay (0.92/tick decays a 120 drive to
     // ~12 over ~25 ticks).
     private const double StuckDamageMotorIntentThreshold = 12.0;
-    // Idle wandering disabled: the avatar moves only on brain motor output.
-    private const int IdleMotorFallbackTicks = int.MaxValue;
-    private const double IdleMotorFallbackBaseDrive = 36.0;
     private const double AvatarVisualYawOffsetDeg = 0.0;
     private const double AvatarHeadMaxYawDeg = 76.0;
     private const double AvatarHeadReturnRateDeg = 220.0;
@@ -128,8 +125,6 @@ public partial class MainWindow : Window
     private const double FollowCameraDistance = 42.0;
     private const int AdditionalShelterHomeCount = 11;
     private const double ShelterHomeSpacingMin = 12.0;
-    private const double ToolActionCooldownSeconds = 0.22;
-    private const double ToolActionReachBlocks = 1.35;
     private const double TelemetryDelayGraceSeconds = 15.0;
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
@@ -168,9 +163,7 @@ public partial class MainWindow : Window
         InPlaceTurnCancelsForwardDrive: true);
     private static readonly AvatarNervousSystemOptions WorldNervousSystemOptions = new(
         WorldKinematicsOptions,
-        DriveDecay: 0.92,
-        IdleMotorFallbackTicks: IdleMotorFallbackTicks,
-        IdleMotorFallbackBaseDrive: IdleMotorFallbackBaseDrive);
+        DriveDecay: 0.92);
     private const long RuntimeLogMaxBytes = 6L * 1024L * 1024L;
     private static readonly AvatarBodyStateProfile WorldBodyStateProfile = new(
         MaxForwardSpeed: WorldRunMaxForwardSpeed,
@@ -480,7 +473,6 @@ public partial class MainWindow : Window
     private long _lastBodyStateDispatchMs;
     private long _lastOutcomeDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
-    private double _toolActionCooldownRemaining;
     private bool _bodyStimulusInFlight;
     private bool _englishCommandInFlight;
     private long _lastBrainNarrationSequence = -1;
@@ -621,7 +613,7 @@ public partial class MainWindow : Window
         _dispatchSinceMs = 0;
         _lastNeuronalMotorTick = -1;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         _orientingScanPhaseDeg = 0.0;
         _lastOrientingLogMs = 0;
         _lastAboutFaceLogMs = 0;
@@ -2555,7 +2547,6 @@ public partial class MainWindow : Window
         var now = _frameStopwatch.Elapsed.TotalSeconds;
         var dt = Math.Clamp(now - _lastFrameSeconds, 0.001, 0.080);
         _lastFrameSeconds = now;
-        _toolActionCooldownRemaining = Math.Max(0.0, _toolActionCooldownRemaining - dt);
         var nowMs = Environment.TickCount64;
 
         UpdateDayNightCycle(now);
@@ -5739,7 +5730,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0.0;
         _avatarHeadYawDeg = 0.0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         var spawnRetryBaseline = _spawnValidationRetries;
 
         if (!TryGetTerrainTopY(_avatarX, _avatarZ, out var terrainY))
@@ -6192,13 +6183,7 @@ public partial class MainWindow : Window
 
     private void ApplyMotorDispatch(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
-        var body = new AvatarNervousSystemBodyState(
-            _hunger,
-            _threat,
-            _health,
-            (DateTime.UtcNow - _lastProgressUtc).TotalSeconds,
-            _antiStallNoProgressTimeoutSec);
-        _avatarService.PostBrainSignals(dispatches, body);
+        _avatarService.PostBrainSignals(dispatches);
     }
 
     private void ApplyNervousSystemSignal(AvatarNervousSystemSignal signal)
@@ -6207,7 +6192,6 @@ public partial class MainWindow : Window
         _rightMotorDrive = signal.RightMotorDrive;
         _lastMotorDispatchCount = signal.MotorEvents;
         _ticksWithoutMotorDispatch = signal.TicksWithoutMotorDispatch;
-        ApplyToolSignal(signal.Tool);
     }
 
     private void SyncMotorDriveFromAvatarService()
@@ -7151,86 +7135,6 @@ public partial class MainWindow : Window
         }
 
         return cues;
-    }
-
-    private void ApplyToolSignal(AvatarToolSignal tool)
-    {
-        if (_heights is null || _toolActionCooldownRemaining > 0.001 || !tool.HasAction)
-        {
-            return;
-        }
-
-        if (TryExecuteToolAction(tool.Action, tool.Direction))
-        {
-            _toolActionCooldownRemaining = ToolActionCooldownSeconds;
-        }
-    }
-
-    private bool TryExecuteToolAction(AvatarToolAction action, AvatarToolDirection direction)
-    {
-        if (_heights is null)
-        {
-            return false;
-        }
-
-        var headingRad = DegreesToRadians(_avatarHeadingDeg);
-        var forwardX = Math.Sin(headingRad);
-        var forwardZ = Math.Cos(headingRad);
-        var rightX = Math.Sin(headingRad + (Math.PI * 0.5));
-        var rightZ = Math.Cos(headingRad + (Math.PI * 0.5));
-
-        var targetX = _avatarX;
-        var targetZ = _avatarZ;
-        switch (direction)
-        {
-            case AvatarToolDirection.Forward:
-                targetX += forwardX * ToolActionReachBlocks;
-                targetZ += forwardZ * ToolActionReachBlocks;
-                break;
-            case AvatarToolDirection.Left:
-                targetX -= rightX * ToolActionReachBlocks;
-                targetZ -= rightZ * ToolActionReachBlocks;
-                break;
-            case AvatarToolDirection.Right:
-                targetX += rightX * ToolActionReachBlocks;
-                targetZ += rightZ * ToolActionReachBlocks;
-                break;
-            case AvatarToolDirection.Up:
-                targetX += forwardX * (ToolActionReachBlocks * 0.55);
-                targetZ += forwardZ * (ToolActionReachBlocks * 0.55);
-                break;
-            case AvatarToolDirection.Down:
-                // keep under current body footprint
-                break;
-        }
-
-        if (!TryWorldToGrid(targetX, targetZ, out var gridX, out var gridZ))
-        {
-            return false;
-        }
-
-        var oldHeight = _heights[gridX, gridZ];
-        var newHeight = oldHeight;
-        if (action == AvatarToolAction.Dig)
-        {
-            newHeight = Math.Max(MinTerrainHeight, oldHeight - 1);
-        }
-        else if (action == AvatarToolAction.Build)
-        {
-            newHeight = Math.Min(MountainPeakHeight + 6, oldHeight + 1);
-        }
-
-        if (newHeight == oldHeight)
-        {
-            return false;
-        }
-
-        _heights[gridX, gridZ] = newHeight;
-        InvalidateVisionSceneSnapshot();
-        UpdateTerrainCellVisual(gridX, gridZ);
-        RegisterVisitedTerrainCell(targetX, targetZ);
-        Log($"Tool action: {action} {direction} at ({gridX},{gridZ}) h:{oldHeight}->{newHeight}.");
-        return true;
     }
 
     private void UpdateTerrainCellVisual(int gridX, int gridZ)

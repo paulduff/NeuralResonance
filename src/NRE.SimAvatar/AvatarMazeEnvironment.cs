@@ -237,25 +237,6 @@ public sealed class AvatarMazeEnvironment
             Pattern: transition.GoalReached ? "MazeGoalReached" : transition.Collision ? "MazeWallCollision" : "MazeProgress",
             InputSource: "headless_maze_world");
 
-    public AvatarPlaceObservation CreatePlaceObservation()
-    {
-        AvatarMazeObservation observation = Observe();
-        int blocked = 4 - CountOpenExits(observation);
-        return new AvatarPlaceObservation(
-            $"maze.{Seed}.cell.{observation.Row}.{observation.Column}",
-            observation.GoalReached ? "maze goal" : "maze passage",
-            observation.X,
-            0.0,
-            observation.Z,
-            Safety: observation.GoalReached ? 1.0 : 0.52,
-            Danger: 0.0,
-            Food: 0.0,
-            Blockage: blocked / 4.0,
-            Interest: observation.TransitionCount == 0 ? 0.45 : 0.68,
-            Confidence: 0.96,
-            Source: "headless_maze_world");
-    }
-
     public AvatarObjectObservation CreateGoalObservation()
     {
         AvatarMazeObservation observation = Observe();

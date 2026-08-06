@@ -366,7 +366,7 @@
                                         </Grid>
 
                                         <TextBlock Margin="0,12,0,4"
-                                                   Text="Avatar Self"
+                                                   Text="Avatar Transport"
                                                    Foreground="#DDE6FF"
                                                    FontWeight="SemiBold" />
                                         <Border Background="#0E1830"
@@ -375,35 +375,35 @@
                                                 CornerRadius="4"
                                                 Padding="8">
                                             <StackPanel>
-                                                <TextBlock x:Name="AvatarSelfMoodText"
+                                                <TextBlock x:Name="AvatarTransportWorkerText"
                                                            Foreground="#DDE6FF"
                                                            TextWrapping="Wrap"
-                                                           Text="Body: unknown" />
-                                                <TextBlock x:Name="AvatarSelfAttentionText"
+                                                           Text="Worker: idle" />
+                                                <TextBlock x:Name="AvatarTransportQueueText"
                                                            Margin="0,4,0,0"
                                                            Foreground="#B9C8ED"
                                                            TextWrapping="Wrap"
-                                                           Text="Attention: none" />
-                                                <TextBlock x:Name="AvatarSelfActionText"
+                                                           Text="Queue: 0/64" />
+                                                <TextBlock x:Name="AvatarTransportMotorText"
                                                            Margin="0,4,0,0"
                                                            Foreground="#B9C8ED"
                                                            TextWrapping="Wrap"
-                                                           Text="Action: resting" />
-                                                <TextBlock x:Name="AvatarSelfNeedText"
+                                                           Text="Motor spikes: 0" />
+                                                <TextBlock x:Name="AvatarTransportDriveText"
                                                            Margin="0,4,0,0"
                                                            Foreground="#B9C8ED"
                                                            TextWrapping="Wrap"
-                                                           Text="Need: none" />
-                                                <TextBlock x:Name="AvatarSelfSensationText"
+                                                           Text="Drive L/R: 0 / 0" />
+                                                <TextBlock x:Name="AvatarTransportMotionText"
                                                            Margin="0,4,0,0"
                                                            Foreground="#9EB3E5"
                                                            TextWrapping="Wrap"
-                                                           Text="Last: none" />
-                                                <TextBlock x:Name="AvatarSelfEventText"
+                                                           Text="Motion: stationary" />
+                                                <TextBlock x:Name="AvatarTransportVisionText"
                                                            Margin="0,4,0,0"
                                                            Foreground="#9EB3E5"
                                                            TextWrapping="Wrap"
-                                                           Text="Recent: none" />
+                                                           Text="Vision queue: 0" />
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>

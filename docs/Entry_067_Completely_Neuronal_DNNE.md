@@ -298,6 +298,13 @@ protocol. ATP and homeostatic pressure remain a read-only physiological
 transducer. Only the distributed neuronal sleep decoder can report wake,
 NREM, REM, or replay, and an incomplete decoder has no fallback authority.
 
+Entry 089 deletes the avatar's scalar attention, affect, needs, reflex,
+gesture, voice, conventional sensation/body/place memory, semantic tool path,
+and direct motor-drive injection API. The avatar now transports receptor
+packets in producer order and projects neuronal bilateral drive through body
+kinematics. Body and outcome telemetry cannot steer movement, and the editor
+reports transport telemetry rather than a host-authored avatar self.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

@@ -31,7 +31,7 @@ public sealed class AvatarNervousSystemTests
         });
 
         var dispatches = AvatarDispatchSpikeParser.ParseDispatchSpikes(frame, 0, out var cursor);
-        var signal = CreateNervousSystem().InterpretBrainSignals(dispatches, AwakeBody);
+        var signal = CreateNervousSystem().InterpretBrainSignals(dispatches);
 
         Assert.Equal(102L, cursor);
         Assert.All(dispatches, dispatch => Assert.Equal("M1", dispatch.SourceStructure));
@@ -41,7 +41,7 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
-    public void InterpretBrainSignalsIntegratesMotorDrive()
+    public void InterpretBrainSignalsIntegratesOnlyMotorPopulationSpikes()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
@@ -50,7 +50,7 @@ public sealed class AvatarNervousSystemTests
             new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:1:0")
         };
 
-        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
+        var signal = nervousSystem.InterpretBrainSignals(dispatches);
 
         Assert.Equal(2, signal.MotorEvents);
         Assert.True(signal.LeftMotorDrive > 0);
@@ -59,75 +59,32 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
-    public void AvatarBodyLayerContainsNoHostSleepGate()
+    public void SemanticMotorNamesProduceNoBodyDrive()
     {
         var nervousSystem = CreateNervousSystem();
         var dispatches = new[]
         {
-            new AvatarDispatchSpike("M1", "L", 100, "population:l:excitatory:1:0"),
-            new AvatarDispatchSpike("M1", "R", 101, "population:r:excitatory:1:0")
+            new AvatarDispatchSpike("PremotorCortex", "L", 100, "motor_seek_shelter"),
+            new AvatarDispatchSpike("Sma", "R", 101, "dig.forward"),
+            new AvatarDispatchSpike("M1", "L", 102, "move_to_goal")
         };
 
-        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
+        var signal = nervousSystem.InterpretBrainSignals(dispatches);
 
-        Assert.DoesNotContain(
-            typeof(AvatarNervousSystemBodyState).GetProperties(),
-            property => property.Name == "IsSleeping");
-        Assert.Equal(2, signal.MotorEvents);
-        Assert.True(signal.LeftMotorDrive > 0);
-        Assert.True(signal.RightMotorDrive > 0);
-    }
-
-    [Fact]
-    public void InterpretBrainSignalsRejectsSemanticToolIntentFromMotorStructures()
-    {
-        var nervousSystem = CreateNervousSystem();
-        var dispatches = new[]
-        {
-            new AvatarDispatchSpike("PremotorCortex", "R", 100, "dig.forward"),
-            new AvatarDispatchSpike("PremotorCortex", "R", 101, "dig.forward")
-        };
-
-        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
-
-        Assert.False(signal.Tool.HasAction);
-        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
         Assert.Equal(0, signal.MotorEvents);
-    }
-
-    [Fact]
-    public void SemanticLocomotionIntentProducesNoBodyDrive()
-    {
-        var nervousSystem = CreateNervousSystem();
-        var dispatches = new[]
-        {
-            new AvatarDispatchSpike("PremotorCortex", "L", 100, "L:motor_seek_shelter_20_0"),
-            new AvatarDispatchSpike("Sma", "R", 101, "R:motor_seek_shelter_20_1"),
-            new AvatarDispatchSpike("M1", "L", 102, "L:motor_seek_shelter_20_2")
-        };
-
-        var signal = nervousSystem.InterpretBrainSignals(dispatches, AwakeBody);
-
         Assert.Equal(0.0, signal.LeftMotorDrive);
         Assert.Equal(0.0, signal.RightMotorDrive);
-        Assert.Equal(0, signal.MotorEvents);
-        Assert.Equal(AvatarToolAction.None, signal.Tool.Action);
     }
 
     [Fact]
-    public void InterpretBrainSignalsDoesNotSynthesizeIdleMovement()
+    public void IdleTicksNeverSynthesizeMovement()
     {
-        var nervousSystem = CreateNervousSystem(idleMotorFallbackTicks: 1);
+        var nervousSystem = CreateNervousSystem();
         AvatarNervousSystemSignal signal = default;
 
         for (var i = 0; i < 8; i++)
         {
-            signal = nervousSystem.InterpretBrainSignals(Array.Empty<AvatarDispatchSpike>(), AwakeBody with
-            {
-                Hunger = 0.95,
-                Threat = 0.85,
-                SecondsSinceProgress = 30.0
-            });
+            signal = nervousSystem.InterpretBrainSignals([]);
         }
 
         Assert.Equal(0, signal.MotorEvents);
@@ -136,14 +93,21 @@ public sealed class AvatarNervousSystemTests
         Assert.Equal(8, signal.TicksWithoutMotorDispatch);
     }
 
-    private static AvatarNervousSystemBodyState AwakeBody { get; } = new(
-        Hunger: 0.2,
-        Threat: 0.1,
-        Health: 1.0,
-        SecondsSinceProgress: 0.0,
-        NoProgressTimeoutSeconds: 4.0);
+    [Fact]
+    public void PeripheralMotorLayerHasNoBodyStateOrSemanticActionContract()
+    {
+        var assembly = typeof(AvatarNervousSystem).Assembly;
+        Assert.Null(assembly.GetType("NRE.SimAvatar.AvatarNervousSystemBodyState"));
+        Assert.Null(assembly.GetType("NRE.SimAvatar.AvatarToolSignal"));
+        Assert.Equal(
+            ["Kinematics", "DriveDecay"],
+            typeof(AvatarNervousSystemOptions).GetProperties().Select(static property => property.Name).ToArray());
+        Assert.Equal(
+            ["LeftMotorDrive", "RightMotorDrive", "MotorEvents", "TicksWithoutMotorDispatch"],
+            typeof(AvatarNervousSystemSignal).GetProperties().Select(static property => property.Name).ToArray());
+    }
 
-    private static AvatarNervousSystem CreateNervousSystem(int idleMotorFallbackTicks = int.MaxValue)
+    private static AvatarNervousSystem CreateNervousSystem()
         => new(new AvatarNervousSystemOptions(
             new AvatarKinematicsOptions(
                 MaxMotorDrive: 240.0,
@@ -151,6 +115,5 @@ public sealed class AvatarNervousSystemTests
                 TurnSpeedCoefficient: 3.2,
                 MinForwardSpeed: 0.0,
                 MaxForwardSpeed: 3.2,
-                MaxTurnRateDeg: 220.0),
-            IdleMotorFallbackTicks: idleMotorFallbackTicks));
+                MaxTurnRateDeg: 220.0)));
 }

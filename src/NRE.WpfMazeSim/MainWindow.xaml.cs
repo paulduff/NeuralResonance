@@ -1,4 +1,4 @@
-﻿using NeuralResonanceEngine.Protocol;
+using NeuralResonanceEngine.Protocol;
 using NRE.SimAvatar;
 using System.Diagnostics;
 using NeuralResonanceEngine.Shared.Contracts;
@@ -76,8 +76,7 @@ public partial class MainWindow : Window
         InPlaceTurnCancelsForwardDrive: true);
     private static readonly AvatarNervousSystemOptions MazeNervousSystemOptions = new(
         MazeKinematicsOptions,
-        DriveDecay: 0.92,
-        IdleMotorFallbackTicks: int.MaxValue);
+        DriveDecay: 0.92);
     private static readonly AvatarBodyStateProfile MazeBodyStateProfile = new(
         MaxForwardSpeed: MazeRunMaxForwardSpeed,
         MaxTurnRateDeg: 260.0,
@@ -1543,13 +1542,7 @@ public partial class MainWindow : Window
 
     private void ApplyMotorDispatch(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
-        var body = new AvatarNervousSystemBodyState(
-            _limbicInteroceptiveDrive,
-            _limbicThreat,
-            _health / 100.0,
-            (DateTime.UtcNow - _lastProgressUtc).TotalSeconds,
-            NoProgressRecoveryTimeout.TotalSeconds);
-        _avatarService.PostBrainSignals(dispatches, body);
+        _avatarService.PostBrainSignals(dispatches);
     }
 
     private void ApplyNervousSystemSignal(AvatarNervousSystemSignal signal)
@@ -2099,7 +2092,7 @@ public partial class MainWindow : Window
         if (changed || forceReset)
         {
             _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         }
 
         if (!directive.Equals("motor_stop", StringComparison.OrdinalIgnoreCase))
@@ -2115,7 +2108,7 @@ public partial class MainWindow : Window
         if (!_lastNavigationDirective.Equals("motor_stop", StringComparison.OrdinalIgnoreCase))
         {
             _avatarService.PostResetMotor();
-            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+            ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         }
 
         _lastNavigationDirective = "motor_stop";
@@ -2589,7 +2582,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0;
         _avatarHeadYawDeg = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         _avatarTranslate.OffsetX = _avatarX;
         _avatarTranslate.OffsetY = AvatarRadius + 0.04;
         _avatarTranslate.OffsetZ = _avatarZ;
@@ -3349,7 +3342,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0;
         _avatarHeadYawDeg = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         _navigationResetPending = true;
         _lastNavigationDirective = "motor_stop";
         _avatarTranslate.OffsetX = _avatarX;
@@ -3420,7 +3413,7 @@ public partial class MainWindow : Window
         _lastNeuronalMotorTick = -1;
         _lastTick = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0, AvatarToolSignal.None));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
         _navigationResetPending = true;
         _lastNavigationDirective = "motor_stop";
         SetConnectionStatus(AvatarControlStatusText.Reconnecting(), Brushes.LightGoldenrodYellow, logOnChange: false);

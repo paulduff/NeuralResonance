@@ -25,7 +25,7 @@ public partial class MainWindow
             await RefreshWebcamHealthAsync();
             await RefreshMicrophoneHealthAsync();
             RefreshVisualRouteHealth();
-            UpdateAvatarSelfDiagnosticsPanel();
+            UpdateAvatarTransportPanel();
         }
         catch
         {
@@ -37,15 +37,16 @@ public partial class MainWindow
         }
     }
 
-    private void UpdateAvatarSelfDiagnosticsPanel()
+    private void UpdateAvatarTransportPanel()
     {
-        var diagnostics = _avatarService.CurrentSelfDiagnostics;
-        AvatarSelfMoodText.Text = $"Body: {BlankAsDash(diagnostics.BodyMood)}";
-        AvatarSelfAttentionText.Text = $"Attention: {BlankAsDash(diagnostics.AttentionTarget)}";
-        AvatarSelfActionText.Text = $"Action: {BlankAsDash(diagnostics.CurrentAction)}";
-        AvatarSelfNeedText.Text = $"Need: {BlankAsDash(diagnostics.CurrentNeed)}";
-        AvatarSelfSensationText.Text = $"Last: {BlankAsDash(diagnostics.LastSensation)}";
-        AvatarSelfEventText.Text = $"Recent: {BlankAsDash(diagnostics.RecentBodyEvent)}";
+        var signal = _avatarService.LatestSignal;
+        var movement = _avatarService.LatestActionOutput.Movement;
+        AvatarTransportWorkerText.Text = $"Worker: processed {_avatarService.ProcessedCommands:N0}, failed {_avatarService.FailedCommands:N0}";
+        AvatarTransportQueueText.Text = $"Queue: {_avatarService.PendingCommandCount}/64, dropped {_avatarService.DroppedCommands:N0}";
+        AvatarTransportMotorText.Text = $"Motor spikes: {signal.MotorEvents:N0}, idle ticks {signal.TicksWithoutMotorDispatch:N0}";
+        AvatarTransportDriveText.Text = $"Drive L/R: {signal.LeftMotorDrive:0.000} / {signal.RightMotorDrive:0.000}";
+        AvatarTransportMotionText.Text = $"Motion: {movement.ForwardSpeed:0.000} m/s, {movement.TurnRateDeg:0.0} deg/s";
+        AvatarTransportVisionText.Text = $"Vision queue: {_avatarService.PublishedSightOutputCount:N0}";
     }
 
     private async Task RefreshWebcamHealthAsync()

@@ -73,6 +73,7 @@ builder.Services.AddSingleton<HippocampalNavigationSessionManager>();
 builder.Services.AddSingleton<InputIngressRuntime>();
 builder.Services.AddSingleton<RetinalFrameTransducerRuntime>();
 builder.Services.AddSingleton<CochlearFrameTransducerRuntime>();
+builder.Services.AddSingleton<SomaticContactTransducerRuntime>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
 builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
@@ -642,125 +643,82 @@ app.MapPost("/api/v1/admin/input/audio-frame", async (
             : Array.Empty<string>()
     });
 });
-app.MapPost("/api/v1/admin/input/collision", async (
-    CollisionInputRequest request,
+app.MapPost("/api/v1/admin/input/contact-frame", (
+    SomaticContactFrameRequest request,
     RuntimeInstanceCatalog catalog,
     IHttpClientFactory clientFactory,
     SimulationState state,
-    InputIngressRuntime ingress,
-    CancellationToken ct) =>
+    SomaticContactTransducerRuntime transducer,
+    InputIngressRuntime ingress) =>
 {
-    if (request is null)
+    if (!SomaticContactDescriptor.TryCreate(request, out var descriptor, out var descriptorError) ||
+        descriptor is null)
     {
-        return Results.BadRequest(new { Error = "Request payload missing." });
+        return Results.BadRequest(new { Error = descriptorError ?? "Invalid somatic contact frame." });
     }
 
-    var pattern = string.IsNullOrWhiteSpace(request.Pattern) ? "WallImpact" : request.Pattern.Trim();
-    var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(1.25f), 0.2f, 4.0f);
-    var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(20), 4, 96);
-    var targetStructure = string.IsNullOrWhiteSpace(request.TargetStructure)
-        ? StructureId.SuperiorColliculus
-        : Enum.TryParse<StructureId>(request.TargetStructure, ignoreCase: true, out var parsedTarget)
-            ? parsedTarget
-            : StructureId.SuperiorColliculus;
-    var sourceStructure = string.IsNullOrWhiteSpace(request.SourceStructure)
-        ? StructureId.S1
-        : Enum.TryParse<StructureId>(request.SourceStructure, ignoreCase: true, out var parsedSource)
-            ? parsedSource
-            : StructureId.S1;
     if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
     {
-        state.AppendOutputLog(
-            $"Collision input throttled by ingress gate: pattern={pattern}, source={sourceStructure}, target={targetStructure}.");
         return Results.Json(new
         {
-            Error = "Collision input is temporarily throttled due to ingress backpressure.",
+            Error = "Somatic contact input is temporarily throttled due to ingress backpressure.",
+            InputSource = descriptor.InputSource,
             Ingress = ingressSnapshot
         }, statusCode: StatusCodes.Status429TooManyRequests);
     }
     using var _ = ingressLease;
 
-    var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
-    var isFeedback = request.IsFeedback.GetValueOrDefault(false);
-
-    var knownTargetInstances = catalog.GetByStructureWithKnownFallback(targetStructure, hemisphereHint);
-    var liveTargetInstances = catalog.GetByStructure(targetStructure, hemisphereHint);
-    if (knownTargetInstances.Count == 0)
+    var knownTargets = catalog.GetByStructureWithKnownFallback(StructureId.SomaticAfferents, hemisphere: null);
+    if (knownTargets.Count == 0)
     {
         return Results.NotFound(new
         {
-            Error = $"No active service instances found for {targetStructure} ({(hemisphereHint ?? "both")})."
+            Error = "No active service instances found for SomaticAfferents (both)."
         });
     }
 
-    if (liveTargetInstances.Count == 0)
+    var liveTargets = catalog.GetByStructure(StructureId.SomaticAfferents, hemisphere: null);
+    var transduction = transducer.Transduce(descriptor, state.Tick, state.SimulationClockMs);
+    var generatedForTargets = 0;
+    for (var i = 0; i < liveTargets.Count; i++)
     {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            Target = targetStructure.ToString(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            IsFeedback = isFeedback,
-            TargetInstances = 0,
-            KnownTargetInstances = knownTargetInstances.Count,
-            LiveTargetInstances = 0,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Errors = new[]
-            {
-                $"No live service instances currently available for {targetStructure} ({(hemisphereHint ?? "both")})."
-            }
-        });
+        generatedForTargets += transduction.ForHemisphere(liveTargets[i].HemisphereNormalized).Count;
     }
 
-    var tick = state.Tick;
-    var timestampMs = state.SimulationClockMs;
-    var dispatch = await DispatchStimulusToInstancesAsync(
-        liveTargetInstances,
-        instance =>
-        {
-            var hemisphere = instance.HemisphereNormalized;
-            return BuildCollisionStimulusSpikes(
-                tick,
-                timestampMs,
-                sourceStructure,
-                targetStructure,
-                hemisphere,
-                pattern,
-                intensity,
-                burstCount,
-                isFeedback);
-        },
-        clientFactory,
-        state,
-        tick,
-        timestampMs,
-        ct);
-
-    state.AppendOutputLog(
-        $"Collision input injected: pattern={pattern}, source={sourceStructure}, target={targetStructure}, generated={dispatch.GeneratedSpikes}, delivered={dispatch.DeliveredSpikes}, liveInstances={liveTargetInstances.Count}, knownInstances={knownTargetInstances.Count}, errors={dispatch.Errors.Count}.");
-    if (dispatch.DeliveredSpikes > 0)
+    if (liveTargets.Count > 0 && generatedForTargets > 0)
     {
-        state.AppendSpikeLog(
-            $"Collision input {pattern}: delivered {dispatch.DeliveredSpikes}/{dispatch.GeneratedSpikes} spikes to {targetStructure}.");
+        DispatchStimulusToInstancesInBackground(
+            "Somatic contact frame input",
+            liveTargets,
+            instance => transduction.ForHemisphere(instance.HemisphereNormalized),
+            clientFactory,
+            state,
+            state.Tick,
+            state.SimulationClockMs,
+            logSuccess: false);
     }
 
     return Results.Ok(new
     {
-        Pattern = pattern,
-        Source = sourceStructure.ToString(),
-        Target = targetStructure.ToString(),
-        Intensity = intensity,
-        BurstCount = burstCount,
-        IsFeedback = isFeedback,
-        TargetInstances = liveTargetInstances.Count,
-        KnownTargetInstances = knownTargetInstances.Count,
-        LiveTargetInstances = liveTargetInstances.Count,
-        GeneratedSpikes = dispatch.GeneratedSpikes,
-        DeliveredSpikes = dispatch.DeliveredSpikes,
-        Errors = dispatch.Errors
+        Accepted = true,
+        DispatchDeferred = liveTargets.Count > 0 && generatedForTargets > 0,
+        InputSource = descriptor.InputSource,
+        Target = StructureId.SomaticAfferents.ToString(),
+        TargetInstances = liveTargets.Count,
+        KnownTargetInstances = knownTargets.Count,
+        LiveTargetInstances = liveTargets.Count,
+        GeneratedSpikes = generatedForTargets,
+        DeliveredSpikes = 0,
+        ReceptorSector = transduction.ReceptorSector,
+        ActiveReceptorPopulations = transduction.ActiveReceptorPopulations,
+        PressureActivation = transduction.PressureActivation,
+        OnsetActivation = transduction.OnsetActivation,
+        VibrationActivation = transduction.VibrationActivation,
+        StretchActivation = transduction.StretchActivation,
+        HighThresholdActivation = transduction.HighThresholdActivation,
+        Errors = liveTargets.Count == 0
+            ? new[] { "No live SomaticAfferents service instances are currently available." }
+            : Array.Empty<string>()
     });
 });
 app.MapPost("/api/v1/admin/input/body-state", async (
@@ -1528,54 +1486,6 @@ static int ComputeStableStimulusHash(string text)
 
         return (int)(hash & int.MaxValue);
     }
-}
-
-static List<SpikeMessage> BuildCollisionStimulusSpikes(
-    long tick,
-    double timestampMs,
-    StructureId sourceStructure,
-    StructureId targetStructure,
-    string hemisphere,
-    string pattern,
-    float intensity,
-    int burstCount,
-    bool isFeedback)
-{
-    var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "collision" : pattern.Trim();
-    var patternToken = Regex.Replace(patternLabel, "[^A-Za-z0-9]+", "_");
-    if (string.IsNullOrWhiteSpace(patternToken))
-    {
-        patternToken = "collision";
-    }
-
-    var patternSeed = ComputeStableStimulusHash(patternLabel);
-    var spikes = new List<SpikeMessage>(burstCount);
-    for (var i = 0; i < burstCount; i++)
-    {
-        var sector = (patternSeed + i) % 8;
-        var lane = (patternSeed + (i * 5)) % 40;
-        var vesicle = Math.Clamp((0.95f + (sector * 0.06f)) * intensity, 0.08f, 8.0f);
-        var reuptake = Math.Clamp(2.4f + (lane * 0.11f), 1.6f, 14.0f);
-        var spikeType = i % 6 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
-        spikes.Add(new SpikeMessage
-        {
-            MessageId = Guid.NewGuid(),
-            TimestampMs = timestampMs,
-            SourceStructure = sourceStructure,
-            TargetStructure = targetStructure,
-            SourceNeuronId = $"{hemisphere}:collision_{patternToken}_{tick}_{sector}_{i}",
-            TargetNeuronId = $"{hemisphere}:sc_orient_{sector}_cell_{lane}",
-            SynapseId = Guid.NewGuid(),
-            Neurotransmitter = NTEnum.GLUTAMATE,
-            VesicleQuanta = vesicle,
-            ReuptakeRate = reuptake,
-            SpikeType = spikeType,
-            IsFeedback = isFeedback,
-            ModulationContext = null
-        });
-    }
-
-    return spikes;
 }
 
 static List<SpikeMessage> BuildBodyStateStimulusSpikes(
@@ -15465,14 +15375,6 @@ internal sealed record AutoProfileControlRequest(
     double? RecoveryAckLatencyMs,
     long? RecoverySnapshotAgeTicks,
     int? RecoveryConsecutiveTicks);
-internal sealed record CollisionInputRequest(
-    string? Pattern,
-    float? Intensity,
-    int? BurstCount,
-    string? TargetStructure,
-    string? SourceStructure,
-    string? Hemisphere,
-    bool? IsFeedback);
 internal sealed record LanguageInputRequest(string? Text, string? Mode, float? Intensity, int? BurstPerToken, string? Hemisphere, int? TokenCount, float? NoveltyBias);
 internal sealed record PhoneticGenerationRequest(int? TokenCount, string? Mode, float? NoveltyBias, string? SeedText);
 internal sealed record RestartServiceRequest(string? StructureId, string? Hemisphere, string? InstanceKey);
@@ -16365,6 +16267,7 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         [StructureId.SuperiorOlive] = "SuperiorOlive",
         [StructureId.InferiorColliculus] = "InferiorColliculus",
         [StructureId.S1] = "S1",
+        [StructureId.SomaticAfferents] = "SomaticAfferents",
         [StructureId.VestibularNuclei] = "VestibularNuclei",
         [StructureId.NucleusTractusSolitarius] = "NucleusTractusSolitarius",
         [StructureId.OlfactoryBulb] = "OlfactoryBulb",

@@ -10,6 +10,7 @@ public enum StructureId
     SuperiorOlive,
     InferiorColliculus,
     S1,
+    SomaticAfferents,
     VestibularNuclei,
     NucleusTractusSolitarius,
     OlfactoryBulb,

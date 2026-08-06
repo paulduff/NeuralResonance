@@ -309,6 +309,9 @@ public sealed class MajorPathwayIntegrationTests
     public async Task SpinalProprioceptiveReflex_Connectome_Uses_Spinal_S1_M1_Cerebellar_Vestibular_Reticular_And_Thalamic_Routes()
     {
         var rules = await LoadRulesAsync();
+        Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.Thalamus, "somatothalamic_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.SpinalCordMotor, "cutaneous_reflex_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.SomaticAfferents, "corticofugal_somatic_gain_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.M1, StructureId.SpinalCordMotor, "corticospinal_output"));
         Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.Thalamus, "proprioceptive_ascending_feedback"));

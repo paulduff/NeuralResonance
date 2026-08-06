@@ -351,6 +351,20 @@ hemifield targeting, explicit hemisphere fallback, dead NRE.Api pixel route,
 and map-editor brain stimulus are physically absent. Visual attention remains
 a read-only decoder of measured neuronal activity and cannot steer ingress.
 
+Entry 096 deletes structured auditory authority. Microphone, maze, and world
+producers send PCM16 pressure samples only. A cochlear filter bank creates
+adaptive tonotopic hair-cell and auditory-nerve spikes inside Cochlea. No host
+sound name, phoneme, brain target, hemisphere, salience, or burst instruction
+crosses the auditory boundary.
+
+Entry 097 deletes structured collision authority and adds bilateral
+`SomaticAfferents` services. Wall, ground, and penetrating maze contacts now
+cross the boundary only as body-local position, surface normal, force, impulse,
+penetration, slip, area, and duration. Adaptive receptor populations create
+their own spikes. Thalamic perception and spinal reflex routing are connectome
+responsibilities; the simulator cannot inject an orienting conclusion into the
+Superior Colliculus or choose a cortical target.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

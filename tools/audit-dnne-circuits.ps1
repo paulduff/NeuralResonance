@@ -29,6 +29,7 @@ function Get-ProfileName([string]$structure) {
         { $_ -in @('CerebellarGranule','CerebellarVermis','CerebellarLobules','PurkinjeCellLayer','DeepCerebellarNuclei','InferiorOlive','Pons') } { return 'cerebellar/pontine' }
         { $_ -in @('Retina') } { return 'retinal' }
         { $_ -in @('Cochlea','CochlearNucleus','SuperiorOlive','InferiorColliculus') } { return 'auditory-brainstem' }
+        { $_ -in @('SomaticAfferents') } { return 'somatic-afferent' }
         { $_ -in @('VestibularNuclei','NucleusTractusSolitarius','OlfactoryBulb') } { return 'sensory-autonomic' }
         { $_ -in @('ArcuateFasciculus') } { return 'white-matter-relay' }
         { $_ -in @('Striatum','GlobusPallidus','GPe','GPi','Stn','Snr') } { return 'basal-ganglia' }

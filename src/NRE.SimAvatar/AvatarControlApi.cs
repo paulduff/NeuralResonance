@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NRE.SimAvatar;
 
@@ -13,6 +14,7 @@ public static class AvatarControlApi
     public const string CochlearFrameInputPath = "/api/v1/admin/input/audio-frame";
     public const string LanguageInputPath = "/api/v1/admin/input/language";
     public const string RetinalFrameInputPath = "/api/v1/admin/input/visual-frame";
+    public const string SomaticContactFrameInputPath = "/api/v1/admin/input/contact-frame";
 
     public static Uri BuildUri(Uri endpoint, string relativePath) => new(endpoint, relativePath);
 
@@ -79,6 +81,20 @@ public static class AvatarControlApi
         string inputSource = AvatarRuntimeDefaults.UnifiedVisualInputSource,
         CancellationToken cancellationToken = default) =>
         PostRetinalFrameCoreAsync(client, new Uri(endpoint), frame, inputSource, cancellationToken);
+
+    public static Task<AvatarSomaticContactDispatchResult> PostSomaticContactFrameAsync(
+        HttpClient client,
+        Uri endpoint,
+        SomaticContactFrameRequest frame,
+        CancellationToken cancellationToken = default) =>
+        PostSomaticContactFrameCoreAsync(client, BuildUri(endpoint, SomaticContactFrameInputPath), frame, cancellationToken);
+
+    public static Task<AvatarSomaticContactDispatchResult> PostSomaticContactFrameAsync(
+        HttpClient client,
+        string endpoint,
+        SomaticContactFrameRequest frame,
+        CancellationToken cancellationToken = default) =>
+        PostSomaticContactFrameCoreAsync(client, BuildUri(endpoint, SomaticContactFrameInputPath), frame, cancellationToken);
 
     private static async Task PostBodyStateCoreAsync(HttpClient client, Uri uri, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default)
     {
@@ -209,6 +225,41 @@ public static class AvatarControlApi
             OffChannelSpikes: AvatarJson.GetInt(root, "offChannelSpikes"),
             MeanLuminance: (float)AvatarJson.GetDouble(root, "meanLuminance"),
             MeanTemporalChange: (float)AvatarJson.GetDouble(root, "meanTemporalChange"));
+    }
+
+    private static async Task<AvatarSomaticContactDispatchResult> PostSomaticContactFrameCoreAsync(
+        HttpClient client,
+        Uri uri,
+        SomaticContactFrameRequest frame,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(frame);
+
+        using var response = await client.PostAsJsonAsync(uri, frame, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Somatic contact frame input failed: HTTP {(int)response.StatusCode} {payload}");
+        }
+
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        return new AvatarSomaticContactDispatchResult(
+            Accepted: AvatarJson.GetBool(root, "accepted"),
+            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"),
+            GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
+            DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
+            TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
+            ReceptorSector: AvatarJson.GetInt(root, "receptorSector"),
+            ActiveReceptorPopulations: AvatarJson.GetInt(root, "activeReceptorPopulations"),
+            PressureActivation: (float)AvatarJson.GetDouble(root, "pressureActivation"),
+            OnsetActivation: (float)AvatarJson.GetDouble(root, "onsetActivation"),
+            VibrationActivation: (float)AvatarJson.GetDouble(root, "vibrationActivation"),
+            StretchActivation: (float)AvatarJson.GetDouble(root, "stretchActivation"),
+            HighThresholdActivation: (float)AvatarJson.GetDouble(root, "highThresholdActivation"));
     }
 
     public static AvatarLanguageCommandResult ParseLanguageCommandResult(JsonElement root)

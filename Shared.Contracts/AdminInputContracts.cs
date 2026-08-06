@@ -29,6 +29,23 @@ public static class AdminInputSource
 
 public sealed record InputGateControlRequest(bool? AvatarVisionEnabled, bool? SpontaneousSpikingEnabled);
 
+public sealed record SomaticContactFrameRequest(
+    long Sequence,
+    long TimestampMs,
+    float BodyPositionX,
+    float BodyPositionY,
+    float BodyPositionZ,
+    float SurfaceNormalX,
+    float SurfaceNormalY,
+    float SurfaceNormalZ,
+    float ForceNewtons,
+    float ImpulseNewtonSeconds,
+    float PenetrationMillimeters,
+    float TangentialSpeedMetersPerSecond,
+    float ContactAreaSquareMillimeters,
+    float DurationMilliseconds,
+    string? InputSource);
+
 public sealed record BodyStateInputRequest(
     float? ForwardVelocity,
     float? TurnRateDeg,

@@ -1,12 +1,12 @@
 ﻿# DNNE Circuit Functionality Audit
 
-Generated: 2026-08-05 22:12:19 +01:00
+Generated: 2026-08-07 00:44:07 +01:00
 
 ## Summary
 
 | Status | Count |
 | --- | ---: |
-| OK | 85 |
+| OK | 86 |
 
 ## Circuit Table
 
@@ -71,12 +71,13 @@ Generated: 2026-08-05 22:12:19 +01:00
 | ReticularFormation | OK | 5 | 4 | 5 | 4 | brainstem-arousal | ReticularFormation |
 | Retina | OK | 1 | 2 | 1 | 2 | retinal | Retina |
 | RetrosplenialCortex | OK | 3 | 2 | 3 | 2 | cortical-association/motor | RetrosplenialCortex |
-| S1 | OK | 3 | 5 | 3 | 5 | primary-sensory/callosal | S1 |
+| S1 | OK | 3 | 6 | 3 | 6 | primary-sensory/callosal | S1 |
 | SecondarySomatosensoryCortex | OK | 2 | 3 | 2 | 3 | primary-sensory/callosal | SecondarySomatosensoryCortex |
 | Sma | OK | 5 | 4 | 5 | 4 | cortical-association/motor | SMA |
 | Snc | OK | 2 | 4 | 2 | 4 | neuromodulatory | SNc |
 | Snr | OK | 4 | 3 | 4 | 3 | basal-ganglia | SNr |
-| SpinalCordMotor | OK | 2 | 4 | 2 | 4 | spinal-motor | SpinalCordMotor |
+| SomaticAfferents | OK | 1 | 2 | 1 | 2 | somatic-afferent | SomaticAfferents |
+| SpinalCordMotor | OK | 3 | 4 | 3 | 4 | spinal-motor | SpinalCordMotor |
 | Stn | OK | 3 | 3 | 3 | 3 | basal-ganglia | STN |
 | Striatum | OK | 7 | 5 | 7 | 5 | basal-ganglia | Striatum |
 | Subiculum | OK | 3 | 4 | 3 | 4 | hippocampal/tectal | Subiculum |
@@ -86,7 +87,7 @@ Generated: 2026-08-05 22:12:19 +01:00
 | TemporalAssociation | OK | 12 | 6 | 12 | 6 | cortical-association/motor | TemporalAssociation |
 | TemporalPole | OK | 2 | 3 | 2 | 3 | cortical-association/motor | TemporalPole |
 | TemporoparietalJunction | OK | 2 | 3 | 2 | 3 | cortical-association/motor | TemporoparietalJunction |
-| Thalamus | OK | 16 | 10 | 16 | 10 | thalamic | Thalamus |
+| Thalamus | OK | 17 | 10 | 17 | 10 | thalamic | Thalamus |
 | Trn | OK | 4 | 5 | 4 | 5 | thalamic | TRN |
 | V1 | OK | 4 | 4 | 4 | 4 | primary-sensory/callosal | V1 |
 | V2 | OK | 2 | 4 | 2 | 4 | primary-sensory/callosal | V2 |

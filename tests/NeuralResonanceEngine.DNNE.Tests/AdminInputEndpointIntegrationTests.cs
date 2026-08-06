@@ -138,6 +138,48 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
+    public async Task StructuredCollisionInputEndpointDoesNotExist()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            "/api/v1/admin/input/collision",
+            new
+            {
+                Pattern = "PreclassifiedImpact",
+                TargetStructure = "SuperiorColliculus",
+                BurstCount = 20
+            });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SomaticContactFrameRejectsSignalWithoutSurfaceNormal()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            "/api/v1/admin/input/contact-frame",
+            new SomaticContactFrameRequest(
+                Sequence: 1,
+                TimestampMs: 1,
+                BodyPositionX: 0f,
+                BodyPositionY: 0f,
+                BodyPositionZ: 0.2f,
+                SurfaceNormalX: 0f,
+                SurfaceNormalY: 0f,
+                SurfaceNormalZ: 0f,
+                ForceNewtons: 500f,
+                ImpulseNewtonSeconds: 20f,
+                PenetrationMillimeters: 2f,
+                TangentialSpeedMetersPerSecond: 0f,
+                ContactAreaSquareMillimeters: 2_000f,
+                DurationMilliseconds: 30f,
+                InputSource: "test_contact"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var doc = await ReadJsonAsync(response);
+        Assert.Contains("surface normal", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task BodyStateInput_AvatarSource_Accepts_And_Defers_Dispatch()
     {
         var client = _fixture.Client;

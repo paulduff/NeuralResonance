@@ -154,7 +154,7 @@ public partial class MainWindow : Window
     private DateTime _lastHazardDamageUtc = DateTime.MinValue;
     private DateTime _lastWallImpactUtc = DateTime.MinValue;
     private bool _bodyStimulusInFlight;
-    private bool _collisionInputInFlight;
+    private bool _contactFrameInFlight;
     private bool _environmentAudioInFlight;
     private bool _englishCommandInFlight;
     private bool _visionTickInFlight;
@@ -162,6 +162,7 @@ public partial class MainWindow : Window
     private long _lastBodyStateDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
     private long _environmentAudioFrameSequence;
+    private long _somaticContactFrameSequence;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
     private PerspectiveCamera? _mazeCamera;
@@ -1128,6 +1129,7 @@ public partial class MainWindow : Window
             _hazardContacts++;
             _health = Math.Max(0, _health - 18);
             _score = Math.Max(0, _score - 10);
+            QueueHazardContactFrame(hazard.World.X, hazard.World.Y);
 
             var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
             var pushbackX = _avatarX - (Math.Sin(headingRad) * 0.55);
@@ -1171,35 +1173,116 @@ public partial class MainWindow : Window
         _score = Math.Max(0, _score - scorePenalty);
         _health = Math.Max(1, _health - healthPenalty);
 
-        QueueCollisionInput(slidAlongWall);
+        QueueWallContactFrame(slidAlongWall);
 
         SetMazeEvent($"Wall impact #{_wallImpacts}: score -{scorePenalty}");
     }
 
-    private void QueueCollisionInput(bool slidAlongWall)
+    private void QueueWallContactFrame(bool slidAlongWall)
     {
-        if (_collisionInputInFlight)
+        var speed = Math.Max(0.20, Math.Abs(_lastForwardSpeed));
+        var force = Math.Clamp(70.0 * speed / (slidAlongWall ? 0.22 : 0.10), 0.0, 20_000.0);
+        var impulse = Math.Clamp(70.0 * speed * (slidAlongWall ? 0.35 : 0.85), 0.0, 1_000.0);
+        var tangentialSpeed = slidAlongWall ? speed : 0.0;
+        var positionX = 0.0;
+        var positionZ = AvatarRadius;
+        var normalX = 0.0;
+        var normalZ = -1.0;
+        if (_lastLeftProximity > _lastFrontProximity && _lastLeftProximity >= _lastRightProximity)
+        {
+            positionX = -AvatarRadius;
+            positionZ = 0.0;
+            normalX = 1.0;
+            normalZ = 0.0;
+        }
+        else if (_lastRightProximity > _lastFrontProximity)
+        {
+            positionX = AvatarRadius;
+            positionZ = 0.0;
+            normalX = -1.0;
+            normalZ = 0.0;
+        }
+
+        var frame = new SomaticContactFrameRequest(
+            Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+            TimestampMs: Environment.TickCount64,
+            BodyPositionX: (float)positionX,
+            BodyPositionY: (float)(AvatarRadius * 0.35),
+            BodyPositionZ: (float)positionZ,
+            SurfaceNormalX: (float)normalX,
+            SurfaceNormalY: 0f,
+            SurfaceNormalZ: (float)normalZ,
+            ForceNewtons: (float)force,
+            ImpulseNewtonSeconds: (float)impulse,
+            PenetrationMillimeters: slidAlongWall ? 2.5f : 7f,
+            TangentialSpeedMetersPerSecond: (float)tangentialSpeed,
+            ContactAreaSquareMillimeters: slidAlongWall ? 6_800f : 3_600f,
+            DurationMilliseconds: slidAlongWall ? 120f : 55f,
+            InputSource: "avatar_maze_contact");
+        TryQueueSomaticContactFrame(frame);
+    }
+
+    private void QueueHazardContactFrame(double hazardX, double hazardZ)
+    {
+        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
+        var dx = hazardX - _avatarX;
+        var dz = hazardZ - _avatarZ;
+        var length = Math.Max(0.001, Math.Sqrt((dx * dx) + (dz * dz)));
+        var worldDirectionX = dx / length;
+        var worldDirectionZ = dz / length;
+        var localX = (worldDirectionX * Math.Cos(headingRad)) - (worldDirectionZ * Math.Sin(headingRad));
+        var localZ = (worldDirectionX * Math.Sin(headingRad)) + (worldDirectionZ * Math.Cos(headingRad));
+        var speed = Math.Max(0.25, Math.Abs(_lastForwardSpeed));
+        TryQueueSomaticContactFrame(new SomaticContactFrameRequest(
+            Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+            TimestampMs: Environment.TickCount64,
+            BodyPositionX: (float)(localX * AvatarRadius),
+            BodyPositionY: 0f,
+            BodyPositionZ: (float)(localZ * AvatarRadius),
+            SurfaceNormalX: (float)-localX,
+            SurfaceNormalY: 0f,
+            SurfaceNormalZ: (float)-localZ,
+            ForceNewtons: (float)Math.Clamp(1_400.0 + (speed * 350.0), 0.0, 20_000.0),
+            ImpulseNewtonSeconds: (float)Math.Clamp(65.0 + (speed * 25.0), 0.0, 1_000.0),
+            PenetrationMillimeters: 24f,
+            TangentialSpeedMetersPerSecond: (float)Math.Min(speed * 0.25, 100.0),
+            ContactAreaSquareMillimeters: 900f,
+            DurationMilliseconds: 75f,
+            InputSource: "avatar_maze_contact"));
+    }
+
+    private void QueueGroundContactFrame()
+    {
+        TryQueueSomaticContactFrame(new SomaticContactFrameRequest(
+            Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+            TimestampMs: Environment.TickCount64,
+            BodyPositionX: 0f,
+            BodyPositionY: (float)-AvatarRadius,
+            BodyPositionZ: 0f,
+            SurfaceNormalX: 0f,
+            SurfaceNormalY: 1f,
+            SurfaceNormalZ: 0f,
+            ForceNewtons: 686.7f,
+            ImpulseNewtonSeconds: 0f,
+            PenetrationMillimeters: 1.2f,
+            TangentialSpeedMetersPerSecond: (float)Math.Abs(_lastForwardSpeed),
+            ContactAreaSquareMillimeters: 20_000f,
+            DurationMilliseconds: BodyStateDispatchIntervalMs,
+            InputSource: "avatar_maze_contact"));
+    }
+
+    private void TryQueueSomaticContactFrame(SomaticContactFrameRequest frame)
+    {
+        if (_contactFrameInFlight)
         {
             return;
         }
 
-        const double sideDeadband = 0.04;
-        var hemisphere = _lastLeftProximity > _lastRightProximity + sideDeadband
-            ? "L"
-            : _lastRightProximity > _lastLeftProximity + sideDeadband
-                ? "R"
-                : null;
-        _ = DispatchCollisionInputAsync(
-            hemisphere,
-            slidAlongWall ? 0.90 : 1.25,
-            slidAlongWall ? 12 : 20,
-            _shutdown.Token);
+        _ = DispatchSomaticContactFrameAsync(frame, _shutdown.Token);
     }
 
-    private async Task DispatchCollisionInputAsync(
-        string? hemisphere,
-        double intensity,
-        int burstCount,
+    private async Task DispatchSomaticContactFrameAsync(
+        SomaticContactFrameRequest frame,
         CancellationToken token)
     {
         var endpoint = ResolveEndpointUri();
@@ -1208,27 +1291,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        _collisionInputInFlight = true;
+        _contactFrameInFlight = true;
         try
         {
-            var request = new
-            {
-                Pattern = "wall_contact",
-                Intensity = Math.Clamp(intensity, 0.20, 3.50),
-                BurstCount = Math.Clamp(burstCount, 6, 64),
-                TargetStructure = "SuperiorColliculus",
-                SourceStructure = "S1",
-                Hemisphere = hemisphere,
-                IsFeedback = false
-            };
-
-            using var response = await _httpClient.PostAsJsonAsync(
-                new Uri(endpoint, "/api/v1/admin/input/collision"),
-                request,
+            var result = await AvatarControlApi.PostSomaticContactFrameAsync(
+                _httpClient,
+                endpoint,
+                frame,
                 token);
-            if (!response.IsSuccessStatusCode)
+            if (!result.Accepted || result.TargetInstances <= 0)
             {
-                Log($"Collision input warning: HTTP {(int)response.StatusCode}.");
+                Log("Somatic contact warning: no live afferent target.");
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -1237,11 +1310,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Log($"Collision input warning: {ex.GetType().Name}.");
+            Log($"Somatic contact warning: {ex.GetType().Name}.");
         }
         finally
         {
-            _collisionInputInFlight = false;
+            _contactFrameInFlight = false;
         }
     }
 
@@ -1268,31 +1341,19 @@ public partial class MainWindow : Window
         _lastBodyStateDispatchMs = nowMs;
         try
         {
-            var wallImpactAge = (DateTime.UtcNow - _lastWallImpactUtc).TotalSeconds;
-            var wallContact = wallImpactAge is >= 0.0 and < 0.45
-                ? 1.0 - (wallImpactAge / 0.45)
-                : 0.0;
-            var probeTotal = _lastFrontProximity + _lastLeftProximity + _lastRightProximity;
-            var frontTouch = probeTotal > 0.001 ? wallContact * (_lastFrontProximity / probeTotal) : wallContact;
-            var leftTouch = probeTotal > 0.001 ? wallContact * (_lastLeftProximity / probeTotal) : 0.0;
-            var rightTouch = probeTotal > 0.001 ? wallContact * (_lastRightProximity / probeTotal) : 0.0;
-            var groundTouch = Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed * 0.70), 0.0, 1.0);
-            var hazardImpactAge = (DateTime.UtcNow - _lastHazardDamageUtc).TotalSeconds;
-            var hazardPain = hazardImpactAge is >= 0.0 and < 0.65
-                ? 0.82 * (1.0 - (hazardImpactAge / 0.65))
-                : 0.0;
+            QueueGroundContactFrame();
             var telemetry = new AvatarBodyTelemetry(
                 ForwardVelocity: _lastForwardSpeed,
                 TurnRateDeg: _lastTurnRateDeg,
-                ContactLevel: wallContact,
+                ContactLevel: 0.0,
                 LeftMotorDrive: _leftMotorDrive,
                 RightMotorDrive: _rightMotorDrive,
                 Health: _health / 100.0,
-                TactileFront: frontTouch,
-                TactileLeft: leftTouch,
-                TactileRight: rightTouch,
-                TactileGround: groundTouch,
-                PainLevel: Math.Clamp(Math.Max(wallContact * 0.45, hazardPain), 0.0, 1.0));
+                TactileFront: 0.0,
+                TactileLeft: 0.0,
+                TactileRight: 0.0,
+                TactileGround: 0.0,
+                PainLevel: 0.0);
             _avatarService.PostBodyInput(telemetry, MazeBodyStateProfile);
             var bodyInput = await DrainAvatarBodyInputAsync(token);
             if (bodyInput.HasValue)
@@ -2377,7 +2438,7 @@ public partial class MainWindow : Window
         _lastHazardDamageUtc = DateTime.MinValue;
         _lastWallImpactUtc = DateTime.MinValue;
         _recentWallImpactTicks.Clear();
-        _collisionInputInFlight = false;
+        _contactFrameInFlight = false;
         _bodyStimulusInFlight = false;
         _lastBodyStateDispatchMs = 0;
         _respawnWorld = _startWorld;

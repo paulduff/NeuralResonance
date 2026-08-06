@@ -1130,6 +1130,29 @@
                                 "synapseId":  "45f2962c-25b8-4f42-8b46-4cd6ea81d304",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "somatocerebellar_proprioceptive_mossy"
+                            },
+                            {
+                                "target":  "SomaticAfferents",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1091",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticofugal_somatic_gain_feedback"
+                            }
+                        ]
+    },
+    {
+        "source":  "SomaticAfferents",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1092",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "somatothalamic_afference"
+                            },
+                            {
+                                "target":  "SpinalCordMotor",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1093",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "cutaneous_reflex_afference"
                             }
                         ]
     },

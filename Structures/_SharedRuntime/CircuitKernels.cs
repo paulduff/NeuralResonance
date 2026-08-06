@@ -110,6 +110,7 @@ internal static class CircuitKernelFactory
 		case StructureId.CochlearNucleus:
 		case StructureId.SuperiorOlive:
 		case StructureId.InferiorColliculus:
+		case StructureId.SomaticAfferents:
 		case StructureId.VestibularNuclei:
 		case StructureId.NucleusTractusSolitarius:
 		case StructureId.V1:

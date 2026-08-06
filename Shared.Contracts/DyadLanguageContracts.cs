@@ -63,6 +63,13 @@ public sealed record DyadCommunicationIntentSnapshot(
     float Strength,
     string Evidence);
 
+public sealed record DyadNeuronalGroundingSource(
+    string SourceId,
+    int PopulationIndex,
+    float Confidence,
+    long Tick,
+    string Evidence);
+
 public sealed record DyadLanguageGroundingSnapshot(
     long Tick,
     bool IsSleeping,
@@ -82,7 +89,22 @@ public sealed record DyadLanguageGroundingSnapshot(
     float SpeechSuppression,
     string Evidence,
     IReadOnlyList<DyadVerifiedMemoryExcerpt> MemoryExcerpts,
-    DyadCommunicationIntentSnapshot CommunicationIntent);
+    DyadCommunicationIntentSnapshot CommunicationIntent)
+{
+    public string Authority { get; init; } = "LegacySymbolicTelemetry";
+    public bool NeuronalCircuitObserved { get; init; }
+    public bool NeuronalGroundingAvailable { get; init; }
+    public bool NeuronalGrounded { get; init; }
+    public int PerceptEnsemble { get; init; } = -1;
+    public int MemoryEnsemble { get; init; } = -1;
+    public int AttentionChannel { get; init; } = -1;
+    public float LanguageCircuitCoverage { get; init; }
+    public float GroundingConfidence { get; init; }
+    public float Uncertainty { get; init; } = 1f;
+    public bool NeuronalSpeechAuthorized { get; init; }
+    public string GroundedLabel { get; init; } = "unlabelled";
+    public IReadOnlyList<DyadNeuronalGroundingSource> NeuronalSources { get; init; } = [];
+}
 
 public sealed record DyadLanguageCandidateResponse(
     string ProtocolVersion,

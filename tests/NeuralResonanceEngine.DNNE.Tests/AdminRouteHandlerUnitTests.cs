@@ -131,7 +131,7 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Decision);
         Assert.Equal(languageIntentBefore, state.GetLanguageIntentSnapshot());
         Assert.False(response.Grounding.IsSleeping);
-        Assert.Contains("workspace", response.DecisionReason, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("did not issue", response.DecisionReason, StringComparison.OrdinalIgnoreCase);
 
         var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
         Assert.Equal("entity-25m-bpe-v1", audit.Proposal.EntityVersion);

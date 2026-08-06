@@ -83,9 +83,14 @@ internal static class DyadLanguageGenerationRoutes
     {
         state.AppendOutputLog(
             $"Dyad Entity fallback: session={parameters.SessionId}, turn={parameters.TurnId}, detail={detail}");
+        var emissionAuthorized = prompt.Grounding.NeuronalCircuitObserved
+            ? prompt.Grounding.NeuronalGroundingAvailable &&
+              prompt.Grounding.NeuronalGrounded &&
+              prompt.Grounding.NeuronalSpeechAuthorized
+            : prompt.Grounding.SpeechEligible &&
+              string.Equals(prompt.Grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase);
         var emitted = !prompt.Grounding.IsSleeping &&
-                      prompt.Grounding.SpeechEligible &&
-                      string.Equals(prompt.Grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase) &&
+                      emissionAuthorized &&
                       !string.IsNullOrWhiteSpace(prompt.FallbackText);
         return Results.Ok(new DyadEntityGenerationResponse(
             DyadLanguageContract.ProtocolVersion,

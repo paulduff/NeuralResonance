@@ -182,6 +182,31 @@ Entity remains the trained language cortex and teacher while DNNE supplies groun
 
 Acceptance requires grounded reference, continuity across sessions, uncertainty reporting, memory-source inspection, and no language text directly commanding muscles.
 
+#### Implemented vertical slice
+
+Rung 7 now introduces `DistributedGroundedLanguageCircuits`, a read-only adapter between numeric DNNE populations and Entity. A reference may come only from an active percept ensemble or persisted synaptic recall ensemble. When both are active, agreement improves confidence and a population mismatch raises uncertainty. Human-readable object labels are optional annotations attached after percept selection; they do not participate in ensemble, attention, confidence, or speech decisions.
+
+Grounding requires the measured A1-Wernicke-arcuate comprehension chain, a neuronal percept or recall reference, and the neuronal attention workspace. Emission additionally requires channel 5 to win and broadcast, the Broca-premotor-M1 expression chain, basal-ganglia gating, motor-thalamic relay, acceptable uncertainty, and a wake state. Removing a comprehension structure removes grounding authority. Removing an expression structure preserves a reference but closes speech.
+
+Every Entity prompt now carries numeric population IDs, confidence, uncertainty, circuit coverage, sleep state, and bounded source provenance. DNNE records the prompt fingerprint against its session and turn before Entity is called. A candidate with a valid self-generated hash but no DNNE-issued prompt is deferred. The candidate contract remains text-only and cannot express motor, reward, action, or memory-write operations.
+
+When any neuronal language circuit is observed, an incomplete circuit cannot fall back to the older cognitive-language workspace, semantic memory dictionaries, or symbolic speech gate. Those fields remain available only as `LegacySymbolicTelemetry` when no neuronal language evidence exists, preserving old checkpoints while making the authority transition explicit. `/api/v1/neuronal-language-grounding` exposes the new decoder and `/api/v1/dyad/language/generate` applies it to both Entity output and DNNE fallback narration.
+
+This is a grounded language adapter, not a claim that DNNE already contains a complete cortical language model. Entity still performs trained token generation. Future work must replace fixed population alignment with learned latent adapters, carry affect and intention through neuronal ensembles, and test continuity over long embodied sessions.
+
+No neuron-count change was required for this slice. The existing cortical and relay structures provide sufficient population coverage for an eight-reference prototype; resizing remains justified only by measured population collision, lane starvation, or unstable lesion/benchmark results.
+
+The causal test set pins:
+
+- numeric percept/recall agreement and bounded provenance;
+- label changes having no effect on numeric selection or confidence;
+- loss of grounding after Wernicke or arcuate ablation;
+- loss of speech after Broca, premotor, or motor-thalamic ablation;
+- language-channel attention and wake-state requirements;
+- increased uncertainty under percept/recall conflict;
+- no legacy fallback after incomplete neuronal evidence;
+- issued-prompt binding and isolation from neuronal motor state.
+
 ### Rung 8 - Remove The Symbolic Scaffold
 
 Delete or demote central cognition fields only after their neuronal replacements pass regression, causal, and embodied benchmarks. Retained diagnostics become read-only decoders of neural state. They cannot write decisions back into the brain.

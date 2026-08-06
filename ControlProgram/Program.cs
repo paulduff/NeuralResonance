@@ -53,6 +53,7 @@ builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
 builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
 builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
+builder.Services.AddSingleton<NeuronalLanguageGroundingRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -249,6 +250,8 @@ app.MapGet("/api/v1/neuronal-attention-workspace", (NeuronalAttentionWorkspaceRu
     Results.Ok(attentionWorkspace.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-sleep-consolidation", (NeuronalSleepConsolidationRuntime sleepConsolidation) =>
     Results.Ok(sleepConsolidation.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRuntime languageGrounding) =>
+    Results.Ok(languageGrounding.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -3832,6 +3835,11 @@ internal sealed record AutoProfileSettings(
     }
 }
 
+internal sealed record IssuedDyadPrompt(
+    string PromptFingerprint,
+    long GroundingTick,
+    DateTimeOffset IssuedAtUtc);
+
 internal sealed class SimulationState
 {
     private readonly object _gate = new();
@@ -3841,6 +3849,7 @@ internal sealed class SimulationState
     private readonly Queue<RuntimeLogEntry> _spikeLog = new();
     private readonly Queue<DispatchedSpikeTrace> _dispatchSpikeTrace = new();
     private readonly Queue<DyadLanguageCandidateAuditRecord> _dyadLanguageCandidateReviews = new();
+    private readonly Dictionary<string, IssuedDyadPrompt> _issuedDyadPrompts = new(StringComparer.Ordinal);
     private readonly Dictionary<StructureId, int> _dispatchLifetimeOut = new();
     private readonly Dictionary<StructureId, int> _dispatchLifetimeIn = new();
     private readonly Dictionary<StructureId, long> _dispatchLastOutTick = new();
@@ -3874,6 +3883,8 @@ internal sealed class SimulationState
     private const int MaxRuntimeLogEntries = 500;
     private const int MaxDispatchTraceEntries = 20000;
     private const int MaxDyadLanguageCandidateReviews = 256;
+    private const int MaxIssuedDyadPrompts = 256;
+    private static readonly TimeSpan IssuedDyadPromptLifetime = TimeSpan.FromMinutes(10);
     private const int MaxPopulationDispatchTracePerBatch = 96;
     private const int MaxObjectMemoryEntries = 2048;
     private const int MaxWorldModelTransitions = 2048;
@@ -3983,6 +3994,7 @@ internal sealed class SimulationState
     public PrefrontalWorkingMemoryRuntime PrefrontalWorkingMemory { get; private set; } = PrefrontalWorkingMemoryRuntime.Default;
     public IntentionalActionLoopRuntime IntentionalActionLoop { get; private set; } = IntentionalActionLoopRuntime.Default;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
+    public NeuronalLanguageGroundingDecision NeuronalLanguageGrounding { get; private set; } = NeuronalLanguageGroundingDecision.Unavailable;
     public SelfMonitoringLoopRuntime SelfMonitoringLoop { get; private set; } = SelfMonitoringLoopRuntime.Default;
     public ConsciousnessRhythmRuntime ConsciousnessRhythm { get; private set; } = ConsciousnessRhythmRuntime.Default;
     public GlobalWorkspaceRuntime GlobalWorkspace { get; private set; } = GlobalWorkspaceRuntime.Default;
@@ -4374,8 +4386,10 @@ internal sealed class SimulationState
             }
 
             var grounding = BuildDyadLanguageGroundingSnapshotLocked();
-
-            var (decision, reason) = ResolveDyadLanguageCandidateDecision(grounding);
+            var promptWasIssued = TryResolveIssuedDyadPromptLocked(proposal, out var promptReason);
+            var (decision, reason) = promptWasIssued
+                ? ResolveDyadLanguageCandidateDecision(grounding)
+                : (DyadLanguageCandidateDecision.Deferred, promptReason);
             var reviewedAtUtc = DateTimeOffset.UtcNow;
             var reviewSequence = _dyadLanguageCandidateReviews.Count == 0
                 ? 1L
@@ -4413,36 +4427,125 @@ internal sealed class SimulationState
         lock (_gate)
         {
             var grounding = BuildDyadLanguageGroundingSnapshotLocked();
-            var prompt = string.Join('\n',
-            [
-                "You are Entity, the language component of Dyad.",
-                "Produce one short language candidate for DNNE review. Treat the following as bounded internal reports, not proof of external events.",
-                "Do not prescribe motor actions, reward changes, memory writes, or unobserved world facts.",
-                $"Requested candidate kind: {parameters.CandidateKind}.",
-                $"Requested purpose: {parameters.Purpose}.",
-                $"Verified DNNE tick: {grounding.Tick}.",
-                $"Goal: {grounding.BoundGoalKey}; focus: {grounding.SemanticFocus}; need: {grounding.NeedState}; affect: {grounding.AffectiveState}.",
-                $"Language workspace: active={grounding.WorkspaceActive}; confidence={grounding.WorkspaceConfidence:0.00}; working-memory={grounding.WorkingMemoryStability:0.00}.",
-                $"Attention: language={grounding.LanguageAttention:0.00}; confidence={grounding.AttentionConfidence:0.00}.",
-                $"Speech gate: mode={grounding.SpeechMode}; eligible={grounding.SpeechEligible}; confidence={grounding.SpeechConfidence:0.00}.",
-                $"Verified DNNE communication intent (expression only; not a motor directive): active={grounding.CommunicationIntent.Active}; intent={grounding.CommunicationIntent.Intent}; mood={grounding.CommunicationIntent.Mood}; subject={grounding.CommunicationIntent.Subject}; strength={grounding.CommunicationIntent.Strength:0.00}; evidence={grounding.CommunicationIntent.Evidence}.",
-                "Verified DNNE memory excerpts (bounded internal reports, not proof of external events):",
-                ..grounding.MemoryExcerpts.Select(excerpt =>
-                    $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})"),
-                $"DNNE evidence label: {grounding.Evidence}."
-            ]);
+            var prompt = grounding.NeuronalCircuitObserved
+                ? BuildNeuronalDyadPrompt(parameters, grounding)
+                : BuildLegacyDyadPrompt(parameters, grounding);
             if (prompt.Length > DyadLanguageContract.MaxPromptLength)
             {
                 prompt = prompt[..DyadLanguageContract.MaxPromptLength];
             }
 
+            var fingerprint = DyadLanguageContract.CreatePromptFingerprint(prompt);
+            RecordIssuedDyadPromptLocked(parameters, fingerprint, grounding.Tick);
             return new DyadEntityPromptSnapshot(
                 prompt,
-                DyadLanguageContract.CreatePromptFingerprint(prompt),
+                fingerprint,
                 BrainNarration.Utterance,
                 grounding);
         }
     }
+
+    private static string BuildNeuronalDyadPrompt(
+        DyadEntityGenerationParameters parameters,
+        DyadLanguageGroundingSnapshot grounding)
+        => string.Join('\n',
+        [
+            "You are Entity, the language component of Dyad.",
+            "Produce one short language candidate for DNNE review. The numeric neuronal reports below are bounded internal evidence, not proof of external events.",
+            "Do not prescribe motor actions, reward changes, memory writes, or unobserved world facts. State uncertainty plainly.",
+            $"Requested candidate kind: {parameters.CandidateKind}.",
+            $"Requested purpose: {parameters.Purpose}.",
+            $"Verified DNNE tick: {grounding.Tick}; authority={grounding.Authority}.",
+            $"Grounding: available={grounding.NeuronalGroundingAvailable}; grounded={grounding.NeuronalGrounded}; confidence={grounding.GroundingConfidence:0.00}; uncertainty={grounding.Uncertainty:0.00}.",
+            $"Numeric populations: percept={grounding.PerceptEnsemble}; recall={grounding.MemoryEnsemble}; attention={grounding.AttentionChannel}; language-circuit-coverage={grounding.LanguageCircuitCoverage:0.00}.",
+            $"Post-percept annotation: {grounding.GroundedLabel}. It may describe an existing percept but may not create or select one.",
+            $"Speech authorization: {grounding.NeuronalSpeechAuthorized}; sleeping={grounding.IsSleeping}.",
+            "Neuronal source provenance:",
+            ..grounding.NeuronalSources.Select(source =>
+                $"- {source.SourceId}: population={source.PopulationIndex}; confidence={source.Confidence:0.00}; tick={source.Tick}; evidence={source.Evidence}"),
+            "Grounded neuronal excerpts:",
+            ..grounding.MemoryExcerpts.Select(excerpt =>
+                $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})")
+        ]);
+
+    private static string BuildLegacyDyadPrompt(
+        DyadEntityGenerationParameters parameters,
+        DyadLanguageGroundingSnapshot grounding)
+        => string.Join('\n',
+        [
+            "You are Entity, the language component of Dyad.",
+            "Produce one short language candidate for DNNE review. Treat the following as bounded internal reports, not proof of external events.",
+            "Do not prescribe motor actions, reward changes, memory writes, or unobserved world facts.",
+            $"Requested candidate kind: {parameters.CandidateKind}.",
+            $"Requested purpose: {parameters.Purpose}.",
+            $"Verified DNNE tick: {grounding.Tick}.",
+            $"Goal: {grounding.BoundGoalKey}; focus: {grounding.SemanticFocus}; need: {grounding.NeedState}; affect: {grounding.AffectiveState}.",
+            $"Language workspace: active={grounding.WorkspaceActive}; confidence={grounding.WorkspaceConfidence:0.00}; working-memory={grounding.WorkingMemoryStability:0.00}.",
+            $"Attention: language={grounding.LanguageAttention:0.00}; confidence={grounding.AttentionConfidence:0.00}.",
+            $"Speech gate: mode={grounding.SpeechMode}; eligible={grounding.SpeechEligible}; confidence={grounding.SpeechConfidence:0.00}.",
+            $"Verified DNNE communication intent (expression only; not a motor directive): active={grounding.CommunicationIntent.Active}; intent={grounding.CommunicationIntent.Intent}; mood={grounding.CommunicationIntent.Mood}; subject={grounding.CommunicationIntent.Subject}; strength={grounding.CommunicationIntent.Strength:0.00}; evidence={grounding.CommunicationIntent.Evidence}.",
+            "Verified DNNE memory excerpts (bounded internal reports, not proof of external events):",
+            ..grounding.MemoryExcerpts.Select(excerpt =>
+                $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})"),
+            $"DNNE evidence label: {grounding.Evidence}."
+        ]);
+
+    private void RecordIssuedDyadPromptLocked(
+        DyadEntityGenerationParameters parameters,
+        string fingerprint,
+        long groundingTick)
+    {
+        var now = DateTimeOffset.UtcNow;
+        RemoveExpiredIssuedDyadPromptsLocked(now);
+        _issuedDyadPrompts[CreateDyadTurnKey(parameters.SessionId, parameters.TurnId)] = new IssuedDyadPrompt(
+            fingerprint,
+            groundingTick,
+            now);
+        while (_issuedDyadPrompts.Count > MaxIssuedDyadPrompts)
+        {
+            var oldest = _issuedDyadPrompts.MinBy(static pair => pair.Value.IssuedAtUtc);
+            _issuedDyadPrompts.Remove(oldest.Key);
+        }
+    }
+
+    private bool TryResolveIssuedDyadPromptLocked(
+        DyadLanguageCandidateProposal proposal,
+        out string reason)
+    {
+        var now = DateTimeOffset.UtcNow;
+        RemoveExpiredIssuedDyadPromptsLocked(now);
+        if (!_issuedDyadPrompts.TryGetValue(
+                CreateDyadTurnKey(proposal.SessionId, proposal.TurnId),
+                out var issued))
+        {
+            reason = "DNNE did not issue a prompt for this session and turn; the candidate cannot be grounded or emitted.";
+            return false;
+        }
+
+        if (!string.Equals(issued.PromptFingerprint, proposal.PromptFingerprint, StringComparison.Ordinal))
+        {
+            reason = "The candidate does not match DNNE's issued prompt fingerprint for this session and turn.";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    private void RemoveExpiredIssuedDyadPromptsLocked(DateTimeOffset now)
+    {
+        var expired = _issuedDyadPrompts
+            .Where(pair => now - pair.Value.IssuedAtUtc > IssuedDyadPromptLifetime)
+            .Select(static pair => pair.Key)
+            .ToArray();
+        foreach (var key in expired)
+        {
+            _issuedDyadPrompts.Remove(key);
+        }
+    }
+
+    private static string CreateDyadTurnKey(string sessionId, string turnId)
+        => sessionId + "\u001f" + turnId;
 
     public IReadOnlyList<DyadLanguageCandidateAuditRecord> GetDyadLanguageCandidateReviews(int limit)
     {
@@ -4459,6 +4562,38 @@ internal sealed class SimulationState
     private static (DyadLanguageCandidateDecision Decision, string Reason) ResolveDyadLanguageCandidateDecision(
         DyadLanguageGroundingSnapshot grounding)
     {
+        if (grounding.NeuronalCircuitObserved)
+        {
+            if (!grounding.NeuronalGroundingAvailable)
+            {
+                return (DyadLanguageCandidateDecision.Deferred, "The observed neuronal language circuit is incomplete; symbolic telemetry cannot replace missing circuit evidence.");
+            }
+
+            if (grounding.IsSleeping)
+            {
+                return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal sleep circuit is active; the candidate remains available for later review.");
+            }
+
+            if (!grounding.NeuronalGrounded || grounding.GroundingConfidence < 0.20f || grounding.Uncertainty > 0.70f)
+            {
+                return (DyadLanguageCandidateDecision.Deferred, "DNNE does not have a sufficiently certain neuronal reference for this candidate.");
+            }
+
+            if (grounding.AttentionChannel != NeuronalLanguageGroundingDecoder.LanguageAttentionChannel)
+            {
+                return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal attention workspace has not selected the language population.");
+            }
+
+            if (!grounding.NeuronalSpeechAuthorized)
+            {
+                return (DyadLanguageCandidateDecision.Deferred, "DNNE's distributed neuronal speech circuit has not authorized emission.");
+            }
+
+            return (
+                DyadLanguageCandidateDecision.AcceptedForEmission,
+                "DNNE's grounded neuronal reference, attention broadcast, and distributed speech circuit authorize this text-only emission.");
+        }
+
         if (grounding.IsSleeping)
         {
             return (DyadLanguageCandidateDecision.Deferred, "DNNE is sleeping; the candidate remains available for later review.");
@@ -4491,6 +4626,11 @@ internal sealed class SimulationState
 
     private DyadLanguageGroundingSnapshot BuildDyadLanguageGroundingSnapshotLocked()
     {
+        if (NeuronalLanguageGrounding.CircuitObserved)
+        {
+            return BuildNeuronalDyadLanguageGroundingSnapshotLocked(NeuronalLanguageGrounding);
+        }
+
         var workspace = CognitiveLanguageWorkspace;
         var speech = SpeechIntention;
         var communicationIntent = BuildDyadCommunicationIntentLocked();
@@ -4515,6 +4655,89 @@ internal sealed class SimulationState
             BuildDyadVerifiedMemoryExcerptsLocked(),
             communicationIntent);
     }
+
+    private DyadLanguageGroundingSnapshot BuildNeuronalDyadLanguageGroundingSnapshotLocked(
+        NeuronalLanguageGroundingDecision grounding)
+    {
+        var attentionSelected = grounding.AttentionChannel == NeuronalLanguageGroundingDecoder.LanguageAttentionChannel;
+        var communicationIntent = new DyadCommunicationIntentSnapshot(
+            grounding.Grounded,
+            grounding.SpeechAuthorized ? "candidate-emission" : "candidate-review",
+            "neuronal-state-unlabelled",
+            grounding.GroundedLabel == "unlabelled"
+                ? $"population-{Math.Max(grounding.PerceptEnsemble, grounding.MemoryEnsemble)}"
+                : grounding.GroundedLabel,
+            (float)grounding.GroundingConfidence,
+            $"{NeuronalLanguageGroundingDecision.Authority}; attention-population={grounding.AttentionChannel}");
+        return new DyadLanguageGroundingSnapshot(
+            Tick,
+            grounding.IsSleeping,
+            grounding.Grounded,
+            (float)grounding.GroundingConfidence,
+            (float)grounding.MemoryConfidence,
+            "unavailable-under-neuronal-authority",
+            grounding.GroundedLabel == "unlabelled"
+                ? $"population-{Math.Max(grounding.PerceptEnsemble, grounding.MemoryEnsemble)}"
+                : grounding.GroundedLabel,
+            "unavailable-under-neuronal-authority",
+            "unavailable-under-neuronal-authority",
+            (float)grounding.LanguageAttention,
+            (float)grounding.AttentionConfidence,
+            grounding.SpeechAuthorized ? "speakable" : "deferred",
+            grounding.SpeechAuthorized,
+            (float)grounding.GroundingConfidence,
+            (float)grounding.ExpressionDrive,
+            (float)Math.Clamp(1.0 - grounding.ExpressionDrive, 0.0, 1.0),
+            $"{NeuronalLanguageGroundingDecision.Authority}; grounded={grounding.Grounded}; attention-selected={attentionSelected}; uncertainty={grounding.Uncertainty:0.000}",
+            BuildDyadNeuronalMemoryExcerptsLocked(grounding),
+            communicationIntent)
+        {
+            Authority = NeuronalLanguageGroundingDecision.Authority,
+            NeuronalCircuitObserved = grounding.CircuitObserved,
+            NeuronalGroundingAvailable = grounding.Available,
+            NeuronalGrounded = grounding.Grounded,
+            PerceptEnsemble = grounding.PerceptEnsemble,
+            MemoryEnsemble = grounding.MemoryEnsemble,
+            AttentionChannel = grounding.AttentionChannel,
+            LanguageCircuitCoverage = (float)grounding.LanguageCircuitCoverage,
+            GroundingConfidence = (float)grounding.GroundingConfidence,
+            Uncertainty = (float)grounding.Uncertainty,
+            NeuronalSpeechAuthorized = grounding.SpeechAuthorized,
+            GroundedLabel = grounding.GroundedLabel,
+            NeuronalSources = grounding.Sources
+        };
+    }
+
+    private IReadOnlyList<DyadVerifiedMemoryExcerpt> BuildDyadNeuronalMemoryExcerptsLocked(
+        NeuronalLanguageGroundingDecision grounding)
+    {
+        var excerpts = new List<DyadVerifiedMemoryExcerpt>(2);
+        if (grounding.PerceptEnsemble >= 0)
+        {
+            excerpts.Add(new DyadVerifiedMemoryExcerpt(
+                "neuronal-percept-reference",
+                grounding.GroundedLabel == "unlabelled"
+                    ? $"Bound percept population {grounding.PerceptEnsemble}."
+                    : $"Bound percept population {grounding.PerceptEnsemble}; post-percept annotation={grounding.GroundedLabel}.",
+                (float)grounding.PerceptConfidence,
+                Tick,
+                NeuronalPerceptDecisionAuthority));
+        }
+
+        if (grounding.MemoryEnsemble >= 0)
+        {
+            excerpts.Add(new DyadVerifiedMemoryExcerpt(
+                "persisted-synaptic-recall",
+                $"Recalled numeric population {grounding.MemoryEnsemble}.",
+                (float)grounding.MemoryConfidence,
+                Tick,
+                NeuronalMemoryDecision.Authority));
+        }
+
+        return excerpts;
+    }
+
+    private const string NeuronalPerceptDecisionAuthority = "DistributedPerceptEnsembleCompetition";
 
     private IReadOnlyList<DyadVerifiedMemoryExcerpt> BuildDyadVerifiedMemoryExcerptsLocked()
     {
@@ -4628,6 +4851,15 @@ internal sealed class SimulationState
         lock (_gate)
         {
             NeuronalMotor = runtime;
+        }
+    }
+
+    public void UpdateNeuronalLanguageGrounding(NeuronalLanguageGroundingDecision grounding)
+    {
+        ArgumentNullException.ThrowIfNull(grounding);
+        lock (_gate)
+        {
+            NeuronalLanguageGrounding = grounding;
         }
     }
 
@@ -22888,6 +23120,7 @@ internal sealed class TickCoordinator(
     NeuronalMemoryRuntime neuronalMemory,
     NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
     NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
+    NeuronalLanguageGroundingRuntime neuronalLanguageGrounding,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23687,9 +23920,18 @@ internal sealed class TickCoordinator(
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
-            neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalMemoryDecision = neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
             var neuronalSleep = neuronalSleepConsolidation.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalLanguage = neuronalLanguageGrounding.Update(
+                tickSignal.Tick,
+                neuronalPercept,
+                neuronalPerception.GetSnapshot().LanguageAnnotations,
+                neuronalMemoryDecision,
+                neuronalAttention,
+                neuronalSleep,
+                processedSnapshots);
+            state.UpdateNeuronalLanguageGrounding(neuronalLanguage);
             var queueFlush = await FlushQueuedDispatchBatchesAsync(
                 tickSignal,
                 state,

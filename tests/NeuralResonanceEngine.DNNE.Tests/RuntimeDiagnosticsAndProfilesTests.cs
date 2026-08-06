@@ -468,6 +468,58 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             static parameter => parameter.ParameterType.Name.Contains("Grammar", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Legacy_Memory_World_Model_And_Dream_State_Is_Not_Public_Or_Persisted()
+    {
+        string[] removedCheckpointProperties =
+        [
+            "WorldModel",
+            "ActionMemory",
+            "ActionCompletionFeedback",
+            "WorldLearningMap",
+            "EpisodicMemory",
+            "UnifiedEventMemory",
+            "SemanticMemory",
+            "DopamineLearning",
+            "DreamConsolidation",
+            "EngramBank",
+            "SchemaBank",
+            "ObjectMemory",
+            "WorldModelTransitions",
+            "ActionMemoryTraces",
+            "WorldLearningMapEntries",
+            "EpisodicMemoryTraces",
+            "SemanticMemoryTraces",
+            "DopamineLearningTraces"
+        ];
+        Assert.All(
+            removedCheckpointProperties,
+            property => Assert.Null(typeof(NetworkStateDocument).GetProperty(property)));
+
+        string[] removedDiagnosticProperties =
+        [
+            "worldModel",
+            "actionMemory",
+            "actionCompletionFeedback",
+            "worldLearningMap",
+            "episodicMemory",
+            "unifiedEventMemory",
+            "semanticMemory",
+            "dopamineLearning",
+            "dreamConsolidation"
+        ];
+        using var diagnostics = SerializeDiagnostics(new SimulationState());
+        Assert.All(
+            removedDiagnosticProperties,
+            property => Assert.False(TryGetProperty(diagnostics.RootElement, property, out _), property));
+
+        var exported = new SimulationState().ExportNetworkState();
+        using var checkpoint = JsonDocument.Parse(JsonSerializer.Serialize(exported));
+        Assert.All(
+            removedCheckpointProperties,
+            property => Assert.False(TryGetProperty(checkpoint.RootElement, property, out _), property));
+    }
+
     private static void AdvanceTicks(SimulationState state, int count)
     {
         for (var i = 0; i < count; i++)

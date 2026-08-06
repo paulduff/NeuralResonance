@@ -200,15 +200,6 @@ app.MapGet("/api/v1/startup-health", (SimulationState state, int? maxNonOkDetail
 app.MapGet("/api/v1/validation", (SimulationState state, int? maxSnapshotAgeTicks, int? maxNonOkServices) =>
     Results.Ok(state.GetValidationSnapshot(maxSnapshotAgeTicks ?? 20, maxNonOkServices ?? 2)));
 app.MapGet("/api/v1/service-health", (SimulationState state) => Results.Ok(state.GetServiceHealthSnapshot()));
-app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
-app.MapGet("/api/v1/world-learning-map", (SimulationState state, int? max) => Results.Ok(state.GetWorldLearningMapSnapshot(max ?? 32)));
-app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeReplay = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-sleep-consolidation",
-    State = state.GetDreamConsolidationSnapshot()
-}));
 app.MapGet("/api/v1/body-schema", (SimulationState state) => Results.Ok(state.GetBodySchemaSnapshot()));
 app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(new
 {
@@ -219,7 +210,6 @@ app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(n
 }));
 app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
 app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.GetBodyPresenceSnapshot()));
-app.MapGet("/api/v1/place-memory", (SimulationState state, int? max) => Results.Ok(state.GetPlaceMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/cerebellum", (SimulationState state) => Results.Ok(state.GetCerebellumSnapshot()));
 app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
 {
@@ -247,16 +237,6 @@ app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cog
 // /api/v1/active-inference: route was registered but GetActiveInferenceSnapshot()
 // is not implemented on SimulationState and no client references this URL. Removed
 // so the engine can build/start; reintroduce alongside a real snapshot method if needed.
-app.MapGet("/api/v1/episodic-memory", (SimulationState state, int? max) => Results.Ok(state.GetEpisodicMemorySnapshot(max ?? 32)));
-app.MapGet("/api/v1/unified-event-memory", (SimulationState state, int? max) => Results.Ok(state.GetUnifiedEventMemorySnapshot(max ?? 32)));
-app.MapGet("/api/v1/semantic-memory", (SimulationState state, int? max) => Results.Ok(state.GetSemanticMemorySnapshot(max ?? 32)));
-app.MapGet("/api/v1/dopamine-learning", (SimulationState state, int? max) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeValuation = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
-    State = state.GetDopamineLearningSnapshot(max ?? 32)
-}));
 app.MapGet("/api/v1/circuit-health", (SimulationState state, int? maxWarnings) => Results.Ok(state.GetCircuitHealthPanelSnapshot(maxWarnings ?? 96)));
 app.MapAdminReasoningRoutes();
 app.MapAdminTelemetryRoutes();
@@ -2266,16 +2246,14 @@ app.MapPost("/api/v1/admin/network/import", async (
         state.MarkSnapshot(document.LatestSnapshot);
     }
 
-    var importedEngrams = document.EngramBank?.Count ?? 0;
     state.AppendOutputLog(
-        $"Network state imported: tick={state.Tick}, simMs={state.SimulationClockMs:0.0}, engrams={importedEngrams}, schema={document.SchemaVersion}, migrated={importReport.Migrated}.");
+        $"Network state imported: tick={state.Tick}, simMs={state.SimulationClockMs:0.0}, schema={document.SchemaVersion}, migrated={importReport.Migrated}.");
     return Results.Ok(new
     {
         Imported = true,
         document.SchemaVersion,
         state.Tick,
         state.SimulationClockMs,
-        Engrams = importedEngrams,
         ImportReport = importReport
     });
 });
@@ -3543,8 +3521,7 @@ internal sealed class SimulationState
         {
             var clamped = NeuromodState.Clamp(neuromodState);
             var memoryBiased = ApplyMemoryControl(clamped, MemoryControl);
-            var dopamineBiased = ApplyDopamineLearningNeuromod(memoryBiased, DopamineLearning);
-            GlobalNeuromodState = ApplySleepStateNeuromod(dopamineBiased, SleepMemory);
+            GlobalNeuromodState = ApplySleepStateNeuromod(memoryBiased, SleepMemory);
             RewardPredictionError = rewardPredictionError;
         }
     }
@@ -7692,7 +7669,6 @@ internal sealed class SimulationState
             }
         }
 
-        ApplyDreamConsolidationLocked(Tick);
     }
 
     private readonly record struct ActionMemoryAggregate(int ProtectedCount, float MeanSuccess);
@@ -8561,7 +8537,7 @@ internal sealed class SimulationState
                 ShelterSafety = environmentalShelterSafety * 0.996f
             };
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(ApplyMemoryControl(GlobalNeuromodState, MemoryControl), DopamineLearning),
+                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
                 SleepMemory);
 
             return new SleepTransitionResult(
@@ -8818,7 +8794,7 @@ internal sealed class SimulationState
 
             MemoryControl = settings;
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(ApplyMemoryControl(GlobalNeuromodState, MemoryControl), DopamineLearning),
+                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
                 SleepMemory);
             return true;
         }
@@ -8853,7 +8829,7 @@ internal sealed class SimulationState
                 WakeInertiaTicksRemaining = wakeInertiaTicksRemaining
             };
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(ApplyMemoryControl(GlobalNeuromodState, MemoryControl), DopamineLearning),
+                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
                 SleepMemory);
             runtime = SleepMemory;
             return true;
@@ -8879,7 +8855,7 @@ internal sealed class SimulationState
                 SleepPressureEnterThreshold = threshold
             };
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(ApplyMemoryControl(GlobalNeuromodState, MemoryControl), DopamineLearning),
+                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
                 SleepMemory);
             runtime = SleepMemory;
             return true;
@@ -9046,7 +9022,7 @@ internal sealed class SimulationState
 
             SleepMemory = ApplySleepProfile(SleepMemory, PerformanceProfileName);
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(ApplyMemoryControl(GlobalNeuromodState, MemoryControl), DopamineLearning),
+                ApplyMemoryControl(GlobalNeuromodState, MemoryControl),
                 SleepMemory);
         }
     }
@@ -9757,56 +9733,6 @@ internal sealed class SimulationState
                 StructureId.M1),
 
             BuildFunctionalCircuitSupportEntry(
-                "semantic_memory",
-                "Semantic cortex",
-                SemanticMemory.Count > 0 || SemanticMemory.SemanticConfidence > 0.15f,
-                ResolveSemanticCircuitEvidenceLocked(tick),
-                "temporal association/parahippocampal/retrosplenial/PPC/PFC semantic binding",
-                StructureId.TemporalAssociation,
-                StructureId.ParahippocampalCortex,
-                StructureId.RetrosplenialCortex,
-                StructureId.Ppc,
-                StructureId.Pfc,
-                StructureId.EntorhinalCortex,
-                StructureId.CA1,
-                StructureId.Subiculum,
-                StructureId.WernickePstgPsts),
-            BuildFunctionalCircuitSupportEntry(
-                "neuronal_episodic_memory",
-                "Neuronal episodic memory",
-                EpisodicMemory.Count > 0,
-                ResolveEpisodicCircuitEvidenceLocked(tick),
-                "EC/DG/CA3/CA2/CA1/subiculum replay with retrosplenial and PFC support",
-                StructureId.EntorhinalCortex,
-                StructureId.DentateGyrus,
-                StructureId.CA3,
-                StructureId.CA2,
-                StructureId.CA1,
-                StructureId.Subiculum,
-                StructureId.Presubiculum,
-                StructureId.Parasubiculum,
-                StructureId.RetrosplenialCortex,
-                StructureId.ParahippocampalCortex,
-                StructureId.PosteriorCingulate,
-                StructureId.Pfc,
-                StructureId.Acc,
-                StructureId.Insula),
-            BuildFunctionalCircuitSupportEntry(
-                "dopamine_learning",
-                "Dopamine learning loop",
-                DopamineLearning.Count > 0 || Math.Abs(DopamineLearning.TeachingSignal) > 0.05f,
-                ResolveDopamineCircuitEvidenceLocked(tick),
-                "VTA/SNc/nucleus accumbens/OFC/habenula reinforcement loop",
-                StructureId.Vta,
-                StructureId.Snc,
-                StructureId.NucleusAccumbens,
-                StructureId.VentralPallidum,
-                StructureId.OrbitofrontalCortex,
-                StructureId.Habenula,
-                StructureId.Striatum,
-                StructureId.Acc,
-                StructureId.Pfc),
-            BuildFunctionalCircuitSupportEntry(
                 "predictive_perception",
                 "Predictive perception",
                 PredictivePerception.Active,
@@ -9913,31 +9839,6 @@ internal sealed class SimulationState
                 StructureId.DeepCerebellarNuclei,
                 StructureId.SpinalCordMotor),
 
-            BuildFunctionalCircuitSupportEntry(
-                "action_completion_feedback",
-                "Action completion feedback",
-                ActionCompletionFeedback.Active,
-                Clamp01(
-                    (GetRecentStructureSpikeSupportLocked(tick, StructureId.Pfc, StructureId.Acc, StructureId.OrbitofrontalCortex) * 0.28f) +
-                    (GetRecentStructureSpikeSupportLocked(tick, StructureId.PremotorCortex, StructureId.Sma, StructureId.M1, StructureId.MotorThalamus) * 0.24f) +
-                    (cerebellarSupport * 0.20f) +
-                    (ResolveDopamineCircuitEvidenceLocked(tick) * 0.16f) +
-                    (GetRecentStructureSpikeSupportLocked(tick, StructureId.Hypothalamus, StructureId.Insula, StructureId.Acc, StructureId.Striatum) * 0.12f)),
-                "PFC/ACC expectation comparison with basal-ganglia credit, cerebellar error, and dopamine teaching",
-                StructureId.Pfc,
-                StructureId.Acc,
-                StructureId.OrbitofrontalCortex,
-                StructureId.Striatum,
-                StructureId.GPe,
-                StructureId.GPi,
-                StructureId.Stn,
-                StructureId.Snr,
-                StructureId.CerebellarVermis,
-                StructureId.DeepCerebellarNuclei,
-                StructureId.InferiorOlive,
-                StructureId.Vta,
-                StructureId.Snc,
-                StructureId.NucleusAccumbens),
             BuildFunctionalCircuitSupportEntry(
                 "cerebellar_prediction",
                 "Cerebellar timing and correction",
@@ -10715,120 +10616,6 @@ internal sealed class SimulationState
         InputGates,
         MemoryControl,
         ConsolidationControl,
-        WorldModel = new
-        {
-            WorldModel.Enabled,
-            WorldModel.ObservationCount,
-            WorldModel.LearnedTransitions,
-            WorldModel.LastActionKey,
-            WorldModel.LastActionSummary,
-            WorldModel.LastObservedDispatchedSpikes,
-            WorldModel.LastObservedActivePathways,
-            WorldModel.LastObservedReward,
-            WorldModel.LastObservedSleepPressure,
-            WorldModel.MeanPredictionError
-        },
-        ActionMemory = new
-        {
-            ActionMemory.Count,
-            ActionMemory.BestActionKey,
-            ActionMemory.BestSuccess,
-            ActionMemory.LastActionKey,
-            ActionMemory.LastOutcome,
-            ActionMemory.LastUpdatedTick,
-            ActionMemory.Top
-        },
-        ActionCompletionFeedback,
-        WorldLearningMap = new
-        {
-            WorldLearningMap.Count,
-            WorldLearningMap.SafePlaces,
-            WorldLearningMap.FoodSources,
-            WorldLearningMap.WeaponSources,
-            WorldLearningMap.ThreatSources,
-            WorldLearningMap.BestShelterKey,
-            WorldLearningMap.BestFoodKey,
-            WorldLearningMap.BestWeaponKey,
-            WorldLearningMap.MostDangerousKey,
-            WorldLearningMap.LastUpdatedTick,
-            WorldLearningMap.Top
-        },
-        EpisodicMemory = new
-        {
-            EpisodicMemory.Count,
-            EpisodicMemory.LastEventType,
-            EpisodicMemory.LastSummary,
-            EpisodicMemory.BestRecallSummary,
-            EpisodicMemory.HippocampalBinding,
-            EpisodicMemory.EntorhinalInput,
-            EpisodicMemory.DentatePatternSeparation,
-            EpisodicMemory.CA3PatternCompletion,
-            EpisodicMemory.CA1Mismatch,
-            EpisodicMemory.SubiculumOutput,
-            EpisodicMemory.RecallConfidence,
-            EpisodicMemory.LastUpdatedTick,
-            EpisodicMemory.Top
-        },
-        UnifiedEventMemory = new
-        {
-            UnifiedEventMemory.Count,
-            UnifiedEventMemory.WorldObjectEvents,
-            UnifiedEventMemory.EnvironmentEvents,
-            UnifiedEventMemory.BodyEvents,
-            UnifiedEventMemory.LanguageEvents,
-            UnifiedEventMemory.ActionEvents,
-            UnifiedEventMemory.RewardEvents,
-            UnifiedEventMemory.RecentEventKey,
-            UnifiedEventMemory.RecentSummary,
-            UnifiedEventMemory.BestRecallSummary,
-            UnifiedEventMemory.ActiveScene,
-            UnifiedEventMemory.EventBinding,
-            UnifiedEventMemory.CrossModalBinding,
-            UnifiedEventMemory.HippocampalIndex,
-            UnifiedEventMemory.PfcRetrievalGate,
-            UnifiedEventMemory.Coverage,
-            UnifiedEventMemory.Confidence,
-            UnifiedEventMemory.LastUpdatedTick,
-            UnifiedEventMemory.Evidence,
-            UnifiedEventMemory.Top
-        },
-        SemanticMemory = new
-        {
-            SemanticMemory.Count,
-            SemanticMemory.DominantConceptKey,
-            SemanticMemory.ActiveCategory,
-            SemanticMemory.DominantMeaning,
-            SemanticMemory.TemporalAssociationBinding,
-            SemanticMemory.ParahippocampalContext,
-            SemanticMemory.RetrosplenialSceneBinding,
-            SemanticMemory.PpcAffordanceBinding,
-            SemanticMemory.PfcConceptControl,
-            SemanticMemory.SemanticConfidence,
-            SemanticMemory.LastUpdatedTick,
-            SemanticMemory.Top
-        },
-        DopamineLearning = new
-        {
-            DopamineLearning.Count,
-            DopamineLearning.LastActionKey,
-            DopamineLearning.LastGoalKey,
-            DopamineLearning.LastConceptKey,
-            DopamineLearning.ExpectedValue,
-            DopamineLearning.ObservedValue,
-            DopamineLearning.RewardPredictionError,
-            DopamineLearning.VtaPhasicDopamine,
-            DopamineLearning.SncActionReinforcement,
-            DopamineLearning.NucleusAccumbensIncentive,
-            DopamineLearning.OrbitofrontalExpectedValue,
-            DopamineLearning.HabenulaNegativeTeaching,
-            DopamineLearning.TeachingSignal,
-            DopamineLearning.LearnedValue,
-            DopamineLearning.AvoidancePenalty,
-            DopamineLearning.Confidence,
-            DopamineLearning.LastUpdatedTick,
-            DopamineLearning.Top
-        },
-        DreamConsolidation,
           BodyState = new
           {
               BodyState.ForwardVelocity,
@@ -11750,15 +11537,6 @@ internal sealed class SimulationState
                 BodyPresence = BodyPresence,
                 LimbicState = LimbicState,
                 EmotionState = EmotionState,
-                WorldModel = WorldModel,
-                ActionMemory = ActionMemory,
-                ActionCompletionFeedback = ActionCompletionFeedback,
-                WorldLearningMap = WorldLearningMap,
-                EpisodicMemory = EpisodicMemory,
-                UnifiedEventMemory = UnifiedEventMemory,
-                SemanticMemory = SemanticMemory,
-                DopamineLearning = DopamineLearning,
-                DreamConsolidation = DreamConsolidation,
                 Cerebellum = Cerebellum,
                 Curriculum = Curriculum,
                 LastSnapshotTick = LastSnapshotTick,
@@ -11792,15 +11570,6 @@ internal sealed class SimulationState
                 document.ServiceTelemetry[pair.Key.ToString()] = pair.Value;
             }
 
-            document.EngramBank.AddRange(_engramBank);
-            document.SchemaBank.AddRange(_schemaBank);
-            document.ObjectMemory.AddRange(_objectMemory.Values);
-            document.WorldModelTransitions.AddRange(_worldModelTransitions.Values);
-            document.ActionMemoryTraces.AddRange(_actionMemory.Values);
-            document.WorldLearningMapEntries.AddRange(_worldLearningMap.Values);
-            document.EpisodicMemoryTraces.AddRange(_episodicMemory.Values);
-            document.SemanticMemoryTraces.AddRange(_semanticMemory.Values);
-            document.DopamineLearningTraces.AddRange(_dopamineLearning.Values);
             document.OutputLog.AddRange(_outputLog);
             document.SpikeLog.AddRange(_spikeLog);
             document.DispatchSpikeTrace.AddRange(_dispatchSpikeTrace);
@@ -11882,15 +11651,6 @@ internal sealed class SimulationState
             var importedBodyPresence = document.BodyPresence ?? BodyPresenceRuntime.Default;
             var importedLimbicState = document.LimbicState ?? LimbicRuntimeState.Default;
             var importedEmotionState = document.EmotionState ?? EmotionRuntimeState.Default;
-            var importedWorldModel = document.WorldModel ?? WorldModelRuntime.Default;
-            var importedActionMemory = document.ActionMemory ?? ActionMemoryRuntime.Default;
-            var importedActionCompletionFeedback = document.ActionCompletionFeedback ?? ActionCompletionFeedbackRuntime.Default;
-            var importedWorldLearningMap = document.WorldLearningMap ?? WorldLearningMapRuntime.Default;
-            var importedEpisodicMemory = document.EpisodicMemory ?? EpisodicMemoryRuntime.Default;
-            var importedUnifiedEventMemory = document.UnifiedEventMemory ?? UnifiedEventMemoryRuntime.Default;
-            var importedSemanticMemory = document.SemanticMemory ?? SemanticMemoryRuntime.Default;
-            var importedDopamineLearning = document.DopamineLearning ?? DopamineLearningRuntime.Default;
-            var importedDreamConsolidation = document.DreamConsolidation ?? DreamConsolidationRuntime.Default;
             var importedCerebellum = document.Cerebellum ?? CerebellumRuntime.Default;
             var importedCurriculum = document.Curriculum ?? CurriculumRuntime.Default;
             var importedNeuromod = document.GlobalNeuromodState ?? new NeuromodState();
@@ -11902,33 +11662,10 @@ internal sealed class SimulationState
             BodyPresence = BodyPresenceRuntime.Normalize(importedBodyPresence);
             LimbicState = importedLimbicState;
             EmotionState = EmotionRuntimeState.Normalize(importedEmotionState);
-            WorldModel = importedWorldModel with
-            {
-                Enabled = importedWorldModel.Enabled,
-                ObservationCount = Math.Max(0, importedWorldModel.ObservationCount),
-                LearnedTransitions = Math.Max(0, importedWorldModel.LearnedTransitions),
-                LastActionKey = string.IsNullOrWhiteSpace(importedWorldModel.LastActionKey) ? "idle" : importedWorldModel.LastActionKey,
-                LastActionSummary = string.IsNullOrWhiteSpace(importedWorldModel.LastActionSummary) ? "idle" : importedWorldModel.LastActionSummary,
-                LastObservedDispatchedSpikes = Math.Max(0, importedWorldModel.LastObservedDispatchedSpikes),
-                LastObservedActivePathways = Math.Max(0, importedWorldModel.LastObservedActivePathways),
-                LastObservedReward = importedWorldModel.LastObservedReward,
-                LastObservedSleepPressure = Math.Clamp(importedWorldModel.LastObservedSleepPressure, 0f, 4f),
-                MeanPredictionError = Math.Clamp(importedWorldModel.MeanPredictionError, 0f, 100f)
-            };
-            ActionMemory = ActionMemoryRuntime.Normalize(importedActionMemory);
-            ActionCompletionFeedback = ActionCompletionFeedbackRuntime.Normalize(importedActionCompletionFeedback);
-            WorldLearningMap = WorldLearningMapRuntime.Normalize(importedWorldLearningMap);
-            EpisodicMemory = EpisodicMemoryRuntime.Normalize(importedEpisodicMemory);
-            UnifiedEventMemory = UnifiedEventMemoryRuntime.Normalize(importedUnifiedEventMemory);
-            SemanticMemory = SemanticMemoryRuntime.Normalize(importedSemanticMemory);
-            DopamineLearning = DopamineLearningRuntime.Normalize(importedDopamineLearning);
-            DreamConsolidation = DreamConsolidationRuntime.Normalize(importedDreamConsolidation);
             Cerebellum = CerebellumRuntime.Normalize(importedCerebellum);
             RestoreCurriculumFromSnapshot(importedCurriculum);
             GlobalNeuromodState = ApplySleepStateNeuromod(
-                ApplyDopamineLearningNeuromod(
-                    ApplyMemoryControl(NeuromodState.Clamp(importedNeuromod), MemoryControl),
-                    DopamineLearning),
+                ApplyMemoryControl(NeuromodState.Clamp(importedNeuromod), MemoryControl),
                 SleepMemory);
             RewardPredictionError = document.RewardPredictionError;
 
@@ -11998,128 +11735,32 @@ internal sealed class SimulationState
                 }
             }
 
-            var importedEngrams = document.EngramBank ?? [];
             _engramBank.Clear();
-            var maxEngramsToRestore = Math.Max(SleepMemory.MaxEngrams * 4, 512);
-            if (importedEngrams.Count > maxEngramsToRestore)
-            {
-                var skip = importedEngrams.Count - maxEngramsToRestore;
-                importedEngrams = importedEngrams.Skip(skip).ToList();
-            }
-
-            foreach (var engram in importedEngrams)
-            {
-                _engramBank.Add(engram with
-                {
-                    Salience = Math.Clamp(engram.Salience, 0f, 100f)
-                });
-            }
-
-            var importedSchemas = document.SchemaBank ?? [];
             _schemaBank.Clear();
-            var maxSchemasToRestore = Math.Max(SleepMemory.MaxEngrams * 2, 1024);
-            if (importedSchemas.Count > maxSchemasToRestore)
-            {
-                var skip = importedSchemas.Count - maxSchemasToRestore;
-                importedSchemas = importedSchemas.Skip(skip).ToList();
-            }
-
-            foreach (var schema in importedSchemas)
-            {
-                _schemaBank.Add(schema with
-                {
-                    SourceHemisphere = NormalizeHemisphereToken(schema.SourceHemisphere),
-                    TargetHemisphere = NormalizeHemisphereToken(schema.TargetHemisphere),
-                    HemisphereRelation = DescribeHemisphereRelation(schema.SourceHemisphere, schema.TargetHemisphere),
-                    MeanSalience = Math.Clamp(schema.MeanSalience, 0f, 100f),
-                    MeanVesicleQuanta = Math.Clamp(schema.MeanVesicleQuanta, 0.05f, 16f),
-                    MeanReuptakeRate = Math.Clamp(schema.MeanReuptakeRate, 0.5f, 120f),
-                    Strength = Math.Clamp(schema.Strength, 0.05f, 20f),
-                    NoveltyScore = Math.Clamp(schema.NoveltyScore, 0.04f, 1f),
-                    CaptureCount = Math.Max(1, schema.CaptureCount),
-                    ReplaySupportCount = Math.Max(0, schema.ReplaySupportCount),
-                    LastCapturedTick = Math.Max(0, schema.LastCapturedTick),
-                    LastReplayTick = Math.Max(0, schema.LastReplayTick)
-                });
-            }
-
-            var importedObjectMemory = document.ObjectMemory ?? [];
             _objectMemory.Clear();
-            if (importedObjectMemory.Count > MaxObjectMemoryEntries)
-            {
-                var skip = importedObjectMemory.Count - MaxObjectMemoryEntries;
-                importedObjectMemory = importedObjectMemory.Skip(skip).ToList();
-            }
-
-            foreach (var trace in importedObjectMemory)
-            {
-                var keyCandidate = string.IsNullOrWhiteSpace(trace.ObjectId) ? trace.Label : trace.ObjectId;
-                var key = Regex.Replace((keyCandidate ?? "object_unknown").Trim().ToLowerInvariant(), @"[^a-z0-9_]+", "_").Trim('_');
-                if (string.IsNullOrWhiteSpace(key))
-                {
-                    key = "object_unknown";
-                }
-                var label = string.IsNullOrWhiteSpace(trace.Label) ? key : trace.Label.Trim();
-                if (label.Length > 96)
-                {
-                    label = label[..96];
-                }
-
-                var dominantHemisphere = string.IsNullOrWhiteSpace(trace.DominantHemisphere)
-                    ? "M"
-                    : trace.DominantHemisphere.Trim().ToUpperInvariant();
-                if (dominantHemisphere is not ("L" or "R" or "M"))
-                {
-                    dominantHemisphere = "M";
-                }
-
-                _objectMemory[key] = trace with
-                {
-                    ObjectId = key,
-                    Label = label,
-                    DominantHemisphere = dominantHemisphere,
-                    Familiarity = Math.Clamp(trace.Familiarity, 0f, 1f),
-                    SalienceEma = Math.Clamp(trace.SalienceEma, 0f, 1f),
-                    ConfidenceEma = Math.Clamp(trace.ConfidenceEma, 0f, 1f),
-                    IntensityEma = Math.Clamp(trace.IntensityEma, 0f, 5f),
-                    SeenCount = Math.Max(0, trace.SeenCount),
-                    LeftEvidence = Math.Max(0, trace.LeftEvidence),
-                    RightEvidence = Math.Max(0, trace.RightEvidence),
-                    MidEvidence = Math.Max(0, trace.MidEvidence),
-                    LastSeenTick = Math.Max(0, trace.LastSeenTick),
-                    LastSeenSimulationMs = Math.Max(0.0, trace.LastSeenSimulationMs)
-                };
-            }
-
-            ReplaceWorldModelTransitions(document.WorldModelTransitions ?? []);
-            ReplaceActionMemory(document.ActionMemoryTraces ?? []);
-            ReplaceWorldLearningMap(document.WorldLearningMapEntries ?? []);
-            ReplaceEpisodicMemory(document.EpisodicMemoryTraces ?? []);
-            ReplaceSemanticMemory(document.SemanticMemoryTraces ?? []);
-            ReplaceDopamineLearning(document.DopamineLearningTraces ?? []);
-            if (_worldLearningMap.Count == 0 && _objectMemory.Count > 0)
-            {
-                foreach (var trace in _objectMemory.Values.OrderByDescending(t => t.LastSeenTick).Take(64))
-                {
-                    UpsertWorldLearningMapFromObjectLocked(trace, Tick, replayReinforcement: false);
-                }
-            }
-            WorldModel = WorldModel with
-            {
-                LearnedTransitions = _worldModelTransitions.Count
-            };
-            RefreshActionMemorySnapshotLocked(Tick);
-            RefreshWorldLearningMapSnapshotLocked(Tick);
-            RefreshPersistentPerceptsLocked(Tick);
-            RefreshEpisodicMemorySnapshotLocked(Tick);
-            UpdateSemanticMemoryLocked(Tick);
-            RefreshDopamineLearningSnapshotLocked(Tick);
-            _worldModelHasPreviousObservation = WorldModel.ObservationCount > 0;
-            _worldModelPendingActionKey = string.IsNullOrWhiteSpace(WorldModel.LastActionKey) ? "idle" : WorldModel.LastActionKey;
+            _worldModelTransitions.Clear();
+            _actionMemory.Clear();
+            _worldLearningMap.Clear();
+            _episodicMemory.Clear();
+            _semanticMemory.Clear();
+            _dopamineLearning.Clear();
+            WorldModel = WorldModelRuntime.Default;
+            ActionMemory = ActionMemoryRuntime.Default;
+            ActionCompletionFeedback = ActionCompletionFeedbackRuntime.Default;
+            WorldLearningMap = WorldLearningMapRuntime.Default;
+            EpisodicMemory = EpisodicMemoryRuntime.Default;
+            UnifiedEventMemory = UnifiedEventMemoryRuntime.Default;
+            SemanticMemory = SemanticMemoryRuntime.Default;
+            DopamineLearning = DopamineLearningRuntime.Default;
+            DreamConsolidation = DreamConsolidationRuntime.Default;
+            _worldModelHasPreviousObservation = false;
+            _worldModelPendingActionKey = "idle";
             _worldModelPendingSource = StructureId.Thalamus;
             _worldModelPendingTarget = StructureId.Thalamus;
             _worldModelPendingNt = NTEnum.GLUTAMATE;
             _worldModelPendingFeedback = false;
+
+
 
             ReplaceRuntimeLogQueue(_outputLog, document.OutputLog ?? []);
             ReplaceRuntimeLogQueue(_spikeLog, document.SpikeLog ?? []);
@@ -25077,15 +24718,6 @@ internal sealed class NetworkStateDocument
     public BodyPresenceRuntime? BodyPresence { get; set; } = BodyPresenceRuntime.Default;
     public LimbicRuntimeState LimbicState { get; set; } = LimbicRuntimeState.Default;
     public EmotionRuntimeState? EmotionState { get; set; } = EmotionRuntimeState.Default;
-    public WorldModelRuntime WorldModel { get; set; } = WorldModelRuntime.Default;
-    public ActionMemoryRuntime? ActionMemory { get; set; } = ActionMemoryRuntime.Default;
-    public ActionCompletionFeedbackRuntime? ActionCompletionFeedback { get; set; } = ActionCompletionFeedbackRuntime.Default;
-    public WorldLearningMapRuntime? WorldLearningMap { get; set; } = WorldLearningMapRuntime.Default;
-    public EpisodicMemoryRuntime? EpisodicMemory { get; set; } = EpisodicMemoryRuntime.Default;
-    public UnifiedEventMemoryRuntime? UnifiedEventMemory { get; set; } = UnifiedEventMemoryRuntime.Default;
-    public SemanticMemoryRuntime? SemanticMemory { get; set; } = SemanticMemoryRuntime.Default;
-    public DopamineLearningRuntime? DopamineLearning { get; set; } = DopamineLearningRuntime.Default;
-    public DreamConsolidationRuntime? DreamConsolidation { get; set; } = DreamConsolidationRuntime.Default;
     public CerebellumRuntime? Cerebellum { get; set; } = CerebellumRuntime.Default;
     public CurriculumRuntime Curriculum { get; set; } = CurriculumRuntime.Default;
     public long LastSnapshotTick { get; set; }
@@ -25098,15 +24730,6 @@ internal sealed class NetworkStateDocument
     public Dictionary<string, List<SynapticConnection>> ConnectivityMap { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, ServiceRuntimeTelemetry> ServiceTelemetry { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public TransportRuntimeStats? TransportStats { get; set; } = TransportRuntimeStats.Empty;
-    public List<MemoryEngram> EngramBank { get; set; } = [];
-    public List<RelationalSchema> SchemaBank { get; set; } = [];
-    public List<ObjectMemoryTrace> ObjectMemory { get; set; } = [];
-    public List<WorldModelTransition> WorldModelTransitions { get; set; } = [];
-    public List<ActionMemoryTrace> ActionMemoryTraces { get; set; } = [];
-    public List<WorldLearningMapEntry> WorldLearningMapEntries { get; set; } = [];
-    public List<EpisodicMemoryTrace> EpisodicMemoryTraces { get; set; } = [];
-    public List<SemanticMemoryTrace> SemanticMemoryTraces { get; set; } = [];
-    public List<DopamineLearningTrace> DopamineLearningTraces { get; set; } = [];
     public List<RuntimeLogEntry> OutputLog { get; set; } = [];
     public List<RuntimeLogEntry> SpikeLog { get; set; } = [];
     public List<DispatchedSpikeTrace> DispatchSpikeTrace { get; set; } = [];

@@ -259,6 +259,13 @@ functional audit reports only measured spike support and dedicated neuronal
 decoder decisions for those domains. A missing Entity or incomplete neuronal
 language circuit produces silence rather than fallback narration.
 
+Entry 084 removes the public and persisted authority of the conventional
+memory, world-model, dopamine-value, and dream stores. They no longer appear in
+the state API, functional audit, or checkpoints; they no longer bias the
+global neuromodulator wire; and handcrafted dream replay is no longer invoked.
+Durable memory and replay authority now belongs to structure synapses and the
+dedicated neuronal memory and sleep-consolidation decoders.
+
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 
 No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.

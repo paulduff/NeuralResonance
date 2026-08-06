@@ -569,6 +569,81 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
+    public void ServicePrioritizesDirectionalWithdrawalForPainfulWallContact()
+    {
+        using var service = CreateService();
+        var profile = CreateBodyStateProfile();
+        service.PostAddMotorDrive(100.0, 100.0);
+        WaitForSignal(service, static signal => signal.LeftMotorDrive >= 100.0);
+        service.PostBodyInput(
+            new AvatarBodyTelemetry(
+                ForwardVelocity: 0.8,
+                TurnRateDeg: 0.0,
+                ContactLevel: 0.95,
+                LeftMotorDrive: 100.0,
+                RightMotorDrive: 100.0,
+                TactileFront: 0.72,
+                TactileLeft: 0.94,
+                TactileRight: 0.08,
+                PainLevel: 0.62,
+                Health: 0.72),
+            profile);
+
+        var action = WaitForActionOutput(service, static item => item.Reflex.Name == "withdraw_contact");
+
+        Assert.Equal("contact", action.Reflex.Target);
+        Assert.True(action.Reflex.TurnBiasDeg > 50.0);
+        Assert.True(action.Reflex.ForwardScale < 0.20);
+        Assert.True(action.Movement.TurnRateDeg > 0.0);
+        Assert.True(action.Movement.ForwardSpeed < service.ComputeMotorOutput().ForwardSpeed);
+    }
+
+    [Fact]
+    public void ServiceContinuesExistingTurnForSymmetricHeadOnContact()
+    {
+        using var service = CreateService();
+        service.PostBodyInput(
+            new AvatarBodyTelemetry(
+                ForwardVelocity: 0.4,
+                TurnRateDeg: -18.0,
+                ContactLevel: 0.90,
+                LeftMotorDrive: 40.0,
+                RightMotorDrive: 40.0,
+                TactileFront: 0.96,
+                TactileLeft: 0.48,
+                TactileRight: 0.48,
+                PainLevel: 0.42),
+            CreateBodyStateProfile());
+
+        var reflex = WaitForReflexOutput(service, static item => item.Name == "withdraw_contact");
+
+        Assert.True(reflex.TurnBiasDeg < 0.0);
+    }
+
+    [Fact]
+    public void ServiceDoesNotWithdrawFromNearbyWallWithoutContact()
+    {
+        using var service = CreateService(new AvatarServiceClockOptions(Enabled: false));
+        service.PostBodyInput(
+            new AvatarBodyTelemetry(
+                ForwardVelocity: 0.4,
+                TurnRateDeg: 0.0,
+                ContactLevel: 0.02,
+                LeftMotorDrive: 40.0,
+                RightMotorDrive: 40.0,
+                TactileFront: 0.82,
+                TactileLeft: 0.72,
+                TactileRight: 0.04,
+                PainLevel: 0.0),
+            CreateBodyStateProfile());
+        WaitForBodyInput(service);
+
+        var action = service.PublishActionOutput();
+
+        Assert.Equal("none", action.Reflex.Name);
+    }
+
+    [Fact]
     public void ServicePublishesAffectiveWeather()
     {
         using var service = CreateService();
@@ -634,6 +709,19 @@ public sealed class AvatarServiceTests
             IdleMotorFallbackTicks: int.MaxValue),
             name: "NRE.Tests.AvatarService",
             clockOptions: clockOptions);
+
+    private static AvatarBodyStateProfile CreateBodyStateProfile()
+        => new(
+            MaxForwardSpeed: 3.2,
+            MaxTurnRateDeg: 220.0,
+            BaseIntensity: 0.2,
+            MotionIntensityWeight: 0.5,
+            TurnIntensityWeight: 0.1,
+            ContactIntensityWeight: 0.4,
+            BaseBurstCount: 6.0,
+            MotionBurstWeight: 8.0,
+            TurnBurstWeight: 3.0,
+            ContactBurstWeight: 6.0);
 
     private static AvatarNervousSystemBodyState AwakeBody { get; } = new(
         IsSleeping: false,

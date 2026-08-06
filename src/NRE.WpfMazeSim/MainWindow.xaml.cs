@@ -214,6 +214,7 @@ public partial class MainWindow : Window
     private double _lastFrontProximity;
     private double _lastLeftProximity;
     private double _lastRightProximity;
+    private string? _collisionEscapeHemisphere;
     private int _checkpointActivations;
     private string _lastMazeEvent = "-";
     private string _limbicStage = "unknown";
@@ -1662,6 +1663,8 @@ public partial class MainWindow : Window
             _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, bodyTurnRateDeg, dt);
         }
 
+        UpdateDirectionalWallProximity();
+
         if (movingForward || navigationTurning)
         {
             _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
@@ -1705,6 +1708,7 @@ public partial class MainWindow : Window
         }
 
         UpdateProgressAndRecoverIfStuck(previousX, previousZ, collisionDetected, slidAlongWall);
+        UpdateDirectionalWallProximity();
         var movedDistance = Math.Sqrt(DistanceSquared(previousX, previousZ, _avatarX, _avatarZ));
         _totalDistanceTravelled += movedDistance;
 
@@ -1930,7 +1934,7 @@ public partial class MainWindow : Window
         QueueOutcomeInput(new AvatarOutcomeTelemetry(PainLevel: slidAlongWall ? 0.18 : 0.32, DamageLevel: slidAlongWall ? 0.06 : 0.12, EffortCost: 0.22), force: true);
 
         SetMazeEvent($"Wall impact #{_wallImpacts}: score -{scorePenalty}");
-        TriggerOrientingStimulus("wall-impact", preferOppositeTurn: slidAlongWall, severeImpact: !slidAlongWall);
+        TriggerOrientingStimulus("wall-impact", severeImpact: !slidAlongWall);
     }
 
     private void UpdateProgressAndRecoverIfStuck(double previousX, double previousZ, bool collisionDetected, bool slidAlongWall)
@@ -1941,6 +1945,10 @@ public partial class MainWindow : Window
         {
             _lastProgressUtc = now;
             _consecutiveWallContacts = 0;
+            if (!collisionDetected)
+            {
+                _collisionEscapeHemisphere = null;
+            }
             return;
         }
 
@@ -1950,7 +1958,7 @@ public partial class MainWindow : Window
             var threshold = slidAlongWall ? 10 : 6;
             if (_consecutiveWallContacts >= threshold)
             {
-                TriggerOrientingStimulus("wall-trap recovery", preferOppositeTurn: !slidAlongWall, severeImpact: true);
+                TriggerOrientingStimulus("wall-trap recovery", severeImpact: true);
                 _consecutiveWallContacts = 0;
             }
 
@@ -1960,7 +1968,7 @@ public partial class MainWindow : Window
         if (now - _lastProgressUtc > NoProgressRecoveryTimeout)
         {
             var severe = (now - _lastProgressUtc).TotalSeconds >= HardStuckTimeoutSec;
-            TriggerOrientingStimulus("no-progress recovery", preferOppositeTurn: false, severeImpact: severe);
+            TriggerOrientingStimulus("no-progress recovery", severeImpact: severe);
             _lastProgressUtc = now;
             _consecutiveWallContacts = 0;
         }
@@ -1981,7 +1989,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        TriggerOrientingStimulus("collision burst recovery", preferOppositeTurn: !slidAlongWall, severeImpact: true);
+        TriggerOrientingStimulus("collision burst recovery", severeImpact: true);
         _recentWallCollisionUtc.Clear();
     }
 
@@ -2143,7 +2151,7 @@ public partial class MainWindow : Window
         NavigationStatusText.Text = status;
     }
 
-    private void TriggerOrientingStimulus(string reason, bool preferOppositeTurn, bool severeImpact)
+    private void TriggerOrientingStimulus(string reason, bool severeImpact)
     {
         var now = DateTime.UtcNow;
         var cooldown = GetEscapeReflexCooldown();
@@ -2156,18 +2164,12 @@ public partial class MainWindow : Window
         _stuckRecoveries++;
         var aggressiveness = GetEscapeAggressiveness();
 
-        var turnSign = _lastTurnRateDeg >= 0.0 ? 1.0 : -1.0;
-        if (preferOppositeTurn)
-        {
-            turnSign *= -1.0;
-        }
-
-        if ((_stuckRecoveries & 1) == 0)
-        {
-            turnSign *= -1.0;
-        }
-
-        var hemisphere = turnSign >= 0.0 ? "R" : "L";
+        var hemisphere = AvatarWallSensing.ResolveEscapeHemisphere(
+            _collisionEscapeHemisphere,
+            _lastLeftProximity,
+            _lastRightProximity,
+            _lastTurnRateDeg);
+        _collisionEscapeHemisphere = hemisphere;
         var intensity = Math.Clamp(0.85 + (0.35 * aggressiveness) + (severeImpact ? 0.25 : 0.0), 0.20, 3.50);
         var burstCount = Math.Clamp((int)Math.Round(10 + (aggressiveness * 6.0) + (severeImpact ? 6.0 : 0.0) + (_consecutiveWallContacts * 0.8)), 6, 48);
 
@@ -2642,6 +2644,20 @@ public partial class MainWindow : Window
         AddExtraMazeOpenings();
         PlaceMazeEndpoints();
         BuildEntityCellSets();
+    }
+
+    private void UpdateDirectionalWallProximity()
+    {
+        var headingRad = _avatarHeadingDeg * Math.PI / 180.0;
+        var sideAngleRad = WallProbeSideAngleDeg * Math.PI / 180.0;
+        var front = TraceVisionRay(Math.Sin(headingRad), Math.Cos(headingRad), WallProbeRange);
+        var left = TraceVisionRay(Math.Sin(headingRad - sideAngleRad), Math.Cos(headingRad - sideAngleRad), WallProbeRange);
+        var right = TraceVisionRay(Math.Sin(headingRad + sideAngleRad), Math.Cos(headingRad + sideAngleRad), WallProbeRange);
+
+        _lastFrontProximity = AvatarWallSensing.ProximityFromRay(front.HitWall, front.Distance, AvatarRadius, WallProbeRange);
+        _lastLeftProximity = AvatarWallSensing.ProximityFromRay(left.HitWall, left.Distance, AvatarRadius, WallProbeRange);
+        _lastRightProximity = AvatarWallSensing.ProximityFromRay(right.HitWall, right.Distance, AvatarRadius, WallProbeRange);
+        _lastWallProximity = Math.Max(_lastFrontProximity, Math.Max(_lastLeftProximity, _lastRightProximity));
     }
 
     private static int ResolveMazeSeed()
@@ -3384,6 +3400,7 @@ public partial class MainWindow : Window
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
+        _collisionEscapeHemisphere = null;
         _recentWallCollisionUtc.Clear();
         _recentWallImpactTicks.Clear();
         if (logMessage)
@@ -3406,6 +3423,7 @@ public partial class MainWindow : Window
         _lastFrontProximity = 0.0;
         _lastLeftProximity = 0.0;
         _lastRightProximity = 0.0;
+        _collisionEscapeHemisphere = null;
         _checkpointActivations = 0;
         _lastMazeEvent = "-";
         _lastHazardDamageUtc = DateTime.MinValue;

@@ -1046,6 +1046,32 @@ public sealed class AvatarService : IDisposable
         if (memory.LastBodyState is AvatarBodyStateInput body)
         {
             var telemetry = body.Telemetry;
+            // Directional tactile channels may report nearby surfaces before
+            // impact. ContactLevel is the explicit gate; tactile asymmetry
+            // selects the withdrawal direction after contact is established.
+            var contact = Math.Clamp(telemetry.ContactLevel, 0.0, 1.0);
+            if (contact >= 0.35)
+            {
+                var intensity = Math.Clamp(Math.Max(contact, telemetry.PainLevel), 0.0, 1.0);
+                var sideBias = telemetry.TactileLeft - telemetry.TactileRight;
+                var turnBias = Math.Clamp(sideBias * 70.0, -70.0, 70.0);
+                if (Math.Abs(turnBias) < 8.0 && telemetry.TactileFront >= 0.35)
+                {
+                    // A symmetric head-on impact still needs one stable escape
+                    // side. Continue an existing turn; otherwise break symmetry
+                    // deterministically until fresh tactile input says otherwise.
+                    turnBias = telemetry.TurnRateDeg < -4.0 ? -55.0 : 55.0;
+                }
+
+                return new AvatarReflexOutput(
+                    Name: "withdraw_contact",
+                    Intensity: intensity,
+                    ForwardScale: Math.Clamp(1.0 - (intensity * 0.90), 0.04, 1.0),
+                    TurnBiasDeg: turnBias,
+                    Target: "contact",
+                    EmittedUnixMs: emittedUnixMs);
+            }
+
             if (telemetry.PainLevel >= 0.35)
             {
                 var intensity = Math.Clamp(telemetry.PainLevel, 0.0, 1.0);
@@ -1055,20 +1081,6 @@ public sealed class AvatarService : IDisposable
                     ForwardScale: Math.Clamp(1.0 - (intensity * 0.85), 0.05, 1.0),
                     TurnBiasDeg: 0.0,
                     Target: "pain",
-                    EmittedUnixMs: emittedUnixMs);
-            }
-
-            if (telemetry.ContactLevel >= 0.35)
-            {
-                var intensity = Math.Clamp(telemetry.ContactLevel, 0.0, 1.0);
-                var leftBias = telemetry.TactileLeft - telemetry.TactileRight;
-                var turnBias = Math.Clamp(leftBias * 55.0, -55.0, 55.0);
-                return new AvatarReflexOutput(
-                    Name: "brace",
-                    Intensity: intensity,
-                    ForwardScale: Math.Clamp(1.0 - (intensity * 0.65), 0.12, 1.0),
-                    TurnBiasDeg: turnBias,
-                    Target: "contact",
                     EmittedUnixMs: emittedUnixMs);
             }
 

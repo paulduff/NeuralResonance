@@ -314,7 +314,10 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     [Theory]
     [InlineData("/api/v1/predictive-perception")]
     [InlineData("/api/v1/persistent-percepts")]
-    public async Task Legacy_Perception_Endpoints_Are_Removed(string path)
+    [InlineData("/api/v1/prefrontal-working-memory")]
+    [InlineData("/api/v1/consciousness-rhythm")]
+    [InlineData("/api/v1/global-workspace")]
+    public async Task Legacy_Cognition_Endpoints_Are_Removed(string path)
     {
         using var response = await _fixture.Client.GetAsync(path);
 

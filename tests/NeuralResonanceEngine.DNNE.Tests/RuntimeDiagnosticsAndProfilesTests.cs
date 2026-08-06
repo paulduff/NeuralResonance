@@ -288,131 +288,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
-    public void Biological_Attention_State_Is_Exposed_In_Diagnostics()
-    {
-        var state = new SimulationState();
-        state.UpdateAttentionState(new BiologicalAttentionRuntime(
-            Visual: 0.08f,
-            Auditory: 0.06f,
-            Somatosensory: 0.08f,
-            Interoceptive: 0.48f,
-            Language: 0.04f,
-            Memory: 0.15f,
-            Motor: 0.11f,
-            DominantChannel: "interoceptive",
-            FocusConfidence: 0.72f,
-            Salience: 0.84f,
-            ThalamicRelayGain: 0.62f,
-            TrnInhibition: 0.58f,
-            BasalForebrainGain: 0.66f,
-            SensoryBias: new AttentionVector(0.12f, 0.08f, 0.16f, 0.64f),
-            LastSwitchTick: 42,
-            HoldTicksRemaining: 7));
-
-        using var document = SerializeDiagnostics(state);
-        var attention = GetObject(document.RootElement, "attentionState");
-        var channels = GetObject(attention, "channels");
-        var sensoryBias = GetObject(attention, "sensoryBias");
-
-        Assert.Equal("interoceptive", GetString(attention, "dominantChannel"));
-        Assert.True(GetSingle(channels, "interoceptive") > GetSingle(channels, "visual"));
-        Assert.True(GetSingle(sensoryBias, "interoceptive") > GetSingle(sensoryBias, "visual"));
-        Assert.True(GetSingle(attention, "trnInhibition") > 0.50f);
-    }
-
-    [Fact]
-    public void Biological_Attention_Normalization_Preserves_A_Single_Biased_Sensory_Vector()
-    {
-        var normalized = BiologicalAttentionRuntime.Normalize(new BiologicalAttentionRuntime(
-            Visual: 0.2f,
-            Auditory: 0.2f,
-            Somatosensory: 0.2f,
-            Interoceptive: 0.2f,
-            Language: 0.1f,
-            Memory: 0.05f,
-            Motor: 0.05f,
-            DominantChannel: "",
-            FocusConfidence: 2.0f,
-            Salience: 2.0f,
-            ThalamicRelayGain: 2.0f,
-            TrnInhibition: 2.0f,
-            BasalForebrainGain: 2.0f,
-            SensoryBias: new AttentionVector(2.0f, 1.0f, 1.0f, 0.0f),
-            LastSwitchTick: -10,
-            HoldTicksRemaining: -1));
-
-        var sensorySum = normalized.SensoryBias.Visual +
-                         normalized.SensoryBias.Auditory +
-                         normalized.SensoryBias.Somatosensory +
-                         normalized.SensoryBias.Interoceptive;
-
-        Assert.Equal(1.0f, sensorySum, precision: 5);
-        Assert.InRange(normalized.FocusConfidence, 0.0f, 1.0f);
-        Assert.InRange(normalized.TrnInhibition, 0.0f, 1.0f);
-        Assert.True(normalized.LastSwitchTick >= 0);
-        Assert.True(normalized.HoldTicksRemaining >= 0);
-    }
-
-    [Fact]
-    public void Predictive_Perception_Biases_Attention_Toward_Unexpected_Channel()
-    {
-        var snapshots = new[]
-        {
-            MakeSnapshot(StructureId.A1, meanFiringRateHz: 40f)
-        };
-        var predictive = PredictivePerceptionRuntime.Normalize(PredictivePerceptionRuntime.Default with
-        {
-            Active = true,
-            LastChannel = "auditory",
-            LastCue = "bear:growl",
-            InputSource = "world",
-            AuditoryPrediction = 0.12f,
-            AuditoryObservation = 0.92f,
-            PredictionError = 0.80f,
-            Surprise = 0.86f,
-            Novelty = 0.74f,
-            Confidence = 0.88f,
-            LocusCoeruleusAlert = 0.82f,
-            HippocampalEncodingGate = 0.76f,
-            AccConflictSignal = 0.68f,
-            SensoryBias = new AttentionVector(0.05f, 0.85f, 0.05f, 0.05f),
-            LastUpdatedTick = 12
-        });
-
-        var baseline = ComputeAttentionForTest(
-            tick: 20,
-            snapshots,
-            new Dictionary<(StructureId Source, StructureId Target, NTEnum Nt), int>(),
-            BiologicalAttentionRuntime.Default,
-            NeuronalVisualAttentionDecision.Unavailable,
-            PredictivePerceptionRuntime.Default,
-            LimbicRuntimeState.Default,
-            SleepMemoryRuntime.Default,
-            EnvironmentalStateRuntime.Default,
-            BodyStateRuntime.Default,
-            LanguageIntentRuntime.Default,
-            new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f));
-        var withPredictionError = ComputeAttentionForTest(
-            tick: 20,
-            snapshots,
-            new Dictionary<(StructureId Source, StructureId Target, NTEnum Nt), int>(),
-            BiologicalAttentionRuntime.Default,
-            NeuronalVisualAttentionDecision.Unavailable,
-            predictive,
-            LimbicRuntimeState.Default,
-            SleepMemoryRuntime.Default,
-            EnvironmentalStateRuntime.Default,
-            BodyStateRuntime.Default,
-            LanguageIntentRuntime.Default,
-            new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f));
-
-        Assert.True(withPredictionError.Auditory > baseline.Auditory);
-        Assert.True(withPredictionError.Memory > baseline.Memory);
-        Assert.True(withPredictionError.Salience > baseline.Salience);
-        Assert.True(withPredictionError.SensoryBias.Auditory > baseline.SensoryBias.Auditory);
-    }
-
-    [Fact]
     public void Legacy_Perception_Writers_Diagnostics_And_Checkpoint_State_Are_Absent()
     {
         Assert.Null(typeof(SimulationState).GetMethod("ObservePredictivePerception"));
@@ -426,44 +301,38 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
-    public void Consciousness_Rhythm_Selects_Survival_Spotlight_And_Gates_Workspace()
+    public void Legacy_Attention_And_Workspace_Authority_Is_Absent()
     {
-        var state = new SimulationState();
-        state.UpdateAttentionState(new BiologicalAttentionRuntime(
-            Visual: 0.42f,
-            Auditory: 0.16f,
-            Somatosensory: 0.12f,
-            Interoceptive: 0.10f,
-            Language: 0.05f,
-            Memory: 0.05f,
-            Motor: 0.10f,
-            DominantChannel: "visual",
-            FocusConfidence: 0.78f,
-            Salience: 0.88f,
-            ThalamicRelayGain: 0.72f,
-            TrnInhibition: 0.18f,
-            BasalForebrainGain: 0.76f,
-            SensoryBias: new AttentionVector(0.58f, 0.16f, 0.12f, 0.14f),
-            LastSwitchTick: 0,
-            HoldTicksRemaining: 8));
-        state.UpdateLimbicState(MakeLimbic(tired: 0.10f, interoceptive: 0.12f, threat: 0.86f, aversive: 0.76f));
+        const System.Reflection.BindingFlags allMethods =
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic;
 
-        DriveCognition(state, 8);
+        Assert.Null(typeof(SimulationState).GetMethod("UpdateAttentionState", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetAttentionSnapshot", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetPrefrontalWorkingMemorySnapshot", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetConsciousnessRhythmSnapshot", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("GetGlobalWorkspaceSnapshot", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("UpdatePrefrontalWorkingMemoryLocked", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("UpdateConsciousnessRhythmLocked", allMethods));
+        Assert.Null(typeof(SimulationState).GetMethod("UpdateGlobalWorkspaceLocked", allMethods));
 
-        using var document = SerializeDiagnostics(state);
-        var rhythm = GetObject(document.RootElement, "consciousnessRhythm");
-        var workspace = GetObject(document.RootElement, "globalWorkspace");
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("GlobalAttentionBias"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("AttentionState"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("PrefrontalWorkingMemory"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("ConsciousnessRhythm"));
+        Assert.Null(typeof(NetworkStateDocument).GetProperty("GlobalWorkspace"));
 
-        Assert.True(GetBool(rhythm, "active"));
-        Assert.Equal("survival spotlight", GetString(rhythm, "currentMoment"));
-        Assert.Equal("limbic", GetString(rhythm, "selectedCircuit"));
-        Assert.True(GetSingle(rhythm, "globalMomentGate") > 0.18f);
-        Assert.True(GetSingle(rhythm, "pulvinarSpotlight") > 0.35f);
-        Assert.True(GetBool(workspace, "active"));
-        Assert.True(GetSingle(workspace, "broadcastStrength") > 0.20f);
-        Assert.Contains("won shared awareness", GetString(workspace, "whyThisWon"), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Holding focus", GetString(workspace, "holdingState"), StringComparison.OrdinalIgnoreCase);
-        Assert.False(string.IsNullOrWhiteSpace(GetString(workspace, "nextActionPreview")));
+        var updateNeuromod = Assert.Single(
+            typeof(SimulationState).GetMethods(),
+            static method => method.Name == "UpdateNeuromod");
+        Assert.Equal(2, updateNeuromod.GetParameters().Length);
+
+        using var document = SerializeDiagnostics(new SimulationState());
+        Assert.False(TryGetProperty(document.RootElement, "attentionState", out _));
+        Assert.False(TryGetProperty(document.RootElement, "prefrontalWorkingMemory", out _));
+        Assert.False(TryGetProperty(document.RootElement, "consciousnessRhythm", out _));
+        Assert.False(TryGetProperty(document.RootElement, "globalWorkspace", out _));
     }
 
     [Fact]
@@ -524,62 +393,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Contains("shelter", GetString(intent, "predictedOutcome"), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(GetString(intent, "intentionKey"), GetString(behaviorIntent, "intentionKey"));
     }
-
-    [Fact]
-    public void Pain_Protection_Loop_Guards_Body_And_Biases_Action()
-    {
-        var state = new SimulationState();
-        AdvanceTicks(state, 4);
-        state.UpdateEnvironmentalState(
-            darkness: 0.12f,
-            shelterNeed: 0.10f,
-            anxiety: 0.18f,
-            hunger: 0.06f,
-            predatorThreat: 0.0f,
-            inShelter: 0.30f,
-            health: 0.46f,
-            shelterSafety: 0.40f);
-        state.UpdateBodyState(
-            forwardVelocity: 0.35f,
-            turnRateDeg: 18.0f,
-            contactLevel: 0.96f,
-            tactileFront: 0.96f,
-            tactileLeft: 0.10f,
-            tactileRight: 0.18f,
-            tactileGround: 0.20f,
-            painLevel: 0.92f,
-            urgency: 0.72f,
-            leftMotorDrive: 0.82f,
-            rightMotorDrive: 0.76f);
-        state.UpdateOutcomeState(
-            satietyRelief: 0.0f,
-            safetyRelief: 0.0f,
-            painLevel: 0.82f,
-            damageLevel: 0.56f,
-            shelterComfort: 0.0f,
-            progress: 0.0f,
-            effortCost: 0.36f,
-            novelty: 0.0f,
-            socialApproval: 0.0f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.16f, interoceptive: 0.18f, threat: 0.08f, aversive: 0.34f));
-        state.ObserveCognitiveRuntime(state.Tick, dispatchedSpikes: 0, activePathwayCount: 0, rewardPredictionError: 0f, dominantPathway: null);
-
-        using var document = SerializeDiagnostics(state);
-        var protection = GetObject(document.RootElement, "painProtection");
-        var goal = GetObject(document.RootElement, "goalIntent");
-        var intent = GetObject(document.RootElement, "intentionalActionLoop");
-        var workspace = GetObject(document.RootElement, "globalWorkspace");
-
-        Assert.True(GetBool(protection, "active"));
-        Assert.Contains(GetString(protection, "reflexState"), new[] { "withdraw", "guard", "immobilize" });
-        Assert.True(GetSingle(protection, "nociception") > 0.70f);
-        Assert.True(GetSingle(protection, "protectionDrive") > 0.55f);
-        Assert.Equal("ProtectBody", GetString(goal, "goalKey"));
-        Assert.Equal("ProtectBody", GetString(intent, "goalKey"));
-        Assert.Contains(GetString(intent, "motorDirective"), new[] { "motor_withdraw_from_pain", "motor_guard_body", "motor_immobilize_protect", "motor_slow_protect" });
-        Assert.Equal("ProtectBody", GetString(workspace, "boundGoalKey"));
-    }
-
     [Fact]
     public void Goal_Intent_Chooses_Food_When_Hunger_Dominates()
     {
@@ -743,23 +556,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             inShelter: 0.92f,
             health: 0.96f,
             shelterSafety: 0.94f);
-        state.UpdateAttentionState(new BiologicalAttentionRuntime(
-            Visual: 0.28f,
-            Auditory: 0.07f,
-            Somatosensory: 0.08f,
-            Interoceptive: 0.12f,
-            Language: 0.04f,
-            Memory: 0.34f,
-            Motor: 0.07f,
-            DominantChannel: "memory",
-            FocusConfidence: 0.62f,
-            Salience: 0.32f,
-            ThalamicRelayGain: 0.50f,
-            TrnInhibition: 0.28f,
-            BasalForebrainGain: 0.64f,
-            SensoryBias: new AttentionVector(0.34f, 0.10f, 0.16f, 0.40f),
-            LastSwitchTick: 0,
-            HoldTicksRemaining: 0));
         state.UpdateLimbicState(MakeLimbic(tired: 0.08f, interoceptive: 0.10f, threat: 0.04f, aversive: 0.04f, expectedReward: 0.72f, observedReward: 0.76f));
         DriveCognition(state, 18);
 
@@ -904,117 +700,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Equal("goal.FindShelter", GetString(intent, "actionKey"));
         Assert.Equal("motor_seek_shelter", GetString(intent, "motorDirective"));
     }
-
-    [Fact]
-    public void Prefrontal_Working_Memory_Holds_Intent_Across_Brief_Sensory_Gap()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            objectId: "berry_patch_hold",
-            label: "food berry patch",
-            hemisphere: "L",
-            salience: 0.90f,
-            confidence: 0.86f,
-            intensity: 1.0f,
-            deliveredSpikes: 34);
-        state.UpdateEnvironmentalState(
-            darkness: 0.08f,
-            shelterNeed: 0.06f,
-            anxiety: 0.04f,
-            hunger: 0.96f,
-            predatorThreat: 0.01f,
-            inShelter: 0.20f,
-            health: 0.92f,
-            shelterSafety: 0.38f);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.74f,
-            Interoceptive = 0.68f,
-            FocusConfidence = 0.84f,
-            Salience = 0.76f,
-            DominantChannel = "memory"
-        });
-        state.UpdateLimbicState(MakeLimbic(tired: 0.10f, interoceptive: 0.92f, threat: 0.02f, aversive: 0.04f));
-        DriveCognition(state, 6);
-
-        state.UpdateEnvironmentalState(
-            darkness: 0.08f,
-            shelterNeed: 0.05f,
-            anxiety: 0.04f,
-            hunger: 0.05f,
-            predatorThreat: 0.0f,
-            inShelter: 0.20f,
-            health: 0.92f,
-            shelterSafety: 0.38f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.08f, interoceptive: 0.05f, threat: 0.0f, aversive: 0.02f));
-        DriveCognition(state, 2);
-
-        using var document = SerializeDiagnostics(state);
-        var prefrontal = GetObject(document.RootElement, "prefrontalWorkingMemory");
-        var intent = GetObject(document.RootElement, "intentionalActionLoop");
-
-        Assert.True(GetBool(prefrontal, "intentHoldActive"));
-        Assert.Equal("FindFood", GetString(prefrontal, "heldGoalKey"));
-        Assert.Equal("goal.FindFood", GetString(prefrontal, "heldActionKey"));
-        Assert.True(GetSingle(prefrontal, "intentHoldStrength") > 0.20f);
-        Assert.Equal("goal.FindFood", GetString(intent, "actionKey"));
-        Assert.Contains("hold=", GetString(prefrontal, "evidence"), StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Prefrontal_Working_Memory_Releases_Held_Intent_For_Urgent_Threat()
-    {
-        var state = new SimulationState();
-        state.RegisterObjectObservation(
-            objectId: "berry_patch_release",
-            label: "food berry patch",
-            hemisphere: "L",
-            salience: 0.88f,
-            confidence: 0.84f,
-            intensity: 1.0f,
-            deliveredSpikes: 30);
-        state.UpdateEnvironmentalState(
-            darkness: 0.08f,
-            shelterNeed: 0.06f,
-            anxiety: 0.04f,
-            hunger: 0.96f,
-            predatorThreat: 0.01f,
-            inShelter: 0.20f,
-            health: 0.92f,
-            shelterSafety: 0.38f);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.70f,
-            Interoceptive = 0.66f,
-            Visual = 0.62f,
-            FocusConfidence = 0.82f,
-            Salience = 0.78f,
-            DominantChannel = "memory"
-        });
-        state.UpdateLimbicState(MakeLimbic(tired: 0.10f, interoceptive: 0.92f, threat: 0.02f, aversive: 0.04f));
-        DriveCognition(state, 6);
-
-        state.UpdateEnvironmentalState(
-            darkness: 0.18f,
-            shelterNeed: 0.20f,
-            anxiety: 0.82f,
-            hunger: 0.08f,
-            predatorThreat: 0.96f,
-            inShelter: 0.0f,
-            health: 0.72f,
-            shelterSafety: 0.0f);
-        state.UpdateLimbicState(MakeLimbic(tired: 0.10f, interoceptive: 0.08f, threat: 0.96f, aversive: 0.86f));
-        DriveCognition(state, 3);
-
-        using var document = SerializeDiagnostics(state);
-        var prefrontal = GetObject(document.RootElement, "prefrontalWorkingMemory");
-        var intent = GetObject(document.RootElement, "intentionalActionLoop");
-
-        Assert.Equal("AvoidThreat", GetString(prefrontal, "selectedGoal"));
-        Assert.Equal("goal.AvoidThreat", GetString(intent, "actionKey"));
-        Assert.True(GetSingle(prefrontal, "interferenceGate") > 0.20f);
-    }
-
     [Fact]
     public void Embodied_Attention_Spotlight_Binds_Need_Body_And_Remembered_Object()
     {
@@ -1505,13 +1190,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             contactLevel: 0.18f,
             leftMotorDrive: 0.36f,
             rightMotorDrive: 0.32f);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Interoceptive = 0.62f,
-            DominantChannel = "interoceptive",
-            FocusConfidence = 0.70f,
-            Salience = 0.76f
-        });
         state.UpdateLimbicState(MakeLimbic(tired: 0.42f, interoceptive: 0.74f, threat: 0.04f, aversive: 0.10f));
 
         DriveCognition(state, 8);
@@ -1529,60 +1207,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Equal("hungry", GetString(self, "bodyFeeling"));
         Assert.Equal("FindFood", GetString(goal, "goalKey"));
     }
-
-    [Fact]
-    public void Autobiographical_Self_Binds_Episodes_Into_Identity_Thread()
-    {
-        var state = new SimulationState();
-        state.UpdateEnvironmentalState(
-            darkness: 0.12f,
-            shelterNeed: 0.10f,
-            anxiety: 0.08f,
-            hunger: 0.82f,
-            predatorThreat: 0.02f,
-            inShelter: 0.10f,
-            health: 0.84f,
-            shelterSafety: 0.20f);
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.62f,
-            Visual = 0.54f,
-            DominantChannel = "memory",
-            FocusConfidence = 0.74f,
-            Salience = 0.78f
-        });
-        state.RegisterObjectObservation(
-            objectId: "berry_patch_autobio",
-            label: "food berry patch",
-            hemisphere: "L",
-            salience: 0.88f,
-            confidence: 0.82f,
-            intensity: 1.0f,
-            deliveredSpikes: 32);
-
-        DriveCognition(state, 10);
-
-        using var document = SerializeDiagnostics(state);
-        var autobiographical = GetObject(document.RootElement, "autobiographicalSelf");
-        var continuity = GetObject(document.RootElement, "autobiographicalContinuity");
-        var self = GetObject(document.RootElement, "narrativeSelfModel");
-
-        Assert.True(GetBool(autobiographical, "active"));
-        Assert.Equal("seeking food", GetString(autobiographical, "currentChapter"));
-        Assert.Contains("I am in the chapter", GetString(autobiographical, "identityThread"), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(
-            EnumerateObjects(autobiographical, "topSelfEpisodes"),
-            episode => GetString(episode, "summary").Contains("food berry patch", StringComparison.OrdinalIgnoreCase));
-        Assert.NotEqual("none", GetString(autobiographical, "recentSelfEpisodeKey"));
-        Assert.True(GetSingle(autobiographical, "hippocampalIndex") > 0.10f);
-        Assert.True(GetSingle(autobiographical, "pfcSelfContinuity") > 0.15f);
-        Assert.True(GetBool(continuity, "active"));
-        Assert.Contains("Continuity:", GetString(continuity, "continuityThread"), StringComparison.OrdinalIgnoreCase);
-        Assert.True(GetSingle(continuity, "identityCoherence") > 0.10f);
-        Assert.True(GetSingle(continuity, "semanticBridge") > 0.05f);
-        Assert.True(GetSingle(self, "hippocampalAutobiographicalBinding") > 0.10f);
-    }
-
     [Fact]
     public void Identity_Boundary_Keeps_Self_Description_Grounded_And_Bounded()
     {
@@ -1625,14 +1249,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     public void Room_State_Remembers_Biological_Rule_Promises_And_Journal()
     {
         var state = new SimulationState();
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.68f,
-            Language = 0.62f,
-            DominantChannel = "memory",
-            FocusConfidence = 0.76f,
-            Salience = 0.80f
-        });
         state.RegisterObjectObservation(
             objectId: "archive_desk_place",
             label: "safe archive desk",
@@ -1712,14 +1328,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     public void Network_State_Export_Import_Preserves_Room_State()
     {
         var state = new SimulationState();
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.64f,
-            Language = 0.58f,
-            DominantChannel = "memory",
-            FocusConfidence = 0.72f,
-            Salience = 0.76f
-        });
         DriveCognition(state, 10);
         _ = state.GetRoomStateSnapshot();
 
@@ -1765,14 +1373,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     public void Diagnostics_Reuses_Heavy_Composite_Snapshots_Within_Same_Tick()
     {
         var state = new SimulationState();
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.64f,
-            Language = 0.58f,
-            DominantChannel = "memory",
-            FocusConfidence = 0.72f,
-            Salience = 0.76f
-        });
         DriveCognition(state, 8);
 
         var first = state.ToDiagnostics();
@@ -1792,16 +1392,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     public void Unified_Event_Memory_Binds_World_Body_Language_Action_And_Reward_Events()
     {
         var state = new SimulationState();
-        state.UpdateAttentionState(BiologicalAttentionRuntime.Default with
-        {
-            Memory = 0.72f,
-            Visual = 0.54f,
-            Interoceptive = 0.48f,
-            Language = 0.46f,
-            DominantChannel = "memory",
-            FocusConfidence = 0.78f,
-            Salience = 0.82f
-        });
 
         var tokens = new[] { "find", "food" };
         var grammar = EnglishLanguageLexicon.AnalyzeGrammar(tokens);
@@ -1880,14 +1470,12 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         using var document = SerializeDiagnostics(state);
         var innerSpeech = GetObject(document.RootElement, "innerSpeechLoop");
         var narration = GetObject(document.RootElement, "brainNarration");
-        var prefrontal = GetObject(document.RootElement, "prefrontalWorkingMemory");
 
         Assert.True(GetBool(innerSpeech, "active"));
         Assert.Equal("explicit quiet rehearsal", GetString(innerSpeech, "mode"));
         Assert.Contains("Quietly rehearse", GetString(innerSpeech, "rehearsedPhrase"), StringComparison.OrdinalIgnoreCase);
         Assert.True(GetSingle(innerSpeech, "motorSuppression") > GetSingle(innerSpeech, "speechReleaseGate"));
         Assert.True(GetSingle(innerSpeech, "workingMemoryBoost") > 0.10f);
-        Assert.True(GetSingle(prefrontal, "dorsolateralMaintenance") > 0.10f);
         Assert.Equal(0, GetInt(narration, "sequence"));
     }
 
@@ -2009,51 +1597,6 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             SpikeInCount: 0,
             SpikeOutCount: 0,
             FeedbackQueueDepth: 0);
-
-    private static BiologicalAttentionRuntime ComputeAttentionForTest(
-        long tick,
-        IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        BiologicalAttentionRuntime previous,
-        NeuronalVisualAttentionDecision visualAttention,
-        PredictivePerceptionRuntime predictivePerception,
-        LimbicRuntimeState limbic,
-        SleepMemoryRuntime sleepRuntime,
-        EnvironmentalStateRuntime environmental,
-        BodyStateRuntime bodyState,
-        LanguageIntentRuntime languageIntent,
-        AttentionVector sensoryRelayBias)
-    {
-        var method = typeof(SimulationState).Assembly
-            .GetTypes()
-            .Select(type => type.GetMethod(
-                "ComputeBiologicalAttentionRuntime",
-                System.Reflection.BindingFlags.Static |
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.Public))
-            .FirstOrDefault(candidate => candidate is not null);
-
-        Assert.NotNull(method);
-        var result = method!.Invoke(
-            null,
-            [
-                tick,
-                snapshots,
-                activePathways,
-                previous,
-                visualAttention,
-                predictivePerception,
-                limbic,
-                sleepRuntime,
-                environmental,
-                bodyState,
-                languageIntent,
-                sensoryRelayBias
-            ]);
-
-        return Assert.IsType<BiologicalAttentionRuntime>(result);
-    }
-
     private static JsonDocument SerializeDiagnostics(SimulationState state)
         => JsonDocument.Parse(JsonSerializer.Serialize(state.ToDiagnostics()));
 

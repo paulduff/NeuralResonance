@@ -350,12 +350,7 @@ internal static class DeterministicSurvivalBenchmark
                 AcetylcholineLevel = Math.Clamp(0.32f + (world.ThreatLevel * 0.30f) + (outcome.Progress * 0.12f), 0f, 1f),
                 NorepinephrineLevel = Math.Clamp(0.16f + (world.ThreatLevel * 0.72f) + outcome.PainLevel, 0f, 1f)
             },
-            outcome.RewardPredictionError,
-            new AttentionVector(
-                Visual: Math.Clamp(0.32f + (world.ThreatLevel * 0.28f), 0f, 1f),
-                Auditory: Math.Clamp(0.14f + (world.ThreatLevel * 0.20f), 0f, 1f),
-                Somatosensory: 0.30f,
-                Interoceptive: Math.Clamp(0.24f + (world.Hunger * 0.20f), 0f, 1f)));
+            outcome.RewardPredictionError);
         state.UpdateEnvironmentalState(
             darkness,
             shelterNeed,

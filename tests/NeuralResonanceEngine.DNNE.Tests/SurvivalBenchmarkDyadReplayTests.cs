@@ -173,8 +173,7 @@ public sealed class SurvivalBenchmarkDyadReplayTests
                 AcetylcholineLevel = 0.50f,
                 NorepinephrineLevel = 0.50f
             },
-            rewardPredictionError: 0f,
-            attention: new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f));
+            rewardPredictionError: 0f);
         return state;
     }
 

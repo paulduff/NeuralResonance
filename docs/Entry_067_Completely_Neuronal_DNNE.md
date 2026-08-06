@@ -141,7 +141,7 @@ Acceptance requires limited capacity, distractor competition, attention-dependen
 
 Rung 5 replaces the authoritative named-channel ranking with seven anonymous neuronal lanes. Sensory populations, pulvinar, thalamic relay, TRN inhibition, mediodorsal support, recurrent PFC maintenance, and intralaminar broadcast now contribute firing-derived lane evidence. Human-readable channel names exist only in the controller's read-only compatibility projection.
 
-The authoritative endpoint is `/api/v1/neuronal-attention-workspace`. The older attention, prefrontal-working-memory, and global-workspace endpoints are explicitly marked `LegacyTelemetry` and cannot authorize a selection. When neuronal diagnostics are present, the neuronal winner or neuronal failure-to-select overrides the legacy scalar winner; the legacy path remains only when no neuronal evidence exists at all.
+The authoritative endpoint is `/api/v1/neuronal-attention-workspace`. The older attention, prefrontal-working-memory, consciousness-rhythm, and global-workspace routes and controller update roots have been deleted. Missing neuronal evidence produces no selection and cannot restore a scalar winner.
 
 The first vertical slice deliberately claims bounded access competition, not consciousness. It distinguishes:
 
@@ -235,7 +235,7 @@ The final semantic actuation paths have been removed from the runtime:
 - The production sleep overload can update metabolic substrate but cannot enter or exit sleep through ATP/pressure thresholds; only the neuronal state circuit may transition it. The one-argument threshold overload remains solely for the historical sleep harness.
 - The maze's goal-coordinate navigator is disabled by default and its runtime endpoint returns HTTP 410. Its session code remains an offline benchmark artifact, not a brain or world authority. The rendered maze consumes raw brain/avatar motor traffic.
 
-The old goal, motivation, narration, speech-intention, cognitive-language-workspace, inner-speech, and intentional-action endpoints remain visibly wrapped as legacy telemetry and point clients to their neuronal successors. The predictive-perception and persistent-percept endpoints have since been deleted; sensory handlers cannot write those scalar models, and persistent percept state is no longer exported to or restored from checkpoints. Conventional memory dictionaries remain checkpoint and audit material pending their own deletion rung; language, replay, attention, and action decisions do not read them as authority.
+The old goal, motivation, narration, speech-intention, cognitive-language-workspace, inner-speech, and intentional-action endpoints remain visibly wrapped as legacy telemetry and point clients to their neuronal successors. Predictive perception, persistent percepts, scalar attention, prefrontal working memory, consciousness rhythm, and global workspace have since lost their public routes, update roots, diagnostics, and checkpoint state. Conventional memory dictionaries remain checkpoint and audit material pending their own deletion rung; language, replay, attention, and action decisions do not read them as authority.
 
 This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 

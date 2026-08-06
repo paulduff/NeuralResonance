@@ -157,8 +157,7 @@ public sealed class WorldFeedbackIntegrationTests
                 AcetylcholineLevel = 0.5f,
                 NorepinephrineLevel = 0.5f
             },
-            rewardPredictionError: 0.0f,
-            attention: new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f));
+            rewardPredictionError: 0.0f);
         return state;
     }
 

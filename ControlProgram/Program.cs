@@ -250,13 +250,6 @@ app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(ne
     AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
     State = state.GetInnerSpeechLoopSnapshot()
 }));
-app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeSelection = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
-    State = state.GetPrefrontalWorkingMemorySnapshot()
-}));
 app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(new
 {
     Authority = "LegacyTelemetry",
@@ -291,14 +284,6 @@ app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok
 // /api/v1/active-inference: route was registered but GetActiveInferenceSnapshot()
 // is not implemented on SimulationState and no client references this URL. Removed
 // so the engine can build/start; reintroduce alongside a real snapshot method if needed.
-app.MapGet("/api/v1/consciousness-rhythm", (SimulationState state) => Results.Ok(state.GetConsciousnessRhythmSnapshot()));
-app.MapGet("/api/v1/global-workspace", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeSelection = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
-    State = state.GetGlobalWorkspaceSnapshot()
-}));
 app.MapGet("/api/v1/autobiographical-self", (SimulationState state) => Results.Ok(state.GetAutobiographicalSelfSnapshot()));
 app.MapGet("/api/v1/autobiographical-continuity", (SimulationState state) => Results.Ok(state.GetAutobiographicalContinuitySnapshot()));
 app.MapGet("/api/v1/narrative-self-model", (SimulationState state) => Results.Ok(state.GetNarrativeSelfModelSnapshot()));
@@ -3745,7 +3730,6 @@ internal sealed class SimulationState
         [BrainRhythm.GAMMA] = 0
     };
 
-    public AttentionVector GlobalAttentionBias { get; private set; } = new(0.42f, 0.16f, 0.16f, 0.26f);
     public float RewardPredictionError { get; private set; }
     public long Tick { get; private set; }
     public long LastSnapshotTick { get; private set; }
@@ -3866,7 +3850,7 @@ internal sealed class SimulationState
         }
     }
 
-    public void UpdateNeuromod(NeuromodState neuromodState, float rewardPredictionError, AttentionVector attention)
+    public void UpdateNeuromod(NeuromodState neuromodState, float rewardPredictionError)
     {
         lock (_gate)
         {
@@ -3875,16 +3859,6 @@ internal sealed class SimulationState
             var dopamineBiased = ApplyDopamineLearningNeuromod(memoryBiased, DopamineLearning);
             GlobalNeuromodState = ApplySleepStateNeuromod(dopamineBiased, SleepMemory);
             RewardPredictionError = rewardPredictionError;
-            GlobalAttentionBias = attention;
-        }
-    }
-
-    public void UpdateAttentionState(BiologicalAttentionRuntime attention)
-    {
-        lock (_gate)
-        {
-            AttentionState = BiologicalAttentionRuntime.Normalize(attention);
-            GlobalAttentionBias = AttentionState.SensoryBias;
         }
     }
 
@@ -3974,11 +3948,8 @@ internal sealed class SimulationState
             UpdateCognitiveLanguageWorkspaceLocked(tick);
             UpdateInnerSpeechLoopLocked(tick);
             EnsureExplicitInnerSpeechCommandLocked(tick);
-            UpdatePrefrontalWorkingMemoryLocked(tick);
             UpdateIntentionalActionLoopLocked(tick);
             UpdateSelfMonitoringLoopLocked(tick);
-            UpdateConsciousnessRhythmLocked(tick);
-            UpdateGlobalWorkspaceLocked(tick);
             UpdateNarrativeSelfModelLocked(tick);
             UpdateIdentityBoundaryLocked(tick);
             UpdateRoomStateLocked(tick);
@@ -4075,8 +4046,6 @@ internal sealed class SimulationState
             UpdateAutobiographicalContinuityLocked(tick);
             UpdateCognitiveLanguageWorkspaceLocked(tick);
             UpdateInnerSpeechLoopLocked(tick);
-            UpdatePrefrontalWorkingMemoryLocked(tick);
-            UpdateGlobalWorkspaceLocked(tick);
             UpdateNarrativeSelfModelLocked(tick);
             UpdateIdentityBoundaryLocked(tick);
 
@@ -4587,14 +4556,6 @@ internal sealed class SimulationState
         }
     }
 
-    public PrefrontalWorkingMemoryRuntime GetPrefrontalWorkingMemorySnapshot()
-    {
-        lock (_gate)
-        {
-            return PrefrontalWorkingMemory;
-        }
-    }
-
     public IntentionalActionLoopRuntime GetIntentionalActionLoopSnapshot()
     {
         lock (_gate)
@@ -4636,22 +4597,6 @@ internal sealed class SimulationState
         {
             UpdateSelfMonitoringLoopLocked(Tick);
             return SelfMonitoringLoop;
-        }
-    }
-
-    public ConsciousnessRhythmRuntime GetConsciousnessRhythmSnapshot()
-    {
-        lock (_gate)
-        {
-            return ConsciousnessRhythm;
-        }
-    }
-
-    public GlobalWorkspaceRuntime GetGlobalWorkspaceSnapshot()
-    {
-        lock (_gate)
-        {
-            return GlobalWorkspace;
         }
     }
 
@@ -4704,8 +4649,6 @@ internal sealed class SimulationState
             UpdateSemanticMemoryLocked(Tick);
             UpdateBodyPresenceLocked(Tick);
             UpdateCognitiveLanguageWorkspaceLocked(Tick);
-            UpdatePrefrontalWorkingMemoryLocked(Tick);
-            UpdateGlobalWorkspaceLocked(Tick);
             UpdateAutobiographicalSelfLocked(Tick);
             UpdateNarrativeSelfModelLocked(Tick);
             UpdateIdentityBoundaryLocked(Tick);
@@ -4745,11 +4688,8 @@ internal sealed class SimulationState
             UpdateBodyPresenceLocked(Tick);
             UpdateCognitiveLanguageWorkspaceLocked(Tick);
             UpdateInnerSpeechLoopLocked(Tick);
-            UpdatePrefrontalWorkingMemoryLocked(Tick);
             UpdateIntentionalActionLoopLocked(Tick);
             UpdateSelfMonitoringLoopLocked(Tick);
-            UpdateConsciousnessRhythmLocked(Tick);
-            UpdateGlobalWorkspaceLocked(Tick);
             UpdateAutobiographicalSelfLocked(Tick);
             UpdateNarrativeSelfModelLocked(Tick);
             UpdateIdentityBoundaryLocked(Tick);
@@ -5364,46 +5304,6 @@ internal sealed class SimulationState
         lock (_gate)
         {
             VisualAttention = decision;
-        }
-    }
-
-    public BiologicalAttentionRuntime GetAttentionRuntime()
-    {
-        lock (_gate)
-        {
-            return AttentionState;
-        }
-    }
-
-    public object GetAttentionSnapshot()
-    {
-        lock (_gate)
-        {
-            return new
-            {
-                Tick,
-                SimulationClockMs,
-                AttentionState.DominantChannel,
-                AttentionState.FocusConfidence,
-                AttentionState.Salience,
-                AttentionState.ThalamicRelayGain,
-                AttentionState.TrnInhibition,
-                AttentionState.BasalForebrainGain,
-                AttentionState.LastSwitchTick,
-                AttentionState.HoldTicksRemaining,
-                SensoryBias = AttentionState.SensoryBias,
-                Channels = new
-                {
-                    AttentionState.Visual,
-                    AttentionState.Auditory,
-                    AttentionState.Somatosensory,
-                    AttentionState.Interoceptive,
-                    AttentionState.Language,
-                    AttentionState.Memory,
-                    AttentionState.Motor
-                },
-                VisualHemifield = VisualAttention
-            };
         }
     }
 
@@ -6623,12 +6523,9 @@ internal sealed class SimulationState
               UpdateBodyPresenceLocked(tick);
               UpdateCognitiveLanguageWorkspaceLocked(tick);
               UpdateInnerSpeechLoopLocked(tick);
-              UpdatePrefrontalWorkingMemoryLocked(tick);
               UpdateIntentionalActionLoopLocked(tick);
               UpdateSelfMonitoringLoopLocked(tick);
               UpdateEmbodiedAttentionSpotlightLocked(tick);
-              UpdateConsciousnessRhythmLocked(tick);
-              UpdateGlobalWorkspaceLocked(tick);
               UpdateNarrativeSelfModelLocked(tick);
               UpdateIdentityBoundaryLocked(tick);
               UpdateRoomStateLocked(tick);
@@ -12396,146 +12293,6 @@ internal sealed class SimulationState
             : $"I am considering {selectedAction} for {semanticFocus}.";
     }
 
-    private void UpdatePrefrontalWorkingMemoryLocked(long tick)
-    {
-        var workspace = CognitiveLanguageWorkspace;
-        var innerSpeech = InnerSpeechLoop;
-        var goal = GoalIntent;
-        var planning = PlanningWorkspace;
-        var language = GetActiveLanguageIntentLocked(tick);
-        var commandFresh = language is not null;
-        var previousFresh = PrefrontalWorkingMemory.LastUpdatedTick > 0 && tick - PrefrontalWorkingMemory.LastUpdatedTick <= 4200;
-        var userRequest = commandFresh
-            ? SummarizeLanguageInstruction(language!)
-            : previousFresh
-                ? PrefrontalWorkingMemory.UserRequest
-                : "none";
-        var selectedAction = string.IsNullOrWhiteSpace(planning.SelectedActionKey)
-            ? "idle"
-            : planning.SelectedActionKey.Trim();
-        var taskSet = ResolvePrefrontalTaskSet(goal, workspace, selectedAction);
-        var planSummary = BuildPrefrontalPlanSummary(planning, goal, workspace, selectedAction);
-        var rule = ResolvePrefrontalRule(goal, workspace, language);
-        var conflict = Clamp01(
-            BodySchema.MotorConflict * 0.28f +
-            EmotionState.Frustration * 0.22f +
-            Math.Abs(LimbicState.RewardPredictionError) * 0.18f +
-            (GoalIntent.InhibitoryTone * 0.12f) +
-            (InteroceptiveCore.AccUrgency * 0.08f) +
-            (AttentionState.TrnInhibition * 0.10f) +
-            (selectedAction.Equals("idle", StringComparison.OrdinalIgnoreCase) && goal.Active ? 0.10f : 0.0f));
-        var accMonitoring = Clamp01((conflict * 0.42f) + (EmotionState.Urgency * 0.22f) + (AttentionState.Salience * 0.18f) + (BodySchema.MotorConflict * 0.18f));
-        var ofcEvaluation = ClampSigned01(
-            (workspace.OutcomeValence * 0.40f) +
-            (LimbicState.ExpectedReward * 0.24f) +
-            (EmotionState.Valence * 0.20f) -
-            (OutcomeState.EffortCost * 0.10f) -
-            (OutcomeState.AversiveOutcome * 0.18f));
-        var basalGangliaGate = Clamp01(
-            (GoalIntent.BasalGangliaGate * 0.34f) +
-            (GoalIntent.DopamineBias * 0.20f) +
-            (workspace.GoalBinding * 0.22f) +
-            (innerSpeech.WorkingMemoryBoost * 0.06f) +
-            ((1f - GoalIntent.InhibitoryTone) * 0.16f) +
-            (AttentionState.Motor * 0.04f) +
-            (InteroceptiveCore.HypothalamicDrive * 0.02f));
-        var dorsolateralMaintenance = Clamp01(
-            (workspace.WorkingMemoryStability * 0.31f) +
-            (innerSpeech.WorkingMemoryBoost * 0.14f) +
-            (AttentionState.FocusConfidence * 0.20f) +
-            (AttentionState.Memory * 0.16f) +
-            (AttentionState.Language * 0.10f) +
-            (EmotionState.Stability * 0.09f));
-        var orbitofrontalValue = Clamp01((ofcEvaluation + 1f) * 0.5f);
-        var responseInhibition = Clamp01(
-            (GoalIntent.InhibitoryTone * 0.28f) +
-            (SleepMemory.IsSleeping ? 0.45f : 0.0f) +
-            (SleepMemory.WakeInertiaTicksRemaining > 0 ? 0.18f : 0.0f) +
-            (conflict * 0.22f) +
-            (BodyState.ContactLevel * 0.08f) +
-            (InteroceptiveCore.PainDrive * 0.04f));
-        var attentionBinding = Clamp01(
-            (AttentionState.FocusConfidence * 0.30f) +
-            (AttentionState.Salience * 0.20f) +
-            (workspace.GoalBinding * 0.22f) +
-            (innerSpeech.PfcRehearsal * 0.08f) +
-            (basalGangliaGate * 0.16f) +
-            (dorsolateralMaintenance * 0.04f));
-        var confidence = Clamp01(
-            (dorsolateralMaintenance * 0.30f) +
-            ((float)Math.Clamp(planning.SelectedConfidence, 0.0, 1.0) * 0.22f) +
-            (GoalIntent.Confidence * 0.18f) +
-            (workspace.Confidence * 0.14f) +
-            (innerSpeech.Confidence * 0.08f) +
-            ((1f - conflict) * 0.08f));
-        var selectedGoal = goal.Active ? goal.GoalKey : "Observe";
-        var intentHold = ResolvePrefrontalIntentHoldLocked(
-            tick,
-            selectedGoal,
-            selectedAction,
-            (float)Math.Clamp(planning.SelectedConfidence, 0.0, 1.0),
-            dorsolateralMaintenance,
-            basalGangliaGate,
-            conflict,
-            commandFresh,
-            goal);
-        if (intentHold.UseHeldIntent)
-        {
-            selectedGoal = intentHold.HeldGoalKey;
-            selectedAction = intentHold.HeldActionKey;
-            taskSet = $"hold {selectedGoal}";
-            planSummary = $"hold {selectedAction} for {selectedGoal}";
-        }
-
-        var currentQuestion = BuildPrefrontalQuestion(taskSet, userRequest, goal, workspace);
-        var prefrontalCircuitEvidence = ResolvePrefrontalCircuitEvidenceLocked(tick);
-        var evidence = string.Join("; ", new[]
-        {
-            $"pfc={dorsolateralMaintenance:0.00}",
-            $"acc={accMonitoring:0.00}",
-            $"ofc={ofcEvaluation:+0.00;-0.00;0.00}",
-            $"bg={basalGangliaGate:0.00}",
-            $"inner={innerSpeech.WorkingMemoryBoost:0.00}",
-            $"hold={intentHold.HoldStrength:0.00}",
-            $"interference={intentHold.InterferenceGate:0.00}",
-            $"conflict={conflict:0.00}",
-            $"circuit={prefrontalCircuitEvidence:0.00}"
-        });
-        var active = prefrontalCircuitEvidence > 0.10f && (workspace.Active || innerSpeech.Active || goal.Active || commandFresh || !selectedAction.Equals("idle", StringComparison.OrdinalIgnoreCase));
-        var sequence = string.Equals(PrefrontalWorkingMemory.CurrentTaskSet, taskSet, StringComparison.OrdinalIgnoreCase) &&
-                       string.Equals(PrefrontalWorkingMemory.CurrentPlan, planSummary, StringComparison.OrdinalIgnoreCase) &&
-                       string.Equals(PrefrontalWorkingMemory.UserRequest, userRequest, StringComparison.OrdinalIgnoreCase)
-            ? PrefrontalWorkingMemory.Sequence
-            : PrefrontalWorkingMemory.Sequence + 1;
-
-        PrefrontalWorkingMemory = PrefrontalWorkingMemoryRuntime.Normalize(new PrefrontalWorkingMemoryRuntime(
-            Active: active,
-            CurrentTaskSet: taskSet,
-            UserRequest: userRequest,
-            CurrentQuestion: currentQuestion,
-            CurrentPlan: planSummary,
-            SelectedGoal: selectedGoal,
-            SelectedAction: selectedAction,
-            IntentHoldActive: intentHold.HoldActive && prefrontalCircuitEvidence > 0.10f,
-            HeldGoalKey: intentHold.HeldGoalKey,
-            HeldActionKey: intentHold.HeldActionKey,
-            IntentHoldStrength: ApplyCircuitGate(intentHold.HoldStrength, prefrontalCircuitEvidence),
-            InterferenceGate: intentHold.InterferenceGate,
-            HoldExpiresAtTick: intentHold.HoldExpiresAtTick,
-            Rule: rule,
-            Evidence: evidence,
-            DorsolateralMaintenance: dorsolateralMaintenance,
-            AccConflictMonitoring: accMonitoring,
-            OrbitofrontalValue: orbitofrontalValue,
-            BasalGangliaGate: basalGangliaGate,
-            ResponseInhibition: responseInhibition,
-            AttentionBinding: attentionBinding,
-            ConflictLevel: conflict,
-            Confidence: confidence,
-            LastUpdatedTick: tick,
-            Sequence: sequence));
-    }
-
     private (
         bool HoldActive,
         bool UseHeldIntent,
@@ -12988,675 +12745,6 @@ internal sealed class SimulationState
         return workspace.Active
             ? $"What matters now? {workspace.SemanticFocus}."
             : "What is happening now?";
-    }
-
-    private void UpdateConsciousnessRhythmLocked(long tick)
-    {
-        var alpha = ResolveRhythmPower(BrainRhythm.ALPHA);
-        var beta = ResolveRhythmPower(BrainRhythm.BETA);
-        var gamma = ResolveRhythmPower(BrainRhythm.GAMMA);
-        var theta = ResolveRhythmPower(BrainRhythm.THETA);
-        var wakefulness = SleepMemory.IsSleeping
-            ? 0.08f
-            : Clamp01(1f - (SleepMemory.SleepPressure / Math.Max(0.0001f, SleepMemory.MaxSleepPressure) * 0.26f));
-        var salience = Clamp01(Math.Max(AttentionState.Salience, Math.Max(LimbicState.Salience, EmotionState.Urgency)));
-        var pulvinarSpotlight = Clamp01(
-            (AttentionState.FocusConfidence * 0.32f) +
-            (VisualAttention.FocusConfidence * 0.18f) +
-            (salience * 0.20f) +
-            (beta * 0.14f) +
-            (wakefulness * 0.16f));
-        var trnInhibition = Clamp01(
-            (AttentionState.TrnInhibition * 0.52f) +
-            (alpha * 0.22f) +
-            (PrefrontalWorkingMemory.ResponseInhibition * 0.16f) +
-            (SleepMemory.IsSleeping ? 0.20f : 0f));
-        var basalForebrainIgnition = Clamp01(
-            (AttentionState.BasalForebrainGain * 0.36f) +
-            (GlobalNeuromodState.AcetylcholineLevel * 0.30f) +
-            (GlobalNeuromodState.NorepinephrineLevel * 0.20f) +
-            (GlobalNeuromodState.DopamineLevel * 0.14f));
-        var pfcAccess = Clamp01(
-            (PrefrontalWorkingMemory.DorsolateralMaintenance * 0.36f) +
-            (PrefrontalWorkingMemory.AttentionBinding * 0.24f) +
-            (PrefrontalWorkingMemory.BasalGangliaGate * 0.16f) +
-            (GoalIntent.Active ? 0.14f : 0f) +
-            (CognitiveLanguageWorkspace.Active ? 0.10f : 0f));
-        var thalamocorticalGain = Clamp01(
-            (AttentionState.ThalamicRelayGain * 0.32f) +
-            (pulvinarSpotlight * 0.24f) +
-            (basalForebrainIgnition * 0.20f) +
-            (wakefulness * 0.16f) -
-            (trnInhibition * 0.18f));
-        var gammaSynchrony = Clamp01(
-            (gamma * 0.30f) +
-            (thalamocorticalGain * 0.26f) +
-            (pfcAccess * 0.20f) +
-            (basalForebrainIgnition * 0.14f) +
-            (theta * 0.10f));
-        var alphaSuppression = Clamp01((alpha * 0.58f) + (trnInhibition * 0.32f) + (SleepMemory.IsSleeping ? 0.10f : 0f));
-        var globalMomentGate = Clamp01(
-            (thalamocorticalGain * 0.28f) +
-            (basalForebrainIgnition * 0.22f) +
-            (pfcAccess * 0.18f) +
-            (gammaSynchrony * 0.18f) +
-            (salience * 0.14f) -
-            (alphaSuppression * 0.20f) -
-            (SleepMemory.IsSleeping ? 0.22f : 0f));
-        var consciousnessCircuitEvidence = ResolveConsciousnessCircuitEvidenceLocked(tick);
-        globalMomentGate = ApplyCircuitGate(globalMomentGate, consciousnessCircuitEvidence);
-        var (moment, spotlight, selectedCircuit, evidence) = ResolveConsciousMoment(
-            thalamocorticalGain,
-            pulvinarSpotlight,
-            salience,
-            wakefulness);
-        evidence = $"{evidence}; circuit={consciousnessCircuitEvidence:0.00}";
-        var active = !SleepMemory.IsSleeping && globalMomentGate > 0.18f && consciousnessCircuitEvidence > 0.10f;
-        var stability = string.Equals(ConsciousnessRhythm.CurrentMoment, moment, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(ConsciousnessRhythm.Spotlight, spotlight, StringComparison.OrdinalIgnoreCase)
-            ? Clamp01((ConsciousnessRhythm.Stability * 0.84f) + 0.16f)
-            : Clamp01((ConsciousnessRhythm.Stability * 0.58f) + (globalMomentGate * 0.26f));
-        var sequence = string.Equals(ConsciousnessRhythm.CurrentMoment, moment, StringComparison.OrdinalIgnoreCase) &&
-                       string.Equals(ConsciousnessRhythm.SelectedCircuit, selectedCircuit, StringComparison.OrdinalIgnoreCase)
-            ? ConsciousnessRhythm.Sequence
-            : ConsciousnessRhythm.Sequence + 1;
-
-        ConsciousnessRhythm = ConsciousnessRhythmRuntime.Normalize(new ConsciousnessRhythmRuntime(
-            Active: active,
-            CurrentMoment: moment,
-            Spotlight: spotlight,
-            SelectedCircuit: selectedCircuit,
-            Evidence: evidence,
-            GlobalMomentGate: globalMomentGate,
-            ThalamocorticalGain: thalamocorticalGain,
-            PulvinarSpotlight: pulvinarSpotlight,
-            TrnInhibition: trnInhibition,
-            BasalForebrainIgnition: basalForebrainIgnition,
-            PfcAccess: pfcAccess,
-            AccConflict: PrefrontalWorkingMemory.AccConflictMonitoring,
-            GammaSynchrony: gammaSynchrony,
-            AlphaSuppression: alphaSuppression,
-            Wakefulness: wakefulness,
-            Salience: salience,
-            Stability: stability,
-            Confidence: Clamp01((globalMomentGate * 0.42f) + (stability * 0.24f) + (pulvinarSpotlight * 0.20f) + (wakefulness * 0.14f)),
-            LastUpdatedTick: tick,
-            Sequence: sequence));
-    }
-
-    private float ResolveRhythmPower(BrainRhythm rhythm)
-    {
-        return OscillationPhases.TryGetValue(rhythm, out var phase)
-            ? Clamp01((float)((Math.Sin(phase) + 1.0) * 0.5))
-            : 0.5f;
-    }
-
-    private (string Moment, string Spotlight, string SelectedCircuit, string Evidence) ResolveConsciousMoment(
-        float thalamocorticalGain,
-        float pulvinarSpotlight,
-        float salience,
-        float wakefulness)
-    {
-        if (SleepMemory.IsSleeping)
-        {
-            return ("offline sleep", "hippocampal replay", "dream_consolidation",
-                $"delta-theta offline mode; wakefulness={wakefulness:0.00}; relay={thalamocorticalGain:0.00}");
-        }
-
-        if (LimbicState.Threat > 0.42f || EmotionState.Anxiety > 0.52f)
-        {
-            return ("survival spotlight", "threat and escape routes", "limbic",
-                $"amygdala/ACC salience; threat={LimbicState.Threat:0.00}; pulvinar={pulvinarSpotlight:0.00}");
-        }
-
-        if (EmbodiedAttentionSpotlight.Active && EmbodiedAttentionSpotlight.Salience > 0.28f)
-        {
-            return ("embodied spotlight", EmbodiedAttentionSpotlight.FocusLabel, "embodied_attention",
-                $"insula-PPC-hippocampal spotlight; need={EmbodiedAttentionSpotlight.DominantNeed}; focus={EmbodiedAttentionSpotlight.FocusKey}; salience={EmbodiedAttentionSpotlight.Salience:0.00}");
-        }
-
-        if (GoalIntent.Active && GoalIntent.Urgency > 0.34f)
-        {
-            return ("goal theatre", GoalIntent.DisplayName, "prefrontal",
-                $"PFC-basal ganglia goal gate; goal={GoalIntent.GoalKey}; salience={salience:0.00}");
-        }
-
-        if (CognitiveLanguageWorkspace.Active || InnerSpeechLoop.Active || LanguageIntent.Active)
-        {
-            return ("language theatre", CognitiveLanguageWorkspace.SemanticFocus, "language",
-                $"Broca/Wernicke loop bound to PFC; confidence={CognitiveLanguageWorkspace.Confidence:0.00}; inner={InnerSpeechLoop.Confidence:0.00}");
-        }
-
-        if (EpisodicMemory.RecallConfidence > 0.40f || SemanticMemory.SemanticConfidence > 0.42f)
-        {
-            var memoryFocus = EpisodicMemory.RecallConfidence >= SemanticMemory.SemanticConfidence
-                ? EpisodicMemory.BestRecallSummary
-                : SemanticMemory.DominantMeaning;
-            return ("memory theatre", memoryFocus, "episodic_semantic",
-                $"hippocampal-semantic recall; episodic={EpisodicMemory.RecallConfidence:0.00}; semantic={SemanticMemory.SemanticConfidence:0.00}");
-        }
-
-        if (InteroceptiveCore.HomeostaticError > 0.36f ||
-            LimbicState.InteroceptiveDrive > 0.42f ||
-            LimbicState.TiredDrive > 0.42f ||
-            BodyState.ContactLevel > 0.48f)
-        {
-            return ("body theatre", InteroceptiveCore.DominantNeed, "insula",
-                $"insula/NTS body priority; need={InteroceptiveCore.DominantNeed}; error={InteroceptiveCore.HomeostaticError:0.00}");
-        }
-
-        return ("sensory theatre", AttentionState.DominantChannel, "thalamus",
-            $"thalamocortical monitoring; channel={AttentionState.DominantChannel}; relay={thalamocorticalGain:0.00}");
-    }
-
-    private void UpdateGlobalWorkspaceLocked(long tick)
-    {
-        var language = CognitiveLanguageWorkspace;
-        var innerSpeech = InnerSpeechLoop;
-        var prefrontal = PrefrontalWorkingMemory;
-        var intention = IntentionalActionLoop;
-        var protection = PainProtection;
-        var predictive = PredictivePerception;
-        var embodied = EmbodiedAttentionSpotlight;
-        var candidates = new List<GlobalWorkspaceCandidate>(12)
-        {
-            BuildGlobalWorkspaceCandidate(
-                "embodied_attention",
-                embodied.Active
-                    ? $"Attend to {embodied.FocusLabel} for {embodied.DominantNeed}."
-                    : "Keep body, need, and remembered objects aligned.",
-                embodied.GoalKey,
-                IntentionalActionLoop.ActionKey,
-                embodied.FocusKey,
-                embodied.Confidence,
-                (embodied.Salience * 0.34f) + (embodied.ObjectBinding * 0.20f) + (embodied.BodyBinding * 0.18f) + (embodied.NeedBinding * 0.18f),
-                1f - embodied.Confidence,
-                embodied.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "prefrontal",
-                prefrontal.CurrentQuestion,
-                prefrontal.SelectedGoal,
-                prefrontal.SelectedAction,
-                prefrontal.CurrentTaskSet,
-                prefrontal.Confidence,
-                (prefrontal.DorsolateralMaintenance * 0.34f) + (prefrontal.AttentionBinding * 0.26f) + (prefrontal.BasalGangliaGate * 0.18f),
-                prefrontal.ConflictLevel,
-                prefrontal.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "intentional_action",
-                intention.PredictedOutcome,
-                intention.GoalKey,
-                intention.ActionKey,
-                intention.IntentionKey,
-                intention.Confidence,
-                (intention.Commitment * 0.30f) + (intention.Readiness * 0.24f) + (intention.BasalGangliaCommit * 0.18f) + (intention.M1Readiness * 0.10f),
-                intention.Conflict,
-                intention.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "language",
-                language.CurrentThought,
-                language.BoundGoalKey,
-                language.BoundActionKey,
-                language.SemanticFocus,
-                language.Confidence,
-                (language.InstructionStrength * 0.30f) + (language.GoalBinding * 0.24f) + (language.WorkingMemoryStability * 0.22f),
-                language.PredictionError,
-                language.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "inner_speech",
-                innerSpeech.RehearsedPhrase,
-                innerSpeech.Mode,
-                prefrontal.SelectedAction,
-                innerSpeech.SourceCircuit,
-                innerSpeech.Confidence,
-                (innerSpeech.WorkingMemoryBoost * 0.30f) + (innerSpeech.PfcRehearsal * 0.24f) + (innerSpeech.ArcuateLoopGain * 0.18f),
-                1f - innerSpeech.MotorSuppression,
-                innerSpeech.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "limbic",
-                BuildGlobalWorkspaceLimbicContent(),
-                GoalIntent.Active ? GoalIntent.GoalKey : "Affect",
-                PlanningWorkspace.SelectedActionKey,
-                EmotionState.DominantEmotion,
-                EmotionState.Confidence,
-                (LimbicState.Salience * 0.34f) + (EmotionState.Urgency * 0.24f) + (Math.Abs(LimbicState.Valence) * 0.16f),
-                LimbicState.AversiveDrive,
-                $"threat={LimbicState.Threat:0.00}; valence={LimbicState.Valence:0.00}; arousal={EmotionState.Arousal:0.00}",
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "pain_protection",
-                BuildGlobalWorkspacePainProtectionContent(),
-                protection.Active ? "ProtectBody" : "Body",
-                protection.ProtectiveActionKey,
-                protection.ReflexState,
-                protection.Confidence,
-                (protection.ProtectionDrive * 0.34f) + (protection.SomatosensoryBias * 0.24f) + (protection.AccUrgency * 0.20f),
-                1f - protection.AnalgesiaGate,
-                protection.Evidence,
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "predictive_perception",
-                predictive.Active
-                    ? $"unexpected {predictive.LastChannel} cue: {predictive.LastCue}"
-                    : "expected sensory flow",
-                GoalIntent.Active ? GoalIntent.GoalKey : "Observe",
-                PlanningWorkspace.SelectedActionKey,
-                predictive.LastChannel,
-                predictive.Confidence,
-                (predictive.Surprise * 0.34f) + (predictive.LocusCoeruleusAlert * 0.24f) + (predictive.HippocampalEncodingGate * 0.22f),
-                predictive.AccConflictSignal,
-                $"expected-error={predictive.PredictionError:0.00}; cue={predictive.LastCue}; source={predictive.InputSource}",
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "dopamine",
-                BuildGlobalWorkspaceDopamineContent(),
-                DopamineLearning.LastGoalKey,
-                DopamineLearning.LastActionKey,
-                DopamineLearning.LastConceptKey,
-                DopamineLearning.Confidence,
-                (DopamineLearning.NucleusAccumbensIncentive * 0.30f) + (DopamineLearning.VtaPhasicDopamine * 0.26f) + (DopamineLearning.SncActionReinforcement * 0.18f),
-                DopamineLearning.HabenulaNegativeTeaching,
-                $"teaching={DopamineLearning.TeachingSignal:0.00}; learned={DopamineLearning.LearnedValue:0.00}; rpe={DopamineLearning.RewardPredictionError:0.00}",
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "episodic",
-                EpisodicMemory.BestRecallSummary,
-                EpisodicMemory.LastEventType,
-                EpisodicMemory.Top.Count > 0 ? EpisodicMemory.Top[0].ActionKey : "recall",
-                EpisodicMemory.Top.Count > 0 ? EpisodicMemory.Top[0].EventKey : "none",
-                EpisodicMemory.RecallConfidence,
-                (EpisodicMemory.HippocampalBinding * 0.28f) + (EpisodicMemory.CA3PatternCompletion * 0.20f) + (EpisodicMemory.SubiculumOutput * 0.18f),
-                EpisodicMemory.CA1Mismatch,
-                $"episodes={EpisodicMemory.Count}; binding={EpisodicMemory.HippocampalBinding:0.00}; mismatch={EpisodicMemory.CA1Mismatch:0.00}",
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "semantic",
-                SemanticMemory.DominantMeaning,
-                SemanticMemory.ActiveCategory,
-                SemanticMemory.Top.Count > 0 ? SemanticMemory.Top[0].AssociatedAction : "meaning",
-                SemanticMemory.DominantConceptKey,
-                SemanticMemory.SemanticConfidence,
-                (SemanticMemory.TemporalAssociationBinding * 0.24f) + (SemanticMemory.PfcConceptControl * 0.24f) + (SemanticMemory.PpcAffordanceBinding * 0.18f),
-                1f - SemanticMemory.SemanticConfidence,
-                $"concepts={SemanticMemory.Count}; focus={SemanticMemory.DominantConceptKey}; category={SemanticMemory.ActiveCategory}",
-                tick),
-            BuildGlobalWorkspaceCandidate(
-                "autobiographical",
-                AutobiographicalSelf.IdentityThread,
-                AutobiographicalSelf.CurrentChapter,
-                PrefrontalWorkingMemory.SelectedAction,
-                AutobiographicalSelf.RecentSelfEpisodeSummary,
-                AutobiographicalSelf.Confidence,
-                (AutobiographicalSelf.AutobiographicalSalience * 0.32f) + (AutobiographicalSelf.HippocampalIndex * 0.22f) + (AutobiographicalSelf.PfcSelfContinuity * 0.18f),
-                1f - AutobiographicalSelf.AgencyContinuity,
-                AutobiographicalSelf.Evidence,
-                tick)
-        };
-
-        var thalamicRelay = Clamp01((AttentionState.ThalamicRelayGain * 0.40f) + (AttentionState.FocusConfidence * 0.25f) + (AttentionState.Salience * 0.20f) + (PrefrontalWorkingMemory.AttentionBinding * 0.15f));
-        var basalForebrainGain = Clamp01((AttentionState.BasalForebrainGain * 0.46f) + (GlobalNeuromodState.AcetylcholineLevel * 0.28f) + (GlobalNeuromodState.NorepinephrineLevel * 0.16f) + (GlobalNeuromodState.DopamineLevel * 0.10f));
-        var workspaceCircuitEvidence = ResolveConsciousnessCircuitEvidenceLocked(tick);
-        var accessBoost = ApplyCircuitGate(
-            Clamp01((thalamicRelay * 0.34f) + (basalForebrainGain * 0.28f) + (PrefrontalWorkingMemory.DorsolateralMaintenance * 0.20f) + ((1f - PrefrontalWorkingMemory.ResponseInhibition) * 0.18f)),
-            workspaceCircuitEvidence);
-        var rankedCandidates = new List<GlobalWorkspaceCandidate>(6);
-        foreach (var candidate in candidates)
-        {
-            if (string.IsNullOrWhiteSpace(candidate.Content) ||
-                string.Equals(candidate.Content, "none", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            InsertGlobalWorkspaceCandidate(
-                rankedCandidates,
-                ApplyConsciousnessTheatreBias(candidate with
-                {
-                    BroadcastStrength = Clamp01((candidate.BroadcastStrength * 0.72f) + (accessBoost * 0.28f) - (SleepMemory.IsSleeping ? 0.22f : 0f))
-                }),
-                6);
-        }
-
-        var winner = rankedCandidates.FirstOrDefault() ?? GlobalWorkspaceCandidate.Default;
-        var runnerUp = rankedCandidates.Count > 1 ? rankedCandidates[1] : null;
-        var margin = Clamp01(winner.BroadcastStrength - (runnerUp?.BroadcastStrength ?? 0f));
-        var active = workspaceCircuitEvidence > 0.10f && ConsciousnessRhythm.Active &&
-                     (winner.BroadcastStrength > 0.20f || PrefrontalWorkingMemory.Active || IntentionalActionLoop.Active || PainProtection.Active || CognitiveLanguageWorkspace.Active || InnerSpeechLoop.Active || GoalIntent.Active);
-        var stability = string.Equals(GlobalWorkspace.BroadcastContent, winner.Content, StringComparison.OrdinalIgnoreCase)
-            ? Clamp01((GlobalWorkspace.Stability * 0.86f) + 0.14f)
-            : Clamp01((GlobalWorkspace.Stability * 0.60f) + (margin * 0.24f));
-        var sequence = string.Equals(GlobalWorkspace.BroadcastContent, winner.Content, StringComparison.OrdinalIgnoreCase) &&
-                       string.Equals(GlobalWorkspace.WinningCircuit, winner.SourceCircuit, StringComparison.OrdinalIgnoreCase)
-            ? GlobalWorkspace.Sequence
-            : GlobalWorkspace.Sequence + 1;
-        var subscribers = ResolveGlobalWorkspaceSubscribers(winner, active);
-        var whyThisWon = BuildGlobalWorkspaceWinningReason(winner, runnerUp, workspaceCircuitEvidence, accessBoost);
-        var holdingState = BuildGlobalWorkspaceHoldingState(winner);
-        var nextActionPreview = BuildGlobalWorkspaceNextActionPreview(winner, active);
-
-        GlobalWorkspace = GlobalWorkspaceRuntime.Normalize(new GlobalWorkspaceRuntime(
-            Active: active,
-            BroadcastContent: winner.Content,
-            BroadcastFocus: winner.Focus,
-            WinningCircuit: winner.SourceCircuit,
-            BoundGoalKey: winner.GoalKey,
-            BoundActionKey: winner.ActionKey,
-            BoundMemoryKey: winner.MemoryKey,
-            WhyThisWon: whyThisWon,
-            HoldingState: holdingState,
-            NextActionPreview: nextActionPreview,
-            NeedState: CognitiveLanguageWorkspace.NeedState,
-            AffectiveState: CognitiveLanguageWorkspace.AffectiveState,
-            Evidence: $"{winner.Evidence}; circuit={workspaceCircuitEvidence:0.00}",
-            ThalamicRelayGain: thalamicRelay,
-            BasalForebrainGain: basalForebrainGain,
-            PfcAccess: PrefrontalWorkingMemory.DorsolateralMaintenance,
-            AccConflict: PrefrontalWorkingMemory.AccConflictMonitoring,
-            DopamineTeaching: DopamineLearning.TeachingSignal,
-            Salience: winner.Salience,
-            BroadcastStrength: winner.BroadcastStrength,
-            CompetitionMargin: margin,
-            Stability: stability,
-            Confidence: Clamp01((winner.Confidence * 0.50f) + (accessBoost * 0.28f) + (margin * 0.22f)),
-            LastUpdatedTick: tick,
-            Sequence: sequence,
-            Subscribers: subscribers,
-            Candidates: rankedCandidates));
-    }
-
-    private static string BuildGlobalWorkspaceWinningReason(
-        GlobalWorkspaceCandidate winner,
-        GlobalWorkspaceCandidate? runnerUp,
-        float circuitEvidence,
-        float accessBoost)
-    {
-        var runner = runnerUp is null
-            ? "no close runner-up"
-            : $"{runnerUp.SourceCircuit} at {runnerUp.BroadcastStrength:0.00}";
-        return $"{winner.SourceCircuit} won shared awareness because salience {winner.Salience:0.00}, confidence {winner.Confidence:0.00}, access {accessBoost:0.00}, and circuit evidence {circuitEvidence:0.00} beat {runner}.";
-    }
-
-    private static string BuildGlobalWorkspaceHoldingState(GlobalWorkspaceCandidate winner)
-        => $"Holding focus {winner.Focus}, memory {winner.MemoryKey}, goal {winner.GoalKey}, and action {winner.ActionKey}.";
-
-    private static string BuildGlobalWorkspaceNextActionPreview(GlobalWorkspaceCandidate winner, bool active)
-    {
-        if (!active)
-        {
-            return "keep monitoring";
-        }
-
-        return string.IsNullOrWhiteSpace(winner.ActionKey) || winner.ActionKey.Equals("idle", StringComparison.OrdinalIgnoreCase)
-            ? $"continue attending to {winner.Focus}"
-            : winner.ActionKey;
-    }
-
-    private GlobalWorkspaceCandidate ApplyConsciousnessTheatreBias(GlobalWorkspaceCandidate candidate)
-    {
-        var rhythm = ConsciousnessRhythm;
-        var source = candidate.SourceCircuit ?? string.Empty;
-        var multiplier = 0.62f + (rhythm.GlobalMomentGate * 0.48f);
-
-        if (MatchesConsciousnessCircuit(source, rhythm.SelectedCircuit))
-        {
-            multiplier += 0.24f;
-        }
-
-        if (string.Equals(rhythm.CurrentMoment, "survival spotlight", StringComparison.OrdinalIgnoreCase) &&
-            source is "limbic" or "prefrontal" or "intentional_action" or "pain_protection")
-        {
-            multiplier += 0.18f;
-        }
-        else if (string.Equals(rhythm.CurrentMoment, "language theatre", StringComparison.OrdinalIgnoreCase) &&
-                 source is "language" or "inner_speech" or "prefrontal" or "semantic")
-        {
-            multiplier += 0.16f;
-        }
-        else if (string.Equals(rhythm.CurrentMoment, "memory theatre", StringComparison.OrdinalIgnoreCase) &&
-                 source is "episodic" or "semantic" or "autobiographical" or "prefrontal")
-        {
-            multiplier += 0.16f;
-        }
-        else if (string.Equals(rhythm.CurrentMoment, "body theatre", StringComparison.OrdinalIgnoreCase) &&
-                 source is "limbic" or "prefrontal" or "intentional_action" or "pain_protection")
-        {
-            multiplier += 0.12f;
-        }
-        else if (string.Equals(rhythm.CurrentMoment, "embodied spotlight", StringComparison.OrdinalIgnoreCase) &&
-                 source is "embodied_attention" or "prefrontal" or "intentional_action" or "episodic" or "semantic")
-        {
-            multiplier += 0.18f;
-        }
-
-        var suppressed = rhythm.Active ? 0f : 0.10f;
-        return candidate with
-        {
-            BroadcastStrength = Clamp01((candidate.BroadcastStrength * multiplier) + (rhythm.PulvinarSpotlight * 0.04f) - suppressed),
-            Confidence = Clamp01((candidate.Confidence * 0.86f) + (rhythm.Confidence * 0.14f))
-        };
-    }
-
-    private static bool MatchesConsciousnessCircuit(string sourceCircuit, string selectedCircuit)
-    {
-        if (sourceCircuit.Equals(selectedCircuit, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return selectedCircuit.Equals("episodic_semantic", StringComparison.OrdinalIgnoreCase) &&
-               (sourceCircuit.Equals("episodic", StringComparison.OrdinalIgnoreCase) ||
-                sourceCircuit.Equals("semantic", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static void InsertGlobalWorkspaceCandidate(List<GlobalWorkspaceCandidate> top, GlobalWorkspaceCandidate candidate, int maxCount)
-    {
-        var insertAt = top.Count;
-        for (var index = 0; index < top.Count; index++)
-        {
-            var existing = top[index];
-            if (candidate.BroadcastStrength > existing.BroadcastStrength ||
-                (Math.Abs(candidate.BroadcastStrength - existing.BroadcastStrength) < 0.0001f &&
-                 candidate.Confidence > existing.Confidence))
-            {
-                insertAt = index;
-                break;
-            }
-        }
-
-        if (insertAt >= maxCount)
-        {
-            return;
-        }
-
-        top.Insert(insertAt, candidate);
-        if (top.Count > maxCount)
-        {
-            top.RemoveAt(top.Count - 1);
-        }
-    }
-
-    private GlobalWorkspaceCandidate BuildGlobalWorkspaceCandidate(
-        string sourceCircuit,
-        string content,
-        string goalKey,
-        string actionKey,
-        string focus,
-        float confidence,
-        float salience,
-        float conflict,
-        string evidence,
-        long tick)
-    {
-        var normalizedContent = string.IsNullOrWhiteSpace(content) ? "none" : content.Trim();
-        var normalizedFocus = string.IsNullOrWhiteSpace(focus) ? "environment" : focus.Trim();
-        var clampedConfidence = Clamp01(confidence);
-        var clampedSalience = Clamp01(salience);
-        var clampedConflict = Clamp01(conflict);
-        var broadcastStrength = Clamp01(
-            (clampedSalience * 0.36f) +
-            (clampedConfidence * 0.25f) +
-            (AttentionState.FocusConfidence * 0.14f) +
-            (AttentionState.Salience * 0.10f) +
-            (Math.Max(0f, 1f - clampedConflict) * 0.08f) +
-            (tick > 0 ? 0.07f : 0f));
-        return new GlobalWorkspaceCandidate(
-            SourceCircuit: sourceCircuit,
-            Content: normalizedContent,
-            GoalKey: string.IsNullOrWhiteSpace(goalKey) ? "Observe" : goalKey.Trim(),
-            ActionKey: string.IsNullOrWhiteSpace(actionKey) ? "idle" : actionKey.Trim(),
-            Focus: normalizedFocus,
-            MemoryKey: normalizedFocus,
-            Confidence: clampedConfidence,
-            Salience: clampedSalience,
-            Conflict: clampedConflict,
-            BroadcastStrength: broadcastStrength,
-            Evidence: string.IsNullOrWhiteSpace(evidence) ? "no evidence" : evidence.Trim());
-    }
-
-    private string BuildGlobalWorkspaceLimbicContent()
-    {
-        if (LimbicState.Threat > 0.42f || EmotionState.Anxiety > 0.48f)
-        {
-            return "Danger has priority; broadcast safety and avoidance.";
-        }
-
-        if (InteroceptiveCore.DominantNeed == "food" ||
-            LimbicState.InteroceptiveDrive > 0.42f ||
-            EnvironmentalState.Hunger > 0.42f)
-        {
-            return "Hunger is active; broadcast food seeking.";
-        }
-
-        if (InteroceptiveCore.DominantNeed is "energy" or "shelter" ||
-            LimbicState.TiredDrive > 0.42f ||
-            EnvironmentalState.ShelterNeed > 0.42f)
-        {
-            return "Tiredness is active; broadcast shelter and rest.";
-        }
-
-        if (InteroceptiveCore.DominantNeed is "body_integrity" or "balance")
-        {
-            return "Body integrity is active; broadcast protection and correction.";
-        }
-
-        return $"Affect is {EmotionState.DominantEmotion}; keep the current goal stable.";
-    }
-
-    private string BuildGlobalWorkspacePainProtectionContent()
-    {
-        if (!PainProtection.Active)
-        {
-            return "Body protection is quiet; keep monitoring nociception.";
-        }
-
-        return PainProtection.ReflexState switch
-        {
-            "withdraw" => "Pain has priority; withdraw and reduce contact.",
-            "guard" => "Damage risk is active; guard the body and slow movement.",
-            "immobilize" => "High damage risk; immobilize and protect before acting.",
-            "monitor_pain" => "Nociception is active; move carefully and monitor the body.",
-            _ => "Body protection is active."
-        };
-    }
-
-    private string BuildGlobalWorkspaceDopamineContent()
-    {
-        if (DopamineLearning.Count <= 0)
-        {
-            return "No reward teaching trace is dominant yet.";
-        }
-
-        if (DopamineLearning.TeachingSignal > 0.12f)
-        {
-            return $"Reward teaching supports {DopamineLearning.LastActionKey}.";
-        }
-
-        if (DopamineLearning.TeachingSignal < -0.12f)
-        {
-            return $"Negative teaching warns against {DopamineLearning.LastActionKey}.";
-        }
-
-        return $"Reward prediction is updating {DopamineLearning.LastActionKey}.";
-    }
-
-    private static IReadOnlyList<string> ResolveGlobalWorkspaceSubscribers(GlobalWorkspaceCandidate winner, bool active)
-    {
-        if (!active)
-        {
-            return [];
-        }
-
-        var subscribers = new List<string> { "thalamus", "pfc", "acc", "basal_forebrain" };
-        if (winner.SourceCircuit is "language" or "inner_speech" or "prefrontal" or "intentional_action")
-        {
-            subscribers.Add("language_loop");
-        }
-
-        if (winner.SourceCircuit is "episodic" or "semantic" or "autobiographical" or "prefrontal" or "intentional_action")
-        {
-            subscribers.Add("memory_systems");
-        }
-
-        if (winner.SourceCircuit is "limbic" or "dopamine" or "pain_protection" or "embodied_attention")
-        {
-            subscribers.Add("limbic_reward_loop");
-        }
-
-        if (winner.SourceCircuit is "pain_protection" or "embodied_attention")
-        {
-            subscribers.Add("insula");
-            subscribers.Add("acc");
-            subscribers.Add("somatosensory_cortex");
-        }
-
-        if (winner.SourceCircuit is "pain_protection")
-        {
-            subscribers.Add("periaqueductal_gray");
-        }
-
-        if (winner.SourceCircuit is "embodied_attention")
-        {
-            subscribers.Add("posterior_parietal_cortex");
-            subscribers.Add("hippocampus");
-        }
-
-        if (!string.Equals(winner.ActionKey, "idle", StringComparison.OrdinalIgnoreCase))
-        {
-            subscribers.Add("motor_planning");
-        }
-
-        if (winner.SourceCircuit is "intentional_action")
-        {
-            subscribers.Add("premotor_cortex");
-            subscribers.Add("basal_ganglia");
-            subscribers.Add("cerebellum");
-        }
-
-        var unique = new List<string>(subscribers.Count);
-        foreach (var subscriber in subscribers)
-        {
-            AddUniqueSubscriber(unique, subscriber);
-        }
-
-        return unique;
-    }
-
-    private static void AddUniqueSubscriber(List<string> subscribers, string value)
-    {
-        foreach (var subscriber in subscribers)
-        {
-            if (string.Equals(subscriber, value, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-        }
-
-        subscribers.Add(value);
     }
 
     private void UpdateAutobiographicalSelfLocked(long tick)
@@ -17463,7 +16551,6 @@ internal sealed class SimulationState
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Default;
             PlaceMemory = PlaceMemoryRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
-            GlobalAttentionBias = BiologicalAttentionRuntime.Default.SensoryBias;
             AttentionState = BiologicalAttentionRuntime.Default;
             LimbicState = LimbicRuntimeState.Default;
             EmotionState = EmotionRuntimeState.Default;
@@ -17999,7 +17086,6 @@ internal sealed class SimulationState
             var language = LanguageIntent;
             var workspace = CognitiveLanguageWorkspace;
             var innerSpeech = InnerSpeechLoop;
-            var prefrontal = PrefrontalWorkingMemory;
             var intentionalAction = IntentionalActionLoop;
             var selfMonitoring = SelfMonitoringLoop;
             var motivation = MotivationArbitration;
@@ -18007,8 +17093,6 @@ internal sealed class SimulationState
             var unifiedEventMemory = UnifiedEventMemory;
             var semantic = SemanticMemory;
             var dopamineLearning = DopamineLearning;
-            var consciousness = ConsciousnessRhythm;
-            var globalWorkspace = GlobalWorkspace;
             var autobiographicalSelf = AutobiographicalSelf;
             var selfModel = NarrativeSelfModel;
             var goal = GoalIntent;
@@ -18176,49 +17260,6 @@ internal sealed class SimulationState
                     PlaceMemory.LastUpdatedTick
                 },
                 EmbodiedAttentionSpotlight,
-                Attention = new
-                {
-                    AttentionState.DominantChannel,
-                    AttentionState.FocusConfidence,
-                    AttentionState.Salience,
-                    AttentionState.ThalamicRelayGain,
-                    AttentionState.TrnInhibition,
-                    AttentionState.BasalForebrainGain,
-                    AttentionState.SensoryBias,
-                    Channels = new
-                    {
-                        AttentionState.Visual,
-                        AttentionState.Auditory,
-                        AttentionState.Somatosensory,
-                        AttentionState.Interoceptive,
-                        AttentionState.Language,
-                        AttentionState.Memory,
-                        AttentionState.Motor
-                    }
-                },
-                ConsciousnessRhythm = new
-                {
-                    consciousness.Active,
-                    consciousness.CurrentMoment,
-                    consciousness.Spotlight,
-                    consciousness.SelectedCircuit,
-                    consciousness.GlobalMomentGate,
-                    consciousness.ThalamocorticalGain,
-                    consciousness.PulvinarSpotlight,
-                    consciousness.TrnInhibition,
-                    consciousness.BasalForebrainIgnition,
-                    consciousness.PfcAccess,
-                    consciousness.AccConflict,
-                    consciousness.GammaSynchrony,
-                    consciousness.AlphaSuppression,
-                    consciousness.Wakefulness,
-                    consciousness.Salience,
-                    consciousness.Stability,
-                    consciousness.Confidence,
-                    consciousness.LastUpdatedTick,
-                    consciousness.Sequence,
-                    consciousness.Evidence
-                },
                 GoalIntent = new
                 {
                     goal.Active,
@@ -18237,34 +17278,6 @@ internal sealed class SimulationState
                     goal.Candidates
                 },
                 MotivationArbitration = motivation,
-                PrefrontalWorkingMemory = new
-                {
-                    prefrontal.Active,
-                    prefrontal.CurrentTaskSet,
-                    prefrontal.UserRequest,
-                    prefrontal.CurrentQuestion,
-                    prefrontal.CurrentPlan,
-                    prefrontal.SelectedGoal,
-                    prefrontal.SelectedAction,
-                    prefrontal.IntentHoldActive,
-                    prefrontal.HeldGoalKey,
-                    prefrontal.HeldActionKey,
-                    prefrontal.IntentHoldStrength,
-                    prefrontal.InterferenceGate,
-                    prefrontal.HoldExpiresAtTick,
-                    prefrontal.Rule,
-                    prefrontal.DorsolateralMaintenance,
-                    prefrontal.AccConflictMonitoring,
-                    prefrontal.OrbitofrontalValue,
-                    prefrontal.BasalGangliaGate,
-                    prefrontal.ResponseInhibition,
-                    prefrontal.AttentionBinding,
-                    prefrontal.ConflictLevel,
-                    prefrontal.Confidence,
-                    prefrontal.Evidence,
-                    prefrontal.Sequence,
-                    prefrontal.LastUpdatedTick
-                },
                 IntentionalActionLoop = new
                 {
                     intentionalAction.Active,
@@ -18364,32 +17377,6 @@ internal sealed class SimulationState
                     dopamineLearning.AvoidancePenalty,
                     dopamineLearning.Confidence,
                     dopamineLearning.LastUpdatedTick
-                },
-                GlobalWorkspace = new
-                {
-                    globalWorkspace.Active,
-                    globalWorkspace.BroadcastContent,
-                    globalWorkspace.BroadcastFocus,
-                    globalWorkspace.WinningCircuit,
-                    globalWorkspace.BoundGoalKey,
-                    globalWorkspace.BoundActionKey,
-                    globalWorkspace.BoundMemoryKey,
-                    globalWorkspace.NeedState,
-                    globalWorkspace.AffectiveState,
-                    globalWorkspace.Evidence,
-                    globalWorkspace.ThalamicRelayGain,
-                    globalWorkspace.BasalForebrainGain,
-                    globalWorkspace.PfcAccess,
-                    globalWorkspace.AccConflict,
-                    globalWorkspace.DopamineTeaching,
-                    globalWorkspace.Salience,
-                    globalWorkspace.BroadcastStrength,
-                    globalWorkspace.CompetitionMargin,
-                    globalWorkspace.Stability,
-                    globalWorkspace.Confidence,
-                    globalWorkspace.LastUpdatedTick,
-                    globalWorkspace.Sequence,
-                    globalWorkspace.Subscribers
                 },
                 AutobiographicalSelf = autobiographicalSelf,
                 NarrativeSelfModel = new
@@ -20008,51 +18995,6 @@ internal sealed class SimulationState
             CanAcceptAttentionOverrides = false,
             LegacyWinnerEnabled = false
         },
-        AttentionState = new
-        {
-            AttentionState.DominantChannel,
-            AttentionState.FocusConfidence,
-            AttentionState.Salience,
-            AttentionState.ThalamicRelayGain,
-            AttentionState.TrnInhibition,
-            AttentionState.BasalForebrainGain,
-            AttentionState.LastSwitchTick,
-            AttentionState.HoldTicksRemaining,
-            SensoryBias = AttentionState.SensoryBias,
-            Channels = new
-            {
-                AttentionState.Visual,
-                AttentionState.Auditory,
-                AttentionState.Somatosensory,
-                AttentionState.Interoceptive,
-                AttentionState.Language,
-                AttentionState.Memory,
-                AttentionState.Motor
-            }
-        },
-        ConsciousnessRhythm = new
-        {
-            ConsciousnessRhythm.Active,
-            ConsciousnessRhythm.CurrentMoment,
-            ConsciousnessRhythm.Spotlight,
-            ConsciousnessRhythm.SelectedCircuit,
-            ConsciousnessRhythm.Evidence,
-            ConsciousnessRhythm.GlobalMomentGate,
-            ConsciousnessRhythm.ThalamocorticalGain,
-            ConsciousnessRhythm.PulvinarSpotlight,
-            ConsciousnessRhythm.TrnInhibition,
-            ConsciousnessRhythm.BasalForebrainIgnition,
-            ConsciousnessRhythm.PfcAccess,
-            ConsciousnessRhythm.AccConflict,
-            ConsciousnessRhythm.GammaSynchrony,
-            ConsciousnessRhythm.AlphaSuppression,
-            ConsciousnessRhythm.Wakefulness,
-            ConsciousnessRhythm.Salience,
-            ConsciousnessRhythm.Stability,
-            ConsciousnessRhythm.Confidence,
-            ConsciousnessRhythm.LastUpdatedTick,
-            ConsciousnessRhythm.Sequence
-        },
                 ObjectMemory = new
                 {
             Count = _objectMemory.Count,
@@ -20113,10 +19055,8 @@ internal sealed class SimulationState
         },
         CognitiveLanguageWorkspace,
           InnerSpeechLoop,
-          PrefrontalWorkingMemory,
           IntentionalActionLoop,
           NeuronalMotor,
-          GlobalWorkspace,
           AutobiographicalContinuity,
           NarrativeSelfModel,
           IdentityBoundary,
@@ -20878,7 +19818,6 @@ internal sealed class SimulationState
                 SimulationClockMs = SimulationClockMs,
                 TickDurationMs = TickDurationMs,
                 GlobalNeuromodState = NeuromodState.Clamp(GlobalNeuromodState),
-                GlobalAttentionBias = ClampAttentionVector(GlobalAttentionBias),
                 RewardPredictionError = RewardPredictionError,
                 PerformanceProfileName = string.IsNullOrWhiteSpace(PerformanceProfileName) ? "normal" : PerformanceProfileName,
                 MemoryControl = MemoryControl,
@@ -20890,7 +19829,6 @@ internal sealed class SimulationState
                 PainProtection = PainProtection,
                 BodyPresence = BodyPresence,
                 EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlight,
-                AttentionState = AttentionState,
                 LimbicState = LimbicState,
                 EmotionState = EmotionState,
                 WorldModel = WorldModel,
@@ -20911,10 +19849,7 @@ internal sealed class SimulationState
                 LanguageIntent = LanguageIntent,
                 CognitiveLanguageWorkspace = CognitiveLanguageWorkspace,
                 InnerSpeechLoop = InnerSpeechLoop,
-                PrefrontalWorkingMemory = PrefrontalWorkingMemory,
                 IntentionalActionLoop = IntentionalActionLoop,
-                ConsciousnessRhythm = ConsciousnessRhythm,
-                GlobalWorkspace = GlobalWorkspace,
                 AutobiographicalSelf = AutobiographicalSelf,
                 AutobiographicalContinuity = AutobiographicalContinuity,
                 NarrativeSelfModel = NarrativeSelfModel,
@@ -21054,7 +19989,6 @@ internal sealed class SimulationState
             var importedPainProtection = document.PainProtection ?? PainProtectionRuntime.Default;
             var importedBodyPresence = document.BodyPresence ?? BodyPresenceRuntime.Default;
             var importedEmbodiedAttentionSpotlight = document.EmbodiedAttentionSpotlight ?? EmbodiedAttentionSpotlightRuntime.Default;
-            var importedAttentionState = document.AttentionState ?? BiologicalAttentionRuntime.Default;
             var importedLimbicState = document.LimbicState ?? LimbicRuntimeState.Default;
             var importedEmotionState = document.EmotionState ?? EmotionRuntimeState.Default;
             var importedWorldModel = document.WorldModel ?? WorldModelRuntime.Default;
@@ -21075,10 +20009,7 @@ internal sealed class SimulationState
             var importedLanguageIntent = document.LanguageIntent ?? LanguageIntentRuntime.Default;
             var importedCognitiveLanguageWorkspace = document.CognitiveLanguageWorkspace ?? CognitiveLanguageWorkspaceRuntime.Default;
             var importedInnerSpeechLoop = document.InnerSpeechLoop ?? InnerSpeechLoopRuntime.Default;
-            var importedPrefrontalWorkingMemory = document.PrefrontalWorkingMemory ?? PrefrontalWorkingMemoryRuntime.Default;
             var importedIntentionalActionLoop = document.IntentionalActionLoop ?? IntentionalActionLoopRuntime.Default;
-            var importedConsciousnessRhythm = document.ConsciousnessRhythm ?? ConsciousnessRhythmRuntime.Default;
-            var importedGlobalWorkspace = document.GlobalWorkspace ?? GlobalWorkspaceRuntime.Default;
             var importedAutobiographicalSelf = document.AutobiographicalSelf ?? AutobiographicalSelfRuntime.Default;
             var importedAutobiographicalContinuity = document.AutobiographicalContinuity ?? AutobiographicalContinuityRuntime.Default;
             var importedNarrativeSelfModel = document.NarrativeSelfModel ?? NarrativeSelfModelRuntime.Default;
@@ -21096,7 +20027,6 @@ internal sealed class SimulationState
             var importedBrainNarration = document.BrainNarration ?? BrainNarrationRuntime.Default;
             var importedSpeechIntention = document.SpeechIntention ?? SpeechIntentionRuntime.Default;
             var importedCurriculum = document.Curriculum ?? CurriculumRuntime.Default;
-            var importedAttention = document.GlobalAttentionBias ?? new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f);
             var importedNeuromod = document.GlobalNeuromodState ?? new NeuromodState();
 
             SleepMemory = ApplySleepProfile(importedSleepMemory, profileName);
@@ -21105,7 +20035,6 @@ internal sealed class SimulationState
             PainProtection = PainProtectionRuntime.Normalize(importedPainProtection);
             BodyPresence = BodyPresenceRuntime.Normalize(importedBodyPresence);
             EmbodiedAttentionSpotlight = EmbodiedAttentionSpotlightRuntime.Normalize(importedEmbodiedAttentionSpotlight);
-            AttentionState = BiologicalAttentionRuntime.Normalize(importedAttentionState);
             LimbicState = importedLimbicState;
             EmotionState = EmotionRuntimeState.Normalize(importedEmotionState);
             WorldModel = importedWorldModel with
@@ -21156,10 +20085,7 @@ internal sealed class SimulationState
             LanguageIntent = importedLanguageIntent;
             CognitiveLanguageWorkspace = CognitiveLanguageWorkspaceRuntime.Normalize(importedCognitiveLanguageWorkspace);
             InnerSpeechLoop = InnerSpeechLoopRuntime.Normalize(importedInnerSpeechLoop);
-            PrefrontalWorkingMemory = PrefrontalWorkingMemoryRuntime.Normalize(importedPrefrontalWorkingMemory);
             IntentionalActionLoop = IntentionalActionLoopRuntime.Normalize(importedIntentionalActionLoop);
-            ConsciousnessRhythm = ConsciousnessRhythmRuntime.Normalize(importedConsciousnessRhythm);
-            GlobalWorkspace = GlobalWorkspaceRuntime.Normalize(importedGlobalWorkspace);
             AutobiographicalSelf = AutobiographicalSelfRuntime.Normalize(importedAutobiographicalSelf);
             AutobiographicalContinuity = AutobiographicalContinuityRuntime.Normalize(importedAutobiographicalContinuity);
             NarrativeSelfModel = NarrativeSelfModelRuntime.Normalize(importedNarrativeSelfModel);
@@ -21177,11 +20103,6 @@ internal sealed class SimulationState
             BrainNarration = importedBrainNarration;
             SpeechIntention = SpeechIntentionRuntime.Normalize(importedSpeechIntention);
             RestoreCurriculumFromSnapshot(importedCurriculum);
-            GlobalAttentionBias = ClampAttentionVector(importedAttention);
-            if (document.AttentionState is not null)
-            {
-                GlobalAttentionBias = AttentionState.SensoryBias;
-            }
             GlobalNeuromodState = ApplySleepStateNeuromod(
                 ApplyDopamineLearningNeuromod(
                     ApplyMemoryControl(NeuromodState.Clamp(importedNeuromod), MemoryControl),
@@ -21475,15 +20396,6 @@ internal sealed class SimulationState
         string[] MissingAsTarget,
         string[] MissingNeurotransmitters,
         Dictionary<string, bool> RequiredPathways);
-
-    private static AttentionVector ClampAttentionVector(AttentionVector attention)
-    {
-        return new AttentionVector(
-            Visual: Math.Clamp(attention.Visual, 0f, 1f),
-            Auditory: Math.Clamp(attention.Auditory, 0f, 1f),
-            Somatosensory: Math.Clamp(attention.Somatosensory, 0f, 1f),
-            Interoceptive: Math.Clamp(attention.Interoceptive, 0f, 1f));
-    }
 
     private static void ReplaceRuntimeLogQueue(Queue<RuntimeLogEntry> queue, List<RuntimeLogEntry> source)
     {
@@ -29492,287 +28404,6 @@ internal sealed class TickCoordinator(
             blendedSomatosensory / blendedSum,
             blendedInteroceptive / blendedSum);
     }
-
-    internal static BiologicalAttentionRuntime ComputeBiologicalAttentionRuntime(
-        long tick,
-        IReadOnlyList<InstanceStructureSnapshot> snapshots,
-        IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        BiologicalAttentionRuntime previous,
-        NeuronalVisualAttentionDecision visualAttention,
-        PredictivePerceptionRuntime predictivePerception,
-        LimbicRuntimeState limbic,
-        SleepMemoryRuntime sleepRuntime,
-        EnvironmentalStateRuntime environmental,
-        BodyStateRuntime bodyState,
-        LanguageIntentRuntime languageIntent,
-        AttentionVector sensoryRelayBias)
-    {
-        static float Clamp01(float value) => Math.Clamp(value, 0f, 1f);
-        static float HzToUnit(float hz, float scale = 60f) => Clamp01(hz / Math.Max(1f, scale));
-        static float PathwayDrive(
-            IReadOnlyDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> pathways,
-            StructureId source,
-            params StructureId[] targets)
-        {
-            if (pathways.Count == 0 || targets.Length == 0)
-            {
-                return 0f;
-            }
-
-            var targetSet = targets.ToHashSet();
-            var total = 0;
-            foreach (var entry in pathways)
-            {
-                if (entry.Key.Source == source && targetSet.Contains(entry.Key.Target))
-                {
-                    total += Math.Max(0, entry.Value);
-                }
-            }
-
-            var maxVolume = Math.Max(1, pathways.Values.DefaultIfEmpty(0).Max());
-            return Clamp01(total / (float)(maxVolume * Math.Max(1, targets.Length)));
-        }
-
-        if (snapshots.Count == 0)
-        {
-            return BiologicalAttentionRuntime.Normalize(previous);
-        }
-
-        var rates = snapshots
-            .GroupBy(s => s.StructureId)
-            .ToDictionary(g => g.Key, g => Math.Max(0f, g.Average(x => x.MeanFiringRateHz)));
-        float Rate(StructureId structure) => rates.TryGetValue(structure, out var value) ? value : 0f;
-
-        var basalForebrainGain = Clamp01(HzToUnit(Rate(StructureId.BasalForebrain), 45f) * 0.72f + limbic.NeuromodState.AcetylcholineLevel * 0.28f);
-        var trnInhibition = Clamp01(HzToUnit(Rate(StructureId.Trn), 38f) * 0.72f + limbic.NeuromodState.NorepinephrineLevel * 0.28f);
-        var thalamicRelayGain = Clamp01(
-            (0.24f * HzToUnit(Rate(StructureId.Thalamus), 45f)) +
-            (0.22f * HzToUnit(Rate(StructureId.Pulvinar), 45f)) +
-            (0.22f * HzToUnit(Rate(StructureId.MediodorsalThalamus), 45f)) +
-            (0.18f * HzToUnit(Rate(StructureId.IntralaminarThalamus), 45f)) +
-            (0.14f * (1f - trnInhibition)));
-        var salience = Clamp01(
-            (0.36f * limbic.Salience) +
-            (0.23f * limbic.Threat) +
-            (0.18f * limbic.InteroceptiveDrive) +
-            (0.13f * limbic.TiredDrive) +
-            (0.10f * basalForebrainGain));
-
-        var environmentalFresh = environmental.LastInputTick >= 0 && tick - environmental.LastInputTick <= 600;
-        var darkness = environmentalFresh ? Clamp01(environmental.Darkness) : 0f;
-        var shelterNeed = environmentalFresh ? Clamp01(environmental.ShelterNeed) : 0f;
-        var anxiety = environmentalFresh ? Clamp01(environmental.Anxiety) : 0f;
-        var hunger = environmentalFresh ? Clamp01(environmental.Hunger) : 0f;
-        var predatorThreat = environmentalFresh ? Clamp01(environmental.PredatorThreat) : 0f;
-        var bodyFresh = bodyState.LastInputTick >= 0 && tick - bodyState.LastInputTick <= 600;
-        var movement = bodyFresh
-            ? Clamp01((Math.Abs(bodyState.ForwardVelocity) / 2.0f) + (Math.Abs(bodyState.TurnRateDeg) / 180.0f))
-            : 0f;
-        var contact = bodyFresh ? Clamp01(bodyState.ContactLevel) : 0f;
-        var pain = bodyFresh ? Clamp01(bodyState.PainLevel) : 0f;
-        var activeLanguage = languageIntent.Active && languageIntent.ExpiresAtTick >= tick;
-        var languageStrength = activeLanguage ? Clamp01(languageIntent.Strength / 2.35f) : 0f;
-        var visualFocus = Clamp01(visualAttention.FocusConfidence);
-        var predictiveFresh = predictivePerception.Active &&
-                              predictivePerception.LastUpdatedTick > 0 &&
-                              tick - predictivePerception.LastUpdatedTick <= 900;
-        var predictiveSurprise = predictiveFresh ? Clamp01(predictivePerception.Surprise) : 0f;
-        var predictiveBias = predictiveFresh
-            ? predictivePerception.SensoryBias
-            : new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f);
-        float PredictiveChannelDrive(string channel)
-            => predictiveFresh && string.Equals(predictivePerception.LastChannel, channel, StringComparison.OrdinalIgnoreCase)
-                ? predictiveSurprise
-                : 0f;
-        basalForebrainGain = Clamp01(basalForebrainGain + (predictiveFresh ? predictivePerception.LocusCoeruleusAlert * 0.10f : 0f));
-        salience = Clamp01(salience + (0.14f * predictiveSurprise));
-
-        var visualDrive =
-            (0.28f * sensoryRelayBias.Visual) +
-            (0.12f * predictiveBias.Visual) +
-            (0.21f * HzToUnit(Rate(StructureId.V1) + Rate(StructureId.V2) + Rate(StructureId.V4) + Rate(StructureId.Mt), 130f)) +
-            (0.15f * visualFocus) +
-            (0.16f * PredictiveChannelDrive("visual")) +
-            (0.12f * PathwayDrive(activePathways, StructureId.Pulvinar, StructureId.V2, StructureId.V4, StructureId.Mt)) +
-            (0.10f * predatorThreat) +
-            (0.08f * basalForebrainGain) +
-            (0.06f * thalamicRelayGain);
-        var auditoryDrive =
-            (0.30f * sensoryRelayBias.Auditory) +
-            (0.12f * predictiveBias.Auditory) +
-            (0.24f * HzToUnit(Rate(StructureId.A1) + Rate(StructureId.WernickePstgPsts), 95f)) +
-            (0.16f * languageStrength) +
-            (0.16f * PredictiveChannelDrive("auditory")) +
-            (0.12f * PathwayDrive(activePathways, StructureId.MediodorsalThalamus, StructureId.WernickePstgPsts, StructureId.BrocaBa44Ba45)) +
-            (0.10f * basalForebrainGain) +
-            (0.08f * thalamicRelayGain);
-        var somatosensoryDrive =
-            (0.26f * sensoryRelayBias.Somatosensory) +
-            (0.12f * predictiveBias.Somatosensory) +
-            (0.20f * HzToUnit(Rate(StructureId.S1) + Rate(StructureId.Ppc), 95f)) +
-            (0.17f * movement) +
-            (0.12f * contact) +
-            (0.12f * pain) +
-            (0.16f * PredictiveChannelDrive("somatosensory")) +
-            (0.12f * PathwayDrive(activePathways, StructureId.Thalamus, StructureId.S1, StructureId.Ppc)) +
-            (0.10f * thalamicRelayGain);
-        var interoceptiveDrive =
-            (0.23f * sensoryRelayBias.Interoceptive) +
-            (0.12f * predictiveBias.Interoceptive) +
-            (0.20f * limbic.InteroceptiveDrive) +
-            (0.18f * limbic.TiredDrive) +
-            (0.15f * hunger) +
-            (0.10f * shelterNeed) +
-            (0.08f * darkness) +
-            (0.08f * pain) +
-            (0.16f * PredictiveChannelDrive("interoceptive")) +
-            (0.06f * HzToUnit(Rate(StructureId.Insula) + Rate(StructureId.Hypothalamus), 95f));
-        var languageDrive =
-            (0.38f * languageStrength) +
-            (0.24f * HzToUnit(Rate(StructureId.BrocaBa44Ba45) + Rate(StructureId.WernickePstgPsts), 95f)) +
-            (0.16f * PathwayDrive(activePathways, StructureId.ArcuateFasciculus, StructureId.BrocaBa44Ba45, StructureId.WernickePstgPsts)) +
-            (0.12f * basalForebrainGain) +
-            (0.10f * thalamicRelayGain);
-        var memoryDrive =
-            (0.30f * limbic.HippocampalContext) +
-            (0.16f * (predictiveFresh ? predictivePerception.HippocampalEncodingGate : 0f)) +
-            (0.24f * HzToUnit(Rate(StructureId.CA1) + Rate(StructureId.CA3) + Rate(StructureId.Subiculum) + Rate(StructureId.EntorhinalCortex), 120f)) +
-            (0.18f * Math.Abs(limbic.RewardPredictionError)) +
-            (0.07f * PathwayDrive(activePathways, StructureId.CA1, StructureId.Pfc, StructureId.RetrosplenialCortex, StructureId.Subiculum)) +
-            (0.07f * PathwayDrive(activePathways, StructureId.Subiculum, StructureId.Pfc, StructureId.RetrosplenialCortex, StructureId.ParahippocampalCortex)) +
-            (0.14f * basalForebrainGain);
-        var motorDrive =
-            (0.26f * HzToUnit(Rate(StructureId.M1) + Rate(StructureId.Sma) + Rate(StructureId.PremotorCortex), 120f)) +
-            (0.22f * movement) +
-            (0.18f * contact) +
-            (0.14f * PathwayDrive(activePathways, StructureId.MotorThalamus, StructureId.M1, StructureId.Sma)) +
-            (0.12f * languageStrength) +
-            (0.08f * thalamicRelayGain);
-
-        var sleepSensoryDamping = sleepRuntime.IsSleeping ? 0.42f : 1f;
-        visualDrive *= sleepSensoryDamping;
-        auditoryDrive *= sleepSensoryDamping;
-        somatosensoryDrive *= sleepSensoryDamping;
-        motorDrive *= sleepRuntime.IsSleeping ? 0.18f : 1f;
-        memoryDrive *= sleepRuntime.IsSleeping ? 1.35f : 1f;
-        interoceptiveDrive *= sleepRuntime.IsSleeping ? 0.82f : 1f;
-        languageDrive *= sleepRuntime.IsSleeping ? 0.35f : 1f;
-
-        var rawDrives = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["visual"] = Math.Max(0.01f, visualDrive),
-            ["auditory"] = Math.Max(0.01f, auditoryDrive),
-            ["somatosensory"] = Math.Max(0.01f, somatosensoryDrive),
-            ["interoceptive"] = Math.Max(0.01f, interoceptiveDrive),
-            ["language"] = Math.Max(0.01f, languageDrive),
-            ["memory"] = Math.Max(0.01f, memoryDrive),
-            ["motor"] = Math.Max(0.01f, motorDrive)
-        };
-
-        var dominant = rawDrives.OrderByDescending(p => p.Value).First();
-        var currentDominant = string.IsNullOrWhiteSpace(previous.DominantChannel) ? dominant.Key : previous.DominantChannel;
-        var holdTicks = Math.Max(0, previous.HoldTicksRemaining - 1);
-        var currentValue = rawDrives.TryGetValue(currentDominant, out var heldValue) ? heldValue : 0f;
-        var switchMargin = 0.035f + (0.075f * trnInhibition);
-        var nextDominant = currentDominant;
-        var switched = false;
-        if (holdTicks <= 0 || dominant.Value > currentValue + switchMargin)
-        {
-            nextDominant = dominant.Key;
-            switched = !string.Equals(nextDominant, currentDominant, StringComparison.OrdinalIgnoreCase);
-        }
-
-        var trnSelectivity = 0.18f + (0.48f * trnInhibition);
-        foreach (var key in rawDrives.Keys.ToArray())
-        {
-            var relay = 0.72f + (0.48f * thalamicRelayGain);
-            var cholinergic = 0.86f + (0.30f * basalForebrainGain);
-            var gate = string.Equals(key, nextDominant, StringComparison.OrdinalIgnoreCase)
-                ? relay * cholinergic * (1.0f + (0.30f * salience))
-                : relay * (1.0f - trnSelectivity);
-            rawDrives[key] = Math.Max(0.005f, rawDrives[key] * gate);
-        }
-
-        var total = rawDrives.Values.Sum();
-        if (total <= 0.0001f)
-        {
-            return BiologicalAttentionRuntime.Normalize(previous);
-        }
-
-        var targetVisual = rawDrives["visual"] / total;
-        var targetAuditory = rawDrives["auditory"] / total;
-        var targetSomato = rawDrives["somatosensory"] / total;
-        var targetIntero = rawDrives["interoceptive"] / total;
-        var targetLanguage = rawDrives["language"] / total;
-        var targetMemory = rawDrives["memory"] / total;
-        var targetMotor = rawDrives["motor"] / total;
-        var alpha = sleepRuntime.IsSleeping ? 0.11f : 0.24f + (0.10f * basalForebrainGain);
-
-        float Blend(float oldValue, float target) => Clamp01((oldValue * (1f - alpha)) + (target * alpha));
-        var visual = Blend(previous.Visual, targetVisual);
-        var auditory = Blend(previous.Auditory, targetAuditory);
-        var somatosensory = Blend(previous.Somatosensory, targetSomato);
-        var interoceptive = Blend(previous.Interoceptive, targetIntero);
-        var language = Blend(previous.Language, targetLanguage);
-        var memory = Blend(previous.Memory, targetMemory);
-        var motor = Blend(previous.Motor, targetMotor);
-        var blendedTotal = visual + auditory + somatosensory + interoceptive + language + memory + motor;
-        if (blendedTotal <= 0.0001f)
-        {
-            return BiologicalAttentionRuntime.Normalize(previous);
-        }
-
-        visual /= blendedTotal;
-        auditory /= blendedTotal;
-        somatosensory /= blendedTotal;
-        interoceptive /= blendedTotal;
-        language /= blendedTotal;
-        memory /= blendedTotal;
-        motor /= blendedTotal;
-
-        var sorted = new[] { visual, auditory, somatosensory, interoceptive, language, memory, motor }
-            .OrderByDescending(v => v)
-            .ToArray();
-        var confidence = sorted.Length < 2
-            ? sorted[0]
-            : Clamp01((sorted[0] - sorted[1]) * (2.2f + (1.6f * trnInhibition)) + (salience * 0.12f));
-        var lastSwitchTick = switched ? tick : previous.LastSwitchTick;
-        var nextHold = switched
-            ? 8 + (int)Math.Round(16.0 * trnInhibition)
-            : holdTicks;
-
-        var sensoryVisual = visual + (0.22f * memory) + (0.14f * language);
-        var sensoryAuditory = auditory + (0.24f * language);
-        var sensorySomato = somatosensory + (0.24f * motor);
-        var sensoryIntero = interoceptive + (0.18f * memory);
-        var sensoryTotal = sensoryVisual + sensoryAuditory + sensorySomato + sensoryIntero;
-        var sensoryBias = sensoryTotal <= 0.0001f
-            ? previous.SensoryBias
-            : new AttentionVector(
-                sensoryVisual / sensoryTotal,
-                sensoryAuditory / sensoryTotal,
-                sensorySomato / sensoryTotal,
-                sensoryIntero / sensoryTotal);
-
-        return BiologicalAttentionRuntime.Normalize(new BiologicalAttentionRuntime(
-            visual,
-            auditory,
-            somatosensory,
-            interoceptive,
-            language,
-            memory,
-            motor,
-            nextDominant,
-            confidence,
-            salience,
-            thalamicRelayGain,
-            trnInhibition,
-            basalForebrainGain,
-            sensoryBias,
-            lastSwitchTick,
-            nextHold));
-    }
-
     private static LimbicRuntimeState ComputeLimbicRuntimeState(
         TickSignal tickSignal,
         IReadOnlyList<InstanceStructureSnapshot> snapshots,
@@ -34619,7 +33250,6 @@ internal sealed class NetworkStateDocument
     public double TickDurationMs { get; set; } = 1.0;
     public NeuromodState GlobalNeuromodState { get; set; } = new();
     public Dictionary<string, double> OscillationPhases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
-    public AttentionVector GlobalAttentionBias { get; set; } = BiologicalAttentionRuntime.Default.SensoryBias;
     public float RewardPredictionError { get; set; }
     public string PerformanceProfileName { get; set; } = "normal";
     public MemoryControlSettings MemoryControl { get; set; } = MemoryControlSettings.Default;
@@ -34631,7 +33261,6 @@ internal sealed class NetworkStateDocument
     public PainProtectionRuntime? PainProtection { get; set; } = PainProtectionRuntime.Default;
     public BodyPresenceRuntime? BodyPresence { get; set; } = BodyPresenceRuntime.Default;
     public EmbodiedAttentionSpotlightRuntime? EmbodiedAttentionSpotlight { get; set; } = EmbodiedAttentionSpotlightRuntime.Default;
-    public BiologicalAttentionRuntime? AttentionState { get; set; } = BiologicalAttentionRuntime.Default;
     public LimbicRuntimeState LimbicState { get; set; } = LimbicRuntimeState.Default;
     public EmotionRuntimeState? EmotionState { get; set; } = EmotionRuntimeState.Default;
     public WorldModelRuntime WorldModel { get; set; } = WorldModelRuntime.Default;
@@ -34652,10 +33281,7 @@ internal sealed class NetworkStateDocument
     public LanguageIntentRuntime? LanguageIntent { get; set; } = LanguageIntentRuntime.Default;
     public CognitiveLanguageWorkspaceRuntime? CognitiveLanguageWorkspace { get; set; } = CognitiveLanguageWorkspaceRuntime.Default;
     public InnerSpeechLoopRuntime? InnerSpeechLoop { get; set; } = InnerSpeechLoopRuntime.Default;
-    public PrefrontalWorkingMemoryRuntime? PrefrontalWorkingMemory { get; set; } = PrefrontalWorkingMemoryRuntime.Default;
     public IntentionalActionLoopRuntime? IntentionalActionLoop { get; set; } = IntentionalActionLoopRuntime.Default;
-    public ConsciousnessRhythmRuntime? ConsciousnessRhythm { get; set; } = ConsciousnessRhythmRuntime.Default;
-    public GlobalWorkspaceRuntime? GlobalWorkspace { get; set; } = GlobalWorkspaceRuntime.Default;
     public AutobiographicalSelfRuntime? AutobiographicalSelf { get; set; } = AutobiographicalSelfRuntime.Default;
     public AutobiographicalContinuityRuntime? AutobiographicalContinuity { get; set; } = AutobiographicalContinuityRuntime.Default;
     public NarrativeSelfModelRuntime? NarrativeSelfModel { get; set; } = NarrativeSelfModelRuntime.Default;

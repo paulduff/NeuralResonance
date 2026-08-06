@@ -3,6 +3,7 @@ param(
     [string]$Configuration = 'Debug',
     [switch]$NoBuild,
     [string]$ControlBaseUrl = 'http://localhost:5080',
+    [int]$Seed = 317,
     [switch]$WhatIf
 )
 
@@ -17,6 +18,7 @@ $envVars = @{
     NRE_CONTROL_ENDPOINTS = $ControlBaseUrl
     CONTROLPROGRAM_BASE_URLS = $ControlBaseUrl
     CONTROLPROGRAM_BASE_URL = $ControlBaseUrl
+    NRE_MAZE_SEED = $Seed
 }
 
 Assert-DnneSimulatorExclusive `

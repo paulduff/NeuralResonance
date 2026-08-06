@@ -278,3 +278,5 @@ Agreement is a migration measurement, not a demand that the neuronal system perm
 The migration is capability work, not a claim that the software is conscious or biologically complete. Diagnostics must distinguish measured neuronal activity, decoded inference, symbolic fallback, and simulator fact. A mode change is logged and externally inspectable. Silent fallback is forbidden.
 
 The Folded Archive will preserve failed trials as well as successful ones. A neuronal claim is accepted only when the implemented circuit, its perturbation behavior, and its embodied consequences agree.
+
+The authority migration is followed by the live, multi-seed qualification protocol in [Entry 068](Entry_068_Embodied_Neuronal_Motor_Qualification.md). Offline decoder tests remain necessary but cannot unlock embodied authority.

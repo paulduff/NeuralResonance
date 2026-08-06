@@ -5,6 +5,7 @@ param(
     [int]$Port = 5080,
     [ValidateSet('World', 'Maze', 'None')]
     [string]$Simulator = 'World',
+    [int]$MazeSeed = 317,
     [Parameter(Mandatory = $true)]
     [string]$EntityCheckpointPath,
     [string]$EntityApiUrl = 'http://127.0.0.1:5165',
@@ -89,6 +90,7 @@ switch ($Simulator) {
             -Configuration $Configuration `
             -NoBuild:$NoBuild `
             -ControlBaseUrl $controlBaseUrl `
+            -Seed $MazeSeed `
             -WhatIf:$WhatIf
     }
     'None' {

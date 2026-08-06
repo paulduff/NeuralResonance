@@ -6,6 +6,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -33,7 +35,7 @@ public partial class MainWindow : Window
     private const int FoodTargetCount = 16;
     private const int HazardTargetCount = 10;
     private const int CheckpointTargetCount = 5;
-    private const int MazeSeed = 317;
+    private const int DefaultMazeSeed = 317;
     private const int MaxLogLines = 240;
     private const int VisionWidth = 196;
     private const int VisionHeight = 196;
@@ -130,7 +132,8 @@ public partial class MainWindow : Window
     private readonly List<VisionSprite> _visionSprites = new(24);
     private readonly Dictionary<string, DateTime> _lastObjectStimulusUtc = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _lastObjectStimulusSalience = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Random _mazeRandom = new(MazeSeed);
+    private readonly int _mazeSeed;
+    private readonly Random _mazeRandom;
     private readonly WriteableBitmap _visionBitmap;
     private readonly byte[] _visionPixels = new byte[VisionWidth * VisionHeight * 4];
     private readonly double[] _visionDepthBuffer = new double[VisionWidth];
@@ -139,6 +142,7 @@ public partial class MainWindow : Window
     private int _mazeRows;
     private int _mazeCols;
     private char[][] _mazeLayout = [];
+    private string _mazeLayoutFingerprint = "uninitialized";
     private Point _startWorld;
     private Point _goalWorld;
     private Point _respawnWorld;
@@ -233,6 +237,8 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _mazeSeed = ResolveMazeSeed();
+        _mazeRandom = new Random(_mazeSeed);
         InitializeComponent();
         ApplyConfiguredEndpointSelection();
 
@@ -290,6 +296,7 @@ public partial class MainWindow : Window
         Focusable = true;
 
         GenerateMazeLayoutAndEntityCells();
+        _mazeLayoutFingerprint = ComputeMazeLayoutFingerprint();
         BuildMazeMetadata();
         ResetRun(logMessage: false);
         UpdateGainLabels();
@@ -313,6 +320,7 @@ public partial class MainWindow : Window
         _visionTimer.Start();
         SetConnectionStatus(AvatarControlStatusText.Connecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Maze simulator ready. Waiting for motor pathway spikes from Control Program dispatch stream.");
+        Log($"Qualification world: seed {_mazeSeed}; layout {_mazeLayoutFingerprint}.");
         Log("Brain-drive only: movement follows motor pathway spikes.");
         Log("Mouse controls: drag in viewport to rotate, mouse wheel to zoom.");
     }
@@ -2013,7 +2021,7 @@ public partial class MainWindow : Window
             distanceToGoal <= GoalRadius);
         var request = new HippocampalNavigationControlRequest(
             _navigationSessionId,
-            $"wpf-maze-{MazeSeed}-{_mazeRows}x{_mazeCols}",
+            $"wpf-maze-{_mazeSeed}-{_mazeRows}x{_mazeCols}",
             _navigationResetPending,
             distanceFromCellCenter <= CellSize * 0.20,
             _avatarHeadingDeg,
@@ -2634,6 +2642,44 @@ public partial class MainWindow : Window
         AddExtraMazeOpenings();
         PlaceMazeEndpoints();
         BuildEntityCellSets();
+    }
+
+    private static int ResolveMazeSeed()
+    {
+        var configured = Environment.GetEnvironmentVariable("NRE_MAZE_SEED");
+        return int.TryParse(configured, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seed)
+            ? seed
+            : DefaultMazeSeed;
+    }
+
+    private string ComputeMazeLayoutFingerprint()
+    {
+        var builder = new StringBuilder((_mazeRows * (_mazeCols + 1)) + 32);
+        builder.Append(_mazeSeed).Append('|').Append(_mazeRows).Append('x').Append(_mazeCols).Append('\n');
+        foreach (var row in _mazeLayout)
+        {
+            builder.Append(row).Append('\n');
+        }
+
+        AppendCells(builder, 'F', _foodCells);
+        AppendCells(builder, 'H', _hazardCells);
+        AppendCells(builder, 'C', _checkpointCells);
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
+        return $"sha256:{Convert.ToHexString(hash).ToLowerInvariant()}";
+    }
+
+    private static void AppendCells(
+        StringBuilder builder,
+        char kind,
+        IEnumerable<(int Row, int Col)> cells)
+    {
+        foreach (var cell in cells.OrderBy(static cell => cell.Row).ThenBy(static cell => cell.Col))
+        {
+            builder.Append(kind).Append(':').Append(cell.Row).Append(',').Append(cell.Col).Append(';');
+        }
+
+        builder.Append('\n');
     }
 
     private void InitializeMazeLayout()

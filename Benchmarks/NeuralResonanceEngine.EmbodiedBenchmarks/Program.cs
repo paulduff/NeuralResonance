@@ -9,6 +9,13 @@ string outputDirectory = ReadOption(args, "--output")
 Directory.CreateDirectory(outputDirectory);
 
 string mode = ReadOption(args, "--mode") ?? "closed-loop";
+mode = mode.Trim().ToLowerInvariant();
+if (mode is "motor-preflight" or "motor-capture" or "motor-campaign")
+{
+    Environment.ExitCode = await NeuronalMotorQualificationCommand.RunAsync(mode, args, outputDirectory);
+    return;
+}
+
 if (string.Equals(mode, "navigation", StringComparison.OrdinalIgnoreCase))
 {
     ContinuousNavigationResult navigation = ContinuousNavigationBenchmark.Run();

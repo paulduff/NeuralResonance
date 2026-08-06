@@ -51,13 +51,12 @@ internal static class NavigationRoutes
             return Results.BadRequest(new { Error = "A non-goal navigation observation must expose at least one traversable exit." });
         }
 
-        try
+        return Results.Json(new
         {
-            return Results.Ok(sessions.Process(request));
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Results.BadRequest(new { Error = exception.Message });
-        }
+            Error = "The goal-directed spatial navigator is retired from runtime authority. Use sensory input and neuronal motor output.",
+            Authority = "LegacyOfflineBenchmark",
+            CanAuthorizeMovement = false,
+            AuthoritativeEndpoint = "/api/v1/neuronal-motor"
+        }, statusCode: StatusCodes.Status410Gone);
     }
 }

@@ -281,9 +281,11 @@ internal static class SurvivalBenchmarkDyadReplay
         DyadEntityPromptSnapshot prompt,
         string detail)
     {
-        var emitted = !prompt.Grounding.IsSleeping &&
-                      prompt.Grounding.SpeechEligible &&
-                      string.Equals(prompt.Grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase) &&
+        var emitted = prompt.Grounding.NeuronalCircuitObserved &&
+                      prompt.Grounding.NeuronalGroundingAvailable &&
+                      prompt.Grounding.NeuronalGrounded &&
+                      prompt.Grounding.NeuronalSpeechAuthorized &&
+                      !prompt.Grounding.IsSleeping &&
                       !string.IsNullOrWhiteSpace(prompt.FallbackText);
         return new(
             record.Step,

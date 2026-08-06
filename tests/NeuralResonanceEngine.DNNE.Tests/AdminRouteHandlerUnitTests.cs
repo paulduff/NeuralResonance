@@ -222,8 +222,9 @@ public sealed class AdminRouteHandlerUnitTests
 
         var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
         Assert.Contains("You are Entity, the language component of Dyad.", audit.Proposal.PromptText);
-        Assert.Contains("Verified DNNE communication intent", audit.Proposal.PromptText);
-        Assert.Contains("prefrontal-working-memory", audit.Proposal.PromptText);
+        Assert.Contains("has not observed a neuronal language-grounding circuit", audit.Proposal.PromptText);
+        Assert.DoesNotContain("Verified DNNE communication intent", audit.Proposal.PromptText);
+        Assert.DoesNotContain("prefrontal-working-memory", audit.Proposal.PromptText);
         Assert.Equal("I am observing the current state.", audit.Proposal.CandidateText);
     }
 

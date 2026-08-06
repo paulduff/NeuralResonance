@@ -213,6 +213,36 @@ Delete or demote central cognition fields only after their neuronal replacements
 
 Acceptance requires all cognition-authority checks to pass with symbolic cognition disabled and no measurable benchmark regression outside documented biological limitations.
 
+#### Implemented authority boundary
+
+Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-authority` reports perception, memory, attention/workspace, sleep/consolidation, language grounding, action selection, and motor output as separate domains. Every corresponding central record is `LegacyTelemetry`, and every domain reports `LegacyCanAuthorize=false`. `/api/v1/state` repeats the global authority flags so clients cannot mistake the large compatibility snapshot for a control surface.
+
+The final semantic actuation paths have been removed from the runtime:
+
+- English parsing can stimulate auditory and language populations but cannot construct or dispatch motor spikes.
+- The central intentional-action loop remains available for migration comparison but cannot inject named motor directives into premotor, M1, reticular, thalamic, or spinal populations.
+- Entity and DNNE fallback narration cannot emit without a grounded neuronal language circuit, neuronal language attention, a complete speech chain, acceptable uncertainty, and wake-state authorization.
+- The deterministic survival replay applies the same language gate as the hosted route.
+- Missing neuronal attention produces no selection rather than restoring the old scalar winner.
+- The production sleep overload can update metabolic substrate but cannot enter or exit sleep through ATP/pressure thresholds; only the neuronal state circuit may transition it. The one-argument threshold overload remains solely for the historical sleep harness.
+- The maze's goal-coordinate navigator is disabled by default and its runtime endpoint returns HTTP 410. Its session code remains an offline benchmark artifact, not a brain or world authority. The rendered maze consumes raw brain/avatar motor traffic.
+
+The old goal, motivation, predictive-perception, persistent-percept, narration, speech-intention, cognitive-language-workspace, inner-speech, and intentional-action endpoints are visibly wrapped as legacy telemetry and point clients to their neuronal successors. Conventional memory dictionaries remain checkpoint and audit material; language, replay, attention, and action decisions no longer read them as authority.
+
+This rung does not delete every central descriptive model. Affect, body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because either they are substrate/environment or their full neuronal replacements are not yet proven. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
+
+No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.
+
+The authority test set pins:
+
+- no symbolic cognition domain can authorize a decision, even while a neuronal circuit is absent;
+- production sleep cannot use threshold fallback;
+- missing neuronal attention cannot restore a legacy winner;
+- the goal-aware maze navigator is unavailable at runtime;
+- semantic language and intentional-action motor-spike builders are absent from the runtime assembly;
+- no-neuronal Entity candidates and fallback narration remain deferred;
+- all prior neuronal, simulator, memory, and regression tests continue to pass.
+
 ## First Vertical Slice
 
 The first implemented slice adds:

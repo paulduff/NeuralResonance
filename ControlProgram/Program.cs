@@ -54,6 +54,7 @@ builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
 builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
 builder.Services.AddSingleton<NeuronalLanguageGroundingRuntime>();
+builder.Services.AddSingleton<NeuronalCognitionAuthorityRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -205,8 +206,20 @@ app.MapGet("/api/v1/attention", (SimulationState state) => Results.Ok(new
     AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
     State = state.GetAttentionSnapshot()
 }));
-app.MapGet("/api/v1/goal-intent", (SimulationState state) => Results.Ok(state.GetGoalIntentSnapshot()));
-app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.Ok(state.GetMotivationArbitrationSnapshot()));
+app.MapGet("/api/v1/goal-intent", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeAction = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
+    State = state.GetGoalIntentSnapshot()
+}));
+app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeAction = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
+    State = state.GetMotivationArbitrationSnapshot()
+}));
 app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/world-learning-map", (SimulationState state, int? max) => Results.Ok(state.GetWorldLearningMapSnapshot(max ?? 32)));
 app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(new
@@ -220,15 +233,51 @@ app.MapGet("/api/v1/body-schema", (SimulationState state) => Results.Ok(state.Ge
 app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(state.GetInteroceptiveCoreSnapshot()));
 app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
 app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.GetBodyPresenceSnapshot()));
-app.MapGet("/api/v1/predictive-perception", (SimulationState state) => Results.Ok(state.GetPredictivePerceptionSnapshot()));
-app.MapGet("/api/v1/persistent-percepts", (SimulationState state, int? max) => Results.Ok(state.GetPersistentPerceptsSnapshot(max ?? 32)));
+app.MapGet("/api/v1/predictive-perception", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizePerception = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-perception",
+    State = state.GetPredictivePerceptionSnapshot()
+}));
+app.MapGet("/api/v1/persistent-percepts", (SimulationState state, int? max) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizePerception = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-perception",
+    State = state.GetPersistentPerceptsSnapshot(max ?? 32)
+}));
 app.MapGet("/api/v1/embodied-attention", (SimulationState state) => Results.Ok(state.GetEmbodiedAttentionSpotlightSnapshot()));
 app.MapGet("/api/v1/place-memory", (SimulationState state, int? max) => Results.Ok(state.GetPlaceMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/cerebellum", (SimulationState state) => Results.Ok(state.GetCerebellumSnapshot()));
-app.MapGet("/api/v1/narration", (SimulationState state) => Results.Ok(state.GetBrainNarrationSnapshot()));
-app.MapGet("/api/v1/speech-intention", (SimulationState state) => Results.Ok(state.GetSpeechIntentionSnapshot()));
-app.MapGet("/api/v1/cognitive-language-workspace", (SimulationState state) => Results.Ok(state.GetCognitiveLanguageWorkspaceSnapshot()));
-app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(state.GetInnerSpeechLoopSnapshot()));
+app.MapGet("/api/v1/narration", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeLanguage = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
+    State = state.GetBrainNarrationSnapshot()
+}));
+app.MapGet("/api/v1/speech-intention", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeLanguage = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
+    State = state.GetSpeechIntentionSnapshot()
+}));
+app.MapGet("/api/v1/cognitive-language-workspace", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeLanguage = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
+    State = state.GetCognitiveLanguageWorkspaceSnapshot()
+}));
+app.MapGet("/api/v1/inner-speech-loop", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeLanguage = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-language-grounding",
+    State = state.GetInnerSpeechLoopSnapshot()
+}));
 app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Results.Ok(new
 {
     Authority = "LegacyTelemetry",
@@ -236,7 +285,13 @@ app.MapGet("/api/v1/prefrontal-working-memory", (SimulationState state) => Resul
     AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
     State = state.GetPrefrontalWorkingMemorySnapshot()
 }));
-app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(state.GetIntentionalActionLoopSnapshot()));
+app.MapGet("/api/v1/intentional-action-loop", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeAction = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
+    State = state.GetIntentionalActionLoopSnapshot()
+}));
 app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorControlState control) => Results.Ok(new
 {
     Control = control.GetSnapshot(),
@@ -252,6 +307,8 @@ app.MapGet("/api/v1/neuronal-sleep-consolidation", (NeuronalSleepConsolidationRu
     Results.Ok(sleepConsolidation.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRuntime languageGrounding) =>
     Results.Ok(languageGrounding.GetSnapshot()));
+app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cognitionAuthority) =>
+    Results.Ok(cognitionAuthority.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -2270,23 +2327,8 @@ app.MapPost("/api/v1/admin/input/language", async (
 
     await Task.WhenAll(dispatchTasks);
 
-    var motorIntentResult = englishGrammar is null
-        ? LanguageMotorIntentDispatchResult.Empty
-        : await DispatchLanguageIntentMotorSpikesAsync(
-            languageIntent,
-            catalog,
-            clientFactory,
-            state,
-            tick,
-            timestampMs,
-            neuromod,
-            ct);
-    if (motorIntentResult.Errors.Count > 0)
-    {
-        errors.AddRange(motorIntentResult.Errors);
-    }
-    generatedSpikes += motorIntentResult.GeneratedSpikes;
-    deliveredSpikes += motorIntentResult.DeliveredSpikes;
+    // Language input may stimulate language populations, but text never writes
+    // a semantic directive into motor populations. Action selection is neuronal.
     var dialogue = dialogueTurns.RecordDelivery(dialogueTurn, generatedSpikes, deliveredSpikes, errors, tick);
 
     var summaryText = lexicalization.Utterance.Length <= 72 ? lexicalization.Utterance : $"{lexicalization.Utterance[..72]}...";
@@ -2325,9 +2367,11 @@ app.MapPost("/api/v1/admin/input/language", async (
         BrainNarration = state.GetBrainNarrationSnapshot(),
         TeachingLoop = teachingLoop,
         Dialogue = dialogue,
-        MotorIntentTargets = motorIntentResult.TargetInstances,
-        MotorIntentGeneratedSpikes = motorIntentResult.GeneratedSpikes,
-        MotorIntentDeliveredSpikes = motorIntentResult.DeliveredSpikes,
+        MotorIntentTargets = 0,
+        MotorIntentGeneratedSpikes = 0,
+        MotorIntentDeliveredSpikes = 0,
+        MotorIntentAuthority = "LegacyTelemetry",
+        MotorIntentCanAuthorize = false,
         CreatedLexemes = lexicalization.CreatedLexemes,
         ReusedLexemes = lexicalization.ReusedLexemes,
         GeneratedSpikes = generatedSpikes,
@@ -2665,141 +2709,6 @@ static List<SpikeMessage> BuildLanguageStimulusSpikes(
                 ModulationContext = NeuromodState.Clamp(neuromod)
             });
         }
-    }
-
-    return spikes;
-}
-
-static async Task<LanguageMotorIntentDispatchResult> DispatchLanguageIntentMotorSpikesAsync(
-    LanguageIntentRuntime intent,
-    RuntimeInstanceCatalog catalog,
-    IHttpClientFactory clientFactory,
-    SimulationState state,
-    long tick,
-    double timestampMs,
-    NeuromodState neuromod,
-    CancellationToken cancellationToken)
-{
-    if (!intent.Active || string.Equals(intent.MotorDirective, "motor_idle", StringComparison.OrdinalIgnoreCase))
-    {
-        return LanguageMotorIntentDispatchResult.Empty;
-    }
-
-    var motorStructures = new[]
-    {
-        StructureId.PremotorCortex,
-        StructureId.Sma,
-        StructureId.M1,
-        StructureId.MotorThalamus
-    };
-    var instances = motorStructures
-        .SelectMany(structure => catalog.GetByStructure(structure, null))
-        .GroupBy(instance => instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
-        .Select(group => group.First())
-        .ToArray();
-    if (instances.Length == 0)
-    {
-        return new LanguageMotorIntentDispatchResult(
-            0,
-            0,
-            0,
-            ["No live motor structures available for English command intent."]);
-    }
-
-    var errors = new ConcurrentBag<string>();
-    var generated = 0;
-    var delivered = 0;
-    var tasks = instances.Select(async instance =>
-    {
-        var hemisphere = string.IsNullOrWhiteSpace(instance.Hemisphere)
-            ? "M"
-            : instance.Hemisphere.ToUpperInvariant();
-        var spikes = BuildLanguageIntentMotorSpikes(
-            tick,
-            timestampMs,
-            instance.StructureId,
-            hemisphere,
-            intent,
-            neuromod);
-        Interlocked.Add(ref generated, spikes.Count);
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromMilliseconds(700));
-        try
-        {
-            var client = clientFactory.CreateClient("dnne");
-            client.BaseAddress = instance.Endpoint;
-            client.Timeout = Timeout.InfiniteTimeSpan;
-            var accepted = await DispatchStimulusSpikesAsync(client, spikes, timeout.Token);
-            accepted = Math.Clamp(accepted, 0, spikes.Count);
-            if (accepted <= 0)
-            {
-                return;
-            }
-
-            Interlocked.Add(ref delivered, accepted);
-            state.RecordDispatchedSpikes(
-                tick,
-                timestampMs,
-                hemisphere,
-                hemisphere,
-                instance.InstanceKey,
-                spikes,
-                accepted);
-        }
-        catch (Exception ex)
-        {
-            errors.Add($"{instance.InstanceKey}: motor intent dispatch failed ({ex.GetType().Name}: {ex.Message})");
-        }
-    });
-
-    await Task.WhenAll(tasks);
-    if (delivered > 0)
-    {
-        state.AppendSpikeLog(
-            $"English motor intent {intent.CommandKey}: delivered {delivered}/{generated} motor spikes ({intent.MotorDirective}).");
-    }
-
-    return new LanguageMotorIntentDispatchResult(
-        generated,
-        delivered,
-        instances.Length,
-        errors.ToArray());
-}
-
-static List<SpikeMessage> BuildLanguageIntentMotorSpikes(
-    long tick,
-    double timestampMs,
-    StructureId motorStructure,
-    string hemisphere,
-    LanguageIntentRuntime intent,
-    NeuromodState neuromod)
-{
-    var burstCount = Math.Clamp((int)Math.Round(6.0 + (intent.Strength * 8.0)), 4, 22);
-    var spikes = new List<SpikeMessage>(burstCount);
-    var clampedNeuromod = NeuromodState.Clamp(neuromod);
-    for (var i = 0; i < burstCount; i++)
-    {
-        var channel = Math.Abs(HashCode.Combine(intent.CommandKey, motorStructure, hemisphere, i)) % 64;
-        var vesicle = Math.Clamp((0.72f + (channel * 0.012f)) * Math.Clamp(intent.Strength, 0.2f, 2.0f), 0.05f, 8.0f);
-        spikes.Add(new SpikeMessage
-        {
-            MessageId = Guid.NewGuid(),
-            TimestampMs = timestampMs,
-            SourceStructure = motorStructure,
-            TargetStructure = motorStructure,
-            SourceNeuronId = $"{hemisphere}:{intent.MotorDirective}_{tick}_{channel}_{i}",
-            TargetNeuronId = $"{hemisphere}:{intent.MotorDirective}_pool_{channel}",
-            SynapseId = Guid.NewGuid(),
-            Neurotransmitter = string.Equals(intent.MotorDirective, "motor_stop", StringComparison.OrdinalIgnoreCase)
-                ? NTEnum.GABA
-                : NTEnum.GLUTAMATE,
-            VesicleQuanta = vesicle,
-            ReuptakeRate = Math.Clamp(2.2f + (channel * 0.08f), 1.5f, 12.0f),
-            SpikeType = i % 5 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL,
-            IsFeedback = false,
-            ModulationContext = clampedNeuromod
-        });
     }
 
     return spikes;
@@ -4429,7 +4338,7 @@ internal sealed class SimulationState
             var grounding = BuildDyadLanguageGroundingSnapshotLocked();
             var prompt = grounding.NeuronalCircuitObserved
                 ? BuildNeuronalDyadPrompt(parameters, grounding)
-                : BuildLegacyDyadPrompt(parameters, grounding);
+                : BuildAwaitingNeuronalDyadPrompt(parameters, grounding);
             if (prompt.Length > DyadLanguageContract.MaxPromptLength)
             {
                 prompt = prompt[..DyadLanguageContract.MaxPromptLength];
@@ -4468,26 +4377,19 @@ internal sealed class SimulationState
                 $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})")
         ]);
 
-    private static string BuildLegacyDyadPrompt(
+    private static string BuildAwaitingNeuronalDyadPrompt(
         DyadEntityGenerationParameters parameters,
         DyadLanguageGroundingSnapshot grounding)
         => string.Join('\n',
         [
             "You are Entity, the language component of Dyad.",
-            "Produce one short language candidate for DNNE review. Treat the following as bounded internal reports, not proof of external events.",
+            "DNNE has not observed a neuronal language-grounding circuit for this turn.",
+            "Any candidate will be held. Do not infer a reference from legacy symbolic telemetry.",
             "Do not prescribe motor actions, reward changes, memory writes, or unobserved world facts.",
             $"Requested candidate kind: {parameters.CandidateKind}.",
             $"Requested purpose: {parameters.Purpose}.",
             $"Verified DNNE tick: {grounding.Tick}.",
-            $"Goal: {grounding.BoundGoalKey}; focus: {grounding.SemanticFocus}; need: {grounding.NeedState}; affect: {grounding.AffectiveState}.",
-            $"Language workspace: active={grounding.WorkspaceActive}; confidence={grounding.WorkspaceConfidence:0.00}; working-memory={grounding.WorkingMemoryStability:0.00}.",
-            $"Attention: language={grounding.LanguageAttention:0.00}; confidence={grounding.AttentionConfidence:0.00}.",
-            $"Speech gate: mode={grounding.SpeechMode}; eligible={grounding.SpeechEligible}; confidence={grounding.SpeechConfidence:0.00}.",
-            $"Verified DNNE communication intent (expression only; not a motor directive): active={grounding.CommunicationIntent.Active}; intent={grounding.CommunicationIntent.Intent}; mood={grounding.CommunicationIntent.Mood}; subject={grounding.CommunicationIntent.Subject}; strength={grounding.CommunicationIntent.Strength:0.00}; evidence={grounding.CommunicationIntent.Evidence}.",
-            "Verified DNNE memory excerpts (bounded internal reports, not proof of external events):",
-            ..grounding.MemoryExcerpts.Select(excerpt =>
-                $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})"),
-            $"DNNE evidence label: {grounding.Evidence}."
+            "Authority: none until grounded neuronal evidence is available."
         ]);
 
     private void RecordIssuedDyadPromptLocked(
@@ -4562,66 +4464,39 @@ internal sealed class SimulationState
     private static (DyadLanguageCandidateDecision Decision, string Reason) ResolveDyadLanguageCandidateDecision(
         DyadLanguageGroundingSnapshot grounding)
     {
-        if (grounding.NeuronalCircuitObserved)
+        if (!grounding.NeuronalCircuitObserved)
         {
-            if (!grounding.NeuronalGroundingAvailable)
-            {
-                return (DyadLanguageCandidateDecision.Deferred, "The observed neuronal language circuit is incomplete; symbolic telemetry cannot replace missing circuit evidence.");
-            }
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE has no observed neuronal language circuit; legacy symbolic telemetry cannot authorize language emission.");
+        }
 
-            if (grounding.IsSleeping)
-            {
-                return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal sleep circuit is active; the candidate remains available for later review.");
-            }
-
-            if (!grounding.NeuronalGrounded || grounding.GroundingConfidence < 0.20f || grounding.Uncertainty > 0.70f)
-            {
-                return (DyadLanguageCandidateDecision.Deferred, "DNNE does not have a sufficiently certain neuronal reference for this candidate.");
-            }
-
-            if (grounding.AttentionChannel != NeuronalLanguageGroundingDecoder.LanguageAttentionChannel)
-            {
-                return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal attention workspace has not selected the language population.");
-            }
-
-            if (!grounding.NeuronalSpeechAuthorized)
-            {
-                return (DyadLanguageCandidateDecision.Deferred, "DNNE's distributed neuronal speech circuit has not authorized emission.");
-            }
-
-            return (
-                DyadLanguageCandidateDecision.AcceptedForEmission,
-                "DNNE's grounded neuronal reference, attention broadcast, and distributed speech circuit authorize this text-only emission.");
+        if (!grounding.NeuronalGroundingAvailable)
+        {
+            return (DyadLanguageCandidateDecision.Deferred, "The observed neuronal language circuit is incomplete; symbolic telemetry cannot replace missing circuit evidence.");
         }
 
         if (grounding.IsSleeping)
         {
-            return (DyadLanguageCandidateDecision.Deferred, "DNNE is sleeping; the candidate remains available for later review.");
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal sleep circuit is active; the candidate remains available for later review.");
         }
 
-        if (!grounding.WorkspaceActive)
+        if (!grounding.NeuronalGrounded || grounding.GroundingConfidence < 0.20f || grounding.Uncertainty > 0.70f)
         {
-            return (DyadLanguageCandidateDecision.Deferred, "DNNE has no active cognitive language workspace for this turn.");
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE does not have a sufficiently certain neuronal reference for this candidate.");
         }
 
-        if (grounding.WorkspaceConfidence < 0.40f)
+        if (grounding.AttentionChannel != NeuronalLanguageGroundingDecoder.LanguageAttentionChannel)
         {
-            return (DyadLanguageCandidateDecision.Deferred, "DNNE's cognitive language workspace confidence is below the review threshold.");
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's neuronal attention workspace has not selected the language population.");
         }
 
-        if (grounding.LanguageAttention < 0.12f || grounding.AttentionConfidence < 0.20f)
+        if (!grounding.NeuronalSpeechAuthorized)
         {
-            return (DyadLanguageCandidateDecision.Deferred, "DNNE's attention system has not independently prioritised language for this turn.");
-        }
-
-        if (!grounding.SpeechEligible || !string.Equals(grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase))
-        {
-            return (DyadLanguageCandidateDecision.Deferred, "DNNE's independent speech gate is closed; no utterance is emitted.");
+            return (DyadLanguageCandidateDecision.Deferred, "DNNE's distributed neuronal speech circuit has not authorized emission.");
         }
 
         return (
             DyadLanguageCandidateDecision.AcceptedForEmission,
-            "DNNE's independent workspace, attention, and speech gates accept this reviewed candidate for emission; this is not a motor or memory operation.");
+            "DNNE's grounded neuronal reference, attention broadcast, and distributed speech circuit authorize this text-only emission.");
     }
 
     private DyadLanguageGroundingSnapshot BuildDyadLanguageGroundingSnapshotLocked()
@@ -17214,11 +17089,20 @@ internal sealed class SimulationState
     }
 
     public SleepTransitionResult AdvanceSleepHomeostasis(SleepTickInput input)
-        => AdvanceSleepHomeostasis(input, NeuronalSleepConsolidationDecision.Unavailable);
+        => AdvanceSleepHomeostasis(
+            input,
+            NeuronalSleepConsolidationDecision.Unavailable,
+            allowLegacyAuthority: true);
 
     public SleepTransitionResult AdvanceSleepHomeostasis(
         SleepTickInput input,
         NeuronalSleepConsolidationDecision neuronalDecision)
+        => AdvanceSleepHomeostasis(input, neuronalDecision, allowLegacyAuthority: false);
+
+    private SleepTransitionResult AdvanceSleepHomeostasis(
+        SleepTickInput input,
+        NeuronalSleepConsolidationDecision neuronalDecision,
+        bool allowLegacyAuthority)
     {
         lock (_gate)
         {
@@ -17394,7 +17278,7 @@ internal sealed class SimulationState
                 atp = Math.Max(atp, Math.Min(runtime.MaxAtpBudget, runtime.SleepExitThreshold + wakeReserve));
                 wakeInertiaTicksRemaining = minWakeTicks;
             }
-            else if (!neuronalCircuitObserved && !runtime.IsSleeping &&
+            else if (allowLegacyAuthority && !neuronalCircuitObserved && !runtime.IsSleeping &&
                 wakeInertiaTicksRemaining <= 0 &&
                 !unsafeToSleep &&
                 (atp <= runtime.SleepEnterThreshold && sleepPressure >= sleepPressureEnterThreshold))
@@ -17442,7 +17326,7 @@ internal sealed class SimulationState
                 wakeTicks = 0;
                 sleepTicks = 0;
             }
-            else if (!neuronalCircuitObserved && runtime.IsSleeping &&
+            else if (allowLegacyAuthority && !neuronalCircuitObserved && runtime.IsSleeping &&
                 ((sleepTicks >= runtime.MinSleepTicks &&
                   atp >= runtime.SleepExitThreshold &&
                   sleepPressure <= sleepPressureExitThreshold) ||
@@ -20297,6 +20181,15 @@ internal sealed class SimulationState
     private object BuildDiagnosticsLocked(AutoProfileSettings? autoProfile) => new
     {
         Tick,
+        CognitionAuthority = new
+        {
+            Authority = NeuronalCognitionAuthorityRuntime.Authority,
+            SymbolicScaffoldCanAuthorize = false,
+            SemanticMotorInjectionAllowed = false,
+            WorldGoalSteeringAllowed = false,
+            LegacyLanguageEmissionAllowed = false,
+            AuthoritativeEndpoint = "/api/v1/cognition-authority"
+        },
         SimulationClockMs,
         TickDurationMs,
         GlobalNeuromodState,
@@ -23121,6 +23014,7 @@ internal sealed class TickCoordinator(
     NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
     NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
     NeuronalLanguageGroundingRuntime neuronalLanguageGrounding,
+    NeuronalCognitionAuthorityRuntime neuronalCognitionAuthority,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23292,7 +23186,6 @@ internal sealed class TickCoordinator(
             long? pendingAutoProfileGeneration = null;
             var tickWallSamples = new Queue<double>(256);
             var lastPerceptionLanguageTick = long.MinValue / 4;
-            var lastIntentionalMotorDispatchTick = long.MinValue / 4;
             var lastAutoProfileSignal = "none";
             var spontaneousGateStarvationTicks = 0;
             var tickParticipantCursor = 0;
@@ -23969,6 +23862,14 @@ internal sealed class TickCoordinator(
                 neuronalControl,
                 previousNeuronalMotor);
             state.UpdateNeuronalMotor(neuronalMotor);
+            neuronalCognitionAuthority.Update(
+                tickSignal.Tick,
+                neuronalPercept,
+                neuronalMemoryDecision,
+                neuronalAttention,
+                neuronalSleep,
+                neuronalLanguage,
+                neuronalMotor);
             if (previousNeuronalMotor.ControlGeneration != neuronalMotor.ControlGeneration ||
                 !string.Equals(previousNeuronalMotor.Mode, neuronalMotor.Mode, StringComparison.Ordinal))
             {
@@ -24137,52 +24038,13 @@ internal sealed class TickCoordinator(
                 state,
                 stoppingToken);
 
-            var intentionalMotorStats = IntentionalMotorDispatchResult.Empty;
-            var intentionalMotorCooldownTicks = adaptivePressure >= 0.45
-                ? 12
-                : adaptivePressure >= 0.20
-                    ? 6
-                    : 3;
-            if (!sleepRuntimeAtTickStart.IsSleeping &&
-                !string.Equals(neuronalMotor.Mode, NeuronalMotorModes.Primary, StringComparison.Ordinal) &&
-                (tickSignal.Tick - lastIntentionalMotorDispatchTick) >= intentionalMotorCooldownTicks)
-            {
-                intentionalMotorStats = await DispatchIntentionalActionMotorSpikesAsync(
-                    intentionalAction,
-                    runtimeCatalog,
-                    state,
-                    tickSignal.Tick,
-                    tickSignal.TimestampMs,
-                    state.GlobalNeuromodState,
-                    dispatchSemaphore,
-                    grpcSpikeTransports,
-                    clients,
-                    useHttpSpikeTransportFallback,
-                    activePathways,
-                    effectiveTickIoTimeoutMs,
-                    stoppingToken);
-                if (intentionalMotorStats.GeneratedSpikes > 0)
-                {
-                    lastIntentionalMotorDispatchTick = tickSignal.Tick;
-                    generatedSpikeCount += intentionalMotorStats.GeneratedSpikes;
-                    dispatchedSpikeCount += intentionalMotorStats.DeliveredSpikes;
-                }
-
-                if (intentionalMotorStats.Errors.Count > 0 && tickSignal.Tick % 64 == 0)
-                {
-                    state.AppendOutputLog(
-                        $"Intentional motor dispatch warning: generated={intentionalMotorStats.GeneratedSpikes}, delivered={intentionalMotorStats.DeliveredSpikes}, errors={intentionalMotorStats.Errors.Count}, last={intentionalMotorStats.Errors[^1]}.");
-                }
-            }
-
             if (dispatchedSpikeCount > 0 ||
                 spontaneousStats.Delivered > 0 ||
                 replayStats.Delivered > 0 ||
-                perceptionLanguageStats.Delivered > 0 ||
-                intentionalMotorStats.DeliveredSpikes > 0)
+                perceptionLanguageStats.Delivered > 0)
             {
                 state.AppendSpikeLog(
-                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, motorIntent={intentionalMotorStats.DeliveredSpikes}/{intentionalMotorStats.GeneratedSpikes}, replay={replayStats.Delivered}/{replayStats.Generated}, pathways={activePathways.Count}");
+                    $"Tick {tickSignal.Tick}: generated={generatedSpikeCount}, routed={routedSpikeCount}, delivered={dispatchedSpikeCount}, spontaneous={spontaneousStats.Delivered}/{spontaneousStats.Generated}, perceptionLang={perceptionLanguageStats.Delivered}/{perceptionLanguageStats.Generated}, replay={replayStats.Delivered}/{replayStats.Generated}, pathways={activePathways.Count}");
             }
 
             var sleepTransition = state.AdvanceSleepHomeostasis(new SleepTickInput(
@@ -24846,254 +24708,6 @@ internal sealed class TickCoordinator(
 
         cursor = (cursor + participantBudget) % availableServices.Count;
         return new TickParticipantSelection(selected, true);
-    }
-
-    private async Task<IntentionalMotorDispatchResult> DispatchIntentionalActionMotorSpikesAsync(
-        IntentionalActionLoopRuntime intent,
-        RuntimeInstanceCatalog catalog,
-        SimulationState state,
-        long tick,
-        double timestampMs,
-        NeuromodState neuromod,
-        SemaphoreSlim dispatchSemaphore,
-        IReadOnlyDictionary<string, IStructureSpikeTransport> grpcSpikeTransports,
-        IReadOnlyDictionary<string, HttpClient> httpClients,
-        bool useHttpSpikeTransportFallback,
-        ConcurrentDictionary<(StructureId Source, StructureId Target, NTEnum Nt), int> activePathways,
-        int tickIoTimeoutMs,
-        CancellationToken cancellationToken)
-    {
-        if (!ShouldDispatchIntentionalMotor(intent))
-        {
-            return IntentionalMotorDispatchResult.Empty;
-        }
-
-        var targetStructures = ResolveIntentionalMotorTargetStructures(intent.MotorDirective);
-        var instances = targetStructures
-            .SelectMany(structure => catalog.GetByStructure(structure, null))
-            .GroupBy(instance => instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.First())
-            .ToArray();
-        if (instances.Length == 0)
-        {
-            return new IntentionalMotorDispatchResult(
-                0,
-                0,
-                0,
-                [$"No live descending motor structures available for {intent.MotorDirective}."]);
-        }
-
-        var errors = new ConcurrentBag<string>();
-        var generated = 0;
-        var delivered = 0;
-        var drive = ResolveIntentionalMotorDrive(intent);
-        var tasks = instances.Select(async instance =>
-        {
-            var hemisphere = string.IsNullOrWhiteSpace(instance.Hemisphere)
-                ? "M"
-                : instance.Hemisphere.ToUpperInvariant();
-            var spikes = BuildIntentionalActionMotorSpikes(
-                tick,
-                timestampMs,
-                instance.StructureId,
-                hemisphere,
-                intent,
-                drive,
-                neuromod);
-            Interlocked.Add(ref generated, spikes.Count);
-
-            await dispatchSemaphore.WaitAsync(cancellationToken);
-            try
-            {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(TimeSpan.FromMilliseconds(Math.Clamp(tickIoTimeoutMs, 500, 30_000)));
-                var accepted = await SendSpikeBatchToTargetAsync(
-                    instance.InstanceKey,
-                    spikes,
-                    grpcSpikeTransports,
-                    httpClients,
-                    useHttpSpikeTransportFallback,
-                    timeout.Token);
-                accepted = Math.Clamp(accepted, 0, spikes.Count);
-                if (accepted <= 0)
-                {
-                    return;
-                }
-
-                Interlocked.Add(ref delivered, accepted);
-                state.RecordDispatchedSpikes(
-                    tick,
-                    timestampMs,
-                    hemisphere,
-                    hemisphere,
-                    instance.InstanceKey,
-                    spikes,
-                    accepted);
-
-                for (var i = 0; i < accepted; i++)
-                {
-                    var spike = spikes[i];
-                    var key = (spike.SourceStructure, spike.TargetStructure, spike.Neurotransmitter);
-                    activePathways.AddOrUpdate(key, 1, (_, count) => count + 1);
-                }
-            }
-            catch (Exception ex)
-            {
-                errors.Add($"{instance.InstanceKey}: intentional motor dispatch failed ({ClassifyFailure(ex)})");
-            }
-            finally
-            {
-                dispatchSemaphore.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
-        if (delivered > 0 && tick % 24 == 0)
-        {
-            state.AppendSpikeLog(
-                $"Intentional motor efference {intent.ActionKey}: delivered {delivered}/{generated} spikes ({intent.MotorDirective}).");
-        }
-
-        return new IntentionalMotorDispatchResult(
-            generated,
-            delivered,
-            instances.Length,
-            errors.ToArray());
-    }
-
-    private static bool ShouldDispatchIntentionalMotor(IntentionalActionLoopRuntime intent)
-    {
-        if (!intent.Active || string.IsNullOrWhiteSpace(intent.MotorDirective))
-        {
-            return false;
-        }
-
-        if (intent.MotorDirective.Equals("motor_idle", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var readiness = Math.Clamp(intent.Readiness, 0f, 1f);
-        var commitment = Math.Clamp(intent.Commitment, 0f, 1f);
-        var confidence = Math.Clamp(intent.Confidence, 0f, 1f);
-        var inhibition = Math.Clamp(intent.Inhibition, 0f, 1f);
-        var threshold = IsIntentionalHoldDirective(intent.MotorDirective) ? 0.16f : 0.22f;
-        return readiness >= threshold &&
-               commitment >= threshold &&
-               confidence >= 0.16f &&
-               inhibition <= 0.78f;
-    }
-
-    private static float ResolveIntentionalMotorDrive(IntentionalActionLoopRuntime intent)
-    {
-        var readiness = Math.Clamp(intent.Readiness, 0f, 1f);
-        var commitment = Math.Clamp(intent.Commitment, 0f, 1f);
-        var confidence = Math.Clamp(intent.Confidence, 0f, 1f);
-        var inhibition = Math.Clamp(intent.Inhibition, 0f, 1f);
-        return Math.Clamp((readiness * 0.36f) + (commitment * 0.30f) + (confidence * 0.22f) + ((1f - inhibition) * 0.12f), 0.12f, 1.35f);
-    }
-
-    private static StructureId[] ResolveIntentionalMotorTargetStructures(string motorDirective)
-    {
-        var normalized = string.IsNullOrWhiteSpace(motorDirective)
-            ? string.Empty
-            : motorDirective.Trim().ToLowerInvariant();
-        if (normalized.Contains("reorient", StringComparison.Ordinal) ||
-            normalized.Contains("about_face", StringComparison.Ordinal) ||
-            normalized.Contains("turn", StringComparison.Ordinal))
-        {
-            return
-            [
-                StructureId.PremotorCortex,
-                StructureId.Sma,
-                StructureId.M1,
-                StructureId.MotorThalamus,
-                StructureId.ReticularFormation,
-                StructureId.SpinalCordMotor
-            ];
-        }
-
-        if (IsIntentionalHoldDirective(normalized))
-        {
-            return
-            [
-                StructureId.M1,
-                StructureId.MotorThalamus,
-                StructureId.ReticularFormation,
-                StructureId.SpinalCordMotor
-            ];
-        }
-
-        return
-        [
-            StructureId.PremotorCortex,
-            StructureId.Sma,
-            StructureId.M1,
-            StructureId.MotorThalamus,
-            StructureId.ReticularFormation,
-            StructureId.SpinalCordMotor
-        ];
-    }
-
-    private static bool IsIntentionalHoldDirective(string motorDirective)
-    {
-        var normalized = string.IsNullOrWhiteSpace(motorDirective)
-            ? string.Empty
-            : motorDirective.Trim().ToLowerInvariant();
-        return normalized.Contains("rest", StringComparison.Ordinal) ||
-               normalized.Contains("stop", StringComparison.Ordinal) ||
-               normalized.Contains("guard", StringComparison.Ordinal) ||
-               normalized.Contains("immobilize", StringComparison.Ordinal);
-    }
-
-    private static List<SpikeMessage> BuildIntentionalActionMotorSpikes(
-        long tick,
-        double timestampMs,
-        StructureId motorStructure,
-        string hemisphere,
-        IntentionalActionLoopRuntime intent,
-        float drive,
-        NeuromodState neuromod)
-    {
-        var directive = string.IsNullOrWhiteSpace(intent.MotorDirective)
-            ? "motor_idle"
-            : intent.MotorDirective.Trim();
-        var burstBase = motorStructure switch
-        {
-            StructureId.SpinalCordMotor => 5.0,
-            StructureId.ReticularFormation => 3.0,
-            StructureId.M1 => 4.0,
-            StructureId.Sma => 3.0,
-            StructureId.PremotorCortex => 3.0,
-            _ => 2.0
-        };
-        var burstCount = Math.Clamp((int)Math.Round(burstBase + (drive * 6.0f)), 2, 14);
-        var spikes = new List<SpikeMessage>(burstCount);
-        var clampedNeuromod = NeuromodState.Clamp(neuromod);
-        var inhibitory = IsIntentionalHoldDirective(directive);
-        for (var i = 0; i < burstCount; i++)
-        {
-            var channel = Math.Abs(HashCode.Combine(intent.IntentionKey, directive, motorStructure, hemisphere, i)) % 64;
-            var vesicle = Math.Clamp((0.50f + (channel * 0.010f)) * Math.Clamp(drive, 0.12f, 1.35f), 0.04f, 6.0f);
-            spikes.Add(new SpikeMessage
-            {
-                MessageId = Guid.NewGuid(),
-                TimestampMs = timestampMs,
-                SourceStructure = motorStructure,
-                TargetStructure = motorStructure,
-                SourceNeuronId = $"{hemisphere}:{directive}_{tick}_{channel}_{i}",
-                TargetNeuronId = $"{hemisphere}:{directive}_descending_pool_{channel}",
-                SynapseId = Guid.NewGuid(),
-                Neurotransmitter = inhibitory ? NTEnum.GABA : NTEnum.GLUTAMATE,
-                VesicleQuanta = vesicle,
-                ReuptakeRate = Math.Clamp(2.0f + (channel * 0.07f), 1.2f, 10.0f),
-                SpikeType = i % 4 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL,
-                IsFeedback = false,
-                ModulationContext = clampedNeuromod
-            });
-        }
-
-        return spikes;
     }
 
     private Task<RestartServiceResult>? MaybeStartAutoHealRestartAsync(
@@ -35767,22 +35381,6 @@ internal sealed class NetworkStateDocument
 internal sealed record RestartServiceItem(string InstanceKey, bool Restarted, bool Healthy, string Message);
 internal sealed record RestartServiceResult(int Requested, int Restarted, int Healthy, IReadOnlyList<RestartServiceItem> Items);
 internal sealed record StimulusDispatchResult(int GeneratedSpikes, int DeliveredSpikes, IReadOnlyList<string> Errors);
-internal sealed record LanguageMotorIntentDispatchResult(
-    int GeneratedSpikes,
-    int DeliveredSpikes,
-    int TargetInstances,
-    IReadOnlyList<string> Errors)
-{
-    public static LanguageMotorIntentDispatchResult Empty { get; } = new(0, 0, 0, Array.Empty<string>());
-}
-internal sealed record IntentionalMotorDispatchResult(
-    int GeneratedSpikes,
-    int DeliveredSpikes,
-    int TargetInstances,
-    IReadOnlyList<string> Errors)
-{
-    public static IntentionalMotorDispatchResult Empty { get; } = new(0, 0, 0, Array.Empty<string>());
-}
 internal sealed record LanguageStimulusTarget(
     StructureId SourceStructure,
     StructureId TargetStructure,

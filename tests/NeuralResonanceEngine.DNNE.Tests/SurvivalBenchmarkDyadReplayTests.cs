@@ -83,9 +83,11 @@ public sealed class SurvivalBenchmarkDyadReplayTests
         {
             Assert.False(turn.EntityAvailable);
             Assert.True(turn.UsedFallback);
-            if (turn.Prompt.Grounding.SpeechEligible &&
-                !turn.Prompt.Grounding.IsSleeping &&
-                string.Equals(turn.Prompt.Grounding.SpeechMode, "speakable", StringComparison.OrdinalIgnoreCase))
+            if (turn.Prompt.Grounding.NeuronalCircuitObserved &&
+                turn.Prompt.Grounding.NeuronalGroundingAvailable &&
+                turn.Prompt.Grounding.NeuronalGrounded &&
+                turn.Prompt.Grounding.NeuronalSpeechAuthorized &&
+                !turn.Prompt.Grounding.IsSleeping)
             {
                 Assert.Equal("dnne-fallback", turn.Origin);
                 Assert.Equal(turn.Prompt.FallbackText, turn.Text);

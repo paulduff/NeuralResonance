@@ -260,7 +260,8 @@ internal sealed record NeuronalMotorRuntime(
     int SelectedActionChannel = -1,
     double ActionSelectionConfidence = 0.0,
     double ActionCircuitCoverage = 0.0,
-    double ActionSelectionMargin = 0.0)
+    double ActionSelectionMargin = 0.0,
+    bool ActionCircuitObserved = false)
 {
     public static NeuronalMotorRuntime Default { get; } = new(
         Mode: NeuronalMotorModes.Shadow,
@@ -512,7 +513,8 @@ internal static class NeuronalMotorPopulationDecoder
             SelectedActionChannel: actionDecision.SelectedChannel,
             ActionSelectionConfidence: actionDecision.Confidence,
             ActionCircuitCoverage: actionDecision.CircuitCoverage,
-            ActionSelectionMargin: actionDecision.SelectionMargin);
+            ActionSelectionMargin: actionDecision.SelectionMargin,
+            ActionCircuitObserved: actionDecision.Available);
     }
 
     private static double NormalizeRate(float rateHz, NeuronalMotorControlSettings settings)

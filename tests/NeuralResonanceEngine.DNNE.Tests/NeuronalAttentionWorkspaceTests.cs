@@ -170,6 +170,27 @@ public sealed class NeuronalAttentionWorkspaceTests
         Assert.Equal(0f, authoritative.FocusConfidence);
     }
 
+    [Fact]
+    public void MissingNeuronalCircuitCannotRestoreLegacyWinner()
+    {
+        var legacy = BiologicalAttentionRuntime.Default with
+        {
+            DominantChannel = "visual",
+            Visual = 0.95f,
+            FocusConfidence = 0.90f
+        };
+
+        var authoritative = NeuronalAttentionWorkspaceDecoder.ApplyAuthority(
+            44,
+            legacy,
+            legacy,
+            NeuronalAttentionWorkspaceDecision.Unavailable);
+
+        Assert.Equal("none", authoritative.DominantChannel);
+        Assert.Equal(0f, authoritative.Visual);
+        Assert.Equal(0f, authoritative.FocusConfidence);
+    }
+
     private static IReadOnlyList<InstanceStructureSnapshot> CreateCircuit(
         int selected,
         float competitor = 0.10f,

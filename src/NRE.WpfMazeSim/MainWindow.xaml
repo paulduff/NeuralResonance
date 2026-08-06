@@ -56,14 +56,15 @@
                     <StackPanel>
                         <TextBlock Text="Maze Brain Drive" FontSize="16" FontWeight="Bold" />
                         <CheckBox x:Name="SpatialNavigationCheckBox"
-                                  IsChecked="True"
-                                  Content="Spatial navigator"
+                                  IsChecked="False"
+                                  IsEnabled="False"
+                                  Content="Legacy spatial navigator (offline benchmark only)"
                                   Margin="0,8,0,0"
                                   Checked="SpatialNavigationCheckBox_OnChecked"
                                   Unchecked="SpatialNavigationCheckBox_OnUnchecked" />
                         <TextBlock x:Name="NavigationStatusText"
                                    Margin="0,3,0,4"
-                                   Text="Navigation: initializing"
+                                   Text="Navigation: neuronal brain drive"
                                    TextWrapping="Wrap" />
                         <TextBlock x:Name="TickText" Margin="0,8,0,0" Text="Tick: -" />
                         <TextBlock x:Name="DispatchText" Margin="0,4,0,0" Text="Dispatch spikes: -" />

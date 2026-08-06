@@ -186,7 +186,22 @@ internal static class NeuronalAttentionWorkspaceDecoder
     {
         if (!decision.Available)
         {
-            return legacy;
+            return BiologicalAttentionRuntime.Normalize(previous with
+            {
+                Visual = 0f,
+                Auditory = 0f,
+                Somatosensory = 0f,
+                Interoceptive = 0f,
+                Memory = 0f,
+                Language = 0f,
+                Motor = 0f,
+                DominantChannel = "none",
+                FocusConfidence = 0f,
+                Salience = 0f,
+                ThalamicRelayGain = 0f,
+                TrnInhibition = 0f,
+                HoldTicksRemaining = 0
+            });
         }
 
         var scores = decision.ChannelScores.Count == ChannelCount

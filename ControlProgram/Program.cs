@@ -199,42 +199,6 @@ app.MapGet("/api/v1/startup-health", (SimulationState state, int? maxNonOkDetail
 app.MapGet("/api/v1/validation", (SimulationState state, int? maxSnapshotAgeTicks, int? maxNonOkServices) =>
     Results.Ok(state.GetValidationSnapshot(maxSnapshotAgeTicks ?? 20, maxNonOkServices ?? 2)));
 app.MapGet("/api/v1/service-health", (SimulationState state) => Results.Ok(state.GetServiceHealthSnapshot()));
-app.MapGet("/api/v1/limbic", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeValuation = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
-    State = state.GetLimbicSnapshot()
-}));
-app.MapGet("/api/v1/emotion", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeValuation = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
-    State = state.GetEmotionSnapshot()
-}));
-app.MapGet("/api/v1/attention", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeSelection = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-attention-workspace",
-    State = state.GetAttentionSnapshot()
-}));
-app.MapGet("/api/v1/goal-intent", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeAction = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
-    State = state.GetGoalIntentSnapshot()
-}));
-app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.Ok(new
-{
-    Authority = "LegacyTelemetry",
-    CanAuthorizeAction = false,
-    CanAuthorizeValuation = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
-    State = state.GetMotivationArbitrationSnapshot()
-}));
 app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/world-learning-map", (SimulationState state, int? max) => Results.Ok(state.GetWorldLearningMapSnapshot(max ?? 32)));
 app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(new
@@ -23800,7 +23764,7 @@ internal sealed class TickCoordinator(
                 neuronalExecutiveDecision,
                 neuronalMotor);
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
-            var attentionBiasForNoise = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, state.GlobalAttentionBias);
+            var attentionBiasForNoise = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(neuronalAttention);
             var (leftVisualTopDown, rightVisualTopDown, visualTrnGate) = ComputeVisualHemifieldTopDown(processedSnapshots);
             var visualAttentionRuntime = state.AdvanceVisualAttentionWta(leftVisualTopDown, rightVisualTopDown, visualTrnGate);
             var capturedEngrams = sleepRuntimeAtTickStart.IsSleeping
@@ -23900,8 +23864,6 @@ internal sealed class TickCoordinator(
                 stoppingToken);
 
             snapshots.AddRange(MergeSpontaneousNeuronHighlights(aggregatedSnapshots, spontaneousNeuronIdsByStructure));
-            var trnDrivenAttentionBias = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, attentionBiasForNoise);
-
             foreach (var structureId in registry.Keys)
             {
                 if (!instanceKeysByStructure.TryGetValue(structureId, out var instanceKeys) || instanceKeys.Length == 0)
@@ -24129,44 +24091,14 @@ internal sealed class TickCoordinator(
                 languageBackoff.Graphs,
                 languageBackoff.ModeStates));
 
-            var sleepRuntimeForLimbic = state.GetSleepMemoryRuntime();
-            var limbicState = ComputeLimbicRuntimeState(
-                tickSignal,
-                processedSnapshots,
-                activePathways,
-                state.LimbicState,
-                sleepRuntimeForLimbic,
-                state.EnvironmentalState,
-                state.OutcomeState);
-            var legacyBiologicalAttention = ComputeBiologicalAttentionRuntime(
-                tickSignal.Tick,
-                processedSnapshots,
-                activePathways,
-                state.AttentionState,
-                visualAttentionRuntime,
-                state.PredictivePerception,
-                limbicState,
-                sleepRuntimeForLimbic,
-                state.EnvironmentalState,
-                state.BodyState,
-                state.LanguageIntent,
-                trnDrivenAttentionBias);
-            var biologicalAttention = NeuronalAttentionWorkspaceDecoder.ApplyAuthority(
-                tickSignal.Tick,
-                legacyBiologicalAttention,
-                state.AttentionState,
-                neuronalAttention);
-            state.UpdateLimbicState(limbicState);
-            state.UpdateAttentionState(biologicalAttention);
-            state.UpdateNeuromod(limbicState.NeuromodState, limbicState.RewardPredictionError, biologicalAttention.SensoryBias);
             if (tickSignal.Tick % snapshotEvery == 0)
             {
                 var brainSnapshot = new BrainSnapshot(
                     tickSignal.Tick,
                     tickSignal.TimestampMs,
-                    limbicState.NeuromodState,
+                    new NeuromodState(),
                     tickSignal.PhaseContext,
-                    limbicState.RewardPredictionError,
+                    0f,
                     snapshots,
                     activePathways.Select(x => new ActivePathway(x.Key.Source, x.Key.Target, x.Value, x.Key.Nt)).ToList());
 

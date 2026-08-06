@@ -191,6 +191,32 @@ public sealed class NeuronalAttentionWorkspaceTests
         Assert.Equal(0f, authoritative.FocusConfidence);
     }
 
+    [Fact]
+    public void SpontaneousSensoryBiasComesFromNeuronalAttentionScores()
+    {
+        var visual = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(
+            NeuronalAttentionWorkspaceDecoder.Decode(CreateCircuit(0)));
+        var auditory = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(
+            NeuronalAttentionWorkspaceDecoder.Decode(CreateCircuit(1)));
+
+        Assert.True(visual.Visual > visual.Auditory);
+        Assert.True(auditory.Auditory > auditory.Visual);
+        Assert.Equal(1f, visual.Visual + visual.Auditory + visual.Somatosensory + visual.Interoceptive, 5);
+        Assert.Equal(1f, auditory.Visual + auditory.Auditory + auditory.Somatosensory + auditory.Interoceptive, 5);
+    }
+
+    [Fact]
+    public void MissingNeuronalAttentionProducesNeutralSensoryBias()
+    {
+        var bias = NeuronalAttentionWorkspaceDecoder.ToSensoryBias(
+            NeuronalAttentionWorkspaceDecision.Unavailable);
+
+        Assert.Equal(0.25f, bias.Visual);
+        Assert.Equal(0.25f, bias.Auditory);
+        Assert.Equal(0.25f, bias.Somatosensory);
+        Assert.Equal(0.25f, bias.Interoceptive);
+    }
+
     private static IReadOnlyList<InstanceStructureSnapshot> CreateCircuit(
         int selected,
         float competitor = 0.10f,

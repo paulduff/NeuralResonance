@@ -202,7 +202,7 @@ internal static class NeuronalAttentionWorkspaceDecoder
                 TrnInhibition = 0f,
                 HoldTicksRemaining = 0
             });
-        }
+    }
 
         var scores = decision.ChannelScores.Count == ChannelCount
             ? decision.ChannelScores.Select(static value => Math.Max(0.0, value)).ToArray()
@@ -247,6 +247,42 @@ internal static class NeuronalAttentionWorkspaceDecoder
             LastSwitchTick = switched ? tick : previous.LastSwitchTick,
             HoldTicksRemaining = decision.Active && decision.MaintainedChannels.Contains(decision.SelectedChannel) ? 12 : 0
         });
+    }
+
+    public static AttentionVector ToSensoryBias(NeuronalAttentionWorkspaceDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        if (!decision.Available || decision.ChannelScores.Count < 4)
+        {
+            return new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f);
+        }
+
+        var scores = new float[4];
+        var total = 0f;
+        for (var channel = 0; channel < scores.Length; channel++)
+        {
+            var score = decision.Active
+                ? Math.Max(0.001, decision.ChannelScores[channel])
+                : 0.001;
+            if (decision.Active && channel == decision.SelectedChannel)
+            {
+                score *= 1.35;
+            }
+
+            scores[channel] = (float)score;
+            total += scores[channel];
+        }
+
+        if (!float.IsFinite(total) || total <= 0f)
+        {
+            return new AttentionVector(0.25f, 0.25f, 0.25f, 0.25f);
+        }
+
+        return new AttentionVector(
+            scores[0] / total,
+            scores[1] / total,
+            scores[2] / total,
+            scores[3] / total);
     }
 
     private static string LabelFor(int channel)

@@ -238,7 +238,7 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task ObjectInput_AvatarSource_Accepts_Defers_And_Stores_Memory_When_Gate_Enabled()
+    public async Task ObjectInput_AvatarSource_Cannot_Create_Percept_Or_Memory_When_Gate_Enabled()
     {
         var client = _fixture.Client;
         await SetAvatarVisionGateAsync(client, enabled: true);
@@ -259,15 +259,16 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
 
         using var doc = await ReadJsonAsync(response);
         Assert.True(GetBool(doc.RootElement, "accepted"));
-        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"));
+        Assert.False(GetBool(doc.RootElement, "dispatchDeferred"));
+        Assert.False(GetBool(doc.RootElement, "annotationAccepted"));
         Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
         Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
         Assert.True(TryGetProperty(doc.RootElement, "memory", out var memory));
-        Assert.Equal(JsonValueKind.Object, memory.ValueKind);
+        Assert.Equal(JsonValueKind.Null, memory.ValueKind);
     }
 
     [Fact]
-    public async Task ObjectInput_NonAvatarSource_Processes_Route_And_Returns_Errors_When_No_Instances()
+    public async Task ObjectInput_NonAvatarSource_Is_Also_Annotation_Only()
     {
         var client = _fixture.Client;
         await SetAvatarVisionGateAsync(client, enabled: false);
@@ -288,11 +289,10 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
 
         using var doc = await ReadJsonAsync(response);
         Assert.False(GetBool(doc.RootElement, "blockedByInputGate"));
-        var deliveredSpikes = GetInt(doc.RootElement, "deliveredSpikes");
-        var errorCount = GetArrayLength(doc.RootElement, "errors");
-        Assert.True(
-            deliveredSpikes > 0 || errorCount >= 1,
-            $"Expected either delivered spikes (>0) or at least one routing error. delivered={deliveredSpikes}, errors={errorCount}");
+        Assert.False(GetBool(doc.RootElement, "annotationAccepted"));
+        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
+        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+        Assert.Equal(0, GetArrayLength(doc.RootElement, "errors"));
     }
 
     [Fact]

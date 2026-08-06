@@ -76,6 +76,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly bool[] _actionChannelLearningObserved = new bool[ActionChannelTopology.ChannelCount];
 
+	private readonly float[] _perceptEnsembleRateSums = new float[PerceptEnsembleTopology.EnsembleCount];
+
+	private readonly int[] _perceptEnsembleRateCounts = new int[PerceptEnsembleTopology.EnsembleCount];
+
+	private readonly float[] _perceptBindingTrace = new float[PerceptEnsembleTopology.EnsembleCount];
+
+	private readonly float[] _perceptFamiliarityTrace = new float[PerceptEnsembleTopology.EnsembleCount];
+
+	private readonly float[] _perceptPreviousEvidence = new float[PerceptEnsembleTopology.EnsembleCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -226,6 +236,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			ProcessDueQueue(_feedForward, tickSignal, isFeedback: false);
 			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
+			var perceptCircuit = PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId);
 			if (actionCircuit)
 			{
 				Array.Clear(_actionChannelRateSums);
@@ -234,6 +245,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				Array.Clear(_actionChannelDirectCounts);
 				Array.Clear(_actionChannelIndirectSums);
 				Array.Clear(_actionChannelIndirectCounts);
+			}
+			if (perceptCircuit)
+			{
+				Array.Clear(_perceptEnsembleRateSums);
+				Array.Clear(_perceptEnsembleRateCounts);
 			}
 			int num = 0;
 			int num2 = 0;
@@ -286,6 +302,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						}
 					}
 				}
+				if (perceptCircuit)
+				{
+					var ensemble = PerceptEnsembleTopology.EnsembleForNeuron(modelNeuron.Index);
+					_perceptEnsembleRateSums[ensemble] += modelNeuron.FiringRateHz;
+					_perceptEnsembleRateCounts[ensemble]++;
+				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
 				transportSupportTotal += (double)modelNeuron.MicrotubuleTransportSupport;
@@ -331,7 +353,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
 			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
 			var actionSelection = BuildActionSelectionDiagnostics(tickSignal.GlobalNeuromodState);
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection);
+			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(tickSignal.GlobalNeuromodState);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -916,6 +939,157 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			margin,
 			Math.Clamp(neuromod.DopamineLevel, 0f, 1f));
 	}
+
+	private PerceptEnsembleDiagnostics? BuildPerceptEnsembleDiagnostics(NeuromodState neuromod)
+	{
+		if (!PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var evidence = new float[PerceptEnsembleTopology.EnsembleCount];
+		var strongestEvidence = 0f;
+		for (var ensemble = 0; ensemble < evidence.Length; ensemble++)
+		{
+			evidence[ensemble] = NormalizePerceptRate(AverageChannel(
+				_perceptEnsembleRateSums,
+				_perceptEnsembleRateCounts,
+				ensemble));
+			strongestEvidence = Math.Max(strongestEvidence, evidence[ensemble]);
+		}
+
+		var attentionGain = Math.Clamp(
+			0.78f + (neuromod.AcetylcholineLevel * 0.26f) + (neuromod.NorepinephrineLevel * 0.20f),
+			0.60f,
+			1.24f);
+		var recurrentGain = IsPerceptBindingStructure(_profile.StructureId) ? 0.30f : 0.15f;
+		var persistenceDecay = IsPerceptBindingStructure(_profile.StructureId) ? 0.91f : 0.82f;
+		var activities = new PerceptEnsembleActivity[evidence.Length];
+		var best = 0;
+		var bestScore = float.MinValue;
+		var secondScore = float.MinValue;
+
+		for (var ensemble = 0; ensemble < activities.Length; ensemble++)
+		{
+			var competingEvidence = Math.Max(0f, strongestEvidence - evidence[ensemble]);
+			var selectedEvidence = Math.Clamp((evidence[ensemble] * attentionGain) - (competingEvidence * 0.18f), 0f, 1f);
+			var previousBinding = _perceptBindingTrace[ensemble];
+			var binding = Math.Clamp(
+				(previousBinding * persistenceDecay) +
+				(selectedEvidence * recurrentGain) +
+				(previousBinding * selectedEvidence * 0.08f),
+				0f,
+				1f);
+			_perceptBindingTrace[ensemble] = binding;
+
+			var previousFamiliarity = _perceptFamiliarityTrace[ensemble];
+			var familiarity = selectedEvidence > 0.025f
+				? previousFamiliarity + ((1f - previousFamiliarity) * selectedEvidence * 0.025f)
+				: previousFamiliarity * 0.9995f;
+			familiarity = Math.Clamp(familiarity, 0f, 1f);
+			_perceptFamiliarityTrace[ensemble] = familiarity;
+
+			var novelty = Math.Clamp(
+				Math.Max(0f, selectedEvidence - (_perceptPreviousEvidence[ensemble] * 0.72f)) *
+				(1f - (familiarity * 0.65f)),
+				0f,
+				1f);
+			_perceptPreviousEvidence[ensemble] = selectedEvidence;
+
+			var visual = IsVisualFeatureStructure(_profile.StructureId) ? selectedEvidence : 0f;
+			var motion = _profile.StructureId == StructureId.Mt ? selectedEvidence : 0f;
+			var auditory = IsAuditoryFeatureStructure(_profile.StructureId) ? selectedEvidence : 0f;
+			var somatosensory = IsSomatosensoryFeatureStructure(_profile.StructureId) ? selectedEvidence : 0f;
+			var recurrentBinding = IsPerceptBindingStructure(_profile.StructureId) ? binding : 0f;
+			var salience = IsPerceptSalienceStructure(_profile.StructureId) ? Math.Max(selectedEvidence, binding * 0.65f) : 0f;
+			var familiar = IsPerceptFamiliarityStructure(_profile.StructureId) ? familiarity : 0f;
+			var hippocampal = IsPerceptIndexStructure(_profile.StructureId) ? Math.Max(binding, selectedEvidence * 0.78f) : 0f;
+			var confidence = Math.Clamp(
+				(selectedEvidence * 0.42f) +
+				(binding * 0.30f) +
+				(familiarity * 0.12f) +
+				(salience * 0.10f) +
+				(hippocampal * 0.06f),
+				0f,
+				1f);
+			var score = confidence + (novelty * 0.08f);
+			activities[ensemble] = new PerceptEnsembleActivity(
+				ensemble,
+				visual,
+				motion,
+				auditory,
+				somatosensory,
+				recurrentBinding,
+				salience,
+				familiar,
+				hippocampal,
+				novelty,
+				confidence);
+
+			if (score > bestScore)
+			{
+				secondScore = bestScore;
+				bestScore = score;
+				best = ensemble;
+			}
+			else if (score > secondScore)
+			{
+				secondScore = score;
+			}
+		}
+
+		var margin = secondScore == float.MinValue ? 0f : Math.Max(0f, bestScore - secondScore);
+		return new PerceptEnsembleDiagnostics(
+			_profile.StructureId,
+			activities,
+			best,
+			margin,
+			_perceptBindingTrace[best]);
+	}
+
+	private static float NormalizePerceptRate(float rateHz)
+	{
+		var bounded = Math.Max(0f, rateHz);
+		return bounded / (bounded + 10f);
+	}
+
+	private static bool IsVisualFeatureStructure(StructureId structure)
+		=> structure is StructureId.Retina
+			or StructureId.V1
+			or StructureId.V2
+			or StructureId.V3
+			or StructureId.V4
+			or StructureId.InferotemporalCortex
+			or StructureId.FusiformGyrus
+			or StructureId.TemporalAssociation;
+
+	private static bool IsAuditoryFeatureStructure(StructureId structure)
+		=> structure is StructureId.A1 or StructureId.AuditoryAssociationCortex;
+
+	private static bool IsSomatosensoryFeatureStructure(StructureId structure)
+		=> structure is StructureId.S1
+			or StructureId.SecondarySomatosensoryCortex
+			or StructureId.Ppc
+			or StructureId.Insula;
+
+	private static bool IsPerceptBindingStructure(StructureId structure)
+		=> structure is StructureId.V4
+			or StructureId.InferotemporalCortex
+			or StructureId.FusiformGyrus
+			or StructureId.TemporalAssociation
+			or StructureId.Pfc;
+
+	private static bool IsPerceptSalienceStructure(StructureId structure)
+		=> structure is StructureId.Pulvinar or StructureId.Thalamus or StructureId.Pfc;
+
+	private static bool IsPerceptFamiliarityStructure(StructureId structure)
+		=> structure is StructureId.PerirhinalCortex or StructureId.ParahippocampalCortex;
+
+	private static bool IsPerceptIndexStructure(StructureId structure)
+		=> structure is StructureId.EntorhinalCortex
+			or StructureId.DentateGyrus
+			or StructureId.CA3
+			or StructureId.CA1;
 
 	private static float AverageChannel(float[] sums, int[] counts, int channel)
 		=> counts[channel] > 0 ? sums[channel] / counts[channel] : 0f;

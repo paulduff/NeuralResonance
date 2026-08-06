@@ -54,7 +54,8 @@ public sealed record TickAck(
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
-    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -291,6 +292,26 @@ public sealed record VisualObjectRecognitionDiagnostics(
     float PfcObjectContext,
     float ObjectRecognitionCoherence);
 
+public sealed record PerceptEnsembleActivity(
+    int EnsembleIndex,
+    float VisualFeatureDrive,
+    float MotionConsistency,
+    float AuditoryFeatureDrive,
+    float SomatosensoryFeatureDrive,
+    float RecurrentBinding,
+    float Salience,
+    float Familiarity,
+    float HippocampalIndex,
+    float Novelty,
+    float Confidence);
+
+public sealed record PerceptEnsembleDiagnostics(
+    StructureId SourceStructure,
+    IReadOnlyList<PerceptEnsembleActivity> Ensembles,
+    int DominantEnsemble,
+    float DominanceMargin,
+    float Persistence);
+
 public sealed record StructureStepRequest(
     TickSignal TickSignal,
     int TopK,
@@ -338,7 +359,8 @@ public sealed record StructureSnapshot(
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
-    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

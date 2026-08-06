@@ -49,6 +49,7 @@ builder.Configuration
 builder.Services.AddSingleton<SimulationState>();
 builder.Services.AddSingleton(NeuronalMotorControlState.FromConfiguration(builder.Configuration));
 builder.Services.AddSingleton<NeuronalMotorPopulationWindow>();
+builder.Services.AddSingleton<NeuronalPerceptionRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
 builder.Services.AddSingleton<ServicePublishBuffer>();
@@ -219,6 +220,8 @@ app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorContro
     Control = control.GetSnapshot(),
     Runtime = state.GetNeuronalMotorSnapshot()
 }));
+app.MapGet("/api/v1/neuronal-perception", (NeuronalPerceptionRuntime perception) =>
+    Results.Ok(perception.GetSnapshot()));
 app.MapPost("/api/v1/admin/neuronal-motor", (
     NeuronalMotorModeRequest request,
     SimulationState state,
@@ -827,13 +830,11 @@ app.MapPost("/api/v1/admin/input/visual", async (
         Errors = errors
     });
 });
-app.MapPost("/api/v1/admin/input/object", async (
+app.MapPost("/api/v1/admin/input/object", (
     ObjectInputRequest request,
-    RuntimeInstanceCatalog catalog,
-    IHttpClientFactory clientFactory,
     SimulationState state,
-    InputIngressRuntime ingress,
-    CancellationToken ct) =>
+    NeuronalPerceptionRuntime neuronalPerception,
+    InputIngressRuntime ingress) =>
 {
     if (request is null)
     {
@@ -851,7 +852,6 @@ app.MapPost("/api/v1/admin/input/object", async (
     var confidence = Math.Clamp(request.Confidence.GetValueOrDefault(0.64f), 0.05f, 1.0f);
     var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(0.90f + (salience * 0.60f)), 0.2f, 3.5f);
     var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(20), 4, 128);
-    var encodeMemory = request.EncodeMemory.GetValueOrDefault(true);
     var inputSource = AdminInputSource.Normalize(request.InputSource);
     if (!ingress.TryEnter(AdminInputIngressKind.Object, out var ingressLease, out var ingressSnapshot))
     {
@@ -915,236 +915,16 @@ app.MapPost("/api/v1/admin/input/object", async (
         });
     }
 
-    var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
-    if (hemisphereHint is null)
-    {
-        hemisphereHint = ResolveVisualAttentionTargetHemisphere(state.GetVisualAttentionRuntime());
-    }
-    var objectPredictivePerception = state.ObservePredictivePerception(
-        "visual",
-        $"object:{label}",
-        Math.Clamp((salience * 0.54f) + (confidence * 0.24f) + (intensity / 3.5f * 0.22f), 0f, 1f),
+    var perceptSnapshot = neuronalPerception.GetSnapshot();
+    var annotationAccepted = neuronalPerception.TryAttachLanguageAnnotation(
+        objectKey,
+        label,
         confidence,
-        inputSource);
-
-    var route = BuildObjectPathwayRoute(hemisphereHint);
-    var targetSummaries = new List<object>(route.Count);
-    var errors = new List<string>();
-    var generatedTotal = 0;
-    var deliveredTotal = 0;
-    var routeStage = 0;
-    var tick = state.Tick;
-    var timestampMs = state.SimulationClockMs;
-    var neuromod = state.GlobalNeuromodState;
-    if (AdminInputSource.IsAvatarSource(inputSource))
-    {
-        foreach (var stage in route)
-        {
-            var knownInstances = catalog.GetByStructureWithKnownFallback(stage.Target, hemisphereHint);
-            var liveInstances = catalog.GetByStructure(stage.Target, hemisphereHint);
-            if (knownInstances.Count == 0)
-            {
-                errors.Add($"{stage.Target}: no active instances for hemisphere {(hemisphereHint ?? "both")}");
-                targetSummaries.Add(new
-                {
-                    source = stage.Source.ToString(),
-                    target = stage.Target.ToString(),
-                    knownInstances = 0,
-                    liveInstances = 0,
-                    instances = 0,
-                    generated = 0,
-                    delivered = 0
-                });
-                routeStage++;
-                continue;
-            }
-
-            targetSummaries.Add(new
-            {
-                source = stage.Source.ToString(),
-                target = stage.Target.ToString(),
-                knownInstances = knownInstances.Count,
-                liveInstances = liveInstances.Count,
-                instances = liveInstances.Count,
-                generated = 0,
-                delivered = 0
-            });
-
-            if (liveInstances.Count > 0)
-            {
-                var stageSeed = routeStage;
-                DispatchStimulusToInstancesInBackground(
-                    $"Object input {label} -> {stage.Target}",
-                    liveInstances,
-                    instance =>
-                    {
-                        var hemisphere = instance.HemisphereNormalized;
-                        return BuildObjectStimulusSpikes(
-                            tick,
-                            timestampMs,
-                            stage.Source,
-                            stage.Target,
-                            hemisphere,
-                            objectKey,
-                            label,
-                            intensity,
-                            salience,
-                            confidence,
-                            burstCount,
-                            stageSeed,
-                            neuromod);
-                    },
-                    clientFactory,
-                    state,
-                    tick,
-                    timestampMs);
-            }
-
-            routeStage++;
-        }
-
-        var deferredMemoryTrace = encodeMemory
-            ? state.RegisterObjectObservation(
-                objectKey,
-                label,
-                hemisphereHint ?? "M",
-                salience,
-                confidence,
-                intensity,
-                0)
-            : null;
-
-        state.AppendOutputLog(
-            $"Object input accepted for deferred dispatch: key={objectKey}, label={label}, inputSource={inputSource}, routeStages={route.Count}, liveStages={targetSummaries.Count}, errors={errors.Count}, salience={salience:0.00}, confidence={confidence:0.00}.");
-        return Results.Ok(new
-        {
-            ObjectId = objectKey,
-            Label = label,
-            Salience = salience,
-            Confidence = confidence,
-            Intensity = intensity,
-            BurstCount = burstCount,
-            Hemisphere = hemisphereHint ?? "both",
-            RouteStages = route.Count,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Targets = targetSummaries,
-            Memory = deferredMemoryTrace,
-            PredictiveSurprise = objectPredictivePerception.Surprise,
-            PredictiveCue = objectPredictivePerception.LastCue,
-            InputSource = inputSource,
-            Accepted = true,
-            DispatchDeferred = true,
-            Errors = errors
-        });
-    }
-
-    foreach (var stage in route)
-    {
-        var knownInstances = catalog.GetByStructureWithKnownFallback(stage.Target, hemisphereHint);
-        var liveInstances = catalog.GetByStructure(stage.Target, hemisphereHint);
-        if (knownInstances.Count == 0)
-        {
-            errors.Add($"{stage.Target}: no active instances for hemisphere {(hemisphereHint ?? "both")}");
-            targetSummaries.Add(new
-            {
-                source = stage.Source.ToString(),
-                target = stage.Target.ToString(),
-                knownInstances = 0,
-                liveInstances = 0,
-                instances = 0,
-                generated = 0,
-                delivered = 0
-            });
-            routeStage++;
-            continue;
-        }
-
-        if (liveInstances.Count == 0)
-        {
-            errors.Add($"{stage.Target}: no live instances for hemisphere {(hemisphereHint ?? "both")}");
-            targetSummaries.Add(new
-            {
-                source = stage.Source.ToString(),
-                target = stage.Target.ToString(),
-                knownInstances = knownInstances.Count,
-                liveInstances = 0,
-                instances = 0,
-                generated = 0,
-                delivered = 0
-            });
-            routeStage++;
-            continue;
-        }
-
-        var stageSeed = routeStage;
-        var dispatch = await DispatchStimulusToInstancesAsync(
-            liveInstances,
-            instance =>
-            {
-                var hemisphere = instance.HemisphereNormalized;
-                return BuildObjectStimulusSpikes(
-                    tick,
-                    timestampMs,
-                    stage.Source,
-                    stage.Target,
-                    hemisphere,
-                    objectKey,
-                    label,
-                    intensity,
-                    salience,
-                    confidence,
-                    burstCount,
-                    stageSeed,
-                    neuromod);
-            },
-            clientFactory,
-            state,
-            tick,
-            timestampMs,
-            ct);
-
-        generatedTotal += dispatch.GeneratedSpikes;
-        deliveredTotal += dispatch.DeliveredSpikes;
-        if (dispatch.Errors.Count > 0)
-        {
-            errors.AddRange(dispatch.Errors.Select(e => $"{stage.Target}:{e}"));
-        }
-
-        targetSummaries.Add(new
-        {
-            source = stage.Source.ToString(),
-            target = stage.Target.ToString(),
-            knownInstances = knownInstances.Count,
-            liveInstances = liveInstances.Count,
-            instances = liveInstances.Count,
-            generated = dispatch.GeneratedSpikes,
-            delivered = dispatch.DeliveredSpikes
-        });
-        routeStage++;
-    }
-
-    ObjectMemoryTrace? memoryTrace = null;
-    if (encodeMemory && deliveredTotal > 0)
-    {
-        memoryTrace = state.RegisterObjectObservation(
-            objectKey,
-            label,
-            hemisphereHint ?? "M",
-            salience,
-            confidence,
-            intensity,
-            deliveredTotal);
-    }
-
-    state.AppendOutputLog(
-        $"Object input injected: key={objectKey}, label={label}, inputSource={inputSource}, routeStages={route.Count}, generated={generatedTotal}, delivered={deliveredTotal}, errors={errors.Count}, salience={salience:0.00}, confidence={confidence:0.00}.");
-    if (deliveredTotal > 0)
-    {
-        state.AppendSpikeLog(
-            $"Object input {label}: delivered {deliveredTotal}/{generatedTotal} spikes via ventral route.");
-    }
-
+        out var languageAnnotation,
+        out var annotationError);
+    state.AppendOutputLog(annotationAccepted
+        ? $"Object label attached after neuronal perception: ensemble={languageAnnotation!.EnsembleIndex}, label={label}, key={objectKey}."
+        : $"Object label withheld because no neuronal percept exists: label={label}, key={objectKey}, reason={annotationError}");
     return Results.Ok(new
     {
         ObjectId = objectKey,
@@ -1153,17 +933,23 @@ app.MapPost("/api/v1/admin/input/object", async (
         Confidence = confidence,
         Intensity = intensity,
         BurstCount = burstCount,
-        Hemisphere = hemisphereHint ?? "both",
-        RouteStages = route.Count,
-        GeneratedSpikes = generatedTotal,
-        DeliveredSpikes = deliveredTotal,
-        Targets = targetSummaries,
-        Memory = memoryTrace,
-        PredictiveSurprise = objectPredictivePerception.Surprise,
-        PredictiveCue = objectPredictivePerception.LastCue,
+        Hemisphere = request.Hemisphere ?? "both",
+        RouteStages = 0,
+        GeneratedSpikes = 0,
+        DeliveredSpikes = 0,
+        Targets = Array.Empty<object>(),
+        Memory = (ObjectMemoryTrace?)null,
+        Accepted = true,
+        DispatchDeferred = false,
+        BlockedByInputGate = false,
+        AnnotationAccepted = annotationAccepted,
+        Annotation = languageAnnotation,
+        AnnotationError = annotationError,
+        Percept = perceptSnapshot.Percept,
         InputSource = inputSource,
-        Errors = errors
+        Errors = Array.Empty<string>()
     });
+
 });
 app.MapGet("/api/v1/admin/object-memory", (SimulationState state, int? limit) =>
 {
@@ -2700,73 +2486,6 @@ static string NormalizeObjectKey(string? objectId, string label)
     var normalized = Regex.Replace(candidate.Trim().ToLowerInvariant(), @"[^a-z0-9_]+", "_");
     normalized = normalized.Trim('_');
     return string.IsNullOrWhiteSpace(normalized) ? "object_unknown" : normalized;
-}
-
-static IReadOnlyList<ObjectPathwayStage> BuildObjectPathwayRoute(string? hemisphereHint)
-{
-    var route = new List<ObjectPathwayStage>(4)
-    {
-        new(StructureId.V2, StructureId.V4),
-        new(StructureId.V4, StructureId.TemporalAssociation),
-        new(StructureId.TemporalAssociation, StructureId.PerirhinalCortex),
-        new(StructureId.TemporalAssociation, StructureId.ParahippocampalCortex)
-    };
-
-    if (string.Equals(hemisphereHint, "M", StringComparison.OrdinalIgnoreCase))
-    {
-        route.Add(new ObjectPathwayStage(StructureId.PerirhinalCortex, StructureId.CorpusCallosum));
-    }
-
-    return route;
-}
-
-static List<SpikeMessage> BuildObjectStimulusSpikes(
-    long tick,
-    double timestampMs,
-    StructureId sourceStructure,
-    StructureId targetStructure,
-    string hemisphere,
-    string objectKey,
-    string label,
-    float intensity,
-    float salience,
-    float confidence,
-    int burstCount,
-    int stageSeed,
-    NeuromodState neuromod)
-{
-    var seed = Math.Abs(HashCode.Combine(objectKey, label, stageSeed));
-    var salienceScale = Math.Clamp(0.60f + (salience * 0.70f), 0.40f, 1.70f);
-    var confidenceScale = Math.Clamp(0.55f + (confidence * 0.65f), 0.30f, 1.40f);
-    var effectiveIntensity = Math.Clamp(intensity * salienceScale * confidenceScale, 0.1f, 4.0f);
-    var spikes = new List<SpikeMessage>(burstCount);
-
-    for (var i = 0; i < burstCount; i++)
-    {
-        var featureChannel = (seed + (i * 13)) % 64;
-        var objectCell = (seed + (i * 7)) % 48;
-        var vesicle = Math.Clamp((0.55f + (featureChannel * 0.012f)) * effectiveIntensity, 0.03f, 6.0f);
-        var reuptake = Math.Clamp(3.2f + (objectCell * 0.10f), 1.8f, 16.0f);
-        var spikeType = i % 6 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
-        spikes.Add(new SpikeMessage
-        {
-            MessageId = Guid.NewGuid(),
-            TimestampMs = timestampMs,
-            SourceStructure = sourceStructure,
-            TargetStructure = targetStructure,
-            SourceNeuronId = $"{hemisphere}:{objectKey}:src_{tick}_{featureChannel}_{i}",
-            TargetNeuronId = $"{hemisphere}:{objectKey}:obj_{stageSeed}_{objectCell}_{featureChannel}",
-            SynapseId = Guid.NewGuid(),
-            Neurotransmitter = NTEnum.GLUTAMATE,
-            VesicleQuanta = vesicle,
-            ReuptakeRate = reuptake,
-            SpikeType = spikeType,
-            IsFeedback = false,
-            ModulationContext = NeuromodState.Clamp(neuromod)
-        });
-    }
-
-    return spikes;
 }
 
 static List<SpikeMessage> BuildAuditoryStimulusSpikes(
@@ -22965,6 +22684,7 @@ internal sealed class TickCoordinator(
     LanguageBackoffPolicy languageBackoffPolicy,
     NeuronalMotorControlState neuronalMotorControl,
     NeuronalMotorPopulationWindow neuronalMotorPopulationWindow,
+    NeuronalPerceptionRuntime neuronalPerception,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
     private readonly Random _noiseRandom = new(173);
@@ -23755,10 +23475,12 @@ internal sealed class TickCoordinator(
                     ack.OlfactoryLimbicMemoryDiagnostics,
                     ack.AuditoryLanguageMotorDiagnostics,
                     ack.VisualObjectRecognitionDiagnostics,
-                    ack.ActionSelectionDiagnostics);
+                    ack.ActionSelectionDiagnostics,
+                    ack.PerceptEnsembleDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
+            var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
             var queueFlush = await FlushQueuedDispatchBatchesAsync(
                 tickSignal,
                 state,
@@ -23873,6 +23595,7 @@ internal sealed class TickCoordinator(
                     tickSignal,
                     state,
                     processedSnapshots,
+                    neuronalPercept,
                     dispatchSemaphore,
                     clients,
                     grpcSpikeTransports,
@@ -26312,7 +26035,8 @@ internal sealed class TickCoordinator(
                 AverageOlfactoryLimbicMemoryDiagnostics(members),
                 AverageAuditoryLanguageMotorDiagnostics(members),
                 AverageVisualObjectRecognitionDiagnostics(members),
-                AverageActionSelectionDiagnostics(members)));
+                AverageActionSelectionDiagnostics(members),
+                AveragePerceptEnsembleDiagnostics(members)));
         }
 
         return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
@@ -26399,7 +26123,8 @@ internal sealed class TickCoordinator(
                 snapshot.OlfactoryLimbicMemoryDiagnostics,
                 snapshot.AuditoryLanguageMotorDiagnostics,
                 snapshot.VisualObjectRecognitionDiagnostics,
-                snapshot.ActionSelectionDiagnostics));
+                snapshot.ActionSelectionDiagnostics,
+                snapshot.PerceptEnsembleDiagnostics));
         }
 
         return merged;
@@ -26644,6 +26369,57 @@ internal sealed class TickCoordinator(
             selected,
             margin,
             (float)diagnostics.Average(static item => item.DopamineModulation));
+    }
+
+    private static PerceptEnsembleDiagnostics? AveragePerceptEnsembleDiagnostics(
+        IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var diagnostics = members
+            .Select(static member => member.PerceptEnsembleDiagnostics)
+            .Where(static item => item is not null)
+            .Cast<PerceptEnsembleDiagnostics>()
+            .ToArray();
+        if (diagnostics.Length == 0)
+        {
+            return null;
+        }
+
+        var ensembles = new PerceptEnsembleActivity[8];
+        for (var ensemble = 0; ensemble < ensembles.Length; ensemble++)
+        {
+            var values = diagnostics
+                .SelectMany(static item => item.Ensembles)
+                .Where(item => item.EnsembleIndex == ensemble)
+                .ToArray();
+            ensembles[ensemble] = values.Length == 0
+                ? new PerceptEnsembleActivity(ensemble, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
+                : new PerceptEnsembleActivity(
+                    ensemble,
+                    (float)values.Average(static item => item.VisualFeatureDrive),
+                    (float)values.Average(static item => item.MotionConsistency),
+                    (float)values.Average(static item => item.AuditoryFeatureDrive),
+                    (float)values.Average(static item => item.SomatosensoryFeatureDrive),
+                    (float)values.Average(static item => item.RecurrentBinding),
+                    (float)values.Average(static item => item.Salience),
+                    (float)values.Average(static item => item.Familiarity),
+                    (float)values.Average(static item => item.HippocampalIndex),
+                    (float)values.Average(static item => item.Novelty),
+                    (float)values.Average(static item => item.Confidence));
+        }
+
+        var ranked = ensembles
+            .OrderByDescending(static item => item.Confidence)
+            .ThenBy(static item => item.EnsembleIndex)
+            .ToArray();
+        var margin = ranked.Length > 1
+            ? Math.Max(0f, ranked[0].Confidence - ranked[1].Confidence)
+            : 0f;
+        return new PerceptEnsembleDiagnostics(
+            members[0].StructureId,
+            ensembles,
+            ranked[0].EnsembleIndex,
+            margin,
+            (float)diagnostics.Average(static item => item.Persistence));
     }
 
     private static IReadOnlyList<StructureSnapshot> EnrichActionSelectionDiagnostics(
@@ -28980,6 +28756,7 @@ internal sealed class TickCoordinator(
         TickSignal tickSignal,
         SimulationState state,
         IReadOnlyList<InstanceStructureSnapshot> processedSnapshots,
+        NeuronalPerceptDecision neuronalPercept,
         SemaphoreSlim dispatchSemaphore,
         IReadOnlyDictionary<string, HttpClient> clients,
         IReadOnlyDictionary<string, IStructureSpikeTransport> grpcSpikeTransports,
@@ -28995,6 +28772,11 @@ internal sealed class TickCoordinator(
         CancellationToken stoppingToken)
     {
         if (processedSnapshots.Count == 0)
+        {
+            return PerceptionLanguageConditioningStats.Empty;
+        }
+
+        if (!neuronalPercept.Available || !neuronalPercept.Active || neuronalPercept.DominantEnsemble < 0)
         {
             return PerceptionLanguageConditioningStats.Empty;
         }
@@ -29018,7 +28800,11 @@ internal sealed class TickCoordinator(
             return PerceptionLanguageConditioningStats.Empty;
         }
 
-        var tokens = BuildPerceptionLanguageTokens(visualAttention, auditoryRateHz, maxTokens);
+        var tokens = BuildPerceptionLanguageTokens(
+            visualAttention,
+            auditoryRateHz,
+            neuronalPercept.DominantEnsemble,
+            maxTokens);
         if (tokens.Count == 0)
         {
             return PerceptionLanguageConditioningStats.Empty;
@@ -29230,6 +29016,7 @@ internal sealed class TickCoordinator(
     private static IReadOnlyList<string> BuildPerceptionLanguageTokens(
         VisualAttentionRuntime visualAttention,
         double auditoryRateHz,
+        int perceptEnsemble,
         int maxTokens)
     {
         var focusedField = string.IsNullOrWhiteSpace(visualAttention.FocusedField)
@@ -29244,6 +29031,7 @@ internal sealed class TickCoordinator(
         var tokens = new List<string>(8)
         {
             "perception",
+            $"ensemble_{Math.Clamp(perceptEnsemble, 0, 7)}",
             focusedField,
             $"hemi_{hemisphere}",
             $"focus_{focusBucket}",
@@ -33946,7 +33734,6 @@ internal sealed record CollisionInputRequest(
     string? SourceStructure,
     string? Hemisphere,
     bool? IsFeedback);
-internal sealed record ObjectPathwayStage(StructureId Source, StructureId Target);
 internal sealed record LanguageInputRequest(string? Text, string? Mode, float? Intensity, int? BurstPerToken, string? Hemisphere, int? TokenCount, float? NoveltyBias);
 internal sealed record BiologicalTeachingEvent(
     bool Active,
@@ -38120,7 +37907,8 @@ internal sealed record InstanceStructureSnapshot(
     OlfactoryLimbicMemoryDiagnostics? OlfactoryLimbicMemoryDiagnostics = null,
     AuditoryLanguageMotorDiagnostics? AuditoryLanguageMotorDiagnostics = null,
     VisualObjectRecognitionDiagnostics? VisualObjectRecognitionDiagnostics = null,
-    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null);
+    ActionSelectionDiagnostics? ActionSelectionDiagnostics = null,
+    PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

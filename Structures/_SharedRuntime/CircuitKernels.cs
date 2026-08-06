@@ -243,11 +243,21 @@ internal abstract class CircuitKernelBase : ICircuitKernel
 	public virtual int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(message.TargetStructure))
+		{
+			return PerceptEnsembleTopology.Project(sourceIndex, neuronCount, message.IsFeedback ? 3 : 2);
+		}
 		return TopographicMap.ProjectLinear(sourceIndex, neuronCount, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 1 : 0);
 	}
 
 	public virtual int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(circuit.StructureId) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(targetStructure))
+		{
+			return PerceptEnsembleTopology.Project(source.Index, Math.Max(16, circuit.TargetMapModulo), 5);
+		}
 		return TopographicMap.ProjectLinear(source.Index, Math.Max(16, circuit.TargetMapModulo), targetStructure, targetStructure, circuit.TargetMapStride);
 	}
 
@@ -426,6 +436,11 @@ internal sealed class SensoryCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(message.TargetStructure))
+		{
+			return PerceptEnsembleTopology.Project(sourceIndex, neuronCount, message.IsFeedback ? 13 : 11);
+		}
 		if (IsAuditory(message.SourceStructure) || IsAuditory(message.TargetStructure))
 		{
 			return TopographicMap.ProjectChannel(sourceIndex, neuronCount, 32, 8, message.SourceStructure, message.TargetStructure, 11);
@@ -436,6 +451,11 @@ internal sealed class SensoryCircuitKernel : CircuitKernelBase
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
 		int targetCount = Math.Max(16, circuit.TargetMapModulo);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(circuit.StructureId) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(targetStructure))
+		{
+			return PerceptEnsembleTopology.Project(source.Index, targetCount, 17);
+		}
 		if (IsAuditory(targetStructure))
 		{
 			return TopographicMap.ProjectChannel(source.Index, targetCount, 32, 8, targetStructure, targetStructure, 19);
@@ -454,6 +474,11 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(message.TargetStructure))
+		{
+			return PerceptEnsembleTopology.Project(sourceIndex, neuronCount, message.IsFeedback ? 31 : 29);
+		}
 		if (message.TargetStructure == StructureId.MotorThalamus &&
 			ActionChannelTopology.IsActionCircuitStructure(message.SourceStructure))
 		{
@@ -471,6 +496,11 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(circuit.StructureId) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(targetStructure))
+		{
+			return PerceptEnsembleTopology.Project(source.Index, Math.Max(16, circuit.TargetMapModulo), 31);
+		}
 		if (circuit.StructureId == StructureId.MotorThalamus)
 		{
 			return ActionChannelTopology.Project(
@@ -499,11 +529,21 @@ internal sealed class HippocampalCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(message.TargetStructure))
+		{
+			return PerceptEnsembleTopology.Project(sourceIndex, neuronCount, HippocampalStageOffset(message.TargetStructure));
+		}
 		return TopographicMap.ProjectLayeredColumn(sourceIndex, neuronCount, 4, message.SourceStructure, message.TargetStructure, HippocampalStageOffset(message.TargetStructure));
 	}
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(circuit.StructureId) &&
+			PerceptEnsembleTopology.IsPerceptCircuitStructure(targetStructure))
+		{
+			return PerceptEnsembleTopology.Project(source.Index, Math.Max(16, circuit.TargetMapModulo), HippocampalStageOffset(targetStructure));
+		}
 		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 4, targetStructure, targetStructure, HippocampalStageOffset(targetStructure));
 	}
 
@@ -639,33 +679,17 @@ internal sealed class VisualAssociationCircuitKernel : CircuitKernelBase
 			message.SynapseId,
 			message.SourceStructure,
 			message.TargetStructure);
-
 		return circuit.StructureId switch
 		{
-			StructureId.V3 => TopographicMap.ProjectGrid(
-				sourceIndex,
-				neuronCount,
-				32,
-				32,
-				message.SourceStructure,
-				message.TargetStructure,
-				message.IsFeedback ? 103 : 97),
-			StructureId.InferotemporalCortex => TopographicMap.ProjectChannel(
-				sourceIndex + VisualInputLane(message.SourceStructure) * 97,
-				neuronCount,
-				12,
-				8,
-				message.SourceStructure,
-				message.TargetStructure,
-				107),
-			StructureId.FusiformGyrus => TopographicMap.ProjectChannel(
-				sourceIndex + ExpertiseInputLane(message.SourceStructure) * 131,
-				neuronCount,
-				8,
-				12,
-				message.SourceStructure,
-				message.TargetStructure,
-				109),
+			StructureId.V3 when PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure)
+				=> PerceptEnsembleTopology.Project(sourceIndex, neuronCount, message.IsFeedback ? 103 : 97),
+			StructureId.V3 => TopographicMap.ProjectGrid(sourceIndex, neuronCount, 32, 32, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 103 : 97),
+			StructureId.InferotemporalCortex when PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure)
+				=> PerceptEnsembleTopology.ProjectWithinPartition(sourceIndex, neuronCount, VisualInputLane(message.SourceStructure), 6, 107),
+			StructureId.InferotemporalCortex => TopographicMap.ProjectChannel(sourceIndex + VisualInputLane(message.SourceStructure) * 97, neuronCount, 12, 8, message.SourceStructure, message.TargetStructure, 107),
+			StructureId.FusiformGyrus when PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure)
+				=> PerceptEnsembleTopology.ProjectWithinPartition(sourceIndex, neuronCount, ExpertiseInputLane(message.SourceStructure), 5, 109),
+			StructureId.FusiformGyrus => TopographicMap.ProjectChannel(sourceIndex + ExpertiseInputLane(message.SourceStructure) * 131, neuronCount, 8, 12, message.SourceStructure, message.TargetStructure, 109),
 			_ => base.ResolveInboundNeuronIndex(message, neuronCount, circuit)
 		};
 	}
@@ -731,6 +755,17 @@ internal sealed class AuditoryAssociationCircuitKernel : CircuitKernelBase
 			StructureId.WernickePstgPsts => 421,
 			_ => 631
 		};
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure))
+		{
+			var stream = message.SourceStructure switch
+			{
+				StructureId.A1 or StructureId.InferiorColliculus => 0,
+				StructureId.TemporalPole or StructureId.TemporalAssociation => 1,
+				StructureId.WernickePstgPsts => 2,
+				_ => 3
+			};
+			return PerceptEnsembleTopology.ProjectWithinPartition(sourceIndex, neuronCount, stream, 4, 137);
+		}
 		return TopographicMap.ProjectChannel(
 			sourceIndex + streamOffset,
 			neuronCount,
@@ -742,14 +777,17 @@ internal sealed class AuditoryAssociationCircuitKernel : CircuitKernelBase
 	}
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
-		=> TopographicMap.ProjectChannel(
+	{
+		var targetCount = Math.Max(16, circuit.TargetMapModulo);
+		return TopographicMap.ProjectChannel(
 			source.Index,
-			Math.Max(16, circuit.TargetMapModulo),
+			targetCount,
 			32,
 			8,
 			circuit.StructureId,
 			targetStructure,
 			139);
+	}
 
 	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
 	{
@@ -773,6 +811,15 @@ internal sealed class SomatosensoryAssociationCircuitKernel : CircuitKernelBase
 			message.SourceStructure,
 			message.TargetStructure);
 		int bodyLane = ResolveBodyLane(message.SourceNeuronId, message.TargetNeuronId, sourceIndex);
+		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure))
+		{
+			return PerceptEnsembleTopology.ProjectWithinPartition(
+				sourceIndex,
+				neuronCount,
+				bodyLane,
+				4,
+				message.IsFeedback ? 151 : 149);
+		}
 		return ProjectBodyLane(sourceIndex, neuronCount, bodyLane, message.IsFeedback ? 151 : 149);
 	}
 

@@ -86,6 +86,18 @@ Replace symbolic object/category injection with sensory feature populations, rec
 
 Acceptance requires recognition under noise and viewpoint change, novelty responses, object permanence, and predictable failures after pathway ablation.
 
+#### Implemented vertical slice
+
+The first perceptual slice uses eight numeric feature ensembles. Each lane consists of local bands of neurons rather than object names, and lane identity is preserved through visual, auditory, somatosensory, thalamic, association-cortical, perirhinal, and hippocampal projections. Local index jitter remains within a feature band, while projection maps preserve the lane across structures of different sizes.
+
+Every participating structure now reports measured lane activity with role-specific evidence: visual and motion features, auditory and somatic features, recurrent binding, pulvinar/thalamic salience, perirhinal familiarity, hippocampal indexing, novelty, confidence, and short persistence. Recurrent traces live in the structure engine and decay without input, providing a bounded neuronal object-permanence signal. Familiarity grows only from repeated neuronal evidence.
+
+The controller combines these read-only measurements into a dominant percept and reports coverage, confidence, persistence, novelty, and competition margin. It cannot write an ensemble back into the brain. Percept authority requires both a sensory feature population and recurrent cortical binding; removing the binding pathway prevents a category candidate from becoming an active percept.
+
+`/api/v1/admin/input/object` is now an annotation boundary. Simulator object IDs and labels generate no spikes, excite no ventral-stream stage, and create no conventional object memory. A label can be attached for language/evaluation telemetry only when an active neuronal ensemble already exists. Changing or contradicting that label leaves the neuronal decision unchanged. The perception-language bridge is likewise silent until a bound neuronal percept exists.
+
+This is a feature-binding foundation, not a claim of open-world image recognition. Current worlds still need richer receptor encodings and learned visual experience before the lanes can support robust natural categories. The causal tests pin topology, moderate perturbation tolerance, novelty decay, short persistence, binding-pathway ablation, and semantic isolation.
+
 ### Rung 4 - Synaptic Memory
 
 Move episodic, semantic, spatial, action, and autobiographical memory authority from dictionaries into learned synaptic ensembles. Conventional storage may checkpoint neuronal and synaptic state but must not answer cognition queries itself.

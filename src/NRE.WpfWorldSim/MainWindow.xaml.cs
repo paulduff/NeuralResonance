@@ -36,11 +36,6 @@ public partial class MainWindow : Window
     private const double FoodPickupRadius = 0.28;
     private const double WeaponPickupRadius = 0.26;
     private const double PredatorStrikeRadius = 0.65;
-    private const double ShortWeaponEngageRange = 1.05;
-    private const double LongWeaponEngageRangeBase = 3.8;
-    private const double WeaponAttackCooldownShortSec = 0.48;
-    private const double WeaponAttackCooldownLongSec = 0.72;
-    private const double FlightEpisodeCooldownSec = 1.35;
     private const double DefaultPredatorSenseRadius = 10.0;
     private const double DefaultShelterRadius = 4.8;
     private const int TrailPointCapacity = 80;
@@ -92,22 +87,16 @@ public partial class MainWindow : Window
     private const double HungerStressEnter = 0.62;
     private const double HungerStressFull = 0.92;
     private const double DayNightCycleSeconds = 240.0;
-    private const double NightSleepPressureBonus = 0.42;
-    private const double NightShelterNeedBonus = 0.72;
-    private const double NightAnxietyBonus = 0.38;
-    private const double WorldWalkMaxForwardSpeed = 2.7;
-    private const double WorldRunSpeedMultiplier = 3.0;
-    private const double WorldRunMaxForwardSpeed = WorldWalkMaxForwardSpeed * WorldRunSpeedMultiplier;
+    private const double WorldMaxForwardSpeed = 8.1;
 
-    // Shared kinematics options for the world avatar: allows reverse (predator flight),
-    // higher forward cap (sprinting), wider turn cap. Forward scale (urgency/run) is
-    // applied via the optional forwardScale parameter at compute time.
+    // Shared physical kinematics for the world avatar: bilateral neuronal drive
+    // alone determines speed and turn within these body limits.
     private static readonly AvatarKinematicsOptions WorldKinematicsOptions = new(
         MaxMotorDrive: 240.0,
         ForwardSpeedCoefficient: 0.0128,
         TurnSpeedCoefficient: 3.2,
         MinForwardSpeed: -1.6,
-        MaxForwardSpeed: WorldRunMaxForwardSpeed,
+        MaxForwardSpeed: WorldMaxForwardSpeed,
         MaxTurnRateDeg: 240.0,
         AllowSignedMotorDrive: true,
         InPlaceTurnCancelsForwardDrive: true);
@@ -116,7 +105,7 @@ public partial class MainWindow : Window
         DriveDecay: 0.92);
     private const long RuntimeLogMaxBytes = 6L * 1024L * 1024L;
     private static readonly AvatarBodyStateProfile WorldBodyStateProfile = new(
-        MaxForwardSpeed: WorldRunMaxForwardSpeed,
+        MaxForwardSpeed: WorldMaxForwardSpeed,
         MaxTurnRateDeg: 240.0,
         BaseIntensity: 0.25,
         MotionIntensityWeight: 0.90,
@@ -300,28 +289,18 @@ public partial class MainWindow : Window
     private double _limbicTiredDrive;
     private double _hunger;
     private double _health = 1.0;
-    private double _threat;
     private double _daylight01 = 1.0;
     private double _darkness01;
-    private double _environmentSleepPressure;
-    private double _environmentShelterNeed;
-    private double _environmentAnxiety;
     private string _dayNightStage = "day";
     private int _foodConsumed;
     private int _weaponCharges;
     private int _shortWeaponCharges;
     private int _longWeaponCharges;
-    private int _flightEpisodesWithoutWeapon;
-    private double _flightPressure;
-    private DateTime _lastFlightEpisodeUtc = DateTime.MinValue;
-    private double _weaponAttackCooldownRemaining;
     private int _homesBuilt;
     private int _explorableTerrainCells;
     private double _hungerRate = 1.0;
-    private double _threatDecayRate = 1.0;
     private double _predatorSpeedScale = 1.0;
     private double _predatorSenseRadius = DefaultPredatorSenseRadius;
-    private double _weaponEffectiveness = 1.0;
     private double _shelterRadius = DefaultShelterRadius;
     private int _foodSpawnTarget = 12;
     private int _predatorSpawnTarget = 3;
@@ -637,12 +616,6 @@ public partial class MainWindow : Window
         RefreshSurvivalTuningLabels();
     }
 
-    private void ThreatDecaySlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _threatDecayRate = e.NewValue;
-        RefreshSurvivalTuningLabels();
-    }
-
     private void PredatorSpeedSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         _predatorSpeedScale = e.NewValue;
@@ -654,12 +627,6 @@ public partial class MainWindow : Window
         _predatorSenseRadius = e.NewValue;
         RefreshSurvivalTuningLabels();
         UpdatePredatorThreatScales();
-    }
-
-    private void WeaponEffectSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        _weaponEffectiveness = e.NewValue;
-        RefreshSurvivalTuningLabels();
     }
 
     private void ShelterRadiusSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -734,10 +701,8 @@ public partial class MainWindow : Window
     private void SyncSurvivalTuningFromUi()
     {
         _hungerRate = HungerRateSlider?.Value > 0 ? HungerRateSlider.Value : _hungerRate;
-        _threatDecayRate = ThreatDecaySlider?.Value > 0 ? ThreatDecaySlider.Value : _threatDecayRate;
         _predatorSpeedScale = PredatorSpeedSlider?.Value > 0 ? PredatorSpeedSlider.Value : _predatorSpeedScale;
         _predatorSenseRadius = PredatorSenseSlider?.Value > 0 ? PredatorSenseSlider.Value : _predatorSenseRadius;
-        _weaponEffectiveness = WeaponEffectSlider?.Value > 0 ? WeaponEffectSlider.Value : _weaponEffectiveness;
         _shelterRadius = ShelterRadiusSlider?.Value > 0 ? ShelterRadiusSlider.Value : _shelterRadius;
         _foodSpawnTarget = FoodSpawnSlider?.Value > 0 ? (int)Math.Round(FoodSpawnSlider.Value) : _foodSpawnTarget;
         _predatorSpawnTarget = PredatorSpawnSlider?.Value > 0 ? (int)Math.Round(PredatorSpawnSlider.Value) : _predatorSpawnTarget;
@@ -748,18 +713,14 @@ public partial class MainWindow : Window
     private void RefreshSurvivalTuningLabels()
     {
         var hunger = HungerRateValueText;
-        var threatDecay = ThreatDecayValueText;
         var predatorSpeed = PredatorSpeedValueText;
         var predatorSense = PredatorSenseValueText;
-        var weaponEffect = WeaponEffectValueText;
         var shelterRadius = ShelterRadiusValueText;
         var foodSpawn = FoodSpawnValueText;
         var predatorSpawn = PredatorSpawnValueText;
         if (hunger is null ||
-            threatDecay is null ||
             predatorSpeed is null ||
             predatorSense is null ||
-            weaponEffect is null ||
             shelterRadius is null ||
             foodSpawn is null ||
             predatorSpawn is null)
@@ -768,10 +729,8 @@ public partial class MainWindow : Window
         }
 
         hunger.Text = $"x{_hungerRate:0.00}";
-        threatDecay.Text = $"x{_threatDecayRate:0.00}";
         predatorSpeed.Text = $"x{_predatorSpeedScale:0.00}";
         predatorSense.Text = $"{_predatorSenseRadius:0.0} units";
-        weaponEffect.Text = $"x{_weaponEffectiveness:0.00}";
         shelterRadius.Text = $"{_shelterRadius:0.0} units";
         foodSpawn.Text = _foodSpawnTarget.ToString(CultureInfo.InvariantCulture);
         predatorSpawn.Text = _predatorSpawnTarget.ToString(CultureInfo.InvariantCulture);
@@ -855,21 +814,13 @@ public partial class MainWindow : Window
         _collisionHits = 0;
         _hunger = 0.25;
         _health = 1.0;
-        _threat = 0.0;
         _daylight01 = 1.0;
         _darkness01 = 0.0;
-        _environmentSleepPressure = 0.0;
-        _environmentShelterNeed = 0.0;
-        _environmentAnxiety = 0.0;
         _dayNightStage = "day";
         _foodConsumed = 0;
         _weaponCharges = 0;
         _shortWeaponCharges = 0;
         _longWeaponCharges = 0;
-        _flightEpisodesWithoutWeapon = 0;
-        _flightPressure = 0.0;
-        _lastFlightEpisodeUtc = DateTime.MinValue;
-        _weaponAttackCooldownRemaining = 0.0;
         _environmentAudioInFlight = false;
         _lastEnvironmentAudioDispatchMs = 0;
         _environmentAudioBackoff.Reset();
@@ -2289,14 +2240,6 @@ public partial class MainWindow : Window
         var rawDaylight = 0.5 + (0.5 * Math.Cos(phase * Math.PI * 2.0));
         _daylight01 = SmoothStep(rawDaylight);
         _darkness01 = 1.0 - _daylight01;
-        _environmentSleepPressure = SmoothStep(_darkness01) * NightSleepPressureBonus;
-        _environmentShelterNeed = SmoothStep(Math.Clamp((_darkness01 - 0.18) / 0.82, 0.0, 1.0)) * NightShelterNeedBonus;
-        _environmentAnxiety = SmoothStep(Math.Clamp((_darkness01 - 0.28) / 0.72, 0.0, 1.0)) * NightAnxietyBonus;
-        if (IsInShelter())
-        {
-            _environmentAnxiety *= 0.38;
-        }
-
         _dayNightStage = _daylight01 switch
         {
             > 0.72 => "day",
@@ -2387,7 +2330,7 @@ public partial class MainWindow : Window
 
         // Brain motor output is the only locomotion driver. The simulator may block
         // movement through physics and feed consequences back, but it never steers.
-        var actionOutput = _avatarService.PublishActionOutput(forwardScale: 1.0);
+        var actionOutput = _avatarService.PublishActionOutput();
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
         UpdateAvatarHeadYaw(dt);
 
@@ -2499,21 +2442,6 @@ public partial class MainWindow : Window
 
     private void UpdateAvatarHeadYaw(double dt)
         => _avatarHeadYawDeg = MoveTowards(_avatarHeadYawDeg, 0.0, AvatarHeadReturnRateDeg * dt);
-
-    private double ComputeUrgentRunScale()
-    {
-        var nearestPredator = FindNearest(_predators);
-        var predatorProximity = nearestPredator.Distance < (_predatorSenseRadius * 1.35)
-            ? Math.Clamp(1.0 - (nearestPredator.Distance / Math.Max(0.5, _predatorSenseRadius * 1.35)), 0.0, 1.0)
-            : 0.0;
-        var healthUrgency = _health < 0.42 ? Math.Clamp((0.42 - _health) / 0.42, 0.0, 1.0) : 0.0;
-        var urgency = Math.Clamp(
-            Math.Max(Math.Max(_threat, _flightPressure), Math.Max(predatorProximity, Math.Max(_environmentAnxiety, healthUrgency))),
-            0.0,
-            1.0);
-        var smoothUrgency = urgency * urgency * (3.0 - (2.0 * urgency));
-        return 1.0 + ((WorldRunSpeedMultiplier - 1.0) * smoothUrgency);
-    }
 
     private bool TryFindClearSpawnCandidate(out double targetX, out double targetY, out double targetZ, out double targetHeadingDeg)
     {
@@ -2942,9 +2870,8 @@ public partial class MainWindow : Window
 
     private void UpdateSurvival(double dt, double nowSeconds)
     {
-        _weaponAttackCooldownRemaining = Math.Max(0.0, _weaponAttackCooldownRemaining - dt);
-        _hunger = Math.Clamp(_hunger + (dt * 0.0042 * _hungerRate), 0.0, 1.0);
-        _threat = Math.Clamp(_threat - (dt * 0.20 * _threatDecayRate), 0.0, 1.0);
+        var metabolicRate = _sleepState ? 0.72 : 1.0;
+        _hunger = Math.Clamp(_hunger + (dt * 0.0042 * _hungerRate * metabolicRate), 0.0, 1.0);
 
         var hungerStress = ComputeNeedDrive(_hunger, HungerStressEnter, HungerStressFull);
         if (hungerStress > 0.0)
@@ -2953,15 +2880,9 @@ public partial class MainWindow : Window
             _health = Math.Clamp(_health - (dt * hungerHealthDrain), 0.0, 1.0);
         }
 
-        if (_threat > 0.60)
-        {
-            _health = Math.Clamp(_health - (dt * 0.010), 0.0, 1.0);
-        }
-
         if (_sleepState && IsInShelter())
         {
             _health = Math.Clamp(_health + (dt * 0.010), 0.0, 1.0);
-            _hunger = Math.Clamp(_hunger - (dt * 0.0025), 0.0, 1.0);
         }
 
         ConsumeNearbyPickups();
@@ -2974,22 +2895,19 @@ public partial class MainWindow : Window
         _nextSurvivalHudUpdateSeconds = nowSeconds + SurvivalHudUpdateIntervalSeconds;
         SurvivalHungerText.Text = $"Hunger: {(int)(_hunger * 100)}%";
         SurvivalHealthText.Text = $"Health: {(int)(_health * 100)}%";
-        var effectiveAnxiety = Math.Clamp(Math.Max(_threat, _environmentAnxiety), 0.0, 1.0);
-        SurvivalThreatText.Text = $"Threat: {(int)(_threat * 100)}% | anxiety {(int)(effectiveAnxiety * 100)}%";
+        var nearestPredator = FindNearest(_predators);
+        SurvivalThreatText.Text = nearestPredator.Distance >= 999.0
+            ? "Nearest predator: none"
+            : $"Nearest predator: {nearestPredator.Distance:0.0} units";
         SurvivalFoodText.Text = $"Food collected: {_foodConsumed}";
         var weaponProfile = GetActiveWeaponRangeProfile();
-        var weaponNeed = GetWeaponNeedPressure();
         SurvivalWeaponText.Text = _weaponCharges > 0
-            ? $"Weapon charge: {_weaponCharges} ({weaponProfile.ToString().ToLowerInvariant()} range)"
-            : $"Weapon charge: 0 (seeking {(int)(weaponNeed * 100)}%)";
-        SurvivalShelterText.Text = _sleepState
-            ? $"Shelter: {(IsInShelter() ? "sleeping safe" : "seeking shelter")}"
-            : _limbicTiredDrive >= 0.58
-                ? $"Shelter: {(IsInShelter() ? "recovering (tired)" : "seeking shelter (tired)")}"
-                : $"Shelter: {(IsInShelter() ? "safe" : "exposed")}";
+            ? $"Carried weapon charges: {_weaponCharges} ({weaponProfile.ToString().ToLowerInvariant()})"
+            : "Carried weapon charges: 0";
+        SurvivalShelterText.Text = $"Shelter: {(IsInShelter() ? "inside" : "outside")} | neuronal sleep: {(_sleepState ? "yes" : "no")}";
         SurvivalPredatorText.Text = $"Predators: {_predators.Count} active";
         DayNightText.Text =
-            $"Light cycle: {_dayNightStage}, daylight {(int)(_daylight01 * 100)}%, darkness {(int)(_darkness01 * 100)}%, shelter need {(int)(_environmentShelterNeed * 100)}%";
+            $"Light cycle: {_dayNightStage}, daylight {(int)(_daylight01 * 100)}%, darkness {(int)(_darkness01 * 100)}%";
     }
 
     private void UpdatePredators(double dt)
@@ -2998,9 +2916,6 @@ public partial class MainWindow : Window
         {
             return;
         }
-
-        var weaponProfile = GetActiveWeaponRangeProfile();
-        var engageRange = GetWeaponEngageRange(weaponProfile);
 
         for (var i = 0; i < _predators.Count; i++)
         {
@@ -3015,11 +2930,6 @@ public partial class MainWindow : Window
             {
                 targetHeading = NormalizeDegrees(Math.Atan2(initialDx, initialDz) * (180.0 / Math.PI));
                 speed = 1.10 * _predatorSpeedScale;
-                _threat = Math.Clamp(_threat + (dt * 0.38), 0.0, 1.0);
-                if (_weaponCharges <= 0 && initialDistance <= (_predatorSenseRadius * 0.86))
-                {
-                    RegisterFlightEpisode(0.48, "predator pursuit");
-                }
             }
             else
             {
@@ -3061,34 +2971,11 @@ public partial class MainWindow : Window
             predator.ThreatTranslate.OffsetZ = predator.Position.Z;
 
             var distance = GetDistanceToAvatar(predator.Position.X, predator.Position.Z);
-            var attackedWithWeapon = false;
-            if (weaponProfile != WeaponRangeProfile.None &&
-                _weaponAttackCooldownRemaining <= 0.001 &&
-                distance <= engageRange)
+            if (distance <= PredatorStrikeRadius)
             {
-                if (ConsumeWeaponCharge(weaponProfile))
-                {
-                    attackedWithWeapon = true;
-                    _weaponAttackCooldownRemaining = weaponProfile == WeaponRangeProfile.Long
-                        ? WeaponAttackCooldownLongSec
-                        : WeaponAttackCooldownShortSec;
-                    var threatDrop = weaponProfile == WeaponRangeProfile.Long
-                        ? (0.50 * _weaponEffectiveness)
-                        : (0.34 * _weaponEffectiveness);
-                    _threat = Math.Clamp(_threat - threatDrop, 0.0, 1.0);
-                    predator.HeadingDeg = NormalizeDegrees(predator.HeadingDeg + 180.0);
-                }
-            }
-
-            if (!attackedWithWeapon && distance <= PredatorStrikeRadius)
-            {
-                if (_weaponCharges <= 0)
-                {
-                    _health = Math.Clamp(_health - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
-                    _collisionHits++;
-                    _collisionPulse = 1.0;
-                    RegisterFlightEpisode(1.0, "predator strike");
-                }
+                _health = Math.Clamp(_health - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
+                _collisionHits++;
+                _collisionPulse = 1.0;
             }
 
             _predators[i] = predator;
@@ -3136,7 +3023,6 @@ public partial class MainWindow : Window
             var dz = _avatarZ - pickup.Position.Z;
             if ((dx * dx) + (dz * dz) <= (WeaponPickupRadius * 1.5) * (WeaponPickupRadius * 1.5))
             {
-                var wasUnarmed = _weaponCharges <= 0;
                 pickup.Active = false;
                 pickup.Transform.OffsetY = -999;
                 if (pickup.RangeProfile == WeaponRangeProfile.Long)
@@ -3148,48 +3034,9 @@ public partial class MainWindow : Window
                     _shortWeaponCharges = Math.Min(3, _shortWeaponCharges + 1);
                 }
                 UpdateWeaponChargeCache();
-                if (wasUnarmed && _weaponCharges > 0)
-                {
-                    _flightPressure = 0.0;
-                    _flightEpisodesWithoutWeapon = 0;
-                }
-                else
-                {
-                }
                 _weaponPickups[i] = pickup;
             }
         }
-    }
-
-    private bool ConsumeWeaponCharge(WeaponRangeProfile preferredProfile)
-    {
-        switch (preferredProfile)
-        {
-            case WeaponRangeProfile.Long when _longWeaponCharges > 0:
-                _longWeaponCharges--;
-                UpdateWeaponChargeCache();
-                return true;
-            case WeaponRangeProfile.Short when _shortWeaponCharges > 0:
-                _shortWeaponCharges--;
-                UpdateWeaponChargeCache();
-                return true;
-        }
-
-        if (_longWeaponCharges > 0)
-        {
-            _longWeaponCharges--;
-            UpdateWeaponChargeCache();
-            return true;
-        }
-
-        if (_shortWeaponCharges > 0)
-        {
-            _shortWeaponCharges--;
-            UpdateWeaponChargeCache();
-            return true;
-        }
-
-        return false;
     }
 
     private void UpdateWeaponChargeCache()
@@ -3201,58 +3048,6 @@ public partial class MainWindow : Window
             : _shortWeaponCharges > 0
                 ? WeaponRangeProfile.Short
                 : WeaponRangeProfile.None;
-
-    private static double GetWeaponFightBias(WeaponRangeProfile profile) => profile switch
-    {
-        WeaponRangeProfile.Short => 0.32,
-        WeaponRangeProfile.Long => 0.64,
-        _ => 0.0
-    };
-
-    private static double GetWeaponFlightSuppression(WeaponRangeProfile profile) => profile switch
-    {
-        WeaponRangeProfile.Short => 0.22,
-        WeaponRangeProfile.Long => 0.48,
-        _ => 0.0
-    };
-
-    private double GetWeaponEngageRange(WeaponRangeProfile profile) => profile switch
-    {
-        WeaponRangeProfile.Short => ShortWeaponEngageRange,
-        WeaponRangeProfile.Long => Math.Max(LongWeaponEngageRangeBase, _predatorSenseRadius * 0.42),
-        _ => 0.0
-    };
-
-    private double GetWeaponNeedPressure()
-    {
-        if (_weaponCharges > 0)
-        {
-            return 0.0;
-        }
-
-        var episodeBoost = Math.Min(0.55, _flightEpisodesWithoutWeapon * 0.06);
-        return Math.Clamp((_flightPressure * 0.72) + episodeBoost + (_threat * 0.18), 0.0, 1.0);
-    }
-
-    private void RegisterFlightEpisode(double severity, string reason)
-    {
-        if (_weaponCharges > 0 || severity <= 0.0)
-        {
-            return;
-        }
-
-        var now = DateTime.UtcNow;
-        if ((now - _lastFlightEpisodeUtc).TotalSeconds < FlightEpisodeCooldownSec)
-        {
-            return;
-        }
-
-        _lastFlightEpisodeUtc = now;
-        _flightEpisodesWithoutWeapon = Math.Min(64, _flightEpisodesWithoutWeapon + 1);
-        var gain = (0.10 + Math.Min(0.28, _flightEpisodesWithoutWeapon * 0.012)) * Math.Clamp(severity, 0.15, 1.5);
-        _flightPressure = Math.Clamp(_flightPressure + gain, 0.0, 1.0);
-        Log($"Flight episode #{_flightEpisodesWithoutWeapon}: {reason}; weapon-seek pressure={(int)(_flightPressure * 100)}%");
-    }
 
     private bool IsInShelter()
     {
@@ -5191,7 +4986,7 @@ public partial class MainWindow : Window
             var frontTouch = probeTotal > 0.001 ? contactPulse * (_lastFrontProximity / probeTotal) : contactPulse;
             var leftTouch = probeTotal > 0.001 ? contactPulse * (_lastLeftProximity / probeTotal) : 0.0;
             var rightTouch = probeTotal > 0.001 ? contactPulse * (_lastRightProximity / probeTotal) : 0.0;
-            var groundTouch = Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed * 0.72), 0.0, 1.0);
+            var groundTouch = Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldMaxForwardSpeed * 0.72), 0.0, 1.0);
             if (TryClassifyCurrentTerrain(out var currentSurface) && currentSurface == BlockKind.Water)
             {
                 groundTouch = Math.Max(groundTouch, 0.58);
@@ -5320,7 +5115,7 @@ public partial class MainWindow : Window
     private List<AvatarAuditoryCue> BuildEnvironmentAuditoryCues()
     {
         var cues = new List<AvatarAuditoryCue>(7);
-        var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / WorldRunMaxForwardSpeed, 0.0, 1.0);
+        var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / WorldMaxForwardSpeed, 0.0, 1.0);
         if (_collisionPulse > 0.12)
         {
             cues.Add(new AvatarAuditoryCue(
@@ -5351,12 +5146,12 @@ public partial class MainWindow : Window
         {
             cues.Add(new AvatarAuditoryCue(
                 Pattern: "ShelterHush",
-                Intensity: (float)Math.Clamp(0.24 + (_environmentShelterNeed * 0.36) + (_darkness01 * 0.18), 0.20, 0.88),
-                BurstCount: (int)Math.Clamp(5 + (_environmentShelterNeed * 12), 4, 20),
+                Intensity: 0.30f,
+                BurstCount: 7,
                 Hemisphere: null));
         }
 
-        var wind = Math.Clamp((_darkness01 * 0.22) + (_environmentAnxiety * 0.20) + (Math.Abs(_lastTurnRateDeg) / 240.0 * 0.18), 0.0, 1.0);
+        var wind = 0.12 + (_darkness01 * 0.12);
         if (wind > 0.08)
         {
             cues.Add(new AvatarAuditoryCue(
@@ -5380,8 +5175,8 @@ public partial class MainWindow : Window
             if (nearestPredator.Distance <= _predatorSenseRadius)
             {
                 cues.Add(new AvatarAuditoryCue(
-                    Pattern: "BearGrowlThreat",
-                    Intensity: (float)Math.Clamp(0.62 + (proximity * 1.85) + (_threat * 0.45), 0.30, 3.0),
+                    Pattern: "BearGrowl",
+                    Intensity: (float)Math.Clamp(0.62 + (proximity * 1.85), 0.30, 3.0),
                     BurstCount: (int)Math.Clamp(14 + (proximity * 38), 10, 64),
                     Hemisphere: hemisphere));
             }

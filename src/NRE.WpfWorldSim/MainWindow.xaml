@@ -147,10 +147,6 @@
                         <Slider x:Name="HungerRateSlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
                                 ValueChanged="HungerRateSlider_OnValueChanged" />
                         <TextBlock x:Name="HungerRateValueText" Margin="0,2,0,0" Text="x1.00" />
-                        <TextBlock Margin="0,6,0,0" Text="Threat Decay" />
-                        <Slider x:Name="ThreatDecaySlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
-                                ValueChanged="ThreatDecaySlider_OnValueChanged" />
-                        <TextBlock x:Name="ThreatDecayValueText" Margin="0,2,0,0" Text="x1.00" />
                         <TextBlock Margin="0,6,0,0" Text="Predator Speed" />
                         <Slider x:Name="PredatorSpeedSlider" Minimum="0.4" Maximum="2.0" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
                                 ValueChanged="PredatorSpeedSlider_OnValueChanged" />
@@ -159,10 +155,6 @@
                         <Slider x:Name="PredatorSenseSlider" Minimum="6" Maximum="18" Value="10" TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="PredatorSenseSlider_OnValueChanged" />
                         <TextBlock x:Name="PredatorSenseValueText" Margin="0,2,0,0" Text="10.0 units" />
-                        <TextBlock Margin="0,6,0,0" Text="Weapon Effectiveness" />
-                        <Slider x:Name="WeaponEffectSlider" Minimum="0.4" Maximum="2.0" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
-                                ValueChanged="WeaponEffectSlider_OnValueChanged" />
-                        <TextBlock x:Name="WeaponEffectValueText" Margin="0,2,0,0" Text="x1.00" />
                         <TextBlock Margin="0,6,0,0" Text="Shelter Radius" />
                         <Slider x:Name="ShelterRadiusSlider" Minimum="3" Maximum="9" Value="4.8" TickFrequency="0.2" IsSnapToTickEnabled="False"
                                 ValueChanged="ShelterRadiusSlider_OnValueChanged" />

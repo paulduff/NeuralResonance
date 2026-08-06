@@ -49,15 +49,13 @@ public sealed class AvatarNervousSystem
 
     public (double ForwardSpeed, double TurnRateDeg) ComputeMotorOutput(
         double forwardGain = 1.0,
-        double turnGain = 1.0,
-        double forwardScale = 1.0)
+        double turnGain = 1.0)
         => AvatarKinematics.ComputeBrainMotorOutput(
             LeftMotorDrive,
             RightMotorDrive,
             _options.Kinematics,
             forwardGain: forwardGain,
-            turnGain: turnGain,
-            forwardScale: forwardScale);
+            turnGain: turnGain);
 
     public AvatarNervousSystemSignal InterpretBrainSignals(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {

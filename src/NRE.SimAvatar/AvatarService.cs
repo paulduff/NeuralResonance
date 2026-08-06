@@ -189,8 +189,7 @@ public sealed class AvatarService : IDisposable
 
     public AvatarMotorOutput ComputeMotorOutput(
         double forwardGain = 1.0,
-        double turnGain = 1.0,
-        double forwardScale = 1.0)
+        double turnGain = 1.0)
     {
         var signal = LatestSignal;
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(
@@ -198,19 +197,17 @@ public sealed class AvatarService : IDisposable
             signal.RightMotorDrive,
             _options.Kinematics,
             forwardGain,
-            turnGain,
-            forwardScale);
+            turnGain);
         return new AvatarMotorOutput(forwardSpeed, turnRateDeg);
     }
 
     public AvatarActionOutput PublishActionOutput(
         double forwardGain = 1.0,
-        double turnGain = 1.0,
-        double forwardScale = 1.0)
+        double turnGain = 1.0)
     {
         lock (_actionPublicationGate)
         {
-            var output = CreateActionOutput(LatestSignal, forwardGain, turnGain, forwardScale);
+            var output = CreateActionOutput(LatestSignal, forwardGain, turnGain);
             PublishActionOutputCore(output);
             return output;
         }
@@ -374,16 +371,14 @@ public sealed class AvatarService : IDisposable
     private AvatarActionOutput CreateActionOutput(
         AvatarNervousSystemSignal signal,
         double forwardGain = 1.0,
-        double turnGain = 1.0,
-        double forwardScale = 1.0)
+        double turnGain = 1.0)
     {
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(
             signal.LeftMotorDrive,
             signal.RightMotorDrive,
             _options.Kinematics,
             forwardGain,
-            turnGain,
-            forwardScale);
+            turnGain);
         return new AvatarActionOutput(
             new AvatarMotorOutput(forwardSpeed, turnRateDeg),
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());

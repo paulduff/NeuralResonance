@@ -329,6 +329,14 @@ the brain. Identity, familiarity, context, value, and word binding must emerge
 through visual, temporal, hippocampal, limbic, prefrontal, and language
 circuits.
 
+Entry 093 deletes host survival cognition and urgency scaling. Motor projection
+has no urgency multiplier; darkness no longer becomes scalar sleep pressure,
+shelter need, or anxiety; and predator proximity no longer becomes abstract
+threat damage, flight pressure, weapon seeking, or automatic attack. Hunger,
+health, collision, predator strikes, shelter occupancy, lighting, and sleep
+metabolism remain physical substrate. Discrete weapon use is intentionally
+inert until a neuronal action pathway can own it.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

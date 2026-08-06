@@ -72,16 +72,14 @@ public static class AvatarKinematics
     /// </summary>
     /// <param name="forwardGain">Multiplier on forward speed before clamping (defaults to 1.0).</param>
     /// <param name="turnGain">Multiplier on turn rate before clamping (defaults to 1.0).</param>
-    /// <param name="forwardScale">Additional multiplier applied to forward speed (e.g. urgency/run scale).</param>
     public static (double ForwardSpeed, double TurnRateDeg) ComputeBrainMotorOutput(
         double leftMotorDrive,
         double rightMotorDrive,
         AvatarKinematicsOptions options,
         double forwardGain = 1.0,
-        double turnGain = 1.0,
-        double forwardScale = 1.0)
+        double turnGain = 1.0)
     {
-        var rawForward = (leftMotorDrive + rightMotorDrive) * options.ForwardSpeedCoefficient * forwardGain * forwardScale;
+        var rawForward = (leftMotorDrive + rightMotorDrive) * options.ForwardSpeedCoefficient * forwardGain;
         var rawTurn = (rightMotorDrive - leftMotorDrive) * options.TurnSpeedCoefficient * turnGain;
 
         var forward = Math.Clamp(rawForward, options.MinForwardSpeed, options.MaxForwardSpeed);

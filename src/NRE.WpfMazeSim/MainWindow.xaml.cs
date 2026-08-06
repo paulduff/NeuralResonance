@@ -50,20 +50,18 @@ public partial class MainWindow : Window
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
     private const int BodyStateDispatchIntervalMs = 350;
     private const int EnvironmentAudioDispatchIntervalMs = 1800;
-    private const double MazeWalkMaxForwardSpeed = 3.2;
-    private const double MazeRunSpeedMultiplier = 3.0;
-    private const double MazeRunMaxForwardSpeed = MazeWalkMaxForwardSpeed * MazeRunSpeedMultiplier;
+    private const double MazeMaxForwardSpeed = 3.2;
     private const double AvatarHeadMaxYawDeg = 76.0;
     private const double AvatarHeadReturnRateDeg = 220.0;
 
-    // Shared kinematics options for the maze avatar: forward-only (no reverse),
-    // capped to walk speed (run scale is applied externally), and tighter turn cap.
+    // Physical kinematics for the maze avatar. Bilateral neuronal drive alone
+    // determines speed and turn within these body limits.
     private static readonly AvatarKinematicsOptions MazeKinematicsOptions = new(
         MaxMotorDrive: 240.0,
         ForwardSpeedCoefficient: 0.0125,
         TurnSpeedCoefficient: 3.2,
         MinForwardSpeed: 0.0,
-        MaxForwardSpeed: MazeWalkMaxForwardSpeed,
+        MaxForwardSpeed: MazeMaxForwardSpeed,
         MaxTurnRateDeg: 220.0,
         AllowSignedMotorDrive: true,
         InPlaceTurnCancelsForwardDrive: true);
@@ -71,7 +69,7 @@ public partial class MainWindow : Window
         MazeKinematicsOptions,
         DriveDecay: 0.92);
     private static readonly AvatarBodyStateProfile MazeBodyStateProfile = new(
-        MaxForwardSpeed: MazeRunMaxForwardSpeed,
+        MaxForwardSpeed: MazeMaxForwardSpeed,
         MaxTurnRateDeg: 260.0,
         BaseIntensity: 0.22,
         MotionIntensityWeight: 0.95,
@@ -715,7 +713,7 @@ public partial class MainWindow : Window
             }
         }
 
-        var motionSignal = Math.Clamp((Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed) + (Math.Abs(_lastTurnRateDeg) / 280.0) + (Math.Abs(_avatarHeadYawDeg) / AvatarHeadMaxYawDeg * 0.22), 0.0, 1.0);
+        var motionSignal = Math.Clamp((Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed) + (Math.Abs(_lastTurnRateDeg) / 280.0) + (Math.Abs(_avatarHeadYawDeg) / AvatarHeadMaxYawDeg * 0.22), 0.0, 1.0);
         var leftSaliency = Math.Clamp(leftSum / Math.Max(1, leftCount), 0.0, 1.0);
         var rightSaliency = Math.Clamp(rightSum / Math.Max(1, rightCount), 0.0, 1.0);
         var luminanceSignal = Math.Clamp(allSum / rayCount, 0.0, 1.0);
@@ -1266,18 +1264,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private double ComputeUrgentRunScale()
-    {
-        var hazardProximity = EstimateNearestHazardAudioProximity(CellSize * 4.5);
-        var healthUrgency = _health < 38 ? Math.Clamp((38.0 - _health) / 38.0, 0.0, 1.0) : 0.0;
-        var urgency = Math.Clamp(
-            Math.Max(Math.Max(_limbicThreat, _limbicAversiveDrive), Math.Max(_limbicNorepinephrine, Math.Max(hazardProximity, healthUrgency))),
-            0.0,
-            1.0);
-        var smoothUrgency = urgency * urgency * (3.0 - (2.0 * urgency));
-        return 1.0 + ((MazeRunSpeedMultiplier - 1.0) * smoothUrgency);
-    }
-
     private bool Collides(double x, double z)
     {
         return PointIntersectsWall(x, z, AvatarRadius * 0.85);
@@ -1545,7 +1531,7 @@ public partial class MainWindow : Window
             var frontTouch = probeTotal > 0.001 ? wallContact * (_lastFrontProximity / probeTotal) : wallContact;
             var leftTouch = probeTotal > 0.001 ? wallContact * (_lastLeftProximity / probeTotal) : 0.0;
             var rightTouch = probeTotal > 0.001 ? wallContact * (_lastRightProximity / probeTotal) : 0.0;
-            var groundTouch = Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed * 0.70), 0.0, 1.0);
+            var groundTouch = Math.Clamp(0.16 + (Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed * 0.70), 0.0, 1.0);
             var hazardImpactAge = (DateTime.UtcNow - _lastHazardDamageUtc).TotalSeconds;
             var hazardPain = hazardImpactAge is >= 0.0 and < 0.65
                 ? 0.82 * (1.0 - (hazardImpactAge / 0.65))
@@ -1681,7 +1667,7 @@ public partial class MainWindow : Window
     private List<AvatarAuditoryCue> BuildEnvironmentAuditoryCues()
     {
         var cues = new List<AvatarAuditoryCue>(7);
-        var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / MazeRunMaxForwardSpeed, 0.0, 1.0);
+        var movement = Math.Clamp(Math.Abs(_lastForwardSpeed) / MazeMaxForwardSpeed, 0.0, 1.0);
         if (_lastWallProximity > 0.82)
         {
             cues.Add(new AvatarAuditoryCue(

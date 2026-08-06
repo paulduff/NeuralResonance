@@ -83,6 +83,10 @@ internal sealed class ModelNeuron
 
 	private double _astrocyteLactateSupport;
 
+	private readonly NeuromodState _localNeuromodState = new();
+
+	private float _localRewardSignal;
+
 	public int Index { get; }
 
 	public string Id { get; }
@@ -97,11 +101,13 @@ internal sealed class ModelNeuron
 
 	public NTEnum PreferredNt { get; private set; }
 
-	public float MicrotubulePlasticitySupport => (float)_microtubules.PlasticitySupport;
+	public float MicrotubulePlasticitySupport => FiniteFloat(_microtubules.PlasticitySupport, 1f);
 
-	public float MicrotubuleTracePersistenceSupport => (float)_microtubules.TracePersistenceSupport;
+	public float MicrotubuleTracePersistenceSupport => FiniteFloat(_microtubules.TracePersistenceSupport, 1f);
 
-	public float CalciumPlasticitySupport => (float)Math.Clamp((0.97 + _calciumTrace * 0.06 + _dendriticPlateauTrace * 0.055) * (0.88 + _metabolicReserve * 0.12), 0.84, 1.08);
+	public float CalciumPlasticitySupport => FiniteFloat(
+		Math.Clamp((0.97 + _calciumTrace * 0.06 + _dendriticPlateauTrace * 0.055) * (0.88 + _metabolicReserve * 0.12), 0.84, 1.08),
+		1f);
 
 	public string MicrotubuleMode => _microtubules.Mode;
 
@@ -109,17 +115,21 @@ internal sealed class ModelNeuron
 
 	public bool MicrotubuleExperimental => _microtubules.ExperimentalQuantumTermsEnabled;
 
-	public float MicrotubuleStability => (float)_microtubules.Stability;
+	public float MicrotubuleStability => FiniteFloat(_microtubules.Stability, 0.58f);
 
-	public float MicrotubuleSpineInvasionEligibility => (float)_microtubules.SpineInvasionEligibility;
+	public float MicrotubuleSpineInvasionEligibility => FiniteFloat(_microtubules.SpineInvasionEligibility, 0.08f);
 
-	public float MicrotubuleTransportSupport => (float)_microtubules.TransportSupport;
+	public float MicrotubuleTransportSupport => FiniteFloat(_microtubules.TransportSupport, 0.52f);
 
-	public float MicrotubuleOpticalCollectiveBias => (float)_microtubules.OpticalCollectiveBias;
+	public float MicrotubuleOpticalCollectiveBias => FiniteFloat(_microtubules.OpticalCollectiveBias, 0f);
 
-	public float MicrotubuleRadicalPairSensitivity => (float)_microtubules.RadicalPairSensitivity;
+	public float MicrotubuleRadicalPairSensitivity => FiniteFloat(_microtubules.RadicalPairSensitivity, 0f);
 
-	public float MicrotubuleIntegrationGain => (float)_microtubules.IntegrationGain;
+	public float MicrotubuleIntegrationGain => FiniteFloat(_microtubules.IntegrationGain, 1f);
+
+	public NeuromodState LocalNeuromodState => _localNeuromodState;
+
+	public float LocalRewardSignal => _localRewardSignal;
 
 	public ModelNeuron(int index, string neuronModel, StructureCircuitProfile circuitProfile)
 	{
@@ -141,9 +151,10 @@ internal sealed class ModelNeuron
 
 	public void Integrate(SpikeMessage spike, double dtMs)
 	{
-		var quanta = Math.Max(0.01f, spike.VesicleQuanta);
+		var quanta = float.IsFinite(spike.VesicleQuanta)
+			? Math.Clamp(spike.VesicleQuanta, 0.01f, 5f)
+			: 0.01f;
 		var feedbackScale = spike.IsFeedback ? _circuitProfile.FeedbackAttenuation : 1.0;
-		_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, spike.ModulationContext, dtMs);
 		switch (spike.Neurotransmitter)
 		{
 		case NTEnum.GLUTAMATE:
@@ -185,6 +196,8 @@ internal sealed class ModelNeuron
 			_basalDendriteVoltage += (double)quanta * 0.1 * feedbackScale;
 			break;
 		}
+		UpdateLocalNeuromodulation();
+		_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
 		_basalDendriteVoltage = Math.Clamp(_basalDendriteVoltage, -85.0, -35.0);
 		_apicalDendriteVoltage = Math.Clamp(_apicalDendriteVoltage, -85.0, -35.0);
 	}
@@ -204,10 +217,14 @@ internal sealed class ModelNeuron
 		}
 	}
 
-	public bool Step(double dtMs, NeuromodState neuromod)
+	public bool Step(double dtMs)
 	{
+		dtMs = double.IsFinite(dtMs) && dtMs > 0.0 ? Math.Min(dtMs, 100.0) : 1.0;
+		StabilizeDynamicState();
 		AdvanceSynapticKinetics(dtMs);
+		UpdateLocalNeuromodulation();
 		AdvanceGlialSupport(dtMs);
+		var neuromod = _localNeuromodState;
 		var excitabilityGain = (1.0 + 0.16 * (double)neuromod.NorepinephrineLevel + 0.1 * (double)neuromod.AcetylcholineLevel) * _circuitProfile.ExcitabilityScale;
 		var dopamineGate = 1.0 + 0.08 * (double)neuromod.DopamineLevel;
 		var inhibitoryGain = (1.0 + 0.75 * (double)neuromod.SerotoninLevel + 0.4 * (double)neuromod.AcetylcholineLevel) * _circuitProfile.InhibitoryScale * _subtype.InhibitorySensitivity;
@@ -308,12 +325,43 @@ internal sealed class ModelNeuron
 			break;
 		}
 
+		StabilizeDynamicState();
 		ActivityTrace = (float)(0.84 * (double)ActivityTrace + (IsActive ? 0.16 : 0.0));
 		FiringRateHz = (float)(0.72 * (double)FiringRateHz + (IsActive ? (1000.0 / Math.Max(dtMs, 1.0) * 0.28) : 0.0));
 		AdvanceHomeostaticPlasticity(dtMs);
 		AdvanceMetabolicState(dtMs, neuromod, excitatorySynCurrent, inhibitorySynCurrent);
 		_microtubules.Advance(dtMs, neuromod, excitatorySynCurrent, netSynCurrent, ActivityTrace, IsActive);
 		return IsActive;
+	}
+
+	private void UpdateLocalNeuromodulation()
+	{
+		var dopamineD1 = Math.Max(0.0, _dopamineD1Current);
+		var dopamineD2 = Math.Max(0.0, _dopamineD2Current);
+		_localNeuromodState.DopamineLevel =
+			(float)Math.Clamp((dopamineD1 + dopamineD2) / 1.60, 0.0, 1.0);
+		_localNeuromodState.SerotoninLevel = (float)Math.Clamp(
+			(Math.Max(0.0, _serotonin5Ht1Current) +
+			 Math.Max(0.0, _serotonin5Ht2Current)) / 1.40, 0.0, 1.0);
+		_localNeuromodState.AcetylcholineLevel = (float)Math.Clamp(
+			(Math.Max(0.0, _nicotinicCurrent) +
+			 Math.Max(0.0, _muscarinicCurrent)) / 1.60, 0.0, 1.0);
+		_localNeuromodState.NorepinephrineLevel = (float)Math.Clamp(
+			(Math.Max(0.0, _adrenergicAlphaCurrent) +
+			 Math.Max(0.0, _adrenergicBetaCurrent)) / 1.60, 0.0, 1.0);
+
+		// D1/D2 balance carries appetitive teaching while local 5-HT receptor
+		// balance can carry aversive teaching. Both signals exist only where the
+		// corresponding neurotransmitter spikes reached this neuron.
+		// D2 currents decay more slowly than D1 currents, so compare decay-adjusted
+		// receptor occupancy. Without this correction, a sustained VTA burst would
+		// eventually look aversive even in a D1-dominant neuron.
+		var dopamineTeaching = (dopamineD1 - (dopamineD2 * 0.70)) / 0.80;
+		var serotoninTeaching =
+			(Math.Max(0.0, _serotonin5Ht2Current) -
+			 Math.Max(0.0, _serotonin5Ht1Current)) / 0.70;
+		_localRewardSignal =
+			(float)Math.Clamp(dopamineTeaching + serotoninTeaching, -1.0, 1.0);
 	}
 
 	private void AdvanceHomeostaticPlasticity(double dtMs)
@@ -538,6 +586,12 @@ internal sealed class ModelNeuron
 
 	private static void DecayCurrent(ref double current, double dtMs, double tauMs)
 	{
+		if (!double.IsFinite(current))
+		{
+			current = 0.0;
+			return;
+		}
+
 		current *= Math.Exp(0.0 - dtMs / tauMs);
 		if (Math.Abs(current) < 1E-06)
 		{
@@ -557,4 +611,53 @@ internal sealed class ModelNeuron
 		}
 		return NeuronModelKind.Izhikevich;
 	}
+
+	private void StabilizeDynamicState()
+	{
+		_v = FiniteClamp(_v, -120.0, 80.0, _subtype.RestingPotential);
+		_u = FiniteClamp(_u, -120.0, 120.0, 0.2 * _v);
+		_phase = double.IsFinite(_phase) ? _phase : (double)Index * 0.017;
+		_ampaCurrent = FiniteClamp(_ampaCurrent, 0.0, 10000.0, 0.0);
+		_nmdaCurrent = FiniteClamp(_nmdaCurrent, 0.0, 10000.0, 0.0);
+		_gabaACurrent = FiniteClamp(_gabaACurrent, 0.0, 10000.0, 0.0);
+		_gabaBCurrent = FiniteClamp(_gabaBCurrent, 0.0, 10000.0, 0.0);
+		_metabotropicGlutamateCurrent = FiniteClamp(_metabotropicGlutamateCurrent, 0.0, 10000.0, 0.0);
+		_dopamineD1Current = FiniteClamp(_dopamineD1Current, 0.0, 10000.0, 0.0);
+		_dopamineD2Current = FiniteClamp(_dopamineD2Current, 0.0, 10000.0, 0.0);
+		_serotonin5Ht1Current = FiniteClamp(_serotonin5Ht1Current, 0.0, 10000.0, 0.0);
+		_serotonin5Ht2Current = FiniteClamp(_serotonin5Ht2Current, 0.0, 10000.0, 0.0);
+		_nicotinicCurrent = FiniteClamp(_nicotinicCurrent, 0.0, 10000.0, 0.0);
+		_muscarinicCurrent = FiniteClamp(_muscarinicCurrent, 0.0, 10000.0, 0.0);
+		_adrenergicAlphaCurrent = FiniteClamp(_adrenergicAlphaCurrent, 0.0, 10000.0, 0.0);
+		_adrenergicBetaCurrent = FiniteClamp(_adrenergicBetaCurrent, 0.0, 10000.0, 0.0);
+		_aisVoltage = FiniteClamp(_aisVoltage, -90.0, 35.0, _subtype.RestingPotential);
+		_basalDendriteVoltage = FiniteClamp(_basalDendriteVoltage, -85.0, -35.0, _subtype.RestingPotential - 3.0);
+		_apicalDendriteVoltage = FiniteClamp(_apicalDendriteVoltage, -85.0, -35.0, _subtype.RestingPotential - 3.0);
+		_calciumTrace = FiniteClamp(_calciumTrace, 0.0, 1.0, 0.0);
+		_adaptationCurrent = FiniteClamp(_adaptationCurrent, 0.0, 50.0, 0.0);
+		_relativeRefractoryScale = FiniteClamp(_relativeRefractoryScale, 0.0, 1.0, 0.0);
+		_refractoryMs = FiniteClamp(_refractoryMs, 0.0, 1000.0, 0.0);
+		_dendriticPlateauTrace = FiniteClamp(_dendriticPlateauTrace, 0.0, 1.0, 0.0);
+		_proximalClusterTrace = FiniteClamp(_proximalClusterTrace, 0.0, 1.4, 0.0);
+		_distalClusterTrace = FiniteClamp(_distalClusterTrace, 0.0, 1.4, 0.0);
+		_plateauRecoveryMs = FiniteClamp(_plateauRecoveryMs, 0.0, 1000.0, 0.0);
+		_homeostaticActivityTrace = FiniteClamp(_homeostaticActivityTrace, 0.0, 1.0, 0.0);
+		_homeostaticExcitabilityBias = FiniteClamp(_homeostaticExcitabilityBias, -0.18, 0.22, 0.0);
+		_homeostaticInhibitoryBias = FiniteClamp(_homeostaticInhibitoryBias, -0.15, 0.2, 0.0);
+		_metabolicReserve = FiniteClamp(_metabolicReserve, 0.2, 1.0, 1.0);
+		_metabolicFatigueTrace = FiniteClamp(_metabolicFatigueTrace, 0.0, 1.0, 0.0);
+		_astrocyteGlutamateLoad = FiniteClamp(_astrocyteGlutamateLoad, 0.0, 1.0, 0.0);
+		_astrocytePotassiumLoad = FiniteClamp(_astrocytePotassiumLoad, 0.0, 1.0, 0.0);
+		_astrocyteLactateSupport = FiniteClamp(_astrocyteLactateSupport, 0.0, 1.0, 0.0);
+		ActivityTrace = float.IsFinite(ActivityTrace) ? Math.Clamp(ActivityTrace, 0f, 1f) : 0f;
+		FiringRateHz = float.IsFinite(FiringRateHz) ? Math.Max(0f, FiringRateHz) : 0f;
+	}
+
+	private static double FiniteClamp(double value, double minimum, double maximum, double fallback)
+		=> double.IsFinite(value) ? Math.Clamp(value, minimum, maximum) : fallback;
+
+	private static float FiniteFloat(double value, float fallback)
+		=> double.IsFinite(value) && value >= -float.MaxValue && value <= float.MaxValue
+			? (float)value
+			: fallback;
 }

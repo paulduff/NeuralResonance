@@ -19,6 +19,7 @@ public sealed class NeuronalCognitionAuthorityTests
             NeuronalAttentionWorkspaceDecision.Unavailable,
             NeuronalSleepConsolidationDecision.Unavailable,
             NeuronalLanguageGroundingDecision.Unavailable,
+            NeuronalAffectValuationDecision.Unavailable,
             NeuronalMotorRuntime.Default);
 
         Assert.Equal(NeuronalCognitionAuthorityRuntime.Authority, snapshot.Authority);
@@ -26,7 +27,7 @@ public sealed class NeuronalCognitionAuthorityTests
         Assert.False(snapshot.SemanticMotorInjectionAllowed);
         Assert.False(snapshot.WorldGoalSteeringAllowed);
         Assert.False(snapshot.LegacyLanguageEmissionAllowed);
-        Assert.Equal(7, snapshot.Domains.Count);
+        Assert.Equal(8, snapshot.Domains.Count);
         Assert.All(snapshot.Domains, static domain =>
         {
             Assert.True(domain.LegacyTelemetryOnly);

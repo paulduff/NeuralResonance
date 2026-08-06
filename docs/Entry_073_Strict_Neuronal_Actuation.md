@@ -38,4 +38,4 @@ Historical qualification documents and captured reports remain provenance. They 
 
 Tests pin bilateral advance, differential steering, basal-ganglia suppression, hemispheric ablation, sleep silencing, time-sliced population freshness, semantic-command rejection, low-confidence fail-closed behavior, and identical interpretation by the maze and world avatar boundary.
 
-This rung completes neuronal-only actuation, not the entire cognition migration. The next authority domains to replace are affect and valuation, planning and goal formation, manipulation and tool use, orienting and gesture, autobiographical continuity, and the learned language adapter.
+This rung completes neuronal-only actuation, not the entire cognition migration. Entry 074 completes the next affect/valuation authority rung. Planning and goal formation, manipulation and tool use, orienting and gesture, autobiographical continuity, and the learned language adapter remain.

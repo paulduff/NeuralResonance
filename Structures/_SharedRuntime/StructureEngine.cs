@@ -311,6 +311,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			double plasticitySupportTotal = 0.0;
 			double tracePersistenceSupportTotal = 0.0;
 			double integrationGainTotal = 0.0;
+			double dopamineTotal = 0.0;
+			double serotoninTotal = 0.0;
+			double acetylcholineTotal = 0.0;
+			double norepinephrineTotal = 0.0;
+			double rewardSignalTotal = 0.0;
 			for (int i = 0; i < _neurons.Length; i++)
 			{
 				ModelNeuron modelNeuron = _neurons[i];
@@ -325,7 +330,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						out var intrinsicInhibition);
 					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
 				}
-				if (modelNeuron.Step(tickSignal.TickDurationMs, tickSignal.GlobalNeuromodState))
+				if (modelNeuron.Step(tickSignal.TickDurationMs))
 				{
 					num++;
 					_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, modelNeuron.PreferredNt, isFeedback: false));
@@ -390,11 +395,26 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				plasticitySupportTotal += (double)modelNeuron.MicrotubulePlasticitySupport;
 				tracePersistenceSupportTotal += (double)modelNeuron.MicrotubuleTracePersistenceSupport;
 				integrationGainTotal += (double)modelNeuron.MicrotubuleIntegrationGain;
+				var neuronNeuromod = modelNeuron.LocalNeuromodState;
+				dopamineTotal += neuronNeuromod.DopamineLevel;
+				serotoninTotal += neuronNeuromod.SerotoninLevel;
+				acetylcholineTotal += neuronNeuromod.AcetylcholineLevel;
+				norepinephrineTotal += neuronNeuromod.NorepinephrineLevel;
+				rewardSignalTotal += modelNeuron.LocalRewardSignal;
 			}
 			_activeNeuronCount = num2;
 			_meanFiringRateHz = (float)(num3 / (double)_neurons.Length);
 			_meanActivityTrace = (float)(num4 / (double)_neurons.Length);
 			var neuronCount = Math.Max(1, _neurons.Length);
+			var localNeuromod = new NeuromodState
+			{
+				DopamineLevel = (float)(dopamineTotal / neuronCount),
+				SerotoninLevel = (float)(serotoninTotal / neuronCount),
+				AcetylcholineLevel = (float)(acetylcholineTotal / neuronCount),
+				NorepinephrineLevel = (float)(norepinephrineTotal / neuronCount)
+			};
+			var localRewardSignal =
+				(float)Math.Clamp(rewardSignalTotal / neuronCount, -1.0, 1.0);
 			var microtubules = new MicrotubuleDiagnostics(
 				_neurons[0].MicrotubuleMode,
 				_neurons[0].MicrotubuleEnabled,
@@ -409,29 +429,29 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				(float)(integrationGainTotal / neuronCount),
 				(float)(plasticitySupportTotal / neuronCount));
 			var bodySchema = BuildBodySchemaDiagnostics();
-			var basalGanglia = BuildBasalGangliaDiagnostics(tickSignal.GlobalNeuromodState);
+			var basalGanglia = BuildBasalGangliaDiagnostics(localNeuromod);
 			var cerebellar = BuildCerebellarDiagnostics();
-			var vestibuloReticular = BuildVestibuloReticularDiagnostics(tickSignal.GlobalNeuromodState);
-			var superiorColliculus = BuildSuperiorColliculusDiagnostics(tickSignal.GlobalNeuromodState);
-			var hippocampalSpatial = BuildHippocampalSpatialDiagnostics(tickSignal.GlobalNeuromodState);
-			var salienceAffect = BuildSalienceAffectDiagnostics(tickSignal.GlobalNeuromodState);
-			var prefrontalWorkingMemory = BuildPrefrontalWorkingMemoryDiagnostics(tickSignal.GlobalNeuromodState);
-			var thalamicAttentionGate = BuildThalamicAttentionGateDiagnostics(tickSignal.GlobalNeuromodState);
-			var hypothalamicHomeostasis = BuildHypothalamicHomeostasisDiagnostics(tickSignal.GlobalNeuromodState);
-			var sleepWakeArousal = BuildSleepWakeArousalDiagnostics(tickSignal.GlobalNeuromodState);
-			var descendingDefense = BuildDescendingDefenseDiagnostics(tickSignal.GlobalNeuromodState);
-			var dopamineReward = BuildDopamineRewardDiagnostics(tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
-			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(tickSignal.GlobalNeuromodState);
-			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(tickSignal.GlobalNeuromodState);
-			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(tickSignal.GlobalNeuromodState);
-			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(tickSignal.GlobalNeuromodState);
-			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(tickSignal.GlobalNeuromodState);
-			var actionSelection = BuildActionSelectionDiagnostics(tickSignal.GlobalNeuromodState);
-			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(tickSignal.GlobalNeuromodState);
+			var vestibuloReticular = BuildVestibuloReticularDiagnostics(localNeuromod);
+			var superiorColliculus = BuildSuperiorColliculusDiagnostics(localNeuromod);
+			var hippocampalSpatial = BuildHippocampalSpatialDiagnostics(localNeuromod);
+			var salienceAffect = BuildSalienceAffectDiagnostics(localNeuromod);
+			var prefrontalWorkingMemory = BuildPrefrontalWorkingMemoryDiagnostics(localNeuromod);
+			var thalamicAttentionGate = BuildThalamicAttentionGateDiagnostics(localNeuromod);
+			var hypothalamicHomeostasis = BuildHypothalamicHomeostasisDiagnostics(localNeuromod);
+			var sleepWakeArousal = BuildSleepWakeArousalDiagnostics(localNeuromod);
+			var descendingDefense = BuildDescendingDefenseDiagnostics(localNeuromod);
+			var dopamineReward = BuildDopamineRewardDiagnostics(localNeuromod, localRewardSignal);
+			var septohippocampalTheta = BuildSeptohippocampalThetaDiagnostics(localNeuromod);
+			var spinalProprioceptive = BuildSpinalProprioceptiveDiagnostics(localNeuromod);
+			var olfactoryLimbicMemory = BuildOlfactoryLimbicMemoryDiagnostics(localNeuromod);
+			var auditoryLanguageMotor = BuildAuditoryLanguageMotorDiagnostics(localNeuromod);
+			var visualObjectRecognition = BuildVisualObjectRecognitionDiagnostics(localNeuromod);
+			var actionSelection = BuildActionSelectionDiagnostics(localNeuromod);
+			var perceptEnsembles = BuildPerceptEnsembleDiagnostics(localNeuromod);
 			var synapticMemory = BuildSynapticMemoryDiagnostics();
 			var neuronalAttentionWorkspace = BuildNeuronalAttentionWorkspaceDiagnostics();
 			var neuronalSleepConsolidation = BuildNeuronalSleepConsolidationDiagnostics();
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), tickSignal.GlobalNeuromodState, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -551,7 +571,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SynapseState synapse = GetOrCreateInboundSynapse(message);
 			SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
 			modelNeuron.Integrate(effectiveMessage, tickSignal.TickDurationMs);
-			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError);
+			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
 		}
 	}
 
@@ -619,7 +639,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			ReuptakeRate = message.ReuptakeRate,
 			SpikeType = message.SpikeType,
 			IsFeedback = message.IsFeedback,
-			ModulationContext = message.ModulationContext
+			ModulationContext = null
 		};
 	}
 
@@ -640,7 +660,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 	}
 
-	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float rewardPredictionError)
+	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float localTeachingSignal)
 	{
 		var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
 		var previousTargetNeuronIndex = value.LastTargetNeuronIndex;
@@ -661,24 +681,25 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			value,
 			postsynActivity,
 			neuromod,
-			rewardPredictionError);
+			localTeachingSignal);
 		bool climbingCoincident = _profile.StructureId == StructureId.PurkinjeCellLayer && (message.SourceStructure == StructureId.InferiorOlive || message.SpikeType == SpikeTypeEnum.COMPLEX);
-		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, rewardPredictionError, climbingCoincident);
-		if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && rewardPredictionError > 0.05f)
+		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, localTeachingSignal, climbingCoincident);
+		if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && localTeachingSignal > 0.05f)
 		{
 			// Positive prediction error must be able to reacquire an association
 			// after extinction has made its eligibility and tag traces negative.
 			// Otherwise tag-capture-only structures remain trapped at the floor.
-			var reacquisitionDrive = Math.Clamp(rewardPredictionError, 0f, 1f) *
+			var reacquisitionDrive = Math.Clamp(localTeachingSignal, 0f, 1f) *
 				(0.010f + Math.Clamp(postsynActivity, 0f, 1f) * 0.018f);
 			delta += reacquisitionDrive;
 		}
-		else if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && rewardPredictionError < -0.05f)
+		else if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && localTeachingSignal < -0.05f)
 		{
-			var extinctionDrive = Math.Clamp(-rewardPredictionError, 0f, 1f) *
+			var extinctionDrive = Math.Clamp(-localTeachingSignal, 0f, 1f) *
 				(0.008f + Math.Clamp(postsynActivity, 0f, 1f) * 0.025f);
 			delta -= extinctionDrive;
 		}
+		delta = float.IsFinite(delta) ? delta : 0f;
 		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
 		value.Stabilize();
 		if (memoryCircuit)
@@ -699,7 +720,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		SynapseState synapse,
 		float postsynActivity,
 		NeuromodState neuromod,
-		float rewardPredictionError)
+		float localTeachingSignal)
 	{
 		if (!SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) ||
 			message.Neurotransmitter != NTEnum.GLUTAMATE)
@@ -713,20 +734,26 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			0.15f +
 			(neuromod.AcetylcholineLevel * 0.45f) +
 			(neuromod.NorepinephrineLevel * 0.25f) +
-			(Math.Max(0f, rewardPredictionError) * 0.15f),
+			(Math.Max(0f, localTeachingSignal) * 0.15f),
 			0f,
 			1f);
-		if (rewardPredictionError < -0.05f)
+		if (localTeachingSignal < -0.05f)
 		{
-			var extinction = coactivity * Math.Clamp(-rewardPredictionError, 0f, 1f);
+			var extinction = coactivity * Math.Clamp(-localTeachingSignal, 0f, 1f);
 			synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace - (extinction * 0.12f), -1f, 1f);
 			synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace - (extinction * 0.08f), -1f, 1f);
 			return;
 		}
 
 		var encoding = coactivity * encodingGate;
-		synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace + (encoding * 0.10f), -1f, 1f);
-		synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace + (encoding * 0.07f), -1f, 1f);
+		var eligibility = localTeachingSignal > 0.05f
+			? Math.Max(0f, synapse.EligibilityTrace)
+			: synapse.EligibilityTrace;
+		var tag = localTeachingSignal > 0.05f
+			? Math.Max(0f, synapse.SynapticTagTrace)
+			: synapse.SynapticTagTrace;
+		synapse.EligibilityTrace = Math.Clamp(eligibility + (encoding * 0.10f), -1f, 1f);
+		synapse.SynapticTagTrace = Math.Clamp(tag + (encoding * 0.07f), -1f, 1f);
 	}
 
 	private void ObserveActionChannelLearning(SpikeMessage message, SynapseState synapse, int targetNeuronIndex)
@@ -767,7 +794,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	{
 		synapse.PreTrace = PlasticityRules.DecayTrace(synapse.PreTrace, dtMs, 20f);
 		synapse.PostTrace = PlasticityRules.DecayTrace(synapse.PostTrace, dtMs, 35f);
-		float traceSupport = Math.Clamp(microtubuleTracePersistenceSupport, 0.97f, 1.03f);
+		float traceSupport = float.IsFinite(microtubuleTracePersistenceSupport)
+			? Math.Clamp(microtubuleTracePersistenceSupport, 0.97f, 1.03f)
+			: 1f;
 		synapse.EligibilityTrace = PlasticityRules.DecayTrace(synapse.EligibilityTrace, dtMs, 900f * traceSupport);
 		synapse.SynapticTagTrace = PlasticityRules.DecayTrace(synapse.SynapticTagTrace, dtMs, 8000f * traceSupport);
 		float boundedPost = Math.Clamp(postActivity, 0f, 1f);
@@ -780,39 +809,40 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		return traceDelta;
 	}
 
-	private float ComputeInboundPlasticityDelta(SynapseState synapse, float traceDelta, float postsynActivity, float microtubulePlasticitySupport, NeuromodState neuromod, float rewardPredictionError, bool climbingCoincident)
+	private float ComputeInboundPlasticityDelta(SynapseState synapse, float traceDelta, float postsynActivity, float microtubulePlasticitySupport, NeuromodState neuromod, float localTeachingSignal, bool climbingCoincident)
 	{
-		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, rewardPredictionError, microtubulePlasticitySupport);
+		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, localTeachingSignal, microtubulePlasticitySupport);
 		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
 		float vesicleQuanta = synapse.VesicleQuanta;
-		return _profile.PlasticityRule switch
+		var delta = _profile.PlasticityRule switch
 		{
 			"BCM" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta) * 0.35f,
-			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.35f + traceConsolidation * 0.05f,
+			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, localTeachingSignal) * 0.35f + traceConsolidation * 0.05f,
 			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
 			"CerebellarLTD" => PlasticityRules.CerebellarLtdCoincidence(vesicleQuanta, climbingCoincident, postsynActivity),
 			"MossyFiberLTP" => PlasticityRules.MossyFiberLtp(vesicleQuanta) * 0.35f + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
 			"SynapticTaggingCapture" => tagCapture,
 			"STDP+SynapticTaggingCapture" => PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta) + tagCapture,
-			"DopamineHomeostasis" => traceConsolidation * 0.5f + PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace * 0.5f, neuromod.DopamineLevel, rewardPredictionError * 0.5f) * 0.25f,
+			"DopamineHomeostasis" => traceConsolidation * 0.5f + PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace * 0.5f, neuromod.DopamineLevel, localTeachingSignal * 0.5f) * 0.25f,
 			"HomeostaticGain" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM),
 			"BCM+STDP" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
 			_ => PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
 		};
+		return float.IsFinite(delta) ? delta : 0f;
 	}
 
-	private float ComputeOutboundPlasticityDelta(SynapseState synapse, float sourceActivity, NeuromodState neuromod, float rewardPredictionError, double timestampMs)
+	private float ComputeOutboundPlasticityDelta(SynapseState synapse, float sourceActivity, NeuromodState neuromod, float localTeachingSignal, double timestampMs)
 	{
 		double num = Math.Max(0.0, timestampMs - synapse.LastUpdateTimestampMs);
 		float traceDelta = UpdateTraceState(synapse, num, 1f, sourceActivity * 0.35f, synapse.Neurotransmitter, 1f);
 		synapse.ThetaM = PlasticityRules.UpdateBcmTheta(synapse.ThetaM, sourceActivity, num);
 		synapse.LastUpdateTimestampMs = timestampMs;
 		float microtubulePlasticitySupport = Math.Clamp(0.98f + sourceActivity * 0.04f, 0.98f, 1.02f);
-		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, rewardPredictionError, microtubulePlasticitySupport);
+		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, localTeachingSignal, microtubulePlasticitySupport);
 		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
-		return _profile.PlasticityRule switch
+		var delta = _profile.PlasticityRule switch
 		{
-			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, rewardPredictionError) * 0.35f + traceConsolidation * 0.05f,
+			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, localTeachingSignal) * 0.35f + traceConsolidation * 0.05f,
 			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
 			"BCM" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta) * 0.35f,
 			"BCM+STDP" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta),
@@ -820,6 +850,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			"STDP+SynapticTaggingCapture" => PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta) + tagCapture,
 			_ => PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta),
 		};
+		return float.IsFinite(delta) ? delta : 0f;
 	}
 
 	private SynapseState GetOrCreateOutboundSynapse(ModelNeuron source, StructureId target, NTEnum neurotransmitter, bool isFeedback, string targetNeuronId)
@@ -862,7 +893,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			: _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
 		string targetNeuronId = $"auto-{target}-{num:000}";
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
-		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, tickSignal.GlobalNeuromodState, tickSignal.RewardPredictionError, tickSignal.TimestampMs);
+		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, source.LocalNeuromodState, source.LocalRewardSignal, tickSignal.TimestampMs);
+		outboundDelta = float.IsFinite(outboundDelta) ? outboundDelta : 0f;
 		synapseState.VesicleQuanta = PlasticityRules.ClampQuanta(synapseState.VesicleQuanta + outboundDelta);
 		synapseState.Stabilize();
 		PersistSynapses(tickSignal.TimestampMs);
@@ -887,9 +919,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			_ => 8f, 
 		};
 		spikeMessage2.ReuptakeRate = reuptakeRate;
-		spikeMessage.SpikeType = _kernel.SelectSpikeType(_profile.StructureId, isFeedback, tickSignal);
+		spikeMessage.SpikeType = _kernel.SelectSpikeType(
+			_profile.StructureId,
+			isFeedback,
+			source.LocalNeuromodState,
+			source.LocalRewardSignal);
 		spikeMessage.IsFeedback = isFeedback;
-		spikeMessage.ModulationContext = tickSignal.GlobalNeuromodState;
+		// Neuromodulation travels as dopamine, serotonin, acetylcholine, and
+		// norepinephrine spikes. A scalar context on an arbitrary spike must not
+		// become a second, non-neuronal broadcast channel.
+		spikeMessage.ModulationContext = null;
 		return spikeMessage;
 	}
 
@@ -2750,7 +2789,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		return "Quiet";
 	}
 
-	private DopamineRewardDiagnostics? BuildDopamineRewardDiagnostics(NeuromodState neuromod, float rewardPredictionError)
+	private DopamineRewardDiagnostics? BuildDopamineRewardDiagnostics(NeuromodState neuromod, float localTeachingSignal)
 	{
 		if (!IsDopamineRewardDiagnosticsStructure(_profile.StructureId))
 		{
@@ -2758,7 +2797,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 
 		var mean = _meanFiringRateHz;
-		var rpe = Math.Clamp(rewardPredictionError, -1f, 1f);
+		var rpe = Math.Clamp(localTeachingSignal, -1f, 1f);
 		var dopamine = Math.Clamp(neuromod.DopamineLevel, 0f, 1f);
 		var positiveRpe = Math.Max(0f, rpe);
 		var negativeRpe = Math.Max(0f, -rpe);

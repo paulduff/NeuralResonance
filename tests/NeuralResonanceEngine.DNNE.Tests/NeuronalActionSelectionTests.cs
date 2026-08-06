@@ -135,13 +135,13 @@ public sealed class NeuronalActionSelectionTests
 
             var tick = 0L;
             var timestamp = 0.0;
-            (tick, timestamp) = await TrainChannel(engine, channel0, 0, rewardPredictionError: 0.85f, 36, tick, timestamp);
-            (tick, timestamp) = await TrainChannel(engine, channel1, 1, rewardPredictionError: -0.85f, 36, tick, timestamp);
+            (tick, timestamp) = await TrainChannel(engine, channel0, 0, reinforce: true, 36, tick, timestamp);
+            (tick, timestamp) = await TrainChannel(engine, channel1, 1, reinforce: false, 36, tick, timestamp);
             var firstChannel0 = engine.GetInboundSynapseStrength(channel0);
             var firstChannel1 = engine.GetInboundSynapseStrength(channel1);
 
-            (tick, timestamp) = await TrainChannel(engine, channel0, 0, rewardPredictionError: -0.85f, 72, tick, timestamp);
-            (tick, timestamp) = await TrainChannel(engine, channel1, 1, rewardPredictionError: 0.85f, 72, tick, timestamp);
+            (tick, timestamp) = await TrainChannel(engine, channel0, 0, reinforce: false, 72, tick, timestamp);
+            (tick, timestamp) = await TrainChannel(engine, channel1, 1, reinforce: true, 72, tick, timestamp);
             var reversedChannel0 = engine.GetInboundSynapseStrength(channel0);
             var reversedChannel1 = engine.GetInboundSynapseStrength(channel1);
 
@@ -178,7 +178,7 @@ public sealed class NeuronalActionSelectionTests
             Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
             Environment.SetEnvironmentVariable("SERVICE_INSTANCE", instance);
             engine = CreateStriatalEngine("action-channel persistence test");
-            _ = await TrainChannel(engine, synapseId, 2, 0.85f, 24, 0L, 0.0);
+            _ = await TrainChannel(engine, synapseId, 2, reinforce: true, 24, 0L, 0.0);
             var learned = engine.GetInboundSynapseStrength(synapseId);
             engine.Dispose();
             engine = null;
@@ -199,11 +199,85 @@ public sealed class NeuronalActionSelectionTests
         }
     }
 
+    [Fact]
+    public async Task LegacyGlobalNeuromodulationCannotAlterNeuronalPlasticity()
+    {
+        await EnvironmentGate.WaitAsync();
+        var directory = Path.Combine(Path.GetTempPath(), "nre-local-neuromod-tests", Guid.NewGuid().ToString("N"));
+        var previousDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+        var previousInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+        var synapseId = Guid.Parse("cccccccc-cccc-cccc-cccc-ccccccccccc0");
+        StructureEngine? baseline = null;
+        StructureEngine? legacyBiased = null;
+
+        try
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", $"local-baseline-{Guid.NewGuid():N}");
+            baseline = CreateStriatalEngine("local neuromod baseline");
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", $"legacy-biased-{Guid.NewGuid():N}");
+            legacyBiased = CreateStriatalEngine("legacy global neuromod invariant");
+
+            for (var tick = 1L; tick <= 24; tick++)
+            {
+                var timestamp = tick * 30.0;
+                var burst = Enumerable.Range(0, 6)
+                    .Select(burstIndex => new SpikeMessage
+                    {
+                        MessageId = Guid.NewGuid(),
+                        TimestampMs = timestamp + burstIndex * 0.2,
+                        SourceStructure = StructureId.Pfc,
+                        TargetStructure = StructureId.Striatum,
+                        SourceNeuronId = "n-000",
+                        TargetNeuronId = "striatal-lane-000",
+                        SynapseId = synapseId,
+                        Neurotransmitter = NTEnum.GLUTAMATE,
+                        VesicleQuanta = 1f,
+                        ReuptakeRate = 8f,
+                        SpikeType = SpikeTypeEnum.BURST
+                    })
+                    .ToArray();
+
+                await baseline.EnqueueSpikeBatchAsync(burst);
+                await legacyBiased.EnqueueSpikeBatchAsync(burst);
+                await baseline.ProcessTickAsync(Tick(tick, timestamp + 20.0, new NeuromodState(), 0f));
+                await legacyBiased.ProcessTickAsync(Tick(
+                    tick,
+                    timestamp + 20.0,
+                    new NeuromodState
+                    {
+                        DopamineLevel = 1f,
+                        SerotoninLevel = 1f,
+                        AcetylcholineLevel = 1f,
+                        NorepinephrineLevel = 1f
+                    },
+                    1f));
+            }
+
+            Assert.Equal(
+                baseline.GetInboundSynapseStrength(synapseId),
+                legacyBiased.GetInboundSynapseStrength(synapseId),
+                precision: 6);
+        }
+        finally
+        {
+            baseline?.Dispose();
+            legacyBiased?.Dispose();
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", previousDirectory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", previousInstance);
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            EnvironmentGate.Release();
+        }
+    }
+
     private static async Task<(long Tick, double Timestamp)> TrainChannel(
         StructureEngine engine,
         Guid synapseId,
         int channel,
-        float rewardPredictionError,
+        bool reinforce,
         int repetitions,
         long tick,
         double timestamp)
@@ -212,6 +286,7 @@ public sealed class NeuronalActionSelectionTests
         {
             tick++;
             timestamp += 30.0;
+            var sourceIndex = channel + (reinforce ? ActionChannelTopology.ChannelCount : 0);
             var burst = Enumerable.Range(0, 6)
                 .Select(burstIndex => new SpikeMessage
                 {
@@ -219,7 +294,7 @@ public sealed class NeuronalActionSelectionTests
                     TimestampMs = timestamp + burstIndex * 0.2,
                     SourceStructure = StructureId.Pfc,
                     TargetStructure = StructureId.Striatum,
-                    SourceNeuronId = $"n-{channel:000}",
+                    SourceNeuronId = $"n-{sourceIndex:000}",
                     TargetNeuronId = $"striatal-lane-{channel:000}",
                     SynapseId = synapseId,
                     Neurotransmitter = NTEnum.GLUTAMATE,
@@ -228,24 +303,43 @@ public sealed class NeuronalActionSelectionTests
                     SpikeType = SpikeTypeEnum.BURST
                 })
                 .ToArray();
-            await engine.EnqueueSpikeBatchAsync(burst);
-            await engine.ProcessTickAsync(new TickSignal(
-                tick,
-                timestamp + 20.0,
-                10.0,
-                new NeuromodState
+            var dopamineBurst = Enumerable.Range(0, 4)
+                .Select(burstIndex => new SpikeMessage
                 {
-                    DopamineLevel = 0.75f,
-                    AcetylcholineLevel = 0.45f,
-                    NorepinephrineLevel = 0.25f,
-                    SerotoninLevel = 0.30f
-                },
-                new Dictionary<BrainRhythm, double>(),
-                rewardPredictionError));
+                    MessageId = Guid.NewGuid(),
+                    TimestampMs = timestamp + burstIndex * 0.2,
+                    SourceStructure = StructureId.Snc,
+                    TargetStructure = StructureId.Striatum,
+                    SourceNeuronId = $"n-{sourceIndex:000}",
+                    TargetNeuronId = $"striatal-modulation-{channel:000}",
+                    SynapseId = Guid.Parse(reinforce
+                        ? $"dddddddd-dddd-dddd-dddd-dddddddddd{channel}1"
+                        : $"dddddddd-dddd-dddd-dddd-dddddddddd{channel}2"),
+                    Neurotransmitter = NTEnum.DOPAMINE,
+                    VesicleQuanta = 1.4f,
+                    ReuptakeRate = 40f,
+                    SpikeType = SpikeTypeEnum.GRADED
+                })
+                .ToArray();
+            await engine.EnqueueSpikeBatchAsync(burst.Concat(dopamineBurst).ToArray());
+            await engine.ProcessTickAsync(Tick(tick, timestamp + 20.0, new NeuromodState(), 0f));
         }
 
         return (tick, timestamp);
     }
+
+    private static TickSignal Tick(
+        long tick,
+        double timestamp,
+        NeuromodState legacyGlobal,
+        float legacyReward)
+        => new(
+            tick,
+            timestamp,
+            10.0,
+            legacyGlobal,
+            new Dictionary<BrainRhythm, double>(),
+            legacyReward);
 
     private static StructureEngine CreateStriatalEngine(string description)
         => new(new StructureProfile(

@@ -32,15 +32,15 @@ internal sealed class IntracellularMicrotubuleState
 
 	public double PlasticitySupport => !_enabled
 		? 1.0
-		: Math.Clamp(0.972 + Stability * 0.03 + SpineInvasionEligibility * 0.025 + TransportSupport * 0.02, 0.95, 1.05);
+		: FiniteClamp(0.972 + Stability * 0.03 + SpineInvasionEligibility * 0.025 + TransportSupport * 0.02, 0.95, 1.05, 1.0);
 
 	public double TracePersistenceSupport => !_enabled
 		? 1.0
-		: Math.Clamp(0.974 + Stability * 0.04 + SpineInvasionEligibility * 0.03, 0.97, 1.03);
+		: FiniteClamp(0.974 + Stability * 0.04 + SpineInvasionEligibility * 0.03, 0.97, 1.03, 1.0);
 
 	public double IntegrationGain => !_enabled
 		? 1.0
-		: Math.Clamp(0.997 + Stability * 0.004 + TransportSupport * 0.002, 0.997, 1.003);
+		: FiniteClamp(0.997 + Stability * 0.004 + TransportSupport * 0.002, 0.997, 1.003, 1.0);
 
 	private IntracellularMicrotubuleState(int neuronIndex, string mode, bool enabled, bool experimentalQuantumTermsEnabled)
 	{
@@ -92,7 +92,9 @@ internal sealed class IntracellularMicrotubuleState
 			return;
 		}
 
-		double quanta = Math.Clamp(vesicleQuanta, 0.0f, 5.0f);
+		double quanta = float.IsFinite(vesicleQuanta)
+			? Math.Clamp(vesicleQuanta, 0.0f, 5.0f)
+			: 0.0;
 		if (neurotransmitter == NTEnum.GLUTAMATE)
 		{
 			// Null context means "no modulation broadcast on the wire" - treat as zeros.
@@ -115,14 +117,15 @@ internal sealed class IntracellularMicrotubuleState
 			return;
 		}
 
-		double dtScale = Math.Clamp(dtMs / 20.0, 0.05, 4.0);
-		double acetylcholine = Math.Clamp(neuromod.AcetylcholineLevel, 0.0f, 1.0f);
-		double dopamine = Math.Clamp(neuromod.DopamineLevel, 0.0f, 1.0f);
-		double norepinephrine = Math.Clamp(neuromod.NorepinephrineLevel, 0.0f, 1.0f);
-		double serotonin = Math.Clamp(neuromod.SerotoninLevel, 0.0f, 1.0f);
-		double boundedExcitation = Math.Clamp(excitatoryCurrent / 18.0, 0.0, 1.0);
-		double boundedNet = Math.Clamp(Math.Max(0.0, netDrive) / 18.0, 0.0, 1.0);
-		double activity = Math.Clamp(activityTrace, 0.0f, 1.0f);
+		StabilizeState();
+		double dtScale = FiniteClamp(dtMs / 20.0, 0.05, 4.0, 0.5);
+		double acetylcholine = FiniteClamp(neuromod.AcetylcholineLevel, 0.0, 1.0, 0.0);
+		double dopamine = FiniteClamp(neuromod.DopamineLevel, 0.0, 1.0, 0.0);
+		double norepinephrine = FiniteClamp(neuromod.NorepinephrineLevel, 0.0, 1.0, 0.0);
+		double serotonin = FiniteClamp(neuromod.SerotoninLevel, 0.0, 1.0, 0.0);
+		double boundedExcitation = FiniteClamp(excitatoryCurrent / 18.0, 0.0, 1.0, 0.0);
+		double boundedNet = FiniteClamp(Math.Max(0.0, netDrive) / 18.0, 0.0, 1.0, 0.0);
+		double activity = FiniteClamp(activityTrace, 0.0, 1.0, 0.0);
 
 		double invasionTarget = BaselineSpineEligibility
 			+ _recentExcitatoryDrive * 0.30
@@ -160,11 +163,14 @@ internal sealed class IntracellularMicrotubuleState
 
 		Stability = Approach(Stability, Math.Clamp(stabilityTarget, 0.0, 1.0), 0.012 * dtScale);
 		AdvanceRecentDrive(dtMs);
+		StabilizeState();
 	}
 
 	private void AdvanceRecentDrive(double dtMs)
 	{
-		_recentExcitatoryDrive *= Math.Exp(0.0 - Math.Max(0.0, dtMs) / 180.0);
+		var elapsedMs = double.IsFinite(dtMs) ? Math.Max(0.0, dtMs) : 0.0;
+		_recentExcitatoryDrive = FiniteClamp(_recentExcitatoryDrive, 0.0, 1.0, 0.0) *
+			Math.Exp(0.0 - elapsedMs / 180.0);
 		if (_recentExcitatoryDrive < 0.000001)
 		{
 			_recentExcitatoryDrive = 0.0;
@@ -173,6 +179,23 @@ internal sealed class IntracellularMicrotubuleState
 
 	private static double Approach(double current, double target, double rate)
 	{
-		return current + (target - current) * Math.Clamp(rate, 0.0, 1.0);
+		var safeTarget = double.IsFinite(target) ? target : 0.0;
+		var safeCurrent = double.IsFinite(current) ? current : safeTarget;
+		var safeRate = FiniteClamp(rate, 0.0, 1.0, 0.0);
+		return safeCurrent + (safeTarget - safeCurrent) * safeRate;
 	}
+
+	private void StabilizeState()
+	{
+		Stability = FiniteClamp(Stability, 0.0, 1.0, BaselineStability);
+		SpineInvasionEligibility = FiniteClamp(SpineInvasionEligibility, 0.0, 1.0, BaselineSpineEligibility);
+		TransportSupport = FiniteClamp(TransportSupport, 0.0, 1.0, BaselineTransportSupport);
+		OpticalCollectiveBias = FiniteClamp(OpticalCollectiveBias, -0.06, 0.06, 0.0);
+		RadicalPairSensitivity = FiniteClamp(RadicalPairSensitivity, 0.0, 1.0, 0.0);
+		_radicalPairPhase = double.IsFinite(_radicalPairPhase) ? _radicalPairPhase : 0.0;
+		_recentExcitatoryDrive = FiniteClamp(_recentExcitatoryDrive, 0.0, 1.0, 0.0);
+	}
+
+	private static double FiniteClamp(double value, double minimum, double maximum, double fallback)
+		=> double.IsFinite(value) ? Math.Clamp(value, minimum, maximum) : fallback;
 }

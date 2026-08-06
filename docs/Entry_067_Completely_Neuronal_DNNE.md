@@ -55,7 +55,7 @@ Acceptance requires coverage of the expected bilateral circuit, stable confidenc
 
 ### Rung 2 - Neuronal Action Selection
 
-Replace central goal ranking and `ResolveIntentionalMotorDirective` with competing corticostriatal action channels. Direct, indirect, and hyperdirect pathways select, suppress, or interrupt actions. Dopamine prediction error trains channel values through eligibility traces.
+Replace central goal ranking and `ResolveIntentionalMotorDirective` with competing corticostriatal action channels. Direct, indirect, and hyperdirect pathways select, suppress, or interrupt actions. Routed dopamine spikes train channel values through local D1/D2 receptor balance and eligibility traces.
 
 Acceptance requires learned choice reversal after reward contingency changes, suppression under GPi/SNr stimulation, disinhibition under direct-pathway stimulation, and no dependency on action-name strings.
 
@@ -77,6 +77,14 @@ The causal test set pins:
 - lane disinhibition under direct-pathway stimulation;
 - loss of authority after core-circuit ablation;
 - corticostriatal synaptic preference reversal after reward contingency reversal.
+
+#### Neuronal affect and valuation
+
+The affect monitor now decodes measured amygdala/insula/ACC salience, hypothalamic and visceral homeostasis, descending defense, and VTA/SNc/accumbens/striatum/habenula/OFC reward populations into four anonymous observational lanes. Diagnostic mode strings and central goal names are ignored. The monitor has no write path to action selection.
+
+Affect changes behavior only through spikes on the connectome: limbic and interoceptive routes reach prefrontal, orbitofrontal, accumbal, striatal, pallidal, thalamic, PAG, reticular, and brainstem populations. Dopamine, serotonin, acetylcholine, and norepinephrine now alter each neuron through that neuron's local receptor currents. Local receptor state controls excitability, burst selection, intracellular support, and synaptic plasticity. The legacy global neuromodulator and reward-prediction fields are neutralized on the tick wire and cannot change firing or learning.
+
+`/api/v1/neuronal-affect-valuation` is a read-only observation of the distributed circuit. Limbic, emotion, interoceptive-core, motivation, goal-intent, and dopamine-learning endpoints remain human-readable legacy telemetry and cannot authorize valuation or movement.
 
 ### Rung 3 - Neuronal Perception
 
@@ -106,7 +114,7 @@ Acceptance requires one-shot episodic traces, cue-dependent recall, interference
 
 The first authoritative memory slice reads eight numeric memory ensembles directly from persisted inbound synapses in object, spatial, hippocampal, semantic, autobiographical, and action circuits. Each synapse now retains its neutral baseline weight, current weight, target population, eligibility trace, synaptic tag, update count, and timing state. Existing checkpoints without a baseline migrate conservatively by treating their loaded weight as the baseline, preventing old transport amplitudes from being misreported as learning.
 
-Receiving synapses start at a neutral local weight. Presynaptic vesicle release remains part of immediate signal strength, but a caller can no longer install a postsynaptic memory merely by transmitting a large vesicle payload. Local coactivity, acetylcholine/norepinephrine encoding gates, burst timing, and reward prediction error alter eligibility, tags, and weights. Negative prediction error drives extinction; later positive prediction error supplies a reacquisition term so a suppressed association can be learned again rather than remaining trapped at the synaptic floor.
+Receiving synapses start at a neutral local weight. Presynaptic vesicle release remains part of immediate signal strength, but a caller can no longer install a postsynaptic memory merely by transmitting a large vesicle payload. Local coactivity, acetylcholine/norepinephrine encoding gates, burst timing, local D1/D2 appetitive teaching, and local 5-HT aversive teaching alter eligibility, tags, and weights. Aversive receptor balance drives extinction; later appetitive receptor balance supplies a reacquisition term so a suppressed association can be learned again rather than remaining trapped at the synaptic floor.
 
 Every memory structure reports per-ensemble cue drive, learned engram strength relative to its own baseline, recall activation, eligibility, tagging, competing-trace interference, extinction, consolidation, and supporting-synapse count. CA3 and downstream hippocampal stages provide bounded recurrent pattern-completion persistence. Cortical consolidation depends on both potentiation and repeated updates, so it rises gradually rather than appearing fully formed after one event.
 
@@ -213,7 +221,7 @@ Acceptance requires all cognition-authority checks to pass with symbolic cogniti
 
 #### Implemented authority boundary
 
-Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-authority` reports perception, memory, attention/workspace, sleep/consolidation, language grounding, action selection, and motor output as separate domains. Every corresponding central record is `LegacyTelemetry`, and every domain reports `LegacyCanAuthorize=false`. `/api/v1/state` repeats the global authority flags so clients cannot mistake the large compatibility snapshot for a control surface.
+Rung 8 now makes neuronal-only cognition authority explicit. `/api/v1/cognition-authority` reports perception, memory, attention/workspace, sleep/consolidation, language grounding, affect/valuation, action selection, and motor output as separate domains. Every corresponding central record is `LegacyTelemetry`, and every domain reports `LegacyCanAuthorize=false`. `/api/v1/state` repeats the global authority flags so clients cannot mistake the large compatibility snapshot for a control surface.
 
 The final semantic actuation paths have been removed from the runtime:
 
@@ -229,7 +237,7 @@ The final semantic actuation paths have been removed from the runtime:
 
 The old goal, motivation, predictive-perception, persistent-percept, narration, speech-intention, cognitive-language-workspace, inner-speech, and intentional-action endpoints are visibly wrapped as legacy telemetry and point clients to their neuronal successors. Conventional memory dictionaries remain checkpoint and audit material; language, replay, attention, and action decisions no longer read them as authority.
 
-This rung does not delete every central descriptive model. Affect, body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because either they are substrate/environment or their full neuronal replacements are not yet proven. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
+This rung does not delete every central descriptive model. Body chemistry, evaluator state, checkpoint serialization, physics, and human-readable audit summaries remain because they are substrate/environment or compatibility telemetry. Retaining them is not an authority claim. A future deletion pass can remove their storage cost after checkpoint migration and long embodied regression runs on the RTX workstation.
 
 No population resizing was required. The defects were authority leaks, not evidence of population starvation. Neuron counts should change only after firing, collision, capacity, or lesion measurements justify it.
 

@@ -54,6 +54,7 @@ builder.Services.AddSingleton<NeuronalMemoryRuntime>();
 builder.Services.AddSingleton<NeuronalAttentionWorkspaceRuntime>();
 builder.Services.AddSingleton<NeuronalSleepConsolidationRuntime>();
 builder.Services.AddSingleton<NeuronalLanguageGroundingRuntime>();
+builder.Services.AddSingleton<NeuronalAffectValuationRuntime>();
 builder.Services.AddSingleton<NeuronalCognitionAuthorityRuntime>();
 builder.Services.AddSingleton<SnapshotStore>();
 builder.Services.AddSingleton<RuntimeInstanceCatalog>();
@@ -197,8 +198,20 @@ app.MapGet("/api/v1/startup-health", (SimulationState state, int? maxNonOkDetail
 app.MapGet("/api/v1/validation", (SimulationState state, int? maxSnapshotAgeTicks, int? maxNonOkServices) =>
     Results.Ok(state.GetValidationSnapshot(maxSnapshotAgeTicks ?? 20, maxNonOkServices ?? 2)));
 app.MapGet("/api/v1/service-health", (SimulationState state) => Results.Ok(state.GetServiceHealthSnapshot()));
-app.MapGet("/api/v1/limbic", (SimulationState state) => Results.Ok(state.GetLimbicSnapshot()));
-app.MapGet("/api/v1/emotion", (SimulationState state) => Results.Ok(state.GetEmotionSnapshot()));
+app.MapGet("/api/v1/limbic", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeValuation = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
+    State = state.GetLimbicSnapshot()
+}));
+app.MapGet("/api/v1/emotion", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeValuation = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
+    State = state.GetEmotionSnapshot()
+}));
 app.MapGet("/api/v1/attention", (SimulationState state) => Results.Ok(new
 {
     Authority = "LegacyTelemetry",
@@ -217,7 +230,8 @@ app.MapGet("/api/v1/motivation-arbitration", (SimulationState state) => Results.
 {
     Authority = "LegacyTelemetry",
     CanAuthorizeAction = false,
-    AuthoritativeEndpoint = "/api/v1/neuronal-motor",
+    CanAuthorizeValuation = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
     State = state.GetMotivationArbitrationSnapshot()
 }));
 app.MapGet("/api/v1/action-memory", (SimulationState state, int? max) => Results.Ok(state.GetActionMemorySnapshot(max ?? 32)));
@@ -230,7 +244,13 @@ app.MapGet("/api/v1/dream-consolidation", (SimulationState state) => Results.Ok(
     State = state.GetDreamConsolidationSnapshot()
 }));
 app.MapGet("/api/v1/body-schema", (SimulationState state) => Results.Ok(state.GetBodySchemaSnapshot()));
-app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(state.GetInteroceptiveCoreSnapshot()));
+app.MapGet("/api/v1/interoceptive-core", (SimulationState state) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeValuation = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
+    State = state.GetInteroceptiveCoreSnapshot()
+}));
 app.MapGet("/api/v1/pain-protection", (SimulationState state) => Results.Ok(state.GetPainProtectionSnapshot()));
 app.MapGet("/api/v1/body-presence", (SimulationState state) => Results.Ok(state.GetBodyPresenceSnapshot()));
 app.MapGet("/api/v1/predictive-perception", (SimulationState state) => Results.Ok(new
@@ -307,6 +327,8 @@ app.MapGet("/api/v1/neuronal-sleep-consolidation", (NeuronalSleepConsolidationRu
     Results.Ok(sleepConsolidation.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-language-grounding", (NeuronalLanguageGroundingRuntime languageGrounding) =>
     Results.Ok(languageGrounding.GetSnapshot()));
+app.MapGet("/api/v1/neuronal-affect-valuation", (NeuronalAffectValuationRuntime affectValuation) =>
+    Results.Ok(affectValuation.GetSnapshot()));
 app.MapGet("/api/v1/cognition-authority", (NeuronalCognitionAuthorityRuntime cognitionAuthority) =>
     Results.Ok(cognitionAuthority.GetSnapshot()));
 app.MapGet("/api/v1/self-monitoring-loop", (SimulationState state) => Results.Ok(state.GetSelfMonitoringLoopSnapshot()));
@@ -330,7 +352,13 @@ app.MapGet("/api/v1/inhabitance", (SimulationState state) => Results.Ok(state.Ge
 app.MapGet("/api/v1/episodic-memory", (SimulationState state, int? max) => Results.Ok(state.GetEpisodicMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/unified-event-memory", (SimulationState state, int? max) => Results.Ok(state.GetUnifiedEventMemorySnapshot(max ?? 32)));
 app.MapGet("/api/v1/semantic-memory", (SimulationState state, int? max) => Results.Ok(state.GetSemanticMemorySnapshot(max ?? 32)));
-app.MapGet("/api/v1/dopamine-learning", (SimulationState state, int? max) => Results.Ok(state.GetDopamineLearningSnapshot(max ?? 32)));
+app.MapGet("/api/v1/dopamine-learning", (SimulationState state, int? max) => Results.Ok(new
+{
+    Authority = "LegacyTelemetry",
+    CanAuthorizeValuation = false,
+    AuthoritativeEndpoint = "/api/v1/neuronal-affect-valuation",
+    State = state.GetDopamineLearningSnapshot(max ?? 32)
+}));
 app.MapGet("/api/v1/biological-teaching-loop", (SimulationState state) => Results.Ok(state.GetBiologicalTeachingLoopSnapshot()));
 app.MapGet("/api/v1/circuit-health", (SimulationState state, int? maxWarnings) => Results.Ok(state.GetCircuitHealthPanelSnapshot(maxWarnings ?? 96)));
 app.MapAdminReasoningRoutes();
@@ -3933,9 +3961,11 @@ internal sealed class SimulationState
                 Tick,
                 SimulationClockMs,
                 TickDurationMs,
-                GlobalNeuromodState,
+                // Compatibility fields remain on the wire for old tools, but structures
+                // derive modulation and teaching from local receptor currents only.
+                new NeuromodState(),
                 new Dictionary<BrainRhythm, double>(OscillationPhases),
-                RewardPredictionError,
+                0f,
                 homeostaticSleepDrive,
                 metabolicWakeReserve);
         }
@@ -22981,6 +23011,7 @@ internal sealed class TickCoordinator(
     NeuronalAttentionWorkspaceRuntime neuronalAttentionWorkspace,
     NeuronalSleepConsolidationRuntime neuronalSleepConsolidation,
     NeuronalLanguageGroundingRuntime neuronalLanguageGrounding,
+    NeuronalAffectValuationRuntime neuronalAffectValuation,
     NeuronalCognitionAuthorityRuntime neuronalCognitionAuthority,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
@@ -23783,6 +23814,7 @@ internal sealed class TickCoordinator(
             var neuronalMemoryDecision = neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
             var neuronalSleep = neuronalSleepConsolidation.Update(tickSignal.Tick, processedSnapshots);
+            var neuronalValuation = neuronalAffectValuation.Update(tickSignal.Tick, processedSnapshots);
             var neuronalLanguage = neuronalLanguageGrounding.Update(
                 tickSignal.Tick,
                 neuronalPercept,
@@ -23834,6 +23866,7 @@ internal sealed class TickCoordinator(
                 neuronalAttention,
                 neuronalSleep,
                 neuronalLanguage,
+                neuronalValuation,
                 neuronalMotor);
             var spontaneousNeuronIdsByStructure = new Dictionary<StructureId, HashSet<string>>();
             var attentionBiasForNoise = ComputeTrnDrivenAttentionBias(processedSnapshots, activePathways, state.GlobalAttentionBias);

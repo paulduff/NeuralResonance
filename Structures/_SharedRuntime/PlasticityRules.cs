@@ -7,48 +7,59 @@ internal static class PlasticityRules
 
 	public static float Stdp(float quanta)
 	{
-		return 0.01f * (1f - quanta / 5f);
+		return 0.01f * (1f - ClampQuanta(quanta) / 5f);
 	}
 
 	public static float Bcm(float quanta, double activity)
 	{
-		return (float)(0.015 * (activity - 0.2 - (double)quanta / 10.0));
+		var boundedActivity = double.IsFinite(activity) ? Math.Clamp(activity, 0.0, 1.0) : 0.0;
+		return (float)(0.015 * (boundedActivity - 0.2 - (double)ClampQuanta(quanta) / 10.0));
 	}
 
-	public static float DopamineStdp(float quanta, float dopamine, float rpe)
+	public static float DopamineStdp(float quanta, float dopamine, float localTeachingSignal)
 	{
-		return 0.02f * (dopamine + rpe) * (1f - quanta / 5f);
+		return 0.02f * (FiniteClamp(dopamine, 0f, 1f, 0f) + FiniteClamp(localTeachingSignal, -1f, 1f, 0f)) *
+			(1f - ClampQuanta(quanta) / 5f);
 	}
 
 	public static float CerebellarLtd(float quanta)
 	{
-		return -0.02f * quanta;
+		return -0.02f * ClampQuanta(quanta);
 	}
 
 	public static float MossyFiberLtp(float quanta)
 	{
-		return 0.025f * (1f - quanta / 5f);
+		return 0.025f * (1f - ClampQuanta(quanta) / 5f);
 	}
 
 	public static float SynapticTagCapture(float quanta, float acetylcholine)
 	{
-		return 0.01f * acetylcholine * (1f - quanta / 6f);
+		return 0.01f * FiniteClamp(acetylcholine, 0f, 1f, 0f) * (1f - ClampQuanta(quanta) / 6f);
 	}
 
 	public static float DecayTrace(float trace, double dtMs, float tauMs)
 	{
+		if (!float.IsFinite(trace))
+		{
+			return 0f;
+		}
+
 		if (Math.Abs(trace) <= 0.000001f)
 		{
 			return 0f;
 		}
-		double num = Math.Exp(0.0 - dtMs / Math.Max(1f, tauMs));
+		var elapsedMs = double.IsFinite(dtMs) ? Math.Max(0.0, dtMs) : 0.0;
+		var timeConstantMs = FiniteClamp(tauMs, 1f, float.MaxValue, 1f);
+		double num = Math.Exp(0.0 - elapsedMs / timeConstantMs);
 		return (float)((double)trace * num);
 	}
 
 	public static float TracePairStdp(float preTrace, float postTrace, float preImpulse, float postActivity, bool inhibitory)
 	{
-		float post = Math.Clamp(postActivity, 0f, 1f);
-		float pre = Math.Clamp(preImpulse, 0f, 1f);
+		float post = FiniteClamp(postActivity, 0f, 1f, 0f);
+		float pre = FiniteClamp(preImpulse, 0f, 1f, 0f);
+		preTrace = FiniteClamp(preTrace, 0f, 8f, 0f);
+		postTrace = FiniteClamp(postTrace, 0f, 8f, 0f);
 		float potentiation = 0.018f * preTrace * post;
 		float depression = 0.014f * postTrace * pre;
 		float delta = potentiation - depression;
@@ -61,6 +72,8 @@ internal static class PlasticityRules
 
 	public static float LocalTraceDelta(float eligibility, float quanta)
 	{
+		eligibility = FiniteClamp(eligibility, -1f, 1f, 0f);
+		quanta = ClampQuanta(quanta);
 		float saturation = eligibility >= 0f ? 1f - quanta / MaxQuanta : quanta / MaxQuanta;
 		return Math.Clamp(eligibility * Math.Clamp(saturation, 0.05f, 1f), -0.05f, 0.05f);
 	}
@@ -68,32 +81,40 @@ internal static class PlasticityRules
 	public static float UpdateBcmTheta(float currentTheta, float postsynActivity, double dtMs)
 	{
 		float num = 2500f;
-		float num2 = (float)(1.0 - Math.Exp(0.0 - dtMs / (double)num));
+		var elapsedMs = double.IsFinite(dtMs) ? Math.Max(0.0, dtMs) : 0.0;
+		float num2 = (float)(1.0 - Math.Exp(0.0 - elapsedMs / (double)num));
+		postsynActivity = FiniteClamp(postsynActivity, 0f, 1f, 0f);
+		currentTheta = FiniteClamp(currentTheta, 0.001f, 10f, 0.2f);
 		float num3 = postsynActivity * postsynActivity;
 		return currentTheta + (num3 - currentTheta) * num2;
 	}
 
 	public static float BcmWithSlidingThreshold(float postsynActivity, float thetaM)
 	{
+		postsynActivity = FiniteClamp(postsynActivity, 0f, 1f, 0f);
+		thetaM = FiniteClamp(thetaM, 0.001f, 10f, 0.2f);
 		return 0.02f * postsynActivity * (postsynActivity - thetaM);
 	}
 
-	public static float DopamineThreeFactor(float eligibility, float dopamine, float rpe)
+	public static float DopamineThreeFactor(float eligibility, float dopamine, float localTeachingSignal)
 	{
-		float teaching = Math.Clamp(rpe + dopamine - 0.42f, -1f, 1f);
-		float gain = 0.20f + 0.65f * Math.Clamp(dopamine, 0f, 1f);
+		eligibility = FiniteClamp(eligibility, -1f, 1f, 0f);
+		dopamine = FiniteClamp(dopamine, 0f, 1f, 0f);
+		localTeachingSignal = FiniteClamp(localTeachingSignal, -1f, 1f, 0f);
+		float teaching = Math.Clamp(localTeachingSignal + dopamine - 0.42f, -1f, 1f);
+		float gain = 0.20f + 0.65f * dopamine;
 		return Math.Clamp(eligibility * gain * teaching, -0.06f, 0.06f);
 	}
 
-	public static float NeuromodulatedTraceDelta(float eligibility, float quanta, float dopamine, float acetylcholine, float norepinephrine, float rpe)
-		=> NeuromodulatedTraceDelta(eligibility, quanta, dopamine, acetylcholine, norepinephrine, rpe, 1f);
+	public static float NeuromodulatedTraceDelta(float eligibility, float quanta, float dopamine, float acetylcholine, float norepinephrine, float localTeachingSignal)
+		=> NeuromodulatedTraceDelta(eligibility, quanta, dopamine, acetylcholine, norepinephrine, localTeachingSignal, 1f);
 
-	public static float NeuromodulatedTraceDelta(float eligibility, float quanta, float dopamine, float acetylcholine, float norepinephrine, float rpe, float microtubuleSupport)
+	public static float NeuromodulatedTraceDelta(float eligibility, float quanta, float dopamine, float acetylcholine, float norepinephrine, float localTeachingSignal, float microtubuleSupport)
 	{
 		float local = LocalTraceDelta(eligibility, quanta);
-		float attentionGate = 0.35f + 0.45f * Math.Clamp(acetylcholine, 0f, 1f) + 0.20f * Math.Clamp(norepinephrine, 0f, 1f);
-		float teaching = 0.25f + 0.55f * Math.Clamp(dopamine, 0f, 1f) + 0.20f * Math.Clamp(Math.Abs(rpe), 0f, 1f);
-		float intracellularSupport = Math.Clamp(microtubuleSupport, 0.95f, 1.05f);
+		float attentionGate = 0.35f + 0.45f * FiniteClamp(acetylcholine, 0f, 1f, 0f) + 0.20f * FiniteClamp(norepinephrine, 0f, 1f, 0f);
+		float teaching = 0.25f + 0.55f * FiniteClamp(dopamine, 0f, 1f, 0f) + 0.20f * FiniteClamp(Math.Abs(localTeachingSignal), 0f, 1f, 0f);
+		float intracellularSupport = FiniteClamp(microtubuleSupport, 0.95f, 1.05f, 1f);
 		return Math.Clamp(local * attentionGate * teaching * intracellularSupport, -0.05f, 0.05f);
 	}
 
@@ -102,22 +123,26 @@ internal static class PlasticityRules
 
 	public static float SynapticTagCapture(float signedTag, float quanta, float acetylcholine, float dopamine, float microtubuleSupport)
 	{
-		float capture = Math.Clamp(acetylcholine, 0f, 1f) * (0.35f + 0.65f * Math.Clamp(dopamine, 0f, 1f));
-		float intracellularSupport = Math.Clamp(microtubuleSupport, 0.95f, 1.05f);
+		float capture = FiniteClamp(acetylcholine, 0f, 1f, 0f) * (0.35f + 0.65f * FiniteClamp(dopamine, 0f, 1f, 0f));
+		float intracellularSupport = FiniteClamp(microtubuleSupport, 0.95f, 1.05f, 1f);
 		return LocalTraceDelta(signedTag, quanta) * 0.35f * capture * intracellularSupport;
 	}
 
 	public static float CerebellarLtdCoincidence(float quanta, bool climbingCoincident, float parallelFiberActivity)
 	{
+		parallelFiberActivity = FiniteClamp(parallelFiberActivity, 0f, 1f, 0f);
 		if (!climbingCoincident || parallelFiberActivity < 0.1f)
 		{
 			return 0f;
 		}
-		return -0.03f * quanta * (0.35f + parallelFiberActivity);
+		return -0.03f * ClampQuanta(quanta) * (0.35f + parallelFiberActivity);
 	}
 
 	public static float ClampQuanta(float quanta)
 	{
 		return float.IsFinite(quanta) ? Math.Clamp(quanta, MinQuanta, MaxQuanta) : 1f;
 	}
+
+	private static float FiniteClamp(float value, float minimum, float maximum, float fallback)
+		=> float.IsFinite(value) ? Math.Clamp(value, minimum, maximum) : fallback;
 }

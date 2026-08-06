@@ -143,19 +143,35 @@ internal static class Program
             MeasureOutput(
                 "FEF attention burst",
                 SpikeTypeEnum.BURST,
-                executive.SelectSpikeType(StructureId.FrontalEyeFields, false, MakeTick(acetylcholine: 0.64f, norepinephrine: 0.46f))),
+                executive.SelectSpikeType(
+                    StructureId.FrontalEyeFields,
+                    false,
+                    MakeLocalNeuromod(acetylcholine: 0.64f, norepinephrine: 0.46f),
+                    0f)),
             MeasureOutput(
-                "midcingulate prediction-error burst",
+                "midcingulate local-teaching burst",
                 SpikeTypeEnum.BURST,
-                executive.SelectSpikeType(StructureId.MidcingulateCortex, false, MakeTick(rewardPredictionError: -0.34f))),
+                executive.SelectSpikeType(
+                    StructureId.MidcingulateCortex,
+                    false,
+                    MakeLocalNeuromod(),
+                    -0.34f)),
             MeasureOutput(
                 "vmPFC value-gated burst",
                 SpikeTypeEnum.BURST,
-                executive.SelectSpikeType(StructureId.VentromedialPrefrontalCortex, false, MakeTick(dopamine: 0.61f))),
+                executive.SelectSpikeType(
+                    StructureId.VentromedialPrefrontalCortex,
+                    false,
+                    MakeLocalNeuromod(dopamine: 0.61f),
+                    0.45f)),
             MeasureOutput(
                 "quiet FEF tonic output",
                 SpikeTypeEnum.ACTION_POTENTIAL,
-                executive.SelectSpikeType(StructureId.FrontalEyeFields, false, MakeTick()))
+                executive.SelectSpikeType(
+                    StructureId.FrontalEyeFields,
+                    false,
+                    MakeLocalNeuromod(),
+                    0f))
         ];
     }
 
@@ -194,9 +210,28 @@ internal static class Program
                 using (var engine = CreateEngine(specification))
                 {
                     firstStrength = 0f;
+                    var featureProbe = CreateSpike(
+                        specification.Source,
+                        specification.Target,
+                        $"benchmark-{specification.Target}-173",
+                        synapseId,
+                        0.0,
+                        1.4f,
+                        0);
+                    var mappedNeuromodSources = ResolveMappedNeuromodSources(specification.Target, featureProbe);
                     for (int epoch = 1; epoch <= epochs; epoch++)
                     {
-                        double timestamp = epoch * 100;
+                        double timestamp = epoch * 160;
+                        var modulationBatch = CreateLocalTeachingSpikeBatch(
+                            specification.Target,
+                            mappedNeuromodSources,
+                            timestamp,
+                            epoch);
+                        await engine.EnqueueSpikeBatchAsync(modulationBatch);
+                        await engine.ProcessStepAsync(MakeTick(
+                            epoch * 2L - 1L,
+                            timestamp + 25.0), 1);
+
                         var batch = new SpikeMessage[8];
                         for (int pulse = 0; pulse < batch.Length; pulse++)
                         {
@@ -205,19 +240,15 @@ internal static class Program
                                 specification.Target,
                                 $"benchmark-{specification.Target}-173",
                                 synapseId,
-                                timestamp + pulse * 0.2,
+                                timestamp + 40.0 + pulse * 0.2,
                                 1.4f,
                                 epoch * 100 + pulse);
                         }
 
                         await engine.EnqueueSpikeBatchAsync(batch);
                         StructureStepResult step = await engine.ProcessStepAsync(MakeTick(
-                            epoch,
-                            timestamp + 50,
-                            dopamine: 0.58f,
-                            acetylcholine: 0.54f,
-                            norepinephrine: 0.34f,
-                            rewardPredictionError: 0.36f), 5);
+                            epoch * 2L,
+                            timestamp + 90.0), 5);
                         if (epoch == 1)
                         {
                             firstStrength = engine.GetInboundSynapseStrength(synapseId);
@@ -294,26 +325,104 @@ internal static class Program
             SpikeType = SpikeTypeEnum.ACTION_POTENTIAL
         };
 
+    private static IReadOnlyDictionary<StructureId, string> ResolveMappedNeuromodSources(
+        StructureId targetStructure,
+        SpikeMessage featureProbe)
+    {
+        var circuit = StructureCircuitProfile.For(targetStructure);
+        var kernel = CircuitKernelFactory.For(targetStructure);
+        var targetNeuronIndex = kernel.ResolveInboundNeuronIndex(featureProbe, circuit.NeuronCount, circuit);
+        var sources = new[]
+        {
+            (StructureId.BasalForebrain, NTEnum.ACETYLCHOLINE),
+            (StructureId.LocusCoeruleus, NTEnum.NOREPINEPHRINE),
+            (StructureId.Vta, NTEnum.DOPAMINE)
+        };
+        var mapped = new Dictionary<StructureId, string>();
+        foreach (var (sourceStructure, neurotransmitter) in sources)
+        {
+            var sourceNeuronIndex = Enumerable.Range(0, circuit.NeuronCount * 32)
+                .First(candidate =>
+                {
+                    var probe = new SpikeMessage
+                    {
+                        SourceStructure = sourceStructure,
+                        TargetStructure = targetStructure,
+                        SourceNeuronId = $"n-{candidate:000}",
+                        TargetNeuronId = $"benchmark-{targetStructure}-neuromod",
+                        SynapseId = Guid.Empty,
+                        Neurotransmitter = neurotransmitter
+                    };
+                    return kernel.ResolveInboundNeuronIndex(probe, circuit.NeuronCount, circuit) == targetNeuronIndex;
+                });
+            mapped[sourceStructure] = $"n-{sourceNeuronIndex:000}";
+        }
+        return mapped;
+    }
+
+    private static IReadOnlyList<SpikeMessage> CreateLocalTeachingSpikeBatch(
+        StructureId targetStructure,
+        IReadOnlyDictionary<StructureId, string> mappedSources,
+        double timestamp,
+        int epoch)
+    {
+        var specifications = new[]
+        {
+            (StructureId.BasalForebrain, NTEnum.ACETYLCHOLINE, Count: 4, Quanta: 1.2f),
+            (StructureId.LocusCoeruleus, NTEnum.NOREPINEPHRINE, Count: 4, Quanta: 1.1f),
+            (StructureId.Vta, NTEnum.DOPAMINE, Count: 6, Quanta: 1.4f)
+        };
+        var spikes = new List<SpikeMessage>(14);
+        foreach (var (sourceStructure, neurotransmitter, count, quanta) in specifications)
+        {
+            for (var pulse = 0; pulse < count; pulse++)
+            {
+                spikes.Add(new SpikeMessage
+                {
+                    MessageId = DeterministicGuid($"local-teaching:{targetStructure}:{sourceStructure}:{epoch}:{pulse}"),
+                    TimestampMs = timestamp + pulse * 0.01,
+                    SourceStructure = sourceStructure,
+                    TargetStructure = targetStructure,
+                    SourceNeuronId = mappedSources[sourceStructure],
+                    TargetNeuronId = $"benchmark-{targetStructure}-neuromod",
+                    SynapseId = DeterministicGuid($"local-teaching-synapse:{targetStructure}:{sourceStructure}"),
+                    Neurotransmitter = neurotransmitter,
+                    VesicleQuanta = quanta,
+                    ReuptakeRate = neurotransmitter switch
+                    {
+                        NTEnum.DOPAMINE => 40f,
+                        NTEnum.ACETYLCHOLINE => 20f,
+                        _ => 30f
+                    },
+                    SpikeType = SpikeTypeEnum.BURST
+                });
+            }
+        }
+        return spikes;
+    }
+
     private static TickSignal MakeTick(
         long tick = 1,
-        double timestamp = 10,
-        float dopamine = 0f,
-        float acetylcholine = 0f,
-        float norepinephrine = 0f,
-        float rewardPredictionError = 0f)
+        double timestamp = 10)
         => new(
             tick,
             timestamp,
             10,
-            new NeuromodState
-            {
-                DopamineLevel = dopamine,
-                SerotoninLevel = 0.30f,
-                AcetylcholineLevel = acetylcholine,
-                NorepinephrineLevel = norepinephrine
-            },
+            new NeuromodState(),
             new Dictionary<BrainRhythm, double>(),
-            rewardPredictionError);
+            0f);
+
+    private static NeuromodState MakeLocalNeuromod(
+        float dopamine = 0f,
+        float acetylcholine = 0f,
+        float norepinephrine = 0f)
+        => new()
+        {
+            DopamineLevel = dopamine,
+            SerotoninLevel = 0f,
+            AcetylcholineLevel = acetylcholine,
+            NorepinephrineLevel = norepinephrine
+        };
 
     private static Guid DeterministicGuid(string value)
     {

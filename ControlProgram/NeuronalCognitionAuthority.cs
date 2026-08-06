@@ -31,6 +31,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         NeuronalAttentionWorkspaceDecision attention,
         NeuronalSleepConsolidationDecision sleep,
         NeuronalLanguageGroundingDecision language,
+        NeuronalAffectValuationDecision valuation,
         NeuronalMotorRuntime motor)
     {
         ArgumentNullException.ThrowIfNull(percept);
@@ -38,6 +39,7 @@ internal sealed class NeuronalCognitionAuthorityRuntime
         ArgumentNullException.ThrowIfNull(attention);
         ArgumentNullException.ThrowIfNull(sleep);
         ArgumentNullException.ThrowIfNull(language);
+        ArgumentNullException.ThrowIfNull(valuation);
         ArgumentNullException.ThrowIfNull(motor);
 
         var domains = new[]
@@ -57,6 +59,9 @@ internal sealed class NeuronalCognitionAuthorityRuntime
             Domain("language-grounding", language.CircuitObserved, language.Available, language.Grounded,
                 "/api/v1/neuronal-language-grounding",
                 $"percept={language.PerceptEnsemble};recall={language.MemoryEnsemble};uncertainty={language.Uncertainty:0.000}"),
+            Domain("affect-valuation", valuation.Available, valuation.Available, valuation.Active,
+                "/api/v1/neuronal-affect-valuation",
+                $"observer=read-only;channel={valuation.DominantChannel};coverage={valuation.CircuitCoverage:0.000};confidence={valuation.Confidence:0.000}"),
             Domain("action-selection", motor.ActionCircuitObserved, motor.ActionCircuitObserved, motor.SelectedActionChannel >= 0,
                 "/api/v1/neuronal-motor",
                 $"channel={motor.SelectedActionChannel};coverage={motor.ActionCircuitCoverage:0.000}"),

@@ -1,5 +1,4 @@
 using NeuralResonanceEngine.Protocol;
-using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
@@ -80,19 +79,20 @@ public sealed class CorticalSpecializationKernelTests
     {
         var kernel = Assert.IsType<ExecutiveControlCircuitKernel>(CircuitKernelFactory.For(StructureId.FrontalEyeFields));
 
-        Assert.Equal(SpikeTypeEnum.ACTION_POTENTIAL, kernel.SelectSpikeType(StructureId.FrontalEyeFields, false, MakeTick()));
+        Assert.Equal(SpikeTypeEnum.ACTION_POTENTIAL, kernel.SelectSpikeType(StructureId.FrontalEyeFields, false, MakeNeuromod(), 0f));
         Assert.Equal(
             SpikeTypeEnum.BURST,
             kernel.SelectSpikeType(
                 StructureId.FrontalEyeFields,
                 false,
-                MakeTick(acetylcholine: 0.62f, norepinephrine: 0.48f)));
+                MakeNeuromod(acetylcholine: 0.62f, norepinephrine: 0.48f),
+                0f));
         Assert.Equal(
             SpikeTypeEnum.BURST,
-            kernel.SelectSpikeType(StructureId.MidcingulateCortex, false, MakeTick(rewardPredictionError: -0.35f)));
+            kernel.SelectSpikeType(StructureId.MidcingulateCortex, false, MakeNeuromod(), -0.35f));
         Assert.Equal(
             SpikeTypeEnum.BURST,
-            kernel.SelectSpikeType(StructureId.VentromedialPrefrontalCortex, false, MakeTick(dopamine: 0.61f)));
+            kernel.SelectSpikeType(StructureId.VentromedialPrefrontalCortex, false, MakeNeuromod(dopamine: 0.61f), 0f));
     }
 
     [Fact]
@@ -142,21 +142,14 @@ public sealed class CorticalSpecializationKernelTests
         return CircuitKernelFactory.For(target).ResolveInboundNeuronIndex(spike, circuit.NeuronCount, circuit);
     }
 
-    private static TickSignal MakeTick(
+    private static NeuromodState MakeNeuromod(
         float dopamine = 0f,
         float acetylcholine = 0f,
-        float norepinephrine = 0f,
-        float rewardPredictionError = 0f)
-        => new(
-            Tick: 1,
-            TimestampMs: 10,
-            TickDurationMs: 10,
-            GlobalNeuromodState: new NeuromodState
-            {
-                DopamineLevel = dopamine,
-                AcetylcholineLevel = acetylcholine,
-                NorepinephrineLevel = norepinephrine
-            },
-            PhaseContext: new Dictionary<BrainRhythm, double>(),
-            RewardPredictionError: rewardPredictionError);
+        float norepinephrine = 0f)
+        => new()
+        {
+            DopamineLevel = dopamine,
+            AcetylcholineLevel = acetylcholine,
+            NorepinephrineLevel = norepinephrine
+        };
 }

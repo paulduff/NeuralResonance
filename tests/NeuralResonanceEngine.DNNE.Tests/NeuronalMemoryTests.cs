@@ -14,11 +14,20 @@ public sealed class NeuronalMemoryTests
             using var engine = CreateEngine(StructureId.CA3, "MossyFiberLTP");
             var synapseId = Guid.NewGuid();
 
-            var encoded = await StimulateAsync(engine, StructureId.CA3, synapseId, 44, 48, 1, 20.0, 0.75f);
+            var encodedRun = await StimulateAsync(engine, StructureId.CA3, synapseId, 44, 48, 0, 0.0, 0.75f);
+            var encoded = encodedRun.Ack;
             var encodedMemory = Assert.IsType<SynapticMemoryDiagnostics>(encoded.SynapticMemoryDiagnostics);
             var learned = encodedMemory.Ensembles.OrderByDescending(static item => item.EngramStrength).First();
 
-            var recalled = await StimulateAsync(engine, StructureId.CA3, synapseId, 44, 8, 2, 60.0, 0f);
+            var recalled = (await StimulateAsync(
+                engine,
+                StructureId.CA3,
+                synapseId,
+                44,
+                8,
+                encodedRun.Tick,
+                encodedRun.Timestamp,
+                0f)).Ack;
             var recalledMemory = Assert.IsType<SynapticMemoryDiagnostics>(recalled.SynapticMemoryDiagnostics);
             var recalledEnsemble = recalledMemory.Ensembles.Single(item => item.EnsembleIndex == learned.EnsembleIndex);
             var decision = NeuronalMemoryDecoder.Decode([Snapshot(StructureId.CA3, recalledMemory)]);
@@ -60,29 +69,78 @@ public sealed class NeuronalMemoryTests
     }
 
     [Fact]
-    public async Task NegativePredictionErrorExtinguishesAndPositiveTeachingRelearns()
+    public async Task RapheAversiveTeachingExtinguishesAndVtaTeachingRelearns()
     {
         await WithIsolatedSynapsesAsync(async () =>
         {
             using var engine = CreateEngine(StructureId.CA1, "SynapticTaggingCapture");
             var synapseId = Guid.NewGuid();
-
-            await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 56, 1, 20.0, 0.85f);
+            var tick = 0L;
+            var timestamp = 0.0;
+            TickAck latest = null!;
+            for (var repetition = 0; repetition < 10; repetition++)
+            {
+                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, 0.85f);
+                tick = result.Tick;
+                timestamp = result.Timestamp;
+                latest = result.Ack;
+            }
             var learnedStrength = engine.GetInboundSynapseStrength(synapseId);
-            var extinguished = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 72, 2, 60.0, -1f);
+            (tick, timestamp) = await AdvanceIdleAsync(engine, tick, timestamp, 240);
+            for (var repetition = 0; repetition < 16; repetition++)
+            {
+                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, -1f);
+                tick = result.Tick;
+                timestamp = result.Timestamp;
+                latest = result.Ack;
+            }
             var extinguishedStrength = engine.GetInboundSynapseStrength(synapseId);
-            var extinctionActivity = extinguished.SynapticMemoryDiagnostics!.Ensembles
+            var extinctionActivity = latest.SynapticMemoryDiagnostics!.Ensembles
                 .OrderByDescending(static item => item.Extinction)
                 .First();
-            await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 112, 3, 100.0, 1f);
+            (tick, timestamp) = await AdvanceIdleAsync(engine, tick, timestamp, 320);
+            for (var repetition = 0; repetition < 24; repetition++)
+            {
+                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, 1f);
+                tick = result.Tick;
+                timestamp = result.Timestamp;
+                latest = result.Ack;
+            }
             var relearnedStrength = engine.GetInboundSynapseStrength(synapseId);
-
+            var relearnedActivity = latest.SynapticMemoryDiagnostics!.Ensembles
+                .OrderByDescending(static item => item.SynapticTag)
+                .First();
+			Assert.True(float.IsFinite(learnedStrength));
+			Assert.True(float.IsFinite(extinguishedStrength));
+			Assert.True(float.IsFinite(relearnedStrength));
             Assert.True(extinguishedStrength < learnedStrength,
                 $"learned={learnedStrength:F6}, extinguished={extinguishedStrength:F6}, relearned={relearnedStrength:F6}, extinction={extinctionActivity.Extinction:F6}");
             Assert.True(extinctionActivity.Extinction > 0f);
             Assert.True(relearnedStrength > extinguishedStrength,
-                $"learned={learnedStrength:F6}, extinguished={extinguishedStrength:F6}, relearned={relearnedStrength:F6}");
+                $"learned={learnedStrength:F6}, extinguished={extinguishedStrength:F6}, relearned={relearnedStrength:F6}, tag={relearnedActivity.SynapticTag:F6}, eligibility={relearnedActivity.EligibilityTrace:F6}");
         });
+    }
+
+    private static async Task<(long Tick, double Timestamp)> AdvanceIdleAsync(
+        StructureEngine engine,
+        long tick,
+        double timestamp,
+        int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            tick++;
+            timestamp += 10.0;
+            await engine.ProcessTickAsync(new TickSignal(
+                tick,
+                timestamp,
+                10.0,
+                new NeuromodState(),
+                new Dictionary<BrainRhythm, double>(),
+                0f));
+        }
+
+        return (tick, timestamp);
     }
 
     [Fact]
@@ -95,7 +153,7 @@ public sealed class NeuronalMemoryTests
             float learnedStrength;
             using (var engine = CreateEngine(StructureId.CA3, "MossyFiberLTP"))
             {
-                await StimulateAsync(engine, StructureId.CA3, synapseId, 108, 64, 1, 20.0, 0.8f);
+                await StimulateAsync(engine, StructureId.CA3, synapseId, 108, 64, 0, 0.0, 0.8f);
                 learnedStrength = engine.GetInboundSynapseStrength(synapseId);
             }
 
@@ -103,7 +161,7 @@ public sealed class NeuronalMemoryTests
             using var reloaded = CreateEngine(StructureId.CA3, "MossyFiberLTP");
             Assert.Equal(learnedStrength, reloaded.GetInboundSynapseStrength(synapseId), precision: 5);
 
-            var recalled = await StimulateAsync(reloaded, StructureId.CA3, synapseId, 108, 8, 1, 1000.0, 0f);
+            var recalled = (await StimulateAsync(reloaded, StructureId.CA3, synapseId, 108, 8, 0, 0.0, 0f)).Ack;
             Assert.True(recalled.SynapticMemoryDiagnostics!.LearnedSynapseCount > 0,
                 $"strength={reloaded.GetInboundSynapseStrength(synapseId):F6}, learned={recalled.SynapticMemoryDiagnostics.LearnedSynapseCount}, recalled={recalled.SynapticMemoryDiagnostics.RecalledEnsemble}");
             Assert.True(recalled.SynapticMemoryDiagnostics.RecalledEnsemble >= 0);
@@ -117,16 +175,30 @@ public sealed class NeuronalMemoryTests
         {
             using var engine = CreateEngine(StructureId.TemporalAssociation, "STDP+SynapticTaggingCapture");
             var synapseId = Guid.NewGuid();
-            var first = await StimulateAsync(engine, StructureId.TemporalAssociation, synapseId, 140, 12, 1, 20.0, 0.55f);
+            var firstRun = await StimulateAsync(engine, StructureId.TemporalAssociation, synapseId, 140, 12, 0, 0.0, 0.55f);
+            var first = firstRun.Ack;
             var ensemble = first.SynapticMemoryDiagnostics!.Ensembles
                 .OrderByDescending(static item => item.EngramStrength)
                 .First().EnsembleIndex;
             var initial = first.SynapticMemoryDiagnostics.Ensembles[ensemble].Consolidation;
 
             TickAck latest = first;
-            for (var tick = 2; tick <= 9; tick++)
+            var lastTick = firstRun.Tick;
+            var lastTimestamp = firstRun.Timestamp;
+            for (var repetition = 0; repetition < 8; repetition++)
             {
-                latest = await StimulateAsync(engine, StructureId.TemporalAssociation, synapseId, 140, 12, tick, tick * 40.0, 0.55f);
+                var result = await StimulateAsync(
+                    engine,
+                    StructureId.TemporalAssociation,
+                    synapseId,
+                    140,
+                    12,
+                    lastTick,
+                    lastTimestamp,
+                    0.55f);
+                lastTick = result.Tick;
+                lastTimestamp = result.Timestamp;
+                latest = result.Ack;
             }
 
             var consolidated = latest.SynapticMemoryDiagnostics!.Ensembles[ensemble].Consolidation;
@@ -144,21 +216,23 @@ public sealed class NeuronalMemoryTests
             "neuronal memory causal test",
             new DelayWindow(0, 0)));
 
-    private static async Task<TickAck> StimulateAsync(
+    private static async Task<StimulationResult> StimulateAsync(
         StructureEngine engine,
         StructureId targetStructure,
         Guid synapseId,
         int featureIndex,
         int spikeCount,
-        long tick,
-        double timestampMs,
-        float rewardPredictionError)
+        long previousTick,
+        double previousTimestampMs,
+        float teachingSignal)
     {
+        var modulationTimestamp = previousTimestampMs;
+        var cueTimestamp = previousTimestampMs + 30.0;
         var spikes = Enumerable.Range(0, spikeCount)
             .Select(index => new SpikeMessage
             {
                 MessageId = Guid.NewGuid(),
-                TimestampMs = timestampMs,
+                TimestampMs = cueTimestamp,
                 SourceStructure = StructureId.EntorhinalCortex,
                 TargetStructure = targetStructure,
                 SourceNeuronId = $"memory-feature-{featureIndex}",
@@ -170,20 +244,137 @@ public sealed class NeuronalMemoryTests
                 SpikeType = index % 4 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL
             })
             .ToArray();
-        await engine.EnqueueSpikeBatchAsync(spikes);
-        return await engine.ProcessTickAsync(new TickSignal(
-            tick,
-            timestampMs + 25.0,
+        var modulation = new List<SpikeMessage>();
+        modulation.AddRange(CreateMappedNeuromodSpikes(
+            targetStructure,
+            featureIndex,
+            StructureId.BasalForebrain,
+            NTEnum.ACETYLCHOLINE,
+            4,
+            1.2f,
+            modulationTimestamp));
+        modulation.AddRange(CreateMappedNeuromodSpikes(
+            targetStructure,
+            featureIndex,
+            StructureId.LocusCoeruleus,
+            NTEnum.NOREPINEPHRINE,
+            4,
+            1.1f,
+            modulationTimestamp));
+        if (teachingSignal > 0f)
+        {
+            modulation.AddRange(CreateMappedNeuromodSpikes(
+                targetStructure,
+                featureIndex,
+                StructureId.Vta,
+                NTEnum.DOPAMINE,
+                6,
+                1.4f * Math.Clamp(teachingSignal, 0.2f, 1f),
+                modulationTimestamp + 1.0));
+        }
+        else if (teachingSignal < 0f)
+        {
+            modulation.AddRange(CreateMappedNeuromodSpikes(
+                targetStructure,
+                featureIndex,
+                StructureId.RapheNuclei,
+                NTEnum.SEROTONIN,
+                10,
+                1.6f * Math.Clamp(-teachingSignal, 0.2f, 1f),
+                modulationTimestamp + 1.0));
+        }
+
+        await engine.EnqueueSpikeBatchAsync(modulation);
+        var modulationTick = previousTick + 1;
+        await engine.ProcessTickAsync(new TickSignal(
+            modulationTick,
+            modulationTimestamp + 25.0,
             10.0,
-            new NeuromodState
-            {
-                AcetylcholineLevel = 0.82f,
-                NorepinephrineLevel = 0.72f,
-                DopamineLevel = rewardPredictionError > 0f ? 0.75f : 0.28f,
-                SerotoninLevel = 0.30f
-            },
+            new NeuromodState(),
             new Dictionary<BrainRhythm, double>(),
-            rewardPredictionError));
+            0f));
+        await engine.EnqueueSpikeBatchAsync(spikes);
+        var cueTick = modulationTick + 1;
+        var cueAck = await engine.ProcessTickAsync(new TickSignal(
+            cueTick,
+            cueTimestamp + 25.0,
+            10.0,
+            new NeuromodState(),
+            new Dictionary<BrainRhythm, double>(),
+            0f));
+        return new StimulationResult(
+            cueAck,
+            cueTick,
+            cueTimestamp + 25.0);
+    }
+
+    private sealed record StimulationResult(
+        TickAck Ack,
+        long Tick,
+        double Timestamp);
+
+    private static IReadOnlyList<SpikeMessage> CreateMappedNeuromodSpikes(
+        StructureId targetStructure,
+        int featureIndex,
+        StructureId sourceStructure,
+        NTEnum neurotransmitter,
+        int spikeCount,
+        float quanta,
+        double timestampMs)
+    {
+        var circuit = StructureCircuitProfile.For(targetStructure);
+        var kernel = CircuitKernelFactory.For(targetStructure);
+        var featureProbe = new SpikeMessage
+        {
+            SourceStructure = StructureId.EntorhinalCortex,
+            TargetStructure = targetStructure,
+            SourceNeuronId = $"memory-feature-{featureIndex}",
+            TargetNeuronId = $"memory-target-{featureIndex}",
+            SynapseId = Guid.Empty,
+            Neurotransmitter = NTEnum.GLUTAMATE
+        };
+        var targetNeuronIndex = kernel.ResolveInboundNeuronIndex(
+            featureProbe,
+            circuit.NeuronCount,
+            circuit);
+        var sourceNeuronIndex = Enumerable.Range(0, circuit.NeuronCount * 32)
+            .First(candidate =>
+            {
+                var probe = new SpikeMessage
+                {
+                    SourceStructure = sourceStructure,
+                    TargetStructure = targetStructure,
+                    SourceNeuronId = $"n-{candidate:000}",
+                    TargetNeuronId = $"neuromod-target-{featureIndex}",
+                    SynapseId = Guid.Empty,
+                    Neurotransmitter = neurotransmitter
+                };
+                return kernel.ResolveInboundNeuronIndex(probe, circuit.NeuronCount, circuit) == targetNeuronIndex;
+            });
+
+        return Enumerable.Range(0, spikeCount)
+            .Select(index => new SpikeMessage
+            {
+                MessageId = Guid.NewGuid(),
+                TimestampMs = timestampMs + (index * 0.01),
+                SourceStructure = sourceStructure,
+                TargetStructure = targetStructure,
+                SourceNeuronId = $"n-{sourceNeuronIndex:000}",
+                TargetNeuronId = $"neuromod-target-{featureIndex}",
+                SynapseId = Guid.NewGuid(),
+                Neurotransmitter = neurotransmitter,
+                VesicleQuanta = quanta,
+                ReuptakeRate = neurotransmitter switch
+                {
+                    NTEnum.DOPAMINE => 40f,
+                    NTEnum.SEROTONIN => 50f,
+                    NTEnum.ACETYLCHOLINE => 20f,
+                    NTEnum.NOREPINEPHRINE => 30f,
+                    _ => 8f
+                },
+                SpikeType = SpikeTypeEnum.GRADED
+            })
+            .ToArray();
     }
 
     private static SynapticMemoryDiagnostics Diagnostic(

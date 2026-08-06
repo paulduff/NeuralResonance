@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using NeuralResonanceEngine.Protocol;
-using NeuralResonanceEngine.Shared.Contracts;
 
 internal interface ICircuitKernel
 {
@@ -8,7 +7,11 @@ internal interface ICircuitKernel
 
 	int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit);
 
-	SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal);
+	SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal);
 }
 
 internal static class CircuitKernelFactory
@@ -261,7 +264,11 @@ internal abstract class CircuitKernelBase : ICircuitKernel
 		return TopographicMap.ProjectLinear(source.Index, Math.Max(16, circuit.TargetMapModulo), targetStructure, targetStructure, circuit.TargetMapStride);
 	}
 
-	public virtual SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public virtual SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		return SpikeTypeEnum.ACTION_POTENTIAL;
 	}
@@ -514,13 +521,17 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 3, targetStructure, targetStructure, 31);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		if (!isFeedback)
 		{
 			return SpikeTypeEnum.ACTION_POTENTIAL;
 		}
-		return (tickSignal.GlobalNeuromodState.NorepinephrineLevel > 0.35f) ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
+		return (localNeuromod.NorepinephrineLevel > 0.35f) ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
 	}
 }
 
@@ -547,7 +558,11 @@ internal sealed class HippocampalCircuitKernel : CircuitKernelBase
 		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 4, targetStructure, targetStructure, HippocampalStageOffset(targetStructure));
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		switch (sourceStructure)
 		{
@@ -597,7 +612,11 @@ internal sealed class BasalGangliaCircuitKernel : CircuitKernelBase
 			47);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		switch (sourceStructure)
 		{
@@ -626,7 +645,11 @@ internal sealed class CerebellarCircuitKernel : CircuitKernelBase
 		return TopographicMap.ProjectChannel(source.Index, Math.Max(16, circuit.TargetMapModulo), 24, 12, targetStructure, targetStructure, 59);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		if (sourceStructure == StructureId.PurkinjeCellLayer || sourceStructure == StructureId.InferiorOlive)
 		{
@@ -649,7 +672,11 @@ internal sealed class NeuromodulatoryCircuitKernel : CircuitKernelBase
 		return TopographicMap.ProjectDiffuse(source.Index, Math.Max(16, circuit.TargetMapModulo), targetStructure, targetStructure, 71);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		return SpikeTypeEnum.GRADED;
 	}
@@ -706,11 +733,15 @@ internal sealed class VisualAssociationCircuitKernel : CircuitKernelBase
 		};
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		float attention = Math.Max(
-			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
-			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+			localNeuromod.AcetylcholineLevel,
+			localNeuromod.NorepinephrineLevel);
 		return isFeedback || (sourceStructure == StructureId.FusiformGyrus && attention > 0.48f)
 			? SpikeTypeEnum.BURST
 			: SpikeTypeEnum.ACTION_POTENTIAL;
@@ -789,11 +820,15 @@ internal sealed class AuditoryAssociationCircuitKernel : CircuitKernelBase
 			139);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		float auditoryAttention = Math.Max(
-			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
-			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+			localNeuromod.AcetylcholineLevel,
+			localNeuromod.NorepinephrineLevel);
 		return isFeedback || auditoryAttention > 0.52f
 			? SpikeTypeEnum.BURST
 			: SpikeTypeEnum.ACTION_POTENTIAL;
@@ -829,8 +864,12 @@ internal sealed class SomatosensoryAssociationCircuitKernel : CircuitKernelBase
 		return ProjectBodyLane(source.Index, Math.Max(16, circuit.TargetMapModulo), bodyLane, 157);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
-		=> isFeedback || tickSignal.GlobalNeuromodState.NorepinephrineLevel > 0.58f
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
+		=> isFeedback || localNeuromod.NorepinephrineLevel > 0.58f
 			? SpikeTypeEnum.BURST
 			: SpikeTypeEnum.ACTION_POTENTIAL;
 
@@ -915,11 +954,15 @@ internal sealed class SelfContextCircuitKernel : CircuitKernelBase
 			targetStructure,
 			167);
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		float bindingGain = Math.Max(
-			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
-			tickSignal.GlobalNeuromodState.DopamineLevel);
+			localNeuromod.AcetylcholineLevel,
+			localNeuromod.DopamineLevel);
 		return isFeedback || bindingGain > 0.55f
 			? SpikeTypeEnum.BURST
 			: SpikeTypeEnum.ACTION_POTENTIAL;
@@ -986,7 +1029,11 @@ internal sealed class ExecutiveControlCircuitKernel : CircuitKernelBase
 				211);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		if (isFeedback)
 		{
@@ -994,18 +1041,18 @@ internal sealed class ExecutiveControlCircuitKernel : CircuitKernelBase
 		}
 
 		float attention = Math.Max(
-			tickSignal.GlobalNeuromodState.AcetylcholineLevel,
-			tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+			localNeuromod.AcetylcholineLevel,
+			localNeuromod.NorepinephrineLevel);
 		if (sourceStructure == StructureId.FrontalEyeFields && attention > 0.40f)
 		{
 			return SpikeTypeEnum.BURST;
 		}
-		if (sourceStructure == StructureId.MidcingulateCortex && MathF.Abs(tickSignal.RewardPredictionError) > 0.22f)
+		if (sourceStructure == StructureId.MidcingulateCortex && MathF.Abs(localRewardSignal) > 0.22f)
 		{
 			return SpikeTypeEnum.BURST;
 		}
 		if (sourceStructure is StructureId.DorsomedialPrefrontalCortex or StructureId.VentromedialPrefrontalCortex
-			&& tickSignal.GlobalNeuromodState.DopamineLevel > 0.48f)
+			&& localNeuromod.DopamineLevel > 0.48f)
 		{
 			return SpikeTypeEnum.BURST;
 		}
@@ -1077,9 +1124,13 @@ internal sealed class HomuncularSensorimotorCircuitKernel : CircuitKernelBase
 		return ProjectBodyZone(source.Index, Math.Max(16, circuit.TargetMapModulo), zone, 11);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
-		if (sourceStructure == StructureId.M1 && tickSignal.GlobalNeuromodState.DopamineLevel > 0.42f)
+		if (sourceStructure == StructureId.M1 && localNeuromod.DopamineLevel > 0.42f)
 		{
 			return SpikeTypeEnum.BURST;
 		}
@@ -1189,10 +1240,14 @@ internal sealed class PosteriorParietalBodySchemaCircuitKernel : CircuitKernelBa
 		return ProjectBodySchema(source.Index, Math.Max(16, circuit.TargetMapModulo), bodyZone, spatialZone, 19);
 	}
 
-	public override SpikeTypeEnum SelectSpikeType(StructureId sourceStructure, bool isFeedback, TickSignal tickSignal)
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
 	{
 		var attentionGain =
-			Math.Max(tickSignal.GlobalNeuromodState.AcetylcholineLevel, tickSignal.GlobalNeuromodState.NorepinephrineLevel);
+			Math.Max(localNeuromod.AcetylcholineLevel, localNeuromod.NorepinephrineLevel);
 		return attentionGain > 0.38f || isFeedback
 			? SpikeTypeEnum.BURST
 			: SpikeTypeEnum.ACTION_POTENTIAL;

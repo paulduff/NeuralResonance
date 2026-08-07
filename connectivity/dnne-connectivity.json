@@ -1136,6 +1136,12 @@
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1091",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "corticofugal_somatic_gain_feedback"
+                            },
+                            {
+                                "target":  "ProprioceptiveAfferents",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1094",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "corticofugal_proprioceptive_gain_feedback"
                             }
                         ]
     },
@@ -1153,6 +1159,51 @@
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1093",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "cutaneous_reflex_afference"
+                            }
+                        ]
+    },
+    {
+        "source":  "ProprioceptiveAfferents",
+        "connections":  [
+                            {
+                                "target":  "Thalamus",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1097",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "proprioceptive_lemniscal_afference"
+                            },
+                            {
+                                "target":  "CerebellarGranule",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1098",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "primary_spinocerebellar_afference"
+                            },
+                            {
+                                "target":  "SpinalCordMotor",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1099",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "proprioceptive_reflex_afference"
+                            }
+                        ]
+    },
+    {
+        "source":  "VestibularAfferents",
+        "connections":  [
+                            {
+                                "target":  "VestibularNuclei",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1100",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "eighth_nerve_vestibular_afference"
+                            }
+                        ]
+    },
+    {
+        "source":  "VisceralAfferents",
+        "connections":  [
+                            {
+                                "target":  "NucleusTractusSolitarius",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1101",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vagal_visceral_afference"
                             }
                         ]
     },
@@ -1941,6 +1992,12 @@
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1013",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "vestibulo_parietal_spatial"
+                            },
+                            {
+                                "target":  "VestibularAfferents",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1095",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vestibular_efferent_gain_feedback"
                             }
                         ]
     },
@@ -1964,6 +2021,12 @@
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1016",
                                 "neurotransmitter":  "GLUTAMATE",
                                 "projectionType":  "cardiorespiratory_patterning"
+                            },
+                            {
+                                "target":  "VisceralAfferents",
+                                "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1096",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "vagal_efferent_afferent_gain_feedback"
                             }
                         ]
     },

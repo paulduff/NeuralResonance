@@ -134,8 +134,8 @@
                         </Border>
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Survival Imperative" FontWeight="SemiBold" />
-                        <TextBlock x:Name="SurvivalHungerText" Margin="0,6,0,0" Text="Hunger: -" />
-                        <TextBlock x:Name="SurvivalHealthText" Margin="0,4,0,0" Text="Health: -" />
+                        <TextBlock x:Name="SurvivalEnergyText" Margin="0,6,0,0" Text="Energy reserve: -" />
+                        <TextBlock x:Name="SurvivalTissueIntegrityText" Margin="0,4,0,0" Text="Tissue integrity: -" />
                         <TextBlock x:Name="SurvivalThreatText" Margin="0,4,0,0" Text="Threat: -" />
                         <TextBlock x:Name="SurvivalFoodText" Margin="0,4,0,0" Text="Food collected: -" />
                         <TextBlock x:Name="SurvivalWeaponText" Margin="0,4,0,0" Text="Weapon charge: -" />
@@ -143,10 +143,10 @@
                         <TextBlock x:Name="SurvivalPredatorText" Margin="0,4,0,0" Text="Predators: -" />
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Survival Tuning" FontWeight="SemiBold" />
-                        <TextBlock Margin="0,6,0,0" Text="Hunger Rate" />
-                        <Slider x:Name="HungerRateSlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
-                                ValueChanged="HungerRateSlider_OnValueChanged" />
-                        <TextBlock x:Name="HungerRateValueText" Margin="0,2,0,0" Text="x1.00" />
+                        <TextBlock Margin="0,6,0,0" Text="Metabolic Burn Rate" />
+                        <Slider x:Name="MetabolicBurnRateSlider" Minimum="0.2" Maximum="2.5" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
+                                ValueChanged="MetabolicBurnRateSlider_OnValueChanged" />
+                        <TextBlock x:Name="MetabolicBurnRateValueText" Margin="0,2,0,0" Text="x1.00" />
                         <TextBlock Margin="0,6,0,0" Text="Predator Speed" />
                         <Slider x:Name="PredatorSpeedSlider" Minimum="0.4" Maximum="2.0" Value="1.0" TickFrequency="0.1" IsSnapToTickEnabled="False"
                                 ValueChanged="PredatorSpeedSlider_OnValueChanged" />

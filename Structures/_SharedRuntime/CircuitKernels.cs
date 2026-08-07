@@ -111,6 +111,9 @@ internal static class CircuitKernelFactory
 		case StructureId.SuperiorOlive:
 		case StructureId.InferiorColliculus:
 		case StructureId.SomaticAfferents:
+		case StructureId.ProprioceptiveAfferents:
+		case StructureId.VestibularAfferents:
+		case StructureId.VisceralAfferents:
 		case StructureId.VestibularNuclei:
 		case StructureId.NucleusTractusSolitarius:
 		case StructureId.V1:

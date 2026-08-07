@@ -113,6 +113,9 @@ public partial class MainWindow
             ["RapheNuclei"] = Midline(0.42, -13.89, -27.85, 8.0, 19.0, 9.0, Aal3Source),
             ["SpinalCordMotor"] = Symmetric(4.0, -58.0, -31.0, 8.0, 30.0, 10.0, AtlasGuidedSource),
             ["SomaticAfferents"] = Symmetric(13.0, -58.0, -31.0, 12.0, 30.0, 12.0, AtlasGuidedSource),
+            ["ProprioceptiveAfferents"] = Symmetric(20.0, -58.0, -31.0, 10.0, 30.0, 10.0, AtlasGuidedSource),
+            ["VestibularAfferents"] = Symmetric(64.0, -22.0, 8.0, 8.0, 10.0, 8.0, AtlasGuidedSource),
+            ["VisceralAfferents"] = Symmetric(9.0, -55.0, -27.0, 9.0, 28.0, 9.0, AtlasGuidedSource),
 
             // White-matter and peripheral reference anchors remain in the same
             // physical coordinate system even though they are not deep nuclei.

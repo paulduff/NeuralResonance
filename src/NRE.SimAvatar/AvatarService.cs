@@ -13,7 +13,6 @@ public sealed class AvatarService : IDisposable
     private const int MaxPendingCommands = 64;
     private const int MaxPublishedSignals = 64;
     private const int MaxPublishedAudioFrames = 4;
-    private const int MaxPublishedBodyInputs = 32;
     private const int MaxPublishedSightOutputs = 3;
     private const int MaxPublishedActionOutputs = 16;
 
@@ -24,7 +23,6 @@ public sealed class AvatarService : IDisposable
         new(new ConcurrentQueue<IAvatarServiceCommand>(), MaxPendingCommands);
     private readonly BoundedOutputQueue<AvatarNervousSystemSignal> _publishedSignals = new(MaxPublishedSignals);
     private readonly BoundedOutputQueue<AvatarAudioFrame> _publishedAudioFrames = new(MaxPublishedAudioFrames);
-    private readonly BoundedOutputQueue<AvatarBodyStateInput> _publishedBodyInputs = new(MaxPublishedBodyInputs);
     private readonly BoundedOutputQueue<AvatarSightFrame> _publishedSightOutputs = new(MaxPublishedSightOutputs);
     private readonly BoundedOutputQueue<AvatarActionOutput> _publishedActionOutputs = new(MaxPublishedActionOutputs);
     private readonly Thread _workerThread;
@@ -123,9 +121,6 @@ public sealed class AvatarService : IDisposable
     public bool TryDequeueAudioInput(out AvatarAudioFrame frame)
         => _publishedAudioFrames.TryDequeue(out frame);
 
-    public bool TryDequeueBodyInput(out AvatarBodyStateInput input)
-        => _publishedBodyInputs.TryDequeue(out input);
-
     public bool TryDequeueSightOutput(out AvatarSightFrame frame)
         => _publishedSightOutputs.TryDequeue(out frame);
 
@@ -159,9 +154,6 @@ public sealed class AvatarService : IDisposable
         frame.Validate();
         Post(new AudioInputFrameCommand(frame));
     }
-
-    public void PostBodyInput(AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile)
-        => Post(new BodyInputCommand(new AvatarBodyStateInput(telemetry, profile)));
 
     public void PostSightInputFrame(AvatarSightFrame frame)
     {
@@ -449,15 +441,6 @@ public sealed class AvatarService : IDisposable
         public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
         {
             service._publishedAudioFrames.Enqueue(Frame);
-            return service.CurrentSignal();
-        }
-    }
-
-    private sealed record BodyInputCommand(AvatarBodyStateInput Input) : IAvatarServiceCommand
-    {
-        public AvatarNervousSystemSignal Execute(AvatarService service, AvatarNervousSystem nervousSystem)
-        {
-            service._publishedBodyInputs.Enqueue(Input);
             return service.CurrentSignal();
         }
     }

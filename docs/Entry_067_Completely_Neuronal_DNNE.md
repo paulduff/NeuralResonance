@@ -365,6 +365,14 @@ their own spikes. Thalamic perception and spinal reflex routing are connectome
 responsibilities; the simulator cannot inject an orienting conclusion into the
 Superior Colliculus or choose a cortical target.
 
+Entry 098 deletes structured body-state authority. Maze and world now publish
+only body-local velocity and measured energy, tissue, temperature, oxygen, and
+hydration substrate. Dedicated bilateral proprioceptive, vestibular, and
+visceral afferent services transduce those measurements into stable receptor
+fibres. The host body cache, semantic hunger/health/pain fields, selected neural
+targets, and compatibility endpoint are absent. World contact has also moved to
+the raw somatic boundary, completing the producer migration begun in Entry 097.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

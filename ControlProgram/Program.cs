@@ -74,6 +74,7 @@ builder.Services.AddSingleton<InputIngressRuntime>();
 builder.Services.AddSingleton<RetinalFrameTransducerRuntime>();
 builder.Services.AddSingleton<CochlearFrameTransducerRuntime>();
 builder.Services.AddSingleton<SomaticContactTransducerRuntime>();
+builder.Services.AddSingleton<PhysicalBodyTransducerRuntime>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
 builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
@@ -721,346 +722,91 @@ app.MapPost("/api/v1/admin/input/contact-frame", (
             : Array.Empty<string>()
     });
 });
-app.MapPost("/api/v1/admin/input/body-state", async (
-    BodyStateInputRequest request,
+app.MapPost("/api/v1/admin/input/body-frame", (
+    PhysicalBodyFrameRequest request,
     RuntimeInstanceCatalog catalog,
     IHttpClientFactory clientFactory,
     SimulationState state,
-    InputIngressRuntime ingress,
-    CancellationToken ct) =>
+    PhysicalBodyTransducerRuntime transducer,
+    InputIngressRuntime ingress) =>
 {
-    if (request is null)
+    if (!PhysicalBodyFrameDescriptor.TryCreate(request, out var descriptor, out var descriptorError) ||
+        descriptor is null)
     {
-        return Results.BadRequest(new { Error = "Request payload missing." });
+        return Results.BadRequest(new { Error = descriptorError ?? "Invalid physical body frame." });
     }
 
-    var pattern = string.IsNullOrWhiteSpace(request.Pattern) ? "BodyState" : request.Pattern.Trim();
-    var sourceStructure = string.IsNullOrWhiteSpace(request.SourceStructure)
-        ? StructureId.SpinalCordMotor
-        : Enum.TryParse<StructureId>(request.SourceStructure, ignoreCase: true, out var parsedSource)
-            ? parsedSource
-            : StructureId.SpinalCordMotor;
-    var targetStructure = string.IsNullOrWhiteSpace(request.TargetStructure)
-        ? StructureId.S1
-        : Enum.TryParse<StructureId>(request.TargetStructure, ignoreCase: true, out var parsedTarget)
-            ? parsedTarget
-            : StructureId.S1;
-    var hemisphereHint = NormalizeHemisphereHint(request.Hemisphere);
-    var includeVestibular = request.IncludeVestibular.GetValueOrDefault(true);
-    var includeCerebellar = request.IncludeCerebellar.GetValueOrDefault(true);
-    var isFeedback = request.IsFeedback.GetValueOrDefault(true);
-    var inputSource = AdminInputSource.Normalize(request.InputSource);
     if (!ingress.TryEnter(AdminInputIngressKind.Sensory, out var ingressLease, out var ingressSnapshot))
     {
-        state.AppendOutputLog(
-            $"Body-state input throttled by ingress gate: pattern={pattern}, source={sourceStructure}, target={targetStructure}, inputSource={inputSource}.");
         return Results.Json(new
         {
-            Error = "Body-state input is temporarily throttled due to ingress backpressure.",
-            InputSource = inputSource,
+            Error = "Physical body input is temporarily throttled due to ingress backpressure.",
+            InputSource = descriptor.InputSource,
             Ingress = ingressSnapshot
         }, statusCode: StatusCodes.Status429TooManyRequests);
     }
     using var _ = ingressLease;
 
-    var forwardVelocity = Math.Abs(request.ForwardVelocity.GetValueOrDefault(0f));
-    var turnRateDeg = Math.Abs(request.TurnRateDeg.GetValueOrDefault(0f));
-    var rawContactLevel = Math.Clamp(request.ContactLevel.GetValueOrDefault(0f), 0f, 1f);
-    var tactileFront = Math.Clamp(request.TactileFront.GetValueOrDefault(rawContactLevel), 0f, 1f);
-    var tactileLeft = Math.Clamp(request.TactileLeft.GetValueOrDefault(0f), 0f, 1f);
-    var tactileRight = Math.Clamp(request.TactileRight.GetValueOrDefault(0f), 0f, 1f);
-    var tactileGround = Math.Clamp(request.TactileGround.GetValueOrDefault(0f), 0f, 1f);
-    var painLevel = Math.Clamp(request.PainLevel.GetValueOrDefault(rawContactLevel * 0.35f), 0f, 1f);
-    var hunger = Math.Clamp(request.Hunger.GetValueOrDefault(0f), 0f, 1f);
-    var health = Math.Clamp(request.Health.GetValueOrDefault(1f), 0f, 1f);
-    var healthDeficit = 1f - health;
-    var tactileLoad = Math.Clamp(
-        Math.Max(rawContactLevel, Math.Max(Math.Max(tactileFront, Math.Max(tactileLeft, tactileRight)), tactileGround * 0.35f)),
-        0f,
-        1f);
-    var contactLevel = Math.Clamp(Math.Max(tactileLoad, painLevel * 0.72f), 0f, 1f);
-    var leftDrive = Math.Max(0f, request.LeftMotorDrive.GetValueOrDefault(0f));
-    var rightDrive = Math.Max(0f, request.RightMotorDrive.GetValueOrDefault(0f));
-    var motorAsymmetry = (leftDrive + rightDrive) > 0.01f
-        ? Math.Clamp(Math.Abs(leftDrive - rightDrive) / (leftDrive + rightDrive), 0f, 1f)
-        : 0f;
-    var bodyState = state.UpdateBodyState(
-        request.ForwardVelocity.GetValueOrDefault(0f),
-        request.TurnRateDeg.GetValueOrDefault(0f),
-        contactLevel,
-        tactileFront,
-        tactileLeft,
-        tactileRight,
-        tactileGround,
-        painLevel,
-        hunger,
-        health,
-        leftDrive,
-        rightDrive);
-    var motionSignal = Math.Clamp((float)(forwardVelocity / 3.0), 0f, 1f);
-    var turnSignal = Math.Clamp((float)(turnRateDeg / 260.0), 0f, 1f);
-    var derivedIntensity = Math.Clamp(0.20f + (0.95f * motionSignal) + (0.38f * turnSignal) + (0.52f * contactLevel) + (0.22f * motorAsymmetry), 0.10f, 3.50f);
-    var intensity = Math.Clamp(request.Intensity.GetValueOrDefault(derivedIntensity), 0.10f, 3.50f);
-    var derivedBurstCount = Math.Clamp((int)Math.Round(6 + (16.0 * motionSignal) + (10.0 * turnSignal) + (10.0 * contactLevel)), 4, 72);
-    var burstCount = Math.Clamp(request.BurstCount.GetValueOrDefault(derivedBurstCount), 4, 96);
-    var interoceptiveSignal = Math.Clamp(Math.Max(hunger, Math.Max(healthDeficit, painLevel)), 0f, 1f);
-    var interoceptiveIntensity = Math.Clamp(0.12f + (hunger * 0.92f) + (healthDeficit * 1.18f) + (painLevel * 0.86f), 0.10f, 3.50f);
-    var interoceptiveBurstCount = Math.Clamp((int)Math.Round(4 + (hunger * 18) + (healthDeficit * 24) + (painLevel * 20)), 4, 72);
-    var interoceptiveTargets = ResolveBodyStateInteroceptiveTargets(interoceptiveSignal);
-    var neuronalSleep = state.NeuronalSleepConsolidation;
-    var neuronalSleepActive = neuronalSleep.Available &&
-        neuronalSleep.StateActive &&
-        neuronalSleep.State != NeuronalSleepState.Wake;
-    var cerebellarTargets = includeCerebellar
-        ? ResolveBodyStateCerebellarTargets(contactLevel, turnSignal, motorAsymmetry)
-        : Array.Empty<StructureId>();
-    var targetLabel = BuildBodyStateTargetLabel(targetStructure, includeVestibular, cerebellarTargets, interoceptiveTargets);
-
-    var knownTargetInstances = catalog.GetByStructureWithKnownFallback(targetStructure, hemisphereHint)
-        .ToList();
-    var liveTargetInstances = catalog.GetByStructure(targetStructure, hemisphereHint)
-        .ToList();
-    if (includeVestibular && targetStructure != StructureId.VestibularNuclei)
-    {
-        knownTargetInstances.AddRange(catalog.GetByStructureWithKnownFallback(StructureId.VestibularNuclei, hemisphereHint));
-        liveTargetInstances.AddRange(catalog.GetByStructure(StructureId.VestibularNuclei, hemisphereHint));
-    }
-
-    foreach (var cerebellarTarget in cerebellarTargets)
-    {
-        if (cerebellarTarget == targetStructure ||
-            (includeVestibular && cerebellarTarget == StructureId.VestibularNuclei))
-        {
-            continue;
-        }
-
-        knownTargetInstances.AddRange(catalog.GetByStructureWithKnownFallback(cerebellarTarget, hemisphereHint));
-        liveTargetInstances.AddRange(catalog.GetByStructure(cerebellarTarget, hemisphereHint));
-    }
-
-    foreach (var interoceptiveTarget in interoceptiveTargets)
-    {
-        if (interoceptiveTarget == targetStructure)
-        {
-            continue;
-        }
-
-        knownTargetInstances.AddRange(catalog.GetByStructureWithKnownFallback(interoceptiveTarget, hemisphereHint));
-        liveTargetInstances.AddRange(catalog.GetByStructure(interoceptiveTarget, hemisphereHint));
-    }
-
-    knownTargetInstances = knownTargetInstances
-        .GroupBy(i => i.InstanceKey, StringComparer.OrdinalIgnoreCase)
-        .Select(g => g.First())
-        .ToList();
-    liveTargetInstances = liveTargetInstances
-        .GroupBy(i => i.InstanceKey, StringComparer.OrdinalIgnoreCase)
-        .Select(g => g.First())
-        .ToList();
-    if (knownTargetInstances.Count == 0)
+    StructureId[] targetStructures =
+    [
+        StructureId.ProprioceptiveAfferents,
+        StructureId.VestibularAfferents,
+        StructureId.VisceralAfferents
+    ];
+    var missingTargets = targetStructures
+        .Where(structure => catalog.GetByStructureWithKnownFallback(structure, hemisphere: null).Count == 0)
+        .Select(static structure => structure.ToString())
+        .ToArray();
+    if (missingTargets.Length > 0)
     {
         return Results.NotFound(new
         {
-            Error = $"No active service instances found for body-state targets ({targetLabel}) with hemisphere {(hemisphereHint ?? "both")}."
+            Error = $"No active service instances found for: {string.Join(", ", missingTargets)}."
         });
     }
 
-    if (liveTargetInstances.Count == 0)
-    {
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            PrimaryTarget = targetStructure.ToString(),
-            IncludeVestibular = includeVestibular,
-            IncludeCerebellar = includeCerebellar,
-            CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
-            InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            InteroceptiveIntensity = interoceptiveIntensity,
-            InteroceptiveBurstCount = interoceptiveBurstCount,
-            IsFeedback = isFeedback,
-            ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
-            TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
-            ContactLevel = contactLevel,
-            TactileFront = tactileFront,
-            TactileLeft = tactileLeft,
-            TactileRight = tactileRight,
-            TactileGround = tactileGround,
-            PainLevel = painLevel,
-            Hunger = hunger,
-            Health = health,
-            InputSource = inputSource,
-            BodyState = bodyState,
-            SleepState = neuronalSleepActive ? "sleeping" : "awake",
-            TargetInstances = 0,
-            KnownTargetInstances = knownTargetInstances.Count,
-            LiveTargetInstances = 0,
-            Targets = Array.Empty<object>(),
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Accepted = AdminInputSource.IsAvatarSource(inputSource),
-            DispatchDeferred = AdminInputSource.IsAvatarSource(inputSource),
-            Errors = new[]
-            {
-                $"No live service instances currently available for body-state targets ({targetLabel}) with hemisphere {(hemisphereHint ?? "both")}."
-            }
-        });
-    }
+    var liveTargets = targetStructures
+        .SelectMany(structure => catalog.GetByStructure(structure, hemisphere: null))
+        .GroupBy(static instance => instance.InstanceKey, StringComparer.OrdinalIgnoreCase)
+        .Select(static group => group.First())
+        .ToList();
+    var transduction = transducer.Transduce(descriptor, state.Tick, state.SimulationClockMs);
+    var generatedForTargets = liveTargets.Sum(instance =>
+        transduction.For(instance.StructureId, instance.HemisphereNormalized).Count);
 
-    var tick = state.Tick;
-    var timestampMs = state.SimulationClockMs;
-    var targetSummary = liveTargetInstances
-        .Select(i => new
-        {
-            i.InstanceKey,
-            Structure = i.StructureId.ToString(),
-            Hemisphere = string.IsNullOrWhiteSpace(i.Hemisphere) ? "M" : i.Hemisphere.ToUpperInvariant()
-        })
-        .ToArray();
-
-    if (AdminInputSource.IsAvatarSource(inputSource))
+    if (liveTargets.Count > 0 && generatedForTargets > 0)
     {
         DispatchStimulusToInstancesInBackground(
-            "Body-state input",
-            liveTargetInstances,
-            instance =>
-            {
-                var hemisphere = instance.HemisphereNormalized;
-                var isInteroceptive = interoceptiveTargets.Contains(instance.StructureId);
-                var dispatchSource = isInteroceptive
-                    ? instance.StructureId == StructureId.NucleusTractusSolitarius
-                        ? StructureId.Medulla
-                        : StructureId.NucleusTractusSolitarius
-                    : sourceStructure;
-                return BuildBodyStateStimulusSpikes(
-                    tick,
-                    timestampMs,
-                    dispatchSource,
-                    instance.StructureId,
-                    hemisphere,
-                    isInteroceptive ? "InteroceptiveState" : pattern,
-                    isInteroceptive ? interoceptiveIntensity : intensity,
-                    isInteroceptive ? interoceptiveBurstCount : burstCount,
-                    isFeedback);
-            },
+            "Physical body frame input",
+            liveTargets,
+            instance => transduction.For(instance.StructureId, instance.HemisphereNormalized),
             clientFactory,
             state,
-            tick,
-            timestampMs);
-
-        state.AppendOutputLog(
-            $"Body-state input accepted for deferred dispatch: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, inputSource={inputSource}, neuronalSleep={neuronalSleepActive}.");
-        return Results.Ok(new
-        {
-            Pattern = pattern,
-            Source = sourceStructure.ToString(),
-            PrimaryTarget = targetStructure.ToString(),
-            IncludeVestibular = includeVestibular,
-            IncludeCerebellar = includeCerebellar,
-            CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
-            InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
-            Intensity = intensity,
-            BurstCount = burstCount,
-            InteroceptiveIntensity = interoceptiveIntensity,
-            InteroceptiveBurstCount = interoceptiveBurstCount,
-            IsFeedback = isFeedback,
-            ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
-            TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
-            ContactLevel = contactLevel,
-            TactileFront = tactileFront,
-            TactileLeft = tactileLeft,
-            TactileRight = tactileRight,
-            TactileGround = tactileGround,
-            PainLevel = painLevel,
-            Hunger = hunger,
-            Health = health,
-            InputSource = inputSource,
-            BodyState = bodyState,
-            SleepState = neuronalSleepActive ? "sleeping" : "awake",
-            TargetInstances = liveTargetInstances.Count,
-            KnownTargetInstances = knownTargetInstances.Count,
-            LiveTargetInstances = liveTargetInstances.Count,
-            Targets = targetSummary,
-            GeneratedSpikes = 0,
-            DeliveredSpikes = 0,
-            Accepted = true,
-            DispatchDeferred = true,
-            Errors = Array.Empty<string>()
-        });
-    }
-
-    var dispatch = await DispatchStimulusToInstancesAsync(
-        liveTargetInstances,
-        instance =>
-        {
-            var hemisphere = instance.HemisphereNormalized;
-            var isInteroceptive = interoceptiveTargets.Contains(instance.StructureId);
-            var dispatchSource = isInteroceptive
-                ? instance.StructureId == StructureId.NucleusTractusSolitarius
-                    ? StructureId.Medulla
-                    : StructureId.NucleusTractusSolitarius
-                : sourceStructure;
-            return BuildBodyStateStimulusSpikes(
-                tick,
-                timestampMs,
-                dispatchSource,
-                instance.StructureId,
-                hemisphere,
-                isInteroceptive ? "InteroceptiveState" : pattern,
-                isInteroceptive ? interoceptiveIntensity : intensity,
-                isInteroceptive ? interoceptiveBurstCount : burstCount,
-                isFeedback);
-        },
-        clientFactory,
-        state,
-        tick,
-        timestampMs,
-        ct);
-
-    state.AppendOutputLog(
-        $"Body-state input injected: pattern={pattern}, source={sourceStructure}, targets={targetLabel}, liveTargets={liveTargetInstances.Count}, knownTargets={knownTargetInstances.Count}, generated={dispatch.GeneratedSpikes}, delivered={dispatch.DeliveredSpikes}, inputSource={inputSource}, neuronalSleep={neuronalSleepActive}, errors={dispatch.Errors.Count}.");
-    if (dispatch.DeliveredSpikes > 0)
-    {
-        state.AppendSpikeLog(
-            $"Body-state input {pattern}: delivered {dispatch.DeliveredSpikes}/{dispatch.GeneratedSpikes} spikes across {liveTargetInstances.Count} targets.");
+            state.Tick,
+            state.SimulationClockMs,
+            logSuccess: false);
     }
 
     return Results.Ok(new
     {
-        Pattern = pattern,
-        Source = sourceStructure.ToString(),
-        PrimaryTarget = targetStructure.ToString(),
-        IncludeVestibular = includeVestibular,
-        IncludeCerebellar = includeCerebellar,
-        CerebellarTargets = cerebellarTargets.Select(t => t.ToString()).ToArray(),
-        InteroceptiveTargets = interoceptiveTargets.Select(t => t.ToString()).ToArray(),
-        Intensity = intensity,
-        BurstCount = burstCount,
-        InteroceptiveIntensity = interoceptiveIntensity,
-        InteroceptiveBurstCount = interoceptiveBurstCount,
-        IsFeedback = isFeedback,
-        ForwardVelocity = request.ForwardVelocity.GetValueOrDefault(0f),
-        TurnRateDeg = request.TurnRateDeg.GetValueOrDefault(0f),
-        ContactLevel = contactLevel,
-        TactileFront = tactileFront,
-        TactileLeft = tactileLeft,
-        TactileRight = tactileRight,
-        TactileGround = tactileGround,
-        PainLevel = painLevel,
-        Hunger = hunger,
-        Health = health,
-        InputSource = inputSource,
-        BodyState = bodyState,
-        SleepState = neuronalSleepActive ? "sleeping" : "awake",
-        TargetInstances = liveTargetInstances.Count,
-        KnownTargetInstances = knownTargetInstances.Count,
-        LiveTargetInstances = liveTargetInstances.Count,
-        Targets = targetSummary,
-        GeneratedSpikes = dispatch.GeneratedSpikes,
-        DeliveredSpikes = dispatch.DeliveredSpikes,
-        Errors = dispatch.Errors
+        Accepted = true,
+        DispatchDeferred = liveTargets.Count > 0 && generatedForTargets > 0,
+        InputSource = descriptor.InputSource,
+        Targets = targetStructures.Select(static structure => structure.ToString()).ToArray(),
+        TargetInstances = liveTargets.Count,
+        GeneratedSpikes = generatedForTargets,
+        DeliveredSpikes = 0,
+        transduction.LinearAccelerationMagnitude,
+        transduction.AngularSpeedMagnitude,
+        transduction.StoredEnergyReserve,
+        transduction.TissueIntegrity,
+        transduction.HomeostaticDeviation,
+        transduction.ActiveProprioceptivePopulations,
+        transduction.ActiveVestibularPopulations,
+        transduction.ActiveVisceralPopulations,
+        Errors = liveTargets.Count == 0
+            ? new[] { "No live physical afferent service instances are currently available." }
+            : Array.Empty<string>()
     });
 });
 app.MapGet("/api/v1/admin/language/phonetics", (PhoneticLanguageEngine phonetics, int? maxLexemes) =>
@@ -1486,59 +1232,6 @@ static int ComputeStableStimulusHash(string text)
 
         return (int)(hash & int.MaxValue);
     }
-}
-
-static List<SpikeMessage> BuildBodyStateStimulusSpikes(
-    long tick,
-    double timestampMs,
-    StructureId sourceStructure,
-    StructureId targetStructure,
-    string hemisphere,
-    string pattern,
-    float intensity,
-    int burstCount,
-    bool isFeedback)
-{
-    var channel = targetStructure switch
-    {
-        StructureId.S1 => "somatic",
-        StructureId.VestibularNuclei => "vestibular",
-        StructureId.NucleusTractusSolitarius or StructureId.Hypothalamus or StructureId.Insula => "interoceptive",
-        StructureId.CerebellarGranule or StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.InferiorOlive => "proprioceptive",
-        _ => "body"
-    };
-    var patternLabel = string.IsNullOrWhiteSpace(pattern) ? "BodyState" : pattern.Trim();
-    var patternToken = Regex.Replace(patternLabel, "[^A-Za-z0-9]+", "_");
-    if (string.IsNullOrWhiteSpace(patternToken))
-    {
-        patternToken = "BodyState";
-    }
-
-    var patternSeed = ComputeStableStimulusHash($"{channel}:{patternLabel}");
-    var spikes = new List<SpikeMessage>(burstCount);
-    for (var i = 0; i < burstCount; i++)
-    {
-        var receptor = (patternSeed + i) % 16;
-        var lane = (patternSeed + (i * 7)) % 48;
-        spikes.Add(new SpikeMessage
-        {
-            MessageId = Guid.NewGuid(),
-            TimestampMs = timestampMs,
-            SourceStructure = sourceStructure,
-            TargetStructure = targetStructure,
-            SourceNeuronId = $"{hemisphere}:{channel}_receptor_{patternToken}_{tick}_{receptor}_{i}",
-            TargetNeuronId = $"{hemisphere}:{channel}_afferent_cell_{lane}",
-            SynapseId = Guid.NewGuid(),
-            Neurotransmitter = NTEnum.GLUTAMATE,
-            VesicleQuanta = Math.Clamp((0.88f + (receptor * 0.045f)) * intensity, 0.08f, 8.0f),
-            ReuptakeRate = Math.Clamp(2.6f + (lane * 0.10f), 1.6f, 14.0f),
-            SpikeType = i % 7 == 0 ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL,
-            IsFeedback = isFeedback,
-            ModulationContext = null
-        });
-    }
-
-    return spikes;
 }
 
 static List<SpikeMessage> BuildLanguageStimulusSpikes(
@@ -2037,51 +1730,6 @@ static string? NormalizeHemisphereHint(string? hemisphere)
     return null;
 }
 
-static StructureId[] ResolveBodyStateCerebellarTargets(float contactLevel, float turnSignal, float motorAsymmetry)
-{
-    var targets = new List<StructureId>
-    {
-        StructureId.CerebellarGranule,
-        StructureId.CerebellarVermis,
-        StructureId.CerebellarLobules
-    };
-
-    var teachingError = Math.Max(contactLevel, Math.Max(turnSignal, motorAsymmetry));
-    if (teachingError >= 0.08f)
-    {
-        targets.Add(StructureId.InferiorOlive);
-    }
-
-    return targets.ToArray();
-}
-
-static StructureId[] ResolveBodyStateInteroceptiveTargets(float interoceptiveSignal)
-    => interoceptiveSignal > 0.005f
-        ?
-        [
-            StructureId.NucleusTractusSolitarius,
-            StructureId.Hypothalamus,
-            StructureId.Insula
-        ]
-        : Array.Empty<StructureId>();
-
-static string BuildBodyStateTargetLabel(
-    StructureId primaryTarget,
-    bool includeVestibular,
-    IReadOnlyList<StructureId> cerebellarTargets,
-    IReadOnlyList<StructureId> interoceptiveTargets)
-{
-    var labels = new List<string> { primaryTarget.ToString() };
-    if (includeVestibular)
-    {
-        labels.Add(StructureId.VestibularNuclei.ToString());
-    }
-
-    labels.AddRange(cerebellarTargets.Select(t => t.ToString()));
-    labels.AddRange(interoceptiveTargets.Select(t => t.ToString()));
-    return string.Join(", ", labels.Distinct(StringComparer.OrdinalIgnoreCase));
-}
-
 internal static class CachedJsonOptions
 {
     public static readonly JsonSerializerOptions CaseInsensitive = new()
@@ -2477,7 +2125,6 @@ internal sealed class SimulationState
     public string PerformanceProfileName { get; private set; } = "normal";
     public MetabolicPhysiologyRuntime MetabolicPhysiology { get; private set; } = MetabolicPhysiologyRuntime.Default;
     public InputGateRuntime InputGates { get; private set; } = InputGateRuntime.Default;
-    public BodyStateRuntime BodyState { get; private set; } = BodyStateRuntime.Default;
     public NeuronalVisualAttentionDecision VisualAttention { get; private set; } = NeuronalVisualAttentionDecision.Unavailable;
     public NeuronalMotorRuntime NeuronalMotor { get; private set; } = NeuronalMotorRuntime.Default;
     public NeuronalLanguageGroundingDecision NeuronalLanguageGrounding { get; private set; } = NeuronalLanguageGroundingDecision.Unavailable;
@@ -3465,66 +3112,6 @@ internal sealed class SimulationState
         }
     }
 
-    public BodyStateRuntime UpdateBodyState(
-        float forwardVelocity,
-        float turnRateDeg,
-        float contactLevel,
-        float leftMotorDrive,
-        float rightMotorDrive)
-        => UpdateBodyState(
-            forwardVelocity,
-            turnRateDeg,
-            contactLevel,
-            tactileFront: contactLevel,
-            tactileLeft: 0f,
-            tactileRight: 0f,
-            tactileGround: 0f,
-            painLevel: contactLevel * 0.35f,
-            hunger: 0f,
-            health: 1f,
-            leftMotorDrive,
-            rightMotorDrive);
-
-    public BodyStateRuntime UpdateBodyState(
-        float forwardVelocity,
-        float turnRateDeg,
-        float contactLevel,
-        float tactileFront,
-        float tactileLeft,
-        float tactileRight,
-        float tactileGround,
-        float painLevel,
-        float hunger,
-        float health,
-        float leftMotorDrive,
-        float rightMotorDrive)
-    {
-        lock (_gate)
-        {
-            var left = Math.Max(0f, leftMotorDrive);
-            var right = Math.Max(0f, rightMotorDrive);
-            var asymmetry = (left + right) > 0.01f
-                ? Math.Clamp(Math.Abs(left - right) / (left + right), 0f, 1f)
-                : 0f;
-            BodyState = new BodyStateRuntime(
-                ForwardVelocity: forwardVelocity,
-                TurnRateDeg: turnRateDeg,
-                ContactLevel: Math.Clamp(contactLevel, 0f, 1f),
-                TactileFront: Math.Clamp(tactileFront, 0f, 1f),
-                TactileLeft: Math.Clamp(tactileLeft, 0f, 1f),
-                TactileRight: Math.Clamp(tactileRight, 0f, 1f),
-                TactileGround: Math.Clamp(tactileGround, 0f, 1f),
-                PainLevel: Math.Clamp(painLevel, 0f, 1f),
-                Hunger: Math.Clamp(hunger, 0f, 1f),
-                Health: Math.Clamp(health, 0f, 1f),
-                LeftMotorDrive: left,
-                RightMotorDrive: right,
-                MotorAsymmetry: asymmetry,
-                LastInputTick: Tick);
-            return BodyState;
-        }
-    }
-
     public void UpdateServiceTelemetry(StructureId structureId, ServiceRuntimeTelemetry telemetry)
     {
         lock (_gate)
@@ -3598,7 +3185,6 @@ internal sealed class SimulationState
             TotalSpontaneousDelivered = 0;
             TotalSpontaneousDispatchErrors = 0;
             MetabolicPhysiology = MetabolicPhysiologyRuntime.Default;
-            BodyState = BodyStateRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
             Curriculum = CurriculumRuntime.Default;
             TransportStats = TransportRuntimeStats.Empty;
@@ -4007,7 +3593,6 @@ internal sealed class SimulationState
                     MetabolicPhysiology.AtpBudget,
                     MetabolicPhysiology.HomeostaticPressure
                 },
-                Body = BodyState,
                 Sensory = new
                 {
                     ActiveSource = InferActiveSensorySourceLocked(),
@@ -4659,7 +4244,7 @@ internal sealed class SimulationState
         => structure switch
         {
             StructureId.Retina => "world/avatar vision input",
-            StructureId.S1 or StructureId.VestibularNuclei => "body-state facts and motor feedback",
+            StructureId.S1 or StructureId.VestibularNuclei => "somatic and vestibular neuronal activity",
             StructureId.Hypothalamus or StructureId.NucleusTractusSolitarius => "hunger, energy, darkness, shelter, and body physiology",
             StructureId.Amygdala or StructureId.PeriaqueductalGray => "threat, anxiety, pain, and salience",
             StructureId.CerebellarGranule or StructureId.PurkinjeCellLayer or StructureId.CerebellarVermis or StructureId.CerebellarLobules => "vestibular, proprioceptive, motor-copy, and inferior-olive teaching signals",
@@ -4919,23 +4504,6 @@ internal sealed class SimulationState
         TickDurationMs,
         AutoProfile = autoProfile ?? AutoProfileSettings.Default,
         InputGates,
-          BodyState = new
-          {
-              BodyState.ForwardVelocity,
-              BodyState.TurnRateDeg,
-              BodyState.ContactLevel,
-              BodyState.TactileFront,
-              BodyState.TactileLeft,
-              BodyState.TactileRight,
-              BodyState.TactileGround,
-              BodyState.PainLevel,
-              BodyState.Hunger,
-              BodyState.Health,
-              BodyState.LeftMotorDrive,
-              BodyState.RightMotorDrive,
-              BodyState.MotorAsymmetry,
-              BodyState.LastInputTick
-          },
           Curriculum,
           MetabolicPhysiology = new
         {
@@ -14044,41 +13612,6 @@ internal sealed record MetabolicTransitionResult(
     float AtpBudget,
     int SleepTicks);
 
-internal sealed record BodyStateRuntime(
-    float ForwardVelocity,
-    float TurnRateDeg,
-    float ContactLevel,
-    float TactileFront,
-    float TactileLeft,
-    float TactileRight,
-    float TactileGround,
-    float PainLevel,
-    float Hunger,
-    float Health,
-    float LeftMotorDrive,
-    float RightMotorDrive,
-    float MotorAsymmetry,
-    long LastInputTick)
-{
-    public static BodyStateRuntime Default { get; } = new(
-        ForwardVelocity: 0f,
-        TurnRateDeg: 0f,
-        ContactLevel: 0f,
-        TactileFront: 0f,
-        TactileLeft: 0f,
-        TactileRight: 0f,
-        TactileGround: 0f,
-        PainLevel: 0f,
-        Hunger: 0f,
-        Health: 1f,
-        LeftMotorDrive: 0f,
-        RightMotorDrive: 0f,
-        MotorAsymmetry: 0f,
-        LastInputTick: long.MinValue);
-}
-
-
-
 internal sealed record DispatchedSpikeTrace(
     long Tick,
     double TimestampMs,
@@ -16268,6 +15801,9 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
         [StructureId.InferiorColliculus] = "InferiorColliculus",
         [StructureId.S1] = "S1",
         [StructureId.SomaticAfferents] = "SomaticAfferents",
+        [StructureId.ProprioceptiveAfferents] = "ProprioceptiveAfferents",
+        [StructureId.VestibularAfferents] = "VestibularAfferents",
+        [StructureId.VisceralAfferents] = "VisceralAfferents",
         [StructureId.VestibularNuclei] = "VestibularNuclei",
         [StructureId.NucleusTractusSolitarius] = "NucleusTractusSolitarius",
         [StructureId.OlfactoryBulb] = "OlfactoryBulb",

@@ -58,32 +58,6 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void BodyPacketsCannotSteerMotorOutput()
-    {
-        using var service = CreateService();
-        service.PostBrainSignals(MotorDispatches());
-        var before = WaitForSignal(service, static item => item.MotorEvents == 2);
-
-        service.PostBodyInput(
-            new AvatarBodyTelemetry(
-                ForwardVelocity: 0.0,
-                TurnRateDeg: 0.0,
-                ContactLevel: 1.0,
-                LeftMotorDrive: 0.0,
-                RightMotorDrive: 0.0,
-                PainLevel: 1.0),
-            CreateBodyStateProfile());
-
-        WaitUntil(() => service.ProcessedCommands >= 2);
-        var after = service.LatestSignal;
-        Assert.Equal(before.LeftMotorDrive, after.LeftMotorDrive);
-        Assert.Equal(before.RightMotorDrive, after.RightMotorDrive);
-        Assert.Equal(
-            service.ComputeMotorOutput(),
-            service.PublishActionOutput().Movement);
-    }
-
-    [Fact]
     public void AudioTransportPreservesRawPcmFrame()
     {
         using var service = CreateService();
@@ -95,23 +69,6 @@ public sealed class AvatarServiceTests
         var actual = WaitForAudioInput(service);
         Assert.Same(expected, actual);
         Assert.Equal(pcm, actual.Pcm16Le);
-    }
-
-    [Fact]
-    public void ServiceTransportsBodyPacketsUnchanged()
-    {
-        using var service = CreateService();
-        var telemetry = new AvatarBodyTelemetry(
-            ForwardVelocity: 1.2,
-            TurnRateDeg: 0.4,
-            ContactLevel: 0.2,
-            LeftMotorDrive: 12.0,
-            RightMotorDrive: 14.0);
-        var profile = CreateBodyStateProfile();
-
-        service.PostBodyInput(telemetry, profile);
-
-        Assert.Equal(new AvatarBodyStateInput(telemetry, profile), WaitForBodyInput(service));
     }
 
     [Fact]
@@ -203,19 +160,6 @@ public sealed class AvatarServiceTests
             name: "NRE.Tests.AvatarService",
             clockOptions: clockOptions);
 
-    private static AvatarBodyStateProfile CreateBodyStateProfile()
-        => new(
-            MaxForwardSpeed: 3.2,
-            MaxTurnRateDeg: 220.0,
-            BaseIntensity: 0.2,
-            MotionIntensityWeight: 0.5,
-            TurnIntensityWeight: 0.1,
-            ContactIntensityWeight: 0.4,
-            BaseBurstCount: 6.0,
-            MotionBurstWeight: 8.0,
-            TurnBurstWeight: 3.0,
-            ContactBurstWeight: 6.0);
-
     private static AvatarNervousSystemSignal WaitForSignal(
         AvatarService service,
         Func<AvatarNervousSystemSignal, bool> predicate)
@@ -245,9 +189,6 @@ public sealed class AvatarServiceTests
 
     private static AvatarAudioFrame WaitForAudioInput(AvatarService service)
         => WaitForQueue<AvatarAudioFrame>(service.TryDequeueAudioInput, "audio input");
-
-    private static AvatarBodyStateInput WaitForBodyInput(AvatarService service)
-        => WaitForQueue<AvatarBodyStateInput>(service.TryDequeueBodyInput, "body input");
 
     private static AvatarSightFrame WaitForSightOutput(
         AvatarService service,

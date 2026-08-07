@@ -40,30 +40,20 @@ public sealed class AvatarLanguageCommandApiTests
     }
 
     [Fact]
-    public async Task Body_State_Post_Throws_When_Control_Program_Rejects_The_Request()
+    public async Task Physical_Body_Frame_Post_Throws_When_Control_Program_Rejects_The_Request()
     {
-        using var client = new HttpClient(new StaticResponseHandler(HttpStatusCode.BadRequest, "invalid body state"));
-        var profile = new AvatarBodyStateProfile(
-            MaxForwardSpeed: 2.0,
-            MaxTurnRateDeg: 180.0,
-            BaseIntensity: 0.2,
-            MotionIntensityWeight: 0.3,
-            TurnIntensityWeight: 0.2,
-            ContactIntensityWeight: 0.4,
-            BaseBurstCount: 6,
-            MotionBurstWeight: 8,
-            TurnBurstWeight: 6,
-            ContactBurstWeight: 10);
+        using var client = new HttpClient(new StaticResponseHandler(HttpStatusCode.BadRequest, "invalid physical body frame"));
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            AvatarControlApi.PostBodyStateAsync(
+            AvatarControlApi.PostPhysicalBodyFrameAsync(
                 client,
                 new Uri("http://localhost:5080"),
-                new AvatarBodyTelemetry(0.0, 0.0, 0.0, 0.0, 0.0),
-                profile));
+                new PhysicalBodyFrameRequest(
+                    1, 1, 0f, 0f, 0f, 0f, 0f, 0f,
+                    8_000_000f, 1f, 37f, 0.98f, 0.75f, "test")));
 
         Assert.Contains("HTTP 400", error.Message);
-        Assert.Contains("invalid body state", error.Message);
+        Assert.Contains("invalid physical body frame", error.Message);
     }
 
     [Fact]

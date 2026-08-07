@@ -664,7 +664,7 @@ public partial class MainWindow : Window
             (Name: "Neocortex - Temporal and Parietal", Nodes: new[] { "Wernicke (pSTG/pSTS)", "Supramarginal/Angular", "Temporoparietal Junction", "PPC", "Precuneus", "Temporal Association", "Inferotemporal Cortex", "Fusiform Gyrus", "Temporal Pole", "Posterior Cingulate", "Retrosplenial Cortex", "Arcuate Fasciculus" }),
             (Name: "Telencephalon - Medial Temporal", Nodes: new[] { "EC", "DG", "CA3", "CA2", "CA1", "Subiculum", "Presubiculum", "Parasubiculum", "Parahippocampal Cortex", "Perirhinal Cortex", "Olfactory Bulb" }),
             (Name: "Telencephalon - Commissural/Basal/Limbic", Nodes: new[] { "Corpus Callosum", "Striatum", "Nucleus Accumbens", "Globus Pallidus", "Ventral Pallidum", "GPe", "GPi", "Amygdala", "ACC", "Basal Forebrain" }),
-            (Name: "Peripheral Sensory Interface", Nodes: new[] { "Retina", "Cochlea", "Somatic Afferents" }),
+            (Name: "Peripheral Sensory Interface", Nodes: new[] { "Retina", "Cochlea", "Somatic Afferents", "Proprioceptive Afferents", "Vestibular Afferents", "Visceral Afferents" }),
             (Name: "Diencephalon", Nodes: new[] { "Thalamus", "Motor Thalamus", "TRN", "Pulvinar", "Mediodorsal Thalamus", "Intralaminar Thalamus", "Hypothalamus", "Habenula", "STN" }),
             (Name: "Mesencephalon", Nodes: new[] { "Superior Colliculus", "Inferior Colliculus", "Periaqueductal Gray", "SNr", "SNc", "VTA" }),
             (Name: "Metencephalon", Nodes: new[] { "Cochlear Nucleus", "Superior Olive", "Vestibular Nuclei", "Granule Layer", "Purkinje Layer", "Cerebellar Vermis", "Cerebellar Lobules", "DCN", "Pons" }),
@@ -861,6 +861,9 @@ public partial class MainWindow : Window
         "Retina" => "Retina",
         "Cochlea" => "Cochlea",
         "Somatic Afferents" => "SomaticAfferents",
+        "Proprioceptive Afferents" => "ProprioceptiveAfferents",
+        "Vestibular Afferents" => "VestibularAfferents",
+        "Visceral Afferents" => "VisceralAfferents",
         "Cochlear Nucleus" => "CochlearNucleus",
         "Superior Olive" => "SuperiorOlive",
         "Inferior Colliculus" => "InferiorColliculus",
@@ -1419,7 +1422,7 @@ public partial class MainWindow : Window
     {
         return snapshotId switch
         {
-            "Retina" or "Cochlea" or "SomaticAfferents" or "OlfactoryBulb" or
+            "Retina" or "Cochlea" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" or "OlfactoryBulb" or
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" or
             "Pons" or "Medulla" or "SpinalCordMotor" or "ReticularFormation" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or
             "CochlearNucleus" or "SuperiorOlive" or "VestibularNuclei" or "NucleusTractusSolitarius" => false,

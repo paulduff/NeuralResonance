@@ -1,12 +1,12 @@
 ﻿# DNNE Circuit Functionality Audit
 
-Generated: 2026-08-07 00:44:07 +01:00
+Generated: 2026-08-07 01:10:03 +01:00
 
 ## Summary
 
 | Status | Count |
 | --- | ---: |
-| OK | 86 |
+| OK | 89 |
 
 ## Circuit Table
 
@@ -22,7 +22,7 @@ Generated: 2026-08-07 00:44:07 +01:00
 | CA1 | OK | 5 | 6 | 5 | 6 | hippocampal/tectal | Hippocampus.CA1 |
 | CA2 | OK | 1 | 3 | 1 | 3 | hippocampal/tectal | Hippocampus.CA2 |
 | CA3 | OK | 4 | 2 | 4 | 2 | hippocampal/tectal | Hippocampus.CA3 |
-| CerebellarGranule | OK | 3 | 1 | 3 | 1 | cerebellar/pontine | Cerebellum.GranuleCellLayer |
+| CerebellarGranule | OK | 4 | 1 | 4 | 1 | cerebellar/pontine | Cerebellum.GranuleCellLayer |
 | CerebellarLobules | OK | 1 | 2 | 1 | 2 | cerebellar/pontine | Cerebellum.Lobules |
 | CerebellarVermis | OK | 2 | 2 | 2 | 2 | cerebellar/pontine | Cerebellum.Vermis |
 | Cochlea | OK | 1 | 1 | 1 | 1 | auditory-brainstem | Cochlea |
@@ -51,7 +51,7 @@ Generated: 2026-08-07 00:44:07 +01:00
 | MotorThalamus | OK | 7 | 3 | 7 | 3 | thalamic | MotorThalamus |
 | Mt | OK | 2 | 2 | 2 | 2 | primary-sensory/callosal | MT |
 | NucleusAccumbens | OK | 6 | 2 | 6 | 2 | limbic-homeostatic | NucleusAccumbens |
-| NucleusTractusSolitarius | OK | 1 | 3 | 1 | 3 | sensory-autonomic | NucleusTractusSolitarius |
+| NucleusTractusSolitarius | OK | 2 | 4 | 2 | 4 | sensory-autonomic | NucleusTractusSolitarius |
 | OlfactoryBulb | OK | 2 | 3 | 2 | 3 | sensory-autonomic | OlfactoryBulb |
 | OrbitofrontalCortex | OK | 4 | 5 | 4 | 5 | cortical-association/motor | OrbitofrontalCortex |
 | ParahippocampalCortex | OK | 3 | 3 | 3 | 3 | cortical-association/motor | ParahippocampalCortex |
@@ -65,19 +65,20 @@ Generated: 2026-08-07 00:44:07 +01:00
 | Precuneus | OK | 1 | 3 | 1 | 3 | cortical-association/motor | Precuneus |
 | PremotorCortex | OK | 6 | 4 | 6 | 4 | cortical-association/motor | PremotorCortex |
 | Presubiculum | OK | 3 | 2 | 3 | 2 | hippocampal/tectal | Presubiculum |
+| ProprioceptiveAfferents | OK | 1 | 3 | 1 | 3 | proprioceptive-afferent | ProprioceptiveAfferents |
 | Pulvinar | OK | 4 | 3 | 4 | 3 | thalamic | Pulvinar |
 | PurkinjeCellLayer | OK | 4 | 1 | 4 | 1 | cerebellar/pontine | Cerebellum.PurkinjeCellLayer |
 | RapheNuclei | OK | 4 | 4 | 4 | 4 | neuromodulatory | RapheNuclei |
 | ReticularFormation | OK | 5 | 4 | 5 | 4 | brainstem-arousal | ReticularFormation |
 | Retina | OK | 1 | 2 | 1 | 2 | retinal | Retina |
 | RetrosplenialCortex | OK | 3 | 2 | 3 | 2 | cortical-association/motor | RetrosplenialCortex |
-| S1 | OK | 3 | 6 | 3 | 6 | primary-sensory/callosal | S1 |
+| S1 | OK | 3 | 7 | 3 | 7 | primary-sensory/callosal | S1 |
 | SecondarySomatosensoryCortex | OK | 2 | 3 | 2 | 3 | primary-sensory/callosal | SecondarySomatosensoryCortex |
 | Sma | OK | 5 | 4 | 5 | 4 | cortical-association/motor | SMA |
 | Snc | OK | 2 | 4 | 2 | 4 | neuromodulatory | SNc |
 | Snr | OK | 4 | 3 | 4 | 3 | basal-ganglia | SNr |
 | SomaticAfferents | OK | 1 | 2 | 1 | 2 | somatic-afferent | SomaticAfferents |
-| SpinalCordMotor | OK | 3 | 4 | 3 | 4 | spinal-motor | SpinalCordMotor |
+| SpinalCordMotor | OK | 4 | 4 | 4 | 4 | spinal-motor | SpinalCordMotor |
 | Stn | OK | 3 | 3 | 3 | 3 | basal-ganglia | STN |
 | Striatum | OK | 7 | 5 | 7 | 5 | basal-ganglia | Striatum |
 | Subiculum | OK | 3 | 4 | 3 | 4 | hippocampal/tectal | Subiculum |
@@ -87,7 +88,7 @@ Generated: 2026-08-07 00:44:07 +01:00
 | TemporalAssociation | OK | 12 | 6 | 12 | 6 | cortical-association/motor | TemporalAssociation |
 | TemporalPole | OK | 2 | 3 | 2 | 3 | cortical-association/motor | TemporalPole |
 | TemporoparietalJunction | OK | 2 | 3 | 2 | 3 | cortical-association/motor | TemporoparietalJunction |
-| Thalamus | OK | 17 | 10 | 17 | 10 | thalamic | Thalamus |
+| Thalamus | OK | 18 | 10 | 18 | 10 | thalamic | Thalamus |
 | Trn | OK | 4 | 5 | 4 | 5 | thalamic | TRN |
 | V1 | OK | 4 | 4 | 4 | 4 | primary-sensory/callosal | V1 |
 | V2 | OK | 2 | 4 | 2 | 4 | primary-sensory/callosal | V2 |
@@ -95,7 +96,9 @@ Generated: 2026-08-07 00:44:07 +01:00
 | V4 | OK | 2 | 3 | 2 | 3 | primary-sensory/callosal | V4 |
 | VentralPallidum | OK | 1 | 3 | 1 | 3 | limbic-homeostatic | VentralPallidum |
 | VentromedialPrefrontalCortex | OK | 2 | 3 | 2 | 3 | cortical-association/motor | VentromedialPrefrontalCortex |
-| VestibularNuclei | OK | 2 | 3 | 2 | 3 | sensory-autonomic | VestibularNuclei |
+| VestibularAfferents | OK | 1 | 1 | 1 | 1 | vestibular-afferent | VestibularAfferents |
+| VestibularNuclei | OK | 3 | 4 | 3 | 4 | sensory-autonomic | VestibularNuclei |
+| VisceralAfferents | OK | 1 | 1 | 1 | 1 | visceral-afferent | VisceralAfferents |
 | Vta | OK | 2 | 4 | 2 | 4 | neuromodulatory | VTA |
 | WernickePstgPsts | OK | 4 | 3 | 4 | 3 | cortical-association/motor | WernickePstgPsts |
 

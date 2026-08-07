@@ -9,15 +9,25 @@ public sealed class HostValuationIngressBoundaryTests
     [Fact]
     public void PublicContractsExposePhysicalBodyFactsOnly()
     {
-        var properties = typeof(BodyStateInputRequest)
+        var properties = typeof(PhysicalBodyFrameRequest)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(static property => property.Name)
             .ToHashSet(StringComparer.Ordinal);
 
-        Assert.Contains(nameof(BodyStateInputRequest.Hunger), properties);
-        Assert.Contains(nameof(BodyStateInputRequest.Health), properties);
-        Assert.Contains(nameof(BodyStateInputRequest.PainLevel), properties);
-        Assert.Contains(nameof(BodyStateInputRequest.TactileFront), properties);
+        Assert.Contains(nameof(PhysicalBodyFrameRequest.StoredEnergyJoules), properties);
+        Assert.Contains(nameof(PhysicalBodyFrameRequest.TissueIntegrityFraction), properties);
+        Assert.Contains(nameof(PhysicalBodyFrameRequest.CoreTemperatureCelsius), properties);
+        Assert.Contains(nameof(PhysicalBodyFrameRequest.BloodOxygenSaturationFraction), properties);
+        Assert.Contains(nameof(PhysicalBodyFrameRequest.HydrationFraction), properties);
+        Assert.DoesNotContain("Hunger", properties);
+        Assert.DoesNotContain("Health", properties);
+        Assert.DoesNotContain("PainLevel", properties);
+        Assert.DoesNotContain("TargetStructure", properties);
+        Assert.DoesNotContain("SourceStructure", properties);
+        Assert.DoesNotContain("Hemisphere", properties);
+        Assert.DoesNotContain("Intensity", properties);
+        Assert.DoesNotContain("BurstCount", properties);
+        Assert.DoesNotContain("Pattern", properties);
         Assert.DoesNotContain("EnvironmentalDarkness", properties);
         Assert.DoesNotContain("ShelterNeed", properties);
         Assert.DoesNotContain("Anxiety", properties);
@@ -30,14 +40,20 @@ public sealed class HostValuationIngressBoundaryTests
     [Fact]
     public void SemanticOutcomeTransportTypesNoLongerExist()
     {
-        Assert.Null(typeof(BodyStateInputRequest).Assembly.GetType(
+        Assert.Null(typeof(PhysicalBodyFrameRequest).Assembly.GetType(
             "NeuralResonanceEngine.Shared.Contracts.OutcomeInputRequest",
             throwOnError: false));
-        Assert.Null(typeof(AvatarBodyTelemetry).Assembly.GetType(
+        Assert.Null(typeof(AvatarService).Assembly.GetType(
             "NRE.SimAvatar.AvatarOutcomeTelemetry",
             throwOnError: false));
-        Assert.Null(typeof(AvatarBodyTelemetry).Assembly.GetType(
+        Assert.Null(typeof(AvatarService).Assembly.GetType(
             "NRE.SimAvatar.AvatarOutcomeInputFactory",
+            throwOnError: false));
+        Assert.Null(typeof(PhysicalBodyFrameRequest).Assembly.GetType(
+            "NeuralResonanceEngine.Shared.Contracts.BodyStateInputRequest",
+            throwOnError: false));
+        Assert.Null(typeof(AvatarService).Assembly.GetType(
+            "NRE.SimAvatar.AvatarBodyStateProfile",
             throwOnError: false));
     }
 
@@ -49,15 +65,18 @@ public sealed class HostValuationIngressBoundaryTests
         AssertSourceOmits(
             source,
             "/api/v1/admin/input/outcome",
+            "/api/v1/admin/input/body-state",
+            "BuildBodyStateStimulusSpikes",
+            "ResolveBodyStateInteroceptiveTargets",
+            "BodyStateRuntime",
             "UpdateOutcomeState",
             "OutcomeStateRuntime",
             "UpdateEnvironmentalState",
             "EnvironmentalStateRuntime");
-        Assert.Contains("InteroceptiveState", source, StringComparison.Ordinal);
-        Assert.Contains("ComputeStableStimulusHash", source, StringComparison.Ordinal);
-        Assert.Contains("StructureId.NucleusTractusSolitarius", source, StringComparison.Ordinal);
-        Assert.Contains("StructureId.Hypothalamus", source, StringComparison.Ordinal);
-        Assert.Contains("StructureId.Insula", source, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/admin/input/body-frame", source, StringComparison.Ordinal);
+        Assert.Contains("StructureId.ProprioceptiveAfferents", source, StringComparison.Ordinal);
+        Assert.Contains("StructureId.VestibularAfferents", source, StringComparison.Ordinal);
+        Assert.Contains("StructureId.VisceralAfferents", source, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -72,7 +91,10 @@ public sealed class HostValuationIngressBoundaryTests
             "AvatarOutcomeTelemetry",
             "QueueOutcomeInput",
             "PostOutcomeAsync",
-            "TryDequeueOutcome");
+            "TryDequeueOutcome",
+            "AvatarBodyStateProfile",
+            "PostBodyStateAsync",
+            "BodyStateInputRequest");
     }
 
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)

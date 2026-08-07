@@ -65,7 +65,7 @@
                         <TextBlock x:Name="MoveText" Margin="0,4,0,0" Text="Speed/Turn: -" />
                         <TextBlock x:Name="PoseText" Margin="0,4,0,0" Text="Avatar pose: -" />
                         <TextBlock x:Name="ScoreText" Margin="0,4,0,0" Text="Score: -" />
-                        <TextBlock x:Name="HealthText" Margin="0,4,0,0" Text="Health: -" />
+                        <TextBlock x:Name="TissueIntegrityText" Margin="0,4,0,0" Text="Tissue integrity: -" />
                         <TextBlock x:Name="CheckpointText" Margin="0,4,0,0" Text="Checkpoint: -" />
                         <TextBlock x:Name="EventText" Margin="0,4,0,0" Text="Event: -" TextWrapping="Wrap" />
                         <Separator Margin="0,10,0,10" />

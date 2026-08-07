@@ -1,6 +1,6 @@
 # Secondary Somatosensory Cortex Service Specification
 
-This parietal-opercular circuit integrates bilateral touch, texture, pain, and body-state information.
+This parietal-opercular circuit integrates bilateral somatic, texture, nociceptive, and interoceptive neuronal activity.
 
 - Neuron model: LIF
 - Plasticity: STDP

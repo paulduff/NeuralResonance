@@ -1067,6 +1067,9 @@ public partial class MainWindow
             "Medulla" => new Vector3D(0.74, 0.96, 0.70),
             "SpinalCordMotor" => new Vector3D(0.58, 1.12, 0.58),
             "SomaticAfferents" => new Vector3D(0.64, 1.12, 0.64),
+            "ProprioceptiveAfferents" => new Vector3D(0.58, 1.12, 0.58),
+            "VestibularAfferents" => new Vector3D(0.62, 0.76, 0.62),
+            "VisceralAfferents" => new Vector3D(0.58, 1.08, 0.58),
             "InferiorOlive" => new Vector3D(0.52, 0.64, 0.50),
             "LocusCoeruleus" => new Vector3D(0.48, 0.74, 0.46),
             "RapheNuclei" => new Vector3D(0.46, 0.82, 0.44),
@@ -1104,7 +1107,7 @@ public partial class MainWindow
             "Hypothalamus" or "Habenula" or "Stn" or "Snr" or "Snc" or "Striatum" or "NucleusAccumbens" or
             "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Amygdala" or "BasalForebrain" or
             "CochlearNucleus" or "SuperiorOlive" or "InferiorColliculus" or "VestibularNuclei" or "NucleusTractusSolitarius" or "PeriaqueductalGray" => 0.92,
-            "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" => 0.76,
+            "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" => 0.76,
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" => 1.00,
             _ => 1.0
         };
@@ -1206,7 +1209,7 @@ public partial class MainWindow
                 (0.0, -0.5, -5.6),
 
             // Myelencephalon / caudal brainstem.
-            "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "CochlearNucleus" or "VestibularNuclei" or "NucleusTractusSolitarius" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" =>
+            "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "CochlearNucleus" or "VestibularNuclei" or "NucleusTractusSolitarius" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" =>
                 (0.0, -1.5, -7.6),
 
             // Olfactory bulbs: inferoanterior frontal base, close to midline rim.
@@ -1324,6 +1327,9 @@ public partial class MainWindow
             "NucleusTractusSolitarius" => true,
             "SpinalCordMotor" => true,
             "SomaticAfferents" => true,
+            "ProprioceptiveAfferents" => true,
+            "VestibularAfferents" => true,
+            "VisceralAfferents" => true,
             "Hypothalamus" => true,
             "Amygdala" => true,
             "DeepCerebellarNuclei" => true,
@@ -2092,7 +2098,7 @@ public partial class MainWindow
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" =>
                 StructureLayout.CerebellarSheet,
             "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or
-            "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" =>
+            "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VisceralAfferents" =>
                 StructureLayout.BrainstemColumn,
             "OlfactoryBulb" =>
                 StructureLayout.OlfactoryBulbShell,
@@ -2158,7 +2164,7 @@ public partial class MainWindow
             "Striatum", "NucleusAccumbens", "GlobusPallidus", "VentralPallidum", "GPe", "GPi", "Stn", "Snr", "Snc", "Habenula", "SuperiorColliculus", "Amygdala", "Hypothalamus",
             "InferiorOlive", "Pons", "Medulla",
             "LocusCoeruleus", "RapheNuclei", "BasalForebrain", "Vta", "OlfactoryBulb",
-            "Retina", "Cochlea", "SomaticAfferents", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "VestibularNuclei", "NucleusTractusSolitarius", "ReticularFormation", "PeriaqueductalGray", "SpinalCordMotor"
+            "Retina", "Cochlea", "SomaticAfferents", "ProprioceptiveAfferents", "VestibularAfferents", "VisceralAfferents", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "VestibularNuclei", "NucleusTractusSolitarius", "ReticularFormation", "PeriaqueductalGray", "SpinalCordMotor"
         };
 
         var donorTotal = counts.Where(kv => subcorticalDonors.Contains(kv.Key)).Sum(kv => kv.Value);
@@ -2293,6 +2299,9 @@ public partial class MainWindow
             ["Medulla"] = 16,
             ["SpinalCordMotor"] = 1.5,
             ["SomaticAfferents"] = 0.8,
+            ["ProprioceptiveAfferents"] = 0.7,
+            ["VestibularAfferents"] = 0.4,
+            ["VisceralAfferents"] = 0.6,
             ["LocusCoeruleus"] = 0.15,
             ["RapheNuclei"] = 0.4,
             ["BasalForebrain"] = 1.0,
@@ -2323,6 +2332,9 @@ public partial class MainWindow
         new StructureDefinition("Retina","Retina",MmToRender(new Point3D(72,8,52)),Color.FromRgb(238,154,126),"HH","BCM",StructureLayout.NucleusBlock,7,6,6,MmToRender(8),MmToRender(6),MmToRender(6),0,0,0),
         new StructureDefinition("Cochlea","Cochlea",MmToRender(new Point3D(60,-22,8)),Color.FromRgb(234,176,122),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(9),MmToRender(7),MmToRender(7),0,0,0),
         new StructureDefinition("Somatic Afferents","SomaticAfferents",MmToRender(new Point3D(13,-58,-31)),Color.FromRgb(112,214,184),"Izhikevich","STDP",StructureLayout.BrainstemColumn,8,12,8,MmToRender(12),MmToRender(30),MmToRender(12),0,0,0),
+        new StructureDefinition("Proprioceptive Afferents","ProprioceptiveAfferents",MmToRender(new Point3D(20,-58,-31)),Color.FromRgb(106,202,232),"Izhikevich","STDP",StructureLayout.BrainstemColumn,7,12,7,MmToRender(10),MmToRender(30),MmToRender(10),0,0,0),
+        new StructureDefinition("Vestibular Afferents","VestibularAfferents",MmToRender(new Point3D(64,-22,8)),Color.FromRgb(226,182,104),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,7,7,MmToRender(8),MmToRender(10),MmToRender(8),0,0,0),
+        new StructureDefinition("Visceral Afferents","VisceralAfferents",MmToRender(new Point3D(9,-55,-27)),Color.FromRgb(202,126,176),"Izhikevich","STDP",StructureLayout.BrainstemColumn,7,11,7,MmToRender(9),MmToRender(28),MmToRender(9),0,0,0),
         new StructureDefinition("Olfactory Bulb","OlfactoryBulb",MmToRender(new Point3D(6,20,14)),Color.FromRgb(240,170,122),"Izhikevich","STDP",StructureLayout.OlfactoryBulbShell,10,9,9,MmToRender(10),MmToRender(8),MmToRender(9),0,0,0),
         new StructureDefinition("Corpus Callosum","CorpusCallosum",MmToRender(new Point3D(0,31.5,-4)),Color.FromRgb(204,224,246),"LIF","STDP",StructureLayout.NucleusBlock,24,5,28,MmToRender(54),MmToRender(6),MmToRender(48),0,0,0),
 

@@ -32,6 +32,15 @@
   <Folder Name="/Structures/SomaticAfferents/">
     <Project Path="Structures/SomaticAfferents/NeuralResonanceEngine.Structures.SomaticAfferents.csproj" />
   </Folder>
+  <Folder Name="/Structures/ProprioceptiveAfferents/">
+    <Project Path="Structures/ProprioceptiveAfferents/NeuralResonanceEngine.Structures.ProprioceptiveAfferents.csproj" />
+  </Folder>
+  <Folder Name="/Structures/VestibularAfferents/">
+    <Project Path="Structures/VestibularAfferents/NeuralResonanceEngine.Structures.VestibularAfferents.csproj" />
+  </Folder>
+  <Folder Name="/Structures/VisceralAfferents/">
+    <Project Path="Structures/VisceralAfferents/NeuralResonanceEngine.Structures.VisceralAfferents.csproj" />
+  </Folder>
   <Folder Name="/Structures/SuperiorOlive/">
     <Project Path="Structures/SuperiorOlive/NeuralResonanceEngine.Structures.SuperiorOlive.csproj" />
   </Folder>

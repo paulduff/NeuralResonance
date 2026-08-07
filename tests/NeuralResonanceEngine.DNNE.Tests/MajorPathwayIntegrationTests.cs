@@ -312,6 +312,14 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.Thalamus, "somatothalamic_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.SpinalCordMotor, "cutaneous_reflex_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.SomaticAfferents, "corticofugal_somatic_gain_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.Thalamus, "proprioceptive_lemniscal_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.CerebellarGranule, "primary_spinocerebellar_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.SpinalCordMotor, "proprioceptive_reflex_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.ProprioceptiveAfferents, "corticofugal_proprioceptive_gain_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularAfferents, StructureId.VestibularNuclei, "eighth_nerve_vestibular_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.VestibularAfferents, "vestibular_efferent_gain_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.VisceralAfferents, StructureId.NucleusTractusSolitarius, "vagal_visceral_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.VisceralAfferents, "vagal_efferent_afferent_gain_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.M1, StructureId.SpinalCordMotor, "corticospinal_output"));
         Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.Thalamus, "proprioceptive_ascending_feedback"));

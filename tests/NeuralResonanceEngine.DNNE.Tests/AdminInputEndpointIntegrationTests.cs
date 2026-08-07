@@ -180,37 +180,24 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
-    public async Task BodyStateInput_AvatarSource_Accepts_And_Defers_Dispatch()
+    public async Task LegacyBodyStateInput_IsRemoved_AndInvalidPhysicalBodyFrameIsRejected()
     {
         var client = _fixture.Client;
 
-        var response = await client.PostAsJsonAsync(
+        var legacyResponse = await client.PostAsJsonAsync(
             "/api/v1/admin/input/body-state",
-            new BodyStateInputRequest(
-                ForwardVelocity: 0.2f,
-                TurnRateDeg: 0.0f,
-                ContactLevel: 0.0f,
-                LeftMotorDrive: 0.4f,
-                RightMotorDrive: 0.4f,
-                Intensity: null,
-                BurstCount: null,
-                TargetStructure: "S1",
-                SourceStructure: "SpinalCordMotor",
-                Hemisphere: null,
-                IncludeVestibular: false,
-                IncludeCerebellar: false,
-                IsFeedback: true,
-                Pattern: "BodyState",
-                InputSource: "avatar_body"));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            new { forwardVelocity = 0.2f, targetStructure = "S1" });
+        Assert.Equal(HttpStatusCode.NotFound, legacyResponse.StatusCode);
 
-        using var doc = await ReadJsonAsync(response);
-        Assert.False(TryGetProperty(doc.RootElement, "predictiveSurprise", out _));
-        Assert.False(TryGetProperty(doc.RootElement, "predictiveCue", out _));
-        Assert.True(GetBool(doc.RootElement, "accepted"));
-        Assert.True(GetBool(doc.RootElement, "dispatchDeferred"));
-        Assert.Equal(0, GetInt(doc.RootElement, "generatedSpikes"));
-        Assert.Equal(0, GetInt(doc.RootElement, "deliveredSpikes"));
+        var invalidResponse = await client.PostAsJsonAsync(
+            "/api/v1/admin/input/body-frame",
+            new PhysicalBodyFrameRequest(
+                1, 1, 0f, 0f, 0f, 0f, 0f, 0f,
+                8_000_000f, 1.3f, 37f, 0.98f, 0.8f, "test"));
+        Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
+
+        using var doc = await ReadJsonAsync(invalidResponse);
+        Assert.Contains("physiological", GetString(doc.RootElement, "error"), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

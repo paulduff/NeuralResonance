@@ -10,7 +10,7 @@ public static class AvatarControlApi
     public static string GetFramePath(long dispatchSinceMs, bool includeConnectome = true)
         => $"/api/v1/frame?dispatch_since_ms={Math.Max(0, dispatchSinceMs)}&include_connectome={(includeConnectome ? "true" : "false")}";
 
-    public const string BodyStatePath = "/api/v1/admin/input/body-state";
+    public const string PhysicalBodyFrameInputPath = "/api/v1/admin/input/body-frame";
     public const string CochlearFrameInputPath = "/api/v1/admin/input/audio-frame";
     public const string LanguageInputPath = "/api/v1/admin/input/language";
     public const string RetinalFrameInputPath = "/api/v1/admin/input/visual-frame";
@@ -32,11 +32,19 @@ public static class AvatarControlApi
         return await CreateJsonResponseAsync(response, cancellationToken);
     }
 
-    public static Task PostBodyStateAsync(HttpClient client, Uri endpoint, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default) =>
-        PostBodyStateCoreAsync(client, BuildUri(endpoint, BodyStatePath), telemetry, profile, cancellationToken);
+    public static Task<AvatarPhysicalBodyDispatchResult> PostPhysicalBodyFrameAsync(
+        HttpClient client,
+        Uri endpoint,
+        PhysicalBodyFrameRequest frame,
+        CancellationToken cancellationToken = default) =>
+        PostPhysicalBodyFrameCoreAsync(client, BuildUri(endpoint, PhysicalBodyFrameInputPath), frame, cancellationToken);
 
-    public static Task PostBodyStateAsync(HttpClient client, string endpoint, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default) =>
-        PostBodyStateCoreAsync(client, BuildUri(endpoint, BodyStatePath), telemetry, profile, cancellationToken);
+    public static Task<AvatarPhysicalBodyDispatchResult> PostPhysicalBodyFrameAsync(
+        HttpClient client,
+        string endpoint,
+        PhysicalBodyFrameRequest frame,
+        CancellationToken cancellationToken = default) =>
+        PostPhysicalBodyFrameCoreAsync(client, BuildUri(endpoint, PhysicalBodyFrameInputPath), frame, cancellationToken);
 
     public static Task<AvatarCochlearFrameDispatchResult> PostCochlearFrameAsync(
         HttpClient client,
@@ -96,15 +104,40 @@ public static class AvatarControlApi
         CancellationToken cancellationToken = default) =>
         PostSomaticContactFrameCoreAsync(client, BuildUri(endpoint, SomaticContactFrameInputPath), frame, cancellationToken);
 
-    private static async Task PostBodyStateCoreAsync(HttpClient client, Uri uri, AvatarBodyTelemetry telemetry, AvatarBodyStateProfile profile, CancellationToken cancellationToken = default)
+    private static async Task<AvatarPhysicalBodyDispatchResult> PostPhysicalBodyFrameCoreAsync(
+        HttpClient client,
+        Uri uri,
+        PhysicalBodyFrameRequest frame,
+        CancellationToken cancellationToken)
     {
-        var request = AvatarBodyStateInputFactory.CreateRequest(telemetry, profile);
-        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(uri);
+        ArgumentNullException.ThrowIfNull(frame);
+
+        using var response = await client.PostAsJsonAsync(uri, frame, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var message = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Body-state input failed: HTTP {(int)response.StatusCode} {message}");
+            throw new InvalidOperationException(
+                $"Physical body frame input failed: HTTP {(int)response.StatusCode} {payload}");
         }
+
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        return new AvatarPhysicalBodyDispatchResult(
+            Accepted: AvatarJson.GetBool(root, "accepted"),
+            DispatchDeferred: AvatarJson.GetBool(root, "dispatchDeferred"),
+            GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
+            DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
+            TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
+            LinearAccelerationMagnitude: (float)AvatarJson.GetDouble(root, "linearAccelerationMagnitude"),
+            AngularSpeedMagnitude: (float)AvatarJson.GetDouble(root, "angularSpeedMagnitude"),
+            StoredEnergyReserve: (float)AvatarJson.GetDouble(root, "storedEnergyReserve"),
+            TissueIntegrity: (float)AvatarJson.GetDouble(root, "tissueIntegrity"),
+            HomeostaticDeviation: (float)AvatarJson.GetDouble(root, "homeostaticDeviation"),
+            ActiveProprioceptivePopulations: AvatarJson.GetInt(root, "activeProprioceptivePopulations"),
+            ActiveVestibularPopulations: AvatarJson.GetInt(root, "activeVestibularPopulations"),
+            ActiveVisceralPopulations: AvatarJson.GetInt(root, "activeVisceralPopulations"));
     }
 
     private static async Task<AvatarCochlearFrameDispatchResult> PostCochlearFrameCoreAsync(

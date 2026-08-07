@@ -199,24 +199,6 @@ public sealed class AvatarMazeEnvironment
             GoalReached);
     }
 
-    public AvatarBodyTelemetry CreateBodyTelemetry(AvatarMazeTransition? transition = null)
-    {
-        double contact = transition?.Collision == true ? 0.86 : 0.0;
-        return new AvatarBodyTelemetry(
-            ForwardVelocity: transition?.ForwardVelocity ?? 0.0,
-            TurnRateDeg: transition?.TurnRateDeg ?? 0.0,
-            ContactLevel: contact,
-            LeftMotorDrive: 0.0,
-            RightMotorDrive: 0.0,
-            Hunger: 0.32,
-            Health: transition?.Collision == true ? 0.96 : 1.0,
-            TactileFront: transition?.Collision == true ? 0.86 : 0.0,
-            TactileLeft: 0.0,
-            TactileRight: 0.0,
-            TactileGround: 0.18,
-            PainLevel: transition?.Collision == true ? 0.18 : 0.0);
-    }
-
     public static double HeadingDegreesForQuarter(int headingQuarter)
         => NavigationCoordinateFrame.NormalizeQuarter(headingQuarter) * 90.0;
 

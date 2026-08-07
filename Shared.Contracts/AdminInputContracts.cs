@@ -46,29 +46,21 @@ public sealed record SomaticContactFrameRequest(
     float DurationMilliseconds,
     string? InputSource);
 
-public sealed record BodyStateInputRequest(
-    float? ForwardVelocity,
-    float? TurnRateDeg,
-    float? ContactLevel,
-    float? LeftMotorDrive,
-    float? RightMotorDrive,
-    float? Intensity,
-    int? BurstCount,
-    string? TargetStructure,
-    string? SourceStructure,
-    string? Hemisphere,
-    bool? IncludeVestibular,
-    bool? IncludeCerebellar,
-    bool? IsFeedback,
-    string? Pattern,
-    string? InputSource,
-    float? Hunger = null,
-    float? Health = null,
-    float? TactileFront = null,
-    float? TactileLeft = null,
-    float? TactileRight = null,
-    float? TactileGround = null,
-    float? PainLevel = null);
+public sealed record PhysicalBodyFrameRequest(
+    long Sequence,
+    long TimestampMs,
+    float LinearVelocityXMetersPerSecond,
+    float LinearVelocityYMetersPerSecond,
+    float LinearVelocityZMetersPerSecond,
+    float AngularVelocityXRadiansPerSecond,
+    float AngularVelocityYRadiansPerSecond,
+    float AngularVelocityZRadiansPerSecond,
+    float StoredEnergyJoules,
+    float TissueIntegrityFraction,
+    float CoreTemperatureCelsius,
+    float BloodOxygenSaturationFraction,
+    float HydrationFraction,
+    string? InputSource);
 
 public sealed record InputGateRuntime(
     bool AvatarVisionEnabled,

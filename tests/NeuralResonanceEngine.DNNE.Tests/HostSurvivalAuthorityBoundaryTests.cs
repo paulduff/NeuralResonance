@@ -49,8 +49,9 @@ public sealed class HostSurvivalAuthorityBoundaryTests
             "WeaponAttackCooldown");
         Assert.Contains("distance <= PredatorStrikeRadius", source, StringComparison.Ordinal);
         Assert.Contains("_sleepState && IsInShelter()", source, StringComparison.Ordinal);
-        Assert.Contains("_hunger", source, StringComparison.Ordinal);
-        Assert.Contains("_health", source, StringComparison.Ordinal);
+        AssertSourceOmits(source, "_hunger", "_health");
+        Assert.Contains("_storedEnergyJoules", source, StringComparison.Ordinal);
+        Assert.Contains("_tissueIntegrity", source, StringComparison.Ordinal);
     }
 
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)

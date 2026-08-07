@@ -48,7 +48,7 @@ public partial class MainWindow : Window
     private const double WallProbeSideAngleDeg = 34.0;
     private static readonly TimeSpan HazardDamageCooldown = TimeSpan.FromMilliseconds(820);
     private static readonly TimeSpan WallImpactPenaltyCooldown = TimeSpan.FromMilliseconds(240);
-    private const int BodyStateDispatchIntervalMs = 350;
+    private const int BodyFrameDispatchIntervalMs = 350;
     private const int EnvironmentAudioDispatchIntervalMs = 120;
     private const double MazeMaxForwardSpeed = 3.2;
     private const double AvatarHeadMaxYawDeg = 76.0;
@@ -68,17 +68,6 @@ public partial class MainWindow : Window
     private static readonly AvatarNervousSystemOptions MazeNervousSystemOptions = new(
         MazeKinematicsOptions,
         DriveDecay: 0.92);
-    private static readonly AvatarBodyStateProfile MazeBodyStateProfile = new(
-        MaxForwardSpeed: MazeMaxForwardSpeed,
-        MaxTurnRateDeg: 260.0,
-        BaseIntensity: 0.22,
-        MotionIntensityWeight: 0.95,
-        TurnIntensityWeight: 0.40,
-        ContactIntensityWeight: 0.55,
-        BaseBurstCount: 6,
-        MotionBurstWeight: 16.0,
-        TurnBurstWeight: 10.0,
-        ContactBurstWeight: 10.0);
     private static readonly (int Dr, int Dc)[] MazeCarveDirections =
     [
         (-2, 0),
@@ -153,16 +142,17 @@ public partial class MainWindow : Window
     private double _lastSimTimeSeconds;
     private DateTime _lastHazardDamageUtc = DateTime.MinValue;
     private DateTime _lastWallImpactUtc = DateTime.MinValue;
-    private bool _bodyStimulusInFlight;
+    private bool _bodyFrameInFlight;
     private bool _contactFrameInFlight;
     private bool _environmentAudioInFlight;
     private bool _englishCommandInFlight;
     private bool _visionTickInFlight;
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
-    private long _lastBodyStateDispatchMs;
+    private long _lastBodyFrameDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
     private long _environmentAudioFrameSequence;
     private long _somaticContactFrameSequence;
+    private long _physicalBodyFrameSequence;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
     private PerspectiveCamera? _mazeCamera;
@@ -173,7 +163,7 @@ public partial class MainWindow : Window
     private double _cameraDistance;
 
     private int _score;
-    private int _health = 100;
+    private int _tissueIntegrityPercent = 100;
     private int _foodsCollected;
     private int _hazardContacts;
     private int _wallImpacts;
@@ -376,7 +366,7 @@ public partial class MainWindow : Window
         _lastSimTimeSeconds = now;
 
         UpdateAvatar(dt);
-        _ = FireAndForgetAsync(DispatchBodyStateInputAsync(_shutdown.Token), "body state dispatch");
+        _ = FireAndForgetAsync(DispatchPhysicalBodyFrameAsync(_shutdown.Token), "physical body frame dispatch");
         _ = FireAndForgetAsync(DispatchEnvironmentAudioInputAsync(_shutdown.Token), "environment audio dispatch");
         UpdateHud();
     }
@@ -1004,8 +994,8 @@ public partial class MainWindow : Window
         if ((dx * dx) + (dz * dz) <= GoalRadius * GoalRadius)
         {
             _score += 120;
-            _health = Math.Min(100, _health + 12);
-            SetMazeEvent("Goal reached: reward +120, health +12");
+            _tissueIntegrityPercent = Math.Min(100, _tissueIntegrityPercent + 12);
+            SetMazeEvent("Goal reached: score +120, tissue restoration +12%");
             RespawnToCheckpoint();
         }
     }
@@ -1127,7 +1117,7 @@ public partial class MainWindow : Window
 
             _lastHazardDamageUtc = now;
             _hazardContacts++;
-            _health = Math.Max(0, _health - 18);
+            _tissueIntegrityPercent = Math.Max(0, _tissueIntegrityPercent - 18);
             _score = Math.Max(0, _score - 10);
             QueueHazardContactFrame(hazard.World.X, hazard.World.Y);
 
@@ -1140,16 +1130,16 @@ public partial class MainWindow : Window
                 _avatarZ = pushbackZ;
             }
 
-            if (_health <= 0)
+            if (_tissueIntegrityPercent <= 0)
             {
-                _health = 100;
+                _tissueIntegrityPercent = 100;
                 _score = Math.Max(0, _score - 25);
                 SetMazeEvent("Hazard incapacitation: respawn to checkpoint");
                 RespawnToCheckpoint();
             }
             else
             {
-                SetMazeEvent($"Hazard contact #{_hazardContacts}: health {_health}");
+                SetMazeEvent($"Hazard contact #{_hazardContacts}: tissue integrity {_tissueIntegrityPercent}%");
             }
 
             break;
@@ -1168,10 +1158,10 @@ public partial class MainWindow : Window
         _wallImpacts++;
         _recentWallImpactTicks.Enqueue(Math.Max(0, _lastTick));
         var scorePenalty = slidAlongWall ? 2 : 4;
-        var healthPenalty = slidAlongWall ? 1 : 2;
+        var tissueDamagePercent = slidAlongWall ? 1 : 2;
 
         _score = Math.Max(0, _score - scorePenalty);
-        _health = Math.Max(1, _health - healthPenalty);
+        _tissueIntegrityPercent = Math.Max(1, _tissueIntegrityPercent - tissueDamagePercent);
 
         QueueWallContactFrame(slidAlongWall);
 
@@ -1267,7 +1257,7 @@ public partial class MainWindow : Window
             PenetrationMillimeters: 1.2f,
             TangentialSpeedMetersPerSecond: (float)Math.Abs(_lastForwardSpeed),
             ContactAreaSquareMillimeters: 20_000f,
-            DurationMilliseconds: BodyStateDispatchIntervalMs,
+            DurationMilliseconds: BodyFrameDispatchIntervalMs,
             InputSource: "avatar_maze_contact"));
     }
 
@@ -1318,15 +1308,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task DispatchBodyStateInputAsync(CancellationToken token)
+    private async Task DispatchPhysicalBodyFrameAsync(CancellationToken token)
     {
-        if (_bodyStimulusInFlight)
+        if (_bodyFrameInFlight)
         {
             return;
         }
 
         var nowMs = Environment.TickCount64;
-        if ((nowMs - _lastBodyStateDispatchMs) < BodyStateDispatchIntervalMs)
+        if ((nowMs - _lastBodyFrameDispatchMs) < BodyFrameDispatchIntervalMs)
         {
             return;
         }
@@ -1337,34 +1327,30 @@ public partial class MainWindow : Window
             return;
         }
 
-        _bodyStimulusInFlight = true;
-        _lastBodyStateDispatchMs = nowMs;
+        _bodyFrameInFlight = true;
+        _lastBodyFrameDispatchMs = nowMs;
         try
         {
             QueueGroundContactFrame();
-            var telemetry = new AvatarBodyTelemetry(
-                ForwardVelocity: _lastForwardSpeed,
-                TurnRateDeg: _lastTurnRateDeg,
-                ContactLevel: 0.0,
-                LeftMotorDrive: _leftMotorDrive,
-                RightMotorDrive: _rightMotorDrive,
-                Health: _health / 100.0,
-                TactileFront: 0.0,
-                TactileLeft: 0.0,
-                TactileRight: 0.0,
-                TactileGround: 0.0,
-                PainLevel: 0.0);
-            _avatarService.PostBodyInput(telemetry, MazeBodyStateProfile);
-            var bodyInput = await DrainAvatarBodyInputAsync(token);
-            if (bodyInput.HasValue)
-            {
-                await AvatarControlApi.PostBodyStateAsync(
-                    _httpClient,
-                    endpoint,
-                    bodyInput.Value.Telemetry,
-                    bodyInput.Value.Profile,
-                    token);
-            }
+            await AvatarControlApi.PostPhysicalBodyFrameAsync(
+                _httpClient,
+                endpoint,
+                new PhysicalBodyFrameRequest(
+                    Sequence: Interlocked.Increment(ref _physicalBodyFrameSequence),
+                    TimestampMs: nowMs,
+                    LinearVelocityXMetersPerSecond: 0f,
+                    LinearVelocityYMetersPerSecond: 0f,
+                    LinearVelocityZMetersPerSecond: (float)_lastForwardSpeed,
+                    AngularVelocityXRadiansPerSecond: 0f,
+                    AngularVelocityYRadiansPerSecond: (float)(_lastTurnRateDeg * Math.PI / 180.0),
+                    AngularVelocityZRadiansPerSecond: 0f,
+                    StoredEnergyJoules: 6_400_000f,
+                    TissueIntegrityFraction: (float)Math.Clamp(_tissueIntegrityPercent / 100.0, 0.0, 1.0),
+                    CoreTemperatureCelsius: 37f,
+                    BloodOxygenSaturationFraction: 0.98f,
+                    HydrationFraction: 0.75f,
+                    InputSource: AvatarRuntimeDefaults.UnifiedBodyInputSource),
+                token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -1372,23 +1358,12 @@ public partial class MainWindow : Window
         }
         catch
         {
-            // Best-effort body-state input.
+            // Best-effort physical afferent input.
         }
         finally
         {
-            _bodyStimulusInFlight = false;
+            _bodyFrameInFlight = false;
         }
-    }
-
-    private async Task<AvatarBodyStateInput?> DrainAvatarBodyInputAsync(CancellationToken token)
-    {
-        if (_avatarService.TryDequeueBodyInput(out var input))
-        {
-            return input;
-        }
-
-        await Task.Delay(1, token);
-        return _avatarService.TryDequeueBodyInput(out input) ? input : null;
     }
 
     private async Task DispatchEnvironmentAudioInputAsync(CancellationToken token)
@@ -2425,7 +2400,7 @@ public partial class MainWindow : Window
     private void ResetRun(bool logMessage = true)
     {
         _score = 0;
-        _health = 100;
+        _tissueIntegrityPercent = 100;
         _foodsCollected = 0;
         _hazardContacts = 0;
         _wallImpacts = 0;
@@ -2439,8 +2414,8 @@ public partial class MainWindow : Window
         _lastWallImpactUtc = DateTime.MinValue;
         _recentWallImpactTicks.Clear();
         _contactFrameInFlight = false;
-        _bodyStimulusInFlight = false;
-        _lastBodyStateDispatchMs = 0;
+        _bodyFrameInFlight = false;
+        _lastBodyFrameDispatchMs = 0;
         _respawnWorld = _startWorld;
         _totalDistanceTravelled = 0.0;
         _bestDistanceToGoal = Math.Sqrt(DistanceSquared(_startWorld.X, _startWorld.Y, _goalWorld.X, _goalWorld.Y));
@@ -2541,7 +2516,7 @@ public partial class MainWindow : Window
         MoveText.Text = $"Speed/Turn: {_lastForwardSpeed:0.00} m/s | body {_lastTurnRateDeg:0.0} deg/s | head {_avatarHeadYawDeg:0.0}° | wall={_lastWallProximity:0.00}";
         PoseText.Text = $"Avatar pose: x {_avatarX:0.00}, z {_avatarZ:0.00}, body yaw {_avatarHeadingDeg:0.0}°, look {GetAvatarLookHeadingDeg():0.0}°";
         ScoreText.Text = $"Score: {_score} | Food {_foodsCollected}/{_foodEntities.Count}";
-        HealthText.Text = $"Health: {_health} | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts}";
+        TissueIntegrityText.Text = $"Tissue integrity: {_tissueIntegrityPercent}% | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts}";
         CheckpointText.Text = $"Checkpoint: {_checkpointActivations}/{_checkpointEntities.Count} @ ({_respawnWorld.X:0.0}, {_respawnWorld.Y:0.0})";
         EventText.Text = $"Event: {_lastMazeEvent}";
         LimbicStageText.Text = $"Limbic stage: {_limbicStage} | sal={_limbicSalience:0.00} thr={_limbicThreat:0.00}";

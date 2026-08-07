@@ -80,10 +80,12 @@ public partial class MainWindow : Window
     private const int EnvironmentAudioDispatchIntervalMs = 120;
     private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
-    private const int BodyStateDispatchIntervalMs = 350;
-    private const int BodyStateDispatchTimeoutMs = 1800;
-    private const double HungerStressEnter = 0.62;
-    private const double HungerStressFull = 0.92;
+    private const int BodyFrameDispatchIntervalMs = 350;
+    private const int BodyFrameDispatchTimeoutMs = 1800;
+    private const double NominalStoredEnergyJoules = 8_000_000.0;
+    private const double MetabolicBurnJoulesPerSecond = 33_600.0;
+    private const double EnergyDepletionStressEnter = 0.62;
+    private const double EnergyDepletionStressFull = 0.92;
     private const double DayNightCycleSeconds = 240.0;
     private const double WorldMaxForwardSpeed = 8.1;
 
@@ -102,17 +104,6 @@ public partial class MainWindow : Window
         WorldKinematicsOptions,
         DriveDecay: 0.92);
     private const long RuntimeLogMaxBytes = 6L * 1024L * 1024L;
-    private static readonly AvatarBodyStateProfile WorldBodyStateProfile = new(
-        MaxForwardSpeed: WorldMaxForwardSpeed,
-        MaxTurnRateDeg: 240.0,
-        BaseIntensity: 0.25,
-        MotionIntensityWeight: 0.90,
-        TurnIntensityWeight: 0.35,
-        ContactIntensityWeight: 0.55,
-        BaseBurstCount: 6,
-        MotionBurstWeight: 18.0,
-        TurnBurstWeight: 8.0,
-        ContactBurstWeight: 10.0);
     private static readonly string RuntimeLogDirectory =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NRE.WpfWorldSim");
     private static readonly string RuntimeLogPath = Path.Combine(RuntimeLogDirectory, "worldsim-runtime.log");
@@ -262,8 +253,8 @@ public partial class MainWindow : Window
     private bool _sleepState;
     private string _limbicStage = "unknown";
     private double _limbicTiredDrive;
-    private double _hunger;
-    private double _health = 1.0;
+    private double _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
+    private double _tissueIntegrity = 1.0;
     private double _daylight01 = 1.0;
     private double _darkness01;
     private string _dayNightStage = "day";
@@ -273,7 +264,7 @@ public partial class MainWindow : Window
     private int _longWeaponCharges;
     private int _homesBuilt;
     private int _explorableTerrainCells;
-    private double _hungerRate = 1.0;
+    private double _metabolicBurnRate = 1.0;
     private double _predatorSpeedScale = 1.0;
     private double _predatorSenseRadius = DefaultPredatorSenseRadius;
     private double _shelterRadius = DefaultShelterRadius;
@@ -339,10 +330,12 @@ public partial class MainWindow : Window
     private double _lastRightProximity;
     private double _lastForwardSpeed;
     private double _lastTurnRateDeg;
-    private long _lastBodyStateDispatchMs;
+    private long _lastBodyFrameDispatchMs;
     private long _lastEnvironmentAudioDispatchMs;
     private long _environmentAudioFrameSequence;
-    private bool _bodyStimulusInFlight;
+    private bool _bodyFrameInFlight;
+    private long _physicalBodyFrameSequence;
+    private long _somaticContactFrameSequence;
     private bool _englishCommandInFlight;
     private long _lastBrainNarrationSequence = -1;
     private string _lastBrainNarrationText = string.Empty;
@@ -579,9 +572,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void HungerRateSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void MetabolicBurnRateSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        _hungerRate = e.NewValue;
+        _metabolicBurnRate = e.NewValue;
         RefreshSurvivalTuningLabels();
     }
 
@@ -669,7 +662,7 @@ public partial class MainWindow : Window
 
     private void SyncSurvivalTuningFromUi()
     {
-        _hungerRate = HungerRateSlider?.Value > 0 ? HungerRateSlider.Value : _hungerRate;
+        _metabolicBurnRate = MetabolicBurnRateSlider?.Value > 0 ? MetabolicBurnRateSlider.Value : _metabolicBurnRate;
         _predatorSpeedScale = PredatorSpeedSlider?.Value > 0 ? PredatorSpeedSlider.Value : _predatorSpeedScale;
         _predatorSenseRadius = PredatorSenseSlider?.Value > 0 ? PredatorSenseSlider.Value : _predatorSenseRadius;
         _shelterRadius = ShelterRadiusSlider?.Value > 0 ? ShelterRadiusSlider.Value : _shelterRadius;
@@ -681,13 +674,13 @@ public partial class MainWindow : Window
 
     private void RefreshSurvivalTuningLabels()
     {
-        var hunger = HungerRateValueText;
+        var metabolicBurn = MetabolicBurnRateValueText;
         var predatorSpeed = PredatorSpeedValueText;
         var predatorSense = PredatorSenseValueText;
         var shelterRadius = ShelterRadiusValueText;
         var foodSpawn = FoodSpawnValueText;
         var predatorSpawn = PredatorSpawnValueText;
-        if (hunger is null ||
+        if (metabolicBurn is null ||
             predatorSpeed is null ||
             predatorSense is null ||
             shelterRadius is null ||
@@ -697,7 +690,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        hunger.Text = $"x{_hungerRate:0.00}";
+        metabolicBurn.Text = $"x{_metabolicBurnRate:0.00}";
         predatorSpeed.Text = $"x{_predatorSpeedScale:0.00}";
         predatorSense.Text = $"{_predatorSenseRadius:0.0} units";
         shelterRadius.Text = $"{_shelterRadius:0.0} units";
@@ -781,8 +774,8 @@ public partial class MainWindow : Window
         _trailAccumulatorSeconds = 0.0;
         _collisionPulse = 0.0;
         _collisionHits = 0;
-        _hunger = 0.25;
-        _health = 1.0;
+        _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
+        _tissueIntegrity = 1.0;
         _daylight01 = 1.0;
         _darkness01 = 0.0;
         _dayNightStage = "day";
@@ -838,8 +831,8 @@ public partial class MainWindow : Window
         MotorPathwayAuditText.Text = _motorPathwayAuditText;
         CollisionText.Text = "Collision hits: 0";
         TrailText.Text = "Trail points: 0 | mapped: 0";
-        SurvivalHungerText.Text = "Hunger: 0%";
-        SurvivalHealthText.Text = "Health: 100%";
+        SurvivalEnergyText.Text = "Energy reserve: 75%";
+        SurvivalTissueIntegrityText.Text = "Tissue integrity: 100%";
         SurvivalThreatText.Text = "Threat: 0%";
         SurvivalFoodText.Text = "Food collected: 0";
         SurvivalWeaponText.Text = "Weapon charge: 0";
@@ -2242,9 +2235,9 @@ public partial class MainWindow : Window
 
         UpdateDayNightCycle(now);
         UpdateAvatar(dt);
-        if (ShouldDispatchBodyStateInput(nowMs))
+        if (ShouldDispatchPhysicalBodyFrame(nowMs))
         {
-            _ = DispatchBodyStateInputAsync(nowMs, _shutdown.Token);
+            _ = DispatchPhysicalBodyFrameAsync(nowMs, _shutdown.Token);
         }
         UpdateSurvival(dt, now);
         UpdatePredators(dt);
@@ -2840,18 +2833,22 @@ public partial class MainWindow : Window
     private void UpdateSurvival(double dt, double nowSeconds)
     {
         var metabolicRate = _sleepState ? 0.72 : 1.0;
-        _hunger = Math.Clamp(_hunger + (dt * 0.0042 * _hungerRate * metabolicRate), 0.0, 1.0);
+        _storedEnergyJoules = Math.Clamp(
+            _storedEnergyJoules - (dt * MetabolicBurnJoulesPerSecond * _metabolicBurnRate * metabolicRate),
+            0.0,
+            NominalStoredEnergyJoules);
 
-        var hungerStress = ComputeNeedDrive(_hunger, HungerStressEnter, HungerStressFull);
-        if (hungerStress > 0.0)
+        var energyDepletion = 1.0 - (_storedEnergyJoules / NominalStoredEnergyJoules);
+        var energyStress = ComputeNeedDrive(energyDepletion, EnergyDepletionStressEnter, EnergyDepletionStressFull);
+        if (energyStress > 0.0)
         {
-            var hungerHealthDrain = 0.0028 + (hungerStress * 0.0062);
-            _health = Math.Clamp(_health - (dt * hungerHealthDrain), 0.0, 1.0);
+            var energyDepletionDamage = 0.0028 + (energyStress * 0.0062);
+            _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * energyDepletionDamage), 0.0, 1.0);
         }
 
         if (_sleepState && IsInShelter())
         {
-            _health = Math.Clamp(_health + (dt * 0.010), 0.0, 1.0);
+            _tissueIntegrity = Math.Clamp(_tissueIntegrity + (dt * 0.010), 0.0, 1.0);
         }
 
         ConsumeNearbyPickups();
@@ -2862,8 +2859,8 @@ public partial class MainWindow : Window
         }
 
         _nextSurvivalHudUpdateSeconds = nowSeconds + SurvivalHudUpdateIntervalSeconds;
-        SurvivalHungerText.Text = $"Hunger: {(int)(_hunger * 100)}%";
-        SurvivalHealthText.Text = $"Health: {(int)(_health * 100)}%";
+        SurvivalEnergyText.Text = $"Energy reserve: {(int)(_storedEnergyJoules / NominalStoredEnergyJoules * 100)}%";
+        SurvivalTissueIntegrityText.Text = $"Tissue integrity: {(int)(_tissueIntegrity * 100)}%";
         var nearestPredator = FindNearest(_predators);
         SurvivalThreatText.Text = nearestPredator.Distance >= 999.0
             ? "Nearest predator: none"
@@ -2942,7 +2939,7 @@ public partial class MainWindow : Window
             var distance = GetDistanceToAvatar(predator.Position.X, predator.Position.Z);
             if (distance <= PredatorStrikeRadius)
             {
-                _health = Math.Clamp(_health - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
+                _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
                 _collisionHits++;
                 _collisionPulse = 1.0;
             }
@@ -2975,7 +2972,10 @@ public partial class MainWindow : Window
                 pickup.Active = false;
                 pickup.Transform.OffsetY = -999;
                 _foodConsumed++;
-                _hunger = Math.Clamp(_hunger - 0.35, 0.0, 1.0);
+                _storedEnergyJoules = Math.Clamp(
+                    _storedEnergyJoules + (NominalStoredEnergyJoules * 0.35),
+                    0.0,
+                    NominalStoredEnergyJoules);
                 _foodPickups[i] = pickup;
             }
         }
@@ -4651,49 +4651,38 @@ public partial class MainWindow : Window
         }
     }
 
-    private bool ShouldDispatchBodyStateInput(long nowMs)
+    private bool ShouldDispatchPhysicalBodyFrame(long nowMs)
     {
-        if (_bodyStimulusInFlight)
+        if (_bodyFrameInFlight)
         {
             return false;
         }
 
         var pressureDecision = EvaluateBrainInputPressure(
-            "body state",
+            "physical body frame",
             nowMs,
             AvatarInputPriority.Critical,
-            BodyStateDispatchIntervalMs);
+            BodyFrameDispatchIntervalMs);
         if (pressureDecision.ShouldPause)
         {
-            LogOptionalBrainInputPause("body state", pressureDecision.Reason, nowMs);
+            LogOptionalBrainInputPause("physical body frame", pressureDecision.Reason, nowMs);
             return false;
         }
 
-        var bodyDispatchIntervalMs = Math.Max(BodyStateDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
+        var bodyDispatchIntervalMs = Math.Max(BodyFrameDispatchIntervalMs, pressureDecision.MinimumIntervalMs);
 
-        return (nowMs - _lastBodyStateDispatchMs) >= bodyDispatchIntervalMs;
+        return (nowMs - _lastBodyFrameDispatchMs) >= bodyDispatchIntervalMs;
     }
 
-    private async Task<AvatarBodyStateInput?> DrainAvatarBodyInputAsync(CancellationToken token)
+    private async Task DispatchPhysicalBodyFrameAsync(long nowMs, CancellationToken token)
     {
-        if (_avatarService.TryDequeueBodyInput(out var input))
-        {
-            return input;
-        }
-
-        await Task.Delay(1, token);
-        return _avatarService.TryDequeueBodyInput(out input) ? input : null;
-    }
-
-    private async Task DispatchBodyStateInputAsync(long nowMs, CancellationToken token)
-    {
-        if (!ShouldDispatchBodyStateInput(nowMs))
+        if (!ShouldDispatchPhysicalBodyFrame(nowMs))
         {
             return;
         }
 
-        _bodyStimulusInFlight = true;
-        _lastBodyStateDispatchMs = nowMs;
+        _bodyFrameInFlight = true;
+        _lastBodyFrameDispatchMs = nowMs;
         try
         {
             var endpoint = GetSelectedEndpoint();
@@ -4704,43 +4693,80 @@ public partial class MainWindow : Window
 
             var contactPulse = Math.Clamp(_collisionPulse, 0.0, 1.0);
             var probeTotal = _lastFrontProximity + _lastLeftProximity + _lastRightProximity;
-            var frontTouch = probeTotal > 0.001 ? contactPulse * (_lastFrontProximity / probeTotal) : contactPulse;
-            var leftTouch = probeTotal > 0.001 ? contactPulse * (_lastLeftProximity / probeTotal) : 0.0;
-            var rightTouch = probeTotal > 0.001 ? contactPulse * (_lastRightProximity / probeTotal) : 0.0;
-            var groundTouch = Math.Clamp(0.18 + (Math.Abs(_lastForwardSpeed) / WorldMaxForwardSpeed * 0.72), 0.0, 1.0);
-            if (TryClassifyCurrentTerrain(out var currentSurface) && currentSurface == BlockKind.Water)
+            if (contactPulse > 0.01)
             {
-                groundTouch = Math.Max(groundTouch, 0.58);
-            }
-
-            var contact = contactPulse;
-            var telemetry = new AvatarBodyTelemetry(
-                ForwardVelocity: _lastForwardSpeed,
-                TurnRateDeg: _lastTurnRateDeg,
-                ContactLevel: contact,
-                LeftMotorDrive: _leftMotorDrive,
-                RightMotorDrive: _rightMotorDrive,
-                Hunger: _hunger,
-                Health: _health,
-                TactileFront: frontTouch,
-                TactileLeft: leftTouch,
-                TactileRight: rightTouch,
-                TactileGround: groundTouch,
-                PainLevel: Math.Clamp(contactPulse * 0.70, 0.0, 1.0));
-            _avatarService.PostBodyInput(telemetry, WorldBodyStateProfile);
-            var bodyInput = await DrainAvatarBodyInputAsync(token);
-            if (bodyInput.HasValue)
-            {
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-                timeout.CancelAfter(TimeSpan.FromMilliseconds(BodyStateDispatchTimeoutMs));
-                await AvatarControlApi.PostBodyStateAsync(
+                var localX = probeTotal > 0.001
+                    ? (_lastRightProximity - _lastLeftProximity) / probeTotal
+                    : 0.0;
+                var localZ = probeTotal > 0.001 ? _lastFrontProximity / probeTotal : 1.0;
+                var directionLength = Math.Max(0.001, Math.Sqrt((localX * localX) + (localZ * localZ)));
+                localX /= directionLength;
+                localZ /= directionLength;
+                await AvatarControlApi.PostSomaticContactFrameAsync(
                     _sensoryInputHttpClient,
                     endpoint,
-                    bodyInput.Value.Telemetry,
-                    bodyInput.Value.Profile,
-                    timeout.Token);
-                RegisterOptionalBrainInputSuccess("body state");
+                    new SomaticContactFrameRequest(
+                        Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+                        TimestampMs: nowMs,
+                        BodyPositionX: (float)(localX * 0.45),
+                        BodyPositionY: 0f,
+                        BodyPositionZ: (float)(localZ * 0.45),
+                        SurfaceNormalX: (float)-localX,
+                        SurfaceNormalY: 0f,
+                        SurfaceNormalZ: (float)-localZ,
+                        ForceNewtons: (float)(1_200.0 + (contactPulse * 3_200.0)),
+                        ImpulseNewtonSeconds: (float)(25.0 + (contactPulse * 120.0)),
+                        PenetrationMillimeters: (float)(contactPulse * 28.0),
+                        TangentialSpeedMetersPerSecond: (float)Math.Abs(_lastForwardSpeed),
+                        ContactAreaSquareMillimeters: 1_100f,
+                        DurationMilliseconds: BodyFrameDispatchIntervalMs,
+                        InputSource: "avatar_world_contact"),
+                    token);
             }
+
+            await AvatarControlApi.PostSomaticContactFrameAsync(
+                _sensoryInputHttpClient,
+                endpoint,
+                new SomaticContactFrameRequest(
+                    Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+                    TimestampMs: nowMs,
+                    BodyPositionX: 0f,
+                    BodyPositionY: -0.9f,
+                    BodyPositionZ: 0f,
+                    SurfaceNormalX: 0f,
+                    SurfaceNormalY: 1f,
+                    SurfaceNormalZ: 0f,
+                    ForceNewtons: 686.7f,
+                    ImpulseNewtonSeconds: 0f,
+                    PenetrationMillimeters: 1.2f,
+                    TangentialSpeedMetersPerSecond: (float)Math.Abs(_lastForwardSpeed),
+                    ContactAreaSquareMillimeters: 20_000f,
+                    DurationMilliseconds: BodyFrameDispatchIntervalMs,
+                    InputSource: "avatar_world_ground"),
+                token);
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(BodyFrameDispatchTimeoutMs));
+            await AvatarControlApi.PostPhysicalBodyFrameAsync(
+                _sensoryInputHttpClient,
+                endpoint,
+                new PhysicalBodyFrameRequest(
+                    Sequence: Interlocked.Increment(ref _physicalBodyFrameSequence),
+                    TimestampMs: nowMs,
+                    LinearVelocityXMetersPerSecond: 0f,
+                    LinearVelocityYMetersPerSecond: 0f,
+                    LinearVelocityZMetersPerSecond: (float)_lastForwardSpeed,
+                    AngularVelocityXRadiansPerSecond: 0f,
+                    AngularVelocityYRadiansPerSecond: (float)(_lastTurnRateDeg * Math.PI / 180.0),
+                    AngularVelocityZRadiansPerSecond: 0f,
+                    StoredEnergyJoules: (float)_storedEnergyJoules,
+                    TissueIntegrityFraction: (float)Math.Clamp(_tissueIntegrity, 0.0, 1.0),
+                    CoreTemperatureCelsius: 37f,
+                    BloodOxygenSaturationFraction: 0.98f,
+                    HydrationFraction: 0.75f,
+                    InputSource: AvatarRuntimeDefaults.UnifiedBodyInputSource),
+                timeout.Token);
+            RegisterOptionalBrainInputSuccess("physical body frame");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -4748,11 +4774,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            RegisterOptionalBrainInputFailure("body state", $"{ex.GetType().Name}: {TrimForLog(ex.Message, 140)}", Environment.TickCount64);
+            RegisterOptionalBrainInputFailure("physical body frame", $"{ex.GetType().Name}: {TrimForLog(ex.Message, 140)}", Environment.TickCount64);
         }
         finally
         {
-            _bodyStimulusInFlight = false;
+            _bodyFrameInFlight = false;
         }
     }
 

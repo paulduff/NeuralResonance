@@ -102,9 +102,9 @@ Wall laterality is encoded as body-local geometry rather than a hemisphere.
 Approximate force and impulse are derived from avatar mass, speed, and contact
 duration. The old body-state packet no longer duplicates maze touch or pain.
 
-World-simulator contact remains on the body-state conversion list and is the
-next migration target. Until that rung is complete, the world does not yet
-share the new contact boundary.
+Entry 098 completed the producer migration. World-simulator collision and
+ground contact now share this raw somatic boundary; neither embodied world can
+restore the deleted structured collision authority.
 
 ## Inspection
 

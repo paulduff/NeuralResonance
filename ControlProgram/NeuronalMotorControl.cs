@@ -137,6 +137,7 @@ internal sealed record NeuronalMotorRuntime(
     double RightDrive,
     double ForwardDrive,
     double TurnDrive,
+    double ManipulatorDrive,
     double MotorCircuitCoverage,
     double SelectionGate,
     double OutputInhibition,
@@ -159,6 +160,7 @@ internal sealed record NeuronalMotorRuntime(
         RightDrive: 0.0,
         ForwardDrive: 0.0,
         TurnDrive: 0.0,
+        ManipulatorDrive: 0.0,
         MotorCircuitCoverage: 0.0,
         SelectionGate: 0.0,
         OutputInhibition: 1.0,
@@ -307,7 +309,14 @@ internal static class NeuronalMotorPopulationDecoder
         var alpha = settings.SmoothingAlpha;
         var leftDrive = Lerp(previous.LeftDrive, rawLeft, alpha);
         var rightDrive = Lerp(previous.RightDrive, rawRight, alpha);
-        var signalStrength = Math.Max(Math.Abs(leftDrive), Math.Abs(rightDrive));
+        var rawManipulator = actionDecision.Active &&
+            actionDecision.SelectedChannel == NeuronalActionSelectionDecoder.ManipulatorChannel
+                ? Math.Clamp(effectiveGate * supportGain, 0.0, 1.0)
+                : 0.0;
+        var manipulatorDrive = Lerp(previous.ManipulatorDrive, rawManipulator, alpha);
+        var signalStrength = Math.Max(
+            Math.Max(Math.Abs(leftDrive), Math.Abs(rightDrive)),
+            Math.Abs(manipulatorDrive));
 
         var supportCoverage = ((cerebellar.Length > 0 ? 1.0 : 0.0) + (postural.Length > 0 ? 1.0 : 0.0)) * 0.5;
         var motorConfidence = Math.Clamp(
@@ -340,6 +349,7 @@ internal static class NeuronalMotorPopulationDecoder
             RightDrive: rightDrive,
             ForwardDrive: forwardDrive,
             TurnDrive: turnDrive,
+            ManipulatorDrive: manipulatorDrive,
             MotorCircuitCoverage: motorCoverage,
             SelectionGate: selectionGate,
             OutputInhibition: outputInhibition,

@@ -31,8 +31,11 @@ public sealed class AvatarService : IDisposable
     private readonly object _actionPublicationGate = new();
     private readonly object _sightOutputGate = new();
     private readonly object _sightInputGate = new();
-    private AvatarNervousSystemSignal _latestSignal = new(0.0, 0.0, 0, 0);
-    private AvatarActionOutput _latestActionOutput = new(new AvatarMotorOutput(0.0, 0.0), 0);
+    private AvatarNervousSystemSignal _latestSignal = new(0.0, 0.0, 0.0, 0, 0, 0);
+    private AvatarActionOutput _latestActionOutput = new(
+        new AvatarMotorOutput(0.0, 0.0),
+        new AvatarInteractionOutput(0.0),
+        0);
     private AvatarSightFrame? _latestSightOutput;
     private AvatarSightFrame? _pendingSightInput;
     private bool _sightInputScheduled;
@@ -374,6 +377,7 @@ public sealed class AvatarService : IDisposable
             turnGain);
         return new AvatarActionOutput(
             new AvatarMotorOutput(forwardSpeed, turnRateDeg),
+            new AvatarInteractionOutput(signal.ManipulatorDrive),
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
     }
 
@@ -402,7 +406,9 @@ public sealed class AvatarService : IDisposable
         => new(
             _nervousSystem.LeftMotorDrive,
             _nervousSystem.RightMotorDrive,
+            _nervousSystem.ManipulatorDrive,
             _nervousSystem.LastMotorDispatchCount,
+            _nervousSystem.LastManipulatorDispatchCount,
             _nervousSystem.TicksWithoutMotorDispatch);
 
     private interface IAvatarServiceCommand

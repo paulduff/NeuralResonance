@@ -17,7 +17,11 @@ public sealed class AvatarNervousSystem
 
     public double RightMotorDrive { get; private set; }
 
+    public double ManipulatorDrive { get; private set; }
+
     public int LastMotorDispatchCount { get; private set; }
+
+    public int LastManipulatorDispatchCount { get; private set; }
 
     public int TicksWithoutMotorDispatch { get; private set; }
 
@@ -25,7 +29,9 @@ public sealed class AvatarNervousSystem
     {
         LeftMotorDrive = 0.0;
         RightMotorDrive = 0.0;
+        ManipulatorDrive = 0.0;
         LastMotorDispatchCount = 0;
+        LastManipulatorDispatchCount = 0;
         TicksWithoutMotorDispatch = 0;
     }
 
@@ -45,6 +51,7 @@ public sealed class AvatarNervousSystem
         var right = RightMotorDrive;
         AvatarKinematics.ApplyDriveDecay(ref left, ref right, smoothingOverride ?? _options.DriveDecay);
         SetMotorDrive(left, right);
+        ManipulatorDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
     }
 
     public (double ForwardSpeed, double TurnRateDeg) ComputeMotorOutput(
@@ -65,6 +72,11 @@ public sealed class AvatarNervousSystem
         var right = RightMotorDrive;
         var motorSummary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref left, ref right, _options.Kinematics);
         SetMotorDrive(left, right);
+        var manipulator = AvatarEffectorCatalog.SummarizeManipulatorDrive(dispatches);
+        ManipulatorDrive = Math.Clamp(
+            ManipulatorDrive + manipulator.DriveDelta,
+            0.0,
+            _options.Kinematics.MaxMotorDrive);
 
         if (motorSummary.MotorEvents > 0)
         {
@@ -76,9 +88,16 @@ public sealed class AvatarNervousSystem
         }
 
         LastMotorDispatchCount = motorSummary.MotorEvents;
+        LastManipulatorDispatchCount = manipulator.Events;
         return CurrentSignal();
     }
 
     private AvatarNervousSystemSignal CurrentSignal()
-        => new(LeftMotorDrive, RightMotorDrive, LastMotorDispatchCount, TicksWithoutMotorDispatch);
+        => new(
+            LeftMotorDrive,
+            RightMotorDrive,
+            ManipulatorDrive,
+            LastMotorDispatchCount,
+            LastManipulatorDispatchCount,
+            TicksWithoutMotorDispatch);
 }

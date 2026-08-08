@@ -90,6 +90,7 @@
                         <TextBlock x:Name="DispatchText" Margin="0,4,0,0" Text="Dispatched spikes: -" />
                         <TextBlock x:Name="MotorDispatchText" Margin="0,4,0,0" Text="Motor dispatch events: -" />
                         <TextBlock x:Name="MotorDriveText" Margin="0,4,0,0" Text="Motor drive L/R: -" />
+                        <TextBlock x:Name="ManipulatorDriveText" Margin="0,4,0,0" Text="Manipulator drive: -" />
                         <TextBlock x:Name="MotorDecisionText" Margin="0,4,0,0" Text="Motor decision: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="MotorPathwayAuditText" Margin="0,4,0,0" Text="Motor pathway: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="AvatarPoseText" Margin="0,4,0,0" Text="Avatar pose: -" />
@@ -117,11 +118,13 @@
                         <TextBlock Text="Survival Imperative" FontWeight="SemiBold" />
                         <TextBlock x:Name="SurvivalEnergyText" Margin="0,6,0,0" Text="Energy reserve: -" />
                         <TextBlock x:Name="SurvivalTissueIntegrityText" Margin="0,4,0,0" Text="Tissue integrity: -" />
+                        <TextBlock x:Name="SurvivalHydrationText" Margin="0,4,0,0" Text="Hydration: -" />
                         <TextBlock x:Name="SurvivalThreatText" Margin="0,4,0,0" Text="Threat: -" />
                         <TextBlock x:Name="SurvivalFoodText" Margin="0,4,0,0" Text="Food collected: -" />
                         <TextBlock x:Name="SurvivalWeaponText" Margin="0,4,0,0" Text="Weapon charge: -" />
                         <TextBlock x:Name="SurvivalShelterText" Margin="0,4,0,0" Text="Shelter: -" />
                         <TextBlock x:Name="SurvivalPredatorText" Margin="0,4,0,0" Text="Predators: -" />
+                        <TextBlock x:Name="SurvivalInteractionText" Margin="0,4,0,0" Text="Physical interactions: -" TextWrapping="Wrap" />
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Survival Tuning" FontWeight="SemiBold" />
                         <TextBlock Margin="0,6,0,0" Text="Metabolic Burn Rate" />

@@ -34,6 +34,15 @@ public partial class MainWindow : Window
     private const double AvatarFootOffset = 0.03;
     private const double FoodPickupRadius = 0.28;
     private const double WeaponPickupRadius = 0.26;
+    private const double ManipulatorReach = 1.20;
+    private const double ManipulatorHalfAngleDeg = 72.0;
+    private const double ManipulatorActivationDrive = 0.75;
+    private const double ManipulatorReleaseDrive = 0.20;
+    private const long ManipulatorCycleMs = 420;
+    private const double ShortWeaponRange = 2.6;
+    private const double LongWeaponRange = 8.5;
+    private const double ShortWeaponHalfAngleDeg = 38.0;
+    private const double LongWeaponHalfAngleDeg = 16.0;
     private const double PredatorStrikeRadius = 0.65;
     private const double DefaultPredatorSenseRadius = 10.0;
     private const double DefaultShelterRadius = 4.8;
@@ -74,6 +83,7 @@ public partial class MainWindow : Window
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
+    private const int VisionBrainInputMaxLagMs = VisionPreviewDropLagMs;
     private const double VisionPreviewEyelidCloseRate = 5.8;
     private const double VisionPreviewEyelidOpenRate = 3.4;
     private const int EnvironmentAudioDispatchTimeoutMs = 6000;
@@ -83,6 +93,7 @@ public partial class MainWindow : Window
     private const int BodyFrameDispatchTimeoutMs = 1800;
     private const double NominalStoredEnergyJoules = 8_000_000.0;
     private const double MetabolicBurnJoulesPerSecond = 33_600.0;
+    private const double HydrationLossPerSecond = 0.00022;
     private const double EnergyDepletionStressEnter = 0.62;
     private const double EnergyDepletionStressFull = 0.92;
     private const double DayNightCycleSeconds = 240.0;
@@ -107,6 +118,11 @@ public partial class MainWindow : Window
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NRE.WpfWorldSim");
     private static readonly string RuntimeLogPath = Path.Combine(RuntimeLogDirectory, "worldsim-runtime.log");
     private static readonly string RuntimeLogArchivePath = Path.Combine(RuntimeLogDirectory, "worldsim-runtime.log.1");
+    private static readonly string RuntimeStatePath = ResolveRuntimeStatePath();
+    private static readonly JsonSerializerOptions RuntimeStateJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
     private static readonly IReadOnlyDictionary<long, BlockKind> EmptySurfaceOverrides = new Dictionary<long, BlockKind>();
     private readonly AsyncRuntimeLogWriter _runtimeLogWriter = new(RuntimeLogPath);
 
@@ -167,6 +183,7 @@ public partial class MainWindow : Window
     private readonly List<VisionHitBox> _visionHitBoxes = [];
     private readonly List<TranslateTransform3D> _trailPointTransforms = [];
     private readonly Queue<Point3D> _trailPoints = [];
+    private readonly Queue<PendingPhysicalContact> _pendingPhysicalContacts = [];
     private readonly Dictionary<long, BlockKind> _surfaceOverrides = [];
     private readonly List<CaveAnchor> _caveAnchors = [];
     private readonly List<FoodPickup> _foodPickups = [];
@@ -237,6 +254,7 @@ public partial class MainWindow : Window
     private double _avatarHeadYawDeg;
     private double _leftMotorDrive;
     private double _rightMotorDrive;
+    private double _manipulatorDrive;
     private int _lastMotorDispatchCount;
     private int _ticksWithoutMotorDispatch;
     private long _dispatchSinceMs;
@@ -246,6 +264,7 @@ public partial class MainWindow : Window
     private bool _sleepState;
     private double _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
     private double _tissueIntegrity = 1.0;
+    private double _hydrationFraction = 0.75;
     private double _daylight01 = 1.0;
     private double _darkness01;
     private string _dayNightStage = "day";
@@ -253,6 +272,27 @@ public partial class MainWindow : Window
     private int _weaponCharges;
     private int _shortWeaponCharges;
     private int _longWeaponCharges;
+    private int _predatorsNeutralized;
+    private int _weaponPickupsCollected;
+    private int _waterInteractions;
+    private long _interactionAttempts;
+    private long _interactionSuccesses;
+    private bool _manipulatorLatched;
+    private long _lastManipulatorCycleMs;
+    private long _lastPredatorContactMs;
+    private double _distanceTravelled;
+    private long _neuronalMotorDispatchTotal;
+    private long _neuronalLocomotorDispatchTotal;
+    private long _neuronalManipulatorDispatchTotal;
+    private long _retinalFramesAccepted;
+    private long _cochlearFramesAccepted;
+    private long _physicalBodyFramesAccepted;
+    private long _somaticFramesAccepted;
+    private int _runtimeStateWriteInFlight;
+    private Task? _runtimeStateWriteTask;
+    private long _tickFailures;
+    private readonly string _runtimeSessionId = Guid.NewGuid().ToString("N");
+    private readonly DateTimeOffset _runtimeSessionStartedUtc = DateTimeOffset.UtcNow;
     private int _homesBuilt;
     private int _explorableTerrainCells;
     private double _metabolicBurnRate = 1.0;
@@ -401,6 +441,7 @@ public partial class MainWindow : Window
         _visionTimer.Start();
         Log("World simulator initialized.");
         Log($"Runtime log file: {RuntimeLogPath}");
+        Log($"Runtime state file: {RuntimeStatePath}");
         Log("Voxel habitat generated. This is a persistent environment, not a game loop.");
         Log("Camera: mouse drag to orbit, wheel to zoom.");
         Log("Map editor available: enable terrain paint mode in right panel.");
@@ -443,6 +484,15 @@ public partial class MainWindow : Window
         _auditoryInputHttpClient.Dispose();
         _telemetryHttpClient.Dispose();
         _avatarService.Dispose();
+        try
+        {
+            _runtimeStateWriteTask?.Wait(TimeSpan.FromSeconds(1));
+            WriteRuntimeState(CreateRuntimeStateSnapshot(running: false));
+        }
+        catch
+        {
+            // Shutdown must not be blocked by optional qualification telemetry.
+        }
         _runtimeLogWriter.Dispose();
         _shutdown.Dispose();
     }
@@ -453,7 +503,7 @@ public partial class MainWindow : Window
         _dispatchSinceMs = 0;
         _lastNeuronalMotorTick = -1;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0.0, 0, 0, 0));
         _brainMotorDecisionText = "Motor decision: waiting for brain state.";
         _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
         _sleepState = false;
@@ -734,6 +784,7 @@ public partial class MainWindow : Window
         _caveAnchors.Clear();
         _trailPoints.Clear();
         _trailPointTransforms.Clear();
+        _pendingPhysicalContacts.Clear();
         _foodPickups.Clear();
         _weaponPickups.Clear();
         _predators.Clear();
@@ -748,6 +799,7 @@ public partial class MainWindow : Window
         _collisionHits = 0;
         _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
         _tissueIntegrity = 1.0;
+        _hydrationFraction = 0.75;
         _daylight01 = 1.0;
         _darkness01 = 0.0;
         _dayNightStage = "day";
@@ -755,6 +807,23 @@ public partial class MainWindow : Window
         _weaponCharges = 0;
         _shortWeaponCharges = 0;
         _longWeaponCharges = 0;
+        _predatorsNeutralized = 0;
+        _weaponPickupsCollected = 0;
+        _waterInteractions = 0;
+        _interactionAttempts = 0;
+        _interactionSuccesses = 0;
+        _manipulatorDrive = 0.0;
+        _manipulatorLatched = false;
+        _lastManipulatorCycleMs = 0;
+        _lastPredatorContactMs = 0;
+        _distanceTravelled = 0.0;
+        _neuronalMotorDispatchTotal = 0;
+        _neuronalLocomotorDispatchTotal = 0;
+        _neuronalManipulatorDispatchTotal = 0;
+        _retinalFramesAccepted = 0;
+        _cochlearFramesAccepted = 0;
+        _physicalBodyFramesAccepted = 0;
+        _somaticFramesAccepted = 0;
         _environmentAudioInFlight = false;
         _lastEnvironmentAudioDispatchMs = 0;
         _environmentAudioBackoff.Reset();
@@ -792,17 +861,20 @@ public partial class MainWindow : Window
         HabitatInfoText.Text = $"Habitat core elevation: {_habitatBaseY:0.0} units | homes {_homesBuilt}, mountains {_mountainClusters}, rocks {_rockClusters}, caves {_caveEntrances}, paint {_overrideCells}";
         MotorDispatchText.Text = "Motor dispatch events: 0";
         MotorDriveText.Text = "Motor drive L/R: 0.0 / 0.0";
+        ManipulatorDriveText.Text = "Manipulator drive: 0.00";
         MotorDecisionText.Text = _brainMotorDecisionText;
         MotorPathwayAuditText.Text = _motorPathwayAuditText;
         CollisionText.Text = "Collision hits: 0";
         TrailText.Text = "Trail points: 0 | mapped: 0";
         SurvivalEnergyText.Text = "Energy reserve: 75%";
         SurvivalTissueIntegrityText.Text = "Tissue integrity: 100%";
+        SurvivalHydrationText.Text = "Hydration: 75%";
         SurvivalThreatText.Text = "Threat: 0%";
         SurvivalFoodText.Text = "Food collected: 0";
         SurvivalWeaponText.Text = "Weapon charge: 0";
         SurvivalShelterText.Text = "Shelter: not reached";
         SurvivalPredatorText.Text = "Predators: 0 active";
+        SurvivalInteractionText.Text = "Physical interactions: 0/0";
         DayNightText.Text = "Light cycle: day";
         AvatarPoseText.Text = "Avatar pose: x 0.00, y 0.00, z 0.00, body 0.0 deg, head 0.0 deg";
         MapEditorHintText.Text = _mapEditorEnabled
@@ -2239,6 +2311,7 @@ public partial class MainWindow : Window
     {
         MotorDispatchText.Text = $"Motor dispatch events: {_lastMotorDispatchCount}";
         MotorDriveText.Text = $"Motor drive L/R: {_leftMotorDrive:0.0} / {_rightMotorDrive:0.0}";
+        ManipulatorDriveText.Text = $"Manipulator drive: {_manipulatorDrive:0.00}";
         MotorDecisionText.Text = _brainMotorDecisionText;
         MotorPathwayAuditText.Text = _motorPathwayAuditText;
         AvatarPoseText.Text = $"Avatar pose: x {_avatarX:0.00}, y {_avatarY:0.00}, z {_avatarZ:0.00}, body {_avatarHeadingDeg:0.0} deg, head {_avatarHeadYawDeg:0.0} deg";
@@ -2246,6 +2319,7 @@ public partial class MainWindow : Window
         var mapped = _visitedTerrainCells.Count;
         var mappedPercent = _explorableTerrainCells > 0 ? (mapped * 100.0 / _explorableTerrainCells) : 0.0;
         TrailText.Text = $"Trail points: {_trailPoints.Count} | mapped: {mapped}/{Math.Max(_explorableTerrainCells, 1)} ({mappedPercent:0.0}%)";
+        QueueRuntimeStateSnapshot(running: true);
     }
 
     private void UpdateAvatar(double dt)
@@ -2258,6 +2332,8 @@ public partial class MainWindow : Window
         // movement through physics and feed consequences back, but it never steers.
         var actionOutput = _avatarService.PublishActionOutput();
         var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
+        var previousX = _avatarX;
+        var previousZ = _avatarZ;
         UpdateAvatarHeadYaw(dt);
 
         _avatarHeadingDeg = AvatarKinematics.AdvanceHeading(_avatarHeadingDeg, turnRateDeg, dt);
@@ -2348,6 +2424,10 @@ public partial class MainWindow : Window
         _avatarYawRotation.Angle = NormalizeDegrees(_avatarHeadingDeg + AvatarVisualYawOffsetDeg);
         _avatarHeadYawRotation.Angle = _avatarHeadYawDeg;
         RegisterVisitedTerrainCell(_avatarX, _avatarZ);
+        _distanceTravelled += Math.Sqrt(
+            ((_avatarX - previousX) * (_avatarX - previousX)) +
+            ((_avatarZ - previousZ) * (_avatarZ - previousZ)));
+        ApplyManipulatorOutput(actionOutput.Interaction, Environment.TickCount64);
 
         if (blocked)
         {
@@ -2801,6 +2881,10 @@ public partial class MainWindow : Window
             _storedEnergyJoules - (dt * MetabolicBurnJoulesPerSecond * _metabolicBurnRate * metabolicRate),
             0.0,
             NominalStoredEnergyJoules);
+        _hydrationFraction = Math.Clamp(
+            _hydrationFraction - (dt * HydrationLossPerSecond * _metabolicBurnRate * metabolicRate),
+            0.0,
+            1.0);
 
         var energyDepletion = 1.0 - (_storedEnergyJoules / NominalStoredEnergyJoules);
         var energyStress = ComputeNeedDrive(energyDepletion, EnergyDepletionStressEnter, EnergyDepletionStressFull);
@@ -2810,12 +2894,19 @@ public partial class MainWindow : Window
             _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * energyDepletionDamage), 0.0, 1.0);
         }
 
+        if (_hydrationFraction < 0.20)
+        {
+            var dehydrationStress = Math.Clamp((0.20 - _hydrationFraction) / 0.20, 0.0, 1.0);
+            _tissueIntegrity = Math.Clamp(
+                _tissueIntegrity - (dt * (0.002 + (dehydrationStress * 0.008))),
+                0.0,
+                1.0);
+        }
+
         if (_sleepState && IsInShelter())
         {
             _tissueIntegrity = Math.Clamp(_tissueIntegrity + (dt * 0.010), 0.0, 1.0);
         }
-
-        ConsumeNearbyPickups();
 
         if (nowSeconds < _nextSurvivalHudUpdateSeconds)
         {
@@ -2825,6 +2916,7 @@ public partial class MainWindow : Window
         _nextSurvivalHudUpdateSeconds = nowSeconds + SurvivalHudUpdateIntervalSeconds;
         SurvivalEnergyText.Text = $"Energy reserve: {(int)(_storedEnergyJoules / NominalStoredEnergyJoules * 100)}%";
         SurvivalTissueIntegrityText.Text = $"Tissue integrity: {(int)(_tissueIntegrity * 100)}%";
+        SurvivalHydrationText.Text = $"Hydration: {(int)(_hydrationFraction * 100)}%";
         var nearestPredator = FindNearest(_predators);
         SurvivalThreatText.Text = nearestPredator.Distance >= 999.0
             ? "Nearest predator: none"
@@ -2836,6 +2928,8 @@ public partial class MainWindow : Window
             : "Carried weapon charges: 0";
         SurvivalShelterText.Text = $"Shelter: {(IsInShelter() ? "inside" : "outside")} | neuronal sleep: {(_sleepState ? "yes" : "no")}";
         SurvivalPredatorText.Text = $"Predators: {_predators.Count} active";
+        SurvivalInteractionText.Text =
+            $"Physical interactions: {_interactionSuccesses}/{_interactionAttempts} | devices {_weaponPickupsCollected} | water {_waterInteractions} | predators neutralized {_predatorsNeutralized}";
         DayNightText.Text =
             $"Light cycle: {_dayNightStage}, daylight {(int)(_daylight01 * 100)}%, darkness {(int)(_darkness01 * 100)}%";
     }
@@ -2906,6 +3000,7 @@ public partial class MainWindow : Window
                 _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
                 _collisionHits++;
                 _collisionPulse = 1.0;
+                QueuePredatorContact(Environment.TickCount64);
             }
 
             _predators[i] = predator;
@@ -2919,57 +3014,250 @@ public partial class MainWindow : Window
         return Math.Sqrt((dx * dx) + (dz * dz));
     }
 
-    private void ConsumeNearbyPickups()
+    private void ApplyManipulatorOutput(AvatarInteractionOutput output, long nowMs)
     {
+        _manipulatorDrive = Math.Max(0.0, output.ManipulatorDrive);
+        if (_manipulatorDrive <= ManipulatorReleaseDrive)
+        {
+            _manipulatorLatched = false;
+        }
+
+        if (_manipulatorDrive < ManipulatorActivationDrive ||
+            _manipulatorLatched ||
+            (nowMs - _lastManipulatorCycleMs) < ManipulatorCycleMs)
+        {
+            return;
+        }
+
+        _manipulatorLatched = true;
+        _lastManipulatorCycleMs = nowMs;
+        _interactionAttempts++;
+
+        // The body exposes one general effector. Environment geometry and the
+        // physically carried object determine the consequence; the host never
+        // receives or interprets a symbolic action name.
+        if (TryManipulateNearestPickup() || TryDrinkNearbyWater() || TryDischargeCarriedDevice())
+        {
+            _interactionSuccesses++;
+        }
+    }
+
+    private bool TryManipulateNearestPickup()
+    {
+        var nearestFoodIndex = -1;
+        var nearestWeaponIndex = -1;
+        var nearestFoodDistanceSq = double.MaxValue;
+        var nearestWeaponDistanceSq = double.MaxValue;
+
         for (var i = 0; i < _foodPickups.Count; i++)
         {
             var pickup = _foodPickups[i];
-            if (!pickup.Active)
+            if (!pickup.Active || !AvatarPhysicalInteraction.IsWithinEffectorCone(
+                    _avatarX,
+                    _avatarZ,
+                    _avatarHeadingDeg,
+                    pickup.Position.X,
+                    pickup.Position.Z,
+                    ManipulatorReach,
+                    ManipulatorHalfAngleDeg))
             {
                 continue;
             }
 
-            var dx = _avatarX - pickup.Position.X;
-            var dz = _avatarZ - pickup.Position.Z;
-            if ((dx * dx) + (dz * dz) <= (FoodPickupRadius * 1.5) * (FoodPickupRadius * 1.5))
+            var distanceSq = DistanceSquared(_avatarX, _avatarZ, pickup.Position.X, pickup.Position.Z);
+            if (distanceSq < nearestFoodDistanceSq)
             {
-                pickup.Active = false;
-                pickup.Transform.OffsetY = -999;
-                _foodConsumed++;
-                _storedEnergyJoules = Math.Clamp(
-                    _storedEnergyJoules + (NominalStoredEnergyJoules * 0.35),
-                    0.0,
-                    NominalStoredEnergyJoules);
-                _foodPickups[i] = pickup;
+                nearestFoodDistanceSq = distanceSq;
+                nearestFoodIndex = i;
             }
         }
 
         for (var i = 0; i < _weaponPickups.Count; i++)
         {
             var pickup = _weaponPickups[i];
-            if (!pickup.Active)
+            if (!pickup.Active || !AvatarPhysicalInteraction.IsWithinEffectorCone(
+                    _avatarX,
+                    _avatarZ,
+                    _avatarHeadingDeg,
+                    pickup.Position.X,
+                    pickup.Position.Z,
+                    ManipulatorReach,
+                    ManipulatorHalfAngleDeg))
             {
                 continue;
             }
 
-            var dx = _avatarX - pickup.Position.X;
-            var dz = _avatarZ - pickup.Position.Z;
-            if ((dx * dx) + (dz * dz) <= (WeaponPickupRadius * 1.5) * (WeaponPickupRadius * 1.5))
+            var distanceSq = DistanceSquared(_avatarX, _avatarZ, pickup.Position.X, pickup.Position.Z);
+            if (distanceSq < nearestWeaponDistanceSq)
             {
-                pickup.Active = false;
-                pickup.Transform.OffsetY = -999;
-                if (pickup.RangeProfile == WeaponRangeProfile.Long)
-                {
-                    _longWeaponCharges = Math.Min(3, _longWeaponCharges + 1);
-                }
-                else
-                {
-                    _shortWeaponCharges = Math.Min(3, _shortWeaponCharges + 1);
-                }
-                UpdateWeaponChargeCache();
-                _weaponPickups[i] = pickup;
+                nearestWeaponDistanceSq = distanceSq;
+                nearestWeaponIndex = i;
             }
         }
+
+        if (nearestFoodIndex < 0 && nearestWeaponIndex < 0)
+        {
+            return false;
+        }
+
+        if (nearestFoodIndex >= 0 && nearestFoodDistanceSq <= nearestWeaponDistanceSq)
+        {
+            var pickup = _foodPickups[nearestFoodIndex];
+            pickup.Active = false;
+            pickup.Transform.OffsetY = -999;
+            _foodConsumed++;
+            _storedEnergyJoules = Math.Clamp(
+                _storedEnergyJoules + (NominalStoredEnergyJoules * 0.35),
+                0.0,
+                NominalStoredEnergyJoules);
+            _foodPickups[nearestFoodIndex] = pickup;
+            QueueManipulatorContact(45.0, 2.5, 700.0);
+            return true;
+        }
+
+        var weapon = _weaponPickups[nearestWeaponIndex];
+        weapon.Active = false;
+        weapon.Transform.OffsetY = -999;
+        if (weapon.RangeProfile == WeaponRangeProfile.Long)
+        {
+            _longWeaponCharges = Math.Min(3, _longWeaponCharges + 1);
+        }
+        else
+        {
+            _shortWeaponCharges = Math.Min(3, _shortWeaponCharges + 1);
+        }
+
+        _weaponPickupsCollected++;
+        UpdateWeaponChargeCache();
+        _weaponPickups[nearestWeaponIndex] = weapon;
+        QueueManipulatorContact(70.0, 3.5, 850.0);
+        return true;
+    }
+
+    private bool TryDrinkNearbyWater()
+    {
+        if (_hydrationFraction >= 0.995 || EstimateWaterAuditoryProximity(ManipulatorReach) <= 0.0)
+        {
+            return false;
+        }
+
+        _hydrationFraction = Math.Clamp(_hydrationFraction + 0.38, 0.0, 1.0);
+        _waterInteractions++;
+        QueueManipulatorContact(22.0, 1.2, 1_450.0);
+        return true;
+    }
+
+    private bool TryDischargeCarriedDevice()
+    {
+        var profile = GetActiveWeaponRangeProfile();
+        if (profile == WeaponRangeProfile.None || _predators.Count == 0)
+        {
+            return false;
+        }
+
+        var range = profile == WeaponRangeProfile.Long ? LongWeaponRange : ShortWeaponRange;
+        var halfAngle = profile == WeaponRangeProfile.Long ? LongWeaponHalfAngleDeg : ShortWeaponHalfAngleDeg;
+        var selectedIndex = -1;
+        var selectedDistanceSq = double.MaxValue;
+        for (var i = 0; i < _predators.Count; i++)
+        {
+            var predator = _predators[i];
+            if (!AvatarPhysicalInteraction.IsWithinEffectorCone(
+                    _avatarX,
+                    _avatarZ,
+                    _avatarHeadingDeg,
+                    predator.Position.X,
+                    predator.Position.Z,
+                    range,
+                    halfAngle) ||
+                HasBlockingSegment(_avatarX, _avatarZ, predator.Position.X, predator.Position.Z, 0.30))
+            {
+                continue;
+            }
+
+            var distanceSq = DistanceSquared(_avatarX, _avatarZ, predator.Position.X, predator.Position.Z);
+            if (distanceSq < selectedDistanceSq)
+            {
+                selectedDistanceSq = distanceSq;
+                selectedIndex = i;
+            }
+        }
+
+        if (selectedIndex < 0)
+        {
+            return false;
+        }
+
+        if (profile == WeaponRangeProfile.Long)
+        {
+            _longWeaponCharges--;
+        }
+        else
+        {
+            _shortWeaponCharges--;
+        }
+
+        UpdateWeaponChargeCache();
+        var target = _predators[selectedIndex];
+        target.Transform.OffsetY = -999;
+        target.ThreatTranslate.OffsetY = -999;
+        target.PathModel.Transform = new TranslateTransform3D(0.0, -999.0, 0.0);
+        _predators.RemoveAt(selectedIndex);
+        _predatorsNeutralized++;
+        QueueManipulatorContact(320.0, 18.0, 620.0);
+        return true;
+    }
+
+    private void QueueManipulatorContact(double forceNewtons, double impulseNewtonSeconds, double contactAreaSquareMillimeters)
+    {
+        QueuePhysicalContact(new PendingPhysicalContact(
+            BodyPositionX: 0.22f,
+            BodyPositionY: 0.48f,
+            BodyPositionZ: 0.58f,
+            SurfaceNormalX: 0f,
+            SurfaceNormalY: 0f,
+            SurfaceNormalZ: -1f,
+            ForceNewtons: (float)forceNewtons,
+            ImpulseNewtonSeconds: (float)impulseNewtonSeconds,
+            PenetrationMillimeters: 0.8f,
+            TangentialSpeedMetersPerSecond: 0f,
+            ContactAreaSquareMillimeters: (float)contactAreaSquareMillimeters,
+            DurationMilliseconds: ManipulatorCycleMs,
+            InputSource: "avatar_world_manipulator_contact"));
+    }
+
+    private void QueuePredatorContact(long nowMs)
+    {
+        if ((nowMs - _lastPredatorContactMs) < 180)
+        {
+            return;
+        }
+
+        _lastPredatorContactMs = nowMs;
+        QueuePhysicalContact(new PendingPhysicalContact(
+            BodyPositionX: 0f,
+            BodyPositionY: 0.32f,
+            BodyPositionZ: 0.18f,
+            SurfaceNormalX: 0f,
+            SurfaceNormalY: 0f,
+            SurfaceNormalZ: -1f,
+            ForceNewtons: (float)(1_900.0 * _predatorSpeedScale),
+            ImpulseNewtonSeconds: (float)(85.0 * _predatorSpeedScale),
+            PenetrationMillimeters: 9f,
+            TangentialSpeedMetersPerSecond: (float)(1.10 * _predatorSpeedScale),
+            ContactAreaSquareMillimeters: 2_400f,
+            DurationMilliseconds: 180f,
+            InputSource: "avatar_world_external_contact"));
+    }
+
+    private void QueuePhysicalContact(PendingPhysicalContact contact)
+    {
+        if (_pendingPhysicalContacts.Count >= 8)
+        {
+            _pendingPhysicalContacts.Dequeue();
+        }
+
+        _pendingPhysicalContacts.Enqueue(contact);
     }
 
     private void UpdateWeaponChargeCache()
@@ -3044,6 +3332,7 @@ public partial class MainWindow : Window
             if (result.Accepted && result.TargetInstances > 0)
             {
                 RegisterOptionalBrainInputSuccess("environment audio");
+                _cochlearFramesAccepted++;
                 return true;
             }
 
@@ -3313,7 +3602,7 @@ public partial class MainWindow : Window
         var displayPixels = ApplyAvatarPreviewEyelidOverlay(frame.Pixels, frame.Width, frame.Height, frame.Stride);
         _avatarPreviewBitmap!.WritePixels(rect, displayPixels, frame.Stride, 0);
         UpdateAvatarPreviewInfo(frame, lagMs, isStale);
-        if (!isStale)
+        if (lagMs <= VisionBrainInputMaxLagMs)
         {
             _avatarService.PostSightInputFrame(frame.SightFrame);
         }
@@ -3424,8 +3713,8 @@ public partial class MainWindow : Window
 
         var nowMs = Environment.TickCount64;
         var lagMs = Math.Max(0, nowMs - frame.CaptureTimestampMs);
-        var isStale = lagMs > VisionPreviewMaxLagMs;
-        if (isStale ||
+        var isTooOldForBrain = lagMs > VisionBrainInputMaxLagMs;
+        if (isTooOldForBrain ||
             _visionDispatchBackoff.IsBlocked(nowMs))
         {
             return;
@@ -3482,6 +3771,7 @@ public partial class MainWindow : Window
 
             _visionDispatchBackoff.Reset();
             RegisterOptionalBrainInputSuccess("avatar vision");
+            _retinalFramesAccepted++;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -4137,7 +4427,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0.0;
         _avatarHeadYawDeg = 0.0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0.0, 0, 0, 0));
         var spawnRetryBaseline = _spawnValidationRetries;
 
         if (!TryGetTerrainTopY(_avatarX, _avatarZ, out var terrainY))
@@ -4585,6 +4875,22 @@ public partial class MainWindow : Window
 
     private void ApplyMotorDispatch(IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
+        for (var i = 0; i < dispatches.Count; i++)
+        {
+            if (AvatarMotorCatalog.IsMotorStructure(dispatches[i].SourceStructure))
+            {
+                _neuronalMotorDispatchTotal++;
+                if (AvatarEffectorCatalog.IsManipulatorEvent(dispatches[i]))
+                {
+                    _neuronalManipulatorDispatchTotal++;
+                }
+                else if (AvatarMotorCatalog.IsLocomotorPopulationEvent(dispatches[i]))
+                {
+                    _neuronalLocomotorDispatchTotal++;
+                }
+            }
+        }
+
         _avatarService.PostBrainSignals(dispatches);
     }
 
@@ -4592,6 +4898,7 @@ public partial class MainWindow : Window
     {
         _leftMotorDrive = signal.LeftMotorDrive;
         _rightMotorDrive = signal.RightMotorDrive;
+        _manipulatorDrive = signal.ManipulatorDrive;
         _lastMotorDispatchCount = signal.MotorEvents;
         _ticksWithoutMotorDispatch = signal.TicksWithoutMotorDispatch;
     }
@@ -4610,6 +4917,7 @@ public partial class MainWindow : Window
             var signal = _avatarService.LatestSignal;
             _leftMotorDrive = signal.LeftMotorDrive;
             _rightMotorDrive = signal.RightMotorDrive;
+            _manipulatorDrive = signal.ManipulatorDrive;
             _lastMotorDispatchCount = signal.MotorEvents;
             _ticksWithoutMotorDispatch = signal.TicksWithoutMotorDispatch;
         }
@@ -4657,6 +4965,35 @@ public partial class MainWindow : Window
 
             var contactPulse = Math.Clamp(_collisionPulse, 0.0, 1.0);
             var probeTotal = _lastFrontProximity + _lastLeftProximity + _lastRightProximity;
+            while (_pendingPhysicalContacts.Count > 0)
+            {
+                var pending = _pendingPhysicalContacts.Dequeue();
+                var pendingResult = await AvatarControlApi.PostSomaticContactFrameAsync(
+                    _sensoryInputHttpClient,
+                    endpoint,
+                    new SomaticContactFrameRequest(
+                        Sequence: Interlocked.Increment(ref _somaticContactFrameSequence),
+                        TimestampMs: nowMs,
+                        BodyPositionX: pending.BodyPositionX,
+                        BodyPositionY: pending.BodyPositionY,
+                        BodyPositionZ: pending.BodyPositionZ,
+                        SurfaceNormalX: pending.SurfaceNormalX,
+                        SurfaceNormalY: pending.SurfaceNormalY,
+                        SurfaceNormalZ: pending.SurfaceNormalZ,
+                        ForceNewtons: pending.ForceNewtons,
+                        ImpulseNewtonSeconds: pending.ImpulseNewtonSeconds,
+                        PenetrationMillimeters: pending.PenetrationMillimeters,
+                        TangentialSpeedMetersPerSecond: pending.TangentialSpeedMetersPerSecond,
+                        ContactAreaSquareMillimeters: pending.ContactAreaSquareMillimeters,
+                        DurationMilliseconds: pending.DurationMilliseconds,
+                        InputSource: pending.InputSource),
+                    token);
+                if (pendingResult.Accepted && pendingResult.TargetInstances > 0)
+                {
+                    _somaticFramesAccepted++;
+                }
+            }
+
             if (contactPulse > 0.01)
             {
                 var localX = probeTotal > 0.001
@@ -4666,7 +5003,7 @@ public partial class MainWindow : Window
                 var directionLength = Math.Max(0.001, Math.Sqrt((localX * localX) + (localZ * localZ)));
                 localX /= directionLength;
                 localZ /= directionLength;
-                await AvatarControlApi.PostSomaticContactFrameAsync(
+                var collisionResult = await AvatarControlApi.PostSomaticContactFrameAsync(
                     _sensoryInputHttpClient,
                     endpoint,
                     new SomaticContactFrameRequest(
@@ -4686,9 +5023,13 @@ public partial class MainWindow : Window
                         DurationMilliseconds: BodyFrameDispatchIntervalMs,
                         InputSource: "avatar_world_contact"),
                     token);
+                if (collisionResult.Accepted && collisionResult.TargetInstances > 0)
+                {
+                    _somaticFramesAccepted++;
+                }
             }
 
-            await AvatarControlApi.PostSomaticContactFrameAsync(
+            var groundResult = await AvatarControlApi.PostSomaticContactFrameAsync(
                 _sensoryInputHttpClient,
                 endpoint,
                 new SomaticContactFrameRequest(
@@ -4708,10 +5049,14 @@ public partial class MainWindow : Window
                     DurationMilliseconds: BodyFrameDispatchIntervalMs,
                     InputSource: "avatar_world_ground"),
                 token);
+            if (groundResult.Accepted && groundResult.TargetInstances > 0)
+            {
+                _somaticFramesAccepted++;
+            }
 
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(BodyFrameDispatchTimeoutMs));
-            await AvatarControlApi.PostPhysicalBodyFrameAsync(
+            var bodyResult = await AvatarControlApi.PostPhysicalBodyFrameAsync(
                 _sensoryInputHttpClient,
                 endpoint,
                 new PhysicalBodyFrameRequest(
@@ -4727,9 +5072,13 @@ public partial class MainWindow : Window
                     TissueIntegrityFraction: (float)Math.Clamp(_tissueIntegrity, 0.0, 1.0),
                     CoreTemperatureCelsius: 37f,
                     BloodOxygenSaturationFraction: 0.98f,
-                    HydrationFraction: 0.75f,
+                    HydrationFraction: (float)_hydrationFraction,
                     InputSource: AvatarRuntimeDefaults.UnifiedBodyInputSource),
                 timeout.Token);
+            if (bodyResult.Accepted && bodyResult.TargetInstances > 0)
+            {
+                _physicalBodyFramesAccepted++;
+            }
             RegisterOptionalBrainInputSuccess("physical body frame");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -5880,6 +6229,104 @@ public partial class MainWindow : Window
         _lastEndpointMessage = text;
     }
 
+    private static string ResolveRuntimeStatePath()
+    {
+        var configured = Environment.GetEnvironmentVariable("NRE_WORLDSIM_STATE_PATH");
+        return string.IsNullOrWhiteSpace(configured)
+            ? Path.Combine(RuntimeLogDirectory, "worldsim-state.json")
+            : Path.GetFullPath(configured.Trim());
+    }
+
+    private void QueueRuntimeStateSnapshot(bool running)
+    {
+        if (Interlocked.Exchange(ref _runtimeStateWriteInFlight, 1) != 0)
+        {
+            return;
+        }
+
+        var snapshot = CreateRuntimeStateSnapshot(running);
+        _runtimeStateWriteTask = Task.Run(() =>
+        {
+            try
+            {
+                WriteRuntimeState(snapshot);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _runtimeStateWriteInFlight, 0);
+            }
+        });
+    }
+
+    private WorldSimulationStatus CreateRuntimeStateSnapshot(bool running)
+    {
+        var generatedUtc = DateTimeOffset.UtcNow;
+        var telemetryAgeSeconds = _lastTelemetrySuccessUtc == DateTime.MinValue
+            ? double.MaxValue
+            : Math.Max(0.0, (DateTime.UtcNow - _lastTelemetrySuccessUtc).TotalSeconds);
+        return new WorldSimulationStatus(
+            ProtocolVersion: "dnne.worldsim.state.v1",
+            SessionId: _runtimeSessionId,
+            ProcessId: Environment.ProcessId,
+            Running: running,
+            WorldReady: _heights is not null,
+            GeneratedUtc: generatedUtc,
+            SessionStartedUtc: _runtimeSessionStartedUtc,
+            ElapsedSeconds: Math.Max(0.0, (generatedUtc - _runtimeSessionStartedUtc).TotalSeconds),
+            ControlEndpoint: GetSelectedEndpoint(),
+            BrainConnected: telemetryAgeSeconds <= 5.0,
+            TelemetryAgeSeconds: telemetryAgeSeconds,
+            Seed: _seed,
+            AvatarX: _avatarX,
+            AvatarY: _avatarY,
+            AvatarZ: _avatarZ,
+            AvatarHeadingDeg: _avatarHeadingDeg,
+            DistanceTravelled: _distanceTravelled,
+            VisitedTerrainCells: _visitedTerrainCells.Count,
+            ExplorableTerrainCells: _explorableTerrainCells,
+            NeuronalMotorDispatchTotal: _neuronalMotorDispatchTotal,
+            NeuronalLocomotorDispatchTotal: _neuronalLocomotorDispatchTotal,
+            NeuronalManipulatorDispatchTotal: _neuronalManipulatorDispatchTotal,
+            LeftMotorDrive: _leftMotorDrive,
+            RightMotorDrive: _rightMotorDrive,
+            ManipulatorDrive: _manipulatorDrive,
+            InteractionAttempts: _interactionAttempts,
+            InteractionSuccesses: _interactionSuccesses,
+            RetinalFramesAccepted: _retinalFramesAccepted,
+            CochlearFramesAccepted: _cochlearFramesAccepted,
+            PhysicalBodyFramesAccepted: _physicalBodyFramesAccepted,
+            SomaticFramesAccepted: _somaticFramesAccepted,
+            FoodConsumed: _foodConsumed,
+            WeaponPickupsCollected: _weaponPickupsCollected,
+            WeaponCharges: _weaponCharges,
+            WaterInteractions: _waterInteractions,
+            PredatorsActive: _predators.Count,
+            PredatorsNeutralized: _predatorsNeutralized,
+            StoredEnergyJoules: _storedEnergyJoules,
+            TissueIntegrityFraction: _tissueIntegrity,
+            HydrationFraction: _hydrationFraction,
+            InShelter: IsInShelter(),
+            NeuronalSleep: _sleepState,
+            CollisionHits: _collisionHits,
+            TickFailures: _tickFailures);
+    }
+
+    private static void WriteRuntimeState(WorldSimulationStatus snapshot)
+    {
+        var directory = Path.GetDirectoryName(RuntimeStatePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var temporaryPath = $"{RuntimeStatePath}.{Environment.ProcessId}.tmp";
+        File.WriteAllText(
+            temporaryPath,
+            JsonSerializer.Serialize(snapshot, RuntimeStateJsonOptions),
+            Encoding.UTF8);
+        File.Move(temporaryPath, RuntimeStatePath, overwrite: true);
+    }
+
     private void InitializeRuntimeLogFile()
     {
         lock (_runtimeLogSync)
@@ -5928,6 +6375,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _tickFailures++;
             AppendRuntimeLogLine($"[{DateTime.Now:HH:mm:ss}] Tick failure ({description}): {ex.GetType().Name}: {ex.Message}");
         }
     }
@@ -6586,6 +7034,67 @@ public partial class MainWindow : Window
 
     private readonly record struct CaveAnchor(double X, double Y, double Z);
     private readonly record struct ShelterSite(double X, double BaseY, double Z, double Radius);
+    private readonly record struct PendingPhysicalContact(
+        float BodyPositionX,
+        float BodyPositionY,
+        float BodyPositionZ,
+        float SurfaceNormalX,
+        float SurfaceNormalY,
+        float SurfaceNormalZ,
+        float ForceNewtons,
+        float ImpulseNewtonSeconds,
+        float PenetrationMillimeters,
+        float TangentialSpeedMetersPerSecond,
+        float ContactAreaSquareMillimeters,
+        float DurationMilliseconds,
+        string InputSource);
+
+    private sealed record WorldSimulationStatus(
+        string ProtocolVersion,
+        string SessionId,
+        int ProcessId,
+        bool Running,
+        bool WorldReady,
+        DateTimeOffset GeneratedUtc,
+        DateTimeOffset SessionStartedUtc,
+        double ElapsedSeconds,
+        string ControlEndpoint,
+        bool BrainConnected,
+        double TelemetryAgeSeconds,
+        int Seed,
+        double AvatarX,
+        double AvatarY,
+        double AvatarZ,
+        double AvatarHeadingDeg,
+        double DistanceTravelled,
+        int VisitedTerrainCells,
+        int ExplorableTerrainCells,
+        long NeuronalMotorDispatchTotal,
+        long NeuronalLocomotorDispatchTotal,
+        long NeuronalManipulatorDispatchTotal,
+        double LeftMotorDrive,
+        double RightMotorDrive,
+        double ManipulatorDrive,
+        long InteractionAttempts,
+        long InteractionSuccesses,
+        long RetinalFramesAccepted,
+        long CochlearFramesAccepted,
+        long PhysicalBodyFramesAccepted,
+        long SomaticFramesAccepted,
+        int FoodConsumed,
+        int WeaponPickupsCollected,
+        int WeaponCharges,
+        int WaterInteractions,
+        int PredatorsActive,
+        int PredatorsNeutralized,
+        double StoredEnergyJoules,
+        double TissueIntegrityFraction,
+        double HydrationFraction,
+        bool InShelter,
+        bool NeuronalSleep,
+        int CollisionHits,
+        long TickFailures);
+
     private readonly record struct CollisionBox(
         double MinX,
         double MaxX,

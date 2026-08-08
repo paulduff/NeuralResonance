@@ -124,6 +124,44 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
+    public void FifthActionLaneProducesManipulatorDriveWithoutLocomotion()
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Concat(CreateActionCircuit(NeuronalActionSelectionDecoder.ManipulatorChannel))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.True(runtime.Active);
+        Assert.Equal(NeuronalActionSelectionDecoder.ManipulatorChannel, runtime.SelectedActionChannel);
+        Assert.True(runtime.ManipulatorDrive > 0.10);
+        Assert.Equal(0.0, runtime.ForwardDrive, 6);
+        Assert.Equal(0.0, runtime.TurnDrive, 6);
+    }
+
+    [Fact]
+    public void NeuronalBridgeAddsManipulatorEffectorPopulation()
+    {
+        var state = CreateAvatarState(
+            active: true,
+            tick: 13,
+            confidence: 0.8,
+            left: 0.0,
+            right: 0.0,
+            manipulator: 0.75);
+
+        var composed = AvatarNeuronalMotorBridge.Compose(state, [], -1, out _, out var decoded);
+
+        Assert.Equal(0.75, decoded.ManipulatorDrive, 6);
+        Assert.Contains(
+            composed,
+            spike => spike.SourceNeuronId.StartsWith("effector:manipulator:excitatory:", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            composed,
+            spike => spike.SourceNeuronId.StartsWith("population:", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void NeuronalBridgeRemovesAllSemanticMotorAndToolSignals()
     {
         var state = CreateAvatarState(active: true, tick: 18, confidence: 0.9, left: 0.6, right: 0.6);
@@ -253,7 +291,8 @@ public sealed class NeuronalMotorControlTests
         float rate,
         BasalGangliaDiagnostics? basalGanglia = null,
         CerebellarDiagnostics? cerebellar = null,
-        VestibuloReticularDiagnostics? postural = null)
+        VestibuloReticularDiagnostics? postural = null,
+        ActionSelectionDiagnostics? actionSelection = null)
     {
         var instance = new ServiceInstance(
             structure,
@@ -273,7 +312,54 @@ public sealed class NeuronalMotorControlTests
             FeedbackQueueDepth: 0,
             BasalGangliaDiagnostics: basalGanglia,
             CerebellarDiagnostics: cerebellar,
-            VestibuloReticularDiagnostics: postural);
+            VestibuloReticularDiagnostics: postural,
+            ActionSelectionDiagnostics: actionSelection);
+    }
+
+    private static IReadOnlyList<InstanceStructureSnapshot> CreateActionCircuit(int selectedChannel)
+    {
+        var structures = new[]
+        {
+            StructureId.Pfc,
+            StructureId.Acc,
+            StructureId.PremotorCortex,
+            StructureId.Sma,
+            StructureId.Striatum,
+            StructureId.Stn,
+            StructureId.GPi,
+            StructureId.Snr,
+            StructureId.MotorThalamus
+        };
+        var channels = Enumerable.Range(0, NeuronalActionSelectionDecoder.ChannelCount)
+            .Select(channel =>
+            {
+                var selected = channel == selectedChannel;
+                return new ActionChannelActivity(
+                    channel,
+                    ProposalDrive: selected ? 0.90f : 0.05f,
+                    DirectPathwayActivation: selected ? 0.90f : 0.10f,
+                    IndirectPathwayActivation: selected ? 0.05f : 0.40f,
+                    HyperdirectSuppression: selected ? 0.04f : 0.35f,
+                    OutputNucleusInhibition: selected ? 0.04f : 0.70f,
+                    ThalamicRelayActivation: selected ? 0.85f : 0.05f,
+                    EligibilityTrace: selected ? 0.35f : 0f,
+                    LearnedSynapticStrength: selected ? 2.8f : 0.8f,
+                    SelectionScore: 0f);
+            })
+            .ToArray();
+
+        return structures
+            .Select(structure => Snapshot(
+                structure,
+                "M",
+                12.0f,
+                actionSelection: new ActionSelectionDiagnostics(
+                    structure,
+                    channels,
+                    selectedChannel,
+                    SelectionMargin: 0.5f,
+                    DopamineModulation: 0.6f)))
+            .ToArray();
     }
 
     private static JsonElement CreateAvatarState(
@@ -281,7 +367,8 @@ public sealed class NeuronalMotorControlTests
         long tick,
         double confidence,
         double left,
-        double right)
+        double right,
+        double manipulator = 0.0)
         => JsonSerializer.SerializeToElement(new
         {
             neuronalMotor = new
@@ -292,6 +379,7 @@ public sealed class NeuronalMotorControlTests
                 sequence = tick,
                 leftDrive = left,
                 rightDrive = right,
+                manipulatorDrive = manipulator,
                 confidence,
                 minimumOutputConfidence = 0.45,
                 maxPopulationEventsPerSide = 8

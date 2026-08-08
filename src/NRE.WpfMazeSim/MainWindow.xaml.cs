@@ -1568,7 +1568,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0;
         _avatarHeadYawDeg = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0.0, 0, 0, 0));
         _avatarTranslate.OffsetX = _avatarX;
         _avatarTranslate.OffsetY = AvatarRadius + 0.04;
         _avatarTranslate.OffsetZ = _avatarZ;
@@ -2328,7 +2328,7 @@ public partial class MainWindow : Window
         _avatarHeadingDeg = 0;
         _avatarHeadYawDeg = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0.0, 0, 0, 0));
         _avatarTranslate.OffsetX = _avatarX;
         _avatarTranslate.OffsetY = AvatarRadius + 0.04;
         _avatarTranslate.OffsetZ = _avatarZ;
@@ -2385,7 +2385,7 @@ public partial class MainWindow : Window
         _lastNeuronalMotorTick = -1;
         _lastTick = 0;
         _avatarService.PostResetMotor();
-        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
+        ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0.0, 0, 0, 0));
         SetConnectionStatus(AvatarControlStatusText.Reconnecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         Log("Connection cursor reset. Polling frame stream from dispatch origin.");
     }

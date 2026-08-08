@@ -54,7 +54,30 @@ public sealed class AvatarServiceTests
 
         Assert.Equal(expected.ForwardSpeed, output.Movement.ForwardSpeed, 12);
         Assert.Equal(expected.TurnRateDeg, output.Movement.TurnRateDeg, 12);
+        Assert.Equal(0.0, output.Interaction.ManipulatorDrive);
         Assert.Equal("avatar_action", output.OutputSource);
+    }
+
+    [Fact]
+    public void ActionOutputCarriesOnlyNeuronalManipulatorDrive()
+    {
+        using var service = CreateService();
+        service.PostBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor",
+                "M",
+                100,
+                "effector:manipulator:excitatory:1:0")
+        ]);
+
+        var signal = WaitForSignal(service, static item => item.ManipulatorEvents == 1);
+        var output = service.PublishActionOutput();
+
+        Assert.True(signal.ManipulatorDrive > 0.0);
+        Assert.True(output.Interaction.ManipulatorDrive > 0.0);
+        Assert.Equal(0.0, output.Movement.ForwardSpeed);
+        Assert.Equal(0.0, output.Movement.TurnRateDeg);
     }
 
     [Fact]
@@ -135,7 +158,7 @@ public sealed class AvatarServiceTests
         Assert.Null(typeof(AvatarService).GetMethod("PostPlaceObservations"));
         Assert.Null(typeof(AvatarService).GetProperty("CurrentSelfDiagnostics"));
         Assert.Equal(
-            ["Movement", "EmittedUnixMs", "OutputSource"],
+            ["Movement", "Interaction", "EmittedUnixMs", "OutputSource"],
             typeof(AvatarActionOutput).GetProperties().Select(static property => property.Name).ToArray());
     }
 

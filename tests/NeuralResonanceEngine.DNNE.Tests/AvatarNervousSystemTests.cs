@@ -94,6 +94,20 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
+    public void LocomotorAndManipulatorPopulationEventsRemainDistinct()
+    {
+        var locomotor = new AvatarDispatchSpike(
+            "SpinalCordMotor", "L", 100, "population:l:excitatory:4:0");
+        var manipulator = new AvatarDispatchSpike(
+            "SpinalCordMotor", "M", 101, "effector:manipulator:excitatory:4:0");
+
+        Assert.True(AvatarMotorCatalog.IsLocomotorPopulationEvent(locomotor));
+        Assert.False(AvatarEffectorCatalog.IsManipulatorEvent(locomotor));
+        Assert.False(AvatarMotorCatalog.IsLocomotorPopulationEvent(manipulator));
+        Assert.True(AvatarEffectorCatalog.IsManipulatorEvent(manipulator));
+    }
+
+    [Fact]
     public void PeripheralMotorLayerHasNoBodyStateOrSemanticActionContract()
     {
         var assembly = typeof(AvatarNervousSystem).Assembly;
@@ -103,7 +117,7 @@ public sealed class AvatarNervousSystemTests
             ["Kinematics", "DriveDecay"],
             typeof(AvatarNervousSystemOptions).GetProperties().Select(static property => property.Name).ToArray());
         Assert.Equal(
-            ["LeftMotorDrive", "RightMotorDrive", "MotorEvents", "TicksWithoutMotorDispatch"],
+            ["LeftMotorDrive", "RightMotorDrive", "ManipulatorDrive", "MotorEvents", "ManipulatorEvents", "TicksWithoutMotorDispatch"],
             typeof(AvatarNervousSystemSignal).GetProperties().Select(static property => property.Name).ToArray());
     }
 

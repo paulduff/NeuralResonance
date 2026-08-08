@@ -21,12 +21,13 @@ internal sealed record NeuronalActionDecision(
         0.0,
         0.0,
         1.0,
-        [0.0, 0.0, 0.0, 0.0]);
+        [0.0, 0.0, 0.0, 0.0, 0.0]);
 }
 
 internal static class NeuronalActionSelectionDecoder
 {
-    private const int ChannelCount = 4;
+    internal const int ChannelCount = 5;
+    internal const int ManipulatorChannel = 4;
 
     public static NeuronalActionDecision Decode(IReadOnlyList<InstanceStructureSnapshot> snapshots)
     {
@@ -145,6 +146,7 @@ internal static class NeuronalActionSelectionDecoder
             1 => (left * 0.18, right),
             2 => (left, right * 0.18),
             3 => (-magnitude, -magnitude),
+            ManipulatorChannel => (0.0, 0.0),
             _ => (0.0, 0.0)
         };
     }

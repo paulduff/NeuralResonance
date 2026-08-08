@@ -2,7 +2,10 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class ActionChannelTopology
 {
-	public const int ChannelCount = 4;
+	// Four locomotor lanes plus one general physical manipulator lane. The fifth
+	// lane remains an unlabeled neuronal population throughout the brain; only
+	// the body boundary maps it onto an effector.
+	public const int ChannelCount = 5;
 
 	public static bool IsActionCircuitStructure(StructureId structure)
 		=> structure is StructureId.Pfc

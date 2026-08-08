@@ -23,14 +23,17 @@ is reported as `PREFLIGHT_PASS_LIVE_REQUIRED`; it never sets
 
 ## Live Gate
 
-`-Mode Live` expects the real DNNE stack and rendered maze to be running. It
-requires a healthy runtime validation followed by the existing burn-in monitor.
-In addition to the burn-in's service, snapshot, sensory, restart, and stuck
-checks, qualification requires:
+Protocol v2 replaces the maze gate with the visible rendered WorldSim. `-Mode
+Live` requires a healthy DNNE runtime, starts WorldSim when it is not already
+running, and monitors WorldSim's atomic physical-state stream. Qualification
+requires:
 
-- the maze stream to be observed;
+- one uninterrupted WorldSim session with fresh Control Program telemetry;
 - numeric neuronal motor dispatches to reach the avatar;
-- embodied maze progress to be recorded.
+- actual displacement or newly visited terrain;
+- fresh raw retinal, cochlear, physical-body, and somatic frames;
+- at least one neuronal manipulator attempt;
+- no new WorldSim tick failures.
 
 Only a run passing both preflight and those live checks sets
 `embodiedQualified=true`. The harness reads observations and writes evidence; it
@@ -45,12 +48,15 @@ Laptop preflight:
 powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\User\source\repos\Folded Archive\NeuralResonanceEngine.DNN\tools\run-neuronal-only-qualification.ps1" -Mode Preflight
 ```
 
-With the DNNE stack and visible maze already running:
+With the DNNE stack running (WorldSim is started visibly if necessary):
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\User\source\repos\Folded Archive\NeuralResonanceEngine.DNN\tools\run-neuronal-only-qualification.ps1" -Mode Live -LiveDurationSec 300
 ```
 
 Artifacts are written beneath `artifacts/neuronal-only-qualification/<UTC
-stamp>/`. Short laptop runs are development evidence. Longer multi-seed runs on
-the RTX workstation remain necessary for promotion-quality claims.
+stamp>/`. WorldSim remains visible after the gate so the run can be observed.
+Short laptop runs are development evidence. Longer multi-seed runs on the RTX
+workstation remain necessary for promotion-quality claims. MazeSim remains a
+focused navigation diagnostic and is no longer evidence for the complete
+embodied qualification gate.

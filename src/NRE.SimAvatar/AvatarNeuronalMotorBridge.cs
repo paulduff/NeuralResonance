@@ -8,6 +8,7 @@ public sealed record AvatarNeuronalMotorState(
     long Sequence,
     double LeftDrive,
     double RightDrive,
+    double ManipulatorDrive,
     double Confidence,
     double MinimumOutputConfidence,
     int MaxPopulationEventsPerSide)
@@ -18,6 +19,7 @@ public sealed record AvatarNeuronalMotorState(
         Sequence: 0,
         LeftDrive: 0.0,
         RightDrive: 0.0,
+        ManipulatorDrive: 0.0,
         Confidence: 0.0,
         MinimumOutputConfidence: 1.0,
         MaxPopulationEventsPerSide: 12);
@@ -52,6 +54,7 @@ public static class AvatarNeuronalMotorBridge
         nextNeuronalTick = neuronalState.Tick;
         AppendPopulationEvents(result, neuronalState, "L", neuronalState.LeftDrive);
         AppendPopulationEvents(result, neuronalState, "R", neuronalState.RightDrive);
+        AppendManipulatorEvents(result, neuronalState);
         return result;
     }
 
@@ -69,6 +72,7 @@ public static class AvatarNeuronalMotorBridge
             Sequence: Math.Max(0, AvatarJson.GetLong(motor, "sequence")),
             LeftDrive: Math.Clamp(AvatarJson.GetDouble(motor, "leftDrive"), -1.0, 1.0),
             RightDrive: Math.Clamp(AvatarJson.GetDouble(motor, "rightDrive"), -1.0, 1.0),
+            ManipulatorDrive: Math.Clamp(AvatarJson.GetDouble(motor, "manipulatorDrive"), 0.0, 1.0),
             Confidence: Math.Clamp(AvatarJson.GetDouble(motor, "confidence"), 0.0, 1.0),
             MinimumOutputConfidence: Math.Clamp(AvatarJson.GetDouble(motor, "minimumOutputConfidence"), 0.0, 1.0),
             MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64));
@@ -115,6 +119,31 @@ public static class AvatarNeuronalMotorBridge
                 SourceHemisphere: hemisphere,
                 WallClockUnixMs: wallClockMs,
                 SourceNeuronId: $"population:{hemisphere.ToLowerInvariant()}:{polarity}:{state.Tick}:{i}"));
+        }
+    }
+
+    private static void AppendManipulatorEvents(
+        List<AvatarDispatchSpike> output,
+        AvatarNeuronalMotorState state)
+    {
+        var magnitude = Math.Clamp(state.ManipulatorDrive, 0.0, 1.0);
+        if (magnitude < 0.01)
+        {
+            return;
+        }
+
+        var eventCount = Math.Clamp(
+            (int)Math.Round(magnitude * state.MaxPopulationEventsPerSide, MidpointRounding.AwayFromZero),
+            1,
+            state.MaxPopulationEventsPerSide);
+        var wallClockMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        for (var i = 0; i < eventCount; i++)
+        {
+            output.Add(new AvatarDispatchSpike(
+                SourceStructure: "SpinalCordMotor",
+                SourceHemisphere: "M",
+                WallClockUnixMs: wallClockMs,
+                SourceNeuronId: $"effector:manipulator:excitatory:{state.Tick}:{i}"));
         }
     }
 }

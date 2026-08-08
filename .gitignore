@@ -28,3 +28,6 @@ tmp_control_*.log
 # User launch settings
 *.slnLaunch.user
 *.csproj.user
+# Visual Studio generates random per-project launch profiles for structure
+# services. Runtime orchestration supplies the authoritative ports instead.
+Structures/*/Properties/launchSettings.json

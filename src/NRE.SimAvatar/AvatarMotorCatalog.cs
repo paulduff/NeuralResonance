@@ -2,6 +2,11 @@ namespace NRE.SimAvatar;
 
 public static class AvatarMotorCatalog
 {
+    public static bool IsLocomotorPopulationEvent(AvatarDispatchSpike dispatch)
+        => IsMotorStructure(dispatch.SourceStructure) &&
+           !string.IsNullOrWhiteSpace(dispatch.SourceNeuronId) &&
+           dispatch.SourceNeuronId.StartsWith("population:", StringComparison.OrdinalIgnoreCase);
+
     public static bool IsMotorStructure(string structure)
     {
         return structure.Equals("M1", StringComparison.OrdinalIgnoreCase)
@@ -79,8 +84,7 @@ public static class AvatarMotorCatalog
         ref double leftInput,
         ref double rightInput)
     {
-        if (string.IsNullOrWhiteSpace(dispatch.SourceNeuronId) ||
-            !dispatch.SourceNeuronId.StartsWith("population:", StringComparison.OrdinalIgnoreCase))
+        if (!IsLocomotorPopulationEvent(dispatch))
         {
             return false;
         }

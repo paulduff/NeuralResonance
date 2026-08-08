@@ -52,6 +52,9 @@ public sealed class HostSurvivalAuthorityBoundaryTests
         AssertSourceOmits(source, "_hunger", "_health");
         Assert.Contains("_storedEnergyJoules", source, StringComparison.Ordinal);
         Assert.Contains("_tissueIntegrity", source, StringComparison.Ordinal);
+        Assert.Contains("ApplyManipulatorOutput", source, StringComparison.Ordinal);
+        Assert.Contains("AvatarPhysicalInteraction.IsWithinEffectorCone", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("ConsumeNearbyPickups", source, StringComparison.Ordinal);
     }
 
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)

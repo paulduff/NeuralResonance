@@ -3,6 +3,7 @@ param(
     [string]$Configuration = 'Debug',
     [switch]$NoBuild,
     [string]$ControlBaseUrl = 'http://localhost:5080',
+    [string]$StatePath = '',
     [switch]$WhatIf
 )
 
@@ -17,6 +18,9 @@ $envVars = @{
     NRE_CONTROL_ENDPOINTS = $ControlBaseUrl
     CONTROLPROGRAM_BASE_URLS = $ControlBaseUrl
     CONTROLPROGRAM_BASE_URL = $ControlBaseUrl
+}
+if (-not [string]::IsNullOrWhiteSpace($StatePath)) {
+    $envVars.NRE_WORLDSIM_STATE_PATH = [System.IO.Path]::GetFullPath($StatePath)
 }
 
 Assert-DnneSimulatorExclusive `

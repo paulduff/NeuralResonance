@@ -37,10 +37,12 @@ public sealed class HostSomaticAuthorityBoundaryTests
         Assert.DoesNotContain("collision_", source, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void MazeCanOnlySendPhysicalContactFrames()
+    [Theory]
+    [InlineData("NRE.WpfMazeSim")]
+    [InlineData("NRE.WpfWorldSim")]
+    public void RenderedWorldsCanOnlySendPhysicalContactFrames(string project)
     {
-        var source = ReadSource("src", "NRE.WpfMazeSim", "MainWindow.xaml.cs");
+        var source = ReadSource("src", project, "MainWindow.xaml.cs");
 
         Assert.Contains("PostSomaticContactFrameAsync", source, StringComparison.Ordinal);
         Assert.Contains("SomaticContactFrameRequest", source, StringComparison.Ordinal);

@@ -200,6 +200,19 @@ public sealed class NeuronalActionSelectionTests
     }
 
     [Fact]
+    public void FifthLaneSelectsPhysicalEffectorWithoutSynthesizingLocomotion()
+    {
+        var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: 4));
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
+
+        Assert.Equal(5, ActionChannelTopology.ChannelCount);
+        Assert.True(decision.Active);
+        Assert.Equal(NeuronalActionSelectionDecoder.ManipulatorChannel, decision.SelectedChannel);
+        Assert.Equal(0.0, shaped.Left);
+        Assert.Equal(0.0, shaped.Right);
+    }
+
+    [Fact]
     public async Task LegacyGlobalNeuromodulationCannotAlterNeuronalPlasticity()
     {
         await EnvironmentGate.WaitAsync();
@@ -369,7 +382,7 @@ public sealed class NeuronalActionSelectionTests
     }
 
     private static ActionChannelActivity[] ProposalChannels(int selected, float activation)
-        => Enumerable.Range(0, 4)
+        => Enumerable.Range(0, ActionChannelTopology.ChannelCount)
             .Select(channel => new ActionChannelActivity(
                 channel,
                 channel == selected ? activation : 0.06f,
@@ -377,7 +390,7 @@ public sealed class NeuronalActionSelectionTests
             .ToArray();
 
     private static ActionChannelActivity[] StriatalChannels(int selected, float direct)
-        => Enumerable.Range(0, 4)
+        => Enumerable.Range(0, ActionChannelTopology.ChannelCount)
             .Select(channel => new ActionChannelActivity(
                 channel,
                 0f,
@@ -394,7 +407,7 @@ public sealed class NeuronalActionSelectionTests
         float hyperdirect = 0f,
         float output = 0f,
         float thalamic = 0f)
-        => Enumerable.Range(0, 4)
+        => Enumerable.Range(0, ActionChannelTopology.ChannelCount)
             .Select(channel => new ActionChannelActivity(
                 channel,
                 0f, 0f, 0f,

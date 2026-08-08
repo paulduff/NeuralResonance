@@ -423,13 +423,21 @@ neuronal review.
 Entry 106 replaces the retired mode-promotion harness with a neuronal-only
 qualification bundle. Offline causal tests, circuit audit, and cortical
 benchmarks can pass on the current laptop, but the report cannot claim embodied
-qualification without a separately observed healthy live stack, maze stream,
-numeric motor dispatch, and physical progress.
+qualification without a separately observed healthy live stack, WorldSim
+stream, numeric motor dispatch, physical progress, raw sensory return, and a
+neuronal manipulator attempt.
 
 Entry 107 makes accepted neuronal language reviews the sole adapter-training
 curriculum. The export contains exact accepted text and numeric population
 state, while deferred candidates, raw identities, prompts, source labels,
 evidence prose, reasons, and symbolic authority fields are excluded.
+
+Entry 108 gives the body a fifth, numeric neuronal effector lane and moves
+complete embodied qualification into WorldSim. Pickup, drinking, and defensive
+device use occur only when the manipulator drive intersects physical geometry;
+WorldSim never receives a named action or target. Its atomic state stream lets
+the qualification harness verify movement, sensory return, interaction
+attempts, survival state, and runtime faults without steering the brain.
 
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as

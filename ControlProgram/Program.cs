@@ -8185,7 +8185,7 @@ internal sealed class TickCoordinator(
             return null;
         }
 
-        var channels = new ActionChannelActivity[4];
+        var channels = new ActionChannelActivity[NeuronalActionSelectionDecoder.ChannelCount];
         for (var channel = 0; channel < channels.Length; channel++)
         {
             var values = diagnostics
@@ -8430,7 +8430,7 @@ internal sealed class TickCoordinator(
         }
 
         var byId = snapshots.ToDictionary(static snapshot => snapshot.StructureId);
-        var channels = new ActionChannelActivity[4];
+        var channels = new ActionChannelActivity[NeuronalActionSelectionDecoder.ChannelCount];
         for (var channel = 0; channel < channels.Length; channel++)
         {
             var pfc = GetActionChannel(byId, StructureId.Pfc, channel);

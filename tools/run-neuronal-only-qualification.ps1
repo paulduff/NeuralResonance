@@ -123,7 +123,7 @@ try {
     $testProject = Join-Path $repoRoot 'tests\NeuralResonanceEngine.DNNE.Tests\NeuralResonanceEngine.DNNE.Tests.csproj'
     $testResultsDirectory = Join-Path $runDirectory 'tests'
     New-Item -ItemType Directory -Path $testResultsDirectory -Force | Out-Null
-    $testFilter = 'FullyQualifiedName~NeuronalMotorControlTests|FullyQualifiedName~NeuronalActionSelectionTests|FullyQualifiedName~NeuronalLanguageGroundingTests|FullyQualifiedName~NeuronalCognitionAuthorityTests|FullyQualifiedName~AvatarKinematicsTests|FullyQualifiedName~AvatarServiceTests|FullyQualifiedName~HostSurvivalAuthorityBoundaryTests|FullyQualifiedName~HostStructuredLanguageAuthorityBoundaryTests|FullyQualifiedName~SimulatorAuthorityBoundaryTests'
+    $testFilter = 'FullyQualifiedName~NeuronalMotorControlTests|FullyQualifiedName~NeuronalActionSelectionTests|FullyQualifiedName~NeuronalLanguageGroundingTests|FullyQualifiedName~NeuronalCognitionAuthorityTests|FullyQualifiedName~AvatarKinematicsTests|FullyQualifiedName~AvatarServiceTests|FullyQualifiedName~AvatarNervousSystemTests|FullyQualifiedName~AvatarPhysicalInteractionTests|FullyQualifiedName~HostSomaticAuthorityBoundaryTests|FullyQualifiedName~HostSurvivalAuthorityBoundaryTests|FullyQualifiedName~HostStructuredLanguageAuthorityBoundaryTests|FullyQualifiedName~SimulatorAuthorityBoundaryTests'
 
     $testsPassed = Invoke-QualificationStep -Name 'neuronal causal and authority tests' -Action {
         & dotnet test $testProject -c $Configuration --nologo --verbosity minimal --filter $testFilter --logger "trx;LogFileName=neuronal-preflight.trx" --results-directory $testResultsDirectory
@@ -141,9 +141,19 @@ try {
 
     $liveRequested = $Mode -eq 'Live'
     $liveGatePassed = $false
-    $mazeDetected = $false
-    $mazeMotorDispatchTotal = 0
-    $mazeProgressTotal = 0
+    $worldDetected = $false
+    [long]$worldMotorDispatchTotal = 0
+    [long]$worldLocomotorDispatchTotal = 0
+    [long]$worldManipulatorDispatchTotal = 0
+    [double]$worldDistanceTravelledDelta = 0.0
+    [long]$worldVisitedTerrainDelta = 0
+    [long]$worldInteractionAttemptDelta = 0
+    [long]$worldInteractionSuccessDelta = 0
+    [long]$worldRetinalAcceptedDelta = 0
+    [long]$worldCochlearAcceptedDelta = 0
+    [long]$worldPhysicalBodyAcceptedDelta = 0
+    [long]$worldSomaticAcceptedDelta = 0
+    [long]$worldTickFailureDelta = 0
     $burnInSummary = Join-Path $runDirectory 'live-burnin-summary.txt'
     $burnInSamples = Join-Path $runDirectory 'live-burnin-samples.json'
 
@@ -154,16 +164,34 @@ try {
 
         $burnInPassed = $false
         if ($validationPassed) {
-            $burnInPassed = Invoke-QualificationStep -Name 'live neuronal maze burn-in' -Action {
-                & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir 'burnin-dnne.ps1') -ControlBaseUrl $ControlBaseUrl -DurationSec ([Math]::Max(60, $LiveDurationSec)) -RestartCycleIntervalSec 0 -MazeStuckFailAfterSec ([Math]::Max(60, [Math]::Min(180, $LiveDurationSec))) -SummaryPath $burnInSummary -SamplesPath $burnInSamples
+            $burnInPassed = Invoke-QualificationStep -Name 'live neuronal WorldSim burn-in' -Action {
+                & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir 'burnin-worldsim.ps1') -Configuration $Configuration -ControlBaseUrl $ControlBaseUrl -DurationSec ([Math]::Max(60, $LiveDurationSec)) -SummaryPath $burnInSummary -SamplesPath $burnInSamples
             }
         }
 
-        $mazeDetected = (Read-SummaryValue -Path $burnInSummary -Name 'mazeDetected' -Fallback 'False') -eq 'True'
-        [void][int]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'mazeMotorDispatchTotal' -Fallback '0'), [ref]$mazeMotorDispatchTotal)
-        [void][int]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'mazeProgressTotal' -Fallback '0'), [ref]$mazeProgressTotal)
-        $liveGatePassed = $validationPassed -and $burnInPassed -and $mazeDetected -and
-            $mazeMotorDispatchTotal -gt 0 -and $mazeProgressTotal -gt 0
+        $worldDetected = (Read-SummaryValue -Path $burnInSummary -Name 'worldDetected' -Fallback 'False') -eq 'True'
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldMotorDispatchTotal' -Fallback '0'), [ref]$worldMotorDispatchTotal)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldLocomotorDispatchTotal' -Fallback '0'), [ref]$worldLocomotorDispatchTotal)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldManipulatorDispatchTotal' -Fallback '0'), [ref]$worldManipulatorDispatchTotal)
+        [void][double]::TryParse(
+            (Read-SummaryValue -Path $burnInSummary -Name 'worldDistanceTravelledDelta' -Fallback '0'),
+            [System.Globalization.NumberStyles]::Float,
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [ref]$worldDistanceTravelledDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldVisitedTerrainDelta' -Fallback '0'), [ref]$worldVisitedTerrainDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldInteractionAttemptDelta' -Fallback '0'), [ref]$worldInteractionAttemptDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldInteractionSuccessDelta' -Fallback '0'), [ref]$worldInteractionSuccessDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldRetinalAcceptedDelta' -Fallback '0'), [ref]$worldRetinalAcceptedDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldCochlearAcceptedDelta' -Fallback '0'), [ref]$worldCochlearAcceptedDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldPhysicalBodyAcceptedDelta' -Fallback '0'), [ref]$worldPhysicalBodyAcceptedDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldSomaticAcceptedDelta' -Fallback '0'), [ref]$worldSomaticAcceptedDelta)
+        [void][long]::TryParse((Read-SummaryValue -Path $burnInSummary -Name 'worldTickFailureDelta' -Fallback '0'), [ref]$worldTickFailureDelta)
+        $worldProgressObserved = $worldDistanceTravelledDelta -ge 1.0 -or $worldVisitedTerrainDelta -ge 2
+        $liveGatePassed = $validationPassed -and $burnInPassed -and $worldDetected -and
+            $worldMotorDispatchTotal -gt 0 -and $worldLocomotorDispatchTotal -gt 0 -and $worldProgressObserved -and
+            $worldInteractionAttemptDelta -gt 0 -and $worldRetinalAcceptedDelta -gt 0 -and
+            $worldCochlearAcceptedDelta -gt 0 -and $worldPhysicalBodyAcceptedDelta -gt 0 -and
+            $worldSomaticAcceptedDelta -gt 0 -and $worldTickFailureDelta -eq 0
     }
 
     $preflightPassed = $testsPassed -and $auditPassed -and $corticalPassed
@@ -179,7 +207,7 @@ try {
     }
 
     $result = [pscustomobject]@{
-        protocolVersion = 'dnne.neuronal-only-qualification.v1'
+        protocolVersion = 'dnne.neuronal-only-qualification.v2'
         generatedUtc = [DateTimeOffset]::UtcNow.ToString('o')
         mode = $Mode
         status = $status
@@ -195,9 +223,20 @@ try {
         liveEvidence = [pscustomobject]@{
             controlBaseUrl = $ControlBaseUrl
             durationSeconds = if ($liveRequested) { [Math]::Max(60, $LiveDurationSec) } else { 0 }
-            mazeDetected = $mazeDetected
-            mazeMotorDispatchTotal = $mazeMotorDispatchTotal
-            mazeProgressTotal = $mazeProgressTotal
+            simulator = 'WorldSim'
+            worldDetected = $worldDetected
+            worldMotorDispatchTotal = $worldMotorDispatchTotal
+            worldLocomotorDispatchTotal = $worldLocomotorDispatchTotal
+            worldManipulatorDispatchTotal = $worldManipulatorDispatchTotal
+            worldDistanceTravelledDelta = $worldDistanceTravelledDelta
+            worldVisitedTerrainDelta = $worldVisitedTerrainDelta
+            worldInteractionAttemptDelta = $worldInteractionAttemptDelta
+            worldInteractionSuccessDelta = $worldInteractionSuccessDelta
+            worldRetinalAcceptedDelta = $worldRetinalAcceptedDelta
+            worldCochlearAcceptedDelta = $worldCochlearAcceptedDelta
+            worldPhysicalBodyAcceptedDelta = $worldPhysicalBodyAcceptedDelta
+            worldSomaticAcceptedDelta = $worldSomaticAcceptedDelta
+            worldTickFailureDelta = $worldTickFailureDelta
             burnInSummaryPath = if ($liveRequested) { $burnInSummary } else { $null }
             burnInSamplesPath = if ($liveRequested) { $burnInSamples } else { $null }
         }
@@ -216,9 +255,14 @@ try {
         "- Offline preflight: $preflightPassed",
         "- Live evidence requested: $liveRequested",
         "- Embodied qualified: $embodiedQualified",
-        "- Maze detected: $mazeDetected",
-        "- Maze motor dispatches: $mazeMotorDispatchTotal",
-        "- Maze progress events: $mazeProgressTotal",
+        "- WorldSim detected: $worldDetected",
+        "- WorldSim motor dispatches: $worldMotorDispatchTotal",
+        "- WorldSim locomotor/manipulator dispatches: $worldLocomotorDispatchTotal/$worldManipulatorDispatchTotal",
+        "- WorldSim distance travelled: $worldDistanceTravelledDelta",
+        "- WorldSim newly visited terrain cells: $worldVisitedTerrainDelta",
+        "- Physical interaction attempts/successes: $worldInteractionAttemptDelta/$worldInteractionSuccessDelta",
+        "- Accepted retinal/cochlear/body/somatic frames: $worldRetinalAcceptedDelta/$worldCochlearAcceptedDelta/$worldPhysicalBodyAcceptedDelta/$worldSomaticAcceptedDelta",
+        "- WorldSim tick failures: $worldTickFailureDelta",
         '',
         '## Steps',
         '',
@@ -231,10 +275,10 @@ try {
     }
     $markdown += ''
     $markdown += if ($embodiedQualified) {
-        'This run contains both offline causal evidence and live neuronal maze evidence.'
+        'This run contains both offline causal evidence and live neuronal WorldSim evidence.'
     }
     else {
-        'This run does not qualify embodied behaviour. A passing `-Mode Live` run with a visible/running maze is still required.'
+        'This run does not qualify embodied behaviour. A passing `-Mode Live` run with the visible WorldSim is still required.'
     }
     $markdown | Set-Content -Path $markdownPath -Encoding UTF8
 

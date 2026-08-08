@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 using ProtoBuf;
@@ -29,6 +30,15 @@ public static class StructureHostApplication
 		}
 
 		WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+		var verboseFrameworkLogs = string.Equals(
+			Environment.GetEnvironmentVariable("NRE_VERBOSE_FRAMEWORK_LOGS"),
+			"true",
+			StringComparison.OrdinalIgnoreCase);
+		if (!verboseFrameworkLogs)
+		{
+			builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+			builder.Logging.AddFilter("Microsoft.AspNetCore.Routing.EndpointMiddleware", LogLevel.Warning);
+		}
 		builder.WebHost.ConfigureKestrel(options =>
 		{
 			options.Limits.MaxRequestBodySize = StructureTransportLimits.MaxSpikeBatchBytes;

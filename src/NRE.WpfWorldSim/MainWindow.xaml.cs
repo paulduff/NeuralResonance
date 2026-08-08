@@ -92,18 +92,19 @@ public partial class MainWindow : Window
     private const int BodyFrameDispatchIntervalMs = 350;
     private const int BodyFrameDispatchTimeoutMs = 1800;
     private const double NominalStoredEnergyJoules = 8_000_000.0;
-    private const double MetabolicBurnJoulesPerSecond = 33_600.0;
+    private const double MetabolicBurnJoulesPerSecond = 3_360.0;
     private const double HydrationLossPerSecond = 0.00022;
     private const double EnergyDepletionStressEnter = 0.62;
     private const double EnergyDepletionStressFull = 0.92;
     private const double DayNightCycleSeconds = 240.0;
     private const double WorldMaxForwardSpeed = 8.1;
+    private const double PhysicalRespawnDelaySeconds = 8.0;
 
     // Shared physical kinematics for the world avatar: bilateral neuronal drive
     // alone determines speed and turn within these body limits.
     private static readonly AvatarKinematicsOptions WorldKinematicsOptions = new(
         MaxMotorDrive: 240.0,
-        ForwardSpeedCoefficient: 0.0128,
+        ForwardSpeedCoefficient: 0.024,
         TurnSpeedCoefficient: 3.2,
         MinForwardSpeed: -1.6,
         MaxForwardSpeed: WorldMaxForwardSpeed,
@@ -112,7 +113,7 @@ public partial class MainWindow : Window
         InPlaceTurnCancelsForwardDrive: true);
     private static readonly AvatarNervousSystemOptions WorldNervousSystemOptions = new(
         WorldKinematicsOptions,
-        DriveDecay: 0.92);
+        DriveDecay: 0.975);
     private static readonly AvatarPhysiologyOptions WorldPhysiologyOptions = new(
         NominalStoredEnergyJoules,
         MetabolicBurnJoulesPerSecond,
@@ -288,6 +289,11 @@ public partial class MainWindow : Window
     private int _waterInteractions;
     private long _interactionAttempts;
     private long _interactionSuccesses;
+    private long _interactionOutOfReach;
+    private long _interactionOutsideCone;
+    private long _interactionOccluded;
+    private long _interactionUnavailable;
+    private string _lastInteractionOutcome = "none";
     private bool _manipulatorLatched;
     private long _lastManipulatorCycleMs;
     private long _lastPredatorContactMs;
@@ -302,6 +308,10 @@ public partial class MainWindow : Window
     private int _runtimeStateWriteInFlight;
     private Task? _runtimeStateWriteTask;
     private long _tickFailures;
+    private AvatarVitalState _vitalState = AvatarVitalState.Viable;
+    private double _vitalStateSinceSeconds;
+    private double _physicalRespawnAtSeconds = double.PositiveInfinity;
+    private int _physicalDeaths;
     private readonly string _runtimeSessionId = Guid.NewGuid().ToString("N");
     private readonly DateTimeOffset _runtimeSessionStartedUtc = DateTimeOffset.UtcNow;
     private int _homesBuilt;
@@ -822,6 +832,11 @@ public partial class MainWindow : Window
         _waterInteractions = 0;
         _interactionAttempts = 0;
         _interactionSuccesses = 0;
+        _interactionOutOfReach = 0;
+        _interactionOutsideCone = 0;
+        _interactionOccluded = 0;
+        _interactionUnavailable = 0;
+        _lastInteractionOutcome = "none";
         _manipulatorDrive = 0.0;
         _manipulatorLatched = false;
         _lastManipulatorCycleMs = 0;
@@ -834,6 +849,10 @@ public partial class MainWindow : Window
         _cochlearFramesAccepted = 0;
         _physicalBodyFramesAccepted = 0;
         _somaticFramesAccepted = 0;
+        _vitalState = AvatarVitalState.Viable;
+        _vitalStateSinceSeconds = 0.0;
+        _physicalRespawnAtSeconds = double.PositiveInfinity;
+        _physicalDeaths = 0;
         _environmentAudioInFlight = false;
         _lastEnvironmentAudioDispatchMs = 0;
         _environmentAudioBackoff.Reset();
@@ -893,6 +912,7 @@ public partial class MainWindow : Window
         AvatarPreviewInfoText.Text = "Preview: active";
         RefreshSurvivalTuningLabels();
         RebuildCollisionGrid();
+        EnsureNearbyFoodLearningOpportunity();
     }
 
     /// <summary>
@@ -2341,7 +2361,11 @@ public partial class MainWindow : Window
         // Brain motor output is the only locomotion driver. The simulator may block
         // movement through physics and feed consequences back, but it never steers.
         var actionOutput = _avatarService.PublishActionOutput();
-        var (forwardSpeed, turnRateDeg) = actionOutput.Movement;
+        var physicalCapacity = AvatarWorldDynamics.AssessVitalState(
+            GetPhysiologyState(),
+            WorldPhysiologyOptions).MotorCapacity;
+        var forwardSpeed = actionOutput.Movement.ForwardSpeed * physicalCapacity;
+        var turnRateDeg = actionOutput.Movement.TurnRateDeg * physicalCapacity;
         var previousX = _avatarX;
         var previousZ = _avatarZ;
         UpdateAvatarHeadYaw(dt);
@@ -2886,14 +2910,25 @@ public partial class MainWindow : Window
 
     private void UpdateSurvival(double dt, double nowSeconds)
     {
-        var physiology = AvatarWorldDynamics.AdvancePhysiology(
-            GetPhysiologyState(),
-            WorldPhysiologyOptions,
-            dt,
-            _metabolicBurnRate,
-            _sleepState,
-            IsInShelter());
-        SetPhysiologyState(physiology);
+        if (_vitalState == AvatarVitalState.Dead)
+        {
+            if (nowSeconds >= _physicalRespawnAtSeconds)
+            {
+                RespawnPhysicalBody(nowSeconds);
+            }
+        }
+        else
+        {
+            var physiology = AvatarWorldDynamics.AdvancePhysiology(
+                GetPhysiologyState(),
+                WorldPhysiologyOptions,
+                dt,
+                _metabolicBurnRate,
+                _sleepState,
+                IsInShelter());
+            SetPhysiologyState(physiology);
+            UpdateVitalState(nowSeconds);
+        }
 
         if (nowSeconds < _nextSurvivalHudUpdateSeconds)
         {
@@ -2913,17 +2948,17 @@ public partial class MainWindow : Window
         SurvivalWeaponText.Text = _weaponCharges > 0
             ? $"Carried weapon charges: {_weaponCharges} ({weaponProfile.ToString().ToLowerInvariant()})"
             : "Carried weapon charges: 0";
-        SurvivalShelterText.Text = $"Shelter: {(IsInShelter() ? "inside" : "outside")} | neuronal sleep: {(_sleepState ? "yes" : "no")}";
+        SurvivalShelterText.Text = $"Shelter: {(IsInShelter() ? "inside" : "outside")} | neuronal sleep: {(_sleepState ? "yes" : "no")} | body: {_vitalState.ToString().ToLowerInvariant()}";
         SurvivalPredatorText.Text = $"Predators: {_predators.Count} active";
         SurvivalInteractionText.Text =
-            $"Physical interactions: {_interactionSuccesses}/{_interactionAttempts} | devices {_weaponPickupsCollected} | water {_waterInteractions} | predators neutralized {_predatorsNeutralized}";
+            $"Physical interactions: {_interactionSuccesses}/{_interactionAttempts} | last {_lastInteractionOutcome} | reach {_interactionOutOfReach}, facing {_interactionOutsideCone}, blocked {_interactionOccluded}, unavailable {_interactionUnavailable}";
         DayNightText.Text =
             $"Light cycle: {_dayNightStage}, daylight {(int)(_daylight01 * 100)}%, darkness {(int)(_darkness01 * 100)}%";
     }
 
     private void UpdatePredators(double dt)
     {
-        if (_predators.Count == 0 || _heights is null)
+        if (_vitalState == AvatarVitalState.Dead || _predators.Count == 0 || _heights is null)
         {
             return;
         }
@@ -3024,13 +3059,24 @@ public partial class MainWindow : Window
         _lastManipulatorCycleMs = nowMs;
         _interactionAttempts++;
 
+        var vital = AvatarWorldDynamics.AssessVitalState(GetPhysiologyState(), WorldPhysiologyOptions);
+        if (!vital.CanInteract)
+        {
+            _interactionUnavailable++;
+            _lastInteractionOutcome = "body unavailable";
+            return;
+        }
+
         // The body exposes one general effector. Environment geometry and the
         // physically carried object determine the consequence; the host never
         // receives or interprets a symbolic action name.
         if (TryManipulateNearestPickup() || TryDrinkNearbyWater() || TryDischargeCarriedDevice())
         {
             _interactionSuccesses++;
+            return;
         }
+
+        RecordFailedPhysicalInteraction();
     }
 
     private bool TryManipulateNearestPickup()
@@ -3050,7 +3096,8 @@ public partial class MainWindow : Window
                     pickup.Position.X,
                     pickup.Position.Z,
                     ManipulatorReach,
-                    ManipulatorHalfAngleDeg))
+                    ManipulatorHalfAngleDeg) ||
+                HasBlockingSegment(_avatarX, _avatarZ, pickup.Position.X, pickup.Position.Z, 0.18))
             {
                 continue;
             }
@@ -3073,7 +3120,8 @@ public partial class MainWindow : Window
                     pickup.Position.X,
                     pickup.Position.Z,
                     ManipulatorReach,
-                    ManipulatorHalfAngleDeg))
+                    ManipulatorHalfAngleDeg) ||
+                HasBlockingSegment(_avatarX, _avatarZ, pickup.Position.X, pickup.Position.Z, 0.18))
             {
                 continue;
             }
@@ -3103,6 +3151,7 @@ public partial class MainWindow : Window
                 nominalEnergyFraction: 0.35));
             _foodPickups[nearestFoodIndex] = pickup;
             QueueManipulatorContact(45.0, 2.5, 700.0);
+            _lastInteractionOutcome = "food contact";
             return true;
         }
 
@@ -3119,6 +3168,7 @@ public partial class MainWindow : Window
         UpdateWeaponChargeCache();
         _weaponPickups[nearestWeaponIndex] = weapon;
         QueueManipulatorContact(70.0, 3.5, 850.0);
+        _lastInteractionOutcome = "device contact";
         return true;
     }
 
@@ -3132,6 +3182,7 @@ public partial class MainWindow : Window
         SetPhysiologyState(AvatarWorldDynamics.Drink(GetPhysiologyState(), hydrationFraction: 0.38));
         _waterInteractions++;
         QueueManipulatorContact(22.0, 1.2, 1_450.0);
+        _lastInteractionOutcome = "water contact";
         return true;
     }
 
@@ -3190,7 +3241,81 @@ public partial class MainWindow : Window
         _predators.RemoveAt(selectedIndex);
         _predatorsNeutralized++;
         QueueManipulatorContact(320.0, 18.0, 620.0);
+        _lastInteractionOutcome = "predator contact";
         return true;
+    }
+
+    private void RecordFailedPhysicalInteraction()
+    {
+        Point3D? nearest = null;
+        var nearestDistanceSq = double.MaxValue;
+
+        foreach (var pickup in _foodPickups)
+        {
+            ConsiderInteractionCandidate(pickup.Active, pickup.Position, ref nearest, ref nearestDistanceSq);
+        }
+        foreach (var pickup in _weaponPickups)
+        {
+            ConsiderInteractionCandidate(pickup.Active, pickup.Position, ref nearest, ref nearestDistanceSq);
+        }
+
+        if (nearest is null)
+        {
+            _interactionUnavailable++;
+            _lastInteractionOutcome = "no physical candidate";
+            return;
+        }
+
+        var candidate = nearest.Value;
+        var assessment = AvatarPhysicalInteraction.AssessEffectorCone(
+            _avatarX,
+            _avatarZ,
+            _avatarHeadingDeg,
+            candidate.X,
+            candidate.Z,
+            ManipulatorReach,
+            ManipulatorHalfAngleDeg);
+        if (!assessment.WithinReach)
+        {
+            _interactionOutOfReach++;
+            _lastInteractionOutcome = $"out of reach ({assessment.Distance:0.00})";
+        }
+        else if (!assessment.WithinCone)
+        {
+            _interactionOutsideCone++;
+            _lastInteractionOutcome = $"outside cone ({assessment.HeadingOffsetDegrees:0.0} deg)";
+        }
+        else if (HasBlockingSegment(_avatarX, _avatarZ, candidate.X, candidate.Z, 0.18))
+        {
+            _interactionOccluded++;
+            _lastInteractionOutcome = "contact occluded";
+        }
+        else
+        {
+            _interactionUnavailable++;
+            _lastInteractionOutcome = "no physical effect";
+        }
+    }
+
+    private void ConsiderInteractionCandidate(
+        bool active,
+        Point3D position,
+        ref Point3D? nearest,
+        ref double nearestDistanceSq)
+    {
+        if (!active)
+        {
+            return;
+        }
+
+        var distanceSq = DistanceSquared(_avatarX, _avatarZ, position.X, position.Z);
+        if (distanceSq >= nearestDistanceSq)
+        {
+            return;
+        }
+
+        nearestDistanceSq = distanceSq;
+        nearest = position;
     }
 
     private void QueueManipulatorContact(double forceNewtons, double impulseNewtonSeconds, double contactAreaSquareMillimeters)
@@ -3259,6 +3384,46 @@ public partial class MainWindow : Window
         _storedEnergyJoules = state.StoredEnergyJoules;
         _hydrationFraction = state.HydrationFraction;
         _tissueIntegrity = state.TissueIntegrityFraction;
+    }
+
+    private void UpdateVitalState(double nowSeconds)
+    {
+        var assessed = AvatarWorldDynamics.AssessVitalState(GetPhysiologyState(), WorldPhysiologyOptions).State;
+        if (assessed == _vitalState)
+        {
+            return;
+        }
+
+        _vitalState = assessed;
+        _vitalStateSinceSeconds = nowSeconds;
+        if (assessed == AvatarVitalState.Dead)
+        {
+            _physicalDeaths++;
+            _physicalRespawnAtSeconds = nowSeconds + PhysicalRespawnDelaySeconds;
+            _avatarService.PostResetMotor();
+            Log($"Physical body died; respawn scheduled in {PhysicalRespawnDelaySeconds:0.0}s.");
+        }
+        else if (assessed == AvatarVitalState.Incapacitated)
+        {
+            _avatarService.PostResetMotor();
+            Log("Physical body became incapacitated.");
+        }
+        else
+        {
+            _physicalRespawnAtSeconds = double.PositiveInfinity;
+            Log("Physical body returned to a viable state.");
+        }
+    }
+
+    private void RespawnPhysicalBody(double nowSeconds)
+    {
+        SetPhysiologyState(AvatarWorldDynamics.CreateRespawnState(WorldPhysiologyOptions));
+        _vitalState = AvatarVitalState.Viable;
+        _vitalStateSinceSeconds = nowSeconds;
+        _physicalRespawnAtSeconds = double.PositiveInfinity;
+        ResetAvatarPose(logMessage: false);
+        EnsureNearbyFoodLearningOpportunity();
+        Log($"Physical body respawned after death {_physicalDeaths}.");
     }
 
     private bool IsInShelter()
@@ -4397,6 +4562,41 @@ public partial class MainWindow : Window
             _trailPointTransforms[i].OffsetX = 0.0;
             _trailPointTransforms[i].OffsetY = hiddenY;
             _trailPointTransforms[i].OffsetZ = 0.0;
+        }
+    }
+
+    private void EnsureNearbyFoodLearningOpportunity()
+    {
+        var pickupIndex = _foodPickups.FindIndex(static pickup => pickup.Active);
+        if (pickupIndex < 0)
+        {
+            return;
+        }
+
+        ReadOnlySpan<double> distances = [3.0, 4.0, 5.0, 6.0];
+        ReadOnlySpan<double> offsets = [0.0, -20.0, 20.0, -40.0, 40.0, -65.0, 65.0];
+        for (var d = 0; d < distances.Length; d++)
+        {
+            for (var i = 0; i < offsets.Length; i++)
+            {
+                var heading = DegreesToRadians(_avatarHeadingDeg + offsets[i]);
+                var targetX = _avatarX + (Math.Sin(heading) * distances[d]);
+                var targetZ = _avatarZ + (Math.Cos(heading) * distances[d]);
+                if (!TryGetTerrainTopY(targetX, targetZ, out var targetY) ||
+                    !IsSpawnLocationClear(targetX, targetY, targetZ) ||
+                    HasBlockingSegment(_avatarX, _avatarZ, targetX, targetZ, 0.18))
+                {
+                    continue;
+                }
+
+                var pickup = _foodPickups[pickupIndex];
+                pickup.Position = new Point3D(targetX, targetY + 0.24, targetZ);
+                pickup.Transform.OffsetX = pickup.Position.X;
+                pickup.Transform.OffsetY = pickup.Position.Y;
+                pickup.Transform.OffsetZ = pickup.Position.Z;
+                _foodPickups[pickupIndex] = pickup;
+                return;
+            }
         }
     }
 
@@ -6283,6 +6483,11 @@ public partial class MainWindow : Window
             ManipulatorDrive: _manipulatorDrive,
             InteractionAttempts: _interactionAttempts,
             InteractionSuccesses: _interactionSuccesses,
+            InteractionOutOfReach: _interactionOutOfReach,
+            InteractionOutsideCone: _interactionOutsideCone,
+            InteractionOccluded: _interactionOccluded,
+            InteractionUnavailable: _interactionUnavailable,
+            LastInteractionOutcome: _lastInteractionOutcome,
             RetinalFramesAccepted: _retinalFramesAccepted,
             CochlearFramesAccepted: _cochlearFramesAccepted,
             PhysicalBodyFramesAccepted: _physicalBodyFramesAccepted,
@@ -6296,6 +6501,9 @@ public partial class MainWindow : Window
             StoredEnergyJoules: _storedEnergyJoules,
             TissueIntegrityFraction: _tissueIntegrity,
             HydrationFraction: _hydrationFraction,
+            VitalState: _vitalState.ToString(),
+            VitalStateSeconds: Math.Max(0.0, _frameStopwatch.Elapsed.TotalSeconds - _vitalStateSinceSeconds),
+            PhysicalDeaths: _physicalDeaths,
             InShelter: IsInShelter(),
             NeuronalSleep: _sleepState,
             CollisionHits: _collisionHits,
@@ -7061,6 +7269,11 @@ public partial class MainWindow : Window
         double ManipulatorDrive,
         long InteractionAttempts,
         long InteractionSuccesses,
+        long InteractionOutOfReach,
+        long InteractionOutsideCone,
+        long InteractionOccluded,
+        long InteractionUnavailable,
+        string LastInteractionOutcome,
         long RetinalFramesAccepted,
         long CochlearFramesAccepted,
         long PhysicalBodyFramesAccepted,
@@ -7074,6 +7287,9 @@ public partial class MainWindow : Window
         double StoredEnergyJoules,
         double TissueIntegrityFraction,
         double HydrationFraction,
+        string VitalState,
+        double VitalStateSeconds,
+        int PhysicalDeaths,
         bool InShelter,
         bool NeuronalSleep,
         int CollisionHits,

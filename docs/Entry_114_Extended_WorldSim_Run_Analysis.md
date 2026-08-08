@@ -96,10 +96,14 @@ rotation.
 
 The 180 freshly saved synapse files totalled 282.8 MiB. V1, S1, and A1 alone
 held 875,668 synapses and approximately 266.5 MiB, about 94% of persisted bytes.
-Most sensory synapses had a null stable key, while most had nevertheless been
-updated at least once. Before longer runs, sensory synapse creation should be
-checked for reusable identity, capped or pruned by age/usefulness, and moved to
-a compact binary or database representation where practical.
+Inbound entries intentionally serialize `Key` as null because their GUID is the
+identity; outbound entries additionally require a string route key. Inspection
+confirmed that the current retinal, cochlear, somatic, and visceral transducers
+already derive stable receptor/fibre GUIDs. The growth was therefore historical
+inbound retention without homeostatic pruning, not proof of unstable receptor
+identity. Before longer runs, persisted sensory populations should be bounded
+by neuronal use and plasticity evidence, then eventually moved to a compact
+binary or database representation where practical.
 
 ## Verdict
 

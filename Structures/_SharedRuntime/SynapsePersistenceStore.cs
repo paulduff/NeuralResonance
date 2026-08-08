@@ -12,6 +12,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 {
 	private const int DefaultSaveEveryMutationCount = 4096;
 	private const double DefaultSaveEveryMs = 10000.0;
+	private const int DefaultSensoryInboundSynapseLimit = 65_536;
+	private const int DefaultGeneralInboundSynapseLimit = 262_144;
 
 	private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
 	{
@@ -23,8 +25,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly string _path;
 	private readonly int _saveEveryMutationCount;
 	private readonly double _saveEveryMs;
+	private readonly int _maxInboundSynapseCount;
 	private int _pendingMutations;
 	private long _lastSaveTimestamp;
+	private long _totalPrunedInboundSynapses;
 
 	// Off-lock async writer. Snapshot construction happens on the tick-loop thread
 	// (which holds the dictionary lock), and the resulting frozen snapshot is handed
@@ -48,6 +52,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_path = ResolvePath(_instanceKey);
 		_saveEveryMutationCount = ResolvePositiveInt("NRE_SYNAPSE_SAVE_MUTATIONS", DefaultSaveEveryMutationCount, 64, 1_000_000);
 		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 1000.0, 300_000.0);
+		_maxInboundSynapseCount = ResolveInboundSynapseLimit(structureId);
 		_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		_writerTask = Task.Run(WriterLoopAsync);
 	}
@@ -88,6 +93,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 				outboundSynapses[entry.Key] = entry.ToSynapseState();
 			}
+
+			_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
 
 			_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		}
@@ -161,8 +168,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 	private SynapseStoreSnapshot BuildSnapshot(
 		Dictionary<Guid, SynapseState> inboundSynapses,
-		Dictionary<string, SynapseState> outboundSynapses) =>
-		new SynapseStoreSnapshot
+		Dictionary<string, SynapseState> outboundSynapses)
+	{
+		_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
+		return new SynapseStoreSnapshot
 		{
 			StructureId = _structureId,
 			InstanceKey = _instanceKey,
@@ -170,6 +179,50 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			Inbound = CreateInboundEntries(inboundSynapses),
 			Outbound = CreateOutboundEntries(outboundSynapses)
 		};
+	}
+
+	internal int MaxInboundSynapseCount => _maxInboundSynapseCount;
+
+	internal long TotalPrunedInboundSynapses => Interlocked.Read(ref _totalPrunedInboundSynapses);
+
+	internal static int PruneInboundSynapses(Dictionary<Guid, SynapseState> synapses, int maximumCount)
+	{
+		ArgumentNullException.ThrowIfNull(synapses);
+		maximumCount = Math.Max(1, maximumCount);
+		var removeCount = synapses.Count - maximumCount;
+		if (removeCount <= 0)
+		{
+			return 0;
+		}
+
+		// Synaptic homeostasis removes the least supported connections first.
+		// Repetition is primary; Hebbian divergence, eligibility, and tagging break
+		// ties before recency and stable identity make the result deterministic.
+		var remove = synapses
+			.OrderBy(static pair => pair.Value.UpdateCount)
+			.ThenBy(static pair => HebbianRetentionEvidence(pair.Value))
+			.ThenBy(static pair => pair.Value.LastUpdateTimestampMs)
+			.ThenBy(static pair => pair.Key)
+			.Take(removeCount)
+			.Select(static pair => pair.Key)
+			.ToArray();
+		foreach (var synapseId in remove)
+		{
+			synapses.Remove(synapseId);
+		}
+
+		return remove.Length;
+	}
+
+	private static double HebbianRetentionEvidence(SynapseState synapse)
+	{
+		synapse.Stabilize();
+		return Math.Abs(synapse.VesicleQuanta - synapse.BaselineVesicleQuanta) +
+			Math.Abs(synapse.EligibilityTrace) +
+			Math.Abs(synapse.SynapticTagTrace) +
+			(synapse.PreTrace * 0.05) +
+			(synapse.PostTrace * 0.05);
+	}
 
 	private async Task WriterLoopAsync()
 	{
@@ -296,6 +349,43 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		double.TryParse(Environment.GetEnvironmentVariable(name), out var parsed) && double.IsFinite(parsed)
 			? Math.Clamp(parsed, minimum, maximum)
 			: fallback;
+
+	private static int ResolveInboundSynapseLimit(StructureId structureId)
+	{
+		var generalOverride = Environment.GetEnvironmentVariable("NRE_SYNAPSE_MAX_INBOUND");
+		if (int.TryParse(generalOverride, out var configured))
+		{
+			return Math.Clamp(configured, 1_024, 10_000_000);
+		}
+
+		if (!IsHighVolumeSensoryStructure(structureId))
+		{
+			return DefaultGeneralInboundSynapseLimit;
+		}
+
+		return ResolvePositiveInt(
+			"NRE_SENSORY_SYNAPSE_MAX_INBOUND",
+			DefaultSensoryInboundSynapseLimit,
+			1_024,
+			10_000_000);
+	}
+
+	private static bool IsHighVolumeSensoryStructure(StructureId structureId) => structureId is
+		StructureId.Retina or
+		StructureId.V1 or
+		StructureId.V2 or
+		StructureId.V4 or
+		StructureId.Mt or
+		StructureId.Cochlea or
+		StructureId.CochlearNucleus or
+		StructureId.SuperiorOlive or
+		StructureId.InferiorColliculus or
+		StructureId.A1 or
+		StructureId.SomaticAfferents or
+		StructureId.S1 or
+		StructureId.ProprioceptiveAfferents or
+		StructureId.VestibularAfferents or
+		StructureId.VisceralAfferents;
 
 	private sealed class SynapseStoreSnapshot
 	{

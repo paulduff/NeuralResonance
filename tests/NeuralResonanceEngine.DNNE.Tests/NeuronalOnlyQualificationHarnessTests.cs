@@ -3,6 +3,49 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class NeuronalOnlyQualificationHarnessTests
 {
     [Fact]
+    public void Production_Runtime_Has_No_Machine_Learning_Dependency_Or_Policy_Engine()
+    {
+        var root = ResolveRepositoryRoot();
+        var productionRoots = new[]
+        {
+            Path.Combine(root, "ControlProgram"),
+            Path.Combine(root, "Protocol"),
+            Path.Combine(root, "Shared.Contracts"),
+            Path.Combine(root, "src"),
+            Path.Combine(root, "Structures")
+        };
+        var productionSource = string.Join(
+            '\n',
+            productionRoots
+                .Where(Directory.Exists)
+                .SelectMany(static directory => Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories))
+                .Where(static path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
+                                      path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+                .Where(static path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) &&
+                                      !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                .Select(File.ReadAllText));
+
+        string[] forbiddenRuntimeSignatures =
+        [
+            "Microsoft.ML",
+            "MLContext",
+            "PredictionEngine",
+            "TorchSharp",
+            "TensorFlow",
+            "Microsoft.ML.OnnxRuntime",
+            "Accord.MachineLearning",
+            "PolicyNetwork",
+            "ReinforcementLearning",
+            "QLearning",
+            "QTable"
+        ];
+
+        Assert.All(
+            forbiddenRuntimeSignatures,
+            signature => Assert.DoesNotContain(signature, productionSource, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Harness_Does_Not_Claim_Embodied_Qualification_From_Offline_Evidence()
     {
         var source = ReadHarness();

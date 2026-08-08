@@ -26,6 +26,18 @@ if (controlListenAnyIp && controlSharedSecret is null)
 }
 
 var builder = WebApplication.CreateBuilder(args);
+var verboseFrameworkLogs = string.Equals(
+    Environment.GetEnvironmentVariable("NRE_VERBOSE_FRAMEWORK_LOGS"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+if (!verboseFrameworkLogs)
+{
+    // DNNE already exposes bounded aggregate request and transport telemetry.
+    // Per-request framework logs multiply into gigabytes during structure ticks.
+    builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.AspNetCore.Routing.EndpointMiddleware", LogLevel.Warning);
+}
 builder.WebHost.ConfigureKestrel(options =>
 {
     // Local WPF clients can briefly lag while reading large diagnostic responses.
@@ -445,6 +457,17 @@ app.MapPost("/api/v1/admin/input/visual-frame", async (
         {
             Error = $"Frame payload ended before {descriptor.RequiredBytes} bytes were read."
         });
+    }
+    catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Frame upload was interrupted before {descriptor.RequiredBytes} bytes were read."
+        });
+    }
+    catch (OperationCanceledException) when (request.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+        return Results.StatusCode(499);
     }
 
     if (request.ContentLength is null)

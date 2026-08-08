@@ -69,6 +69,41 @@ public sealed class AvatarWorldDynamicsTests
     }
 
     [Fact]
+    public void Vital_Assessment_Uses_Only_Physical_State()
+    {
+        var viable = AvatarWorldDynamics.AssessVitalState(
+            new AvatarPhysiologyState(Options.NominalStoredEnergyJoules, 1.0, 1.0),
+            Options);
+        var incapacitated = AvatarWorldDynamics.AssessVitalState(
+            new AvatarPhysiologyState(0.0, 1.0, 1.0),
+            Options);
+        var dead = AvatarWorldDynamics.AssessVitalState(
+            new AvatarPhysiologyState(Options.NominalStoredEnergyJoules, 1.0, 0.0),
+            Options);
+
+        Assert.Equal(AvatarVitalState.Viable, viable.State);
+        Assert.Equal(1.0, viable.MotorCapacity);
+        Assert.True(viable.CanInteract);
+        Assert.Equal(AvatarVitalState.Incapacitated, incapacitated.State);
+        Assert.Equal(0.0, incapacitated.MotorCapacity);
+        Assert.False(incapacitated.CanInteract);
+        Assert.Equal(AvatarVitalState.Dead, dead.State);
+        Assert.Equal(0.0, dead.MotorCapacity);
+        Assert.False(dead.CanInteract);
+    }
+
+    [Fact]
+    public void Respawn_State_Restores_A_Bounded_Physical_Body()
+    {
+        var respawned = AvatarWorldDynamics.CreateRespawnState(Options);
+
+        Assert.Equal(Options.NominalStoredEnergyJoules * 0.75, respawned.StoredEnergyJoules);
+        Assert.Equal(0.75, respawned.HydrationFraction);
+        Assert.Equal(1.0, respawned.TissueIntegrityFraction);
+        Assert.Equal(AvatarVitalState.Viable, AvatarWorldDynamics.AssessVitalState(respawned, Options).State);
+    }
+
+    [Fact]
     public void Device_Inventory_Has_One_Physical_Capacity_And_Long_Range_Priority()
     {
         var inventory = default(AvatarDeviceInventory);

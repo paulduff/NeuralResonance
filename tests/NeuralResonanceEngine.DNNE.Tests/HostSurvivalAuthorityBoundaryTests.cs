@@ -61,6 +61,29 @@ public sealed class HostSurvivalAuthorityBoundaryTests
         Assert.DoesNotContain("ConsumeNearbyPickups", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void World_Physics_Does_Not_Introduce_Machine_Learning_Or_Host_Action_Policy()
+    {
+        var source = ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs");
+        var dynamicsSource = ReadSource("src", "NRE.SimAvatar", "AvatarWorldDynamics.cs");
+
+        Assert.Contains("AvatarWorldDynamics.AssessVitalState", source, StringComparison.Ordinal);
+        Assert.Contains("AvatarWorldDynamics.CreateRespawnState", source, StringComparison.Ordinal);
+        AssertSourceOmits(
+            source + dynamicsSource,
+            "Microsoft.ML",
+            "MLContext",
+            "PredictionEngine",
+            "QTable",
+            "QLearning",
+            "ReinforcementLearning",
+            "PolicyNetwork",
+            "ChooseAction",
+            "SelectAction",
+            "ScriptedNavigation",
+            "AutomaticNavigation");
+    }
+
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)
     {
         foreach (var symbol in forbiddenSymbols)

@@ -7,6 +7,20 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 
 public sealed class RuntimeDiagnosticsAndProfilesTests
 {
+    [Fact]
+    public void Runtime_Framework_Request_Logs_Are_Quiet_By_Default()
+    {
+        var root = ResolveRepositoryRoot();
+        var controlSource = File.ReadAllText(Path.Combine(root, "ControlProgram", "Program.cs"));
+        var structureSource = File.ReadAllText(Path.Combine(root, "Structures", "_SharedRuntime", "StructureHostApplication.cs"));
+
+        Assert.Contains("NRE_VERBOSE_FRAMEWORK_LOGS", controlSource, StringComparison.Ordinal);
+        Assert.Contains("System.Net.Http.HttpClient", controlSource, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.AspNetCore.Hosting.Diagnostics", controlSource, StringComparison.Ordinal);
+        Assert.Contains("NRE_VERBOSE_FRAMEWORK_LOGS", structureSource, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.AspNetCore.Hosting.Diagnostics", structureSource, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("working", 0.8f, 2, "motor_seek_shelter")]
     [InlineData("stalled", 0.2f, 2, "motor_turn_left")]
@@ -531,6 +545,19 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
 
     private static JsonDocument SerializeDiagnostics(SimulationState state)
         => JsonDocument.Parse(JsonSerializer.Serialize(state.ToDiagnostics()));
+
+    private static string ResolveRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NeuralResonanceEngine.DNNE.slnx")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not resolve the DNNE repository root.");
+    }
 
     private static JsonElement GetObject(JsonElement element, string name)
     {

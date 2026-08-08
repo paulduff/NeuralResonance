@@ -5,6 +5,18 @@ public readonly record struct AvatarPhysiologyState(
     double HydrationFraction,
     double TissueIntegrityFraction);
 
+public enum AvatarVitalState
+{
+    Viable = 0,
+    Incapacitated = 1,
+    Dead = 2
+}
+
+public readonly record struct AvatarVitalAssessment(
+    AvatarVitalState State,
+    double MotorCapacity,
+    bool CanInteract);
+
 public readonly record struct AvatarPhysiologyOptions(
     double NominalStoredEnergyJoules,
     double MetabolicBurnJoulesPerSecond,
@@ -44,6 +56,10 @@ public readonly record struct AvatarPhysiologyOptions(
 
 public static class AvatarWorldDynamics
 {
+    private const double TissueDeathThreshold = 0.000001;
+    private const double TissueIncapacitationThreshold = 0.08;
+    private const double EnergyIncapacitationThresholdJoules = 0.5;
+
     public static AvatarPhysiologyState AdvancePhysiology(
         AvatarPhysiologyState state,
         AvatarPhysiologyOptions options,
@@ -160,6 +176,44 @@ public static class AvatarWorldDynamics
                 0.0,
                 1.0)
         };
+    }
+
+    public static AvatarVitalAssessment AssessVitalState(
+        AvatarPhysiologyState state,
+        AvatarPhysiologyOptions options)
+    {
+        options.Validate();
+        ValidateState(state);
+
+        var tissue = Math.Clamp(state.TissueIntegrityFraction, 0.0, 1.0);
+        var energy = Math.Clamp(state.StoredEnergyJoules, 0.0, options.NominalStoredEnergyJoules);
+        if (tissue <= TissueDeathThreshold)
+        {
+            return new AvatarVitalAssessment(AvatarVitalState.Dead, 0.0, CanInteract: false);
+        }
+
+        if (energy <= EnergyIncapacitationThresholdJoules || tissue <= TissueIncapacitationThreshold)
+        {
+            return new AvatarVitalAssessment(AvatarVitalState.Incapacitated, 0.0, CanInteract: false);
+        }
+
+        // This is physical capacity, not an action policy. Neural output remains the
+        // sole source of direction and intent while failing tissue/energy can only
+        // reduce the body's ability to express that output.
+        var energyReserve = energy / options.NominalStoredEnergyJoules;
+        var energyCapacity = Math.Clamp(energyReserve / 0.18, 0.0, 1.0);
+        var tissueCapacity = Math.Clamp(tissue / 0.30, 0.0, 1.0);
+        var motorCapacity = Math.Min(energyCapacity, tissueCapacity);
+        return new AvatarVitalAssessment(AvatarVitalState.Viable, motorCapacity, CanInteract: true);
+    }
+
+    public static AvatarPhysiologyState CreateRespawnState(AvatarPhysiologyOptions options)
+    {
+        options.Validate();
+        return new AvatarPhysiologyState(
+            StoredEnergyJoules: options.NominalStoredEnergyJoules * 0.75,
+            HydrationFraction: 0.75,
+            TissueIntegrityFraction: 1.0);
     }
 
     private static double ComputeNeedDrive(double value, double enter, double full)

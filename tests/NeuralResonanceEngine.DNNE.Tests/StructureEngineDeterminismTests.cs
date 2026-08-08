@@ -117,6 +117,51 @@ public sealed class StructureEngineDeterminismTests
         });
     }
 
+    [Fact]
+    public void Synaptic_Homeostasis_Retains_The_Most_Reinforced_Inbound_Connections()
+    {
+        var weakOld = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var weakRecent = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var tagged = Guid.Parse("00000000-0000-0000-0000-000000000003");
+        var repeated = Guid.Parse("00000000-0000-0000-0000-000000000004");
+        var synapses = new Dictionary<Guid, SynapseState>
+        {
+            [weakOld] = CreateSynapse(weakOld, updateCount: 1, timestampMs: 10),
+            [weakRecent] = CreateSynapse(weakRecent, updateCount: 1, timestampMs: 20),
+            [tagged] = CreateSynapse(tagged, updateCount: 1, timestampMs: 5, tag: 0.8f),
+            [repeated] = CreateSynapse(repeated, updateCount: 9, timestampMs: 1)
+        };
+
+        var removed = SynapsePersistenceStore.PruneInboundSynapses(synapses, maximumCount: 2);
+
+        Assert.Equal(2, removed);
+        Assert.Equal(2, synapses.Count);
+        Assert.Contains(tagged, synapses.Keys);
+        Assert.Contains(repeated, synapses.Keys);
+        Assert.DoesNotContain(weakOld, synapses.Keys);
+        Assert.DoesNotContain(weakRecent, synapses.Keys);
+    }
+
+    [Fact]
+    public void Sensory_Synapse_Limit_Is_Bounded_And_Configurable()
+    {
+        lock (EnvironmentGate)
+        {
+            var previous = Environment.GetEnvironmentVariable("NRE_SENSORY_SYNAPSE_MAX_INBOUND");
+            try
+            {
+                Environment.SetEnvironmentVariable("NRE_SENSORY_SYNAPSE_MAX_INBOUND", "4096");
+                using var store = new SynapsePersistenceStore(StructureId.V1);
+
+                Assert.Equal(4096, store.MaxInboundSynapseCount);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("NRE_SENSORY_SYNAPSE_MAX_INBOUND", previous);
+            }
+        }
+    }
+
     private static void WithEngine(int maxInboundQueueDepth, Action<StructureEngine> action)
     {
         lock (EnvironmentGate)
@@ -169,4 +214,16 @@ public sealed class StructureEngineDeterminismTests
         new NeuromodState(),
         new Dictionary<BrainRhythm, double>(),
         0);
+
+    private static SynapseState CreateSynapse(
+        Guid id,
+        int updateCount,
+        double timestampMs,
+        float tag = 0f)
+        => new(id, NTEnum.GLUTAMATE, 1f, 1f)
+        {
+            UpdateCount = updateCount,
+            LastUpdateTimestampMs = timestampMs,
+            SynapticTagTrace = tag
+        };
 }

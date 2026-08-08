@@ -17,6 +17,8 @@ $baseUrl = "http://localhost:$Port"
 $envVars = @{
     PORT = $Port
     ASPNETCORE_URLS = $baseUrl
+    ASPNETCORE_ENVIRONMENT = 'Production'
+    DOTNET_ENVIRONMENT = 'Production'
     SnapshotEndpoint = "$baseUrl/api/v1/snapshot"
     ControlPublishUrl = "$baseUrl/api/v1/publish/step"
 }

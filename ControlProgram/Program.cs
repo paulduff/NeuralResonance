@@ -599,6 +599,17 @@ app.MapPost("/api/v1/admin/input/audio-frame", async (
             Error = $"Audio frame payload ended before {descriptor.RequiredBytes} bytes were read."
         });
     }
+    catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
+    {
+        return Results.BadRequest(new
+        {
+            Error = $"Audio frame upload was interrupted before {descriptor.RequiredBytes} bytes were read."
+        });
+    }
+    catch (OperationCanceledException) when (request.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+        return Results.StatusCode(499);
+    }
 
     if (request.ContentLength is null)
     {
@@ -876,6 +887,20 @@ app.MapPost("/api/v1/admin/restart-service", async (
     var result = await supervisor.RestartServicesAsync(targetInstances, ct);
     state.AppendOutputLog($"Restart service request: requested={result.Requested}, restarted={result.Restarted}, healthy={result.Healthy}.");
     return Results.Ok(result);
+});
+app.MapPost("/api/v1/admin/shutdown", (IHostApplicationLifetime lifetime) =>
+{
+    _ = Task.Run(async () =>
+    {
+        await Task.Delay(250).ConfigureAwait(false);
+        lifetime.StopApplication();
+    });
+
+    return Results.Ok(new
+    {
+        Accepted = true,
+        Message = "Graceful DNNE shutdown initiated."
+    });
 });
 app.MapGet("/api/v1/admin/network/export", (SimulationState state, SnapshotStore store) =>
 {
@@ -13797,10 +13822,19 @@ internal sealed class StructureProcessSupervisor(IConfiguration configuration, I
             _spawnedByInstance.Clear();
         }
 
-        foreach (var process in processes)
-        {
-            await StopManagedProcessAsync(process, CancellationToken.None).ConfigureAwait(false);
-        }
+        var shutdownParallelism = Math.Clamp(
+            configuration.GetValue<int>("StructureProcessHost:ShutdownParallelism", 16),
+            1,
+            64);
+        await Parallel.ForEachAsync(
+            processes,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = shutdownParallelism,
+                CancellationToken = CancellationToken.None
+            },
+            async (process, ct) =>
+                await StopManagedProcessAsync(process, ct).ConfigureAwait(false)).ConfigureAwait(false);
     }
 
     private static string NormalizeBuildConfiguration(string? configured) =>

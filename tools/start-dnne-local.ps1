@@ -2,6 +2,7 @@ param(
     [switch]$NoBuild = $true,
     [switch]$NoCleanStart,
     [switch]$NoEditor,
+    [switch]$SkipBurnInGate = $true,
     [int]$StartupTimeoutSec = 180,
     [int]$AllowableNonOkServices = 1,
     [int]$StartupSoftNonOkAllowance = 2,
@@ -42,6 +43,10 @@ if ($NoBuild) {
 
 if ($NoEditor) {
     $invokeArgs.NoEditor = $true
+}
+
+if ($SkipBurnInGate) {
+    $invokeArgs.SkipBurnInGate = $true
 }
 
 if (-not $NoAutoRestart) {

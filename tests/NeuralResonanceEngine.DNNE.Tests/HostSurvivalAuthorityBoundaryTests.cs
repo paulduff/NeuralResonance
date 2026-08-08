@@ -59,9 +59,14 @@ public sealed class HostSurvivalAuthorityBoundaryTests
         Assert.Contains("ApplyManipulatorOutput", source, StringComparison.Ordinal);
         Assert.Contains("AvatarPhysicalInteraction.IsWithinEffectorCone", source, StringComparison.Ordinal);
         Assert.Contains("EnsureReachableFoodLearningOpportunity", source, StringComparison.Ordinal);
+        Assert.True(
+            source.Split("EnsureReachableFoodLearningOpportunity", StringSplitOptions.None).Length >= 5,
+            "The initial, respawn, and post-consumption paths must each provide a reachable food affordance.");
         Assert.Contains("ManipulatorReach * 0.75", source, StringComparison.Ordinal);
         Assert.Contains("IsFoodLearningOpportunityLocationClear", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ConsumeNearbyPickups", source, StringComparison.Ordinal);
+        Assert.Contains("_blockedContactSeconds", source, StringComparison.Ordinal);
+        Assert.Contains("InputSource: \"avatar_world_contact\"", source, StringComparison.Ordinal);
     }
 
     [Fact]

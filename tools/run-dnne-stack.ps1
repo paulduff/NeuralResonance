@@ -659,21 +659,41 @@ if ($NoBuild) {
 }
 
 $runArgText = if ($NoBuild) {
-    "run --no-build --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
+    "run --no-build --no-launch-profile --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
 }
 else {
-    "run --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
+    "run --no-launch-profile --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
 }
 
 Write-Host ("Starting ControlProgram ({0})..." -f $Configuration)
 $controlLogs = New-DnneProcessLogPaths -Name 'controlprogram'
-$controlProc = Start-Process `
-    -FilePath 'dotnet' `
-    -ArgumentList $runArgText `
-    -WorkingDirectory (Split-Path -Parent $controlProj) `
-    -RedirectStandardOutput $controlLogs.StdOut `
-    -RedirectStandardError $controlLogs.StdErr `
-    -PassThru
+$controlEnvironment = @{
+    ASPNETCORE_ENVIRONMENT = 'Production'
+    ASPNETCORE_URLS = $ControlBaseUrl
+    ControlPublishUrl = "$($ControlBaseUrl.TrimEnd('/'))/api/v1/publish/step"
+    DOTNET_ENVIRONMENT = 'Production'
+    PORT = ([Uri]$ControlBaseUrl).Port
+    SnapshotEndpoint = "$($ControlBaseUrl.TrimEnd('/'))/api/v1/snapshot"
+}
+$previousControlEnvironment = @{}
+foreach ($entry in $controlEnvironment.GetEnumerator()) {
+    $previousControlEnvironment[$entry.Key] = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+    [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+}
+try {
+    $controlProc = Start-Process `
+        -FilePath 'dotnet' `
+        -ArgumentList $runArgText `
+        -WorkingDirectory (Split-Path -Parent $controlProj) `
+        -RedirectStandardOutput $controlLogs.StdOut `
+        -RedirectStandardError $controlLogs.StdErr `
+        -PassThru
+}
+finally {
+    foreach ($entry in $previousControlEnvironment.GetEnumerator()) {
+        [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+    }
+}
 Write-Host ("ControlProgram PID: {0}" -f $controlProc.Id)
 Write-Host ("ControlProgram stdout: {0}" -f $controlLogs.StdOut)
 Write-Host ("ControlProgram stderr: {0}" -f $controlLogs.StdErr)
@@ -1080,15 +1100,15 @@ if (-not $NoEditor) {
     $editorExe = Join-Path $repoRoot ("src\NRE.WpfEditor\bin\{0}\net10.0-windows\NRE.WpfEditor.exe" -f $Configuration)
     $editorArgText = if ($NoBuild) {
         if (Test-Path $editorExe -PathType Leaf) {
-            "run --no-build --configuration $Configuration --project `"$editorProj`""
+            "run --no-build --no-launch-profile --configuration $Configuration --project `"$editorProj`""
         }
         else {
             Write-Warning ("Editor apphost not found at {0}; falling back to build+run." -f $editorExe)
-            "run --configuration $Configuration --project `"$editorProj`""
+            "run --no-launch-profile --configuration $Configuration --project `"$editorProj`""
         }
     }
     else {
-        "run --configuration $Configuration --project `"$editorProj`""
+        "run --no-launch-profile --configuration $Configuration --project `"$editorProj`""
     }
 
     Write-Host 'Starting WPF editor...'

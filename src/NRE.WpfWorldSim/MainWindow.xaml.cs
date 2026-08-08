@@ -91,6 +91,7 @@ public partial class MainWindow : Window
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyFrameDispatchIntervalMs = 350;
     private const int BodyFrameDispatchTimeoutMs = 1800;
+    private const double MaximumBlockedContactSeconds = 3.0;
     private const double NominalStoredEnergyJoules = 8_000_000.0;
     private const double MetabolicBurnJoulesPerSecond = 3_360.0;
     private const double HydrationLossPerSecond = 0.00022;
@@ -329,6 +330,7 @@ public partial class MainWindow : Window
     private double _nextSurvivalHudUpdateSeconds;
     private double _trailAccumulatorSeconds;
     private double _collisionPulse;
+    private double _blockedContactSeconds;
     private int _collisionHits;
     private bool _mapEditorEnabled;
     private WriteableBitmap? _avatarPreviewBitmap;
@@ -530,6 +532,7 @@ public partial class MainWindow : Window
         _sleepState = false;
         _collisionHits = 0;
         _collisionPulse = 0.0;
+        _blockedContactSeconds = 0.0;
         _spawnValidationRetries = 0;
         _shelterDoorCorridorClears = 0;
         _environmentAudioInFlight = false;
@@ -817,6 +820,7 @@ public partial class MainWindow : Window
         _explorableTerrainCells = 0;
         _trailAccumulatorSeconds = 0.0;
         _collisionPulse = 0.0;
+        _blockedContactSeconds = 0.0;
         _collisionHits = 0;
         _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
         _tissueIntegrity = 1.0;
@@ -2467,6 +2471,11 @@ public partial class MainWindow : Window
         {
             _collisionHits++;
             _collisionPulse = 1.0;
+            _blockedContactSeconds = Math.Min(MaximumBlockedContactSeconds, _blockedContactSeconds + dt);
+        }
+        else
+        {
+            _blockedContactSeconds = Math.Max(0.0, _blockedContactSeconds - (dt * 2.0));
         }
 
         _trailAccumulatorSeconds += dt;
@@ -3152,6 +3161,7 @@ public partial class MainWindow : Window
             _foodPickups[nearestFoodIndex] = pickup;
             QueueManipulatorContact(45.0, 2.5, 700.0);
             _lastInteractionOutcome = "food contact";
+            EnsureReachableFoodLearningOpportunity();
             return true;
         }
 
@@ -5223,6 +5233,11 @@ public partial class MainWindow : Window
 
             if (contactPulse > 0.01)
             {
+                var blockedDuration = Math.Clamp(
+                    _blockedContactSeconds / MaximumBlockedContactSeconds,
+                    0.0,
+                    1.0);
+                var effort = Math.Clamp(Math.Abs(_lastForwardSpeed) / WorldMaxForwardSpeed, 0.0, 1.0);
                 var localX = probeTotal > 0.001
                     ? (_lastRightProximity - _lastLeftProximity) / probeTotal
                     : 0.0;
@@ -5242,12 +5257,14 @@ public partial class MainWindow : Window
                         SurfaceNormalX: (float)-localX,
                         SurfaceNormalY: 0f,
                         SurfaceNormalZ: (float)-localZ,
-                        ForceNewtons: (float)(1_200.0 + (contactPulse * 3_200.0)),
-                        ImpulseNewtonSeconds: (float)(25.0 + (contactPulse * 120.0)),
-                        PenetrationMillimeters: (float)(contactPulse * 28.0),
+                        ForceNewtons: (float)(1_200.0 + (contactPulse * 3_200.0) + (blockedDuration * 2_800.0) + (effort * 1_200.0)),
+                        ImpulseNewtonSeconds: (float)(25.0 + (contactPulse * 120.0) + (blockedDuration * 90.0) + (effort * 45.0)),
+                        PenetrationMillimeters: (float)(contactPulse * (28.0 + (blockedDuration * 12.0))),
                         TangentialSpeedMetersPerSecond: (float)Math.Abs(_lastForwardSpeed),
                         ContactAreaSquareMillimeters: 1_100f,
-                        DurationMilliseconds: BodyFrameDispatchIntervalMs,
+                        DurationMilliseconds: (float)Math.Max(
+                            BodyFrameDispatchIntervalMs,
+                            _blockedContactSeconds * 1_000.0),
                         InputSource: "avatar_world_contact"),
                     token);
                 if (collisionResult.Accepted && collisionResult.TargetInstances > 0)

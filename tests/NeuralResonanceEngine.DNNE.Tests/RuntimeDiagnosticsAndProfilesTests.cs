@@ -23,18 +23,65 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Audio_Frame_Ingress_Handles_Interrupted_Uploads()
+    {
+        var root = ResolveRepositoryRoot();
+        var controlSource = File.ReadAllText(Path.Combine(root, "ControlProgram", "Program.cs"));
+        var audioRouteIndex = controlSource.IndexOf("/api/v1/admin/input/audio-frame", StringComparison.Ordinal);
+        var contactRouteIndex = controlSource.IndexOf("/api/v1/admin/input/contact-frame", StringComparison.Ordinal);
+
+        Assert.True(audioRouteIndex >= 0 && contactRouteIndex > audioRouteIndex);
+        var audioRoute = controlSource[audioRouteIndex..contactRouteIndex];
+        Assert.Contains("catch (BadHttpRequestException", audioRoute, StringComparison.Ordinal);
+        Assert.Contains("catch (OperationCanceledException)", audioRoute, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Stack_Launcher_Uses_One_Explicit_Fresh_Build_Configuration()
     {
         var root = ResolveRepositoryRoot();
         var launcher = File.ReadAllText(Path.Combine(root, "tools", "run-dnne-stack.ps1"));
+        var localLauncher = File.ReadAllText(Path.Combine(root, "tools", "start-dnne-local.ps1"));
 
         Assert.Contains("[string]$Configuration = 'Release'", launcher, StringComparison.Ordinal);
         Assert.Contains("--configuration $Configuration", launcher, StringComparison.Ordinal);
+        Assert.Contains("--no-launch-profile", launcher, StringComparison.Ordinal);
+        Assert.Contains("ASPNETCORE_ENVIRONMENT = 'Production'", launcher, StringComparison.Ordinal);
+        Assert.Contains("ASPNETCORE_URLS = $ControlBaseUrl", launcher, StringComparison.Ordinal);
+        Assert.Contains("DOTNET_ENVIRONMENT = 'Production'", launcher, StringComparison.Ordinal);
         Assert.Contains("--StructureProcessHost:Configuration $Configuration", launcher, StringComparison.Ordinal);
         Assert.Contains("Get-LatestProjectInputWriteTimeUtc", launcher, StringComparison.Ordinal);
         Assert.Contains("Get-ProjectInputFiles", launcher, StringComparison.Ordinal);
         Assert.Contains("ProjectReference", launcher, StringComparison.Ordinal);
         Assert.DoesNotContain("bin\\Debug", launcher, StringComparison.Ordinal);
+        Assert.Contains("[switch]$SkipBurnInGate = $true", localLauncher, StringComparison.Ordinal);
+        Assert.Contains("$invokeArgs.SkipBurnInGate = $true", localLauncher, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Managed_Structure_Shutdown_Is_Graceful_And_Bounded_Parallel()
+    {
+        var root = ResolveRepositoryRoot();
+        var controlSource = File.ReadAllText(Path.Combine(root, "ControlProgram", "Program.cs"));
+
+        Assert.Contains("StructureProcessHost:ShutdownParallelism", controlSource, StringComparison.Ordinal);
+        Assert.Contains("Parallel.ForEachAsync", controlSource, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/structure/shutdown", controlSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Local_Shutdown_Exports_Live_Network_State_Before_Stopping_Control()
+    {
+        var root = ResolveRepositoryRoot();
+        var controlSource = File.ReadAllText(Path.Combine(root, "ControlProgram", "Program.cs"));
+        var stopScript = File.ReadAllText(Path.Combine(root, "tools", "stop-dnne-local.ps1"));
+
+        Assert.Contains("/api/v1/admin/shutdown", controlSource, StringComparison.Ordinal);
+        Assert.Contains("Get-LocalDnneRuntimeProcesses", stopScript, StringComparison.Ordinal);
+        var exportIndex = stopScript.IndexOf("/api/v1/admin/network/export", StringComparison.Ordinal);
+        var shutdownIndex = stopScript.IndexOf("/api/v1/admin/shutdown", StringComparison.Ordinal);
+        Assert.True(exportIndex >= 0, "The shutdown script must export a live network checkpoint.");
+        Assert.True(shutdownIndex > exportIndex, "The live checkpoint must be exported before Control is stopped.");
     }
 
     [Theory]

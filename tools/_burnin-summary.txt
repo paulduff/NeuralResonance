@@ -1,18 +1,18 @@
 ﻿DNNE burn-in gate
 controlBaseUrl: http://localhost:5080
-startedUtc: 2026-05-27T22:04:52.9464103Z
-finishedUtc: 2026-05-27T22:05:31.2414844Z
-durationSec: 38.3
-result: PASS
-maxObservedNonOk: 0
-maxObservedSnapshotAgeTicks: 0
-statePollErrors: 3
-snapshotStallEvents: 0
-nonOkViolationEvents: 0
-sensoryDispatchErrors: 6
+startedUtc: 2026-08-08T19:50:52.6200099Z
+finishedUtc: 2026-08-08T20:01:20.4251370Z
+durationSec: 627.8
+result: FAIL
+maxObservedNonOk: 90
+maxObservedSnapshotAgeTicks: 12
+statePollErrors: 0
+snapshotStallEvents: 48
+nonOkViolationEvents: 40
+sensoryDispatchErrors: 0
 sensory404Errors: 0
 sensoryZeroDelivered: 0
-restartCycles: 0
+restartCycles: 1
 restartCycleFailures: 0
 framePollErrors: 0
 mazeDetected: False
@@ -26,3 +26,5 @@ mazeStuckFailAfterSec: 0
 mazeStuckNoProgressWindowSec: 45
 mazeStuckWallImpactMinRatePerSec: 0.8
 mazeStuckMaxMotorDispatchPerPoll: 2
+failReasons:
+  - snapshot cadence stalled: age 9223372036854775807 ticks for ~20.0s

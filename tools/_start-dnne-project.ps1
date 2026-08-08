@@ -142,6 +142,7 @@ function Start-DnneProject {
 
     $argumentList = @(
         'run',
+        '--no-launch-profile',
         '--project',
         $resolvedProjectPath,
         '--configuration',

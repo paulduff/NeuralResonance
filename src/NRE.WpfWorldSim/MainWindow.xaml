@@ -99,21 +99,21 @@
                         <TextBlock x:Name="ServicesText" Margin="0,4,0,0" Text="Service health: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="BrainStateText" Margin="0,4,0,0" Text="Brain state: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,8,0,0" Text="English Command" FontWeight="SemiBold" />
-                        <TextBox x:Name="EnglishCommandTextBox"
+                        <TextBlock Margin="0,8,0,0" Text="Visible Text" FontWeight="SemiBold" />
+                        <TextBox x:Name="TextDisplayInputTextBox"
                                  Margin="0,4,0,0"
                                  Padding="6,4"
                                  Background="#030E24"
                                  Foreground="#D8E6FF"
                                  BorderBrush="#264B7E"
                                  Text="find shelter"
-                                 KeyDown="EnglishCommandTextBox_OnKeyDown" />
-                        <Button x:Name="SendEnglishCommandButton"
+                                 KeyDown="TextDisplayInputTextBox_OnKeyDown" />
+                        <Button x:Name="PresentTextButton"
                                 Margin="0,4,0,0"
                                 Padding="8,3"
-                                Content="Send English Command"
-                                Click="SendEnglishCommandButton_OnClick" />
-                        <TextBlock x:Name="EnglishCommandStatusText" Margin="0,3,0,0" Text="Command: idle" TextWrapping="Wrap" />
+                                Content="Present to Retina"
+                                Click="PresentTextButton_OnClick" />
+                        <TextBlock x:Name="TextDisplayStatusText" Margin="0,3,0,0" Text="Text display: idle" TextWrapping="Wrap" />
                         <TextBlock x:Name="ObjectMemoryStatusText" Margin="0,8,0,0" Text="Object memory: -" TextWrapping="Wrap" />
                         <Border Margin="0,4,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#030E24" CornerRadius="3">
                             <TextBox x:Name="ObjectMemoryTextBox"

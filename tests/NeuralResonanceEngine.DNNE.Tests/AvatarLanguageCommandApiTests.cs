@@ -6,7 +6,7 @@ using NRE.SimAvatar;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
-public sealed class AvatarLanguageCommandApiTests
+public sealed class AvatarTextSightApiTests
 {
     [Fact]
     public void Frame_Path_Uses_The_Control_Program_Incremental_Dispatch_Contract()
@@ -57,54 +57,58 @@ public sealed class AvatarLanguageCommandApiTests
     }
 
     [Fact]
-    public void Parse_Language_Command_Result_Reads_Intent_And_Narration()
+    public void Text_Renderer_Produces_Valid_Deterministic_Retinal_Frames()
     {
-        using var document = JsonDocument.Parse(
-            """
-            {
-              "mode": "english",
-              "tokenCount": 2,
-              "brainTokenCount": 6,
-              "generatedSpikes": 42,
-              "deliveredSpikes": 37,
-              "targetInstances": 4,
-              "generatedUtterance": "find shelter",
-              "grammar": {
-                "intent": "survival_statement",
-                "mood": "imperative"
-              },
-              "languageIntent": {
-                "commandKey": "language.seek_shelter",
-                "motorDirective": "motor_seek",
-                "strength": 1.14
-              },
-              "brainNarration": {
-                "utterance": "I am looking for shelter.",
-                "sequence": 12,
-                "lastUpdatedTick": 345,
-                "source": "language.seek_shelter"
-              }
-            }
-            """);
+        var lowerCase = AvatarTextSightRenderer.Render("hello", generation: 7, captureTimestampMs: 11);
+        var upperCase = AvatarTextSightRenderer.Render("HELLO", generation: 7, captureTimestampMs: 11);
+        var different = AvatarTextSightRenderer.Render("WORLD", generation: 8, captureTimestampMs: 12);
 
-        var result = AvatarControlApi.ParseLanguageCommandResult(document.RootElement);
+        lowerCase.Validate();
+        Assert.Equal(AvatarTextSightRenderer.FrameWidth, lowerCase.Width);
+        Assert.Equal(AvatarTextSightRenderer.FrameHeight, lowerCase.Height);
+        Assert.Equal("Bgra32", lowerCase.PixelFormat);
+        Assert.Equal(lowerCase.Pixels, upperCase.Pixels);
+        Assert.False(lowerCase.Pixels.SequenceEqual(different.Pixels));
+    }
 
-        Assert.Equal("english", result.Mode);
-        Assert.Equal(2, result.TokenCount);
-        Assert.Equal(6, result.BrainTokenCount);
-        Assert.Equal(42, result.GeneratedSpikes);
-        Assert.Equal(37, result.DeliveredSpikes);
-        Assert.Equal(4, result.TargetInstances);
-        Assert.Equal("find shelter", result.Utterance);
-        Assert.Equal("survival_statement", result.GrammarIntent);
-        Assert.Equal("imperative", result.GrammarMood);
-        Assert.Equal("language.seek_shelter", result.CommandKey);
-        Assert.Equal("motor_seek", result.MotorDirective);
-        Assert.Equal(1.14f, result.Strength, precision: 2);
-        Assert.Equal("I am looking for shelter.", result.Narration.Utterance);
-        Assert.Equal(12, result.Narration.Sequence);
-        Assert.Equal(345, result.Narration.LastUpdatedTick);
-        Assert.Equal("language.seek_shelter", result.Narration.Source);
+    [Fact]
+    public void Retinal_Frame_Has_No_Structured_Language_Metadata()
+    {
+        var propertyNames = typeof(AvatarSightFrame)
+            .GetProperties()
+            .Select(property => property.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.DoesNotContain("Text", propertyNames);
+        Assert.DoesNotContain("Tokens", propertyNames);
+        Assert.DoesNotContain("Mode", propertyNames);
+        Assert.DoesNotContain("Hemisphere", propertyNames);
+        Assert.DoesNotContain("TargetStructure", propertyNames);
+        Assert.DoesNotContain("MotorDirective", propertyNames);
+    }
+
+    [Fact]
+    public async Task Visible_Text_Is_Posted_As_Octet_Stream_To_The_Retinal_Route()
+    {
+        const string responseBody =
+            """{"accepted":true,"dispatchDeferred":true,"blockedByInputGate":false,"generatedSpikes":18,"deliveredSpikes":0,"targetInstances":2,"sampleColumns":24,"sampleRows":12,"onChannelSpikes":10,"offChannelSpikes":8,"meanLuminance":0.8,"meanTemporalChange":0.2}""";
+        var handler = new RecordingResponseHandler(HttpStatusCode.OK, responseBody);
+        using var client = new HttpClient(handler);
+        var frame = AvatarTextSightRenderer.Render("hello", generation: 1, captureTimestampMs: 2);
+
+        var result = await AvatarControlApi.PostRetinalFrameAsync(
+            client,
+            new Uri("http://localhost:5080"),
+            frame,
+            AvatarRuntimeDefaults.TypedTextVisualInputSource);
+
+        Assert.True(result.Accepted);
+        Assert.Equal(18, result.GeneratedSpikes);
+        Assert.NotNull(handler.RequestUri);
+        Assert.Equal("/api/v1/admin/input/visual-frame", handler.RequestUri!.AbsolutePath);
+        Assert.Contains("inputSource=avatar_text_display", handler.RequestUri.Query, StringComparison.Ordinal);
+        Assert.Equal("application/octet-stream", handler.ContentType);
+        Assert.Equal(frame.Stride * frame.Height, handler.PayloadLength);
     }
 
     [Fact]
@@ -140,5 +144,27 @@ public sealed class AvatarLanguageCommandApiTests
             {
                 Content = new StringContent(body)
             });
+    }
+
+    private sealed class RecordingResponseHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler
+    {
+        public Uri? RequestUri { get; private set; }
+        public string? ContentType { get; private set; }
+        public int PayloadLength { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestUri = request.RequestUri;
+            ContentType = request.Content?.Headers.ContentType?.MediaType;
+            PayloadLength = request.Content is null
+                ? 0
+                : (await request.Content.ReadAsByteArrayAsync(cancellationToken)).Length;
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(body)
+            };
+        }
     }
 }

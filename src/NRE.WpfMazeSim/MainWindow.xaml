@@ -117,21 +117,21 @@
                         <TextBlock x:Name="LimbicStageText" Margin="0,2,0,0" Text="Limbic stage: -" />
                         <TextBlock x:Name="LimbicDriveText" Margin="0,2,0,0" Text="Limbic drives: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,8,0,0" Text="English Command" FontWeight="SemiBold" />
-                        <TextBox x:Name="EnglishCommandTextBox"
+                        <TextBlock Margin="0,8,0,0" Text="Visible Text" FontWeight="SemiBold" />
+                        <TextBox x:Name="TextDisplayInputTextBox"
                                  Margin="0,4,0,0"
                                  Padding="6,4"
                                  Background="#030E24"
                                  Foreground="#D8E6FF"
                                  BorderBrush="#1D335F"
                                  Text="move forward"
-                                 KeyDown="EnglishCommandTextBox_OnKeyDown" />
-                        <Button x:Name="SendEnglishCommandButton"
+                                 KeyDown="TextDisplayInputTextBox_OnKeyDown" />
+                        <Button x:Name="PresentTextButton"
                                 Margin="0,4,0,0"
                                 Padding="8,3"
-                                Content="Send English Command"
-                                Click="SendEnglishCommandButton_OnClick" />
-                        <TextBlock x:Name="EnglishCommandStatusText" Margin="0,3,0,8" Text="Command: idle" TextWrapping="Wrap" />
+                                Content="Present to Retina"
+                                Click="PresentTextButton_OnClick" />
+                        <TextBlock x:Name="TextDisplayStatusText" Margin="0,3,0,8" Text="Text display: idle" TextWrapping="Wrap" />
 
                         <TextBlock Text="Forward Gain" />
                         <Slider x:Name="ForwardGainSlider" Minimum="0.1" Maximum="3.0" Value="1.2" TickFrequency="0.1" IsSnapToTickEnabled="False" />

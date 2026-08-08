@@ -101,6 +101,7 @@ public partial class MainWindow : Window
     private readonly byte[] _visionPixels = new byte[VisionWidth * VisionHeight * 4];
     private readonly double[] _visionDepthBuffer = new double[VisionWidth];
     private int _visionGeneration;
+    private int _textDisplayGeneration;
     private readonly Point3D _cameraTarget = new(0.0, 0.78, 0.0);
 
     private int _mazeRows;
@@ -145,7 +146,7 @@ public partial class MainWindow : Window
     private bool _bodyFrameInFlight;
     private bool _contactFrameInFlight;
     private bool _environmentAudioInFlight;
-    private bool _englishCommandInFlight;
+    private bool _textDisplayInFlight;
     private bool _visionTickInFlight;
     private readonly AvatarRetryBackoff _environmentAudioBackoff = new(maxStreak: 8, maxExponent: 7, baseDelayMs: 1000);
     private long _lastBodyFrameDispatchMs;
@@ -249,7 +250,7 @@ public partial class MainWindow : Window
         LimbicStageText.Text = "Limbic stage: awaiting telemetry";
         LimbicDriveText.Text = "Limbic drives: waiting for Control Program state.";
         BrainNarrationText.Text = "Brain narration: waiting for brain state.";
-        EnglishCommandStatusText.Text = "Command: idle";
+        TextDisplayStatusText.Text = "Text display: idle";
         NavigationStatusText.Text = "Motor authority: neuronal brain drive";
     }
 
@@ -2444,9 +2445,9 @@ public partial class MainWindow : Window
 
     private void ResetAvatarButton_OnClick(object sender, RoutedEventArgs e) => ResetRun();
 
-    private async void SendEnglishCommandButton_OnClick(object sender, RoutedEventArgs e) => await SendEnglishCommandAsync();
+    private async void PresentTextButton_OnClick(object sender, RoutedEventArgs e) => await PresentTextToRetinaAsync();
 
-    private async void EnglishCommandTextBox_OnKeyDown(object sender, KeyEventArgs e)
+    private async void TextDisplayInputTextBox_OnKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter)
         {
@@ -2454,12 +2455,12 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
-        await SendEnglishCommandAsync();
+        await PresentTextToRetinaAsync();
     }
 
-    private async Task SendEnglishCommandAsync()
+    private async Task PresentTextToRetinaAsync()
     {
-        if (_englishCommandInFlight)
+        if (_textDisplayInFlight)
         {
             return;
         }
@@ -2467,44 +2468,46 @@ public partial class MainWindow : Window
         var endpoint = ResolveEndpointUri();
         if (endpoint is null)
         {
-            EnglishCommandStatusText.Text = "Command: invalid endpoint.";
+            TextDisplayStatusText.Text = "Text display: invalid endpoint.";
             return;
         }
 
-        var commandText = EnglishCommandTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(commandText))
+        var visibleText = TextDisplayInputTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(visibleText))
         {
-            EnglishCommandStatusText.Text = "Command: enter an English instruction first.";
+            TextDisplayStatusText.Text = "Text display: enter visible text first.";
             return;
         }
 
-        _englishCommandInFlight = true;
-        SendEnglishCommandButton.IsEnabled = false;
-        EnglishCommandStatusText.Text = "Command: sending to brain...";
+        _textDisplayInFlight = true;
+        PresentTextButton.IsEnabled = false;
+        TextDisplayStatusText.Text = "Text display: presenting pixels to Retina...";
         try
         {
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3.5));
-            var result = await AvatarControlApi.PostLanguageCommandAsync(
+            var frame = AvatarTextSightRenderer.Render(
+                visibleText,
+                Interlocked.Increment(ref _textDisplayGeneration),
+                Environment.TickCount64);
+            var result = await AvatarControlApi.PostRetinalFrameAsync(
                 _httpClient,
                 endpoint,
-                new AvatarLanguageCommand(commandText),
+                frame,
+                AvatarRuntimeDefaults.TypedTextVisualInputSource,
                 timeout.Token);
 
-            var directive = string.IsNullOrWhiteSpace(result.MotorDirective) ? "motor_idle" : result.MotorDirective;
-            EnglishCommandStatusText.Text = $"Command: {directive}, spikes {result.DeliveredSpikes}/{result.GeneratedSpikes}";
-            Log($"English command accepted: \"{TrimForLog(commandText, 80)}\" -> {directive}.");
-
-            ApplyBrainNarration(result.Narration, forceLog: true);
+            TextDisplayStatusText.Text = $"Text display: Retina spikes {result.GeneratedSpikes}, targets {result.TargetInstances}";
+            Log($"Visible text presented to Retina: \"{TrimForLog(visibleText, 80)}\".");
         }
         catch (Exception ex)
         {
-            EnglishCommandStatusText.Text = $"Command: failed ({ex.GetType().Name})";
-            Log($"English command warning: {ex.GetType().Name}: {TrimForLog(ex.Message, 120)}");
+            TextDisplayStatusText.Text = $"Text display: failed ({ex.GetType().Name})";
+            Log($"Visible text warning: {ex.GetType().Name}: {TrimForLog(ex.Message, 120)}");
         }
         finally
         {
-            SendEnglishCommandButton.IsEnabled = true;
-            _englishCommandInFlight = false;
+            PresentTextButton.IsEnabled = true;
+            _textDisplayInFlight = false;
         }
     }
 

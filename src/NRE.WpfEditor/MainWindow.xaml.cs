@@ -154,7 +154,7 @@ public partial class MainWindow : Window
     private bool _suppressInputGatesControlEvents;
     private bool _webcamInputInFlight;
     private bool _microphoneInputInFlight;
-    private bool _languageInputInFlight;
+    private bool _textDisplayInFlight;
     private bool _speechOutputEnabled = true;
     private bool _suppressSpeechUiEvents;
     private string _visualAttentionFocusField = "neutral";
@@ -190,7 +190,7 @@ public partial class MainWindow : Window
     private DateTime _lastRetinaRouteRecoveryUtc = DateTime.MinValue;
     private DateTime _lastRetinaRouteSuccessUtc = DateTime.MinValue;
     private DateTime _lastRetinaRouteFailureUtc = DateTime.MinValue;
-    private DateTime _lastLanguageInputUtc = DateTime.MinValue;
+    private DateTime _lastTextDisplayUtc = DateTime.MinValue;
     private DateTime _lastSpeechUtc = DateTime.MinValue;
     private DateTime _lastLanguageUtteranceUtc = DateTime.MinValue;
     private string _lastLanguageUtterance = "hello world";
@@ -198,6 +198,7 @@ public partial class MainWindow : Window
     private long _languageUtteranceSequence;
     private long _lastSpokenLanguageUtteranceSequence;
     private long _lastSpeechDispatchWallClockMs;
+    private int _textDisplayGeneration;
     private int _speechVolume = 95;
     private int _speechRatePercent = 100;
     private int _speechMinDispatchSpikes = SpeechDefaultMinDispatchSpikes;
@@ -227,7 +228,7 @@ public partial class MainWindow : Window
     private static readonly TimeSpan WebcamStimulusInterval = TimeSpan.FromMilliseconds(220);
     private static readonly TimeSpan WebcamPreviewUiInterval = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan MicrophoneStimulusInterval = TimeSpan.FromMilliseconds(55);
-    private static readonly TimeSpan LanguageInputCooldown = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan TextDisplayCooldown = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan SpeechCooldown = TimeSpan.FromMilliseconds(6000);
     private static readonly TimeSpan SpeechDuplicateSuppression = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan LanguageUtteranceRetention = TimeSpan.FromSeconds(15);
@@ -721,7 +722,7 @@ public partial class MainWindow : Window
         SetWebcamPreviewUnavailable("Avatar sight unavailable");
         MicrophoneStatusText.Text = "Microphone: idle";
         UpdateMicrophoneLevelMeterUi(0, isActive: false);
-        LanguageInputStatusText.Text = "Language: idle";
+        TextDisplayStatusText.Text = "Text display: idle";
         SetLanguageCommandTelemetryText("Brain telemetry: awaiting runtime state");
         SetInputHealthIndicator(WebcamHealthLight, WebcamHealthText, InputHealthState.Idle, "Webcam pipeline: inactive");
         SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
@@ -4187,8 +4188,8 @@ public partial class MainWindow : Window
 
     // ToggleMicrophoneInputButton_OnClick moved to MainWindow.Microphone.cs.
 
-    private async void SendLanguageInputButton_OnClick(object sender, RoutedEventArgs e)
-        => await SafeHandlerAsync(SendLanguageInputAsync, "Send language input");
+    private async void PresentTextButton_OnClick(object sender, RoutedEventArgs e)
+        => await SafeHandlerAsync(PresentTextToRetinaAsync, "Present visible text");
 
     private void ToggleSpeechOutputButton_OnClick(object sender, RoutedEventArgs e)
     {
@@ -4384,201 +4385,67 @@ public partial class MainWindow : Window
     // dispatch, level meter UI) moved to MainWindow.Microphone.cs.
 
 
-    private async Task SendLanguageInputAsync()
+    private async Task PresentTextToRetinaAsync()
     {
-        if (_languageInputInFlight)
+        if (_textDisplayInFlight)
         {
-            AddOutputLog("Language input request already in flight.");
+            AddOutputLog("Visible text presentation already in flight.");
             return;
         }
 
-        var remaining = LanguageInputCooldown - (DateTime.UtcNow - _lastLanguageInputUtc);
+        var remaining = TextDisplayCooldown - (DateTime.UtcNow - _lastTextDisplayUtc);
         if (remaining > TimeSpan.Zero)
         {
             return;
         }
 
-        var text = LanguageInputTextBox?.Text?.Trim();
+        var text = TextDisplayInputTextBox?.Text?.Trim();
         if (string.IsNullOrWhiteSpace(text))
         {
-            AddOutputLog("Language input skipped: enter text to stimulate language pathways.");
+            AddOutputLog("Visible text skipped: enter text to place in the retinal display.");
             return;
         }
 
-        _languageInputInFlight = true;
-        _lastLanguageInputUtc = DateTime.UtcNow;
+        _textDisplayInFlight = true;
+        _lastTextDisplayUtc = DateTime.UtcNow;
+        PresentTextButton.IsEnabled = false;
+        TextDisplayStatusText.Text = "Text display: presenting pixels to Retina...";
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(3500));
         try
         {
             var baseUri = await ResolveVerifiedControlBaseUriAsync(cts.Token);
             if (baseUri is null)
             {
-                LanguageInputStatusText.Text = "Language: control endpoint unavailable";
-                AddOutputLog("Language input skipped: Control Program endpoint not available.");
+                TextDisplayStatusText.Text = "Text display: control endpoint unavailable";
+                AddOutputLog("Visible text skipped: Control Program endpoint not available.");
                 return;
             }
 
-            var mode = ResolveLanguageInputMode();
-            var hemisphere = ResolveLanguageInputHemisphere();
-            var tokenCountEstimate = text.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Length;
-            var intensity = (float)Math.Clamp(0.80 + (tokenCountEstimate * 0.06), 0.2, 3.0);
-            var burstPerToken = Math.Clamp(5 + tokenCountEstimate, 4, 24);
-
-            var result = await SendLanguageStimulusAsync(
-                baseUri,
+            var frame = AvatarTextSightRenderer.Render(
                 text,
-                mode,
-                hemisphere,
-                intensity,
-                burstPerToken,
+                Interlocked.Increment(ref _textDisplayGeneration),
+                Environment.TickCount64);
+            var result = await AvatarControlApi.PostRetinalFrameAsync(
+                _httpClient,
+                baseUri,
+                frame,
+                AvatarRuntimeDefaults.TypedTextVisualInputSource,
                 cts.Token);
 
-            var grammarSuffix = string.IsNullOrWhiteSpace(result.GrammarIntent)
-                ? string.Empty
-                : $" grammar={result.GrammarIntent}/{result.GrammarMood}";
-            LanguageInputStatusText.Text = $"Language: {result.Mode} tokens={result.TokenCount}/{result.BrainTokenCount} del={result.Delivered}";
-            AddOutputLog(
-                $"Language input sent ({result.Mode}): delivered {result.Delivered}/{result.Generated} spikes across {result.TargetCount} targets{grammarSuffix}.");
-            if (result.Delivered > 0)
-            {
-                RememberLanguageUtterance(string.IsNullOrWhiteSpace(result.Utterance) ? text : result.Utterance, force: true);
-                AddSpikeLog(
-                    $"Language {result.Mode}: delivered {result.Delivered} spikes ({result.TokenCount} tokens, {result.TargetCount} targets)");
-            }
+            TextDisplayStatusText.Text = $"Text display: Retina spikes {result.GeneratedSpikes}, targets {result.TargetInstances}";
+            AddOutputLog($"Visible text presented to Retina: \"{TrimForStatus(text, 80)}\".");
+            AddSpikeLog($"Visible text: Retina generated {result.GeneratedSpikes} spikes across {result.TargetInstances} targets");
         }
         catch (Exception ex)
         {
-            LanguageInputStatusText.Text = $"Language: error ({ex.Message})";
-            AddOutputLog($"Language input failed: {ex.Message}");
+            TextDisplayStatusText.Text = $"Text display: error ({ex.Message})";
+            AddOutputLog($"Visible text presentation failed: {ex.Message}");
         }
         finally
         {
-            _languageInputInFlight = false;
+            PresentTextButton.IsEnabled = true;
+            _textDisplayInFlight = false;
         }
-    }
-
-    private string ResolveLanguageInputMode()
-    {
-        if (LanguageModeCombo?.SelectedItem is ComboBoxItem item)
-        {
-            var tag = item.Tag?.ToString();
-            if (!string.IsNullOrWhiteSpace(tag))
-            {
-                return tag.Trim().ToLowerInvariant();
-            }
-
-            var content = item.Content?.ToString();
-            if (!string.IsNullOrWhiteSpace(content))
-            {
-                return content.Trim().ToLowerInvariant();
-            }
-        }
-
-        return "repetition";
-    }
-
-    private string? ResolveLanguageInputHemisphere()
-    {
-        if (LanguageHemisphereCombo?.SelectedItem is ComboBoxItem item)
-        {
-            var tag = item.Tag?.ToString();
-            if (string.IsNullOrWhiteSpace(tag) || tag == "*")
-            {
-                return null;
-            }
-
-            return tag.Trim().ToUpperInvariant();
-        }
-
-        return "L";
-    }
-
-    private async Task<LanguageStimulusDispatchResult> SendLanguageStimulusAsync(
-        Uri baseUri,
-        string text,
-        string mode,
-        string? hemisphere,
-        float intensity,
-        int burstPerToken,
-        CancellationToken cancellationToken)
-    {
-        var request = new
-        {
-            Text = text,
-            Mode = mode,
-            Intensity = intensity,
-            BurstPerToken = burstPerToken,
-            Hemisphere = hemisphere,
-            TokenCount = mode.Equals("emergent", StringComparison.OrdinalIgnoreCase) ? Math.Clamp(text.Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Length, 4, 16) : (int?)null,
-            NoveltyBias = mode.Equals("emergent", StringComparison.OrdinalIgnoreCase)
-                ? 0.72f
-                : mode.Equals("english", StringComparison.OrdinalIgnoreCase) ? 0.0f : 0.35f
-        };
-
-        using var response = await _httpClient.PostAsJsonAsync(new Uri(baseUri, "/api/v1/admin/input/language"), request, cancellationToken);
-        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}. {payload}");
-        }
-
-        var tokenCount = 0;
-        var generated = 0;
-        var delivered = 0;
-        var targetCount = 0;
-        var resolvedMode = mode;
-        var generatedUtterance = text;
-        var brainTokenCount = 0;
-        var grammarIntent = string.Empty;
-        var grammarMood = string.Empty;
-        try
-        {
-            using var doc = JsonDocument.Parse(payload);
-            if (doc.RootElement.ValueKind == JsonValueKind.Object)
-            {
-                var responseMode = GetString(doc.RootElement, "mode");
-                if (!string.IsNullOrWhiteSpace(responseMode))
-                {
-                    resolvedMode = responseMode;
-                }
-
-                tokenCount = GetInt(doc.RootElement, "tokenCount");
-                brainTokenCount = GetInt(doc.RootElement, "brainTokenCount");
-                generated = GetInt(doc.RootElement, "generatedSpikes");
-                delivered = GetInt(doc.RootElement, "deliveredSpikes");
-                targetCount = GetInt(doc.RootElement, "targetInstances");
-                var responseUtterance = GetString(doc.RootElement, "generatedUtterance");
-                if (!string.IsNullOrWhiteSpace(responseUtterance))
-                {
-                    generatedUtterance = responseUtterance;
-                }
-                if (TryGetProperty(doc.RootElement, "grammar", out var grammar) && grammar.ValueKind == JsonValueKind.Object)
-                {
-                    grammarIntent = GetString(grammar, "intent");
-                    grammarMood = GetString(grammar, "mood");
-                }
-            }
-        }
-        catch
-        {
-            // Best effort details parsing only.
-        }
-
-        if (brainTokenCount <= 0)
-        {
-            brainTokenCount = tokenCount;
-        }
-
-        return new LanguageStimulusDispatchResult(
-            resolvedMode,
-            tokenCount,
-            brainTokenCount,
-            generated,
-            delivered,
-            targetCount,
-            generatedUtterance,
-            grammarIntent,
-            grammarMood);
     }
 
     // Viewport mouse handling, hover label, and auto-fit zoom moved to MainWindow.Camera.cs.
@@ -4976,16 +4843,6 @@ private sealed record TransportSpikePipeline(int Generated, int Routed, int Deli
 {
     public static TransportSpikePipeline Empty { get; } = new(0, 0, 0);
 }
-private sealed record LanguageStimulusDispatchResult(
-    string Mode,
-    int TokenCount,
-    int BrainTokenCount,
-    int Generated,
-    int Delivered,
-    int TargetCount,
-    string Utterance,
-    string GrammarIntent,
-    string GrammarMood);
 private sealed record FrameSpikeMetrics(
     int GeneratedSpikes,
     int RoutedSpikes,

@@ -12,7 +12,6 @@ public static class AvatarControlApi
 
     public const string PhysicalBodyFrameInputPath = "/api/v1/admin/input/body-frame";
     public const string CochlearFrameInputPath = "/api/v1/admin/input/audio-frame";
-    public const string LanguageInputPath = "/api/v1/admin/input/language";
     public const string RetinalFrameInputPath = "/api/v1/admin/input/visual-frame";
     public const string SomaticContactFrameInputPath = "/api/v1/admin/input/contact-frame";
 
@@ -61,18 +60,6 @@ public static class AvatarControlApi
         string inputSource = AvatarRuntimeDefaults.UnifiedAudioInputSource,
         CancellationToken cancellationToken = default) =>
         PostCochlearFrameCoreAsync(client, new Uri(endpoint), frame, inputSource, cancellationToken);
-
-    public static Task<AvatarLanguageCommandResult> PostEnglishCommandAsync(HttpClient client, Uri endpoint, string text, CancellationToken cancellationToken = default) =>
-        PostLanguageCommandAsync(client, endpoint, new AvatarLanguageCommand(text), cancellationToken);
-
-    public static Task<AvatarLanguageCommandResult> PostEnglishCommandAsync(HttpClient client, string endpoint, string text, CancellationToken cancellationToken = default) =>
-        PostLanguageCommandAsync(client, new Uri(endpoint), new AvatarLanguageCommand(text), cancellationToken);
-
-    public static Task<AvatarLanguageCommandResult> PostLanguageCommandAsync(HttpClient client, Uri endpoint, AvatarLanguageCommand command, CancellationToken cancellationToken = default) =>
-        PostLanguageCommandCoreAsync(client, BuildUri(endpoint, LanguageInputPath), command, cancellationToken);
-
-    public static Task<AvatarLanguageCommandResult> PostLanguageCommandAsync(HttpClient client, string endpoint, AvatarLanguageCommand command, CancellationToken cancellationToken = default) =>
-        PostLanguageCommandCoreAsync(client, BuildUri(endpoint, LanguageInputPath), command, cancellationToken);
 
     public static Task<AvatarRetinalFrameDispatchResult> PostRetinalFrameAsync(
         HttpClient client,
@@ -185,37 +172,6 @@ public static class AvatarControlApi
             MeanOnset: (float)AvatarJson.GetDouble(root, "meanOnset"));
     }
 
-    private static async Task<AvatarLanguageCommandResult> PostLanguageCommandCoreAsync(HttpClient client, Uri uri, AvatarLanguageCommand command, CancellationToken cancellationToken)
-    {
-        var text = command.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            throw new ArgumentException("English command text cannot be empty.", nameof(command));
-        }
-
-        var tokenCount = text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
-        var request = new
-        {
-            Text = text,
-            Mode = string.IsNullOrWhiteSpace(command.Mode) ? "english" : command.Mode,
-            Hemisphere = command.Hemisphere,
-            Intensity = command.Intensity ?? Math.Clamp(0.85f + (tokenCount * 0.04f), 0.20f, 3.0f),
-            BurstPerToken = command.BurstPerToken ?? Math.Clamp(6 + tokenCount, 4, 24),
-            NoveltyBias = 0.0f
-        };
-
-        using var response = await client.PostAsJsonAsync(uri, request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var message = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new InvalidOperationException($"Language command failed: HTTP {(int)response.StatusCode} {message}");
-        }
-
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        return ParseLanguageCommandResult(document.RootElement);
-    }
-
     private static async Task<AvatarRetinalFrameDispatchResult> PostRetinalFrameCoreAsync(
         HttpClient client,
         Uri endpoint,
@@ -293,48 +249,6 @@ public static class AvatarControlApi
             VibrationActivation: (float)AvatarJson.GetDouble(root, "vibrationActivation"),
             StretchActivation: (float)AvatarJson.GetDouble(root, "stretchActivation"),
             HighThresholdActivation: (float)AvatarJson.GetDouble(root, "highThresholdActivation"));
-    }
-
-    public static AvatarLanguageCommandResult ParseLanguageCommandResult(JsonElement root)
-    {
-        var grammarIntent = string.Empty;
-        var grammarMood = string.Empty;
-        if (AvatarJson.TryGetProperty(root, "grammar", out var grammar) && grammar.ValueKind == JsonValueKind.Object)
-        {
-            grammarIntent = AvatarJson.GetString(grammar, "intent");
-            grammarMood = AvatarJson.GetString(grammar, "mood");
-        }
-
-        var commandKey = string.Empty;
-        var motorDirective = string.Empty;
-        var strength = 0.0f;
-        if (AvatarJson.TryGetProperty(root, "languageIntent", out var languageIntent) && languageIntent.ValueKind == JsonValueKind.Object)
-        {
-            commandKey = AvatarJson.GetString(languageIntent, "commandKey");
-            motorDirective = AvatarJson.GetString(languageIntent, "motorDirective");
-            strength = (float)AvatarJson.GetDouble(languageIntent, "strength");
-        }
-
-        var narration = AvatarBrainNarration.Empty;
-        if (AvatarJson.TryGetProperty(root, "brainNarration", out var brainNarration) && brainNarration.ValueKind == JsonValueKind.Object)
-        {
-            narration = ParseBrainNarration(brainNarration);
-        }
-
-        return new AvatarLanguageCommandResult(
-            Mode: AvatarJson.GetString(root, "mode"),
-            TokenCount: AvatarJson.GetInt(root, "tokenCount"),
-            BrainTokenCount: AvatarJson.GetInt(root, "brainTokenCount"),
-            GeneratedSpikes: AvatarJson.GetInt(root, "generatedSpikes"),
-            DeliveredSpikes: AvatarJson.GetInt(root, "deliveredSpikes"),
-            TargetInstances: AvatarJson.GetInt(root, "targetInstances"),
-            Utterance: AvatarJson.GetString(root, "generatedUtterance", "text"),
-            GrammarIntent: grammarIntent,
-            GrammarMood: grammarMood,
-            CommandKey: commandKey,
-            MotorDirective: motorDirective,
-            Strength: Math.Clamp(strength, 0.0f, 3.0f),
-            Narration: narration);
     }
 
     public static bool TryReadBrainNarration(JsonElement stateElement, out AvatarBrainNarration narration)

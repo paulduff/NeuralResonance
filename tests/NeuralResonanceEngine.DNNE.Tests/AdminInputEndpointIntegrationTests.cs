@@ -123,6 +123,22 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
     }
 
     [Fact]
+    public async Task StructuredLanguageInputEndpointDoesNotExist()
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(
+            "/api/v1/admin/input/language",
+            new
+            {
+                Text = "find shelter",
+                Mode = "comprehension",
+                Hemisphere = "L",
+                TargetStructure = "WernickeArea"
+            });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task CochlearFrame_Rejects_Malformed_Payload_Length()
     {
         const int samplesPerChannel = 800;

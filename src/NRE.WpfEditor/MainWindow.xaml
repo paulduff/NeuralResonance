@@ -1003,73 +1003,21 @@
                                                Margin="0,6,0,0"
                                                Foreground="#9EB3E5"
                                                Text="Input gates: awaiting runtime settings" />
-                                    <TextBlock Margin="0,12,0,4" Text="Language Input" Foreground="#B9C8ED" />
-                                    <TextBox x:Name="LanguageInputTextBox"
+                                    <TextBlock Margin="0,12,0,4" Text="Visible Text Input" Foreground="#B9C8ED" />
+                                    <TextBox x:Name="TextDisplayInputTextBox"
                                              Background="#14203B"
                                              Foreground="#DDE6FF"
                                              BorderBrush="#2D3D63"
-                                             Text="repeat hello world" />
-                                    <Grid Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"
-                                                   Foreground="#C5D2F2"
-                                                   Text="Mode" />
-                                        <ComboBox x:Name="LanguageModeCombo"
-                                                  Grid.Column="1"
-                                                  Margin="0,0,8,0"
-                                                  SelectedIndex="0"
-                                                  Foreground="#0E1830"
-                                                  Background="#E7EEFF">
-                                            <ComboBox.ItemContainerStyle>
-                                                <Style TargetType="ComboBoxItem">
-                                                    <Setter Property="Foreground" Value="#0E1830" />
-                                                    <Setter Property="Background" Value="#E7EEFF" />
-                                                </Style>
-                                            </ComboBox.ItemContainerStyle>
-                                            <ComboBoxItem Content="English" Tag="english" />
-                                            <ComboBoxItem Content="Comprehension" Tag="comprehension" />
-                                            <ComboBoxItem Content="Production" Tag="production" />
-                                            <ComboBoxItem Content="Repetition" Tag="repetition" />
-                                            <ComboBoxItem Content="Prosody" Tag="prosody" />
-                                            <ComboBoxItem Content="Emergent" Tag="emergent" />
-                                        </ComboBox>
-                                        <TextBlock Grid.Column="2"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,8,0"
-                                                   Foreground="#C5D2F2"
-                                                   Text="Hemisphere" />
-                                        <ComboBox x:Name="LanguageHemisphereCombo"
-                                                  Grid.Column="3"
-                                                  SelectedIndex="0"
-                                                  Foreground="#0E1830"
-                                                  Background="#E7EEFF">
-                                            <ComboBox.ItemContainerStyle>
-                                                <Style TargetType="ComboBoxItem">
-                                                    <Setter Property="Foreground" Value="#0E1830" />
-                                                    <Setter Property="Background" Value="#E7EEFF" />
-                                                </Style>
-                                            </ComboBox.ItemContainerStyle>
-                                            <ComboBoxItem Content="Left" Tag="L" />
-                                            <ComboBoxItem Content="Both" Tag="*" />
-                                            <ComboBoxItem Content="Right" Tag="R" />
-                                        </ComboBox>
-                                    </Grid>
-                                    <Button x:Name="SendLanguageInputButton"
+                                             Text="hello world" />
+                                    <Button x:Name="PresentTextButton"
                                             Margin="0,8,0,0"
                                             Padding="10,4"
-                                            Click="SendLanguageInputButton_OnClick"
-                                            Content="Send Language Stimulus" />
-                                    <TextBlock x:Name="LanguageInputStatusText"
+                                            Click="PresentTextButton_OnClick"
+                                            Content="Present to Retina" />
+                                    <TextBlock x:Name="TextDisplayStatusText"
                                                Margin="0,6,0,0"
                                                Foreground="#9EB3E5"
-                                               Text="Language: idle" />
+                                               Text="Text display: idle" />
                                     <TextBlock Margin="0,12,0,4" Text="Brain Telemetry" Foreground="#B9C8ED" />
                                     <Border Background="#0E1830"
                                             BorderBrush="#2D3D63"

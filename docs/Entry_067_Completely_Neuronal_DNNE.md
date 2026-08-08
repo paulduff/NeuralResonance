@@ -373,6 +373,13 @@ fibres. The host body cache, semantic hunger/health/pain fields, selected neural
 targets, and compatibility endpoint are absent. World contact has also moved to
 the raw somatic boundary, completing the producer migration begun in Entry 097.
 
+Entry 099 deletes structured typed-language authority. Maze, world, and editor
+render typed messages onto a bounded visible display and send only BGRA pixels
+through the raw retinal route. The host can no longer choose language mode,
+hemisphere, token plan, neural target, spike burst, grammar, motor intent, or
+immediate narration. Comprehension must emerge through visual and language
+circuits rather than a command parser.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

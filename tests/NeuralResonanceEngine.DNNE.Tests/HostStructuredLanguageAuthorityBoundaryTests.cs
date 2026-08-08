@@ -160,6 +160,30 @@ public sealed class HostStructuredLanguageAuthorityBoundaryTests
         }
     }
 
+    [Fact]
+    public void EditorDoesNotGenerateOrSpeakHostAuthoredPhrases()
+    {
+        var root = ResolveRepositoryRoot();
+        var editorDirectory = Path.Combine(root, "src", "NRE.WpfEditor");
+        var editor = File.ReadAllText(Path.Combine(editorDirectory, "MainWindow.xaml.cs"));
+        var xaml = File.ReadAllText(Path.Combine(editorDirectory, "MainWindow.xaml"));
+
+        Assert.False(File.Exists(Path.Combine(editorDirectory, "MainWindow.Speech.cs")));
+        AssertSourceOmits(
+            editor,
+            "BuildSpeechPhrase",
+            "RememberLanguageUtterance",
+            "TryQueueSpeechFromLanguageDispatch",
+            "SAPI.SpVoice",
+            "SpeechTriggerMode",
+            "_speechQueue");
+        AssertSourceOmits(
+            xaml,
+            "Speech Output",
+            "SpeechTriggerModeCombo",
+            "ToggleSpeechOutputButton");
+    }
+
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)
     {
         foreach (var symbol in forbiddenSymbols)

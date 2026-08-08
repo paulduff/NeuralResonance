@@ -5,11 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Diagnostics;
 using System.Collections.Concurrent;
-using System.Threading.Channels;
 using System.Text.Json;
 using System.Text;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Controls;
@@ -134,11 +131,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<uint, SolidColorBrush> _statusBadgeBrushes = new();
     private readonly object _audioMetricsGate = new();
     private readonly object _webcamStimulusGate = new();
-    private readonly Channel<string> _speechQueue = Channel.CreateBounded<string>(new BoundedChannelOptions(128)
-    {
-        SingleReader = true,
-        FullMode = BoundedChannelFullMode.DropOldest
-    });
     private readonly object _endpointStateGate = new();
     private readonly SemaphoreSlim _endpointResolutionGate = new(1, 1);
     private readonly PaneWorker _transportStatsPaneWorker = new("NRE.Editor.Pane.TransportStats");
@@ -155,8 +147,6 @@ public partial class MainWindow : Window
     private bool _webcamInputInFlight;
     private bool _microphoneInputInFlight;
     private bool _textDisplayInFlight;
-    private bool _speechOutputEnabled = true;
-    private bool _suppressSpeechUiEvents;
     private string _visualAttentionFocusField = "neutral";
     private string _visualAttentionFocusHemisphere = "M";
     private double _visualAttentionFocusConfidence;
@@ -191,21 +181,9 @@ public partial class MainWindow : Window
     private DateTime _lastRetinaRouteSuccessUtc = DateTime.MinValue;
     private DateTime _lastRetinaRouteFailureUtc = DateTime.MinValue;
     private DateTime _lastTextDisplayUtc = DateTime.MinValue;
-    private DateTime _lastSpeechUtc = DateTime.MinValue;
-    private DateTime _lastLanguageUtteranceUtc = DateTime.MinValue;
-    private string _lastLanguageUtterance = "hello world";
-    private string _lastSpokenPhrase = string.Empty;
-    private long _languageUtteranceSequence;
-    private long _lastSpokenLanguageUtteranceSequence;
-    private long _lastSpeechDispatchWallClockMs;
     private int _textDisplayGeneration;
-    private int _speechVolume = 95;
-    private int _speechRatePercent = 100;
-    private int _speechMinDispatchSpikes = SpeechDefaultMinDispatchSpikes;
-    private SpeechTriggerMode _speechTriggerMode = SpeechTriggerMode.LanguagePathway;
     private CancellationTokenSource? _webcamCts;
     private CancellationTokenSource? _microphoneCts;
-    private Thread? _speechThread;
     private Task? _webcamTask;
     private Task? _microphoneTask;
     private double _audioRmsEwma;
@@ -229,10 +207,6 @@ public partial class MainWindow : Window
     private static readonly TimeSpan WebcamPreviewUiInterval = TimeSpan.FromMilliseconds(120);
     private static readonly TimeSpan MicrophoneStimulusInterval = TimeSpan.FromMilliseconds(55);
     private static readonly TimeSpan TextDisplayCooldown = TimeSpan.FromMilliseconds(300);
-    private static readonly TimeSpan SpeechCooldown = TimeSpan.FromMilliseconds(6000);
-    private static readonly TimeSpan SpeechDuplicateSuppression = TimeSpan.FromSeconds(8);
-    private static readonly TimeSpan LanguageUtteranceRetention = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan PassiveLanguageUtteranceUpdateCooldown = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan WebcamSignalStallTimeout = TimeSpan.FromSeconds(2.5);
     private static readonly TimeSpan WebcamHardReconnectTimeout = TimeSpan.FromSeconds(8);
     private static readonly TimeSpan MicrophoneSignalStallTimeout = TimeSpan.FromSeconds(2.5);
@@ -257,7 +231,6 @@ public partial class MainWindow : Window
     private const int FramePollMaxSpikeLog = 40;
     private const int FramePollMaxDispatchSpikes = 1024;
     private const int ControlEndpointFailureThreshold = 10;
-    private const int SpeechDefaultMinDispatchSpikes = 12;
     private const int WebcamReadFailureWarnThreshold = 30;
     private const int WebcamReadFailureReconnectThreshold = 250;
     private const int RetinaRouteRecoveryFailureThreshold = 3;
@@ -272,17 +245,6 @@ public partial class MainWindow : Window
             MinForwardSpeed: 0.0,
             MaxForwardSpeed: 3.2,
             MaxTurnRateDeg: 220.0));
-    private static readonly HashSet<string> SpeechLanguageStructures = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "BrocaBa44Ba45",
-        "WernickePstgPsts",
-        "ArcuateFasciculus",
-        "SupramarginalAngular",
-        "TemporalAssociation",
-        "Pfc",
-        "Ppc"
-    };
-
     private static Uri[] BuildSnapshotBaseUris()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -728,7 +690,6 @@ public partial class MainWindow : Window
         SetInputHealthIndicator(MicrophoneHealthLight, MicrophoneHealthText, InputHealthState.Idle, "Microphone pipeline: inactive");
         SetInputHealthIndicator(VisualRouteHealthLight, VisualRouteHealthText, InputHealthState.Idle, "Retina route: awaiting webcam input");
         UpdateAvatarTransportPanel();
-        InitializeSpeechControlsUi();
         UpdateReasoningSliderLabels();
         SetRenderStatus("Render: initializing 3D scene");
     }
@@ -1259,7 +1220,6 @@ public partial class MainWindow : Window
     private void StartWorkers()
     {
         _animationStartUtc = DateTime.UtcNow;
-        StartSpeechWorker();
         _controlWorkerTask = Task.Run(() => ControlWorkerLoopAsync(_workerCts.Token));
         _renderWorkerTask = Task.Run(() => RenderWorkerLoopAsync(_workerCts.Token));
     }
@@ -1513,9 +1473,6 @@ public partial class MainWindow : Window
         snapshotId = instanceId[(separator + 1)..];
         return !string.IsNullOrWhiteSpace(hemisphere) && !string.IsNullOrWhiteSpace(snapshotId);
     }
-
-    // Speech worker, dispatch-spike phrase building, and language utterance memory
-    // moved to MainWindow.Speech.cs.
 
     private async Task ControlWorkerLoopAsync(CancellationToken token)
     {
@@ -1797,7 +1754,6 @@ public partial class MainWindow : Window
         var payload = ParseSnapshotPayload(latestSnapshot);
         var dispatchSpikes = ParseDispatchSpikeTraces(frame);
         var dispatchPathwayActivities = BuildDispatchPathwayActivities(dispatchSpikes);
-        TryQueueSpeechFromLanguageDispatch(dispatchSpikes);
         var dispatchIdsByStructure = BuildDispatchNeuronIdLookup(dispatchSpikes);
         var distinctDispatchNeuronIds = CountDistinctConcreteNeuronIds(dispatchIdsByStructure);
         var unmatchedNeuronIds = CountUnmatchedDispatchStructures(dispatchIdsByStructure);
@@ -4191,190 +4147,6 @@ public partial class MainWindow : Window
     private async void PresentTextButton_OnClick(object sender, RoutedEventArgs e)
         => await SafeHandlerAsync(PresentTextToRetinaAsync, "Present visible text");
 
-    private void ToggleSpeechOutputButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        _speechOutputEnabled = !_speechOutputEnabled;
-        if (ToggleSpeechOutputButton is not null)
-        {
-            ToggleSpeechOutputButton.Content = _speechOutputEnabled ? "Disable Speech Output" : "Enable Speech Output";
-        }
-
-        if (_speechOutputEnabled)
-        {
-            _lastSpokenLanguageUtteranceSequence = _languageUtteranceSequence;
-            UpdateSpeechStatusText("Speech: listening for activity");
-            AddOutputLog($"Speech output enabled ({GetSpeechTriggerModeLabel(_speechTriggerMode)} trigger).");
-            return;
-        }
-
-        while (_speechQueue.Reader.TryRead(out _))
-        {
-            // Drop stale utterances when speech output is disabled.
-        }
-
-        UpdateSpeechStatusText("Speech: disabled");
-        AddOutputLog("Speech output disabled.");
-    }
-
-    private void SpeechTriggerModeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressSpeechUiEvents || !IsLoaded)
-        {
-            return;
-        }
-
-        var selected = ParseSelectedSpeechTriggerMode();
-        if (selected == _speechTriggerMode)
-        {
-            return;
-        }
-
-        _speechTriggerMode = selected;
-        RefreshSpeechControlLabels();
-        UpdateSpeechStatusText("Speech: listening for activity");
-        AddOutputLog($"Speech trigger mode set to {GetSpeechTriggerModeLabel(_speechTriggerMode)}.");
-    }
-
-    private void SpeechThresholdSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        var threshold = (int)Math.Round(e.NewValue);
-        _speechMinDispatchSpikes = Math.Clamp(threshold, 1, 256);
-        if (_suppressSpeechUiEvents || !IsLoaded)
-        {
-            return;
-        }
-
-        RefreshSpeechControlLabels();
-        UpdateSpeechStatusText("Speech: listening for activity");
-    }
-
-    private void SpeechRateSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        var rate = (int)Math.Round(e.NewValue);
-        _speechRatePercent = Math.Clamp(rate, 50, 200);
-        if (_suppressSpeechUiEvents || !IsLoaded)
-        {
-            return;
-        }
-
-        RefreshSpeechControlLabels();
-        UpdateSpeechStatusText("Speech: listening for activity");
-    }
-
-    private void SpeechVolumeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        var volume = (int)Math.Round(e.NewValue);
-        _speechVolume = Math.Clamp(volume, 0, 100);
-        if (_suppressSpeechUiEvents || !IsLoaded)
-        {
-            return;
-        }
-
-        RefreshSpeechControlLabels();
-        UpdateSpeechStatusText("Speech: listening for activity");
-    }
-
-    private void InitializeSpeechControlsUi()
-    {
-        _suppressSpeechUiEvents = true;
-        try
-        {
-            if (SpeechTriggerModeCombo is not null)
-            {
-                SpeechTriggerModeCombo.SelectedIndex = _speechTriggerMode == SpeechTriggerMode.GlobalDispatch ? 1 : 0;
-            }
-
-            if (SpeechThresholdSlider is not null)
-            {
-                SpeechThresholdSlider.Value = _speechMinDispatchSpikes;
-            }
-
-            if (SpeechRateSlider is not null)
-            {
-                SpeechRateSlider.Value = _speechRatePercent;
-            }
-
-            if (SpeechVolumeSlider is not null)
-            {
-                SpeechVolumeSlider.Value = _speechVolume;
-            }
-        }
-        finally
-        {
-            _suppressSpeechUiEvents = false;
-        }
-
-        RefreshSpeechControlLabels();
-        UpdateSpeechStatusText(_speechOutputEnabled ? "Speech: listening for activity" : "Speech: disabled");
-        if (ToggleSpeechOutputButton is not null)
-        {
-            ToggleSpeechOutputButton.Content = _speechOutputEnabled ? "Disable Speech Output" : "Enable Speech Output";
-        }
-    }
-
-    private void RefreshSpeechControlLabels()
-    {
-        if (SpeechThresholdText is not null)
-        {
-            SpeechThresholdText.Text = _speechMinDispatchSpikes.ToString();
-        }
-
-        if (SpeechRateText is not null)
-        {
-            SpeechRateText.Text = FormatSpeechRateLabel(_speechRatePercent);
-        }
-
-        if (SpeechVolumeText is not null)
-        {
-            SpeechVolumeText.Text = $"{_speechVolume}%";
-        }
-    }
-
-    private void UpdateSpeechStatusText(string baseMessage)
-    {
-        if (SpeechOutputStatusText is null)
-        {
-            return;
-        }
-
-        if (!_speechOutputEnabled)
-        {
-            SpeechOutputStatusText.Text = "Speech: disabled";
-            return;
-        }
-
-        SpeechOutputStatusText.Text = $"{baseMessage} ({GetSpeechTriggerModeLabel(_speechTriggerMode)}, min {_speechMinDispatchSpikes})";
-    }
-
-    private SpeechTriggerMode ParseSelectedSpeechTriggerMode()
-    {
-        if (SpeechTriggerModeCombo?.SelectedItem is ComboBoxItem item)
-        {
-            var tag = item.Tag?.ToString()?.Trim().ToLowerInvariant();
-            if (tag == "global")
-            {
-                return SpeechTriggerMode.GlobalDispatch;
-            }
-        }
-
-        return SpeechTriggerMode.LanguagePathway;
-    }
-
-    private static string FormatSpeechRateLabel(int percent)
-    {
-        var clamped = Math.Clamp(percent, 50, 200);
-        return $"{clamped / 100.0:0.00}x";
-    }
-
-    private static string GetSpeechTriggerModeLabel(SpeechTriggerMode mode)
-    {
-        return mode switch
-        {
-            SpeechTriggerMode.GlobalDispatch => "Global dispatch",
-            _ => "Language pathway"
-        };
-    }
-
     // Webcam input pipeline (toggle, capture loop, stimulus dispatch, preview, attention reticle,
     // visual stimulus dispatch, hemifield saliency) moved to MainWindow.Webcam.cs.
 
@@ -4486,8 +4258,6 @@ public partial class MainWindow : Window
             _cameraFitDebounceTimer.Stop();
             _autoProfileDebounceTimer.Stop();
             _sensoryHealthTimer.Stop();
-            _speechOutputEnabled = false;
-            _speechQueue.Writer.TryComplete();
             var webcamStopped = await StopWebcamInputAsync();
             var microphoneStopped = await StopMicrophoneInputAsync();
             _workerCts.Cancel();
@@ -4510,7 +4280,6 @@ public partial class MainWindow : Window
             try
             {
                 await workers.WaitAsync(TimeSpan.FromSeconds(5));
-                await Task.Run(() => _speechThread?.Join(TimeSpan.FromSeconds(2)));
             }
             catch (TimeoutException)
             {
@@ -4894,12 +4663,6 @@ private sealed record InputGateControlSettings(
     {
         public List<StructureTick> StructureStates { get; } = [];
         public List<PathwayTick> Pathways { get; } = [];
-    }
-
-    private enum SpeechTriggerMode
-    {
-        LanguagePathway,
-        GlobalDispatch
     }
 
     private enum StructureLayout

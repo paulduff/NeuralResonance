@@ -395,6 +395,12 @@ generation has no DNNE fallback prose. Candidate review is bound to the
 neuronal snapshot that issued its prompt and must still match the live
 percept, recall, attention, wake, and speech state before emission.
 
+Entry 102 deletes the editor's host-generated speech subsystem. Dispatch
+spikes can no longer select remembered text, construct a phrase, or trigger
+Windows SAPI. Audible speech must be a downstream presentation of text already
+accepted by the prompt-bound Dyad emission gate; until that explicit consumer
+exists, the editor remains silent.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

@@ -35,7 +35,9 @@ synaptic memory, attention competition, executive recurrence, sleep replay,
 language grounding, affect valuation, action selection, and motor output.
 Body and environment values are explicitly labelled sensory substrate rather
 than cognitive decisions. The retired brain-narration speech bridge was also
-deleted; editor speech remains driven by measured language-pathway dispatch.
+deleted. At this historical rung, editor SAPI output still watched measured
+language-pathway dispatch; Entry 102 later deletes that remaining host speech
+pipeline because dispatch activity is not an emitted utterance.
 
 ## Telemetry Contract
 

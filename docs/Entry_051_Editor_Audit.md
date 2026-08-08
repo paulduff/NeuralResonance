@@ -6,6 +6,10 @@ Date: 2026-05-31
 
 Focused audit of the WPF editor (`src/NRE.WpfEditor`). The editor polls the Control Program at ~10 Hz for frames, renders 3D brain meshes, captures webcam + microphone input, runs SAPI speech output, and shows telemetry. Several partial classes split `MainWindow` logic across `.Visuals`, `.Camera`, `.Speech`, `.Microphone`, `.Brain3D.*`, `.Telemetry`, `.Webcam`, `.Health`, `.Frames`, `.ControlPanels`, `.EndpointResolution`.
 
+Current-state note: Entry 102 later deletes the editor SAPI and host phrase
+pipeline. The description above records the editor as it existed during this
+historical audit, not the present language boundary.
+
 This entry captures the items found and marks each as the work lands.
 
 ## What was already good

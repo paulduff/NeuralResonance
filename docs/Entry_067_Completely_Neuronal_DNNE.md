@@ -420,6 +420,12 @@ token logits. Semantic source labels and evidence prose are excluded from the
 structured adapter input, and accepted speech remains under DNNE's live
 neuronal review.
 
+Entry 106 replaces the retired mode-promotion harness with a neuronal-only
+qualification bundle. Offline causal tests, circuit audit, and cortical
+benchmarks can pass on the current laptop, but the report cannot claim embodied
+qualification without a separately observed healthy live stack, maze stream,
+numeric motor dispatch, and physical progress.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

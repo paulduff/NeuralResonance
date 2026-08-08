@@ -22,6 +22,10 @@ internal sealed record EntityLanguageBridgeOptions(
 {
     public string? ApiKey { get; init; }
 
+    public string? DyadAdapterPath { get; init; }
+
+    public float DyadAdapterStrength { get; init; } = 0.35f;
+
     public bool CanGenerate => Enabled && !string.IsNullOrWhiteSpace(CheckpointPath);
 
     public static EntityLanguageBridgeOptions FromConfiguration(IConfiguration configuration)
@@ -54,7 +58,9 @@ internal sealed record EntityLanguageBridgeOptions(
             ReadInt(configuration, "NRE_ENTITY_SEED", 1337, int.MinValue, int.MaxValue),
             TimeSpan.FromMilliseconds(timeoutMs))
         {
-            ApiKey = NormalizeOptional(configuration["NRE_ENTITY_API_KEY"])
+            ApiKey = NormalizeOptional(configuration["NRE_ENTITY_API_KEY"]),
+            DyadAdapterPath = NormalizeOptional(configuration["NRE_ENTITY_DYAD_ADAPTER_PATH"]),
+            DyadAdapterStrength = ReadFloat(configuration, "NRE_ENTITY_DYAD_ADAPTER_STRENGTH", 0.35f, 0f, 1f)
         };
     }
 
@@ -110,7 +116,10 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
                     ChatExamplesPath: _options.ChatExamplesPath,
                     IdentityProfilePath: _options.IdentityProfilePath,
                     HistoryPath: _options.HistoryPath,
-                    KnowledgePath: _options.KnowledgePath))
+                    KnowledgePath: _options.KnowledgePath,
+                    DyadGrounding: ToApiGrounding(prompt.Grounding),
+                    DyadAdapterPath: _options.DyadAdapterPath,
+                    DyadAdapterStrength: _options.DyadAdapterStrength))
             };
             if (!string.IsNullOrWhiteSpace(_options.ApiKey))
             {
@@ -139,7 +148,10 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
                 .ToArray();
             var checkpointName = Path.GetFileName(_options.CheckpointPath);
             var version = $"{checkpointName}; architecture={NormalizeValue(payload.Architecture, "unknown")}; tokenizer={NormalizeValue(payload.Tokenizer, "unknown")}";
-            var configuration = $"tokens={_options.Tokens};temperature={_options.Temperature:0.00};topK={_options.TopK};seed={_options.Seed}";
+            var adapterStatus = payload.DyadAdapterApplied == true
+                ? $"{NormalizeValue(payload.DyadAdapterProtocol, "unknown")}@{_options.DyadAdapterStrength:0.00}"
+                : "inactive";
+            var configuration = $"tokens={_options.Tokens};temperature={_options.Temperature:0.00};topK={_options.TopK};seed={_options.Seed};adapter={adapterStatus}";
             return new EntityLanguageCandidateResult(
                 true,
                 "Entity candidate generated through the hosted chat API.",
@@ -174,6 +186,33 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
     private static string TrimTo(string value, int maximumLength)
         => value.Length <= maximumLength ? value : value[..maximumLength];
 
+    private static EntityChatDyadGrounding ToApiGrounding(DyadLanguageGroundingSnapshot grounding) =>
+        new(
+            grounding.Tick,
+            grounding.IsSleeping,
+            grounding.NeuronalCircuitObserved,
+            grounding.NeuronalGroundingAvailable,
+            grounding.NeuronalGrounded,
+            grounding.PerceptEnsemble,
+            grounding.PerceptConfidence,
+            grounding.MemoryEnsemble,
+            grounding.MemoryConfidence,
+            grounding.AttentionChannel,
+            grounding.LanguageAttention,
+            grounding.AttentionConfidence,
+            grounding.LanguageCircuitCoverage,
+            grounding.ComprehensionDrive,
+            grounding.ExpressionDrive,
+            grounding.GroundingConfidence,
+            grounding.Uncertainty,
+            grounding.NeuronalSpeechAuthorized,
+            grounding.Sources
+                .Select(static source => new EntityChatDyadSource(
+                    source.PopulationIndex,
+                    source.Confidence,
+                    source.Tick))
+                .ToArray());
+
     private sealed record EntityChatApiRequest(
         string CheckpointPath,
         string Message,
@@ -185,6 +224,9 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
         string? IdentityProfilePath,
         string? HistoryPath,
         string? KnowledgePath,
+        EntityChatDyadGrounding? DyadGrounding,
+        string? DyadAdapterPath,
+        float DyadAdapterStrength,
         IReadOnlyList<EntityChatTurn>? History = null,
         int ShortMemoryCharacters = 0,
         string? MemoryPath = null,
@@ -196,8 +238,36 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
         string? Response,
         string? Architecture,
         string? Tokenizer,
+        bool? DyadAdapterApplied,
+        string? DyadAdapterProtocol,
         IReadOnlyList<EntityChatSource>? HistoricalSources,
         IReadOnlyList<EntityChatSource>? KnowledgeSources);
 
     private sealed record EntityChatSource(string? SourceId, string? Title, string? StableUrl);
+
+    private sealed record EntityChatDyadGrounding(
+        long Tick,
+        bool IsSleeping,
+        bool NeuronalCircuitObserved,
+        bool NeuronalGroundingAvailable,
+        bool NeuronalGrounded,
+        int PerceptPopulation,
+        float PerceptConfidence,
+        int MemoryPopulation,
+        float MemoryConfidence,
+        int AttentionPopulation,
+        float LanguageAttention,
+        float AttentionConfidence,
+        float LanguageCircuitCoverage,
+        float ComprehensionDrive,
+        float ExpressionDrive,
+        float GroundingConfidence,
+        float Uncertainty,
+        bool NeuronalSpeechAuthorized,
+        IReadOnlyList<EntityChatDyadSource> Sources);
+
+    private sealed record EntityChatDyadSource(
+        int PopulationIndex,
+        float Confidence,
+        long Tick);
 }

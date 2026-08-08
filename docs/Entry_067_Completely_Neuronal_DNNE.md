@@ -413,6 +413,13 @@ text, DNNE's prompt-bound neuronal review accepts or defers it, and the browser
 may voice only a matching accepted emission. The presenter receives no alternate
 language source and cannot rewrite, infer, or feed speech back into the brain.
 
+Entry 105 adds the first learned numeric population-to-language adapter. DNNE
+sends only population indices, confidence, timing, coverage, and gates; Entity
+maps those values through a separately trained bounded residual adapter over
+token logits. Semantic source labels and evidence prose are excluded from the
+structured adapter input, and accepted speech remains under DNNE's live
+neuronal review.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

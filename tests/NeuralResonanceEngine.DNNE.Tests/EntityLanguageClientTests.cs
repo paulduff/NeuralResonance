@@ -38,6 +38,10 @@ public sealed class EntityLanguageClientTests
         Assert.Contains("\"checkpointPath\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"message\":\"verified DNNE context\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"tokens\":80", handler.RequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"dyadGrounding\"", handler.RequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"perceptPopulation\"", handler.RequestBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"sourceId\"", handler.RequestBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"evidence\"", handler.RequestBody, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

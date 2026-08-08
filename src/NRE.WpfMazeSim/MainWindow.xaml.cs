@@ -139,7 +139,7 @@ public partial class MainWindow : Window
     private bool _connectedOnce;
     private string _lastConnectionMessage = string.Empty;
     private string _lastVisionInputStatus = string.Empty;
-    private string _lastObjectMemoryText = string.Empty;
+    private string _lastNeuronalMemoryText = string.Empty;
     private double _lastSimTimeSeconds;
     private DateTime _lastHazardDamageUtc = DateTime.MinValue;
     private DateTime _lastWallImpactUtc = DateTime.MinValue;
@@ -172,16 +172,16 @@ public partial class MainWindow : Window
     private double _lastRightProximity;
     private int _checkpointActivations;
     private string _lastMazeEvent = "-";
-    private string _limbicStage = "unknown";
-    private double _limbicSalience;
-    private double _limbicThreat;
-    private double _limbicInteroceptiveDrive;
-    private double _limbicAversiveDrive;
-    private double _limbicHippocampalContext;
-    private double _limbicValence;
-    private double _limbicRewardPredictionError;
-    private double _limbicDopamine;
-    private double _limbicNorepinephrine;
+    private bool _neuronalAffectActive;
+    private int _neuronalAffectChannel = -1;
+    private double _neuronalAffectConfidence;
+    private double _neuronalAppetitiveDrive;
+    private double _neuronalDefensiveDrive;
+    private double _neuronalHomeostaticDrive;
+    private double _neuronalExploratoryDrive;
+    private double _neuronalPositiveValence;
+    private double _neuronalNegativeValence;
+    private double _neuronalArousal;
     private readonly Queue<long> _recentWallImpactTicks = new();
     private readonly Queue<LearningSample> _learningSamples = new();
     private double _totalDistanceTravelled;
@@ -244,9 +244,9 @@ public partial class MainWindow : Window
         UpdateHud();
         VisionSignalText.Text = "Vision signal: preview ready";
         VisionInputStatusText.Text = "Visual input: waiting for first frame";
-        ObjectMemoryTextBox.Text = "Object memory: waiting for first frame";
-        LimbicStageText.Text = "Limbic stage: awaiting telemetry";
-        LimbicDriveText.Text = "Limbic drives: waiting for Control Program state.";
+        NeuronalMemoryTextBox.Text = "Neuronal memory: waiting for first frame";
+        NeuronalAffectStatusText.Text = "Neuronal affect: awaiting telemetry";
+        NeuronalAffectDriveText.Text = "Anonymous affect populations: waiting for Control Program state.";
         TextDisplayStatusText.Text = "Text display: idle";
         NavigationStatusText.Text = "Motor authority: neuronal brain drive";
     }
@@ -449,12 +449,11 @@ public partial class MainWindow : Window
             {
                 brainState = stateElement;
                 _lastTick = GetLong(stateElement, "tick");
-                UpdateLimbicFromState(stateElement);
-                UpdateObjectMemoryFromState(stateElement);
+                UpdateNeuronalCognitionFromState(stateElement);
             }
             else
             {
-                SetObjectMemoryText("Object memory unavailable: /api/v1/frame missing state payload.");
+                SetNeuronalMemoryText("Neuronal memory unavailable: /api/v1/frame missing state payload.");
             }
 
             var dispatches = ParseDispatchSpikes(root, out var maxWallClockMs);
@@ -771,72 +770,67 @@ public partial class MainWindow : Window
         _lastVisionInputStatus = status;
     }
 
-    private void SetObjectMemoryText(string text)
+    private void SetNeuronalMemoryText(string text)
     {
-        if (string.Equals(text, _lastObjectMemoryText, StringComparison.Ordinal))
+        if (string.Equals(text, _lastNeuronalMemoryText, StringComparison.Ordinal))
         {
             return;
         }
 
-        _lastObjectMemoryText = text;
-        ObjectMemoryTextBox.Text = text;
-        ObjectMemoryTextBox.CaretIndex = 0;
+        _lastNeuronalMemoryText = text;
+        NeuronalMemoryTextBox.Text = text;
+        NeuronalMemoryTextBox.CaretIndex = 0;
     }
 
-    private void UpdateObjectMemoryFromState(JsonElement stateElement)
+    private void UpdateNeuronalCognitionFromState(JsonElement stateElement)
     {
-        SetObjectMemoryText(FormatObjectMemoryState(stateElement));
-    }
-
-    private static string FormatObjectMemoryState(JsonElement stateRoot)
-    {
-        if (!TryGetProperty(stateRoot, "objectMemory", out var objectMemory) || objectMemory.ValueKind != JsonValueKind.Object)
+        var hasPerception = TryGetProperty(stateElement, "neuronalPerception", out var perception) &&
+                            perception.ValueKind == JsonValueKind.Object;
+        var hasMemory = TryGetProperty(stateElement, "neuronalMemory", out var memory) &&
+                        memory.ValueKind == JsonValueKind.Object;
+        if (!hasPerception && !hasMemory)
         {
-            return "Object memory unavailable: state payload missing objectMemory.";
+            SetNeuronalMemoryText("Neuronal perception and synaptic memory telemetry unavailable.");
         }
-
-        var tick = GetLong(stateRoot, "tick");
-        var simMs = GetDouble(stateRoot, "simulationClockMs");
-        var count = GetInt(objectMemory, "count");
-        var topList = TryGetProperty(objectMemory, "top", out var top) && top.ValueKind == JsonValueKind.Array
-            ? top
-            : default;
-
-        var lines = new List<string>(32)
+        else
         {
-            $"Tick: {tick}",
-            $"Simulation ms: {simMs:0.0}",
-            $"Object traces: {count}",
-            string.Empty,
-            "Most recent objects:"
-        };
-
-        if (topList.ValueKind != JsonValueKind.Array || topList.GetArrayLength() == 0)
-        {
-            lines.Add("  -");
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        var index = 1;
-        foreach (var item in topList.EnumerateArray().Take(8))
-        {
-            if (item.ValueKind != JsonValueKind.Object)
+            SetNeuronalMemoryText(string.Join(Environment.NewLine, new[]
             {
-                continue;
-            }
-
-            var objectId = GetString(item, "objectId");
-            var label = GetString(item, "label");
-            var hemisphere = GetString(item, "dominantHemisphere");
-            var familiarity = GetDouble(item, "familiarity");
-            var seenCount = GetInt(item, "seenCount");
-            var salienceEma = GetDouble(item, "salienceEma");
-
-            lines.Add($"{index,2}. {label} [{objectId}] hemi={hemisphere} fam={familiarity:0.000} seen={seenCount} sal={salienceEma:0.000}");
-            index++;
+                $"Tick: {GetLong(stateElement, "tick")}",
+                $"Perception: {(GetBool(perception, "active") ? "active" : "quiet")} | ensemble {GetInt(perception, "dominantEnsemble")} | confidence {GetDouble(perception, "confidence"):0.000}",
+                $"Coverage/persistence/novelty: {GetDouble(perception, "circuitCoverage"):0.000} | {GetDouble(perception, "persistence"):0.000} | {GetDouble(perception, "novelty"):0.000}",
+                $"Recall: {(GetBool(memory, "recallActive") ? "active" : "quiet")} | ensemble {GetInt(memory, "recalledEnsemble")} | strength {GetDouble(memory, "recallStrength"):0.000}",
+                $"Engram/consolidation: {GetDouble(memory, "engramStrength"):0.000} | {GetDouble(memory, "corticalConsolidation"):0.000} | learned synapses {GetInt(memory, "learnedSynapseCount")}",
+                "Population identifiers are numeric measurements, not object labels."
+            }));
         }
 
-        return string.Join(Environment.NewLine, lines);
+        if (!TryGetProperty(stateElement, "neuronalAffectValuation", out var affect) ||
+            affect.ValueKind != JsonValueKind.Object)
+        {
+            _neuronalAffectActive = false;
+            _neuronalAffectChannel = -1;
+            _neuronalAffectConfidence = 0.0;
+            _neuronalAppetitiveDrive = 0.0;
+            _neuronalDefensiveDrive = 0.0;
+            _neuronalHomeostaticDrive = 0.0;
+            _neuronalExploratoryDrive = 0.0;
+            _neuronalPositiveValence = 0.0;
+            _neuronalNegativeValence = 0.0;
+            _neuronalArousal = 0.0;
+            return;
+        }
+
+        _neuronalAffectActive = GetBool(affect, "active");
+        _neuronalAffectChannel = GetInt(affect, "dominantChannel");
+        _neuronalAffectConfidence = Math.Clamp(GetDouble(affect, "confidence"), 0.0, 1.0);
+        _neuronalAppetitiveDrive = Math.Clamp(GetDouble(affect, "appetitiveDrive"), 0.0, 1.0);
+        _neuronalDefensiveDrive = Math.Clamp(GetDouble(affect, "defensiveDrive"), 0.0, 1.0);
+        _neuronalHomeostaticDrive = Math.Clamp(GetDouble(affect, "homeostaticDrive"), 0.0, 1.0);
+        _neuronalExploratoryDrive = Math.Clamp(GetDouble(affect, "exploratoryDrive"), 0.0, 1.0);
+        _neuronalPositiveValence = Math.Clamp(GetDouble(affect, "positiveValence"), 0.0, 1.0);
+        _neuronalNegativeValence = Math.Clamp(GetDouble(affect, "negativeValence"), 0.0, 1.0);
+        _neuronalArousal = Math.Clamp(GetDouble(affect, "arousal"), 0.0, 1.0);
     }
 
     private List<AvatarDispatchSpike> ParseDispatchSpikes(JsonElement root, out long maxWallClockMs)
@@ -873,49 +867,6 @@ public partial class MainWindow : Window
             _lastMotorDispatchCount = signal.MotorEvents;
         }
     }
-
-    private void UpdateLimbicFromState(JsonElement stateElement)
-    {
-        if (!TryGetProperty(stateElement, "limbicState", out var limbic) || limbic.ValueKind != JsonValueKind.Object)
-        {
-            _limbicStage = "unknown";
-            _limbicSalience = 0.0;
-            _limbicThreat = 0.0;
-            _limbicInteroceptiveDrive = 0.0;
-            _limbicAversiveDrive = 0.0;
-            _limbicHippocampalContext = 0.0;
-            _limbicValence = 0.0;
-            _limbicRewardPredictionError = 0.0;
-            _limbicDopamine = 0.0;
-            _limbicNorepinephrine = 0.0;
-            return;
-        }
-
-        _limbicStage = GetString(limbic, "stage");
-        if (string.IsNullOrWhiteSpace(_limbicStage))
-        {
-            _limbicStage = "unknown";
-        }
-
-        _limbicSalience = Math.Clamp(GetDouble(limbic, "salience"), 0.0, 1.0);
-        _limbicThreat = Math.Clamp(GetDouble(limbic, "threat"), 0.0, 1.0);
-        _limbicInteroceptiveDrive = Math.Clamp(GetDouble(limbic, "interoceptiveDrive"), 0.0, 1.0);
-        _limbicAversiveDrive = Math.Clamp(GetDouble(limbic, "aversiveDrive"), 0.0, 1.0);
-        _limbicHippocampalContext = Math.Clamp(GetDouble(limbic, "hippocampalContext"), 0.0, 1.0);
-        _limbicValence = Math.Clamp(GetDouble(limbic, "valence"), -1.0, 1.0);
-        _limbicRewardPredictionError = Math.Clamp(GetDouble(limbic, "rewardPredictionError"), -1.0, 1.0);
-
-        if (TryGetProperty(stateElement, "globalNeuromodState", out var neuromod) && neuromod.ValueKind == JsonValueKind.Object)
-        {
-            _limbicDopamine = Math.Clamp(GetDouble(neuromod, "dopamineLevel"), 0.0, 1.0);
-            _limbicNorepinephrine = Math.Clamp(GetDouble(neuromod, "norepinephrineLevel"), 0.0, 1.0);
-            return;
-        }
-
-        _limbicDopamine = Math.Clamp(GetDouble(limbic, "dopamineTarget"), 0.0, 1.0);
-        _limbicNorepinephrine = Math.Clamp(GetDouble(limbic, "norepinephrineTarget"), 0.0, 1.0);
-    }
-
 
     private void UpdateAvatar(double dt)
     {
@@ -2518,8 +2469,8 @@ public partial class MainWindow : Window
         TissueIntegrityText.Text = $"Tissue integrity: {_tissueIntegrityPercent}% | Hazard contacts {_hazardContacts} | Wall impacts {_wallImpacts}";
         CheckpointText.Text = $"Checkpoint: {_checkpointActivations}/{_checkpointEntities.Count} @ ({_respawnWorld.X:0.0}, {_respawnWorld.Y:0.0})";
         EventText.Text = $"Event: {_lastMazeEvent}";
-        LimbicStageText.Text = $"Limbic stage: {_limbicStage} | sal={_limbicSalience:0.00} thr={_limbicThreat:0.00}";
-        LimbicDriveText.Text = $"Limbic drives: val={_limbicValence:0.00} int={_limbicInteroceptiveDrive:0.00} av={_limbicAversiveDrive:0.00} hip={_limbicHippocampalContext:0.00} rpe={_limbicRewardPredictionError:0.00} da={_limbicDopamine:0.00} ne={_limbicNorepinephrine:0.00}";
+        NeuronalAffectStatusText.Text = $"Neuronal affect: {(_neuronalAffectActive ? "active" : "quiet")} | channel {_neuronalAffectChannel} | confidence {_neuronalAffectConfidence:0.00}";
+        NeuronalAffectDriveText.Text = $"Anonymous affect populations: appetitive {_neuronalAppetitiveDrive:0.00} | defensive {_neuronalDefensiveDrive:0.00} | homeostatic {_neuronalHomeostaticDrive:0.00} | exploratory {_neuronalExploratoryDrive:0.00} | valence +/- {_neuronalPositiveValence:0.00}/{_neuronalNegativeValence:0.00} | arousal {_neuronalArousal:0.00}";
         UpdateLearningProgressHud();
     }
 

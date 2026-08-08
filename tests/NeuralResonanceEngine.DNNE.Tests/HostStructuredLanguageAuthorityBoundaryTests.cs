@@ -184,6 +184,39 @@ public sealed class HostStructuredLanguageAuthorityBoundaryTests
             "ToggleSpeechOutputButton");
     }
 
+    [Fact]
+    public void DesktopObserversDoNotReadRetiredSemanticState()
+    {
+        var maze = ReadSource("src", "NRE.WpfMazeSim", "MainWindow.xaml.cs") +
+                   ReadSource("src", "NRE.WpfMazeSim", "MainWindow.xaml");
+        var world = ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs") +
+                    ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml");
+        var editor = ReadSource("src", "NRE.WpfEditor", "MainWindow.TelemetryFormatters.cs");
+
+        AssertSourceOmits(
+            maze,
+            "objectMemory",
+            "ObjectMemory",
+            "limbicState",
+            "globalNeuromodState");
+        AssertSourceOmits(
+            world,
+            "/api/v1/admin/object-memory",
+            "planningWorkspace",
+            "goalIntent",
+            "intentionalActionLoop",
+            "limbicState",
+            "ReadBrainIntentCarrier");
+        AssertSourceOmits(
+            editor,
+            "limbicState",
+            "globalNeuromodState",
+            "groundedLabel",
+            "Narration:",
+            "motorDirective",
+            "commandKey");
+    }
+
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)
     {
         foreach (var symbol in forbiddenSymbols)

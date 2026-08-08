@@ -178,6 +178,11 @@ try {
                 'tests\NeuralResonanceEngine.DNNE.Tests\NeuralResonanceEngine.DNNE.Tests.csproj',
                 'tests\NRE.Tests\NRE.Tests.csproj')) {
             $fullPath = Join-Path $repoRoot $testProject
+            if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+                Write-Host ("Skipping absent test project {0}" -f $testProject)
+                continue
+            }
+
             Invoke-DotnetStep -Name ("test {0}" -f $testProject) -Arguments @(
                 'test',
                 $fullPath,

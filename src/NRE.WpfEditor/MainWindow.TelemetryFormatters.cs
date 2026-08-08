@@ -203,324 +203,43 @@ public partial class MainWindow
         });
     }
 
-    private static string FormatLimbicState(JsonElement root)
-    {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
-        {
-            root = nestedState;
-        }
-
-        var tick = GetLong(root, "tick");
-        var simMs = GetDouble(root, "simulationClockMs");
-        var stage = "unknown";
-        var lastUpdatedTick = 0L;
-
-        var salience = 0.0;
-        var threat = 0.0;
-        var interoceptive = 0.0;
-        var aversive = 0.0;
-        var hippocampalContext = 0.0;
-        var expectedReward = 0.0;
-        var observedReward = 0.0;
-        var valence = 0.0;
-        var rewardPredictionError = 0.0;
-
-        var currentDopamine = 0.0;
-        var currentSerotonin = 0.0;
-        var currentAcetylcholine = 0.0;
-        var currentNorepinephrine = 0.0;
-
-        var targetDopamine = 0.0;
-        var targetSerotonin = 0.0;
-        var targetAcetylcholine = 0.0;
-        var targetNorepinephrine = 0.0;
-
-        if (TryGetProperty(root, "limbicState", out var limbicState) && limbicState.ValueKind == JsonValueKind.Object)
-        {
-            stage = GetString(limbicState, "stage");
-            lastUpdatedTick = GetLong(limbicState, "lastUpdatedTick");
-            salience = GetDouble(limbicState, "salience");
-            threat = GetDouble(limbicState, "threat");
-            interoceptive = GetDouble(limbicState, "interoceptiveDrive");
-            aversive = GetDouble(limbicState, "aversiveDrive");
-            hippocampalContext = GetDouble(limbicState, "hippocampalContext");
-            expectedReward = GetDouble(limbicState, "expectedReward");
-            observedReward = GetDouble(limbicState, "observedReward");
-            valence = GetDouble(limbicState, "valence");
-            rewardPredictionError = GetDouble(limbicState, "rewardPredictionError");
-
-            targetDopamine = GetDouble(limbicState, "dopamineTarget");
-            targetSerotonin = GetDouble(limbicState, "serotoninTarget");
-            targetAcetylcholine = GetDouble(limbicState, "acetylcholineTarget");
-            targetNorepinephrine = GetDouble(limbicState, "norepinephrineTarget");
-
-            if (TryGetProperty(root, "globalNeuromodState", out var globalNeuromod) && globalNeuromod.ValueKind == JsonValueKind.Object)
-            {
-                currentDopamine = GetDouble(globalNeuromod, "dopamineLevel");
-                currentSerotonin = GetDouble(globalNeuromod, "serotoninLevel");
-                currentAcetylcholine = GetDouble(globalNeuromod, "acetylcholineLevel");
-                currentNorepinephrine = GetDouble(globalNeuromod, "norepinephrineLevel");
-            }
-        }
-        else if (TryGetProperty(root, "limbic", out var limbic) && limbic.ValueKind == JsonValueKind.Object)
-        {
-            if (TryGetProperty(limbic, "drives", out var nestedDrives) && nestedDrives.ValueKind == JsonValueKind.Object)
-            {
-                stage = GetString(limbic, "stage");
-                lastUpdatedTick = GetLong(limbic, "lastUpdatedTick");
-                salience = GetDouble(nestedDrives, "salience");
-                threat = GetDouble(nestedDrives, "threat");
-                interoceptive = GetDouble(nestedDrives, "interoceptiveDrive");
-                aversive = GetDouble(nestedDrives, "aversiveDrive");
-                hippocampalContext = GetDouble(nestedDrives, "hippocampalContext");
-                expectedReward = GetDouble(nestedDrives, "expectedReward");
-                observedReward = GetDouble(nestedDrives, "observedReward");
-                valence = GetDouble(nestedDrives, "valence");
-                rewardPredictionError = GetDouble(nestedDrives, "rewardPredictionError");
-            }
-            else
-            {
-                stage = GetString(limbic, "stage");
-                lastUpdatedTick = GetLong(limbic, "lastUpdatedTick");
-                salience = GetDouble(limbic, "salience");
-                threat = GetDouble(limbic, "threat");
-                interoceptive = GetDouble(limbic, "interoceptiveDrive");
-                aversive = GetDouble(limbic, "aversiveDrive");
-                hippocampalContext = GetDouble(limbic, "hippocampalContext");
-                expectedReward = GetDouble(limbic, "expectedReward");
-                observedReward = GetDouble(limbic, "observedReward");
-                valence = GetDouble(limbic, "valence");
-                rewardPredictionError = GetDouble(limbic, "rewardPredictionError");
-            }
-
-            targetDopamine = GetDouble(limbic, "dopamineTarget");
-            targetSerotonin = GetDouble(limbic, "serotoninTarget");
-            targetAcetylcholine = GetDouble(limbic, "acetylcholineTarget");
-            targetNorepinephrine = GetDouble(limbic, "norepinephrineTarget");
-
-            if (TryGetProperty(limbic, "neuromod", out var limbicNeuromod) && limbicNeuromod.ValueKind == JsonValueKind.Object)
-            {
-                if (TryGetProperty(limbicNeuromod, "current", out var current) && current.ValueKind == JsonValueKind.Object)
-                {
-                    currentDopamine = GetDouble(current, "dopamineLevel");
-                    currentSerotonin = GetDouble(current, "serotoninLevel");
-                    currentAcetylcholine = GetDouble(current, "acetylcholineLevel");
-                    currentNorepinephrine = GetDouble(current, "norepinephrineLevel");
-                }
-
-                if (TryGetProperty(limbicNeuromod, "targets", out var targets) && targets.ValueKind == JsonValueKind.Object)
-                {
-                    targetDopamine = GetDouble(targets, "dopamineTarget");
-                    targetSerotonin = GetDouble(targets, "serotoninTarget");
-                    targetAcetylcholine = GetDouble(targets, "acetylcholineTarget");
-                    targetNorepinephrine = GetDouble(targets, "norepinephrineTarget");
-                }
-            }
-            else if (TryGetProperty(root, "globalNeuromodState", out var globalNeuromod) && globalNeuromod.ValueKind == JsonValueKind.Object)
-            {
-                currentDopamine = GetDouble(globalNeuromod, "dopamineLevel");
-                currentSerotonin = GetDouble(globalNeuromod, "serotoninLevel");
-                currentAcetylcholine = GetDouble(globalNeuromod, "acetylcholineLevel");
-                currentNorepinephrine = GetDouble(globalNeuromod, "norepinephrineLevel");
-            }
-        }
-        else if (TryGetProperty(root, "drives", out var drives) && drives.ValueKind == JsonValueKind.Object)
-        {
-            stage = GetString(root, "stage");
-            lastUpdatedTick = GetLong(root, "lastUpdatedTick");
-            salience = GetDouble(drives, "salience");
-            threat = GetDouble(drives, "threat");
-            interoceptive = GetDouble(drives, "interoceptiveDrive");
-            aversive = GetDouble(drives, "aversiveDrive");
-            hippocampalContext = GetDouble(drives, "hippocampalContext");
-            expectedReward = GetDouble(drives, "expectedReward");
-            observedReward = GetDouble(drives, "observedReward");
-            valence = GetDouble(drives, "valence");
-            rewardPredictionError = GetDouble(drives, "rewardPredictionError");
-
-            if (TryGetProperty(root, "neuromod", out var neuromod) && neuromod.ValueKind == JsonValueKind.Object)
-            {
-                if (TryGetProperty(neuromod, "current", out var current) && current.ValueKind == JsonValueKind.Object)
-                {
-                    currentDopamine = GetDouble(current, "dopamineLevel");
-                    currentSerotonin = GetDouble(current, "serotoninLevel");
-                    currentAcetylcholine = GetDouble(current, "acetylcholineLevel");
-                    currentNorepinephrine = GetDouble(current, "norepinephrineLevel");
-                }
-
-                if (TryGetProperty(neuromod, "targets", out var targets) && targets.ValueKind == JsonValueKind.Object)
-                {
-                    targetDopamine = GetDouble(targets, "dopamineTarget");
-                    targetSerotonin = GetDouble(targets, "serotoninTarget");
-                    targetAcetylcholine = GetDouble(targets, "acetylcholineTarget");
-                    targetNorepinephrine = GetDouble(targets, "norepinephrineTarget");
-                }
-            }
-        }
-        else if (TryGetProperty(root, "stage", out var stageProp) && stageProp.ValueKind == JsonValueKind.String)
-        {
-            stage = GetString(root, "stage");
-            lastUpdatedTick = GetLong(root, "lastUpdatedTick");
-            salience = GetDouble(root, "salience");
-            threat = GetDouble(root, "threat");
-            interoceptive = GetDouble(root, "interoceptiveDrive");
-            aversive = GetDouble(root, "aversiveDrive");
-            hippocampalContext = GetDouble(root, "hippocampalContext");
-            expectedReward = GetDouble(root, "expectedReward");
-            observedReward = GetDouble(root, "observedReward");
-            valence = GetDouble(root, "valence");
-            rewardPredictionError = GetDouble(root, "rewardPredictionError");
-            targetDopamine = GetDouble(root, "dopamineTarget");
-            targetSerotonin = GetDouble(root, "serotoninTarget");
-            targetAcetylcholine = GetDouble(root, "acetylcholineTarget");
-            targetNorepinephrine = GetDouble(root, "norepinephrineTarget");
-
-            if (TryGetProperty(root, "globalNeuromodState", out var globalNeuromod) && globalNeuromod.ValueKind == JsonValueKind.Object)
-            {
-                currentDopamine = GetDouble(globalNeuromod, "dopamineLevel");
-                currentSerotonin = GetDouble(globalNeuromod, "serotoninLevel");
-                currentAcetylcholine = GetDouble(globalNeuromod, "acetylcholineLevel");
-                currentNorepinephrine = GetDouble(globalNeuromod, "norepinephrineLevel");
-            }
-        }
-        else
-        {
-            return "Limbic telemetry unavailable: state payload missing limbic telemetry fields.";
-        }
-
-        stage = string.IsNullOrWhiteSpace(stage) ? "unknown" : stage;
-        var deltaDopamine = targetDopamine - currentDopamine;
-        var deltaSerotonin = targetSerotonin - currentSerotonin;
-        var deltaAcetylcholine = targetAcetylcholine - currentAcetylcholine;
-        var deltaNorepinephrine = targetNorepinephrine - currentNorepinephrine;
-
-        return string.Join(Environment.NewLine, new[]
-        {
-            $"Tick: {tick}",
-            $"Simulation ms: {simMs:0.0}",
-            $"Stage: {stage}",
-            $"Last updated tick: {(lastUpdatedTick > 0 ? lastUpdatedTick : "n/a")}",
-            string.Empty,
-            "Limbic drives:",
-            $"  Salience:            {salience:0.000}",
-            $"  Threat:              {threat:0.000}",
-            $"  Interoceptive:       {interoceptive:0.000}",
-            $"  Aversive:            {aversive:0.000}",
-            $"  Hippocampal context: {hippocampalContext:0.000}",
-            $"  Expected reward:     {expectedReward:0.000}",
-            $"  Observed reward:     {observedReward:0.000}",
-            $"  Valence:             {valence:0.000}",
-            $"  RPE:                 {rewardPredictionError:0.000}",
-            string.Empty,
-            "Neuromod (current -> target | delta):",
-            $"  Dopamine:       {currentDopamine:0.000} -> {targetDopamine:0.000} | {deltaDopamine:+0.000;-0.000;0.000}",
-            $"  Serotonin:      {currentSerotonin:0.000} -> {targetSerotonin:0.000} | {deltaSerotonin:+0.000;-0.000;0.000}",
-            $"  Acetylcholine:  {currentAcetylcholine:0.000} -> {targetAcetylcholine:0.000} | {deltaAcetylcholine:+0.000;-0.000;0.000}",
-            $"  Norepinephrine: {currentNorepinephrine:0.000} -> {targetNorepinephrine:0.000} | {deltaNorepinephrine:+0.000;-0.000;0.000}"
-        });
-    }
-
     private static string FormatBrainDashboard(JsonElement root)
     {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
+        root = NormalizeStateRoot(root);
+        var hasPerception = TryGetObject(root, "neuronalPerception", out var perception);
+        var hasMemory = TryGetObject(root, "neuronalMemory", out var memory);
+        var hasAttention = TryGetObject(root, "neuronalAttentionWorkspace", out var attention);
+        var hasSleep = TryGetObject(root, "neuronalSleepConsolidation", out var sleep);
+        var hasAffect = TryGetObject(root, "neuronalAffectValuation", out var affect);
+        var hasExecutive = TryGetObject(root, "neuronalExecutive", out var executive);
+        var hasLanguage = TryGetObject(root, "neuronalLanguageGrounding", out var language);
+        var hasMotor = TryGetObject(root, "neuronalMotor", out var motor);
+
+        if (!hasPerception && !hasMemory && !hasAttention && !hasSleep &&
+            !hasAffect && !hasExecutive && !hasLanguage && !hasMotor)
         {
-            root = nestedState;
+            return "Neuronal dashboard unavailable: state payload contains no neuronal decoder state.";
         }
-
-        if (!TryGetProperty(root, "brainBehavior", out var dashboard) || dashboard.ValueKind != JsonValueKind.Object)
-        {
-            return "Brain dashboard unavailable: state payload missing brainBehavior.";
-        }
-
-        var tick = GetLong(dashboard, "tick");
-        if (tick <= 0)
-        {
-            tick = GetLong(root, "tick");
-        }
-
-        TryGetProperty(dashboard, "sleep", out var sleep);
-        TryGetProperty(dashboard, "drives", out var drives);
-        TryGetProperty(dashboard, "body", out var body);
-        TryGetProperty(dashboard, "language", out var language);
-        TryGetProperty(dashboard, "sensory", out var sensory);
-        TryGetProperty(dashboard, "cerebellum", out var cerebellum);
-        TryGetProperty(dashboard, "consolidation", out var consolidation);
-
-        var sleeping = sleep.ValueKind == JsonValueKind.Object && GetBool(sleep, "isSleeping");
-        var sleepPressure = sleep.ValueKind == JsonValueKind.Object ? GetDouble(sleep, "sleepPressure") : 0.0;
-        var sleepPressureNorm = sleep.ValueKind == JsonValueKind.Object ? GetDouble(sleep, "pressureNormalized") : 0.0;
-        var motorInhibition = sleep.ValueKind == JsonValueKind.Object ? GetDouble(sleep, "motorInhibition") : 0.0;
-        var wakeInertia = sleep.ValueKind == JsonValueKind.Object ? GetInt(sleep, "wakeInertiaTicksRemaining") : 0;
-        var tiredDrive = sleep.ValueKind == JsonValueKind.Object ? GetDouble(sleep, "tiredDrive") : 0.0;
-
-        var stage = drives.ValueKind == JsonValueKind.Object ? GetString(drives, "stage") : "-";
-        var threat = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "threat") : 0.0;
-        var hungerThirst = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "hungerThirstDrive") : 0.0;
-        var anxiety = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "environmentAnxiety") : 0.0;
-        var darkness = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "darkness") : 0.0;
-        var shelterNeed = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "shelterNeed") : 0.0;
-        var hunger = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "hunger") : 0.0;
-        var predatorThreat = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "predatorThreat") : 0.0;
-        var inShelter = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "inShelter") : 0.0;
-        var health = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "health") : 1.0;
-        var shelterSafety = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "shelterSafety") : 0.0;
-        var exposure = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "exposure") : 1.0;
-        var fightIntent = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "fightIntent") : 0.0;
-        var flightIntent = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "flightIntent") : 0.0;
-        var shelterIntent = drives.ValueKind == JsonValueKind.Object ? GetDouble(drives, "shelterIntent") : 0.0;
-
-        var forwardVelocity = body.ValueKind == JsonValueKind.Object ? GetDouble(body, "forwardVelocity") : 0.0;
-        var turnRate = body.ValueKind == JsonValueKind.Object ? GetDouble(body, "turnRateDeg") : 0.0;
-        var leftMotor = body.ValueKind == JsonValueKind.Object ? GetDouble(body, "leftMotorDrive") : 0.0;
-        var rightMotor = body.ValueKind == JsonValueKind.Object ? GetDouble(body, "rightMotorDrive") : 0.0;
-        var contact = body.ValueKind == JsonValueKind.Object ? GetDouble(body, "contactLevel") : 0.0;
-
-        var commandKey = language.ValueKind == JsonValueKind.Object ? GetString(language, "commandKey") : string.Empty;
-        var intent = language.ValueKind == JsonValueKind.Object ? GetString(language, "intent") : string.Empty;
-        var motorDirective = language.ValueKind == JsonValueKind.Object ? GetString(language, "motorDirective") : string.Empty;
-        var utterance = language.ValueKind == JsonValueKind.Object ? GetString(language, "utterance") : string.Empty;
-        var languageStrength = language.ValueKind == JsonValueKind.Object ? GetDouble(language, "strength") : 0.0;
-        var activeSource = sensory.ValueKind == JsonValueKind.Object ? GetString(sensory, "activeSource") : "unknown";
-        var avatarVision = sensory.ValueKind == JsonValueKind.Object && GetBool(sensory, "avatarVisionEnabled");
-        var spontaneous = sensory.ValueKind == JsonValueKind.Object && GetBool(sensory, "spontaneousSpikingEnabled");
-        var cerebellarWindow = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentWindowTicks") : 0;
-        var cerebellarInput = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentInputSpikes") : 0;
-        var cerebellarOutput = cerebellum.ValueKind == JsonValueKind.Object ? GetInt(cerebellum, "recentOutputSpikes") : 0;
-        var cerebellarLastTick = cerebellum.ValueKind == JsonValueKind.Object ? GetLong(cerebellum, "lastSpikeTick") : long.MinValue;
-        var consolidationAuthority = consolidation.ValueKind == JsonValueKind.Object ? GetString(consolidation, "authority") : "-";
-        var sleepCircuitObserved = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "circuitObserved");
-        var neuronalReplayActive = consolidation.ValueKind == JsonValueKind.Object && GetBool(consolidation, "replayActive");
-        var neuronalReplayEnsemble = consolidation.ValueKind == JsonValueKind.Object ? GetInt(consolidation, "replayEnsemble") : -1;
 
         return string.Join(Environment.NewLine, new[]
         {
-            $"Tick: {tick}",
-            $"Stage: {(string.IsNullOrWhiteSpace(stage) ? "-" : stage)}",
-            $"Sleep: {(sleeping ? "asleep" : "awake")} | pressure {sleepPressure:0.000} ({sleepPressureNorm:P0}) | motor inhibition {motorInhibition:0.000} | wake inertia {wakeInertia}",
-            $"Sensory source: {activeSource} | avatar vision {(avatarVision ? "on" : "off")} | spontaneous {(spontaneous ? "on" : "off")}",
+            "Measured neuronal decoder dashboard",
+            $"Tick: {GetLong(root, "tick")}",
+            $"Perception: {(GetBool(perception, "active") ? "active" : "quiet")} | ensemble {GetInt(perception, "dominantEnsemble")} | confidence {GetDouble(perception, "confidence"):0.000} | coverage {GetDouble(perception, "circuitCoverage"):0.000}",
+            $"Memory: {(GetBool(memory, "recallActive") ? "recalling" : "quiet")} | ensemble {GetInt(memory, "recalledEnsemble")} | strength {GetDouble(memory, "recallStrength"):0.000} | consolidation {GetDouble(memory, "corticalConsolidation"):0.000}",
+            $"Attention: {(GetBool(attention, "active") ? "active" : "quiet")} | selected {GetInt(attention, "selectedChannel")} | broadcast {GetInt(attention, "broadcastChannel")} | confidence {GetDouble(attention, "confidence"):0.000}",
             string.Empty,
-            "Drives:",
-            $"  Hunger/thirst: {hungerThirst:0.000} | tired: {tiredDrive:0.000} | darkness: {darkness:0.000}",
-            $"  Threat:        {threat:0.000} | anxiety: {anxiety:0.000} | shelter need: {shelterNeed:0.000}",
-            $"  World body:    hunger {hunger:0.000} | predator {predatorThreat:0.000} | health {health:0.000}",
-            $"  Safety:        in shelter {inShelter:0.000} | shelter safety {shelterSafety:0.000} | exposure {exposure:0.000}",
-            $"  Fight:         {fightIntent:0.000} | flight: {flightIntent:0.000} | shelter intent: {shelterIntent:0.000}",
+            $"Sleep: {(GetBool(sleep, "stateActive") ? $"state {GetInt(sleep, "state")}" : "quiet")} | confidence {GetDouble(sleep, "stateConfidence"):0.000} | replay {(GetBool(sleep, "replayActive") ? GetInt(sleep, "replayEnsemble").ToString() : "idle")}",
+            $"Affect: {(GetBool(affect, "active") ? "active" : "quiet")} | channel {GetInt(affect, "dominantChannel")} | confidence {GetDouble(affect, "confidence"):0.000}",
+            $"Affect populations A/D/H/E: {GetDouble(affect, "appetitiveDrive"):0.000} | {GetDouble(affect, "defensiveDrive"):0.000} | {GetDouble(affect, "homeostaticDrive"):0.000} | {GetDouble(affect, "exploratoryDrive"):0.000}",
+            $"Executive: {(GetBool(executive, "active") ? "active" : "quiet")} | action channel {GetInt(executive, "selectedActionChannel")} | context channel {GetInt(executive, "maintainedContextChannel")} | confidence {GetDouble(executive, "confidence"):0.000}",
             string.Empty,
-            "Body and motor:",
-            $"  Forward velocity: {forwardVelocity:0.000} | turn rate: {turnRate:0.000} deg | contact: {contact:0.000}",
-            $"  Motor drive L/R:  {leftMotor:0.000} / {rightMotor:0.000}",
+            $"Language grounding: {(GetBool(language, "grounded") ? "grounded" : "deferred")} | percept {GetInt(language, "perceptEnsemble")} | recall {GetInt(language, "memoryEnsemble")} | attention {GetInt(language, "attentionChannel")}",
+            $"Language confidence/uncertainty/coverage: {GetDouble(language, "groundingConfidence"):0.000} | {GetDouble(language, "uncertainty"):0.000} | {GetDouble(language, "languageCircuitCoverage"):0.000} | speech authorized {GetBool(language, "speechAuthorized")}",
             string.Empty,
-            "Cerebellum:",
-            $"  Recent window: {cerebellarWindow} ticks | input spikes: {cerebellarInput} | output spikes: {cerebellarOutput}",
-            $"  Last cerebellar spike tick: {(cerebellarLastTick > 0 ? cerebellarLastTick.ToString() : "n/a")}",
-            string.Empty,
-            "Neuronal memory consolidation:",
-            $"  Authority: {BlankAsDash(consolidationAuthority)} | circuit {(sleepCircuitObserved ? "observed" : "not observed")}",
-            $"  Replay: {(neuronalReplayActive ? $"ensemble {neuronalReplayEnsemble}" : "idle")}",
-            string.Empty,
-            "Language:",
-            $"  Intent: {BlankAsDash(intent)} | command: {BlankAsDash(commandKey)} | directive: {BlankAsDash(motorDirective)} | strength: {languageStrength:0.000}",
-            $"  Narration: {BlankAsDash(utterance)}"
+            $"Motor: {(GetBool(motor, "active") ? "active" : "quiet")} | channel {GetInt(motor, "selectedActionChannel")} | confidence {GetDouble(motor, "confidence"):0.000} | inhibition {GetDouble(motor, "outputInhibition"):0.000}",
+            $"Motor drives L/R/F/T: {GetDouble(motor, "leftDrive"):0.000} | {GetDouble(motor, "rightDrive"):0.000} | {GetDouble(motor, "forwardDrive"):0.000} | {GetDouble(motor, "turnDrive"):0.000}",
+            "All values are read-only measurements; this dashboard cannot authorize cognition or movement."
         });
     }
 
@@ -850,7 +569,6 @@ public partial class MainWindow
             $"Attention: {(GetBool(attention, "active") ? "active" : "quiet")} | selected {GetInt(attention, "selectedChannel")} | broadcast {GetInt(attention, "broadcastChannel")}",
             string.Empty,
             $"Language circuit: observed {GetBool(language, "circuitObserved")} | available {GetBool(language, "available")} | grounded {GetBool(language, "grounded")}",
-            $"Grounded label: {BlankAsDash(GetString(language, "groundedLabel"))}",
             $"Language reference: percept {GetInt(language, "perceptEnsemble")} | memory {GetInt(language, "memoryEnsemble")} | attention {GetInt(language, "attentionChannel")}",
             $"Comprehension/expression: {GetDouble(language, "comprehensionDrive"):0.000} | {GetDouble(language, "expressionDrive"):0.000}",
             $"Grounding confidence/uncertainty: {GetDouble(language, "groundingConfidence"):0.000} | {GetDouble(language, "uncertainty"):0.000}",

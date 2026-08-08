@@ -95,8 +95,8 @@
                         <TextBlock x:Name="VisionInputStatusText" Margin="0,2,0,0" Text="Visual input: -" TextWrapping="Wrap" />
 
                         <Separator Margin="0,10,0,10" />
-                        <TextBlock Text="Object Memory" FontWeight="SemiBold" />
-                        <TextBox x:Name="ObjectMemoryTextBox"
+                        <TextBlock Text="Neuronal Perception And Memory" FontWeight="SemiBold" />
+                        <TextBox x:Name="NeuronalMemoryTextBox"
                                  Margin="0,6,0,0"
                                  MinHeight="112"
                                  MaxHeight="190"
@@ -111,11 +111,11 @@
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"
                                  HorizontalScrollBarVisibility="Disabled"
-                                 Text="Object memory: waiting for first frame" />
+                                 Text="Neuronal memory: waiting for first frame" />
                         <Separator Margin="0,10,0,10" />
 
-                        <TextBlock x:Name="LimbicStageText" Margin="0,2,0,0" Text="Limbic stage: -" />
-                        <TextBlock x:Name="LimbicDriveText" Margin="0,2,0,0" Text="Limbic drives: -" TextWrapping="Wrap" />
+                        <TextBlock x:Name="NeuronalAffectStatusText" Margin="0,2,0,0" Text="Neuronal affect: -" />
+                        <TextBlock x:Name="NeuronalAffectDriveText" Margin="0,2,0,0" Text="Anonymous affect populations: -" TextWrapping="Wrap" />
                         <TextBlock Margin="0,8,0,0" Text="Visible Text" FontWeight="SemiBold" />
                         <TextBox x:Name="TextDisplayInputTextBox"
                                  Margin="0,4,0,0"

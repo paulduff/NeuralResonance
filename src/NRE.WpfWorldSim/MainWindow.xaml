@@ -113,24 +113,6 @@
                                 Content="Present to Retina"
                                 Click="PresentTextButton_OnClick" />
                         <TextBlock x:Name="TextDisplayStatusText" Margin="0,3,0,0" Text="Text display: idle" TextWrapping="Wrap" />
-                        <TextBlock x:Name="ObjectMemoryStatusText" Margin="0,8,0,0" Text="Object memory: -" TextWrapping="Wrap" />
-                        <Border Margin="0,4,0,0" BorderBrush="#264B7E" BorderThickness="1" Background="#030E24" CornerRadius="3">
-                            <TextBox x:Name="ObjectMemoryTextBox"
-                                     Margin="0"
-                                     Padding="6,4"
-                                     Background="#030E24"
-                                     Foreground="#D8E6FF"
-                                     BorderThickness="0"
-                                     FontFamily="Consolas"
-                                     FontSize="11"
-                                     IsReadOnly="True"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"
-                                     MinHeight="110"
-                                     MaxHeight="150"
-                                     Text="No object memory samples yet." />
-                        </Border>
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Survival Imperative" FontWeight="SemiBold" />
                         <TextBlock x:Name="SurvivalEnergyText" Margin="0,6,0,0" Text="Energy reserve: -" />

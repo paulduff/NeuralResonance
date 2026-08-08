@@ -401,6 +401,13 @@ Windows SAPI. Audible speech must be a downstream presentation of text already
 accepted by the prompt-bound Dyad emission gate; until that explicit consumer
 exists, the editor remains silent.
 
+Entry 103 deletes stale semantic observers. Maze, world, and editor diagnostics
+now read the current numeric neuronal perception, memory, attention, affect,
+executive, language-grounding, sleep, and motor decoders. The world no longer
+polls deleted object-memory state or interprets named plans, goals, targets, and
+motor directives; the editor no longer reconstructs scalar limbic state or a
+grounded language label.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

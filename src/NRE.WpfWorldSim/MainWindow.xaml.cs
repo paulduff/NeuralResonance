@@ -78,7 +78,6 @@ public partial class MainWindow : Window
     private const double VisionPreviewEyelidOpenRate = 3.4;
     private const int EnvironmentAudioDispatchTimeoutMs = 6000;
     private const int EnvironmentAudioDispatchIntervalMs = 120;
-    private const int ObjectMemoryPollIntervalMs = 5000;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyFrameDispatchIntervalMs = 350;
     private const int BodyFrameDispatchTimeoutMs = 1800;
@@ -139,9 +138,6 @@ public partial class MainWindow : Window
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(9000) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
-    private readonly HttpClient _objectMemoryHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(6500) });
-
     private readonly AutoResetEvent _visionRequestSignal = new(false);
     private readonly Thread _visionWorkerThread;
     private readonly AvatarService _avatarService = new(
@@ -243,16 +239,11 @@ public partial class MainWindow : Window
     private double _rightMotorDrive;
     private int _lastMotorDispatchCount;
     private int _ticksWithoutMotorDispatch;
-    private string _brainMotorDirective = "motor_idle";
-    private string _brainGoalKey = string.Empty;
-    private string _brainActionTarget = string.Empty;
     private long _dispatchSinceMs;
     private long _lastNeuronalMotorTick = -1;
     private long _engineServiceNonOkCount;
     private double _engineInputPressure;
     private bool _sleepState;
-    private string _limbicStage = "unknown";
-    private double _limbicTiredDrive;
     private double _storedEnergyJoules = NominalStoredEnergyJoules * 0.75;
     private double _tissueIntegrity = 1.0;
     private double _daylight01 = 1.0;
@@ -316,10 +307,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, AvatarInputPressureGate> _brainInputPressureGates = new(StringComparer.OrdinalIgnoreCase);
     private readonly AvatarWarningGate _environmentAudioWarningGate = new(minimumIntervalMs: 15000);
     private readonly AvatarWarningGate _optionalBrainInputPressureWarningGate = new(minimumIntervalMs: 8000);
-    private bool _objectMemoryInFlight;
-    private long _nextObjectMemoryPollMs;
-    private readonly AvatarRetryBackoff _objectMemoryBackoff = new();
-    private readonly AvatarWarningGate _objectMemoryWarningGate = new();
     private string _resolvedEndpoint = ResolveConfiguredControlEndpoint();
     private readonly AvatarWarningGate _endpointValidationWarningGate = new();
     private DateTime _lastTelemetrySuccessUtc = DateTime.MinValue;
@@ -455,7 +442,6 @@ public partial class MainWindow : Window
         _sensoryInputHttpClient.Dispose();
         _auditoryInputHttpClient.Dispose();
         _telemetryHttpClient.Dispose();
-        _objectMemoryHttpClient.Dispose();
         _avatarService.Dispose();
         _runtimeLogWriter.Dispose();
         _shutdown.Dispose();
@@ -468,9 +454,6 @@ public partial class MainWindow : Window
         _lastNeuronalMotorTick = -1;
         _avatarService.PostResetMotor();
         ApplyNervousSystemSignal(new AvatarNervousSystemSignal(0.0, 0.0, 0, 0));
-        _brainMotorDirective = "motor_idle";
-        _brainGoalKey = string.Empty;
-        _brainActionTarget = string.Empty;
         _brainMotorDecisionText = "Motor decision: waiting for brain state.";
         _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
         _sleepState = false;
@@ -484,16 +467,11 @@ public partial class MainWindow : Window
         _environmentAudioWarningGate.Reset();
         ResetBrainInputPressureGates();
         _optionalBrainInputPressureWarningGate.Reset();
-        _objectMemoryInFlight = false;
-        _nextObjectMemoryPollMs = 0;
         _nextSimulationHudUpdateSeconds = 0.0;
         _nextSurvivalHudUpdateSeconds = 0.0;
-        _objectMemoryBackoff.Reset();
-        _objectMemoryWarningGate.Reset();
         _lastTelemetrySuccessUtc = DateTime.MinValue;
         _telemetryFailureStreak = 0;
         _endpointValidationWarningGate.Reset();
-        ResetObjectMemoryUi();
         ResetAvatarPose(logMessage: false);
         _ = PollFrameAsync(forceLogOnFailure: true);
         _ = PollTelemetryAsync(forceLogOnFailure: true);
@@ -698,12 +676,6 @@ public partial class MainWindow : Window
         predatorSpawn.Text = _predatorSpawnTarget.ToString(CultureInfo.InvariantCulture);
     }
 
-    private void ResetObjectMemoryUi()
-    {
-        ObjectMemoryStatusText.Text = "Object memory: awaiting telemetry";
-        ObjectMemoryTextBox.Text = "No object memory samples yet.";
-    }
-
     private void RequestWorldRespawn()
     {
         if (_heights is null)
@@ -789,13 +761,6 @@ public partial class MainWindow : Window
         _environmentAudioWarningGate.Reset();
         ResetBrainInputPressureGates();
         _optionalBrainInputPressureWarningGate.Reset();
-        _objectMemoryInFlight = false;
-        _nextObjectMemoryPollMs = 0;
-        _objectMemoryBackoff.Reset();
-        _objectMemoryWarningGate.Reset();
-        _brainMotorDirective = "motor_idle";
-        _brainGoalKey = string.Empty;
-        _brainActionTarget = string.Empty;
         _spawnValidationRetries = 0;
         _shelterDoorCorridorClears = 0;
 
@@ -839,7 +804,6 @@ public partial class MainWindow : Window
         SurvivalShelterText.Text = "Shelter: not reached";
         SurvivalPredatorText.Text = "Predators: 0 active";
         DayNightText.Text = "Light cycle: day";
-        ResetObjectMemoryUi();
         AvatarPoseText.Text = "Avatar pose: x 0.00, y 0.00, z 0.00, body 0.0 deg, head 0.0 deg";
         MapEditorHintText.Text = _mapEditorEnabled
             ? "Editor on. Left-click terrain to paint using selected brush."
@@ -5513,8 +5477,6 @@ public partial class MainWindow : Window
             {
                 brainState = stateElement;
                 _sleepState = IsSleepingState(stateElement);
-                UpdateLimbicFromState(stateElement);
-                UpdateBrainMotorIntentFromState(stateElement);
                 UpdateBrainMotorDecisionFromState(stateElement);
             }
 
@@ -5564,7 +5526,6 @@ public partial class MainWindow : Window
                 if (telemetry.StatusCode == HttpStatusCode.NotFound &&
                     await TryPollTelemetryFromStateAsync(endpoint))
                 {
-                    _ = PollObjectMemoryAsync(endpoint);
                     return;
                 }
 
@@ -5573,8 +5534,6 @@ public partial class MainWindow : Window
             }
 
             ApplyTelemetryPayload(telemetryDoc.RootElement);
-            _ = PollObjectMemoryAsync(endpoint);
-
         }
         catch (Exception ex)
         {
@@ -5768,115 +5727,6 @@ public partial class MainWindow : Window
         }
 
         return pressure;
-    }
-
-    private async Task PollObjectMemoryAsync(string endpoint)
-    {
-        var nowMs = Environment.TickCount64;
-        if (_objectMemoryInFlight || nowMs < _nextObjectMemoryPollMs)
-        {
-            return;
-        }
-
-        if (ShouldPauseOptionalBrainInput("object memory", nowMs, out var pauseReason))
-        {
-            _nextObjectMemoryPollMs = nowMs + OptionalInputOverloadRetryMs;
-            ObjectMemoryStatusText.Text = $"Object memory: waiting ({TrimForLog(pauseReason, 70)})";
-            return;
-        }
-
-        _objectMemoryInFlight = true;
-        _nextObjectMemoryPollMs = nowMs + ObjectMemoryPollIntervalMs;
-        try
-        {
-            var objectMemory = await AvatarControlApi.GetJsonAsync(_objectMemoryHttpClient, endpoint, "/api/v1/admin/object-memory?limit=16");
-            using var objectMemoryDoc = objectMemory.Document;
-            if (!objectMemory.IsSuccessStatusCode || objectMemoryDoc is null)
-            {
-                RegisterObjectMemoryFailure($"HTTP {(int)objectMemory.StatusCode}");
-                return;
-            }
-
-            ApplyObjectMemoryPayload(objectMemoryDoc.RootElement);
-            _objectMemoryBackoff.Reset();
-            RegisterOptionalBrainInputSuccess("object memory");
-        }
-        catch (Exception ex)
-        {
-            RegisterObjectMemoryFailure($"{ex.GetType().Name}: {TrimForLog(ex.Message, 120)}");
-        }
-        finally
-        {
-            _objectMemoryInFlight = false;
-        }
-    }
-
-    private void ApplyObjectMemoryPayload(JsonElement root)
-    {
-        var count = Math.Max(0, GetLong(root, "count", "Count"));
-        if (!TryGetProperty(root, "items", out var itemsElement) || itemsElement.ValueKind != JsonValueKind.Array)
-        {
-            ObjectMemoryStatusText.Text = $"Object memory: {count} tracked (no item payload)";
-            ObjectMemoryTextBox.Text = "No object memory items returned.";
-            return;
-        }
-
-        var lines = new List<string>();
-        foreach (var item in itemsElement.EnumerateArray())
-        {
-            if (item.ValueKind != JsonValueKind.Object)
-            {
-                continue;
-            }
-
-            var label = GetString(item, "label", "Label");
-            if (string.IsNullOrWhiteSpace(label))
-            {
-                label = GetString(item, "objectId", "ObjectId");
-            }
-
-            var hemisphere = GetString(item, "dominantHemisphere", "DominantHemisphere");
-            if (string.IsNullOrWhiteSpace(hemisphere))
-            {
-                hemisphere = "M";
-            }
-
-            var familiarity = Math.Clamp(GetDouble(item, "familiarity", "Familiarity"), 0.0, 1.0);
-            var salience = Math.Clamp(GetDouble(item, "salienceEma", "SalienceEma"), 0.0, 1.0);
-            var confidence = Math.Clamp(GetDouble(item, "confidenceEma", "ConfidenceEma"), 0.0, 1.0);
-            var seen = Math.Max(0, GetLong(item, "seenCount", "SeenCount"));
-            lines.Add($"{label} [{hemisphere}] fam {familiarity:0.00} seen {seen} s {salience:0.00} c {confidence:0.00}");
-            if (lines.Count >= 8)
-            {
-                break;
-            }
-        }
-
-        ObjectMemoryStatusText.Text = $"Object memory: {count} tracked";
-        ObjectMemoryTextBox.Text = lines.Count == 0
-            ? "No object memory items yet."
-            : string.Join(Environment.NewLine, lines);
-    }
-
-    private void RegisterObjectMemoryFailure(string message)
-    {
-        var now = Environment.TickCount64;
-        var backoffMs = _objectMemoryBackoff.RegisterFailure(now);
-        RegisterOptionalBrainInputFailure("object memory", message, now);
-        var nextAllowed = _objectMemoryBackoff.RetryAfterMs;
-        if (nextAllowed > _nextObjectMemoryPollMs)
-        {
-            _nextObjectMemoryPollMs = nextAllowed;
-        }
-
-        ObjectMemoryStatusText.Text = $"Object memory: unavailable ({TrimForLog(message, 70)})";
-        var warning = $"{message} (streak {_objectMemoryBackoff.FailureStreak}, backoff {backoffMs}ms)";
-        if (!_objectMemoryWarningGate.ShouldLog(warning, CreateDispatchWarningKey("object-memory", message), now))
-        {
-            return;
-        }
-
-        Log($"Object memory poll warning: {warning}");
     }
 
     private void HandleTelemetryFailure(string reason, bool forceLogOnFailure)
@@ -6250,23 +6100,6 @@ public partial class MainWindow : Window
         return new OptionalElement();
     }
 
-    private void UpdateBrainMotorIntentFromState(JsonElement stateElement)
-    {
-        var directive = string.Empty;
-        var goalKey = string.Empty;
-        var target = string.Empty;
-
-        ReadBrainIntentCarrier(stateElement, ref directive, ref goalKey, ref target);
-        if (TryGetObject(stateElement, "brainBehavior").TryGetValue(out var behavior))
-        {
-            ReadBrainIntentCarrier(behavior, ref directive, ref goalKey, ref target);
-        }
-
-        _brainMotorDirective = string.IsNullOrWhiteSpace(directive) ? "motor_idle" : directive.Trim();
-        _brainGoalKey = goalKey.Trim();
-        _brainActionTarget = target.Trim();
-    }
-
     private void UpdateMotorPathwayAuditFromFrame(JsonElement frameRoot, IReadOnlyList<AvatarDispatchSpike> dispatches)
     {
         if (!TryGetProperty(frameRoot, "latestSnapshot", out var snapshot) ||
@@ -6404,83 +6237,52 @@ public partial class MainWindow : Window
 
     private void UpdateBrainMotorDecisionFromState(JsonElement stateElement)
     {
-        var action = string.Empty;
-        var directive = string.Empty;
-        var goal = string.Empty;
-        var target = string.Empty;
-        var confidence = double.NaN;
-        var gate = double.NaN;
-        var readiness = double.NaN;
-        var inhibition = double.NaN;
-        var candidateCount = -1;
-
-        if (TryGetObject(stateElement, "planningWorkspace").TryGetValue(out var planning))
+        if (!TryGetObject(stateElement, "neuronalMotor").TryGetValue(out var motor))
         {
-            SetIfNotBlank(ref action, GetString(planning, "selectedActionKey", "selected_action_key", "selectedAction", "actionKey"));
-            SetIfNotBlank(ref goal, GetString(planning, "goal", "goalKey", "goal_key"));
-            TrySetIfValid(ref confidence, planning, "selectedConfidence", "selected_confidence", "confidence");
-            TrySetIfValid(ref gate, planning, "inhibitoryGate", "inhibitory_gate");
-            candidateCount = Math.Max(candidateCount, CountArrayItems(planning, "candidateActions", "candidate_actions"));
+            _brainMotorDecisionText = "Neuronal motor: waiting for measured population decoder state.";
+            return;
         }
 
-        if (TryGetObject(stateElement, "goalIntent").TryGetValue(out var goalIntent))
-        {
-            SetIfNotBlank(ref directive, GetString(goalIntent, "motorDirective", "motor_directive"));
-            SetIfNotBlank(ref goal, GetString(goalIntent, "goalKey", "goal_key", "displayName", "display_name"));
-            TrySetIfValid(ref confidence, goalIntent, "confidence");
-            TrySetIfValid(ref gate, goalIntent, "basalGangliaGate", "basal_ganglia_gate");
-            candidateCount = Math.Max(candidateCount, CountArrayItems(goalIntent, "candidates"));
-        }
-
-        if (TryGetObject(stateElement, "intentionalActionLoop").TryGetValue(out var actionLoop))
-        {
-            SetIfNotBlank(ref action, GetString(actionLoop, "actionKey", "action_key", "intentionKey", "intention_key"));
-            SetIfNotBlank(ref directive, GetString(actionLoop, "motorDirective", "motor_directive"));
-            SetIfNotBlank(ref goal, GetString(actionLoop, "goalKey", "goal_key"));
-            SetIfNotBlank(ref target, GetString(actionLoop, "target", "targetKey", "target_key"));
-            TrySetIfValid(ref confidence, actionLoop, "confidence");
-            TrySetIfValid(ref gate, actionLoop, "basalGangliaCommit", "basal_ganglia_commit");
-            TrySetIfValid(ref readiness, actionLoop, "m1Readiness", "m1_readiness", "readiness");
-            TrySetIfValid(ref inhibition, actionLoop, "inhibition");
-        }
-
-        SetIfNotBlank(ref directive, _brainMotorDirective);
-        SetIfNotBlank(ref goal, _brainGoalKey);
-        SetIfNotBlank(ref target, _brainActionTarget);
-
-        var selected = SelectMotorDecisionLabel(directive, action, goal);
-        var goalText = FirstNonBlank(goal, "observe");
-        var targetText = FirstNonBlank(target, "environment");
-        var candidates = candidateCount >= 0 ? candidateCount.ToString(CultureInfo.InvariantCulture) : "-";
-        var holdReason = ResolveMotorDecisionStatus(confidence, gate, readiness, inhibition);
+        var active = AvatarJson.GetBool(motor, "active", "Active");
+        var selectedChannel = (int)GetLong(motor, "selectedActionChannel", "SelectedActionChannel");
+        var confidence = Math.Clamp(GetDouble(motor, "confidence", "Confidence"), 0.0, 1.0);
+        var actionConfidence = Math.Clamp(GetDouble(motor, "actionSelectionConfidence", "ActionSelectionConfidence"), 0.0, 1.0);
+        var gate = Math.Clamp(GetDouble(motor, "selectionGate", "SelectionGate"), 0.0, 1.0);
+        var inhibition = Math.Clamp(GetDouble(motor, "outputInhibition", "OutputInhibition"), 0.0, 1.0);
+        var motorCoverage = Math.Clamp(GetDouble(motor, "motorCircuitCoverage", "MotorCircuitCoverage"), 0.0, 1.0);
+        var actionCoverage = Math.Clamp(GetDouble(motor, "actionCircuitCoverage", "ActionCircuitCoverage"), 0.0, 1.0);
+        var margin = Math.Clamp(GetDouble(motor, "actionSelectionMargin", "ActionSelectionMargin"), 0.0, 1.0);
+        var left = GetDouble(motor, "leftDrive", "LeftDrive");
+        var right = GetDouble(motor, "rightDrive", "RightDrive");
+        var holdReason = ResolveMotorDecisionStatus(active, confidence, gate, inhibition);
 
         _brainMotorDecisionText =
-            $"Motor decision: {selected}; goal {goalText}; target {targetText}; conf {FormatUnit(confidence)}; gate {FormatUnit(gate)}; ready {FormatUnit(readiness)}; candidates {candidates}; body fwd {_lastForwardSpeed:0.00}, turn {_lastTurnRateDeg:0}; status {holdReason}";
+            $"Neuronal motor: channel {selectedChannel}; active {active}; confidence {confidence:0.00}; action confidence {actionConfidence:0.00}; gate {gate:0.00}; inhibition {inhibition:0.00}; coverage motor/action {motorCoverage:0.00}/{actionCoverage:0.00}; margin {margin:0.00}; decoded L/R {left:0.00}/{right:0.00}; body fwd {_lastForwardSpeed:0.00}, turn {_lastTurnRateDeg:0}; status {holdReason}";
     }
 
-    private string ResolveMotorDecisionStatus(double confidence, double gate, double readiness, double inhibition)
+    private string ResolveMotorDecisionStatus(bool active, double confidence, double gate, double inhibition)
     {
         if (_sleepState)
         {
             return "neuronal sleep observed";
         }
 
-        if (!double.IsNaN(gate) && gate < 0.18)
+        if (!active)
+        {
+            return "population decoder inactive";
+        }
+
+        if (gate < 0.18)
         {
             return "basal ganglia gate low";
         }
 
-        if (!double.IsNaN(inhibition) && inhibition > 0.72)
+        if (inhibition > 0.72)
         {
             return "inhibition high";
         }
 
-        if (!double.IsNaN(readiness) && readiness < 0.18)
-        {
-            return "M1 readiness low";
-        }
-
-        if (!double.IsNaN(confidence) && confidence < 0.18)
+        if (confidence < 0.18)
         {
             return "selection confidence low";
         }
@@ -6512,72 +6314,6 @@ public partial class MainWindow : Window
         }
 
         return "standing by";
-    }
-
-    private static string FirstNonBlank(params string[] values)
-    {
-        foreach (var value in values)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value.Trim();
-            }
-        }
-
-        return string.Empty;
-    }
-
-    private static string SelectMotorDecisionLabel(string directive, string action, string goal)
-    {
-        if (IsNonIdleMotorLabel(directive))
-        {
-            return directive.Trim();
-        }
-
-        if (IsNonIdleMotorLabel(action))
-        {
-            return action.Trim();
-        }
-
-        return FirstNonBlank(directive, action, goal, "motor_idle");
-    }
-
-    private static bool IsNonIdleMotorLabel(string value)
-        => !string.IsNullOrWhiteSpace(value) &&
-           !value.Equals("idle", StringComparison.OrdinalIgnoreCase) &&
-           !value.Equals("motor_idle", StringComparison.OrdinalIgnoreCase);
-
-    private static void TrySetIfValid(ref double destination, JsonElement element, params string[] propertyNames)
-    {
-        if (TryReadDouble(element, out var value, propertyNames))
-        {
-            destination = value;
-        }
-    }
-
-    private static bool TryReadDouble(JsonElement element, out double value, params string[] propertyNames)
-    {
-        foreach (var propertyName in propertyNames)
-        {
-            if (!TryGetProperty(element, propertyName, out var candidate))
-            {
-                continue;
-            }
-
-            if (candidate.ValueKind == JsonValueKind.Number && candidate.TryGetDouble(out value))
-            {
-                return true;
-            }
-
-            if (candidate.ValueKind == JsonValueKind.String &&
-                double.TryParse(candidate.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-            {
-                return true;
-            }
-        }
-
-        value = double.NaN;
-        return false;
     }
 
     private bool IsSpawnLocationClear(double worldX, double terrainY, double worldZ)
@@ -6619,113 +6355,6 @@ public partial class MainWindow : Window
         }
 
         return !IsAnyCollisionNear(worldX, terrainY + AvatarFootOffset, worldZ);
-    }
-
-    private static int CountArrayItems(JsonElement element, params string[] propertyNames)
-    {
-        foreach (var propertyName in propertyNames)
-        {
-            if (TryGetProperty(element, propertyName, out var candidate) && candidate.ValueKind == JsonValueKind.Array)
-            {
-                return candidate.GetArrayLength();
-            }
-        }
-
-        return -1;
-    }
-
-    private static string FormatUnit(double value)
-        => double.IsNaN(value) ? "-" : Math.Clamp(value, 0.0, 1.0).ToString("0.00", CultureInfo.InvariantCulture);
-
-    private static void ReadBrainIntentCarrier(JsonElement carrier, ref string directive, ref string goalKey, ref string target)
-    {
-        ReadBrainIntentObject(carrier, ref directive, ref goalKey, ref target);
-
-        if (TryGetObject(carrier, "language").TryGetValue(out var language))
-        {
-            ReadBrainIntentObject(language, ref directive, ref goalKey, ref target);
-        }
-
-        if (TryGetObject(carrier, "languageLoop").TryGetValue(out var languageLoop))
-        {
-            ReadBrainIntentObject(languageLoop, ref directive, ref goalKey, ref target);
-        }
-
-        if (TryGetObject(carrier, "goalIntent").TryGetValue(out var goalIntent))
-        {
-            ReadBrainIntentObject(goalIntent, ref directive, ref goalKey, ref target);
-        }
-
-        if (TryGetObject(carrier, "intentionalActionLoop").TryGetValue(out var actionLoop))
-        {
-            ReadBrainIntentObject(actionLoop, ref directive, ref goalKey, ref target);
-        }
-    }
-
-    private static void ReadBrainIntentObject(JsonElement element, ref string directive, ref string goalKey, ref string target)
-    {
-        SetIfNotBlank(ref directive, GetString(
-            element,
-            "motorDirective",
-            "motor_directive",
-            "motorAction",
-            "action",
-            "currentAction"));
-        SetIfNotBlank(ref goalKey, GetString(
-            element,
-            "goalKey",
-            "goal_key",
-            "goal",
-            "intent",
-            "intentKey",
-            "drive",
-            "need"));
-        SetIfNotBlank(ref target, GetString(
-            element,
-            "target",
-            "targetKey",
-            "targetLabel",
-            "targetObject",
-            "objectLabel",
-            "object",
-            "currentThought"));
-    }
-
-    private static void SetIfNotBlank(ref string destination, string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            destination = value;
-        }
-    }
-
-    private void UpdateLimbicFromState(JsonElement stateElement)
-    {
-        _limbicStage = "unknown";
-        _limbicTiredDrive = 0.0;
-
-        if (!TryGetProperty(stateElement, "limbicState", out var limbic) || limbic.ValueKind != JsonValueKind.Object)
-        {
-            return;
-        }
-
-        var stage = GetString(limbic, "stage");
-        if (!string.IsNullOrWhiteSpace(stage))
-        {
-            _limbicStage = stage;
-        }
-
-        var tiredDrive = GetDouble(limbic, "tiredDrive", "tired_drive");
-        if (tiredDrive <= 0.0)
-        {
-            // Backward-compatible fallback when Control Program does not yet emit tiredDrive.
-            var interoceptive = Math.Clamp(GetDouble(limbic, "interoceptiveDrive", "interoceptive_drive"), 0.0, 1.0);
-            var aversive = Math.Clamp(GetDouble(limbic, "aversiveDrive", "aversive_drive"), 0.0, 1.0);
-            var stageBias = _limbicStage.Contains("tired", StringComparison.OrdinalIgnoreCase) ? 0.50 : 0.0;
-            tiredDrive = Math.Clamp((interoceptive * 0.40) + (aversive * 0.25) + stageBias, 0.0, 1.0);
-        }
-
-        _limbicTiredDrive = Math.Clamp(tiredDrive, 0.0, 1.0);
     }
 
     private static bool IsSleepingState(JsonElement stateElement) => AvatarJson.IsSleepingState(stateElement);

@@ -408,6 +408,11 @@ polls deleted object-memory state or interprets named plans, goals, targets, and
 motor directives; the editor no longer reconstructs scalar limbic state or a
 grounded language label.
 
+Entry 104 adds accepted-only Dyad voice presentation. Entity proposes the exact
+text, DNNE's prompt-bound neuronal review accepts or defers it, and the browser
+may voice only a matching accepted emission. The presenter receives no alternate
+language source and cannot rewrite, infer, or feed speech back into the brain.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

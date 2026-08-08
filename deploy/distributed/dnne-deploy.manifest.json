@@ -7,46 +7,71 @@
   "apps": {
     "control-program": {
       "project": "ControlProgram/NeuralResonanceEngine.ControlProgram.csproj",
-      "role": "control"
+      "role": "control",
+      "platforms": [ "windows", "linux" ]
     },
     "world-sim": {
       "project": "src/NRE.WpfWorldSim/NRE.WpfWorldSim.csproj",
-      "role": "wpf"
+      "role": "wpf",
+      "platforms": [ "windows" ]
     },
     "editor": {
       "project": "src/NRE.WpfEditor/NRE.WpfEditor.csproj",
-      "role": "wpf"
+      "role": "wpf",
+      "platforms": [ "windows" ]
     },
     "maze-sim": {
       "project": "src/NRE.WpfMazeSim/NRE.WpfMazeSim.csproj",
-      "role": "wpf"
+      "role": "wpf",
+      "platforms": [ "windows" ]
     }
   },
   "deployables": [
     {
       "name": "machine1-control-avatar",
-      "description": "Control Program plus the WPF world, editor, and maze simulators. Keep this on the interactive machine.",
-      "apps": [ "control-program", "world-sim", "editor", "maze-sim" ],
+      "description": "Control Program plus the authoritative WPF world and optional editor. Keep this on the interactive Windows machine.",
+      "required": true,
+      "platforms": [ "windows" ],
+      "apps": [ "control-program", "world-sim", "editor" ],
+      "structures": []
+    },
+    {
+      "name": "machine1-maze-diagnostic",
+      "description": "Optional WPF maze diagnostic. This is not part of the authoritative WorldSim embodiment path.",
+      "required": false,
+      "platforms": [ "windows" ],
+      "apps": [ "maze-sim" ],
       "structures": []
     },
     {
       "name": "visual-perception",
       "description": "Retinal input, early visual cortex, visual feature/motion streams, and attentional orienting.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
-      "structures": [ "Retina", "V1", "V2", "V4", "Mt", "TemporalAssociation", "Pulvinar", "SuperiorColliculus" ]
+      "structures": [ "Retina", "V1", "V2", "V3", "V4", "Mt", "TemporalAssociation", "Pulvinar", "SuperiorColliculus" ]
     },
     {
       "name": "auditory",
       "description": "Cochlear and midbrain auditory pathway through primary auditory cortex.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
-      "structures": [ "Cochlea", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "A1" ]
+      "structures": [ "Cochlea", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "A1", "AuditoryAssociationCortex" ]
     },
     {
       "name": "body-motor-cerebellum",
       "description": "Somatosensory, vestibular, motor cortex, spinal, brainstem, and cerebellar timing/correction circuits.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
       "structures": [
         "S1",
+        "SecondarySomatosensoryCortex",
+        "SomaticAfferents",
+        "ProprioceptiveAfferents",
+        "VestibularAfferents",
+        "VisceralAfferents",
         "VestibularNuclei",
         "NucleusTractusSolitarius",
         "M1",
@@ -68,6 +93,8 @@
     {
       "name": "memory-navigation",
       "description": "Medial temporal memory, contextual scene, and navigation circuits.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
       "structures": [
         "EntorhinalCortex",
@@ -87,10 +114,17 @@
     {
       "name": "attention-language-executive",
       "description": "Prefrontal, thalamic, parietal, interhemispheric, language, and cortical association loops.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
       "structures": [
         "Pfc",
+        "DorsomedialPrefrontalCortex",
+        "VentromedialPrefrontalCortex",
+        "FrontalEyeFields",
         "Ppc",
+        "Precuneus",
+        "TemporoparietalJunction",
         "Thalamus",
         "Trn",
         "MediodorsalThalamus",
@@ -100,6 +134,10 @@
         "WernickePstgPsts",
         "ArcuateFasciculus",
         "SupramarginalAngular",
+        "FusiformGyrus",
+        "InferotemporalCortex",
+        "TemporalPole",
+        "MidcingulateCortex",
         "OrbitofrontalCortex",
         "Insula"
       ]
@@ -107,6 +145,8 @@
     {
       "name": "limbic-basal-homeostasis",
       "description": "Affect, motivation, basal ganglia action gating, homeostasis, and neuromodulatory circuits.",
+      "required": true,
+      "platforms": [ "windows", "linux" ],
       "apps": [],
       "structures": [
         "Hypothalamus",

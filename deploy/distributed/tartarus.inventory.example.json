@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "name": "Tartarus DNNE cluster example",
+  "network": {
+    "dnsSuffix": "tartarus",
+    "reservedAddressBlock": "REPLACE_WITH_20_CONSECUTIVE_ADDRESSES",
+    "controlHost": "dyad-control.tartarus",
+    "expectedBackboneMbps": 2500,
+    "maximumClockSkewSeconds": 5
+  },
+  "nodes": [
+    {
+      "name": "dyad-control.tartarus",
+      "addressOffset": 0,
+      "platform": "windows",
+      "deployables": [ "machine1-control-avatar" ]
+    },
+    {
+      "name": "dnne-visual.tartarus",
+      "addressOffset": 1,
+      "platform": "linux",
+      "deployables": [ "visual-perception" ]
+    },
+    {
+      "name": "dnne-auditory.tartarus",
+      "addressOffset": 2,
+      "platform": "linux",
+      "deployables": [ "auditory" ]
+    },
+    {
+      "name": "dnne-body.tartarus",
+      "addressOffset": 3,
+      "platform": "linux",
+      "deployables": [ "body-motor-cerebellum" ]
+    },
+    {
+      "name": "dnne-memory.tartarus",
+      "addressOffset": 4,
+      "platform": "linux",
+      "deployables": [ "memory-navigation" ]
+    },
+    {
+      "name": "dnne-executive.tartarus",
+      "addressOffset": 5,
+      "platform": "linux",
+      "deployables": [ "attention-language-executive" ]
+    },
+    {
+      "name": "dnne-limbic.tartarus",
+      "addressOffset": 6,
+      "platform": "linux",
+      "deployables": [ "limbic-basal-homeostasis" ]
+    }
+  ]
+}

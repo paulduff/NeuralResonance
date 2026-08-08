@@ -81,6 +81,22 @@ function Get-RelativePathCompat {
     return $pathFull
 }
 
+function Get-TargetPlatform {
+    param([string]$Runtime)
+
+    if (-not [string]::IsNullOrWhiteSpace($Runtime)) {
+        if ($Runtime.StartsWith('win-', [StringComparison]::OrdinalIgnoreCase)) { return 'windows' }
+        if ($Runtime.StartsWith('linux-', [StringComparison]::OrdinalIgnoreCase)) { return 'linux' }
+        throw "Unsupported distributed runtime platform: $Runtime"
+    }
+
+    if ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT) {
+        return 'windows'
+    }
+
+    return 'linux'
+}
+
 function Get-StructureProjectMap {
     param([string]$Root)
 
@@ -186,9 +202,12 @@ function New-AppEntry {
 $repoRoot = Resolve-RepoRoot
 $manifestFullPath = Resolve-PathFromRoot -Root $repoRoot -Path $ManifestPath
 $outputRootFullPath = Resolve-PathFromRoot -Root $repoRoot -Path $OutputRoot
+$validatorPath = Join-Path $repoRoot 'tools\test-dnne-distributed-deployment.ps1'
+& $validatorPath -ManifestPath $manifestFullPath -Quiet
 $manifest = Get-Content -LiteralPath $manifestFullPath -Raw | ConvertFrom-Json
 $structureProjects = Get-StructureProjectMap -Root $repoRoot
 $serviceRegistry = Get-ServiceRegistryMap -Root $repoRoot
+$targetPlatform = Get-TargetPlatform -Runtime $Runtime
 
 $selectedNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach ($name in $Deployable) {
@@ -208,6 +227,10 @@ New-Item -ItemType Directory -Force -Path $outputRootFullPath | Out-Null
 $allServiceInstances = @()
 foreach ($deployableSpec in $deployables) {
     $name = [string]$deployableSpec.name
+    $supportedPlatforms = @($deployableSpec.platforms)
+    if ($targetPlatform -notin $supportedPlatforms) {
+        throw "Deployable '$name' does not support target platform '$targetPlatform'. Supported: $($supportedPlatforms -join ', ')"
+    }
     $deployableOutput = Join-Path $outputRootFullPath $name
     if ($Clean -and (Test-Path $deployableOutput)) {
         $resolvedOutput = [System.IO.Path]::GetFullPath($deployableOutput)
@@ -233,6 +256,11 @@ foreach ($deployableSpec in $deployables) {
         $app = Get-ObjectProperty -Object $manifest.apps -Name ([string]$appId)
         if ($null -eq $app) {
             throw "Unknown app in deployable $name`: $appId"
+        }
+
+        $appPlatforms = @($app.platforms)
+        if ($targetPlatform -notin $appPlatforms) {
+            throw "App '$appId' does not support target platform '$targetPlatform'."
         }
 
         $projectPath = Resolve-PathFromRoot -Root $repoRoot -Path ([string]$app.project)
@@ -287,9 +315,12 @@ foreach ($deployableSpec in $deployables) {
     }
 
     $deployableDocument = [ordered]@{
-        SchemaVersion = 1
+        SchemaVersion = 2
         Name = $name
         Description = [string]$deployableSpec.description
+        Required = [bool]$deployableSpec.required
+        Platforms = $supportedPlatforms
+        TargetPlatform = $targetPlatform
         GeneratedAt = [DateTimeOffset]::UtcNow.ToString('o')
         Configuration = $Configuration
         ControlBaseUrlDefault = [string]$manifest.controlBaseUrlDefault
@@ -307,6 +338,7 @@ foreach ($deployableSpec in $deployables) {
 
     Copy-Item -LiteralPath (Join-Path $repoRoot 'tools\start-dnne-deployable.ps1') -Destination (Join-Path $deployableOutput 'start-deployable.ps1') -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'tools\stop-dnne-deployable.ps1') -Destination (Join-Path $deployableOutput 'stop-deployable.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'tools\test-dnne-node.ps1') -Destination (Join-Path $deployableOutput 'test-node.ps1') -Force
 
     if ($Zip) {
         $zipPath = Join-Path $outputRootFullPath "$name.zip"
@@ -329,7 +361,8 @@ $template = [ordered]@{
     Notes = @(
         "Replace each <host-for-name> token with the DNS name or IP of the machine running that deployable.",
         "Put the ServiceInstances array into a Control Program appsettings override when running distributed.",
-        "Keep StructureProcessHost:AutoStartEnabled=false on the control machine for remote structures."
+        "Keep StructureProcessHost:AutoStartEnabled=false on the control machine for remote structures.",
+        "Run test-node.ps1 on every target before starting its deployable."
     )
     ServiceInstances = $allServiceInstances
 }

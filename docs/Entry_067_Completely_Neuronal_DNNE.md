@@ -231,8 +231,8 @@ so clients cannot mistake a diagnostic snapshot for a control surface.
 
 The final semantic actuation paths have been removed from the runtime:
 
-- English parsing can stimulate auditory and language populations but cannot construct or dispatch motor spikes.
-- Hosted language ingress no longer parses commands, assigns semantic intent, detects teaching keywords, or writes conventional memories. It only tokenizes and phoneticizes the stimulus before spike delivery.
+- Text presented by a human is rendered as visible pixels and must traverse retinal and language circuits.
+- Hosted language ingress, parsing, token plans, phonetic spike construction, semantic intent assignment, and conventional language-memory writes are absent.
 - The live motor decoder does not receive the central intentional-action record and cannot compare against or imitate a named directive.
 - The avatar discards all motor-structure traffic that is not a numeric population code, including semantic tool commands.
 - Runtime `Shadow`, `Assist`, promotion, rollback, and motor-mode administration paths have been deleted.
@@ -387,6 +387,13 @@ and English lexicons, dialogue manager, adaptive language backoff graphs,
 admin routes, settings, and telemetry are absent. Language anatomy and the
 read-only neuronal grounding decoder remain; learning must now occur through
 sensory activity, plasticity, memory, embodiment, and training.
+
+Entry 101 deletes the remaining semantic language labels and synthetic
+narration. Percept ensembles cannot receive host object IDs or labels, Dyad
+protocol v2 carries numeric neuronal evidence only, and Entity-unavailable
+generation has no DNNE fallback prose. Candidate review is bound to the
+neuronal snapshot that issued its prompt and must still match the live
+percept, recall, attention, wake, and speech state before emission.
 
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as

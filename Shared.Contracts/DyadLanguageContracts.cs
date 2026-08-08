@@ -6,8 +6,7 @@ namespace NeuralResonanceEngine.Shared.Contracts;
 public enum DyadLanguageCandidateDecision
 {
     Deferred = 0,
-    AcceptedForReview = 1,
-    AcceptedForEmission = 2
+    AcceptedForEmission = 1
 }
 
 public sealed record DyadLanguageCandidateRequest(
@@ -48,21 +47,6 @@ public sealed record DyadEntityGenerationParameters(
     string CandidateKind,
     string Purpose);
 
-public sealed record DyadVerifiedMemoryExcerpt(
-    string MemorySystem,
-    string Summary,
-    float Confidence,
-    long LastUpdatedTick,
-    string Evidence);
-
-public sealed record DyadCommunicationIntentSnapshot(
-    bool Active,
-    string Intent,
-    string Mood,
-    string Subject,
-    float Strength,
-    string Evidence);
-
 public sealed record DyadNeuronalGroundingSource(
     string SourceId,
     int PopulationIndex,
@@ -72,39 +56,25 @@ public sealed record DyadNeuronalGroundingSource(
 
 public sealed record DyadLanguageGroundingSnapshot(
     long Tick,
+    string Authority,
     bool IsSleeping,
-    bool WorkspaceActive,
-    float WorkspaceConfidence,
-    float WorkingMemoryStability,
-    string BoundGoalKey,
-    string SemanticFocus,
-    string NeedState,
-    string AffectiveState,
+    bool NeuronalCircuitObserved,
+    bool NeuronalGroundingAvailable,
+    bool NeuronalGrounded,
+    int PerceptEnsemble,
+    float PerceptConfidence,
+    int MemoryEnsemble,
+    float MemoryConfidence,
+    int AttentionChannel,
     float LanguageAttention,
     float AttentionConfidence,
-    string SpeechMode,
-    bool SpeechEligible,
-    float SpeechConfidence,
-    float SpeechReleaseGate,
-    float SpeechSuppression,
-    string Evidence,
-    IReadOnlyList<DyadVerifiedMemoryExcerpt> MemoryExcerpts,
-    DyadCommunicationIntentSnapshot CommunicationIntent)
-{
-    public string Authority { get; init; } = "LegacySymbolicTelemetry";
-    public bool NeuronalCircuitObserved { get; init; }
-    public bool NeuronalGroundingAvailable { get; init; }
-    public bool NeuronalGrounded { get; init; }
-    public int PerceptEnsemble { get; init; } = -1;
-    public int MemoryEnsemble { get; init; } = -1;
-    public int AttentionChannel { get; init; } = -1;
-    public float LanguageCircuitCoverage { get; init; }
-    public float GroundingConfidence { get; init; }
-    public float Uncertainty { get; init; } = 1f;
-    public bool NeuronalSpeechAuthorized { get; init; }
-    public string GroundedLabel { get; init; } = "unlabelled";
-    public IReadOnlyList<DyadNeuronalGroundingSource> NeuronalSources { get; init; } = [];
-}
+    float LanguageCircuitCoverage,
+    float ComprehensionDrive,
+    float ExpressionDrive,
+    float GroundingConfidence,
+    float Uncertainty,
+    bool NeuronalSpeechAuthorized,
+    IReadOnlyList<DyadNeuronalGroundingSource> Sources);
 
 public sealed record DyadLanguageCandidateResponse(
     string ProtocolVersion,
@@ -127,7 +97,6 @@ public sealed record DyadLanguageCandidateAuditRecord(
 public sealed record DyadEntityPromptSnapshot(
     string PromptText,
     string PromptFingerprint,
-    string FallbackText,
     DyadLanguageGroundingSnapshot Grounding);
 
 public sealed record DyadEntityGenerationResponse(
@@ -135,19 +104,16 @@ public sealed record DyadEntityGenerationResponse(
     string SessionId,
     string TurnId,
     bool EntityAvailable,
-    bool UsedFallback,
     string Origin,
     string Text,
     string Detail,
-    DyadLanguageCandidateResponse? Review)
-{
-    public bool Emitted { get; init; }
-    public string CandidateText { get; init; } = string.Empty;
-}
+    DyadLanguageCandidateResponse? Review,
+    bool Emitted,
+    string CandidateText);
 
 public static class DyadLanguageContract
 {
-    public const string ProtocolVersion = "dyad.language-candidate.v1";
+    public const string ProtocolVersion = "dyad.language-candidate.v2";
     public const int MaxCandidateLength = 1600;
     public const int MaxPromptLength = 2400;
     public const int MaxSourceReferences = 12;

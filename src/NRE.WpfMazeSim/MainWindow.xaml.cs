@@ -154,8 +154,6 @@ public partial class MainWindow : Window
     private long _environmentAudioFrameSequence;
     private long _somaticContactFrameSequence;
     private long _physicalBodyFrameSequence;
-    private long _lastBrainNarrationSequence = -1;
-    private string _lastBrainNarrationText = string.Empty;
     private PerspectiveCamera? _mazeCamera;
     private bool _cameraDragActive;
     private Point _cameraDragStart;
@@ -249,7 +247,6 @@ public partial class MainWindow : Window
         ObjectMemoryTextBox.Text = "Object memory: waiting for first frame";
         LimbicStageText.Text = "Limbic stage: awaiting telemetry";
         LimbicDriveText.Text = "Limbic drives: waiting for Control Program state.";
-        BrainNarrationText.Text = "Brain narration: waiting for brain state.";
         TextDisplayStatusText.Text = "Text display: idle";
         NavigationStatusText.Text = "Motor authority: neuronal brain drive";
     }
@@ -454,7 +451,6 @@ public partial class MainWindow : Window
                 _lastTick = GetLong(stateElement, "tick");
                 UpdateLimbicFromState(stateElement);
                 UpdateObjectMemoryFromState(stateElement);
-                UpdateBrainNarrationFromState(stateElement);
             }
             else
             {
@@ -2685,33 +2681,6 @@ public partial class MainWindow : Window
         }
 
         LogTextBox.ScrollToEnd();
-    }
-
-    private void UpdateBrainNarrationFromState(JsonElement stateElement)
-    {
-        if (AvatarControlApi.TryReadBrainNarration(stateElement, out var narration))
-        {
-            ApplyBrainNarration(narration, forceLog: false);
-        }
-    }
-
-    private void ApplyBrainNarration(AvatarBrainNarration narration, bool forceLog)
-    {
-        if (!narration.HasText)
-        {
-            return;
-        }
-
-        BrainNarrationText.Text = $"Brain narration: {narration.Utterance}";
-        var changed = narration.Sequence != _lastBrainNarrationSequence ||
-                      !string.Equals(narration.Utterance, _lastBrainNarrationText, StringComparison.Ordinal);
-        if (forceLog || changed)
-        {
-            Log($"Brain narration: {TrimForLog(narration.Utterance, 110)}");
-        }
-
-        _lastBrainNarrationSequence = narration.Sequence;
-        _lastBrainNarrationText = narration.Utterance;
     }
 
     private static string TrimForLog(string text, int maxLength)

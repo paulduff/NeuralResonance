@@ -108,7 +108,7 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.Equal("entity-25m-bpe-v1", audit.Proposal.EntityVersion);
         Assert.Equal("hello from Entity", audit.Proposal.CandidateText);
         Assert.Equal(response.Decision, audit.Decision);
-        Assert.Empty(response.Grounding.MemoryExcerpts);
+        Assert.Empty(response.Grounding.Sources);
     }
 
     [Fact]
@@ -153,10 +153,9 @@ public sealed class AdminRouteHandlerUnitTests
         var response = Assert.IsType<DyadEntityGenerationResponse>(
             Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
 
-        Assert.True(response.UsedFallback);
         Assert.False(response.EntityAvailable);
         Assert.False(response.Emitted);
-        Assert.Equal("dnne-deferred", response.Origin);
+        Assert.Equal("entity-deferred", response.Origin);
         Assert.Empty(response.Text);
         Assert.Empty(response.CandidateText);
         Assert.Null(response.Review);
@@ -183,12 +182,11 @@ public sealed class AdminRouteHandlerUnitTests
         var response = Assert.IsType<DyadEntityGenerationResponse>(
             Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
 
-        Assert.False(response.UsedFallback);
         Assert.True(response.EntityAvailable);
         Assert.NotNull(response.Review);
         Assert.Equal(DyadLanguageCandidateDecision.Deferred, response.Review.Decision);
         Assert.False(response.Review.Grounding.NeuronalCircuitObserved);
-        Assert.Empty(response.Review.Grounding.MemoryExcerpts);
+        Assert.Empty(response.Review.Grounding.Sources);
 
         var audit = Assert.Single(state.GetDyadLanguageCandidateReviews(8));
         Assert.Contains("You are Entity, the language component of Dyad.", audit.Proposal.PromptText);
@@ -209,6 +207,12 @@ public sealed class AdminRouteHandlerUnitTests
         Assert.DoesNotContain(propertyNames, name => name.Contains("reward", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(propertyNames, name => name.Contains("memory", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(propertyNames, name => name.Contains("action", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(
+            typeof(DyadEntityPromptSnapshot).GetProperties(),
+            property => property.Name == "FallbackText");
+        Assert.DoesNotContain(
+            typeof(DyadEntityGenerationResponse).GetProperties(),
+            property => property.Name == "UsedFallback");
     }
 
     private static SimulationState CreateState()

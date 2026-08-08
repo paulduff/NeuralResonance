@@ -98,7 +98,6 @@
                         <TextBlock x:Name="PathwaysText" Margin="0,4,0,0" Text="Active pathways: -" />
                         <TextBlock x:Name="ServicesText" Margin="0,4,0,0" Text="Service health: -" TextWrapping="Wrap" />
                         <TextBlock x:Name="BrainStateText" Margin="0,4,0,0" Text="Brain state: -" TextWrapping="Wrap" />
-                        <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
                         <TextBlock Margin="0,8,0,0" Text="Visible Text" FontWeight="SemiBold" />
                         <TextBox x:Name="TextDisplayInputTextBox"
                                  Margin="0,4,0,0"

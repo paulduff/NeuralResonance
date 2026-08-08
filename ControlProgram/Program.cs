@@ -1595,7 +1595,7 @@ internal sealed record AutoProfileSettings(
 
 internal sealed record IssuedDyadPrompt(
     string PromptFingerprint,
-    long GroundingTick,
+    DyadLanguageGroundingSnapshot Grounding,
     DateTimeOffset IssuedAtUtc);
 
 internal sealed class SimulationState
@@ -1741,11 +1741,18 @@ internal sealed class SimulationState
                     existing.ReviewedAtUtc);
             }
 
-            var grounding = BuildDyadLanguageGroundingSnapshotLocked();
-            var promptWasIssued = TryResolveIssuedDyadPromptLocked(proposal, out var promptReason);
+            var currentGrounding = BuildDyadLanguageGroundingSnapshotLocked();
+            var promptWasIssued = TryResolveIssuedDyadPromptLocked(proposal, out var issuedPrompt, out var promptReason);
+            var grounding = issuedPrompt?.Grounding ?? currentGrounding;
             var (decision, reason) = promptWasIssued
                 ? ResolveDyadLanguageCandidateDecision(grounding)
                 : (DyadLanguageCandidateDecision.Deferred, promptReason);
+            if (decision == DyadLanguageCandidateDecision.AcceptedForEmission &&
+                !IsDyadGroundingStillCurrent(grounding, currentGrounding))
+            {
+                decision = DyadLanguageCandidateDecision.Deferred;
+                reason = "DNNE's neuronal percept, recall, attention, or speech state changed after prompt issuance; stale evidence cannot authorize emission.";
+            }
             var reviewedAtUtc = DateTimeOffset.UtcNow;
             var reviewSequence = _dyadLanguageCandidateReviews.Count == 0
                 ? 1L
@@ -1792,11 +1799,10 @@ internal sealed class SimulationState
             }
 
             var fingerprint = DyadLanguageContract.CreatePromptFingerprint(prompt);
-            RecordIssuedDyadPromptLocked(parameters, fingerprint, grounding.Tick);
+            RecordIssuedDyadPromptLocked(parameters, fingerprint, grounding);
             return new DyadEntityPromptSnapshot(
                 prompt,
                 fingerprint,
-                string.Empty,
                 grounding);
         }
     }
@@ -1814,14 +1820,10 @@ internal sealed class SimulationState
             $"Verified DNNE tick: {grounding.Tick}; authority={grounding.Authority}.",
             $"Grounding: available={grounding.NeuronalGroundingAvailable}; grounded={grounding.NeuronalGrounded}; confidence={grounding.GroundingConfidence:0.00}; uncertainty={grounding.Uncertainty:0.00}.",
             $"Numeric populations: percept={grounding.PerceptEnsemble}; recall={grounding.MemoryEnsemble}; attention={grounding.AttentionChannel}; language-circuit-coverage={grounding.LanguageCircuitCoverage:0.00}.",
-            $"Post-percept annotation: {grounding.GroundedLabel}. It may describe an existing percept but may not create or select one.",
             $"Speech authorization: {grounding.NeuronalSpeechAuthorized}; sleeping={grounding.IsSleeping}.",
             "Neuronal source provenance:",
-            ..grounding.NeuronalSources.Select(source =>
-                $"- {source.SourceId}: population={source.PopulationIndex}; confidence={source.Confidence:0.00}; tick={source.Tick}; evidence={source.Evidence}"),
-            "Grounded neuronal excerpts:",
-            ..grounding.MemoryExcerpts.Select(excerpt =>
-                $"- {excerpt.MemorySystem}: {excerpt.Summary} (confidence={excerpt.Confidence:0.00}; tick={excerpt.LastUpdatedTick}; evidence={excerpt.Evidence})")
+            ..grounding.Sources.Select(source =>
+                $"- {source.SourceId}: population={source.PopulationIndex}; confidence={source.Confidence:0.00}; tick={source.Tick}; evidence={source.Evidence}")
         ]);
 
     private static string BuildAwaitingNeuronalDyadPrompt(
@@ -1842,13 +1844,13 @@ internal sealed class SimulationState
     private void RecordIssuedDyadPromptLocked(
         DyadEntityGenerationParameters parameters,
         string fingerprint,
-        long groundingTick)
+        DyadLanguageGroundingSnapshot grounding)
     {
         var now = DateTimeOffset.UtcNow;
         RemoveExpiredIssuedDyadPromptsLocked(now);
         _issuedDyadPrompts[CreateDyadTurnKey(parameters.SessionId, parameters.TurnId)] = new IssuedDyadPrompt(
             fingerprint,
-            groundingTick,
+            grounding,
             now);
         while (_issuedDyadPrompts.Count > MaxIssuedDyadPrompts)
         {
@@ -1859,6 +1861,7 @@ internal sealed class SimulationState
 
     private bool TryResolveIssuedDyadPromptLocked(
         DyadLanguageCandidateProposal proposal,
+        out IssuedDyadPrompt? issuedPrompt,
         out string reason)
     {
         var now = DateTimeOffset.UtcNow;
@@ -1867,19 +1870,34 @@ internal sealed class SimulationState
                 CreateDyadTurnKey(proposal.SessionId, proposal.TurnId),
                 out var issued))
         {
+            issuedPrompt = null;
             reason = "DNNE did not issue a prompt for this session and turn; the candidate cannot be grounded or emitted.";
             return false;
         }
 
         if (!string.Equals(issued.PromptFingerprint, proposal.PromptFingerprint, StringComparison.Ordinal))
         {
+            issuedPrompt = null;
             reason = "The candidate does not match DNNE's issued prompt fingerprint for this session and turn.";
             return false;
         }
 
+        issuedPrompt = issued;
         reason = string.Empty;
         return true;
     }
+
+    private static bool IsDyadGroundingStillCurrent(
+        DyadLanguageGroundingSnapshot issued,
+        DyadLanguageGroundingSnapshot current)
+        => current.NeuronalCircuitObserved &&
+           current.NeuronalGroundingAvailable &&
+           current.NeuronalGrounded &&
+           current.NeuronalSpeechAuthorized &&
+           !current.IsSleeping &&
+           current.AttentionChannel == NeuronalLanguageGroundingDecoder.LanguageAttentionChannel &&
+           current.PerceptEnsemble == issued.PerceptEnsemble &&
+           current.MemoryEnsemble == issued.MemoryEnsemble;
 
     private void RemoveExpiredIssuedDyadPromptsLocked(DateTimeOffset now)
     {
@@ -1954,85 +1972,28 @@ internal sealed class SimulationState
     private DyadLanguageGroundingSnapshot BuildNeuronalDyadLanguageGroundingSnapshotLocked(
         NeuronalLanguageGroundingDecision grounding)
     {
-        var attentionSelected = grounding.AttentionChannel == NeuronalLanguageGroundingDecoder.LanguageAttentionChannel;
-        var communicationIntent = new DyadCommunicationIntentSnapshot(
-            grounding.Grounded,
-            grounding.SpeechAuthorized ? "candidate-emission" : "candidate-review",
-            "neuronal-state-unlabelled",
-            grounding.GroundedLabel == "unlabelled"
-                ? $"population-{Math.Max(grounding.PerceptEnsemble, grounding.MemoryEnsemble)}"
-                : grounding.GroundedLabel,
-            (float)grounding.GroundingConfidence,
-            $"{NeuronalLanguageGroundingDecision.Authority}; attention-population={grounding.AttentionChannel}");
         return new DyadLanguageGroundingSnapshot(
             Tick,
+            NeuronalLanguageGroundingDecision.Authority,
             grounding.IsSleeping,
+            grounding.CircuitObserved,
+            grounding.Available,
             grounding.Grounded,
-            (float)grounding.GroundingConfidence,
+            grounding.PerceptEnsemble,
+            (float)grounding.PerceptConfidence,
+            grounding.MemoryEnsemble,
             (float)grounding.MemoryConfidence,
-            "unavailable-under-neuronal-authority",
-            grounding.GroundedLabel == "unlabelled"
-                ? $"population-{Math.Max(grounding.PerceptEnsemble, grounding.MemoryEnsemble)}"
-                : grounding.GroundedLabel,
-            "unavailable-under-neuronal-authority",
-            "unavailable-under-neuronal-authority",
+            grounding.AttentionChannel,
             (float)grounding.LanguageAttention,
             (float)grounding.AttentionConfidence,
-            grounding.SpeechAuthorized ? "speakable" : "deferred",
-            grounding.SpeechAuthorized,
-            (float)grounding.GroundingConfidence,
+            (float)grounding.LanguageCircuitCoverage,
+            (float)grounding.ComprehensionDrive,
             (float)grounding.ExpressionDrive,
-            (float)Math.Clamp(1.0 - grounding.ExpressionDrive, 0.0, 1.0),
-            $"{NeuronalLanguageGroundingDecision.Authority}; grounded={grounding.Grounded}; attention-selected={attentionSelected}; uncertainty={grounding.Uncertainty:0.000}",
-            BuildDyadNeuronalMemoryExcerptsLocked(grounding),
-            communicationIntent)
-        {
-            Authority = NeuronalLanguageGroundingDecision.Authority,
-            NeuronalCircuitObserved = grounding.CircuitObserved,
-            NeuronalGroundingAvailable = grounding.Available,
-            NeuronalGrounded = grounding.Grounded,
-            PerceptEnsemble = grounding.PerceptEnsemble,
-            MemoryEnsemble = grounding.MemoryEnsemble,
-            AttentionChannel = grounding.AttentionChannel,
-            LanguageCircuitCoverage = (float)grounding.LanguageCircuitCoverage,
-            GroundingConfidence = (float)grounding.GroundingConfidence,
-            Uncertainty = (float)grounding.Uncertainty,
-            NeuronalSpeechAuthorized = grounding.SpeechAuthorized,
-            GroundedLabel = grounding.GroundedLabel,
-            NeuronalSources = grounding.Sources
-        };
+            (float)grounding.GroundingConfidence,
+            (float)grounding.Uncertainty,
+            grounding.SpeechAuthorized,
+            grounding.Sources);
     }
-
-    private IReadOnlyList<DyadVerifiedMemoryExcerpt> BuildDyadNeuronalMemoryExcerptsLocked(
-        NeuronalLanguageGroundingDecision grounding)
-    {
-        var excerpts = new List<DyadVerifiedMemoryExcerpt>(2);
-        if (grounding.PerceptEnsemble >= 0)
-        {
-            excerpts.Add(new DyadVerifiedMemoryExcerpt(
-                "neuronal-percept-reference",
-                grounding.GroundedLabel == "unlabelled"
-                    ? $"Bound percept population {grounding.PerceptEnsemble}."
-                    : $"Bound percept population {grounding.PerceptEnsemble}; post-percept annotation={grounding.GroundedLabel}.",
-                (float)grounding.PerceptConfidence,
-                Tick,
-                NeuronalPerceptDecisionAuthority));
-        }
-
-        if (grounding.MemoryEnsemble >= 0)
-        {
-            excerpts.Add(new DyadVerifiedMemoryExcerpt(
-                "persisted-synaptic-recall",
-                $"Recalled numeric population {grounding.MemoryEnsemble}.",
-                (float)grounding.MemoryConfidence,
-                Tick,
-                NeuronalMemoryDecision.Authority));
-        }
-
-        return excerpts;
-    }
-
-    private const string NeuronalPerceptDecisionAuthority = "DistributedPerceptEnsembleCompetition";
 
 
     public NeuronalMotorRuntime GetNeuronalMotorSnapshot()
@@ -2964,14 +2925,6 @@ internal sealed class SimulationState
     {
         lock (_gate)
         {
-            var grounding = NeuronalLanguageGrounding;
-            var groundedLabel = grounding.GroundedLabel == "unlabelled"
-                ? string.Empty
-                : grounding.GroundedLabel;
-            var utterance = grounding.SpeechAuthorized && grounding.Grounded
-                ? groundedLabel
-                : string.Empty;
-
             return new
             {
                 Tick,
@@ -2994,14 +2947,6 @@ internal sealed class SimulationState
                     InputGates.SpontaneousSpikingEnabled
                 },
                 VisualAttention,
-                Language = new
-                {
-                    Utterance = utterance,
-                    Sequence = grounding.SpeechAuthorized ? Tick : 0,
-                    LastUpdatedTick = Tick,
-                    Source = NeuronalLanguageGroundingDecision.Authority,
-                    Grounding = grounding
-                },
                 Motor = NeuronalMotor
             };
         }
@@ -6191,7 +6136,6 @@ internal sealed class TickCoordinator(
             var neuronalLanguage = neuronalLanguageGrounding.Update(
                 tickSignal.Tick,
                 neuronalPercept,
-                neuronalPerception.GetSnapshot().LanguageAnnotations,
                 neuronalMemoryDecision,
                 neuronalAttention,
                 neuronalSleep,

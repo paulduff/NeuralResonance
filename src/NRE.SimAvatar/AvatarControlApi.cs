@@ -251,37 +251,6 @@ public static class AvatarControlApi
             HighThresholdActivation: (float)AvatarJson.GetDouble(root, "highThresholdActivation"));
     }
 
-    public static bool TryReadBrainNarration(JsonElement stateElement, out AvatarBrainNarration narration)
-    {
-        if (AvatarJson.TryGetProperty(stateElement, "brainNarration", out var directNarration) &&
-            directNarration.ValueKind == JsonValueKind.Object)
-        {
-            narration = ParseBrainNarration(directNarration);
-            return narration.HasText;
-        }
-
-        if (AvatarJson.TryGetProperty(stateElement, "brainBehavior", out var brainBehavior) &&
-            brainBehavior.ValueKind == JsonValueKind.Object &&
-            AvatarJson.TryGetProperty(brainBehavior, "language", out var language) &&
-            language.ValueKind == JsonValueKind.Object)
-        {
-            narration = ParseBrainNarration(language);
-            return narration.HasText;
-        }
-
-        narration = AvatarBrainNarration.Empty;
-        return false;
-    }
-
-    private static AvatarBrainNarration ParseBrainNarration(JsonElement element)
-    {
-        return new AvatarBrainNarration(
-            Utterance: AvatarJson.GetString(element, "utterance"),
-            Sequence: AvatarJson.GetLong(element, "sequence"),
-            LastUpdatedTick: AvatarJson.GetLong(element, "lastUpdatedTick"),
-            Source: AvatarJson.GetString(element, "source"));
-    }
-
     private static async Task<AvatarJsonHttpResponse> CreateJsonResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)

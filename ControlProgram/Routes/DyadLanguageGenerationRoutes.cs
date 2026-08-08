@@ -25,17 +25,16 @@ internal static class DyadLanguageGenerationRoutes
         var prompt = state.CreateDyadEntityPrompt(parameters);
         if (prompt.Grounding.IsSleeping)
         {
-            return CreateFallback(
+            return CreateDeferred(
                 state,
                 parameters,
-                prompt,
                 "DNNE is sleeping, so Entity was not called.");
         }
 
         var entity = await entityClient.GenerateAsync(prompt, cancellationToken);
         if (!entity.IsAvailable)
         {
-            return CreateFallback(state, parameters, prompt, entity.Detail);
+            return CreateDeferred(state, parameters, entity.Detail);
         }
 
         var candidateRequest = new DyadLanguageCandidateRequest(
@@ -51,7 +50,7 @@ internal static class DyadLanguageGenerationRoutes
             entity.SourceReferences);
         if (!DyadLanguageContract.TryNormalize(candidateRequest, out var proposal, out var candidateError) || proposal is null)
         {
-            return CreateFallback(state, parameters, prompt, $"Entity candidate failed DNNE contract validation: {candidateError}");
+            return CreateDeferred(state, parameters, $"Entity candidate failed DNNE contract validation: {candidateError}");
         }
 
         var review = state.ReviewDyadLanguageCandidate(proposal);
@@ -64,45 +63,31 @@ internal static class DyadLanguageGenerationRoutes
             parameters.SessionId,
             parameters.TurnId,
             EntityAvailable: true,
-            UsedFallback: false,
             Origin: emitted ? "entity" : "entity-deferred",
             Text: emitted ? proposal.CandidateText : string.Empty,
             Detail: emitted ? entity.Detail : review.DecisionReason,
-            Review: review)
-        {
-            Emitted = emitted,
-            CandidateText = proposal.CandidateText
-        });
+            Review: review,
+            Emitted: emitted,
+            CandidateText: proposal.CandidateText));
     }
 
-    private static IResult CreateFallback(
+    private static IResult CreateDeferred(
         SimulationState state,
         DyadEntityGenerationParameters parameters,
-        DyadEntityPromptSnapshot prompt,
         string detail)
     {
         state.AppendOutputLog(
-            $"Dyad Entity fallback: session={parameters.SessionId}, turn={parameters.TurnId}, detail={detail}");
-        var emissionAuthorized = prompt.Grounding.NeuronalCircuitObserved &&
-                                 prompt.Grounding.NeuronalGroundingAvailable &&
-                                 prompt.Grounding.NeuronalGrounded &&
-                                 prompt.Grounding.NeuronalSpeechAuthorized;
-        var emitted = !prompt.Grounding.IsSleeping &&
-                      emissionAuthorized &&
-                      !string.IsNullOrWhiteSpace(prompt.FallbackText);
+            $"Dyad Entity deferred: session={parameters.SessionId}, turn={parameters.TurnId}, detail={detail}");
         return Results.Ok(new DyadEntityGenerationResponse(
             DyadLanguageContract.ProtocolVersion,
             parameters.SessionId,
             parameters.TurnId,
             EntityAvailable: false,
-            UsedFallback: true,
-            Origin: emitted ? "dnne-fallback" : "dnne-deferred",
-            Text: emitted ? prompt.FallbackText : string.Empty,
+            Origin: "entity-deferred",
+            Text: string.Empty,
             Detail: detail,
-            Review: null)
-        {
-            Emitted = emitted,
-            CandidateText = prompt.FallbackText
-        });
+            Review: null,
+            Emitted: false,
+            CandidateText: string.Empty));
     }
 }

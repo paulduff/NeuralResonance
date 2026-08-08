@@ -13,7 +13,7 @@ The control program exposes two authenticated control-plane endpoints:
 - `POST /api/v1/dyad/language/candidates`
 - `GET /api/v1/dyad/language/reviews`
 
-The current protocol version is `dyad.language-candidate.v1`. A candidate must identify its session, turn, Entity version, configuration marker, prompt fingerprint, kind, text, and optional source references. Candidate kinds are restricted to `utterance`, `interpretation`, `question`, and `dialogue`.
+The current protocol version is `dyad.language-candidate.v2`. A candidate must identify its session, turn, Entity version, configuration marker, prompt fingerprint, kind, text, and optional source references. Candidate kinds are restricted to `utterance`, `interpretation`, `question`, and `dialogue`. The grounding payload is numeric-only: it contains measured neuronal populations, confidence, coverage, drives, uncertainty, speech authorization, and source provenance. Entry 101 removed the former symbolic goal, focus, need, affect, communication-intent, memory-prose, grounded-label, and fallback-text fields.
 
 The candidate schema deliberately contains no motor directive, reward value, memory operation, world-state assertion, or direct stimulation field. Entity cannot use this route to alter DNNE's body, reward, memory, or action selection.
 

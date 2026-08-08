@@ -460,8 +460,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
 
         var brainBehavior = GetObject(diagnostics.RootElement, "brainBehavior");
         Assert.Equal("MeasuredNeuronalDecoders", GetString(brainBehavior, "authority"));
-        var language = GetObject(brainBehavior, "language");
-        Assert.Equal("DistributedGroundedLanguageCircuits", GetString(language, "source"));
+        Assert.False(TryGetProperty(brainBehavior, "language", out _));
         Assert.False(TryGetProperty(brainBehavior, "goalIntent", out _));
         Assert.False(TryGetProperty(brainBehavior, "motivationArbitration", out _));
         Assert.False(TryGetProperty(brainBehavior, "intentionalActionLoop", out _));

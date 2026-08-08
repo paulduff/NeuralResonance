@@ -10,8 +10,7 @@ public sealed class NeuronalLanguageGroundingTests
     {
         var decision = Decode(
             perceptEnsemble: 3,
-            memoryEnsemble: 3,
-            annotation: "red cube");
+            memoryEnsemble: 3);
 
         Assert.True(decision.CircuitObserved);
         Assert.True(decision.Available);
@@ -20,27 +19,24 @@ public sealed class NeuronalLanguageGroundingTests
         Assert.Equal(3, decision.PerceptEnsemble);
         Assert.Equal(3, decision.MemoryEnsemble);
         Assert.Equal(NeuronalLanguageGroundingDecoder.LanguageAttentionChannel, decision.AttentionChannel);
-        Assert.Equal("red cube", decision.GroundedLabel);
         Assert.InRange(decision.GroundingConfidence, 0.20, 1.0);
         Assert.InRange(decision.Uncertainty, 0.0, 0.70);
         Assert.Contains(decision.Sources, static source => source.SourceId == "neuronal-percept-ensemble");
         Assert.Contains(decision.Sources, static source => source.SourceId == "persisted-synaptic-recall");
-        Assert.Contains(decision.Sources, static source => source.SourceId == "post-percept-language-annotation");
+        Assert.DoesNotContain(decision.Sources, static source => source.SourceId.Contains("annotation", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public void LanguageAnnotationCannotChangeNumericGroundingDecision()
+    public void GroundingDecisionHasNoSemanticLabelSurface()
     {
-        var first = Decode(2, 2, "first label");
-        var second = Decode(2, 2, "contradictory label");
+        var propertyNames = typeof(NeuronalLanguageGroundingDecision)
+            .GetProperties()
+            .Select(static property => property.Name)
+            .ToArray();
 
-        Assert.Equal(first.PerceptEnsemble, second.PerceptEnsemble);
-        Assert.Equal(first.MemoryEnsemble, second.MemoryEnsemble);
-        Assert.Equal(first.AttentionChannel, second.AttentionChannel);
-        Assert.Equal(first.GroundingConfidence, second.GroundingConfidence, 10);
-        Assert.Equal(first.Uncertainty, second.Uncertainty, 10);
-        Assert.Equal(first.SpeechAuthorized, second.SpeechAuthorized);
-        Assert.NotEqual(first.GroundedLabel, second.GroundedLabel);
+        Assert.DoesNotContain("GroundedLabel", propertyNames);
+        Assert.DoesNotContain(propertyNames, name => name.Contains("Object", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(propertyNames, name => name.Contains("Semantic", StringComparison.OrdinalIgnoreCase));
     }
 
     [Theory]
@@ -147,17 +143,51 @@ public sealed class NeuronalLanguageGroundingTests
 
         Assert.True(prompt.Grounding.NeuronalCircuitObserved);
         Assert.False(prompt.Grounding.NeuronalGroundingAvailable);
-        Assert.False(prompt.Grounding.SpeechEligible);
-        Assert.Equal("unavailable-under-neuronal-authority", prompt.Grounding.BoundGoalKey);
+        Assert.False(prompt.Grounding.NeuronalSpeechAuthorized);
         Assert.DoesNotContain(
-            prompt.Grounding.MemoryExcerpts,
-            static excerpt => excerpt.MemorySystem == "prefrontal-working-memory");
+            prompt.Grounding.Sources,
+            static source => source.SourceId == "prefrontal-working-memory");
+    }
+
+    [Fact]
+    public void CandidateCannotBorrowGroundingAcquiredAfterItsPromptWasIssued()
+    {
+        var state = CreateState();
+        var incomplete = Decode(
+            snapshots: [CreateLanguageCircuit().Single(static snapshot => snapshot.StructureId == StructureId.A1)]);
+        state.UpdateNeuronalLanguageGrounding(incomplete);
+        var parameters = new DyadEntityGenerationParameters(
+            DyadLanguageContract.ProtocolVersion,
+            "stale-grounding-session",
+            "turn-1",
+            "utterance",
+            "test prompt binding");
+        var prompt = state.CreateDyadEntityPrompt(parameters);
+
+        state.UpdateNeuronalLanguageGrounding(Decode());
+        var request = new DyadLanguageCandidateRequest(
+            DyadLanguageContract.ProtocolVersion,
+            parameters.SessionId,
+            parameters.TurnId,
+            "entity-test",
+            "test",
+            prompt.PromptFingerprint,
+            prompt.PromptText,
+            parameters.CandidateKind,
+            "This must remain deferred.",
+            []);
+        Assert.True(DyadLanguageContract.TryNormalize(request, out var proposal, out var error), error);
+
+        var review = state.ReviewDyadLanguageCandidate(proposal!);
+
+        Assert.Equal(DyadLanguageCandidateDecision.Deferred, review.Decision);
+        Assert.False(review.Grounding.NeuronalGroundingAvailable);
+        Assert.False(review.Grounding.NeuronalSpeechAuthorized);
     }
 
     private static NeuronalLanguageGroundingDecision Decode(
         int perceptEnsemble = 3,
         int memoryEnsemble = 3,
-        string annotation = "unlabelled",
         int attentionChannel = NeuronalLanguageGroundingDecoder.LanguageAttentionChannel,
         bool sleeping = false,
         IReadOnlyList<InstanceStructureSnapshot>? snapshots = null)
@@ -222,13 +252,9 @@ public sealed class NeuronalLanguageGroundingTests
                 0.0,
                 [])
             : NeuronalSleepConsolidationDecision.Unavailable;
-        var annotations = annotation == "unlabelled"
-            ? Array.Empty<PerceptLanguageAnnotation>()
-            : [new PerceptLanguageAnnotation(42, perceptEnsemble, "test-object", annotation, 0.95, 1)];
         return NeuronalLanguageGroundingDecoder.Decode(
             42,
             percept,
-            annotations,
             memory,
             attention,
             sleep,

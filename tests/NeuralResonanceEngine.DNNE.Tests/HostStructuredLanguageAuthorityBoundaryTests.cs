@@ -1,4 +1,5 @@
 using NRE.SimAvatar;
+using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
@@ -94,6 +95,69 @@ public sealed class HostStructuredLanguageAuthorityBoundaryTests
             "Hemisphere",
             "MotorDirective",
             "SpikeMessage");
+    }
+
+    [Fact]
+    public void DyadGroundingContractContainsOnlyNeuronalEvidence()
+    {
+        Assert.Equal("dyad.language-candidate.v2", DyadLanguageContract.ProtocolVersion);
+        var propertyNames = typeof(DyadLanguageGroundingSnapshot)
+            .GetProperties()
+            .Select(static property => property.Name)
+            .ToArray();
+        string[] forbidden =
+        [
+            "BoundGoalKey",
+            "SemanticFocus",
+            "NeedState",
+            "AffectiveState",
+            "CommunicationIntent",
+            "MemoryExcerpts",
+            "GroundedLabel"
+        ];
+        Assert.All(forbidden, property => Assert.DoesNotContain(property, propertyNames));
+        Assert.Null(typeof(DyadEntityPromptSnapshot).GetProperty("FallbackText"));
+        Assert.Null(typeof(DyadEntityGenerationResponse).GetProperty("UsedFallback"));
+    }
+
+    [Fact]
+    public void SyntheticNarrationAndSemanticPerceptAnnotationsDoNotExist()
+    {
+        var avatar = typeof(AvatarSightFrame).Assembly;
+        Assert.Null(avatar.GetType("NRE.SimAvatar.AvatarBrainNarration", throwOnError: false));
+        Assert.Null(typeof(AvatarControlApi).GetMethod("TryReadBrainNarration"));
+
+        var perception = ReadSource("ControlProgram", "NeuronalPerception.cs");
+        var grounding = ReadSource("ControlProgram", "NeuronalLanguageGrounding.cs");
+        var program = ReadSource("ControlProgram", "Program.cs");
+        AssertSourceOmits(
+            perception,
+            "PerceptLanguageAnnotation",
+            "TryAttachLanguageAnnotation",
+            "ObjectId",
+            "LanguageAnnotationAttached");
+        AssertSourceOmits(
+            grounding,
+            "GroundedLabel",
+            "post-percept-language-annotation");
+        AssertSourceOmits(
+            program,
+            "Post-percept annotation:",
+            "FallbackText",
+            "BrainNarration");
+
+        foreach (var project in new[] { "NRE.WpfMazeSim", "NRE.WpfWorldSim" })
+        {
+            AssertSourceOmits(
+                ReadSource("src", project, "MainWindow.xaml.cs"),
+                "TryReadBrainNarration",
+                "AvatarBrainNarration",
+                "BrainNarrationText");
+            Assert.DoesNotContain(
+                "BrainNarrationText",
+                ReadSource("src", project, "MainWindow.xaml"),
+                StringComparison.Ordinal);
+        }
     }
 
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)

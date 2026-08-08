@@ -1,6 +1,5 @@
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
-using System.Text.Json;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
@@ -60,82 +59,26 @@ public sealed class NeuronalPerceptionTests
     }
 
     [Fact]
-    public void LanguageAnnotationsCannotCreateOrChangeThePercept()
-    {
-        var runtime = new NeuronalPerceptionRuntime();
-        var before = runtime.Update(42, CreateCircuit(2, 0.92f));
-
-        Assert.True(runtime.TryAttachLanguageAnnotation(
-            "candidate-a",
-            "first label",
-            0.9,
-            out var first,
-            out var firstError));
-        Assert.Null(firstError);
-        Assert.True(runtime.TryAttachLanguageAnnotation(
-            "candidate-a",
-            "contradictory second label",
-            0.9,
-            out var second,
-            out var secondError));
-        Assert.Null(secondError);
-
-        var after = runtime.GetSnapshot();
-        Assert.Equal(before, after.Percept);
-        Assert.Equal(before.DominantEnsemble, first!.EnsembleIndex);
-        Assert.Equal(first.EnsembleIndex, second!.EnsembleIndex);
-        Assert.Equal(2, after.LanguageAnnotations.Count);
-        Assert.Equal(NeuronalPerceptionRuntime.Authority, after.Interpretation.Authority);
-        Assert.True(after.Interpretation.Active);
-        Assert.True(after.Interpretation.LanguageAnnotationAttached);
-        Assert.Equal("candidate-a", after.Interpretation.ObjectId);
-        Assert.Equal("contradictory second label", after.Interpretation.Label);
-        Assert.True(after.Interpretation.ReadOnly);
-        Assert.False(after.Interpretation.CanCreatePercepts);
-        Assert.False(after.Interpretation.CanCreateMemories);
-
-        var neuronalPayload = JsonSerializer.Serialize(after.Percept);
-        Assert.DoesNotContain("first label", neuronalPayload, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("contradictory", neuronalPayload, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void LanguageAnnotationDoesNotPersistWithoutCurrentNeuronalEvidence()
+    public void PerceptionRuntimeHasNoSemanticAnnotationSurface()
     {
         var runtime = new NeuronalPerceptionRuntime();
         runtime.Update(42, CreateCircuit(2, 0.92f));
-        Assert.True(runtime.TryAttachLanguageAnnotation(
-            "candidate-a",
-            "temporary label",
-            0.9,
-            out _,
-            out _));
+        var snapshot = runtime.GetSnapshot();
 
-        var labelled = runtime.GetSnapshot();
-        runtime.Update(43, CreateCircuit(2, 0.86f));
-        var advanced = runtime.GetSnapshot();
-
-        Assert.True(labelled.Interpretation.LanguageAnnotationAttached);
-        Assert.True(advanced.Interpretation.Active);
-        Assert.True(advanced.Interpretation.Persistence > 0.0);
-        Assert.False(advanced.Interpretation.LanguageAnnotationAttached);
-        Assert.Null(advanced.Interpretation.ObjectId);
-        Assert.Null(advanced.Interpretation.Label);
-    }
-
-    [Fact]
-    public void ALabelCannotAttachBeforeNeuronalBindingExists()
-    {
-        var runtime = new NeuronalPerceptionRuntime();
-
-        Assert.False(runtime.TryAttachLanguageAnnotation(
-            "hidden-world-id",
-            "answer supplied by simulator",
-            1.0,
-            out var annotation,
-            out var error));
-        Assert.Null(annotation);
-        Assert.Contains("No active neuronal percept", error, StringComparison.Ordinal);
+        Assert.Equal(2, snapshot.Percept.DominantEnsemble);
+        Assert.Equal(2, snapshot.Interpretation.DominantEnsemble);
+        Assert.True(snapshot.Interpretation.ReadOnly);
+        Assert.False(snapshot.Interpretation.CanCreatePercepts);
+        Assert.False(snapshot.Interpretation.CanCreateMemories);
+        Assert.Null(typeof(NeuronalPerceptionRuntime).GetMethod("TryAttachLanguageAnnotation"));
+        Assert.Null(typeof(NeuronalPerceptionRuntime).Assembly.GetType("PerceptLanguageAnnotation"));
+        var interpretationProperties = typeof(NeuronalPerceptInterpretation)
+            .GetProperties()
+            .Select(static property => property.Name)
+            .ToArray();
+        Assert.DoesNotContain("ObjectId", interpretationProperties);
+        Assert.DoesNotContain("Label", interpretationProperties);
+        Assert.DoesNotContain("LanguageAnnotationAttached", interpretationProperties);
     }
 
     [Fact]

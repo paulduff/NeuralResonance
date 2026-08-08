@@ -74,41 +74,27 @@ public sealed class EntityLanguageClientTests
         => new(
             PromptText: "verified DNNE context",
             PromptFingerprint: "sha256:test",
-            FallbackText: "I am watching and waiting.",
             Grounding: new DyadLanguageGroundingSnapshot(
                 Tick: 0,
+                Authority: NeuronalLanguageGroundingDecision.Authority,
                 IsSleeping: false,
-                WorkspaceActive: false,
-                WorkspaceConfidence: 0.25f,
-                WorkingMemoryStability: 0.25f,
-                BoundGoalKey: "Observe",
-                SemanticFocus: "environment",
-                NeedState: "observation",
-                AffectiveState: "stable",
+                NeuronalCircuitObserved: false,
+                NeuronalGroundingAvailable: false,
+                NeuronalGrounded: false,
+                PerceptEnsemble: -1,
+                PerceptConfidence: 0f,
+                MemoryEnsemble: -1,
+                MemoryConfidence: 0f,
+                AttentionChannel: -1,
                 LanguageAttention: 0.12f,
                 AttentionConfidence: 0.34f,
-                SpeechMode: "internal",
-                SpeechEligible: false,
-                SpeechConfidence: 0.25f,
-                SpeechReleaseGate: 0f,
-                SpeechSuppression: 1f,
-                Evidence: "quiet monitoring",
-                MemoryExcerpts:
-                [
-                    new DyadVerifiedMemoryExcerpt(
-                        "prefrontal-working-memory",
-                        "Task=observe; question=What is happening now?; plan=idle.",
-                        0.25f,
-                        0,
-                        "quiet monitoring")
-                ],
-                CommunicationIntent: new DyadCommunicationIntentSnapshot(
-                    Active: false,
-                    Intent: "none",
-                    Mood: "none",
-                    Subject: "none",
-                    Strength: 0.00f,
-                    Evidence: "quiet monitoring")));
+                LanguageCircuitCoverage: 0f,
+                ComprehensionDrive: 0f,
+                ExpressionDrive: 0f,
+                GroundingConfidence: 0f,
+                Uncertainty: 1f,
+                NeuronalSpeechAuthorized: false,
+                Sources: []));
 
     private static HttpResponseMessage JsonResponse(string json)
         => new(HttpStatusCode.OK)

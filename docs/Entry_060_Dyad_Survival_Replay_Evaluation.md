@@ -24,7 +24,7 @@ The evaluator rebuilds the private DNNE state from the artifact's initial networ
 
 The evaluator deliberately preserves three modes:
 
-- **Entity available:** the candidate is validated by `dyad.language-candidate.v1` and passes through DNNE's existing review gate.
+- **Entity available:** the candidate is validated by `dyad.language-candidate.v2` and passes through DNNE's prompt-bound neuronal review gate.
 - **Entity unavailable:** DNNE narration is recorded as `dnne-fallback`; no candidate review is created.
 - **Entity malformed:** a candidate failing the contract is replaced by the same `dnne-fallback`; no candidate review is created.
 

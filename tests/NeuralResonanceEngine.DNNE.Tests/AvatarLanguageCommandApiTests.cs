@@ -111,32 +111,6 @@ public sealed class AvatarTextSightApiTests
         Assert.Equal(frame.Stride * frame.Height, handler.PayloadLength);
     }
 
-    [Fact]
-    public void Try_Read_Brain_Narration_Reads_Frame_State_Language_Block()
-    {
-        using var document = JsonDocument.Parse(
-            """
-            {
-              "brainBehavior": {
-                "language": {
-                  "utterance": "I am moving forward.",
-                  "sequence": 21,
-                  "lastUpdatedTick": 900,
-                  "source": "language.move_forward"
-                }
-              }
-            }
-            """);
-
-        var found = AvatarControlApi.TryReadBrainNarration(document.RootElement, out var narration);
-
-        Assert.True(found);
-        Assert.Equal("I am moving forward.", narration.Utterance);
-        Assert.Equal(21, narration.Sequence);
-        Assert.Equal(900, narration.LastUpdatedTick);
-        Assert.Equal("language.move_forward", narration.Source);
-    }
-
     private sealed class StaticResponseHandler(HttpStatusCode statusCode, string body) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>

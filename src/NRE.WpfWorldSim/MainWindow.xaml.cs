@@ -338,8 +338,6 @@ public partial class MainWindow : Window
     private long _physicalBodyFrameSequence;
     private long _somaticContactFrameSequence;
     private bool _textDisplayInFlight;
-    private long _lastBrainNarrationSequence = -1;
-    private string _lastBrainNarrationText = string.Empty;
     private string _brainMotorDecisionText = "Motor decision: waiting for brain state.";
     private string _motorPathwayAuditText = "Motor pathway: waiting for brain snapshot.";
     private static readonly MotorPathwayStage[] MotorPathwayStages =
@@ -406,7 +404,6 @@ public partial class MainWindow : Window
         RefreshSurvivalTuningLabels();
         RebuildWorldFromSeed();
         ResetCamera();
-        BrainNarrationText.Text = "Brain narration: waiting for brain state.";
         TextDisplayStatusText.Text = "Text display: idle";
         SetConnectionStatus(AvatarControlStatusText.Connecting(), Brushes.LightGoldenrodYellow, logOnChange: false);
         _frameStopwatch.Restart();
@@ -5517,7 +5514,6 @@ public partial class MainWindow : Window
                 brainState = stateElement;
                 _sleepState = IsSleepingState(stateElement);
                 UpdateLimbicFromState(stateElement);
-                UpdateBrainNarrationFromState(stateElement);
                 UpdateBrainMotorIntentFromState(stateElement);
                 UpdateBrainMotorDecisionFromState(stateElement);
             }
@@ -6254,14 +6250,6 @@ public partial class MainWindow : Window
         return new OptionalElement();
     }
 
-    private void UpdateBrainNarrationFromState(JsonElement stateElement)
-    {
-        if (AvatarControlApi.TryReadBrainNarration(stateElement, out var narration))
-        {
-            ApplyBrainNarration(narration, forceLog: false);
-        }
-    }
-
     private void UpdateBrainMotorIntentFromState(JsonElement stateElement)
     {
         var directive = string.Empty;
@@ -6709,25 +6697,6 @@ public partial class MainWindow : Window
         {
             destination = value;
         }
-    }
-
-    private void ApplyBrainNarration(AvatarBrainNarration narration, bool forceLog)
-    {
-        if (!narration.HasText)
-        {
-            return;
-        }
-
-        BrainNarrationText.Text = $"Brain narration: {narration.Utterance}";
-        var changed = narration.Sequence != _lastBrainNarrationSequence ||
-                      !string.Equals(narration.Utterance, _lastBrainNarrationText, StringComparison.Ordinal);
-        if (forceLog || changed)
-        {
-            Log($"Brain narration: {TrimForLog(narration.Utterance, 110)}");
-        }
-
-        _lastBrainNarrationSequence = narration.Sequence;
-        _lastBrainNarrationText = narration.Utterance;
     }
 
     private void UpdateLimbicFromState(JsonElement stateElement)

@@ -116,7 +116,6 @@
 
                         <TextBlock x:Name="LimbicStageText" Margin="0,2,0,0" Text="Limbic stage: -" />
                         <TextBlock x:Name="LimbicDriveText" Margin="0,2,0,0" Text="Limbic drives: -" TextWrapping="Wrap" />
-                        <TextBlock x:Name="BrainNarrationText" Margin="0,4,0,0" Text="Brain narration: -" TextWrapping="Wrap" />
                         <TextBlock Margin="0,8,0,0" Text="Visible Text" FontWeight="SemiBold" />
                         <TextBox x:Name="TextDisplayInputTextBox"
                                  Margin="0,4,0,0"

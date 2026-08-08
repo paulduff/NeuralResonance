@@ -19,7 +19,6 @@ internal sealed record NeuronalLanguageGroundingDecision(
     double GroundingConfidence,
     double Uncertainty,
     bool SpeechAuthorized,
-    string GroundedLabel,
     IReadOnlyList<DyadNeuronalGroundingSource> Sources)
 {
     public const string Authority = "DistributedGroundedLanguageCircuits";
@@ -42,7 +41,6 @@ internal sealed record NeuronalLanguageGroundingDecision(
         0.0,
         1.0,
         false,
-        "unlabelled",
         []);
 }
 
@@ -60,7 +58,6 @@ internal sealed class NeuronalLanguageGroundingRuntime
     public NeuronalLanguageGroundingDecision Update(
         long tick,
         NeuronalPerceptDecision percept,
-        IReadOnlyList<PerceptLanguageAnnotation> annotations,
         NeuronalMemoryDecision memory,
         NeuronalAttentionWorkspaceDecision attention,
         NeuronalSleepConsolidationDecision sleep,
@@ -69,7 +66,6 @@ internal sealed class NeuronalLanguageGroundingRuntime
         var decoded = NeuronalLanguageGroundingDecoder.Decode(
             tick,
             percept,
-            annotations,
             memory,
             attention,
             sleep,
@@ -105,14 +101,12 @@ internal static class NeuronalLanguageGroundingDecoder
     public static NeuronalLanguageGroundingDecision Decode(
         long tick,
         NeuronalPerceptDecision percept,
-        IReadOnlyList<PerceptLanguageAnnotation> annotations,
         NeuronalMemoryDecision memory,
         NeuronalAttentionWorkspaceDecision attention,
         NeuronalSleepConsolidationDecision sleep,
         IReadOnlyList<InstanceStructureSnapshot> snapshots)
     {
         ArgumentNullException.ThrowIfNull(percept);
-        ArgumentNullException.ThrowIfNull(annotations);
         ArgumentNullException.ThrowIfNull(memory);
         ArgumentNullException.ThrowIfNull(attention);
         ArgumentNullException.ThrowIfNull(sleep);
@@ -199,12 +193,6 @@ internal static class NeuronalLanguageGroundingDecoder
                                expressionDrive > 0.005 &&
                                uncertainty <= 0.70;
 
-        var annotation = annotations
-            .Where(item => perceptActive && item.EnsembleIndex == percept.DominantEnsemble)
-            .OrderByDescending(static item => item.Tick)
-            .ThenByDescending(static item => item.AttachedUnixMs)
-            .FirstOrDefault();
-        var label = annotation?.Label ?? "unlabelled";
         var sources = BuildSources(
             tick,
             perceptActive,
@@ -213,7 +201,6 @@ internal static class NeuronalLanguageGroundingDecoder
             memory,
             attention,
             sleep,
-            annotation,
             comprehensionDrive,
             expressionDrive,
             circuitCoverage);
@@ -236,7 +223,6 @@ internal static class NeuronalLanguageGroundingDecoder
             groundingConfidence,
             uncertainty,
             speechAuthorized,
-            label,
             sources);
     }
 
@@ -248,12 +234,11 @@ internal static class NeuronalLanguageGroundingDecoder
         NeuronalMemoryDecision memory,
         NeuronalAttentionWorkspaceDecision attention,
         NeuronalSleepConsolidationDecision sleep,
-        PerceptLanguageAnnotation? annotation,
         double comprehensionDrive,
         double expressionDrive,
         double circuitCoverage)
     {
-        var sources = new List<DyadNeuronalGroundingSource>(7);
+        var sources = new List<DyadNeuronalGroundingSource>(6);
         if (perceptActive)
         {
             sources.Add(new(
@@ -262,16 +247,6 @@ internal static class NeuronalLanguageGroundingDecoder
                 (float)Math.Clamp(percept.Confidence, 0.0, 1.0),
                 tick,
                 $"coverage={percept.CircuitCoverage:0.000};margin={percept.DominanceMargin:0.000}"));
-        }
-
-        if (annotation is not null)
-        {
-            sources.Add(new(
-                "post-percept-language-annotation",
-                annotation.EnsembleIndex,
-                (float)Math.Clamp(annotation.Confidence, 0.0, 1.0),
-                annotation.Tick,
-                $"object={annotation.ObjectId};label={annotation.Label}"));
         }
 
         if (memoryActive)

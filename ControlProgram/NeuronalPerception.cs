@@ -24,22 +24,11 @@ internal sealed record NeuronalPerceptDecision(
         []);
 }
 
-internal sealed record PerceptLanguageAnnotation(
-    long Tick,
-    int EnsembleIndex,
-    string ObjectId,
-    string Label,
-    double Confidence,
-    long AttachedUnixMs);
-
 internal sealed record NeuronalPerceptInterpretation(
     string Authority,
     bool Available,
     bool Active,
     int DominantEnsemble,
-    string? ObjectId,
-    string? Label,
-    bool LanguageAnnotationAttached,
     double Confidence,
     double DominanceMargin,
     double CircuitCoverage,
@@ -52,15 +41,12 @@ internal sealed record NeuronalPerceptInterpretation(
 internal sealed record NeuronalPerceptionSnapshot(
     long Tick,
     NeuronalPerceptDecision Percept,
-    NeuronalPerceptInterpretation Interpretation,
-    IReadOnlyList<PerceptLanguageAnnotation> LanguageAnnotations);
+    NeuronalPerceptInterpretation Interpretation);
 
 internal sealed class NeuronalPerceptionRuntime
 {
     public const string Authority = "DistributedPerceptEnsembleCompetition";
-    private const int MaxAuditAnnotations = 64;
     private readonly object _gate = new();
-    private readonly Queue<PerceptLanguageAnnotation> _annotations = new();
     private long _tick = -1;
     private NeuronalPerceptDecision _percept = NeuronalPerceptDecision.Unavailable;
 
@@ -83,75 +69,20 @@ internal sealed class NeuronalPerceptionRuntime
     {
         lock (_gate)
         {
-            var annotations = _annotations.ToArray();
             return new NeuronalPerceptionSnapshot(
                 _tick,
                 _percept,
-                BuildInterpretation(_tick, _percept, annotations),
-                annotations);
+                BuildInterpretation(_percept));
         }
     }
 
-    public bool TryAttachLanguageAnnotation(
-        string objectId,
-        string label,
-        double confidence,
-        out PerceptLanguageAnnotation? annotation,
-        out string? error)
+    private static NeuronalPerceptInterpretation BuildInterpretation(NeuronalPerceptDecision percept)
     {
-        lock (_gate)
-        {
-            if (!_percept.Available || !_percept.Active || _percept.DominantEnsemble < 0)
-            {
-                annotation = null;
-                error = "No active neuronal percept is available for language annotation.";
-                return false;
-            }
-
-            var normalizedObjectId = NormalizeText(objectId, "unidentified", 128);
-            var normalizedLabel = NormalizeText(label, "unlabelled", 96);
-            annotation = new PerceptLanguageAnnotation(
-                _tick,
-                _percept.DominantEnsemble,
-                normalizedObjectId,
-                normalizedLabel,
-                Math.Clamp(confidence, 0.0, 1.0),
-                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-            _annotations.Enqueue(annotation);
-            while (_annotations.Count > MaxAuditAnnotations)
-            {
-                _annotations.Dequeue();
-            }
-
-            error = null;
-            return true;
-        }
-    }
-
-    private static string NormalizeText(string? value, string fallback, int maxLength)
-    {
-        var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-        return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
-    }
-
-    private static NeuronalPerceptInterpretation BuildInterpretation(
-        long tick,
-        NeuronalPerceptDecision percept,
-        IReadOnlyList<PerceptLanguageAnnotation> annotations)
-    {
-        var annotation = percept.Active
-            ? annotations.LastOrDefault(item =>
-                item.Tick == tick &&
-                item.EnsembleIndex == percept.DominantEnsemble)
-            : null;
         return new NeuronalPerceptInterpretation(
             Authority,
             percept.Available,
             percept.Active,
             percept.DominantEnsemble,
-            annotation?.ObjectId,
-            annotation?.Label,
-            annotation is not null,
             percept.Confidence,
             percept.DominanceMargin,
             percept.CircuitCoverage,

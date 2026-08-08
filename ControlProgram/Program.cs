@@ -37,6 +37,7 @@ if (!verboseFrameworkLogs)
     builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
     builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
     builder.Logging.AddFilter("Microsoft.AspNetCore.Routing.EndpointMiddleware", LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Result", LogLevel.Warning);
 }
 builder.WebHost.ConfigureKestrel(options =>
 {

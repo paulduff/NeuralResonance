@@ -17,8 +17,24 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Contains("NRE_VERBOSE_FRAMEWORK_LOGS", controlSource, StringComparison.Ordinal);
         Assert.Contains("System.Net.Http.HttpClient", controlSource, StringComparison.Ordinal);
         Assert.Contains("Microsoft.AspNetCore.Hosting.Diagnostics", controlSource, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.AspNetCore.Http.Result", controlSource, StringComparison.Ordinal);
         Assert.Contains("NRE_VERBOSE_FRAMEWORK_LOGS", structureSource, StringComparison.Ordinal);
         Assert.Contains("Microsoft.AspNetCore.Hosting.Diagnostics", structureSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Stack_Launcher_Uses_One_Explicit_Fresh_Build_Configuration()
+    {
+        var root = ResolveRepositoryRoot();
+        var launcher = File.ReadAllText(Path.Combine(root, "tools", "run-dnne-stack.ps1"));
+
+        Assert.Contains("[string]$Configuration = 'Release'", launcher, StringComparison.Ordinal);
+        Assert.Contains("--configuration $Configuration", launcher, StringComparison.Ordinal);
+        Assert.Contains("--StructureProcessHost:Configuration $Configuration", launcher, StringComparison.Ordinal);
+        Assert.Contains("Get-LatestProjectInputWriteTimeUtc", launcher, StringComparison.Ordinal);
+        Assert.Contains("Get-ProjectInputFiles", launcher, StringComparison.Ordinal);
+        Assert.Contains("ProjectReference", launcher, StringComparison.Ordinal);
+        Assert.DoesNotContain("bin\\Debug", launcher, StringComparison.Ordinal);
     }
 
     [Theory]

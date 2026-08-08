@@ -912,7 +912,7 @@ public partial class MainWindow : Window
         AvatarPreviewInfoText.Text = "Preview: active";
         RefreshSurvivalTuningLabels();
         RebuildCollisionGrid();
-        EnsureNearbyFoodLearningOpportunity();
+        EnsureReachableFoodLearningOpportunity();
     }
 
     /// <summary>
@@ -3422,7 +3422,7 @@ public partial class MainWindow : Window
         _vitalStateSinceSeconds = nowSeconds;
         _physicalRespawnAtSeconds = double.PositiveInfinity;
         ResetAvatarPose(logMessage: false);
-        EnsureNearbyFoodLearningOpportunity();
+        EnsureReachableFoodLearningOpportunity();
         Log($"Physical body respawned after death {_physicalDeaths}.");
     }
 
@@ -4565,7 +4565,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void EnsureNearbyFoodLearningOpportunity()
+    private void EnsureReachableFoodLearningOpportunity()
     {
         var pickupIndex = _foodPickups.FindIndex(static pickup => pickup.Active);
         if (pickupIndex < 0)
@@ -4573,7 +4573,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        ReadOnlySpan<double> distances = [3.0, 4.0, 5.0, 6.0];
+        // Place one consequence-bearing object inside the body's physical reach.
+        // The host does not activate the effector; a neuronal manipulator burst is
+        // still required to make contact and receive the somatic/metabolic result.
+        ReadOnlySpan<double> distances = [ManipulatorReach * 0.75, ManipulatorReach * 0.90, ManipulatorReach * 0.98];
         ReadOnlySpan<double> offsets = [0.0, -20.0, 20.0, -40.0, 40.0, -65.0, 65.0];
         for (var d = 0; d < distances.Length; d++)
         {
@@ -4583,7 +4586,7 @@ public partial class MainWindow : Window
                 var targetX = _avatarX + (Math.Sin(heading) * distances[d]);
                 var targetZ = _avatarZ + (Math.Cos(heading) * distances[d]);
                 if (!TryGetTerrainTopY(targetX, targetZ, out var targetY) ||
-                    !IsSpawnLocationClear(targetX, targetY, targetZ) ||
+                    !IsFoodLearningOpportunityLocationClear(pickupIndex, targetX, targetY, targetZ) ||
                     HasBlockingSegment(_avatarX, _avatarZ, targetX, targetZ, 0.18))
                 {
                     continue;
@@ -4595,9 +4598,42 @@ public partial class MainWindow : Window
                 pickup.Transform.OffsetY = pickup.Position.Y;
                 pickup.Transform.OffsetZ = pickup.Position.Z;
                 _foodPickups[pickupIndex] = pickup;
+                Log($"Reachable food affordance placed {distances[d]:0.00} m from the body; neuronal manipulation is required for contact.");
                 return;
             }
         }
+
+        Log("Reachable food affordance could not be placed without violating world geometry.");
+    }
+
+    private bool IsFoodLearningOpportunityLocationClear(int movingPickupIndex, double worldX, double terrainY, double worldZ)
+    {
+        if (IsCollisionAt(worldX, worldZ, out _, ignoreStepHeight: true))
+        {
+            return false;
+        }
+
+        const double objectSeparation = 0.55;
+        var objectSeparationSq = objectSeparation * objectSeparation;
+        for (var i = 0; i < _foodPickups.Count; i++)
+        {
+            var pickup = _foodPickups[i];
+            if (i != movingPickupIndex && pickup.Active &&
+                DistanceSquared(pickup.Position.X, pickup.Position.Z, worldX, worldZ) < objectSeparationSq)
+            {
+                return false;
+            }
+        }
+
+        if (_weaponPickups.Any(pickup => pickup.Active &&
+                DistanceSquared(pickup.Position.X, pickup.Position.Z, worldX, worldZ) < objectSeparationSq) ||
+            _predators.Any(predator =>
+                DistanceSquared(predator.Position.X, predator.Position.Z, worldX, worldZ) < objectSeparationSq))
+        {
+            return false;
+        }
+
+        return !IsAnyCollisionNear(worldX, terrainY + AvatarFootOffset, worldZ);
     }
 
     private void ResetAvatarPose(bool logMessage)

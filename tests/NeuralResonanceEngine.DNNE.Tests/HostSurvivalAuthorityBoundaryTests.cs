@@ -58,6 +58,9 @@ public sealed class HostSurvivalAuthorityBoundaryTests
         Assert.Contains("_tissueIntegrity", source, StringComparison.Ordinal);
         Assert.Contains("ApplyManipulatorOutput", source, StringComparison.Ordinal);
         Assert.Contains("AvatarPhysicalInteraction.IsWithinEffectorCone", source, StringComparison.Ordinal);
+        Assert.Contains("EnsureReachableFoodLearningOpportunity", source, StringComparison.Ordinal);
+        Assert.Contains("ManipulatorReach * 0.75", source, StringComparison.Ordinal);
+        Assert.Contains("IsFoodLearningOpportunityLocationClear", source, StringComparison.Ordinal);
         Assert.DoesNotContain("ConsumeNearbyPickups", source, StringComparison.Ordinal);
     }
 

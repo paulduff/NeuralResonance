@@ -1,6 +1,8 @@
 ﻿param(
     [switch]$CleanStart = $true,
     [switch]$NoBuild = $true,
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
     [switch]$NoEditor,
     [switch]$SkipBurnInGate = $false,
     [switch]$PrebuildMissingStructureProjects = $true,
@@ -142,7 +144,8 @@ if ($AutoRestartHeavyLoadCooldownSec -lt 1) {
 
 function Get-MissingStructureBuildOutputs {
     param(
-        [string]$RootPath
+        [string]$RootPath,
+        [string]$BuildConfiguration
     )
 
     $structuresRoot = Join-Path $RootPath 'Structures'
@@ -173,7 +176,7 @@ function Get-MissingStructureBuildOutputs {
             $assemblyName = [System.IO.Path]::GetFileNameWithoutExtension($project.Name)
         }
 
-        $dllPath = Join-Path $projectDir ("bin\Debug\net8.0\{0}.dll" -f $assemblyName)
+        $dllPath = Join-Path $projectDir ("bin\{0}\net8.0\{1}.dll" -f $BuildConfiguration, $assemblyName)
         if (-not (Test-Path $dllPath -PathType Leaf)) {
             $missing += [pscustomobject]@{
                 ProjectPath = $project.FullName
@@ -187,7 +190,8 @@ function Get-MissingStructureBuildOutputs {
 
 function Build-MissingStructureProjects {
     param(
-        [object[]]$MissingProjects
+        [object[]]$MissingProjects,
+        [string]$BuildConfiguration
     )
 
     if (-not $MissingProjects -or $MissingProjects.Count -eq 0) {
@@ -198,7 +202,7 @@ function Build-MissingStructureProjects {
     foreach ($entry in $MissingProjects) {
         $proj = [string]$entry.ProjectPath
         Write-Host ("  build -> {0}" -f $proj)
-        & dotnet build $proj --nologo --verbosity minimal
+        & dotnet build $proj --configuration $BuildConfiguration --nologo --verbosity minimal
         if ($LASTEXITCODE -ne 0) {
             throw ("dotnet build failed for {0}" -f $proj)
         }
@@ -234,12 +238,13 @@ function Get-ProjectAssemblyName {
 
 function Get-LatestProjectOutputDll {
     param(
-        [string]$ProjectPath
+        [string]$ProjectPath,
+        [string]$BuildConfiguration
     )
 
     $projectDir = Split-Path -Parent $ProjectPath
     $assemblyName = Get-ProjectAssemblyName -ProjectPath $ProjectPath
-    $outputCandidates = @(Get-ChildItem -Path (Join-Path $projectDir 'bin\Debug') -Recurse -Filter ("{0}.dll" -f $assemblyName) -File -ErrorAction SilentlyContinue)
+    $outputCandidates = @(Get-ChildItem -Path (Join-Path $projectDir ("bin\{0}" -f $BuildConfiguration)) -Recurse -Filter ("{0}.dll" -f $assemblyName) -File -ErrorAction SilentlyContinue)
     if ($outputCandidates.Count -eq 0) {
         return $null
     }
@@ -247,29 +252,89 @@ function Get-LatestProjectOutputDll {
     return $outputCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 }
 
+function Get-ProjectInputFiles {
+    param(
+        [string]$ProjectPath,
+        [hashtable]$VisitedProjects
+    )
+
+    $ProjectPath = [System.IO.Path]::GetFullPath($ProjectPath)
+    if ($VisitedProjects.ContainsKey($ProjectPath)) {
+        return
+    }
+    $VisitedProjects[$ProjectPath] = $true
+
+    $projectDir = Split-Path -Parent $ProjectPath
+    $inputExtensions = @('.cs', '.csproj', '.json', '.resx', '.xaml')
+    Get-ChildItem -Path $projectDir -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object {
+            $relativePath = $_.FullName.Substring($projectDir.Length).TrimStart('\')
+            -not ($relativePath -match '^(bin|obj)\\') -and
+            $inputExtensions -contains $_.Extension.ToLowerInvariant()
+        } |
+        ForEach-Object { $_.FullName }
+
+    try {
+        [xml]$projectXml = Get-Content -Path $ProjectPath -Raw
+        $references = @($projectXml.Project.ItemGroup.ProjectReference)
+        foreach ($reference in $references) {
+            $include = [string]$reference.Include
+            if ([string]::IsNullOrWhiteSpace($include)) {
+                continue
+            }
+
+            $referencePath = [System.IO.Path]::GetFullPath((Join-Path $projectDir $include))
+            if (Test-Path $referencePath -PathType Leaf) {
+                Get-ProjectInputFiles -ProjectPath $referencePath -VisitedProjects $VisitedProjects
+            }
+        }
+    }
+    catch {
+        # The project's own inputs still participate if reference parsing fails.
+    }
+}
+
+function Get-LatestProjectInputWriteTimeUtc {
+    param(
+        [string]$ProjectPath
+    )
+
+    $latestInput = Get-ProjectInputFiles -ProjectPath $ProjectPath -VisitedProjects @{} |
+        ForEach-Object { Get-Item -LiteralPath $_ -ErrorAction SilentlyContinue } |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+
+    if ($null -eq $latestInput) {
+        return (Get-Item $ProjectPath).LastWriteTimeUtc
+    }
+
+    return $latestInput.LastWriteTimeUtc
+}
+
 function Ensure-ProjectFreshBuild {
     param(
         [string]$ProjectPath,
         [string]$DisplayName,
-        [string[]]$DependencyOutputs
+        [string[]]$DependencyOutputs,
+        [string]$BuildConfiguration
     )
 
     if (-not (Test-Path $ProjectPath -PathType Leaf)) {
         throw ("Project not found for freshness check: {0}" -f $ProjectPath)
     }
 
-    $projectInfo = Get-Item $ProjectPath
-    $latestOutput = Get-LatestProjectOutputDll -ProjectPath $ProjectPath
+    $latestInputWriteTimeUtc = Get-LatestProjectInputWriteTimeUtc -ProjectPath $ProjectPath
+    $latestOutput = Get-LatestProjectOutputDll -ProjectPath $ProjectPath -BuildConfiguration $BuildConfiguration
     $needsBuild = $false
     $reason = ''
 
     if ($null -eq $latestOutput) {
         $needsBuild = $true
-        $reason = 'missing debug output'
+        $reason = ("missing {0} output" -f $BuildConfiguration)
     }
-    elseif ($projectInfo.LastWriteTimeUtc -gt $latestOutput.LastWriteTimeUtc) {
+    elseif ($latestInputWriteTimeUtc -gt $latestOutput.LastWriteTimeUtc) {
         $needsBuild = $true
-        $reason = 'project file is newer than output'
+        $reason = 'project source is newer than output'
     }
     else {
         foreach ($dep in @($DependencyOutputs)) {
@@ -278,7 +343,9 @@ function Ensure-ProjectFreshBuild {
             }
 
             if (-not (Test-Path $dep -PathType Leaf)) {
-                continue
+                $needsBuild = $true
+                $reason = ("missing dependency output: {0}" -f ([System.IO.Path]::GetFileName($dep)))
+                break
             }
 
             $depInfo = Get-Item $dep
@@ -295,7 +362,7 @@ function Ensure-ProjectFreshBuild {
     }
 
     Write-Host ("Refreshing stale {0} output ({1})..." -f $DisplayName, $reason)
-    & dotnet build $ProjectPath --nologo --verbosity minimal
+    & dotnet build $ProjectPath --configuration $BuildConfiguration --nologo --verbosity minimal
     if ($LASTEXITCODE -ne 0) {
         throw ("dotnet build failed for stale project refresh: {0}" -f $ProjectPath)
     }
@@ -576,29 +643,29 @@ if ($CleanStart) {
 }
 
 if ($PrebuildMissingStructureProjects) {
-    $missingBuildOutputs = @(Get-MissingStructureBuildOutputs -RootPath $repoRoot)
+    $missingBuildOutputs = @(Get-MissingStructureBuildOutputs -RootPath $repoRoot -BuildConfiguration $Configuration)
     if ($missingBuildOutputs.Count -gt 0) {
-        Build-MissingStructureProjects -MissingProjects $missingBuildOutputs
+        Build-MissingStructureProjects -MissingProjects $missingBuildOutputs -BuildConfiguration $Configuration
     }
 }
 
 if ($NoBuild) {
-    $protocolDll = Join-Path $repoRoot 'Protocol\bin\Debug\net8.0\NeuralResonanceEngine.Protocol.dll'
-    $contractsDll = Join-Path $repoRoot 'Shared.Contracts\bin\Debug\net8.0\NeuralResonanceEngine.Shared.Contracts.dll'
-    Ensure-ProjectFreshBuild -ProjectPath $controlProj -DisplayName 'ControlProgram' -DependencyOutputs @($protocolDll, $contractsDll)
+    $protocolDll = Join-Path $repoRoot ("Protocol\bin\{0}\net8.0\NeuralResonanceEngine.Protocol.dll" -f $Configuration)
+    $contractsDll = Join-Path $repoRoot ("Shared.Contracts\bin\{0}\net8.0\NeuralResonanceEngine.Shared.Contracts.dll" -f $Configuration)
+    Ensure-ProjectFreshBuild -ProjectPath $controlProj -DisplayName 'ControlProgram' -DependencyOutputs @($protocolDll, $contractsDll) -BuildConfiguration $Configuration
     if (-not $NoEditor) {
-        Ensure-ProjectFreshBuild -ProjectPath $editorProj -DisplayName 'WPF editor' -DependencyOutputs @()
+        Ensure-ProjectFreshBuild -ProjectPath $editorProj -DisplayName 'WPF editor' -DependencyOutputs @() -BuildConfiguration $Configuration
     }
 }
 
 $runArgText = if ($NoBuild) {
-    "run --no-build --project `"$controlProj`""
+    "run --no-build --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
 }
 else {
-    "run --project `"$controlProj`""
+    "run --configuration $Configuration --project `"$controlProj`" -- --StructureProcessHost:Configuration $Configuration"
 }
 
-Write-Host 'Starting ControlProgram...'
+Write-Host ("Starting ControlProgram ({0})..." -f $Configuration)
 $controlLogs = New-DnneProcessLogPaths -Name 'controlprogram'
 $controlProc = Start-Process `
     -FilePath 'dotnet' `
@@ -1010,18 +1077,18 @@ if (($ready -or $readyDegraded) -and $UseStartupProfileLock) {
 }
 
 if (-not $NoEditor) {
-    $editorExe = Join-Path $repoRoot 'src\NRE.WpfEditor\bin\Debug\net10.0-windows\NRE.WpfEditor.exe'
+    $editorExe = Join-Path $repoRoot ("src\NRE.WpfEditor\bin\{0}\net10.0-windows\NRE.WpfEditor.exe" -f $Configuration)
     $editorArgText = if ($NoBuild) {
         if (Test-Path $editorExe -PathType Leaf) {
-            "run --no-build --project `"$editorProj`""
+            "run --no-build --configuration $Configuration --project `"$editorProj`""
         }
         else {
             Write-Warning ("Editor apphost not found at {0}; falling back to build+run." -f $editorExe)
-            "run --project `"$editorProj`""
+            "run --configuration $Configuration --project `"$editorProj`""
         }
     }
     else {
-        "run --project `"$editorProj`""
+        "run --configuration $Configuration --project `"$editorProj`""
     }
 
     Write-Host 'Starting WPF editor...'

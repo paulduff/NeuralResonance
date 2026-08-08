@@ -113,6 +113,18 @@ public partial class MainWindow : Window
     private static readonly AvatarNervousSystemOptions WorldNervousSystemOptions = new(
         WorldKinematicsOptions,
         DriveDecay: 0.92);
+    private static readonly AvatarPhysiologyOptions WorldPhysiologyOptions = new(
+        NominalStoredEnergyJoules,
+        MetabolicBurnJoulesPerSecond,
+        HydrationLossPerSecond,
+        EnergyDepletionStressEnter,
+        EnergyDepletionStressFull,
+        EnergyDamageRateMinimum: 0.0028,
+        EnergyDamageRateScale: 0.0062,
+        DehydrationDamageThreshold: 0.20,
+        DehydrationDamageRateMinimum: 0.002,
+        DehydrationDamageRateScale: 0.008,
+        ShelteredSleepRecoveryRate: 0.010);
     private const long RuntimeLogMaxBytes = 6L * 1024L * 1024L;
     private static readonly string RuntimeLogDirectory =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NRE.WpfWorldSim");
@@ -270,8 +282,7 @@ public partial class MainWindow : Window
     private string _dayNightStage = "day";
     private int _foodConsumed;
     private int _weaponCharges;
-    private int _shortWeaponCharges;
-    private int _longWeaponCharges;
+    private AvatarDeviceInventory _deviceInventory;
     private int _predatorsNeutralized;
     private int _weaponPickupsCollected;
     private int _waterInteractions;
@@ -805,8 +816,7 @@ public partial class MainWindow : Window
         _dayNightStage = "day";
         _foodConsumed = 0;
         _weaponCharges = 0;
-        _shortWeaponCharges = 0;
-        _longWeaponCharges = 0;
+        _deviceInventory = default;
         _predatorsNeutralized = 0;
         _weaponPickupsCollected = 0;
         _waterInteractions = 0;
@@ -1458,9 +1468,9 @@ public partial class MainWindow : Window
             }
 
             var rangeProfile = random.NextDouble() < 0.36
-                ? WeaponRangeProfile.Long
-                : WeaponRangeProfile.Short;
-            var material = rangeProfile == WeaponRangeProfile.Long
+                ? AvatarDeviceRangeProfile.Long
+                : AvatarDeviceRangeProfile.Short;
+            var material = rangeProfile == AvatarDeviceRangeProfile.Long
                 ? longRangeMaterial
                 : shortRangeMaterial;
             var translate = new TranslateTransform3D(worldX, worldY + 0.22, worldZ);
@@ -1550,11 +1560,11 @@ public partial class MainWindow : Window
 
     private Model3DGroup BuildBlockWeaponPickupModel(
         Material material,
-        WeaponRangeProfile rangeProfile,
+        AvatarDeviceRangeProfile rangeProfile,
         TranslateTransform3D translate)
     {
         var weapon = new Model3DGroup { Transform = translate };
-        if (rangeProfile == WeaponRangeProfile.Long)
+        if (rangeProfile == AvatarDeviceRangeProfile.Long)
         {
             AddBlockPart(weapon, _unitCubeMesh, material, 0.0, 0.0, 0.0, 0.82, 0.12, 0.12);
             AddBlockPart(weapon, _unitCubeMesh, material, -0.24, -0.16, 0.0, 0.18, 0.24, 0.10);
@@ -2876,37 +2886,14 @@ public partial class MainWindow : Window
 
     private void UpdateSurvival(double dt, double nowSeconds)
     {
-        var metabolicRate = _sleepState ? 0.72 : 1.0;
-        _storedEnergyJoules = Math.Clamp(
-            _storedEnergyJoules - (dt * MetabolicBurnJoulesPerSecond * _metabolicBurnRate * metabolicRate),
-            0.0,
-            NominalStoredEnergyJoules);
-        _hydrationFraction = Math.Clamp(
-            _hydrationFraction - (dt * HydrationLossPerSecond * _metabolicBurnRate * metabolicRate),
-            0.0,
-            1.0);
-
-        var energyDepletion = 1.0 - (_storedEnergyJoules / NominalStoredEnergyJoules);
-        var energyStress = ComputeNeedDrive(energyDepletion, EnergyDepletionStressEnter, EnergyDepletionStressFull);
-        if (energyStress > 0.0)
-        {
-            var energyDepletionDamage = 0.0028 + (energyStress * 0.0062);
-            _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * energyDepletionDamage), 0.0, 1.0);
-        }
-
-        if (_hydrationFraction < 0.20)
-        {
-            var dehydrationStress = Math.Clamp((0.20 - _hydrationFraction) / 0.20, 0.0, 1.0);
-            _tissueIntegrity = Math.Clamp(
-                _tissueIntegrity - (dt * (0.002 + (dehydrationStress * 0.008))),
-                0.0,
-                1.0);
-        }
-
-        if (_sleepState && IsInShelter())
-        {
-            _tissueIntegrity = Math.Clamp(_tissueIntegrity + (dt * 0.010), 0.0, 1.0);
-        }
+        var physiology = AvatarWorldDynamics.AdvancePhysiology(
+            GetPhysiologyState(),
+            WorldPhysiologyOptions,
+            dt,
+            _metabolicBurnRate,
+            _sleepState,
+            IsInShelter());
+        SetPhysiologyState(physiology);
 
         if (nowSeconds < _nextSurvivalHudUpdateSeconds)
         {
@@ -2997,7 +2984,11 @@ public partial class MainWindow : Window
             var distance = GetDistanceToAvatar(predator.Position.X, predator.Position.Z);
             if (distance <= PredatorStrikeRadius)
             {
-                _tissueIntegrity = Math.Clamp(_tissueIntegrity - (dt * 0.08 * _predatorSpeedScale), 0.0, 1.0);
+                SetPhysiologyState(AvatarWorldDynamics.ApplyPredatorContact(
+                    GetPhysiologyState(),
+                    dt,
+                    damageRatePerSecond: 0.08,
+                    speedScale: _predatorSpeedScale));
                 _collisionHits++;
                 _collisionPulse = 1.0;
                 QueuePredatorContact(Environment.TickCount64);
@@ -3106,27 +3097,24 @@ public partial class MainWindow : Window
             pickup.Active = false;
             pickup.Transform.OffsetY = -999;
             _foodConsumed++;
-            _storedEnergyJoules = Math.Clamp(
-                _storedEnergyJoules + (NominalStoredEnergyJoules * 0.35),
-                0.0,
-                NominalStoredEnergyJoules);
+            SetPhysiologyState(AvatarWorldDynamics.ConsumeFood(
+                GetPhysiologyState(),
+                WorldPhysiologyOptions,
+                nominalEnergyFraction: 0.35));
             _foodPickups[nearestFoodIndex] = pickup;
             QueueManipulatorContact(45.0, 2.5, 700.0);
             return true;
         }
 
         var weapon = _weaponPickups[nearestWeaponIndex];
-        weapon.Active = false;
-        weapon.Transform.OffsetY = -999;
-        if (weapon.RangeProfile == WeaponRangeProfile.Long)
+        if (!_deviceInventory.TryCollect(weapon.RangeProfile, capacity: 3, out var collectedInventory))
         {
-            _longWeaponCharges = Math.Min(3, _longWeaponCharges + 1);
-        }
-        else
-        {
-            _shortWeaponCharges = Math.Min(3, _shortWeaponCharges + 1);
+            return false;
         }
 
+        weapon.Active = false;
+        weapon.Transform.OffsetY = -999;
+        _deviceInventory = collectedInventory;
         _weaponPickupsCollected++;
         UpdateWeaponChargeCache();
         _weaponPickups[nearestWeaponIndex] = weapon;
@@ -3141,7 +3129,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        _hydrationFraction = Math.Clamp(_hydrationFraction + 0.38, 0.0, 1.0);
+        SetPhysiologyState(AvatarWorldDynamics.Drink(GetPhysiologyState(), hydrationFraction: 0.38));
         _waterInteractions++;
         QueueManipulatorContact(22.0, 1.2, 1_450.0);
         return true;
@@ -3150,13 +3138,13 @@ public partial class MainWindow : Window
     private bool TryDischargeCarriedDevice()
     {
         var profile = GetActiveWeaponRangeProfile();
-        if (profile == WeaponRangeProfile.None || _predators.Count == 0)
+        if (profile == AvatarDeviceRangeProfile.None || _predators.Count == 0)
         {
             return false;
         }
 
-        var range = profile == WeaponRangeProfile.Long ? LongWeaponRange : ShortWeaponRange;
-        var halfAngle = profile == WeaponRangeProfile.Long ? LongWeaponHalfAngleDeg : ShortWeaponHalfAngleDeg;
+        var range = profile == AvatarDeviceRangeProfile.Long ? LongWeaponRange : ShortWeaponRange;
+        var halfAngle = profile == AvatarDeviceRangeProfile.Long ? LongWeaponHalfAngleDeg : ShortWeaponHalfAngleDeg;
         var selectedIndex = -1;
         var selectedDistanceSq = double.MaxValue;
         for (var i = 0; i < _predators.Count; i++)
@@ -3188,15 +3176,12 @@ public partial class MainWindow : Window
             return false;
         }
 
-        if (profile == WeaponRangeProfile.Long)
+        if (!_deviceInventory.TryDischarge(profile, out var dischargedInventory))
         {
-            _longWeaponCharges--;
-        }
-        else
-        {
-            _shortWeaponCharges--;
+            return false;
         }
 
+        _deviceInventory = dischargedInventory;
         UpdateWeaponChargeCache();
         var target = _predators[selectedIndex];
         target.Transform.OffsetY = -999;
@@ -3261,14 +3246,20 @@ public partial class MainWindow : Window
     }
 
     private void UpdateWeaponChargeCache()
-        => _weaponCharges = Math.Clamp(_shortWeaponCharges + _longWeaponCharges, 0, 3);
+        => _weaponCharges = _deviceInventory.TotalCharges;
 
-    private WeaponRangeProfile GetActiveWeaponRangeProfile()
-        => _longWeaponCharges > 0
-            ? WeaponRangeProfile.Long
-            : _shortWeaponCharges > 0
-                ? WeaponRangeProfile.Short
-                : WeaponRangeProfile.None;
+    private AvatarDeviceRangeProfile GetActiveWeaponRangeProfile()
+        => _deviceInventory.ActiveProfile;
+
+    private AvatarPhysiologyState GetPhysiologyState()
+        => new(_storedEnergyJoules, _hydrationFraction, _tissueIntegrity);
+
+    private void SetPhysiologyState(AvatarPhysiologyState state)
+    {
+        _storedEnergyJoules = state.StoredEnergyJoules;
+        _hydrationFraction = state.HydrationFraction;
+        _tissueIntegrity = state.TissueIntegrityFraction;
+    }
 
     private bool IsInShelter()
     {
@@ -4016,7 +4007,7 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            var kind = weapon.RangeProfile == WeaponRangeProfile.Long ? BlockKind.WeaponLong : BlockKind.WeaponShort;
+            var kind = weapon.RangeProfile == AvatarDeviceRangeProfile.Long ? BlockKind.WeaponLong : BlockKind.WeaponShort;
             AddVisionHitBox(
                 hitBoxes,
                 weapon.Position.X,
@@ -6826,13 +6817,6 @@ public partial class MainWindow : Window
 
     private static long MakeSurfaceKey(int x, int z) => ((long)x << 32) | (uint)z;
 
-    private enum WeaponRangeProfile
-    {
-        None = 0,
-        Short = 1,
-        Long = 2
-    }
-
     private enum BlockKind
     {
         Grass,
@@ -6970,7 +6954,7 @@ public partial class MainWindow : Window
             Point3D position,
             TranslateTransform3D transform,
             Model3D model,
-            WeaponRangeProfile rangeProfile)
+            AvatarDeviceRangeProfile rangeProfile)
         {
             Position = position;
             Transform = transform;
@@ -6981,7 +6965,7 @@ public partial class MainWindow : Window
         public Point3D Position { get; set; }
         public TranslateTransform3D Transform { get; }
         public Model3D Model { get; }
-        public WeaponRangeProfile RangeProfile { get; }
+        public AvatarDeviceRangeProfile RangeProfile { get; }
         public bool Active { get; set; } = true;
     }
 

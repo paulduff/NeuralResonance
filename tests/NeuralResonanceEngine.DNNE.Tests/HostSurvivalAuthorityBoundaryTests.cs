@@ -35,6 +35,7 @@ public sealed class HostSurvivalAuthorityBoundaryTests
     public void WorldHasNoHostAffectOrAutomaticWeaponAuthority()
     {
         var source = ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs");
+        var dynamicsSource = ReadSource("src", "NRE.SimAvatar", "AvatarWorldDynamics.cs");
 
         AssertSourceOmits(
             source,
@@ -48,7 +49,10 @@ public sealed class HostSurvivalAuthorityBoundaryTests
             "ConsumeWeaponCharge",
             "WeaponAttackCooldown");
         Assert.Contains("distance <= PredatorStrikeRadius", source, StringComparison.Ordinal);
-        Assert.Contains("_sleepState && IsInShelter()", source, StringComparison.Ordinal);
+        Assert.Contains("AvatarWorldDynamics.AdvancePhysiology", source, StringComparison.Ordinal);
+        Assert.Contains("_sleepState", source, StringComparison.Ordinal);
+        Assert.Contains("IsInShelter()", source, StringComparison.Ordinal);
+        Assert.Contains("sleeping && inShelter", dynamicsSource, StringComparison.Ordinal);
         AssertSourceOmits(source, "_hunger", "_health");
         Assert.Contains("_storedEnergyJoules", source, StringComparison.Ordinal);
         Assert.Contains("_tissueIntegrity", source, StringComparison.Ordinal);

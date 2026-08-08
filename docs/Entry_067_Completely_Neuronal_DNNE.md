@@ -380,6 +380,14 @@ hemisphere, token plan, neural target, spike burst, grammar, motor intent, or
 immediate narration. Comprehension must emerge through visual and language
 circuits rather than a command parser.
 
+Entry 100 deletes automatic host language conditioning. Visual attention,
+auditory rates, and decoded percept labels can no longer be converted into
+semantic tokens or lexical spikes by the simulation loop. The host phonetic
+and English lexicons, dialogue manager, adaptive language backoff graphs,
+admin routes, settings, and telemetry are absent. Language anatomy and the
+read-only neuronal grounding decoder remain; learning must now occur through
+sensory activity, plasticity, memory, embodiment, and training.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

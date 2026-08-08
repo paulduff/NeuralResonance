@@ -7,7 +7,6 @@ internal static class AdminTelemetryRoutes
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        app.MapGet("/api/v1/admin/language/prosody-telemetry", GetProsodyTelemetry);
         app.MapGet("/api/v1/admin/startup-health", GetStartupHealth);
         app.MapGet("/api/v1/admin/validation", GetValidation);
         app.MapGet("/api/v1/admin/runtime/http-profile", GetHttpProfile);
@@ -18,9 +17,6 @@ internal static class AdminTelemetryRoutes
 
         return app;
     }
-
-    internal static IResult GetProsodyTelemetry(SimulationState state)
-        => Results.Ok(state.GetProsodyTelemetrySnapshot());
 
     internal static IResult GetStartupHealth(SimulationState state, int? maxNonOkDetails)
         => Results.Ok(state.GetStartupHealth(Math.Clamp(maxNonOkDetails ?? 16, 1, 256)));
@@ -122,10 +118,7 @@ internal static class AdminTelemetryRoutes
                 tickWallP50Ms = transport.TickWallP50Ms,
                 tickWallP95Ms = transport.TickWallP95Ms,
                 tickWallP99Ms = transport.TickWallP99Ms,
-                degradeSignal = transport.DegradeSignal,
-                perceptionLanguageGenerated = transport.PerceptionLanguageGenerated,
-                perceptionLanguageDelivered = transport.PerceptionLanguageDelivered,
-                perceptionLanguageDispatchErrors = transport.PerceptionLanguageDispatchErrors
+                degradeSignal = transport.DegradeSignal
             },
             transportStats = new
             {

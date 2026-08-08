@@ -377,11 +377,17 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.Null(assembly.GetType("EnglishGrammarAnalysis"));
         Assert.Null(assembly.GetType("EnglishCommandIntent"));
 
-        var lexicon = assembly.GetType("EnglishLanguageLexicon");
-        Assert.NotNull(lexicon);
-        Assert.Null(lexicon!.GetMethod("AnalyzeGrammar", allMethods));
-        Assert.Null(lexicon.GetMethod("BuildBrainTokens", allMethods));
-        Assert.Null(lexicon.GetMethod("ResolveCommandIntent", allMethods));
+        string[] removedHostLanguageTypes =
+        [
+            "EnglishLanguageLexicon",
+            "PhoneticLanguageEngine",
+            "LanguageBackoffPolicy",
+            "DialogueTurnManager",
+            "PerceptionLanguageConditioningStats"
+        ];
+        Assert.All(
+            removedHostLanguageTypes,
+            type => Assert.Null(assembly.GetType(type)));
 
         string[] legacyCheckpointProperties =
         [
@@ -460,13 +466,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         Assert.False(TryGetProperty(brainBehavior, "motivationArbitration", out _));
         Assert.False(TryGetProperty(brainBehavior, "intentionalActionLoop", out _));
 
-        var observeInput = Assert.Single(
-            typeof(DialogueTurnManager).GetMethods(allMethods),
-            static method => method.Name == "ObserveInput");
-        Assert.Equal(4, observeInput.GetParameters().Length);
-        Assert.DoesNotContain(
-            observeInput.GetParameters(),
-            static parameter => parameter.ParameterType.Name.Contains("Grammar", StringComparison.Ordinal));
+        Assert.Null(assembly.GetType("DialogueTurnSnapshot"));
     }
 
     [Fact]

@@ -24,6 +24,43 @@ public sealed class HostStructuredLanguageAuthorityBoundaryTests
         Assert.DoesNotContain("BuildLanguageStimulusSpikes(", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ControlProgramHasNoHostLanguageConditioningSubsystem()
+    {
+        var source = ReadSource("ControlProgram", "Program.cs");
+        var telemetryRoutes = ReadSource("ControlProgram", "Routes", "AdminTelemetryRoutes.cs");
+        var settings = ReadSource("ControlProgram", "appsettings.json");
+
+        AssertSourceOmits(
+            source,
+            "InjectPerceptionLanguageConditioningAsync",
+            "BuildPerceptionLanguageTokens",
+            "BuildLanguageStimulusSpikesForTarget",
+            "PerceptionLanguageBridge",
+            "PhoneticLanguageEngine",
+            "EnglishLanguageLexicon",
+            "LanguageBackoffPolicy",
+            "DialogueTurnManager");
+        AssertSourceOmits(
+            telemetryRoutes,
+            "prosody-telemetry",
+            "PerceptionLanguage",
+            "LanguageBackoff");
+        Assert.DoesNotContain("PerceptionLanguageBridge", settings, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TransportTelemetryHasNoHostLanguageConditioningFields()
+    {
+        var propertyNames = typeof(TransportRuntimeStats)
+            .GetProperties()
+            .Select(property => property.Name)
+            .ToArray();
+
+        Assert.DoesNotContain(propertyNames, name => name.Contains("PerceptionLanguage", StringComparison.Ordinal));
+        Assert.DoesNotContain(propertyNames, name => name.Contains("LanguageBackoff", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("NRE.WpfMazeSim")]
     [InlineData("NRE.WpfWorldSim")]

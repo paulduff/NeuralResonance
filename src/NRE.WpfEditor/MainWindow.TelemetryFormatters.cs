@@ -785,209 +785,6 @@ public partial class MainWindow
         return anyActive ? "descending chain active" : "chain quiet";
     }
 
-    private static string FormatProsodyTelemetry(JsonElement root)
-    {
-        if (TryGetProperty(root, "state", out var nestedState) && nestedState.ValueKind == JsonValueKind.Object)
-        {
-            root = nestedState;
-        }
-
-        JsonElement payload = default;
-        if (TryGetProperty(root, "prosodyTelemetry", out var embeddedProsody) && embeddedProsody.ValueKind == JsonValueKind.Object)
-        {
-            payload = embeddedProsody;
-        }
-        else if (TryGetProperty(root, "languageBridge", out var languageBridgeProbe) && languageBridgeProbe.ValueKind == JsonValueKind.Object)
-        {
-            payload = root;
-        }
-        else if (TryGetProperty(root, "backoff", out var backoffProbe) && backoffProbe.ValueKind == JsonValueKind.Object)
-        {
-            payload = root;
-        }
-        else
-        {
-            return "Prosody telemetry unavailable: state payload missing prosody telemetry fields.";
-        }
-
-        var tick = GetLong(payload, "tick");
-        var simMs = GetDouble(payload, "simulationClockMs");
-        if (tick <= 0)
-        {
-            tick = GetLong(root, "tick");
-        }
-
-        if (simMs <= 0.0)
-        {
-            simMs = GetDouble(root, "simulationClockMs");
-        }
-
-        var sleeping = false;
-        var sleepPressure = 0.0;
-        var atpBudget = 0.0;
-        if (TryGetProperty(payload, "sleep", out var sleep) && sleep.ValueKind == JsonValueKind.Object)
-        {
-            sleeping = GetBool(sleep, "neuronalSleepObserved");
-            sleepPressure = GetDouble(sleep, "homeostaticPressure");
-            atpBudget = GetDouble(sleep, "atpBudget");
-        }
-        else if (TryGetProperty(root, "metabolicPhysiology", out var physiology) && physiology.ValueKind == JsonValueKind.Object)
-        {
-            sleeping = GetBool(physiology, "neuronalSleepObserved");
-            sleepPressure = GetDouble(physiology, "homeostaticPressure");
-            atpBudget = GetDouble(physiology, "atpBudget");
-        }
-
-        var stage = "-";
-        var salience = 0.0;
-        var threat = 0.0;
-        var valence = 0.0;
-        var rpe = 0.0;
-        if (TryGetProperty(payload, "limbic", out var limbic) && limbic.ValueKind == JsonValueKind.Object)
-        {
-            stage = GetString(limbic, "stage");
-            salience = GetDouble(limbic, "salience");
-            threat = GetDouble(limbic, "threat");
-            valence = GetDouble(limbic, "valence");
-            rpe = GetDouble(limbic, "rewardPredictionError");
-        }
-        else if (TryGetProperty(root, "limbicState", out var limbicState) && limbicState.ValueKind == JsonValueKind.Object)
-        {
-            stage = GetString(limbicState, "stage");
-            salience = GetDouble(limbicState, "salience");
-            threat = GetDouble(limbicState, "threat");
-            valence = GetDouble(limbicState, "valence");
-            rpe = GetDouble(limbicState, "rewardPredictionError");
-        }
-
-        var dopamine = 0.0;
-        var serotonin = 0.0;
-        var acetylcholine = 0.0;
-        var norepinephrine = 0.0;
-        if (TryGetProperty(payload, "neuromod", out var neuromod) && neuromod.ValueKind == JsonValueKind.Object)
-        {
-            dopamine = GetDouble(neuromod, "dopamineLevel");
-            serotonin = GetDouble(neuromod, "serotoninLevel");
-            acetylcholine = GetDouble(neuromod, "acetylcholineLevel");
-            norepinephrine = GetDouble(neuromod, "norepinephrineLevel");
-        }
-        else if (TryGetProperty(root, "globalNeuromodState", out var globalNeuromod) && globalNeuromod.ValueKind == JsonValueKind.Object)
-        {
-            dopamine = GetDouble(globalNeuromod, "dopamineLevel");
-            serotonin = GetDouble(globalNeuromod, "serotoninLevel");
-            acetylcholine = GetDouble(globalNeuromod, "acetylcholineLevel");
-            norepinephrine = GetDouble(globalNeuromod, "norepinephrineLevel");
-        }
-
-        var generated = 0;
-        var delivered = 0;
-        var dispatchErrors = 0;
-        var lastError = "-";
-        if (TryGetProperty(payload, "languageBridge", out var languageBridge) && languageBridge.ValueKind == JsonValueKind.Object)
-        {
-            generated = GetInt(languageBridge, "perceptionLanguageGenerated");
-            delivered = GetInt(languageBridge, "perceptionLanguageDelivered");
-            dispatchErrors = GetInt(languageBridge, "perceptionLanguageDispatchErrors");
-            lastError = GetString(languageBridge, "perceptionLanguageLastError");
-        }
-        else if (TryGetProperty(root, "transportStats", out var transportStats) && transportStats.ValueKind == JsonValueKind.Object)
-        {
-            generated = GetInt(transportStats, "perceptionLanguageGenerated");
-            delivered = GetInt(transportStats, "perceptionLanguageDelivered");
-            dispatchErrors = GetInt(transportStats, "perceptionLanguageDispatchErrors");
-            lastError = GetString(transportStats, "perceptionLanguageLastError");
-        }
-
-        if (string.IsNullOrWhiteSpace(lastError))
-        {
-            lastError = "-";
-        }
-
-        var attempts = 0L;
-        var resolved = 0L;
-        var fallbackSelections = 0L;
-        var backoffDispatchErrors = 0L;
-        var modeStateCount = 0;
-        var graphCount = 0;
-        var edgeCount = 0;
-        var topEdgeSummary = "-";
-        if (TryGetProperty(payload, "backoff", out var backoff) && backoff.ValueKind == JsonValueKind.Object)
-        {
-            attempts = GetLong(backoff, "languageBackoffAttempts");
-            resolved = GetLong(backoff, "languageBackoffResolved");
-            fallbackSelections = GetLong(backoff, "languageBackoffFallbackSelections");
-            backoffDispatchErrors = GetLong(backoff, "languageBackoffDispatchErrors");
-
-            if (TryGetProperty(backoff, "modeStates", out var modeStates) && modeStates.ValueKind == JsonValueKind.Array)
-            {
-                modeStateCount = modeStates.GetArrayLength();
-            }
-
-            if (TryGetProperty(backoff, "graphs", out var graphs) && graphs.ValueKind == JsonValueKind.Array)
-            {
-                graphCount = graphs.GetArrayLength();
-            }
-
-            if (TryGetProperty(backoff, "edges", out var edges) && edges.ValueKind == JsonValueKind.Array)
-            {
-                edgeCount = edges.GetArrayLength();
-                var first = edges.EnumerateArray().FirstOrDefault();
-                if (first.ValueKind == JsonValueKind.Object)
-                {
-                    var source = GetString(first, "source");
-                    var target = GetString(first, "target");
-                    var edgeDelivered = GetLong(first, "deliveredSpikes");
-                    var edgeErrors = GetLong(first, "dispatchErrors");
-                    topEdgeSummary = $"{source} -> {target} | delivered {edgeDelivered} | errors {edgeErrors}";
-                }
-            }
-        }
-        else if (TryGetProperty(root, "transportStats", out var rootTransportStats) && rootTransportStats.ValueKind == JsonValueKind.Object)
-        {
-            attempts = GetLong(rootTransportStats, "languageBackoffAttempts");
-            resolved = GetLong(rootTransportStats, "languageBackoffResolved");
-            fallbackSelections = GetLong(rootTransportStats, "languageBackoffFallbackSelections");
-            backoffDispatchErrors = GetLong(rootTransportStats, "languageBackoffDispatchErrors");
-            if (TryGetProperty(rootTransportStats, "languageBackoffModeStates", out var modeStates) && modeStates.ValueKind == JsonValueKind.Array)
-            {
-                modeStateCount = modeStates.GetArrayLength();
-            }
-
-            if (TryGetProperty(rootTransportStats, "languageBackoffGraphs", out var graphs) && graphs.ValueKind == JsonValueKind.Array)
-            {
-                graphCount = graphs.GetArrayLength();
-            }
-
-            if (TryGetProperty(rootTransportStats, "languageBackoffTopEdges", out var edges) && edges.ValueKind == JsonValueKind.Array)
-            {
-                edgeCount = edges.GetArrayLength();
-            }
-        }
-
-        var deliveryRatio = generated > 0 ? (double)delivered / generated : 0.0;
-        var safeStage = string.IsNullOrWhiteSpace(stage) ? "-" : stage;
-
-        return string.Join(Environment.NewLine, new[]
-        {
-            $"Tick: {tick}",
-            $"Simulation ms: {simMs:0.0}",
-            $"Sleep: {(sleeping ? "sleeping" : "awake")} | ATP {atpBudget:0.000} | pressure {sleepPressure:0.000}",
-            string.Empty,
-            $"Limbic stage: {safeStage} | sal {salience:0.000} | thr {threat:0.000} | val {valence:0.000} | rpe {rpe:0.000}",
-            $"Neuromod: DA {dopamine:0.000} | 5-HT {serotonin:0.000} | ACh {acetylcholine:0.000} | NE {norepinephrine:0.000}",
-            string.Empty,
-            "Perception-language bridge:",
-            $"  Generated: {generated}",
-            $"  Delivered: {delivered} ({deliveryRatio:0.000})",
-            $"  Dispatch errors: {dispatchErrors}",
-            $"  Last error: {lastError}",
-            string.Empty,
-            "Prosody backoff:",
-            $"  Attempts: {attempts} | Resolved: {resolved} | Fallback picks: {fallbackSelections} | Dispatch errors: {backoffDispatchErrors}",
-            $"  Mode states: {modeStateCount} | Graphs: {graphCount} | Edges: {edgeCount}",
-            $"  Top edge: {topEdgeSummary}"
-        });
-    }
     private static string FormatReasoningState(JsonElement root)
     {
         root = NormalizeStateRoot(root);
@@ -1200,11 +997,6 @@ public partial class MainWindow
         var sleepReplayStage = "awake";
         var sleepInhibitoryScale = 1.0;
         var sleepExcitatoryScale = 1.0;
-        var perceptionLanguageGenerated = 0;
-        var perceptionLanguageDelivered = 0;
-        var perceptionLanguageDispatchErrors = 0;
-        var perceptionLanguageLastError = string.Empty;
-        var languageBackoff = LanguageBackoffDisplay.Empty;
         if (TryGetProperty(root, "transportStats", out var transport) && transport.ValueKind == JsonValueKind.Object)
         {
             activeServices = GetInt(transport, "activeServices");
@@ -1263,11 +1055,6 @@ public partial class MainWindow
             sleepReplayStage = GetString(transport, "sleepReplayStage");
             sleepInhibitoryScale = GetDouble(transport, "sleepInhibitoryScale");
             sleepExcitatoryScale = GetDouble(transport, "sleepExcitatoryScale");
-            perceptionLanguageGenerated = GetInt(transport, "perceptionLanguageGenerated");
-            perceptionLanguageDelivered = GetInt(transport, "perceptionLanguageDelivered");
-            perceptionLanguageDispatchErrors = GetInt(transport, "perceptionLanguageDispatchErrors");
-            perceptionLanguageLastError = GetString(transport, "perceptionLanguageLastError");
-            languageBackoff = ParseLanguageBackoffDisplay(transport);
         }
 
         var snapshotStatus = lastSnapshotTick <= 0
@@ -1374,12 +1161,6 @@ public partial class MainWindow
             $"  Effective budgets: spikes/svc {effectivePerService}, spikes/tick {effectivePerTick}, topQueries {effectiveTopQueries}",
             $"  Effective timeouts: ack {effectiveAckTimeoutMs}ms, io {effectiveIoTimeoutMs}ms, publish wait {effectivePublishWaitMs}ms, settle {effectivePublishSettleMs}ms",
             string.Empty,
-            "Language backoff:",
-            $"  Attempts: {languageBackoff.Attempts} | resolved: {languageBackoff.Resolved} | fallbacks: {languageBackoff.FallbackSelections} | dispatch errors: {languageBackoff.DispatchErrors}",
-            $"  Graphs: {languageBackoff.GraphsText}",
-            $"  Modes: {languageBackoff.ModesText}",
-            $"  Top edges: {languageBackoff.TopEdgesText}",
-            string.Empty,
             "Ack latency buckets (cumulative):",
             $"  EWMA latency: {ackLatencyEwmaMs:0.0} ms",
             $"  <100ms: {ackLatencyLt100Ms}",
@@ -1390,96 +1171,8 @@ public partial class MainWindow
             string.Empty,
             "Neuronal sleep modulation:",
             $"  Stage: {sleepReplayStage}",
-            $"  Inhibitory scale: {sleepInhibitoryScale:0.000} | excitatory scale: {sleepExcitatoryScale:0.000}",
-            string.Empty,
-            "Perception-language conditioning:",
-            $"  Generated: {perceptionLanguageGenerated} | delivered: {perceptionLanguageDelivered} | dispatch errors: {perceptionLanguageDispatchErrors}",
-            $"  Last error: {(string.IsNullOrWhiteSpace(perceptionLanguageLastError) ? "-" : perceptionLanguageLastError)}"
+            $"  Inhibitory scale: {sleepInhibitoryScale:0.000} | excitatory scale: {sleepExcitatoryScale:0.000}"
         });
-    }
-
-    private static LanguageBackoffDisplay ParseLanguageBackoffDisplay(JsonElement transport)
-    {
-        var topEdgeLines = new List<string>(4);
-        var graphLines = new List<string>(6);
-        var modeLines = new List<string>(6);
-
-        if (TryGetProperty(transport, "languageBackoffTopEdges", out var topEdges) && topEdges.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var edge in topEdges.EnumerateArray().Take(4))
-            {
-                var mode = GetString(edge, "mode");
-                var graphId = GetString(edge, "graphId");
-                var source = GetString(edge, "source");
-                var target = GetString(edge, "target");
-                var delivered = GetLong(edge, "deliveredSpikes");
-                var attempts = GetLong(edge, "attempts");
-                var resolved = GetLong(edge, "resolved");
-                var errors = GetLong(edge, "dispatchErrors");
-                var marker = GetInt(edge, "rank") == 0 ? "*" : "-";
-                topEdgeLines.Add(
-                    $"{marker} {mode}/{graphId}: {source}->{target} | del {delivered} | res {resolved}/{attempts} | err {errors}");
-            }
-        }
-
-        if (TryGetProperty(transport, "languageBackoffGraphs", out var graphs) && graphs.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var graph in graphs.EnumerateArray().Take(6))
-            {
-                var mode = GetString(graph, "mode");
-                var graphId = GetString(graph, "graphId");
-                var isCurrent = false;
-                if (TryGetProperty(graph, "isCurrent", out var isCurrentProp) &&
-                    isCurrentProp.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                {
-                    isCurrent = isCurrentProp.GetBoolean();
-                }
-
-                var composite = GetDouble(graph, "compositeScore");
-                var score = GetDouble(graph, "scoreEwma");
-                var delivered = GetLong(graph, "deliveredSpikes");
-                var errors = GetLong(graph, "dispatchErrors");
-                var marker = isCurrent ? ">" : "-";
-                graphLines.Add(
-                    $"{marker} {mode}/{graphId}: comp {composite:0.000}, ewma {score:0.000}, del {delivered}, err {errors}");
-            }
-        }
-
-        if (TryGetProperty(transport, "languageBackoffModeStates", out var modeStates) && modeStates.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var modeState in modeStates.EnumerateArray().Take(6))
-            {
-                var mode = GetString(modeState, "mode");
-                var graph = GetString(modeState, "currentGraphId");
-                var switched = GetLong(modeState, "lastSwitchTick");
-                var evaluated = GetLong(modeState, "lastEvaluationTick");
-                var resolvedTick = GetLong(modeState, "lastResolutionTick");
-                modeLines.Add(
-                    $"- {mode}: graph={graph} | switch {switched} | eval {evaluated} | resolve {resolvedTick}");
-            }
-        }
-
-        return new LanguageBackoffDisplay(
-            GetLong(transport, "languageBackoffAttempts"),
-            GetLong(transport, "languageBackoffResolved"),
-            GetLong(transport, "languageBackoffFallbackSelections"),
-            GetLong(transport, "languageBackoffDispatchErrors"),
-            topEdgeLines.Count == 0 ? "-" : string.Join(" || ", topEdgeLines),
-            graphLines.Count == 0 ? "-" : string.Join(" || ", graphLines),
-            modeLines.Count == 0 ? "-" : string.Join(" || ", modeLines));
-    }
-
-
-    private sealed record LanguageBackoffDisplay(
-        long Attempts,
-        long Resolved,
-        long FallbackSelections,
-        long DispatchErrors,
-        string TopEdgesText,
-        string GraphsText,
-        string ModesText)
-    {
-        public static LanguageBackoffDisplay Empty { get; } = new(0, 0, 0, 0, "-", "-", "-");
     }
 
     private static string AppendFrameSpikeMetrics(string baseStatsText, FrameSpikeMetrics metrics)

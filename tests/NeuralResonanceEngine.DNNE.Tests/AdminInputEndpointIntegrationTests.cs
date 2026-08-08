@@ -138,6 +138,21 @@ public sealed class AdminInputEndpointIntegrationTests : IClassFixture<ControlPr
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/api/v1/admin/language/phonetics")]
+    [InlineData("/api/v1/admin/language/phonetics/generate")]
+    [InlineData("/api/v1/admin/language/phonetics/reset")]
+    [InlineData("/api/v1/admin/language/debug/backoff")]
+    [InlineData("/api/v1/admin/language/dialogue")]
+    [InlineData("/api/v1/admin/language/dialogue/reset")]
+    [InlineData("/api/v1/admin/language/prosody-telemetry")]
+    public async Task HostLanguageAuthorityEndpointsDoNotExist(string path)
+    {
+        var response = await _fixture.Client.PostAsJsonAsync(path, new { });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     [Fact]
     public async Task CochlearFrame_Rejects_Malformed_Payload_Length()
     {

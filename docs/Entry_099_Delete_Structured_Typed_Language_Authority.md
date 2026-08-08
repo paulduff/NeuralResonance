@@ -75,8 +75,7 @@ Automated boundary and integration tests verify:
 
 ## Remaining Authority
 
-This rung deletes deliberate typed-language ingress. The simulation loop still
-contains automatic perception-language conditioning that can manufacture host
-tokens and language spikes from telemetry. Entry 100 must remove that path and
-its routing policy before DNNE can claim that all active language formation is
-neuronal.
+At the completion of this rung, the simulation loop still contained automatic
+perception-language conditioning that could manufacture host tokens and
+language spikes from telemetry. Entry 100 deletes that path, its routing
+policy, and its administrative support surfaces.

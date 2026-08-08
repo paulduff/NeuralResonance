@@ -7,8 +7,12 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
 
 function Get-StructureIds {
-    Select-String -Path 'Protocol/StructureId.cs' -Pattern '^\s*([A-Za-z0-9]+),' |
-        ForEach-Object { $_.Matches[0].Groups[1].Value }
+    $source = Get-Content 'Protocol/StructureId.cs' -Raw
+    $enumBody = [regex]::Match(
+        $source,
+        'enum\s+StructureId\s*\{(?<body>[\s\S]*?)\}').Groups['body'].Value
+    [regex]::Matches($enumBody, '(?m)^\s*([A-Za-z][A-Za-z0-9]*)\s*,?\s*$') |
+        ForEach-Object { $_.Groups[1].Value }
 }
 
 function Get-ProjectMap {
@@ -46,6 +50,11 @@ function Get-ProfileName([string]$structure) {
 }
 
 $structureIds = @(Get-StructureIds)
+$registeredStructureIds = @(
+    (Get-Content 'ControlProgram/appsettings.json' -Raw | ConvertFrom-Json).ServiceRegistry.psobject.Properties.Name
+)
+$missingFromRegistry = @($structureIds | Where-Object { $_ -notin $registeredStructureIds })
+$unknownRegistryEntries = @($registeredStructureIds | Where-Object { $_ -notin $structureIds })
 $projectMap = Get-ProjectMap
 $projectDirs = @(Get-ChildItem 'Structures' -Directory | Where-Object { Get-ChildItem $_.FullName -Filter '*.csproj' -File | Select-Object -First 1 } | ForEach-Object { $_.Name })
 $connectome = Get-Content 'connectivity/dnne-connectivity.json' -Raw | ConvertFrom-Json | ForEach-Object { $_ }
@@ -130,6 +139,10 @@ $lines.Add(('Generated: {0:yyyy-MM-dd HH:mm:ss zzz}' -f (Get-Date)))
 $lines.Add('')
 $lines.Add('## Summary')
 $lines.Add('')
+$lines.Add("- Enum structures: $($structureIds.Count)")
+$lines.Add("- Registered structures: $($registeredStructureIds.Count)")
+$lines.Add("- Bilateral service instances: $($registeredStructureIds.Count * 2)")
+$lines.Add('')
 $lines.Add('| Status | Count |')
 $lines.Add('| --- | ---: |')
 foreach ($item in $summary) {
@@ -153,6 +166,14 @@ $lines.Add('- SINK_ONLY, SOURCE_ONLY, DISCONNECTED, MISSING_SERVICE_MAP, and MIS
 Set-Content -Path $destination -Value $lines -Encoding UTF8
 $rows | Sort-Object Status, Structure | Format-Table -AutoSize
 Write-Host "`nAudit written to $destination"
-if (($rows | Where-Object { $_.Status -ne 'OK' }).Count -gt 0) {
+if ($missingFromRegistry.Count -gt 0) {
+    Write-Error "StructureId members missing from ServiceRegistry: $($missingFromRegistry -join ', ')"
+}
+if ($unknownRegistryEntries.Count -gt 0) {
+    Write-Error "ServiceRegistry entries absent from StructureId: $($unknownRegistryEntries -join ', ')"
+}
+if (($rows | Where-Object { $_.Status -ne 'OK' }).Count -gt 0 -or
+    $missingFromRegistry.Count -gt 0 -or
+    $unknownRegistryEntries.Count -gt 0) {
     exit 2
 }

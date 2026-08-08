@@ -1,12 +1,16 @@
 ﻿# DNNE Circuit Functionality Audit
 
-Generated: 2026-08-08 08:35:09 +01:00
+Generated: 2026-08-08 14:07:56 +01:00
 
 ## Summary
 
+- Enum structures: 90
+- Registered structures: 90
+- Bilateral service instances: 180
+
 | Status | Count |
 | --- | ---: |
-| OK | 89 |
+| OK | 90 |
 
 ## Circuit Table
 
@@ -32,6 +36,7 @@ Generated: 2026-08-08 08:35:09 +01:00
 | DentateGyrus | OK | 2 | 1 | 2 | 1 | hippocampal/tectal | Hippocampus.DG |
 | DorsomedialPrefrontalCortex | OK | 2 | 3 | 2 | 3 | cortical-association/motor | DorsomedialPrefrontalCortex |
 | EntorhinalCortex | OK | 9 | 3 | 9 | 3 | primary-sensory/callosal | EntorhinalCortex |
+| FrontalEyeFields | OK | 2 | 3 | 2 | 3 | cortical-association/motor | FrontalEyeFields |
 | FusiformGyrus | OK | 1 | 3 | 1 | 3 | cortical-association/motor | FusiformGyrus |
 | GlobusPallidus | OK | 2 | 3 | 2 | 3 | basal-ganglia | GlobusPallidus |
 | GPe | OK | 1 | 2 | 1 | 2 | basal-ganglia | GPe |

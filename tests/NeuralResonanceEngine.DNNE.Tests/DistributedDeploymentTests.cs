@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NeuralResonanceEngine.Protocol;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
@@ -20,8 +21,12 @@ public sealed class DistributedDeploymentTests
             .SelectMany(deployable => deployable.GetProperty("structures").EnumerateArray())
             .Select(structure => structure.GetString()!)
             .ToArray();
+        var protocolStructures = Enum.GetNames<StructureId>()
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
 
         Assert.Equal(90, registered.Length);
+        Assert.Equal(protocolStructures, registered);
         Assert.Equal(registered.Length, assigned.Length);
         Assert.Equal(assigned.Length, assigned.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(registered, assigned.OrderBy(name => name, StringComparer.Ordinal));

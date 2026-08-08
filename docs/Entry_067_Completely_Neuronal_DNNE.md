@@ -426,6 +426,11 @@ benchmarks can pass on the current laptop, but the report cannot claim embodied
 qualification without a separately observed healthy live stack, maze stream,
 numeric motor dispatch, and physical progress.
 
+Entry 107 makes accepted neuronal language reviews the sole adapter-training
+curriculum. The export contains exact accepted text and numeric population
+state, while deferred candidates, raw identities, prompts, source labels,
+evidence prose, reasons, and symbolic authority fields are excluded.
+
 Physical body and environmental measurements, clocks, metabolism, checkpoint
 serialization, curriculum, and human-readable audit summaries remain as
 substrate or inspection infrastructure. They cannot authorize cognition or

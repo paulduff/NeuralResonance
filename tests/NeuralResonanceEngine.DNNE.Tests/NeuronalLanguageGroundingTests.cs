@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
@@ -124,6 +125,71 @@ public sealed class NeuronalLanguageGroundingTests
         Assert.True(review.Grounding.NeuronalSpeechAuthorized);
         Assert.Equal(NeuronalLanguageGroundingDecision.Authority, review.Grounding.Authority);
         Assert.Equal(motorBefore, state.GetNeuronalMotorSnapshot());
+    }
+
+    [Fact]
+    public void AdapterTrainingExportIncludesOnlyAcceptedNumericGroundingAndExactText()
+    {
+        var state = CreateState();
+        state.UpdateNeuronalLanguageGrounding(Decode());
+        var parameters = new DyadEntityGenerationParameters(
+            DyadLanguageContract.ProtocolVersion,
+            "private-session",
+            "turn-accepted",
+            "utterance",
+            "test accepted export");
+        var prompt = state.CreateDyadEntityPrompt(parameters);
+        var acceptedRequest = new DyadLanguageCandidateRequest(
+            DyadLanguageContract.ProtocolVersion,
+            parameters.SessionId,
+            parameters.TurnId,
+            "entity-test",
+            "test",
+            prompt.PromptFingerprint,
+            prompt.PromptText,
+            parameters.CandidateKind,
+            "I can report the grounded reference.",
+            ["private-source-reference"]);
+        Assert.True(DyadLanguageContract.TryNormalize(acceptedRequest, out var accepted, out var error), error);
+        Assert.Equal(
+            DyadLanguageCandidateDecision.AcceptedForEmission,
+            state.ReviewDyadLanguageCandidate(accepted!).Decision);
+
+        var deferredRequest = acceptedRequest with
+        {
+            SessionId = "private-deferred-session",
+            TurnId = "turn-deferred",
+            CandidateText = "This deferred text must not be exported."
+        };
+        Assert.True(DyadLanguageContract.TryNormalize(deferredRequest, out var deferred, out error), error);
+        Assert.Equal(DyadLanguageCandidateDecision.Deferred, state.ReviewDyadLanguageCandidate(deferred!).Decision);
+
+        var result = DyadLanguageRoutes.GetAdapterTraining(state, 256);
+        var dataset = Assert.IsType<DyadAdapterTrainingDataset>(
+            Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
+        var record = Assert.Single(dataset.Records);
+
+        Assert.Equal(DyadPopulationLanguageTrainingContract.ProtocolVersion, dataset.ProtocolVersion);
+        Assert.Equal(1, dataset.Count);
+        Assert.Equal("I can report the grounded reference.", record.TargetText);
+        Assert.StartsWith("sha256:", record.SessionFingerprint, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-session", record.SessionFingerprint, StringComparison.Ordinal);
+        Assert.True(record.Grounding.NeuronalSpeechAuthorized);
+        Assert.All(record.Grounding.Sources, source => Assert.True(source.PopulationIndex >= 0));
+
+        var exportedProperties = typeof(DyadAdapterTrainingRecord)
+            .GetProperties()
+            .Select(static property => property.Name)
+            .Concat(typeof(DyadAdapterTrainingGrounding).GetProperties().Select(static property => property.Name))
+            .Concat(typeof(DyadAdapterTrainingSource).GetProperties().Select(static property => property.Name))
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.DoesNotContain("SessionId", exportedProperties);
+        Assert.DoesNotContain("TurnId", exportedProperties);
+        Assert.DoesNotContain("PromptText", exportedProperties);
+        Assert.DoesNotContain("DecisionReason", exportedProperties);
+        Assert.DoesNotContain("Authority", exportedProperties);
+        Assert.DoesNotContain("SourceId", exportedProperties);
+        Assert.DoesNotContain("Evidence", exportedProperties);
     }
 
     [Fact]

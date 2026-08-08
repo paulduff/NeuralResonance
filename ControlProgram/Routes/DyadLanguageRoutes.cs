@@ -10,6 +10,7 @@ internal static class DyadLanguageRoutes
 
         app.MapPost("/api/v1/dyad/language/candidates", PostCandidate);
         app.MapGet("/api/v1/dyad/language/reviews", GetReviews);
+        app.MapGet("/api/v1/dyad/language/adapter-training", GetAdapterTraining);
 
         return app;
     }
@@ -30,4 +31,11 @@ internal static class DyadLanguageRoutes
 
     internal static IResult GetReviews(SimulationState state, int? limit)
         => Results.Ok(state.GetDyadLanguageCandidateReviews(Math.Clamp(limit ?? 32, 1, 256)));
+
+    internal static IResult GetAdapterTraining(SimulationState state, int? limit)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var reviews = state.GetDyadLanguageCandidateReviews(Math.Clamp(limit ?? 256, 1, 256));
+        return Results.Ok(DyadPopulationLanguageTrainingContract.CreateDataset(reviews));
+    }
 }

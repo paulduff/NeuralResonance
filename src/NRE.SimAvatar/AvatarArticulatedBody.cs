@@ -34,7 +34,7 @@ public sealed class AvatarArticulatedBody
     private const double MaximumHandLoadNewtons = 450.0;
     private const double StandingHeightMeters = 1.74;
     private const double WalkingHipCenterRadians = 0.085;
-    private const double WalkingHipExcursionRadians = 0.435;
+    private const double WalkingHipExcursionRadians = 0.25;
     private const double SustainedRightingDriveThreshold = 0.08;
 
     private readonly AvatarMuscleJoint leftHip;
@@ -151,7 +151,13 @@ public sealed class AvatarArticulatedBody
         double sitDrive = 0.0,
         double lieDrive = 0.0,
         double headYawDrive = 0.0,
-        double headPitchDrive = 0.0)
+        double headPitchDrive = 0.0,
+        double leftShoulderSagittalDrive = 0.0,
+        double rightShoulderSagittalDrive = 0.0,
+        double leftShoulderCoronalDrive = 0.0,
+        double rightShoulderCoronalDrive = 0.0,
+        double leftElbowDrive = 0.0,
+        double rightElbowDrive = 0.0)
     {
         if (!double.IsFinite(deltaSeconds) || deltaSeconds <= 0.0)
         {
@@ -202,12 +208,17 @@ public sealed class AvatarArticulatedBody
 
         leftHip.Advance(hipBase + (leftCycle * strideAmplitude), legGain, posturalTone, dt);
         rightHip.Advance(hipBase + (rightCycle * strideAmplitude), legGain, posturalTone, dt);
-        leftKnee.Advance(kneeBase + (Math.Max(0.0, -leftCycle) * locomotorEffort * 0.82), legGain, posturalTone, dt);
-        rightKnee.Advance(kneeBase + (Math.Max(0.0, -rightCycle) * locomotorEffort * 0.82), legGain, posturalTone, dt);
+        leftKnee.Advance(kneeBase + (Math.Max(0.0, leftCycle) * locomotorEffort * 0.18), legGain, posturalTone, dt);
+        rightKnee.Advance(kneeBase + (Math.Max(0.0, rightCycle) * locomotorEffort * 0.18), legGain, posturalTone, dt);
         leftAnkle.Advance(ankleBase - (leftHip.Angle * 0.34) + (leftKnee.Angle * 0.14), legGain, 0.04, dt);
         rightAnkle.Advance(ankleBase - (rightHip.Angle * 0.34) + (rightKnee.Angle * 0.14), legGain, 0.04, dt);
 
-        var requestedExtension = Math.Clamp(manipulatorDrive, 0.0, 1.0);
+        var requestedExtension = new[]
+        {
+            Math.Abs(leftShoulderSagittalDrive), Math.Abs(rightShoulderSagittalDrive),
+            Math.Abs(leftShoulderCoronalDrive), Math.Abs(rightShoulderCoronalDrive),
+            Math.Abs(leftElbowDrive), Math.Abs(rightElbowDrive)
+        }.Max();
         manipulatorExtension = Approach(
             manipulatorExtension,
             requestedExtension,
@@ -216,19 +227,38 @@ public sealed class AvatarArticulatedBody
         var armGain = Math.Clamp(0.28 + (locomotorEffort * 0.42) + (manipulatorExtension * 0.55), 0.0, 1.0);
         var armPosturalTone = 0.018 + (rightingRecruitment * 0.24);
         leftShoulder.Advance(
-            (manipulatorExtension * 1.08) + (leftCycle * strideAmplitude * locomotorArmShare * 0.82),
+            SignedJointTarget(
+                leftShoulderSagittalDrive,
+                MinimumShoulderAngleRadians,
+                MaximumShoulderAngleRadians) +
+            (leftCycle * strideAmplitude * locomotorArmShare * 0.82),
             armGain, armPosturalTone, dt);
         rightShoulder.Advance(
-            (manipulatorExtension * 1.08) + (rightCycle * strideAmplitude * locomotorArmShare * 0.82),
+            SignedJointTarget(
+                rightShoulderSagittalDrive,
+                MinimumShoulderAngleRadians,
+                MaximumShoulderAngleRadians) +
+            (rightCycle * strideAmplitude * locomotorArmShare * 0.82),
             armGain, armPosturalTone, dt);
-        var lateralReachTarget = manipulatorExtension * 1.05;
-        leftShoulderAbduction.Advance(lateralReachTarget, armGain, armPosturalTone, dt);
-        rightShoulderAbduction.Advance(lateralReachTarget, armGain, armPosturalTone, dt);
+        leftShoulderAbduction.Advance(
+            SignedJointTarget(
+                leftShoulderCoronalDrive,
+                MinimumShoulderAbductionRadians,
+                MaximumShoulderAbductionRadians),
+            armGain, armPosturalTone, dt);
+        rightShoulderAbduction.Advance(
+            SignedJointTarget(
+                rightShoulderCoronalDrive,
+                MinimumShoulderAbductionRadians,
+                MaximumShoulderAbductionRadians),
+            armGain, armPosturalTone, dt);
         leftElbow.Advance(
-            (manipulatorExtension * 0.30) + (Math.Max(0.0, -leftCycle) * locomotorEffort * locomotorArmShare * 0.34),
+            SignedJointTarget(leftElbowDrive, MinimumElbowAngleRadians, MaximumElbowAngleRadians) +
+            (Math.Max(0.0, -leftCycle) * locomotorEffort * locomotorArmShare * 0.34),
             armGain, 0.016, dt);
         rightElbow.Advance(
-            (manipulatorExtension * 0.30) + (Math.Max(0.0, -rightCycle) * locomotorEffort * locomotorArmShare * 0.34),
+            SignedJointTarget(rightElbowDrive, MinimumElbowAngleRadians, MaximumElbowAngleRadians) +
+            (Math.Max(0.0, -rightCycle) * locomotorEffort * locomotorArmShare * 0.34),
             armGain, 0.016, dt);
 
         var neckGain = Math.Clamp(0.30 + (Math.Max(Math.Abs(headYawDrive), Math.Abs(headPitchDrive)) * 0.70), 0.0, 1.0);
@@ -248,6 +278,7 @@ public sealed class AvatarArticulatedBody
         AdvanceAxialMuscles(
             postureCommand.TrunkPitch - (coordinatedForwardSpeed * 0.035),
             coordinatedTurnRate,
+            leftCycle * locomotorEffort,
             rightingRecruitment,
             dt);
 
@@ -266,7 +297,7 @@ public sealed class AvatarArticulatedBody
         var blockedLoad = movementBlocked ? locomotorEffort * 260.0 : 0.0;
         var bodySupportShare = ResolveBodySupportShare(postureCommand.Name, bodyHeight, trunkPitch);
         var footSupportLoad = supportLoad * (1.0 - bodySupportShare);
-        var leftSupportShare = grounded ? Math.Clamp(0.5 + (leftCycle * locomotorEffort * 0.30), 0.12, 0.88) : 0.0;
+        var leftSupportShare = grounded ? Math.Clamp(0.5 - (leftCycle * locomotorEffort * 0.30), 0.12, 0.88) : 0.0;
         leftFootLoad = Math.Max(0.0, (footSupportLoad * leftSupportShare) + (blockedLoad * Math.Abs(leftDrive)));
         rightFootLoad = Math.Max(0.0, (footSupportLoad * (grounded ? 1.0 - leftSupportShare : 0.0)) +
             (blockedLoad * Math.Abs(rightDrive)));
@@ -421,15 +452,56 @@ public sealed class AvatarArticulatedBody
             return [];
         }
 
-        var contacts = new List<AvatarGroundContactProbe>(7);
-        AddGroundContact(contacts, "left_foot", -0.14, -0.90, 0.0, leftFootLoad, 6_200.0);
-        AddGroundContact(contacts, "right_foot", 0.14, -0.90, 0.0, rightFootLoad, 6_200.0);
-        AddGroundContact(contacts, "left_knee", -0.15, -0.70, -0.30, leftKneeGroundLoad, 7_200.0);
-        AddGroundContact(contacts, "right_knee", 0.15, -0.70, -0.30, rightKneeGroundLoad, 7_200.0);
-        AddGroundContact(contacts, "pelvis", 0.0, -0.62, -0.12, pelvisGroundLoad, 18_000.0);
-        AddGroundContact(contacts, "chest", 0.0, -0.55, 0.28, chestGroundLoad, 24_000.0);
-        AddGroundContact(contacts, "head", 0.0, -0.46, 0.72, headGroundLoad, 8_000.0);
-        return contacts;
+        var colliders = AvatarColliderRig.CaptureResolved(CaptureFrame());
+        var candidates = colliders
+            .Where(static collider =>
+                collider.Chain is AvatarKinematicChain.Axial or
+                    AvatarKinematicChain.LeftLeg or
+                    AvatarKinematicChain.RightLeg)
+            .ToArray();
+        if (candidates.Length == 0)
+        {
+            return [];
+        }
+
+        var intendedLoad = leftFootLoad + rightFootLoad + leftKneeGroundLoad +
+            rightKneeGroundLoad + pelvisGroundLoad + chestGroundLoad + headGroundLoad;
+        if (intendedLoad < 0.5)
+        {
+            return [];
+        }
+
+        var leftLegBodyContacts = candidates.Count(static collider =>
+            collider.Chain == AvatarKinematicChain.LeftLeg && collider.Region != "left_foot");
+        var rightLegBodyContacts = candidates.Count(static collider =>
+            collider.Chain == AvatarKinematicChain.RightLeg && collider.Region != "right_foot");
+        var weights = candidates
+            .Select(collider => NominalGroundLoad(collider, leftLegBodyContacts, rightLegBodyContacts))
+            .ToArray();
+        var totalWeight = weights.Sum();
+        if (totalWeight < 0.5)
+        {
+            weights = candidates
+                .Select(static collider => (double)Math.Max(0.001f, collider.EffectiveMassKilograms))
+                .ToArray();
+            totalWeight = weights.Sum();
+        }
+
+        return candidates
+            .Select((collider, index) => new
+            {
+                Collider = collider,
+                LoadNewtons = intendedLoad * (weights[index] / totalWeight)
+            })
+            .Where(static contact => contact.LoadNewtons >= 0.5)
+            .Select(static contact => new AvatarGroundContactProbe(
+                contact.Collider.Region,
+                contact.Collider.Position.X,
+                AvatarColliderRig.LowestSurfaceY(contact.Collider),
+                contact.Collider.Position.Z,
+                contact.LoadNewtons,
+                contact.Collider.ContactAreaSquareMillimeters))
+            .ToArray();
     }
 
     public PhysicalArticulationFrame CaptureFrame()
@@ -515,6 +587,7 @@ public sealed class AvatarArticulatedBody
     private void AdvanceAxialMuscles(
         double targetPitch,
         double turnRateDegrees,
+        double gaitLateralPhase,
         double rightingRecruitment,
         double dt)
     {
@@ -537,7 +610,10 @@ public sealed class AvatarArticulatedBody
         trunkPitchVelocity = Math.Clamp(trunkPitchVelocity + ((pitchTorque / 4.8) * dt), -2.8, 2.8);
         trunkPitch = Math.Clamp(trunkPitch + (trunkPitchVelocity * dt), -0.35, 1.38);
 
-        var targetRoll = Math.Clamp(-turnRateDegrees * 0.0022, -0.20, 0.20);
+        var targetRoll = Math.Clamp(
+            (-turnRateDegrees * 0.0022) - (gaitLateralPhase * 0.20),
+            -0.24,
+            0.24);
         var rollError = targetRoll - trunkRoll;
         leftObliques.Advance(
             0.028 + Math.Max(0.0, rollError * 2.1) +
@@ -668,26 +744,22 @@ public sealed class AvatarArticulatedBody
         }
     }
 
-    private static void AddGroundContact(
-        List<AvatarGroundContactProbe> contacts,
-        string region,
-        double bodyX,
-        double bodyY,
-        double bodyZ,
-        double loadNewtons,
-        double areaSquareMillimeters)
-    {
-        if (loadNewtons >= 0.5)
+    private double NominalGroundLoad(
+        AvatarBodyCollider collider,
+        int leftLegBodyContacts,
+        int rightLegBodyContacts) => collider.Region switch
         {
-            contacts.Add(new AvatarGroundContactProbe(
-                region,
-                bodyX,
-                bodyY,
-                bodyZ,
-                loadNewtons,
-                areaSquareMillimeters));
-        }
-    }
+            "left_foot" => leftFootLoad,
+            "right_foot" => rightFootLoad,
+            "pelvis" => pelvisGroundLoad,
+            "chest" => chestGroundLoad,
+            "head" => headGroundLoad,
+            _ when collider.Chain == AvatarKinematicChain.LeftLeg && leftLegBodyContacts > 0 =>
+                leftKneeGroundLoad / leftLegBodyContacts,
+            _ when collider.Chain == AvatarKinematicChain.RightLeg && rightLegBodyContacts > 0 =>
+                rightKneeGroundLoad / rightLegBodyContacts,
+            _ => 0.0
+        };
 
     private static double Approach(double current, double target, double maximumDelta)
     {
@@ -695,6 +767,12 @@ public sealed class AvatarArticulatedBody
         return Math.Abs(delta) <= maximumDelta
             ? target
             : current + (Math.Sign(delta) * maximumDelta);
+    }
+
+    private static double SignedJointTarget(double drive, double minimum, double maximum)
+    {
+        var bounded = Math.Clamp(drive, -1.0, 1.0);
+        return bounded >= 0.0 ? bounded * maximum : -bounded * minimum;
     }
 
     private static double WrapRadians(double value)

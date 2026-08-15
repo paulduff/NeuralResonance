@@ -9,6 +9,12 @@ public sealed record AvatarNeuronalMotorState(
     double LeftDrive,
     double RightDrive,
     double ManipulatorDrive,
+    double LeftShoulderSagittalDrive,
+    double RightShoulderSagittalDrive,
+    double LeftShoulderCoronalDrive,
+    double RightShoulderCoronalDrive,
+    double LeftElbowDrive,
+    double RightElbowDrive,
     double HeadYawDrive,
     double HeadPitchDrive,
     double StandDrive,
@@ -26,6 +32,12 @@ public sealed record AvatarNeuronalMotorState(
         LeftDrive: 0.0,
         RightDrive: 0.0,
         ManipulatorDrive: 0.0,
+        LeftShoulderSagittalDrive: 0.0,
+        RightShoulderSagittalDrive: 0.0,
+        LeftShoulderCoronalDrive: 0.0,
+        RightShoulderCoronalDrive: 0.0,
+        LeftElbowDrive: 0.0,
+        RightElbowDrive: 0.0,
         HeadYawDrive: 0.0,
         HeadPitchDrive: 0.0,
         StandDrive: 0.0,
@@ -67,6 +79,18 @@ public static class AvatarNeuronalMotorBridge
         AppendPopulationEvents(result, neuronalState, "L", neuronalState.LeftDrive);
         AppendPopulationEvents(result, neuronalState, "R", neuronalState.RightDrive);
         AppendManipulatorEvents(result, neuronalState);
+        AppendSignedEffectorEvents(result, neuronalState, "arm:left:shoulder:sagittal",
+            neuronalState.LeftShoulderSagittalDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "arm:right:shoulder:sagittal",
+            neuronalState.RightShoulderSagittalDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "arm:left:shoulder:coronal",
+            neuronalState.LeftShoulderCoronalDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "arm:right:shoulder:coronal",
+            neuronalState.RightShoulderCoronalDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "arm:left:elbow",
+            neuronalState.LeftElbowDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "arm:right:elbow",
+            neuronalState.RightElbowDrive, "R");
         AppendSignedEffectorEvents(result, neuronalState, "orient:yaw", neuronalState.HeadYawDrive);
         AppendSignedEffectorEvents(result, neuronalState, "orient:pitch", neuronalState.HeadPitchDrive);
         AppendPostureEvents(result, neuronalState, "stand", neuronalState.StandDrive);
@@ -91,6 +115,16 @@ public static class AvatarNeuronalMotorBridge
             LeftDrive: Math.Clamp(AvatarJson.GetDouble(motor, "leftDrive"), -1.0, 1.0),
             RightDrive: Math.Clamp(AvatarJson.GetDouble(motor, "rightDrive"), -1.0, 1.0),
             ManipulatorDrive: Math.Clamp(AvatarJson.GetDouble(motor, "manipulatorDrive"), 0.0, 1.0),
+            LeftShoulderSagittalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftShoulderSagittalDrive"), -1.0, 1.0),
+            RightShoulderSagittalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightShoulderSagittalDrive"), -1.0, 1.0),
+            LeftShoulderCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftShoulderCoronalDrive"), -1.0, 1.0),
+            RightShoulderCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightShoulderCoronalDrive"), -1.0, 1.0),
+            LeftElbowDrive: Math.Clamp(AvatarJson.GetDouble(motor, "leftElbowDrive"), -1.0, 1.0),
+            RightElbowDrive: Math.Clamp(AvatarJson.GetDouble(motor, "rightElbowDrive"), -1.0, 1.0),
             HeadYawDrive: Math.Clamp(AvatarJson.GetDouble(motor, "headYawDrive"), -1.0, 1.0),
             HeadPitchDrive: Math.Clamp(AvatarJson.GetDouble(motor, "headPitchDrive"), -1.0, 1.0),
             StandDrive: Math.Clamp(AvatarJson.GetDouble(motor, "standDrive"), 0.0, 1.0),
@@ -167,7 +201,7 @@ public static class AvatarNeuronalMotorBridge
                 SourceStructure: "SpinalCordMotor",
                 SourceHemisphere: "M",
                 WallClockUnixMs: wallClockMs,
-                SourceNeuronId: $"effector:manipulator:excitatory:{state.Tick}:{i}"));
+                SourceNeuronId: $"effector:manipulator:excitatory:{state.Tick}:{i}:n{state.MaxPopulationEventsPerSide}"));
         }
     }
 
@@ -194,7 +228,7 @@ public static class AvatarNeuronalMotorBridge
                 SourceStructure: "SpinalCordMotor",
                 SourceHemisphere: "M",
                 WallClockUnixMs: wallClockMs,
-                SourceNeuronId: $"effector:posture:{posture}:excitatory:{state.Tick}:{i}"));
+                SourceNeuronId: $"effector:posture:{posture}:excitatory:{state.Tick}:{i}:n{state.MaxPopulationEventsPerSide}"));
         }
     }
 
@@ -202,7 +236,8 @@ public static class AvatarNeuronalMotorBridge
         List<AvatarDispatchSpike> output,
         AvatarNeuronalMotorState state,
         string effector,
-        double drive)
+        double drive,
+        string hemisphere = "M")
     {
         var magnitude = Math.Clamp(Math.Abs(drive), 0.0, 1.0);
         if (magnitude < 0.01)
@@ -220,9 +255,9 @@ public static class AvatarNeuronalMotorBridge
         {
             output.Add(new AvatarDispatchSpike(
                 SourceStructure: "SpinalCordMotor",
-                SourceHemisphere: "M",
+                SourceHemisphere: hemisphere,
                 WallClockUnixMs: wallClockMs,
-                SourceNeuronId: $"effector:{effector}:{polarity}:{state.Tick}:{i}"));
+                SourceNeuronId: $"effector:{effector}:{polarity}:{state.Tick}:{i}:n{state.MaxPopulationEventsPerSide}"));
         }
     }
 }

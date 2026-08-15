@@ -98,7 +98,7 @@ public static class AvatarBalanceDynamics
         var dt = double.IsFinite(deltaSeconds)
             ? Math.Clamp(deltaSeconds, 0.001, 0.25)
             : 0.001;
-        var colliders = AvatarColliderRig.Capture(articulation);
+        var colliders = AvatarColliderRig.CaptureResolved(articulation);
         var (centerOfMass, totalMass, pitchInertia, rollInertia) = ResolveMassProperties(colliders);
         var center2 = new Vector2(centerOfMass.X, centerOfMass.Z);
         var rawVelocity = current.Initialized
@@ -129,7 +129,10 @@ public static class AvatarBalanceDynamics
         var dynamicMargin = SignedMargin(supportHull, extrapolatedCenter);
 
         var broadSupport = groundContacts.Any(static contact =>
-            contact.Region is "pelvis" or "chest" or "head" or "left_knee" or "right_knee");
+            contact.Region is "pelvis" or "chest" or "head" or
+                "left_knee" or "right_knee" or
+                "left_shin" or "right_shin" or
+                "left_thigh" or "right_thigh");
         var hasSupport = grounded && supportHull.Count >= 3 && supportArea > 0.0001;
         var instabilitySeconds = current.InstabilitySeconds;
         if (!hasSupport || broadSupport || dynamicMargin >= InstabilityMarginMeters)
@@ -374,7 +377,7 @@ public static class AvatarBalanceDynamics
                     contact.Region,
                     new Vector2((float)contact.BodyX, (float)contact.BodyZ),
                     contact.LoadNewtons,
-                    PatchHalfExtents(contact.Region)));
+                    PatchHalfExtents(contact.Region, contact.AreaSquareMillimeters)));
             }
         }
         foreach (var contact in externalContacts)
@@ -396,16 +399,26 @@ public static class AvatarBalanceDynamics
         return samples;
     }
 
-    private static Vector2 PatchHalfExtents(string region) => region switch
+    private static Vector2 PatchHalfExtents(string region, double areaSquareMillimeters) => region switch
     {
         "left_foot" or "right_foot" => new Vector2(0.09f, 0.155f),
         "left_hand" or "right_hand" => new Vector2(0.055f, 0.07f),
-        "left_knee" or "right_knee" => new Vector2(0.075f, 0.07f),
+        "left_knee" or "right_knee" or "left_shin" or "right_shin" or
+            "left_thigh" or "right_thigh" => new Vector2(0.075f, 0.07f),
         "pelvis" => new Vector2(0.22f, 0.15f),
         "chest" => new Vector2(0.23f, 0.18f),
         "head" => new Vector2(0.12f, 0.12f),
-        _ => new Vector2(0.05f, 0.05f)
+        _ => CircularPatchHalfExtents(areaSquareMillimeters)
     };
+
+    private static Vector2 CircularPatchHalfExtents(double areaSquareMillimeters)
+    {
+        var radius = Math.Clamp(
+            Math.Sqrt(Math.Max(1.0, areaSquareMillimeters) / Math.PI) / 1000.0,
+            0.025,
+            0.14);
+        return new Vector2((float)radius, (float)radius);
+    }
 
     private static IEnumerable<Vector2> CreatePatch(SupportSample sample)
     {

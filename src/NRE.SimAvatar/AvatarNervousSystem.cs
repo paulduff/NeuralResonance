@@ -20,6 +20,12 @@ public sealed class AvatarNervousSystem
     public double RightMotorDrive { get; private set; }
 
     public double ManipulatorDrive { get; private set; }
+    public double LeftShoulderSagittalDrive { get; private set; }
+    public double RightShoulderSagittalDrive { get; private set; }
+    public double LeftShoulderCoronalDrive { get; private set; }
+    public double RightShoulderCoronalDrive { get; private set; }
+    public double LeftElbowDrive { get; private set; }
+    public double RightElbowDrive { get; private set; }
     public double HeadYawDrive { get; private set; }
     public double HeadPitchDrive { get; private set; }
     public double StandDrive { get; private set; }
@@ -40,6 +46,12 @@ public sealed class AvatarNervousSystem
         LeftMotorDrive = 0.0;
         RightMotorDrive = 0.0;
         ManipulatorDrive = 0.0;
+        LeftShoulderSagittalDrive = 0.0;
+        RightShoulderSagittalDrive = 0.0;
+        LeftShoulderCoronalDrive = 0.0;
+        RightShoulderCoronalDrive = 0.0;
+        LeftElbowDrive = 0.0;
+        RightElbowDrive = 0.0;
         HeadYawDrive = 0.0;
         HeadPitchDrive = 0.0;
         StandDrive = 0.0;
@@ -70,6 +82,12 @@ public sealed class AvatarNervousSystem
         AvatarKinematics.ApplyDriveDecay(ref left, ref right, smoothingOverride ?? _options.DriveDecay);
         SetMotorDrive(left, right);
         ManipulatorDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        LeftShoulderSagittalDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        RightShoulderSagittalDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        LeftShoulderCoronalDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        RightShoulderCoronalDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        LeftElbowDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
+        RightElbowDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
         HeadYawDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
         HeadPitchDrive *= Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
         var postureDecay = Math.Clamp(smoothingOverride ?? _options.DriveDecay, 0.0, 1.0);
@@ -101,24 +119,35 @@ public sealed class AvatarNervousSystem
         ManipulatorDrive = Math.Clamp(
             ManipulatorDrive + manipulator.DriveDelta,
             0.0,
-            _options.Kinematics.MaxMotorDrive);
+            1.0);
+        var arm = AvatarEffectorCatalog.SummarizeArmDrive(dispatches);
+        LeftShoulderSagittalDrive = Math.Clamp(
+            LeftShoulderSagittalDrive + arm.LeftShoulderSagittalDelta, -1.0, 1.0);
+        RightShoulderSagittalDrive = Math.Clamp(
+            RightShoulderSagittalDrive + arm.RightShoulderSagittalDelta, -1.0, 1.0);
+        LeftShoulderCoronalDrive = Math.Clamp(
+            LeftShoulderCoronalDrive + arm.LeftShoulderCoronalDelta, -1.0, 1.0);
+        RightShoulderCoronalDrive = Math.Clamp(
+            RightShoulderCoronalDrive + arm.RightShoulderCoronalDelta, -1.0, 1.0);
+        LeftElbowDrive = Math.Clamp(LeftElbowDrive + arm.LeftElbowDelta, -1.0, 1.0);
+        RightElbowDrive = Math.Clamp(RightElbowDrive + arm.RightElbowDelta, -1.0, 1.0);
         var posture = AvatarEffectorCatalog.SummarizePostureDrive(dispatches);
-        const double eventPopulationScale = 1.0 / 12.0;
         var orienting = AvatarEffectorCatalog.SummarizeOrientingDrive(dispatches);
         HeadYawDrive = Math.Clamp(
-            HeadYawDrive + (orienting.YawDelta * eventPopulationScale),
+            HeadYawDrive + orienting.YawDelta,
             -1.0,
             1.0);
         HeadPitchDrive = Math.Clamp(
-            HeadPitchDrive + (orienting.PitchDelta * eventPopulationScale),
+            HeadPitchDrive + orienting.PitchDelta,
             -1.0,
             1.0);
-        StandDrive = Math.Clamp(StandDrive + (posture.StandDelta * eventPopulationScale), 0.0, 1.0);
-        CrouchDrive = Math.Clamp(CrouchDrive + (posture.CrouchDelta * eventPopulationScale), 0.0, 1.0);
-        SitDrive = Math.Clamp(SitDrive + (posture.SitDelta * eventPopulationScale), 0.0, 1.0);
-        LieDrive = Math.Clamp(LieDrive + (posture.LieDelta * eventPopulationScale), 0.0, 1.0);
+        StandDrive = Math.Clamp(StandDrive + posture.StandDelta, 0.0, 1.0);
+        CrouchDrive = Math.Clamp(CrouchDrive + posture.CrouchDelta, 0.0, 1.0);
+        SitDrive = Math.Clamp(SitDrive + posture.SitDelta, 0.0, 1.0);
+        LieDrive = Math.Clamp(LieDrive + posture.LieDelta, 0.0, 1.0);
 
-        if (motorSummary.MotorEvents > 0 || manipulator.Events > 0 || orienting.Events > 0 || posture.Events > 0)
+        if (motorSummary.MotorEvents > 0 || manipulator.Events > 0 || arm.Events > 0 ||
+            orienting.Events > 0 || posture.Events > 0)
         {
             TicksWithoutMotorDispatch = 0;
         }
@@ -128,7 +157,7 @@ public sealed class AvatarNervousSystem
         }
 
         LastMotorDispatchCount = motorSummary.MotorEvents;
-        LastManipulatorDispatchCount = manipulator.Events;
+        LastManipulatorDispatchCount = manipulator.Events + arm.Events;
         LastOrientingDispatchCount = orienting.Events;
         LastPostureDispatchCount = posture.Events;
         return CurrentSignal();
@@ -139,6 +168,12 @@ public sealed class AvatarNervousSystem
             LeftMotorDrive,
             RightMotorDrive,
             ManipulatorDrive,
+            LeftShoulderSagittalDrive,
+            RightShoulderSagittalDrive,
+            LeftShoulderCoronalDrive,
+            RightShoulderCoronalDrive,
+            LeftElbowDrive,
+            RightElbowDrive,
             HeadYawDrive,
             HeadPitchDrive,
             StandDrive,

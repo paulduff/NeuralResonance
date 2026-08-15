@@ -26,12 +26,23 @@ internal sealed record NeuronalActionDecision(
 
 internal static class NeuronalActionSelectionDecoder
 {
-    internal const int ChannelCount = 9;
-    internal const int ManipulatorChannel = 4;
-    internal const int StandChannel = 5;
-    internal const int CrouchChannel = 6;
-    internal const int SitChannel = 7;
-    internal const int LieChannel = 8;
+    internal const int ChannelCount = 20;
+    internal const int LeftShoulderFlexionChannel = 4;
+    internal const int LeftShoulderExtensionChannel = 5;
+    internal const int RightShoulderFlexionChannel = 6;
+    internal const int RightShoulderExtensionChannel = 7;
+    internal const int LeftShoulderAbductionChannel = 8;
+    internal const int LeftShoulderAdductionChannel = 9;
+    internal const int RightShoulderAbductionChannel = 10;
+    internal const int RightShoulderAdductionChannel = 11;
+    internal const int LeftElbowFlexionChannel = 12;
+    internal const int LeftElbowExtensionChannel = 13;
+    internal const int RightElbowFlexionChannel = 14;
+    internal const int RightElbowExtensionChannel = 15;
+    internal const int StandChannel = 16;
+    internal const int CrouchChannel = 17;
+    internal const int SitChannel = 18;
+    internal const int LieChannel = 19;
 
     public static NeuronalActionDecision Decode(IReadOnlyList<InstanceStructureSnapshot> snapshots)
     {
@@ -150,7 +161,6 @@ internal static class NeuronalActionSelectionDecoder
             1 => (left * 0.18, right),
             2 => (left, right * 0.18),
             3 => (-magnitude, -magnitude),
-            ManipulatorChannel => (0.0, 0.0),
             _ => (0.0, 0.0)
         };
     }

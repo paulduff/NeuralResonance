@@ -71,7 +71,7 @@ public sealed class NeuronalRightingReflexTests
         var spike = Relay(
             StructureId.VestibularNuclei,
             StructureId.SpinalCordMotor,
-            sourceIndex: 41);
+            sourceIndex: RightingSourceIndex(localIndex: 1));
 
         var mapped = RightingReflexTopology.TryProjectInbound(spike, 256, out var targetIndex);
 
@@ -87,11 +87,11 @@ public sealed class NeuronalRightingReflexTests
         var first = Relay(
             StructureId.VestibularNuclei,
             StructureId.SpinalCordMotor,
-            sourceIndex: 41);
+            sourceIndex: RightingSourceIndex(localIndex: 1));
         var second = Relay(
             StructureId.VestibularNuclei,
             StructureId.SpinalCordMotor,
-            sourceIndex: 50);
+            sourceIndex: RightingSourceIndex(localIndex: 2));
 
         Assert.True(RightingReflexTopology.TryProjectInbound(first, 256, out var firstTarget));
         Assert.True(RightingReflexTopology.TryProjectInbound(second, 256, out var secondTarget));
@@ -112,7 +112,7 @@ public sealed class NeuronalRightingReflexTests
         var righting = Relay(
             StructureId.ProprioceptiveAfferents,
             StructureId.SpinalCordMotor,
-            sourceIndex: 41);
+            sourceIndex: RightingSourceIndex(localIndex: 1));
         var otherLane = Relay(
             StructureId.ProprioceptiveAfferents,
             StructureId.SpinalCordMotor,
@@ -434,7 +434,7 @@ public sealed class NeuronalRightingReflexTests
             var timestamp = tick * 20.0;
             if (stimulateRightingLane && tick == 1)
             {
-                foreach (var sourceIndex in new[] { 14, 59, 185 })
+                foreach (var sourceIndex in Enumerable.Range(0, 3).Select(RightingSourceIndex))
                 {
                     var spike = Relay(
                         StructureId.ProprioceptiveAfferents,
@@ -482,4 +482,8 @@ public sealed class NeuronalRightingReflexTests
             IsFeedback = false,
             IsRightingCircuitSpike = true
         };
+
+    private static int RightingSourceIndex(int localIndex)
+        => (Math.Max(0, localIndex) * ActionChannelTopology.ChannelCount) +
+            RightingReflexTopology.StandChannel;
 }

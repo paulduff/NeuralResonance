@@ -143,6 +143,12 @@ internal sealed record NeuronalMotorRuntime(
     double ForwardDrive,
     double TurnDrive,
     double ManipulatorDrive,
+    double LeftShoulderSagittalDrive,
+    double RightShoulderSagittalDrive,
+    double LeftShoulderCoronalDrive,
+    double RightShoulderCoronalDrive,
+    double LeftElbowDrive,
+    double RightElbowDrive,
     double HeadYawDrive,
     double HeadPitchDrive,
     double MotorCircuitCoverage,
@@ -172,6 +178,12 @@ internal sealed record NeuronalMotorRuntime(
         ForwardDrive: 0.0,
         TurnDrive: 0.0,
         ManipulatorDrive: 0.0,
+        LeftShoulderSagittalDrive: 0.0,
+        RightShoulderSagittalDrive: 0.0,
+        LeftShoulderCoronalDrive: 0.0,
+        RightShoulderCoronalDrive: 0.0,
+        LeftElbowDrive: 0.0,
+        RightElbowDrive: 0.0,
         HeadYawDrive: 0.0,
         HeadPitchDrive: 0.0,
         MotorCircuitCoverage: 0.0,
@@ -363,11 +375,55 @@ internal static class NeuronalMotorPopulationDecoder
         var alpha = settings.SmoothingAlpha;
         var leftDrive = Lerp(previous.LeftDrive, rawLeft, alpha);
         var rightDrive = Lerp(previous.RightDrive, rawRight, alpha);
-        var rawManipulator = actionDecision.Active &&
-            actionDecision.SelectedChannel == NeuronalActionSelectionDecoder.ManipulatorChannel
-                ? Math.Clamp(effectiveGate * supportGain, 0.0, 1.0)
-                : 0.0;
-        var manipulatorDrive = Lerp(previous.ManipulatorDrive, rawManipulator, alpha);
+        var armPopulationMagnitude = Math.Clamp(effectiveGate * supportGain, 0.0, 1.0);
+        double SignedArmLaneDrive(int positiveChannel, int negativeChannel) =>
+            actionDecision.Active && actionDecision.SelectedChannel == positiveChannel
+                ? armPopulationMagnitude
+                : actionDecision.Active && actionDecision.SelectedChannel == negativeChannel
+                    ? -armPopulationMagnitude
+                    : 0.0;
+        var leftShoulderSagittalDrive = Lerp(
+            previous.LeftShoulderSagittalDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel,
+                NeuronalActionSelectionDecoder.LeftShoulderExtensionChannel),
+            alpha);
+        var rightShoulderSagittalDrive = Lerp(
+            previous.RightShoulderSagittalDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.RightShoulderFlexionChannel,
+                NeuronalActionSelectionDecoder.RightShoulderExtensionChannel),
+            alpha);
+        var leftShoulderCoronalDrive = Lerp(
+            previous.LeftShoulderCoronalDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.LeftShoulderAbductionChannel,
+                NeuronalActionSelectionDecoder.LeftShoulderAdductionChannel),
+            alpha);
+        var rightShoulderCoronalDrive = Lerp(
+            previous.RightShoulderCoronalDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.RightShoulderAbductionChannel,
+                NeuronalActionSelectionDecoder.RightShoulderAdductionChannel),
+            alpha);
+        var leftElbowDrive = Lerp(
+            previous.LeftElbowDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.LeftElbowFlexionChannel,
+                NeuronalActionSelectionDecoder.LeftElbowExtensionChannel),
+            alpha);
+        var rightElbowDrive = Lerp(
+            previous.RightElbowDrive,
+            SignedArmLaneDrive(
+                NeuronalActionSelectionDecoder.RightElbowFlexionChannel,
+                NeuronalActionSelectionDecoder.RightElbowExtensionChannel),
+            alpha);
+        var manipulatorDrive = new[]
+        {
+            Math.Abs(leftShoulderSagittalDrive), Math.Abs(rightShoulderSagittalDrive),
+            Math.Abs(leftShoulderCoronalDrive), Math.Abs(rightShoulderCoronalDrive),
+            Math.Abs(leftElbowDrive), Math.Abs(rightElbowDrive)
+        }.Max();
         var orienting = DecodeOrientingPopulation(snapshots, settings);
         var headYawDrive = Lerp(previous.HeadYawDrive, orienting.YawDrive, alpha);
         var headPitchDrive = Lerp(previous.HeadPitchDrive, orienting.PitchDrive, alpha);
@@ -388,9 +444,12 @@ internal static class NeuronalMotorPopulationDecoder
             PostureLaneDrive(NeuronalActionSelectionDecoder.SitChannel), alpha);
         var lieDrive = Lerp(previous.LieDrive,
             PostureLaneDrive(NeuronalActionSelectionDecoder.LieChannel), alpha);
-        var signalStrength = new[]
+        var decodedSignalStrength = new[]
         {
             Math.Abs(leftDrive), Math.Abs(rightDrive), Math.Abs(manipulatorDrive),
+            Math.Abs(leftShoulderSagittalDrive), Math.Abs(rightShoulderSagittalDrive),
+            Math.Abs(leftShoulderCoronalDrive), Math.Abs(rightShoulderCoronalDrive),
+            Math.Abs(leftElbowDrive), Math.Abs(rightElbowDrive),
             Math.Abs(headYawDrive), Math.Abs(headPitchDrive),
             Math.Abs(standDrive), Math.Abs(crouchDrive), Math.Abs(sitDrive), Math.Abs(lieDrive)
         }.Max();
@@ -398,7 +457,7 @@ internal static class NeuronalMotorPopulationDecoder
         var supportCoverage = ((cerebellar.Length > 0 ? 1.0 : 0.0) + (postural.Length > 0 ? 1.0 : 0.0)) * 0.5;
         var motorConfidence = Math.Clamp(
             (motorCoverage * 0.48) +
-            (signalStrength * 0.24) +
+            (decodedSignalStrength * 0.24) +
             (basalGangliaCoverage * 0.18) +
             (supportCoverage * 0.10),
             0.0,
@@ -422,8 +481,40 @@ internal static class NeuronalMotorPopulationDecoder
              rightingAuthorityReady);
         var orientingAuthorityReady = orienting.Available &&
             orienting.Confidence >= settings.MinimumOutputConfidence;
-        var active = signalStrength >= 0.01 &&
-            (descendingMotorReady || orientingAuthorityReady);
+
+        if (!descendingMotorReady)
+        {
+            leftDrive = 0.0;
+            rightDrive = 0.0;
+            manipulatorDrive = 0.0;
+            leftShoulderSagittalDrive = 0.0;
+            rightShoulderSagittalDrive = 0.0;
+            leftShoulderCoronalDrive = 0.0;
+            rightShoulderCoronalDrive = 0.0;
+            leftElbowDrive = 0.0;
+            rightElbowDrive = 0.0;
+            standDrive = 0.0;
+            crouchDrive = 0.0;
+            sitDrive = 0.0;
+            lieDrive = 0.0;
+        }
+
+        if (!orientingAuthorityReady)
+        {
+            headYawDrive = 0.0;
+            headPitchDrive = 0.0;
+        }
+
+        var authorizedSignalStrength = new[]
+        {
+            Math.Abs(leftDrive), Math.Abs(rightDrive), Math.Abs(manipulatorDrive),
+            Math.Abs(leftShoulderSagittalDrive), Math.Abs(rightShoulderSagittalDrive),
+            Math.Abs(leftShoulderCoronalDrive), Math.Abs(rightShoulderCoronalDrive),
+            Math.Abs(leftElbowDrive), Math.Abs(rightElbowDrive),
+            Math.Abs(headYawDrive), Math.Abs(headPitchDrive),
+            Math.Abs(standDrive), Math.Abs(crouchDrive), Math.Abs(sitDrive), Math.Abs(lieDrive)
+        }.Max();
+        var active = authorizedSignalStrength >= 0.01;
 
         var forwardDrive = Math.Clamp((leftDrive + rightDrive) * 0.5, 0.0, 1.0);
         var turnDrive = Math.Clamp(rightDrive - leftDrive, -1.0, 1.0);
@@ -436,6 +527,12 @@ internal static class NeuronalMotorPopulationDecoder
             ForwardDrive: forwardDrive,
             TurnDrive: turnDrive,
             ManipulatorDrive: manipulatorDrive,
+            LeftShoulderSagittalDrive: leftShoulderSagittalDrive,
+            RightShoulderSagittalDrive: rightShoulderSagittalDrive,
+            LeftShoulderCoronalDrive: leftShoulderCoronalDrive,
+            RightShoulderCoronalDrive: rightShoulderCoronalDrive,
+            LeftElbowDrive: leftElbowDrive,
+            RightElbowDrive: rightElbowDrive,
             HeadYawDrive: headYawDrive,
             HeadPitchDrive: headPitchDrive,
             MotorCircuitCoverage: motorCoverage,

@@ -41,27 +41,38 @@ public readonly record struct AvatarBodyCollider(
 /// </summary>
 public static class AvatarColliderRig
 {
+    public const float LocalGroundPlaneY = -0.03f;
+
     private const float StandingHeightMeters = 1.74f;
     private const float UpperArmLength = 0.34f;
     private const float ForearmLength = 0.32f;
     private const float ThighLength = 0.39f;
     private const float ShinLength = 0.38f;
-    private const float RootFootClearanceMeters = 0.03f;
 
     public static IReadOnlyList<AvatarBodyCollider> Capture(PhysicalArticulationFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         var groundedFrame = WithComputedSupportPlaneOffset(frame);
-        return CaptureCore(groundedFrame, groundedFrame.SupportPlaneOffsetMeters);
+        return CaptureResolved(groundedFrame);
+    }
+
+    public static IReadOnlyList<AvatarBodyCollider> CaptureResolved(PhysicalArticulationFrame frame)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+        return CaptureCore(frame, frame.SupportPlaneOffsetMeters);
     }
 
     public static PhysicalArticulationFrame WithComputedSupportPlaneOffset(PhysicalArticulationFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
         var uncorrected = CaptureCore(frame, 0f);
-        var lowestSurface = uncorrected.Min(static collider =>
-            collider.Position.Y - VerticalHalfExtent(collider));
-        var offset = Math.Clamp(-RootFootClearanceMeters - lowestSurface, -0.30f, 0.80f);
+        var lowestSurface = uncorrected
+            .Where(static collider =>
+                collider.Chain is AvatarKinematicChain.Axial or
+                    AvatarKinematicChain.LeftLeg or
+                    AvatarKinematicChain.RightLeg)
+            .Min(LowestSurfaceY);
+        var offset = Math.Clamp(LocalGroundPlaneY - lowestSurface, -0.30f, 0.80f);
         return frame with { SupportPlaneOffsetMeters = offset };
     }
 
@@ -89,7 +100,7 @@ public static class AvatarColliderRig
         var pelvis = Child(bodyPose, new Vector3(0f, pelvisHeight, 0f), Quaternion.Identity);
         var axialRotation = Quaternion.CreateFromYawPitchRoll(
             0f,
-            -frame.TrunkPitchRadians,
+            -frame.TrunkPitchRadians * (1f - lyingProgress),
             frame.TrunkRollRadians * 0.72f);
         var lumbar = Child(pelvis, new Vector3(0f, 0.19f, 0f), axialRotation);
         var thoracic = Child(lumbar, new Vector3(0f, 0.28f, 0f), Quaternion.Identity);
@@ -102,7 +113,9 @@ public static class AvatarColliderRig
 
         var colliders = new List<AvatarBodyCollider>(18)
         {
-            Box("pelvis", AvatarKinematicChain.Axial, pelvis, new Vector3(0.50f, 0.30f, 0.35f), 13f, 18_000f),
+            Box("pelvis", AvatarKinematicChain.Axial,
+                Child(pelvis, new Vector3(0f, 0f, -0.06f), Quaternion.Identity),
+                new Vector3(0.50f, 0.30f, 0.35f), 13f, 18_000f),
             Capsule("chest", AvatarKinematicChain.Axial, Between(lumbar, thoracic), 0.255f, 0.34f, 24f, 24_000f),
             Capsule("neck", AvatarKinematicChain.Axial, Between(thoracic, neck), 0.085f, 0.08f, 2.2f, 2_800f),
             Sphere("head", AvatarKinematicChain.Axial, head, 0.225f, 5.0f, 8_000f)
@@ -157,8 +170,9 @@ public static class AvatarColliderRig
             Lerp(previous.LeftShoulderAbductionRadians, proposed.LeftShoulderAbductionRadians, t),
             Lerp(previous.RightShoulderAbductionRadians, proposed.RightShoulderAbductionRadians, t),
             Lerp(previous.NeckYawRadians, proposed.NeckYawRadians, t),
-            Lerp(previous.NeckPitchRadians, proposed.NeckPitchRadians, t));
-        return WithComputedSupportPlaneOffset(interpolated);
+            Lerp(previous.NeckPitchRadians, proposed.NeckPitchRadians, t),
+            Lerp(previous.SupportPlaneOffsetMeters, proposed.SupportPlaneOffsetMeters, t));
+        return interpolated;
     }
 
     public static PhysicalArticulationFrame RetargetChain(
@@ -177,7 +191,8 @@ public static class AvatarColliderRig
                 TrunkRollRadians = proposed.TrunkRollRadians,
                 NeckYawRadians = proposed.NeckYawRadians,
                 NeckPitchRadians = proposed.NeckPitchRadians,
-                Musculoskeletal = proposed.Musculoskeletal
+                Musculoskeletal = proposed.Musculoskeletal,
+                SupportPlaneOffsetMeters = proposed.SupportPlaneOffsetMeters
             },
             AvatarKinematicChain.LeftArm => current with
             {
@@ -205,7 +220,7 @@ public static class AvatarColliderRig
             },
             _ => throw new ArgumentOutOfRangeException(nameof(chain), chain, "Unknown avatar kinematic chain.")
         };
-        return WithComputedSupportPlaneOffset(retargeted);
+        return retargeted;
     }
 
     public static PhysicalArticulationFrame InterpolateChain(
@@ -230,14 +245,18 @@ public static class AvatarColliderRig
                 BalanceError = Lerp(previousBody.BalanceError, proposedBody.BalanceError, t),
                 Balance = InterpolateBalance(previousBody.Balance, proposedBody.Balance, t)
             };
-            return WithComputedSupportPlaneOffset(previous with
+            return previous with
             {
                 TrunkPitchRadians = Lerp(previous.TrunkPitchRadians, proposed.TrunkPitchRadians, t),
                 TrunkRollRadians = Lerp(previous.TrunkRollRadians, proposed.TrunkRollRadians, t),
                 NeckYawRadians = Lerp(previous.NeckYawRadians, proposed.NeckYawRadians, t),
                 NeckPitchRadians = Lerp(previous.NeckPitchRadians, proposed.NeckPitchRadians, t),
-                Musculoskeletal = body
-            });
+                Musculoskeletal = body,
+                SupportPlaneOffsetMeters = Lerp(
+                    previous.SupportPlaneOffsetMeters,
+                    proposed.SupportPlaneOffsetMeters,
+                    t)
+            };
         }
 
         var interpolated = chain switch
@@ -272,7 +291,7 @@ public static class AvatarColliderRig
             },
             _ => throw new ArgumentOutOfRangeException(nameof(chain), chain, "Unknown avatar kinematic chain.")
         };
-        return WithComputedSupportPlaneOffset(interpolated);
+        return interpolated;
     }
 
     private static void AddArm(
@@ -408,6 +427,9 @@ public static class AvatarColliderRig
             Phase = fraction <= 0f ? from.Phase : to.Phase
         };
     }
+
+    public static float LowestSurfaceY(AvatarBodyCollider collider) =>
+        collider.Position.Y - VerticalHalfExtent(collider);
 
     private static float VerticalHalfExtent(AvatarBodyCollider collider)
     {

@@ -107,14 +107,16 @@ public sealed class WorldPhysicsScene : IDisposable
         var contacts = new List<AvatarPhysicsContact>();
         var constrainedChains = new HashSet<AvatarKinematicChain>();
         var minimumFraction = 1f;
-        var resolvedArticulation = CarryPhysicalMeasurements(previousArticulation, proposedArticulation);
+        var previousGeometry = AvatarColliderRig.WithComputedSupportPlaneOffset(previousArticulation);
+        var proposedGeometry = AvatarColliderRig.WithComputedSupportPlaneOffset(proposedArticulation);
+        var resolvedArticulation = CarryPhysicalMeasurements(previousGeometry, proposedGeometry);
 
         var rootMotion = ResolveRootTranslation(
             previousRoot,
             proposedRoot,
             previousHeadingDegrees,
             resolvedArticulation,
-            proposedArticulation,
+            proposedGeometry,
             dt);
         var resolvedRoot = rootMotion.RootPosition;
         minimumFraction = MathF.Min(minimumFraction, rootMotion.ProgressFraction);
@@ -139,12 +141,12 @@ public sealed class WorldPhysicsScene : IDisposable
             headingSweep,
             resolvedRoot,
             resolvedHeading,
-            proposedArticulation,
+            proposedGeometry,
             dt));
 
         foreach (var chain in ResolutionOrder)
         {
-            var target = AvatarColliderRig.RetargetChain(resolvedArticulation, proposedArticulation, chain);
+            var target = AvatarColliderRig.RetargetChain(resolvedArticulation, proposedGeometry, chain);
             var chainSweep = CaptureSweep(
                 resolvedRoot,
                 resolvedHeading,
@@ -169,11 +171,11 @@ public sealed class WorldPhysicsScene : IDisposable
                 chainSweep,
                 resolvedRoot,
                 resolvedHeading,
-                proposedArticulation,
+                proposedGeometry,
                 dt));
         }
 
-        resolvedArticulation = CarryPhysicalMeasurements(resolvedArticulation, proposedArticulation);
+        resolvedArticulation = CarryPhysicalMeasurements(resolvedArticulation, proposedGeometry);
 
         return new AvatarPhysicsResolution(
             resolvedRoot,
@@ -270,8 +272,8 @@ public sealed class WorldPhysicsScene : IDisposable
         float dt,
         Func<AvatarBodyCollider, bool> include)
     {
-        var previousRig = AvatarColliderRig.Capture(previousArticulation);
-        var proposedRig = AvatarColliderRig.Capture(proposedArticulation);
+        var previousRig = AvatarColliderRig.CaptureResolved(previousArticulation);
+        var proposedRig = AvatarColliderRig.CaptureResolved(proposedArticulation);
         if (previousRig.Count != proposedRig.Count)
         {
             throw new InvalidOperationException("Avatar collision rig changed topology during a physics step.");

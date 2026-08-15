@@ -119,6 +119,9 @@ public sealed class AvatarNervousSystemTests
         Assert.Equal(
             [
                 "LeftMotorDrive", "RightMotorDrive", "ManipulatorDrive",
+                "LeftShoulderSagittalDrive", "RightShoulderSagittalDrive",
+                "LeftShoulderCoronalDrive", "RightShoulderCoronalDrive",
+                "LeftElbowDrive", "RightElbowDrive",
                 "HeadYawDrive", "HeadPitchDrive",
                 "StandDrive", "CrouchDrive", "SitDrive", "LieDrive",
                 "MotorEvents", "ManipulatorEvents", "OrientingEvents", "PostureEvents", "TicksWithoutMotorDispatch"

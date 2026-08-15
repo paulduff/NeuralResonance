@@ -200,14 +200,14 @@ public sealed class NeuronalActionSelectionTests
     }
 
     [Fact]
-    public void FifthLaneSelectsPhysicalEffectorWithoutSynthesizingLocomotion()
+    public void FirstArmLaneSelectsPhysicalEffectorWithoutSynthesizingLocomotion()
     {
         var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: 4));
         var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
 
-        Assert.Equal(9, ActionChannelTopology.ChannelCount);
+        Assert.Equal(20, ActionChannelTopology.ChannelCount);
         Assert.True(decision.Active);
-        Assert.Equal(NeuronalActionSelectionDecoder.ManipulatorChannel, decision.SelectedChannel);
+        Assert.Equal(NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel, decision.SelectedChannel);
         Assert.Equal(0.0, shaped.Left);
         Assert.Equal(0.0, shaped.Right);
     }

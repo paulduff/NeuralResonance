@@ -32,7 +32,11 @@ public sealed class AvatarService : IDisposable
     private readonly object _sightOutputGate = new();
     private readonly object _sightInputGate = new();
     private AvatarNervousSystemSignal _latestSignal = new(
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0);
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0,
+        0, 0, 0, 0, 0);
     private AvatarActionOutput _latestActionOutput = new(
         new AvatarMotorOutput(0.0, 0.0),
         new AvatarInteractionOutput(0.0),
@@ -408,6 +412,12 @@ public sealed class AvatarService : IDisposable
             _nervousSystem.LeftMotorDrive,
             _nervousSystem.RightMotorDrive,
             _nervousSystem.ManipulatorDrive,
+            _nervousSystem.LeftShoulderSagittalDrive,
+            _nervousSystem.RightShoulderSagittalDrive,
+            _nervousSystem.LeftShoulderCoronalDrive,
+            _nervousSystem.RightShoulderCoronalDrive,
+            _nervousSystem.LeftElbowDrive,
+            _nervousSystem.RightElbowDrive,
             _nervousSystem.HeadYawDrive,
             _nervousSystem.HeadPitchDrive,
             _nervousSystem.StandDrive,

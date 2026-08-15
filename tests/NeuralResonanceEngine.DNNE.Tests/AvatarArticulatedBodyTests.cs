@@ -39,7 +39,16 @@ public sealed class AvatarArticulatedBodyTests
         var body = new AvatarArticulatedBody();
         for (var step = 0; step < 4; step++)
         {
-            body.Advance(0.20, 0.0, 0.0, 0.0, 0.0, 1.0, true, false);
+            body.Advance(
+                0.20,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                true,
+                false,
+                leftShoulderSagittalDrive: 1.0);
         }
 
         var extended = body.CaptureFrame();
@@ -117,17 +126,19 @@ public sealed class AvatarArticulatedBodyTests
     }
 
     [Fact]
-    public void ManipulatorPopulationRecruitsLateralShoulderAntagonists()
+    public void IndependentCoronalArmPopulationsRecruitOnlyTheRequestedShoulder()
     {
         var body = new AvatarArticulatedBody();
         for (var step = 0; step < 60; step++)
         {
-            body.Advance(0.025, 0.0, 0.0, 0.0, 0.0, 1.0, true, false);
+            body.Advance(
+                0.025, 0.0, 0.0, 0.0, 0.0, 1.0, true, false,
+                leftShoulderCoronalDrive: 1.0);
         }
 
         var lifted = body.CaptureFrame();
         Assert.True(lifted.LeftShoulderAbductionRadians > 0.35f);
-        Assert.True(lifted.RightShoulderAbductionRadians > 0.35f);
+        Assert.InRange(lifted.RightShoulderAbductionRadians, -0.05f, 0.05f);
         Assert.Contains(lifted.Musculoskeletal!.Muscles,
             muscle => muscle.Name == "MiddleDeltoid" && muscle.Activation > 0.05f);
 
@@ -226,6 +237,31 @@ public sealed class AvatarArticulatedBodyTests
         Assert.Contains(contacts, contact => contact.Region == "pelvis");
         Assert.Contains(contacts, contact => contact.Region == "chest");
         Assert.InRange(contacts.Sum(contact => contact.LoadNewtons), 719.0, 721.0);
+    }
+
+    [Fact]
+    public void GroundContactLocationsComeFromTheResolvedArticulatedColliders()
+    {
+        var body = new AvatarArticulatedBody();
+        for (var step = 0; step < 80; step++)
+        {
+            body.Advance(0.025, 0.9, 0.7, 1.2, 0.0, 0.0, true, false);
+        }
+
+        var frame = body.CaptureFrame();
+        var colliders = AvatarColliderRig.CaptureResolved(frame)
+            .ToDictionary(static collider => collider.Region, StringComparer.Ordinal);
+        var contacts = body.CaptureGroundContacts();
+
+        Assert.NotEmpty(contacts);
+        Assert.All(contacts, contact =>
+        {
+            var collider = colliders[contact.Region];
+            Assert.Equal(collider.Position.X, contact.BodyX, 5);
+            Assert.Equal(collider.Position.Z, contact.BodyZ, 5);
+            Assert.Equal(AvatarColliderRig.LowestSurfaceY(collider), contact.BodyY, 5);
+            Assert.Equal(collider.ContactAreaSquareMillimeters, contact.AreaSquareMillimeters, 3);
+        });
     }
 
     [Theory]

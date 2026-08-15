@@ -43,6 +43,41 @@ public sealed class WorldPhysicsSceneTests
     }
 
     [Fact]
+    public void ArmPoseCannotRedefineTheBodySupportPlane()
+    {
+        var accepted = AvatarColliderRig.WithComputedSupportPlaneOffset(PhysicalArticulationFrame.Neutral);
+        var armsLowered = AvatarColliderRig.WithComputedSupportPlaneOffset(
+            PhysicalArticulationFrame.Neutral with
+            {
+                LeftShoulderAngleRadians = -0.70f,
+                RightShoulderAngleRadians = -0.70f,
+                LeftElbowAngleRadians = 2.62f,
+                RightElbowAngleRadians = 2.62f
+            });
+
+        Assert.Equal(accepted.SupportPlaneOffsetMeters, armsLowered.SupportPlaneOffsetMeters, 5);
+    }
+
+    [Fact]
+    public void RetargetingAnArmPreservesTheAcceptedSupportPlane()
+    {
+        var accepted = PhysicalArticulationFrame.Neutral with { SupportPlaneOffsetMeters = 0.17f };
+        var proposed = PhysicalArticulationFrame.Neutral with
+        {
+            LeftShoulderAngleRadians = 1.40f,
+            SupportPlaneOffsetMeters = 0.62f
+        };
+
+        var retargeted = AvatarColliderRig.RetargetChain(
+            accepted,
+            proposed,
+            AvatarKinematicChain.LeftArm);
+
+        Assert.Equal(proposed.LeftShoulderAngleRadians, retargeted.LeftShoulderAngleRadians);
+        Assert.Equal(accepted.SupportPlaneOffsetMeters, retargeted.SupportPlaneOffsetMeters);
+    }
+
+    [Fact]
     public void ContinuousSweepStopsWholeBodyBeforeCrossingAThinWall()
     {
         using var scene = CreateWallScene(new Vector3(0f, 1f, 1f), new Vector3(4f, 4f, 0.04f));

@@ -2,10 +2,30 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class ActionChannelTopology
 {
-	// Four locomotor lanes, one manipulator lane, and four posture lanes. The
+	// Four locomotor lanes, twelve opposing upper-limb lanes, and four posture lanes. The
 	// populations remain unlabeled inside the brain; anatomical meaning is
 	// assigned only where descending populations meet physical effectors.
-	public const int ChannelCount = 9;
+	public const int ChannelCount = 20;
+	public const int ForwardChannel = 0;
+	public const int LeftTurnChannel = 1;
+	public const int RightTurnChannel = 2;
+	public const int ReverseChannel = 3;
+	public const int LeftShoulderFlexionChannel = 4;
+	public const int LeftShoulderExtensionChannel = 5;
+	public const int RightShoulderFlexionChannel = 6;
+	public const int RightShoulderExtensionChannel = 7;
+	public const int LeftShoulderAbductionChannel = 8;
+	public const int LeftShoulderAdductionChannel = 9;
+	public const int RightShoulderAbductionChannel = 10;
+	public const int RightShoulderAdductionChannel = 11;
+	public const int LeftElbowFlexionChannel = 12;
+	public const int LeftElbowExtensionChannel = 13;
+	public const int RightElbowFlexionChannel = 14;
+	public const int RightElbowExtensionChannel = 15;
+	public const int StandChannel = 16;
+	public const int CrouchChannel = 17;
+	public const int SitChannel = 18;
+	public const int LieChannel = 19;
 
 	public static bool IsActionCircuitStructure(StructureId structure)
 		=> structure is StructureId.ProprioceptiveAfferents

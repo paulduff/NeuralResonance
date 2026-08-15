@@ -827,7 +827,13 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 motorSignal.SitDrive,
                 motorSignal.LieDrive,
                 motorSignal.HeadYawDrive,
-                motorSignal.HeadPitchDrive);
+                motorSignal.HeadPitchDrive,
+                motorSignal.LeftShoulderSagittalDrive,
+                motorSignal.RightShoulderSagittalDrive,
+                motorSignal.LeftShoulderCoronalDrive,
+                motorSignal.RightShoulderCoronalDrive,
+                motorSignal.LeftElbowDrive,
+                motorSignal.RightElbowDrive);
             var proposedArticulation = articulatedBody.CaptureFrame();
             var planarMotion = AvatarPlanarDynamics.Advance(
                 new AvatarPlanarMotionState(lastForwardSpeed, lastTurnRateDegrees),

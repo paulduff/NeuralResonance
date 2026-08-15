@@ -147,18 +147,63 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
-    public void FifthActionLaneProducesManipulatorDriveWithoutLocomotion()
+    public void FifthActionLaneProducesLeftShoulderFlexionWithoutLocomotion()
     {
         var circuit = CreateMotorCircuit(20.0f, 20.0f)
             .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
-            .Concat(CreateActionCircuit(NeuronalActionSelectionDecoder.ManipulatorChannel))
+            .Concat(CreateActionCircuit(NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel))
             .ToArray();
 
         var runtime = Decode(circuit);
 
         Assert.True(runtime.Active);
-        Assert.Equal(NeuronalActionSelectionDecoder.ManipulatorChannel, runtime.SelectedActionChannel);
+        Assert.Equal(NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel, runtime.SelectedActionChannel);
         Assert.True(runtime.ManipulatorDrive > 0.10);
+        Assert.True(runtime.LeftShoulderSagittalDrive > 0.10);
+        Assert.Equal(0.0, runtime.RightShoulderSagittalDrive, 6);
+        Assert.Equal(0.0, runtime.ForwardDrive, 6);
+        Assert.Equal(0.0, runtime.TurnDrive, 6);
+    }
+
+    [Theory]
+    [InlineData(NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel, 0, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftShoulderExtensionChannel, 0, -1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightShoulderFlexionChannel, 1, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightShoulderExtensionChannel, 1, -1)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftShoulderAbductionChannel, 2, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftShoulderAdductionChannel, 2, -1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightShoulderAbductionChannel, 3, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightShoulderAdductionChannel, 3, -1)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftElbowFlexionChannel, 4, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftElbowExtensionChannel, 4, -1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightElbowFlexionChannel, 5, 1)]
+    [InlineData(NeuronalActionSelectionDecoder.RightElbowExtensionChannel, 5, -1)]
+    public void OpposingArmLanesRecruitOnlyTheirAnatomicalEffector(
+        int selectedChannel,
+        int expectedDriveIndex,
+        int expectedSign)
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreateActionCircuit(selectedChannel))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+        var drives = new[]
+        {
+            runtime.LeftShoulderSagittalDrive,
+            runtime.RightShoulderSagittalDrive,
+            runtime.LeftShoulderCoronalDrive,
+            runtime.RightShoulderCoronalDrive,
+            runtime.LeftElbowDrive,
+            runtime.RightElbowDrive
+        };
+
+        Assert.True(runtime.Active);
+        Assert.Equal(selectedChannel, runtime.SelectedActionChannel);
+        Assert.Equal(expectedSign, Math.Sign(drives[expectedDriveIndex]));
+        Assert.True(Math.Abs(drives[expectedDriveIndex]) > 0.10);
+        Assert.Single(drives, drive => Math.Abs(drive) > 0.001);
         Assert.Equal(0.0, runtime.ForwardDrive, 6);
         Assert.Equal(0.0, runtime.TurnDrive, 6);
     }
@@ -306,6 +351,64 @@ public sealed class NeuronalMotorControlTests
         Assert.Equal(0.0, runtime.ForwardDrive, 6);
         Assert.Equal(0.0, runtime.TurnDrive, 6);
         Assert.Contains("orienting=topographic", runtime.Evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OrientingOnlyTickCannotRetainStaleDescendingMotorAuthority()
+    {
+        var settings = CreateSettings() with { SmoothingAlpha = 0.20 };
+        var previous = NeuronalMotorPopulationDecoder.Decode(
+            tick: 1,
+            CreateMotorCircuit(20.0f, 20.0f),
+            new NeuronalMotorControlSnapshot(settings),
+            NeuronalMotorRuntime.Default);
+        var superiorColliculus = Snapshot(
+            StructureId.SuperiorColliculus,
+            "M",
+            20.0f,
+            topActiveNeurons:
+            [
+                new NeuronActivity("M-SuperiorColliculus-015", 24.0f),
+                new NeuronActivity("M-SuperiorColliculus-031", 22.0f)
+            ]);
+
+        var runtime = NeuronalMotorPopulationDecoder.Decode(
+            tick: 2,
+            [superiorColliculus],
+            new NeuronalMotorControlSnapshot(settings),
+            previous);
+
+        Assert.True(previous.ForwardDrive > 0.01);
+        Assert.True(runtime.Active);
+        Assert.True(Math.Abs(runtime.HeadYawDrive) > 0.01);
+        Assert.Equal(0.0, runtime.LeftDrive, 6);
+        Assert.Equal(0.0, runtime.RightDrive, 6);
+        Assert.Equal(0.0, runtime.ForwardDrive, 6);
+        Assert.Equal(0.0, runtime.TurnDrive, 6);
+        Assert.Equal(0.0, runtime.ManipulatorDrive, 6);
+        Assert.Equal(0.0, runtime.StandDrive, 6);
+    }
+
+    [Fact]
+    public void EffectorPopulationMagnitudeIsIndependentOfConfiguredPopulationSize()
+    {
+        var state = CreateAvatarState(
+            active: true,
+            tick: 15,
+            confidence: 0.8,
+            left: 0.0,
+            right: 0.0,
+            leftShoulderSagittal: 0.25);
+
+        var composed = AvatarNeuronalMotorBridge.Compose(state, [], -1, out _, out _);
+        var armEvents = composed.Where(spike => spike.SourceNeuronId.StartsWith(
+            "effector:arm:left:shoulder:sagittal:", StringComparison.Ordinal)).ToArray();
+        var drive = AvatarEffectorCatalog.SummarizeArmDrive(composed);
+
+        Assert.Equal(2, armEvents.Length);
+        Assert.All(armEvents, spike => Assert.EndsWith(":n8", spike.SourceNeuronId));
+        Assert.Equal(0.25, drive.LeftShoulderSagittalDelta, 6);
+        Assert.Equal(0.0, drive.RightShoulderSagittalDelta, 6);
     }
 
     [Fact]
@@ -617,7 +720,13 @@ public sealed class NeuronalMotorControlTests
         double right,
         double manipulator = 0.0,
         double headYaw = 0.0,
-        double headPitch = 0.0)
+        double headPitch = 0.0,
+        double leftShoulderSagittal = 0.0,
+        double rightShoulderSagittal = 0.0,
+        double leftShoulderCoronal = 0.0,
+        double rightShoulderCoronal = 0.0,
+        double leftElbow = 0.0,
+        double rightElbow = 0.0)
         => JsonSerializer.SerializeToElement(new
         {
             neuronalMotor = new
@@ -629,6 +738,12 @@ public sealed class NeuronalMotorControlTests
                 leftDrive = left,
                 rightDrive = right,
                 manipulatorDrive = manipulator,
+                leftShoulderSagittalDrive = leftShoulderSagittal,
+                rightShoulderSagittalDrive = rightShoulderSagittal,
+                leftShoulderCoronalDrive = leftShoulderCoronal,
+                rightShoulderCoronalDrive = rightShoulderCoronal,
+                leftElbowDrive = leftElbow,
+                rightElbowDrive = rightElbow,
                 headYawDrive = headYaw,
                 headPitchDrive = headPitch,
                 confidence,

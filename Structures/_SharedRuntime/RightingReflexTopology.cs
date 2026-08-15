@@ -2,7 +2,7 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class RightingReflexTopology
 {
-	public const int StandChannel = 5;
+	public const int StandChannel = ActionChannelTopology.StandChannel;
 	internal const float SpinalRightingRelayGain = 3.25f;
 	internal const int SpinalRightingInterneuronPoolSize = 4;
 

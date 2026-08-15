@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\NRE.WorldSim\NRE.WorldSim.csproj" />
+  </ItemGroup>
+
+</Project>

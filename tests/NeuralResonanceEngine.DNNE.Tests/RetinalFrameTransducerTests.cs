@@ -73,6 +73,36 @@ public sealed class RetinalFrameTransducerTests
         Assert.Equal(firstSynapses, secondSynapses);
     }
 
+    [Fact]
+    public void LeftAndRightEyesRetainIndependentReceptorAndSynapseIdentities()
+    {
+        var transducer = new RetinalFrameTransducerRuntime();
+        var pixels = CreateBgraFrame((x, _) =>
+            x < RetinalFrameTransducerRuntime.SampleColumns / 2 ? (byte)20 : (byte)240);
+
+        var left = transducer.Transduce(
+            pixels,
+            CreateDescriptor("avatar_retina_left"),
+            tick: 7,
+            timestampMs: 70.0);
+        var right = transducer.Transduce(
+            pixels,
+            CreateDescriptor("avatar_retina_right"),
+            tick: 7,
+            timestampMs: 70.0);
+
+        var leftSpikes = left.LeftHemisphereSpikes.Concat(left.RightHemisphereSpikes).ToArray();
+        var rightSpikes = right.LeftHemisphereSpikes.Concat(right.RightHemisphereSpikes).ToArray();
+        Assert.NotEmpty(leftSpikes);
+        Assert.NotEmpty(rightSpikes);
+        Assert.All(leftSpikes, spike =>
+            Assert.Contains("left_eye", spike.SourceNeuronId, StringComparison.Ordinal));
+        Assert.All(rightSpikes, spike =>
+            Assert.Contains("right_eye", spike.SourceNeuronId, StringComparison.Ordinal));
+        Assert.Empty(leftSpikes.Select(spike => spike.SynapseId)
+            .Intersect(rightSpikes.Select(spike => spike.SynapseId)));
+    }
+
     [Theory]
     [InlineData(0, 12, 64, "Bgra32")]
     [InlineData(16, 0, 64, "Bgra32")]

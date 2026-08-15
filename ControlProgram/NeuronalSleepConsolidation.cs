@@ -106,11 +106,11 @@ internal static class NeuronalSleepConsolidationDecoder
         var present = diagnostics.Select(static item => item.SourceStructure).ToHashSet();
         var stateRoles = new[]
         {
-            present.Contains(StructureId.Hypothalamus),
+            present.Contains(StructureId.DorsomedialHypothalamicNucleus),
             present.Contains(StructureId.ReticularFormation),
-            present.Contains(StructureId.Pons),
+            present.Contains(StructureId.PontineNuclei),
             present.Contains(StructureId.LocusCoeruleus),
-            present.Contains(StructureId.BasalForebrain),
+            present.Contains(StructureId.NucleusBasalis),
             present.Contains(StructureId.IntralaminarThalamus)
         };
         var coverage = stateRoles.Count(static value => value) / (double)stateRoles.Length;
@@ -125,7 +125,7 @@ internal static class NeuronalSleepConsolidationDecoder
                 .ToArray(),
             static item => item.SpindleSynchrony);
         var thalamicSpindle = MeanPositive(
-            diagnostics.Where(static item => item.SourceStructure == StructureId.Thalamus)
+            diagnostics.Where(static item => item.SourceStructure == StructureId.IntralaminarThalamus)
                 .SelectMany(static item => item.StateChannels)
                 .ToArray(),
             static item => item.SpindleSynchrony);
@@ -181,7 +181,7 @@ internal static class NeuronalSleepConsolidationDecoder
                     .ToArray(),
                 static item => item.SpindleCoupling);
             var thalamicCoupling = MeanPositive(
-                diagnostics.Where(static item => item.SourceStructure == StructureId.Thalamus)
+                diagnostics.Where(static item => item.SourceStructure == StructureId.IntralaminarThalamus)
                     .SelectMany(static item => item.ReplayEnsembles)
                     .Where(item => item.EnsembleIndex == ensemble)
                     .ToArray(),
@@ -218,7 +218,7 @@ internal static class NeuronalSleepConsolidationDecoder
             present.Contains(StructureId.CA3),
             present.Contains(StructureId.CA1),
             present.Contains(StructureId.Trn),
-            present.Contains(StructureId.Thalamus),
+            present.Contains(StructureId.IntralaminarThalamus),
             present.Any(IsCorticalConsolidationStructure)
         };
         var replayCoverage = replayRoles.Count(static value => value) / (double)replayRoles.Length;
@@ -233,7 +233,7 @@ internal static class NeuronalSleepConsolidationDecoder
             present.Contains(StructureId.CA3) &&
             present.Contains(StructureId.CA1) &&
             present.Contains(StructureId.Trn) &&
-            present.Contains(StructureId.Thalamus) &&
+            present.Contains(StructureId.IntralaminarThalamus) &&
             replayCoverage >= 0.60 &&
             replayScores[replayEnsemble] > 0.002 &&
             replayMargin > 0.00001;

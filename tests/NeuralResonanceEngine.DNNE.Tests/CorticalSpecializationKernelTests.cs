@@ -68,7 +68,7 @@ public sealed class CorticalSpecializationKernelTests
     {
         int body = MapInbound(StructureId.TemporoparietalJunction, StructureId.SecondarySomatosensoryCortex, "context-91");
         int memory = MapInbound(StructureId.TemporoparietalJunction, StructureId.PosteriorCingulate, "context-91");
-        int affect = MapInbound(StructureId.TemporoparietalJunction, StructureId.Amygdala, "context-91");
+        int affect = MapInbound(StructureId.TemporoparietalJunction, StructureId.BasolateralAmygdala, "context-91");
         int semantic = MapInbound(StructureId.TemporoparietalJunction, StructureId.TemporalAssociation, "context-91");
 
         Assert.Equal(4, new[] { body, memory, affect, semantic }.Distinct().Count());

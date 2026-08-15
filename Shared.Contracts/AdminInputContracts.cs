@@ -60,7 +60,140 @@ public sealed record PhysicalBodyFrameRequest(
     float CoreTemperatureCelsius,
     float BloodOxygenSaturationFraction,
     float HydrationFraction,
-    string? InputSource);
+    string? InputSource,
+    PhysicalArticulationFrame? Articulation = null);
+
+/// <summary>
+/// Direct physical measurements from the simulated musculoskeletal body. These
+/// values are receptor inputs only; they contain no action labels or outcomes.
+/// </summary>
+public sealed record PhysicalArticulationFrame(
+    float LeftHipAngleRadians,
+    float RightHipAngleRadians,
+    float LeftKneeAngleRadians,
+    float RightKneeAngleRadians,
+    float LeftAnkleAngleRadians,
+    float RightAnkleAngleRadians,
+    float LeftFootLoadNewtons,
+    float RightFootLoadNewtons,
+    float LeftShoulderAngleRadians,
+    float RightShoulderAngleRadians,
+    float LeftElbowAngleRadians,
+    float RightElbowAngleRadians,
+    float LeftHandLoadNewtons,
+    float RightHandLoadNewtons,
+    float ManipulatorExtensionFraction,
+    float TrunkPitchRadians,
+    float TrunkRollRadians,
+    MusculoskeletalStateFrame? Musculoskeletal = null,
+    float LeftShoulderAbductionRadians = 0f,
+    float RightShoulderAbductionRadians = 0f,
+    float NeckYawRadians = 0f,
+    float NeckPitchRadians = 0f,
+    float SupportPlaneOffsetMeters = 0f)
+{
+    public static PhysicalArticulationFrame Neutral { get; } = new(
+        LeftHipAngleRadians: 0f,
+        RightHipAngleRadians: 0f,
+        LeftKneeAngleRadians: 0f,
+        RightKneeAngleRadians: 0f,
+        LeftAnkleAngleRadians: 0f,
+        RightAnkleAngleRadians: 0f,
+        LeftFootLoadNewtons: 0f,
+        RightFootLoadNewtons: 0f,
+        LeftShoulderAngleRadians: 0f,
+        RightShoulderAngleRadians: 0f,
+        LeftElbowAngleRadians: 0f,
+        RightElbowAngleRadians: 0f,
+        LeftHandLoadNewtons: 0f,
+        RightHandLoadNewtons: 0f,
+        ManipulatorExtensionFraction: 0f,
+        TrunkPitchRadians: 0f,
+        TrunkRollRadians: 0f,
+        Musculoskeletal: MusculoskeletalStateFrame.Neutral,
+        LeftShoulderAbductionRadians: 0f,
+        RightShoulderAbductionRadians: 0f,
+        NeckYawRadians: 0f,
+        NeckPitchRadians: 0f,
+        SupportPlaneOffsetMeters: 0f);
+}
+
+/// <summary>
+/// Physical measurements produced by the avatar's muscles and postural plant.
+/// Names identify anatomical receptors at the body boundary; they are not action
+/// labels and confer no behavioural authority.
+/// </summary>
+public sealed record MusculoskeletalStateFrame(
+    string Posture,
+    float BodyHeightMeters,
+    float UprightFraction,
+    float SupportFraction,
+    float BalanceError,
+    IReadOnlyList<PhysicalMuscleMeasurement> Muscles,
+    PhysicalBalanceStateFrame? Balance = null)
+{
+    public static MusculoskeletalStateFrame Neutral { get; } = new(
+        Posture: "standing",
+        BodyHeightMeters: 1.74f,
+        UprightFraction: 1f,
+        SupportFraction: 0f,
+        BalanceError: 0f,
+        Muscles: [],
+        Balance: PhysicalBalanceStateFrame.Neutral);
+}
+
+/// <summary>
+/// Mechanical balance measurements produced by the articulated body. These are
+/// physical receptor facts, not desired poses, recovery actions, or labels for
+/// a host-authored controller.
+/// </summary>
+public sealed record PhysicalBalanceStateFrame(
+    float CenterOfMassXMeters,
+    float CenterOfMassYMeters,
+    float CenterOfMassZMeters,
+    float CenterOfMassVelocityXMetersPerSecond,
+    float CenterOfMassVelocityZMetersPerSecond,
+    float ExtrapolatedCenterOfMassXMeters,
+    float ExtrapolatedCenterOfMassZMeters,
+    float CenterOfPressureXMeters,
+    float CenterOfPressureZMeters,
+    float SupportAreaSquareMeters,
+    float SupportMarginMeters,
+    float FallPitchRadians,
+    float FallRollRadians,
+    float FallPitchVelocityRadiansPerSecond,
+    float FallRollVelocityRadiansPerSecond,
+    string Phase,
+    float RightingForceFraction = 0f)
+{
+    public static PhysicalBalanceStateFrame Neutral { get; } = new(
+        CenterOfMassXMeters: 0f,
+        CenterOfMassYMeters: 0.94f,
+        CenterOfMassZMeters: 0f,
+        CenterOfMassVelocityXMetersPerSecond: 0f,
+        CenterOfMassVelocityZMetersPerSecond: 0f,
+        ExtrapolatedCenterOfMassXMeters: 0f,
+        ExtrapolatedCenterOfMassZMeters: 0f,
+        CenterOfPressureXMeters: 0f,
+        CenterOfPressureZMeters: 0f,
+        SupportAreaSquareMeters: 0f,
+        SupportMarginMeters: 0f,
+        FallPitchRadians: 0f,
+        FallRollRadians: 0f,
+        FallPitchVelocityRadiansPerSecond: 0f,
+        FallRollVelocityRadiansPerSecond: 0f,
+        Phase: "stable",
+        RightingForceFraction: 0f);
+}
+
+public sealed record PhysicalMuscleMeasurement(
+    string Name,
+    string Side,
+    float Activation,
+    float ForceNewtons,
+    float LengthFraction,
+    float VelocityPerSecond,
+    float FatigueFraction);
 
 public sealed record InputGateRuntime(
     bool AvatarVisionEnabled,

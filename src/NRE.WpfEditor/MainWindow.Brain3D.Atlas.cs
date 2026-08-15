@@ -23,9 +23,6 @@ public partial class MainWindow
             ["NucleusAccumbens"] = Bilateral(
                 Geometry(-8.35, -9.05, 7.36, 12.6, 11.2, 8.4, Cit168Source),
                 Geometry(8.75, -8.50, 7.96, 12.6, 9.8, 9.1, Cit168Source)),
-            ["GlobusPallidus"] = Bilateral(
-                Geometry(-16.17, -1.98, -2.75, 16.1, 14.0, 20.3, Cit168Source),
-                Geometry(16.76, -1.46, -2.13, 16.1, 14.0, 20.3, Cit168Source)),
             ["VentralPallidum"] = Bilateral(
                 Geometry(-10.15, -8.14, 2.35, 10.5, 4.2, 5.6, Cit168Source),
                 Geometry(10.89, -7.52, 3.09, 9.8, 4.2, 6.3, Cit168Source)),
@@ -35,15 +32,24 @@ public partial class MainWindow
             ["GPi"] = Bilateral(
                 Geometry(-15.12, -4.23, -5.10, 13.3, 9.1, 12.6, Cit168Source),
                 Geometry(15.70, -3.74, -4.43, 14.0, 9.1, 12.6, Cit168Source)),
-            ["Amygdala"] = Bilateral(
-                Geometry(-22.57, -18.07, -4.87, 21.0, 20.0, 19.0, HarvardOxfordSource),
-                Geometry(22.95, -18.00, -3.71, 22.0, 20.0, 20.0, HarvardOxfordSource)),
-            ["BasalForebrain"] = Symmetric(9.0, -8.0, 4.0, 16.0, 10.0, 16.0, AtlasGuidedSource),
+            ["BasolateralAmygdala"] = Bilateral(
+                Geometry(-24.0, -17.0, -5.0, 12.0, 14.0, 13.0, AtlasGuidedSource),
+                Geometry(24.0, -17.0, -4.0, 12.0, 14.0, 13.0, AtlasGuidedSource)),
+            ["CentralAmygdala"] = Bilateral(
+                Geometry(-18.5, -19.0, -6.0, 7.0, 9.0, 8.0, AtlasGuidedSource),
+                Geometry(18.5, -19.0, -5.0, 7.0, 9.0, 8.0, AtlasGuidedSource)),
+            ["MedialAmygdala"] = Bilateral(
+                Geometry(-20.0, -16.0, -9.0, 7.0, 8.0, 9.0, AtlasGuidedSource),
+                Geometry(20.0, -16.0, -8.0, 7.0, 8.0, 9.0, AtlasGuidedSource)),
+            ["CorticalAmygdala"] = Bilateral(
+                Geometry(-25.0, -14.0, -9.0, 8.0, 7.0, 10.0, AtlasGuidedSource),
+                Geometry(25.0, -14.0, -8.0, 8.0, 7.0, 10.0, AtlasGuidedSource)),
+            ["BedNucleusStriaTerminalis"] = Symmetric(7.0, -2.0, 2.0, 9.0, 8.0, 12.0, AtlasGuidedSource),
+            ["MedialSeptalNucleus"] = Midline(0.0, -1.0, 8.0, 8.0, 10.0, 10.0, AtlasGuidedSource),
+            ["DiagonalBandNucleus"] = Symmetric(6.0, -5.0, 8.0, 11.0, 7.0, 14.0, AtlasGuidedSource),
+            ["NucleusBasalis"] = Symmetric(9.0, -8.0, 4.0, 16.0, 10.0, 16.0, AtlasGuidedSource),
 
             // Thalamic nuclei measured from AAL3; TRN follows the lateral thalamic envelope.
-            ["Thalamus"] = Bilateral(
-                Geometry(-12.91, 5.05, -18.32, 28.0, 28.0, 36.0, Aal3Source),
-                Geometry(12.13, 4.78, -17.33, 28.0, 28.0, 36.0, Aal3Source)),
             ["MotorThalamus"] = Bilateral(
                 Geometry(-14.41, 5.90, -14.14, 18.0, 24.0, 30.0, Aal3Source),
                 Geometry(13.77, 5.47, -13.01, 20.0, 24.0, 30.0, Aal3Source)),
@@ -59,9 +65,31 @@ public partial class MainWindow
             ["IntralaminarThalamus"] = Bilateral(
                 Geometry(-9.75, -0.30, -18.04, 10.0, 19.0, 19.0, Aal3Source),
                 Geometry(9.38, -0.37, -17.05, 11.0, 19.0, 19.0, Aal3Source)),
-            ["Hypothalamus"] = Bilateral(
-                Geometry(-3.62, -8.97, -4.05, 9.1, 16.1, 16.8, Cit168Source),
-                Geometry(4.19, -8.81, -3.69, 9.1, 16.1, 16.8, Cit168Source)),
+            ["LateralGeniculateNucleus"] = Bilateral(
+                Geometry(-22.0, 0.5, -24.0, 9.0, 7.0, 10.0, AtlasGuidedSource),
+                Geometry(22.0, 0.5, -24.0, 9.0, 7.0, 10.0, AtlasGuidedSource)),
+            ["MedialGeniculateNucleus"] = Bilateral(
+                Geometry(-17.0, -1.0, -27.0, 8.0, 7.0, 8.0, AtlasGuidedSource),
+                Geometry(17.0, -1.0, -27.0, 8.0, 7.0, 8.0, AtlasGuidedSource)),
+            ["VentralPosterolateralThalamus"] = Bilateral(
+                Geometry(-15.0, 2.0, -19.0, 10.0, 14.0, 11.0, AtlasGuidedSource),
+                Geometry(15.0, 2.0, -19.0, 10.0, 14.0, 11.0, AtlasGuidedSource)),
+            ["VentralPosteromedialThalamus"] = Bilateral(
+                Geometry(-10.0, 2.0, -17.0, 7.0, 11.0, 8.0, AtlasGuidedSource),
+                Geometry(10.0, 2.0, -17.0, 7.0, 11.0, 8.0, AtlasGuidedSource)),
+            ["AnteriorThalamicNuclei"] = Bilateral(
+                Geometry(-7.0, 7.0, -10.0, 8.0, 9.0, 8.0, AtlasGuidedSource),
+                Geometry(7.0, 7.0, -10.0, 8.0, 9.0, 8.0, AtlasGuidedSource)),
+            ["NucleusReuniens"] = Midline(0.0, 0.0, -11.0, 5.0, 12.0, 7.0, AtlasGuidedSource),
+            ["VentrolateralPreopticNucleus"] = Symmetric(4.0, -4.0, -10.0, 5.0, 4.0, 4.0, AtlasGuidedSource),
+            ["SuprachiasmaticNucleus"] = Symmetric(2.0, -2.0, -11.0, 4.0, 4.0, 4.0, AtlasGuidedSource),
+            ["ParaventricularHypothalamicNucleus"] = Symmetric(3.0, -5.0, -5.0, 5.0, 7.0, 5.0, AtlasGuidedSource),
+            ["SupraopticNucleus"] = Symmetric(6.0, -3.0, -10.0, 5.0, 5.0, 5.0, AtlasGuidedSource),
+            ["ArcuateNucleus"] = Symmetric(3.0, -10.0, -10.0, 6.0, 5.0, 5.0, AtlasGuidedSource),
+            ["LateralHypothalamicArea"] = Symmetric(8.0, -8.0, -6.0, 8.0, 8.0, 7.0, AtlasGuidedSource),
+            ["VentromedialHypothalamicNucleus"] = Symmetric(4.0, -7.0, -8.0, 6.0, 7.0, 6.0, AtlasGuidedSource),
+            ["DorsomedialHypothalamicNucleus"] = Symmetric(4.0, -10.0, -3.0, 6.0, 7.0, 6.0, AtlasGuidedSource),
+            ["MammillaryBodies"] = Symmetric(5.0, -15.0, -10.0, 7.0, 5.0, 6.0, AtlasGuidedSource),
             ["Habenula"] = Bilateral(
                 Geometry(-2.31, 2.15, -23.30, 3.5, 7.7, 5.6, Cit168Source),
                 Geometry(2.93, 2.15, -22.78, 3.5, 7.0, 5.6, Cit168Source)),
@@ -98,15 +126,26 @@ public partial class MainWindow
             ["PurkinjeCellLayer"] = Midline(2.57, -36.58, -61.36, 120.0, 62.0, 68.0, Aal3Source),
             ["CerebellarVermis"] = Midline(2.28, -19.49, -58.23, 14.0, 52.0, 48.0, Aal3Source),
             ["CerebellarLobules"] = Midline(2.57, -36.58, -61.36, 122.0, 64.0, 70.0, Aal3Source),
-            ["DeepCerebellarNuclei"] = Symmetric(15.0, -33.0, -56.0, 18.0, 12.0, 24.0, AtlasGuidedSource),
-            ["Pons"] = Midline(0.5, -31.0, -29.0, 34.0, 28.0, 32.0, AtlasGuidedSource),
+			["DentateNucleus"] = Symmetric(12.0, -31.0, -58.0, 16.0, 10.0, 12.0, AtlasGuidedSource),
+			["InterposedNuclei"] = Symmetric(7.0, -29.0, -56.0, 10.0, 9.0, 10.0, AtlasGuidedSource),
+			["FastigialNucleus"] = Symmetric(3.0, -27.0, -54.0, 7.0, 8.0, 9.0, AtlasGuidedSource),
+            ["PontineNuclei"] = Symmetric(8.0, -31.0, -29.0, 16.0, 28.0, 28.0, AtlasGuidedSource),
+			["RedNucleus"] = Symmetric(7.0, -7.0, -20.0, 7.0, 8.0, 9.0, AtlasGuidedSource),
+			["PedunculopontineNucleus"] = Symmetric(6.0, -17.0, -29.0, 6.0, 10.0, 8.0, AtlasGuidedSource),
+			["LaterodorsalTegmentalNucleus"] = Symmetric(5.0, -18.0, -32.0, 5.0, 9.0, 7.0, AtlasGuidedSource),
+			["ParabrachialComplex"] = Symmetric(9.0, -25.0, -36.0, 7.0, 8.0, 8.0, AtlasGuidedSource),
+			["PrincipalSensoryTrigeminalNucleus"] = Symmetric(9.0, -29.0, -40.0, 6.0, 10.0, 8.0, AtlasGuidedSource),
+			["SpinalTrigeminalNucleus"] = Symmetric(8.0, -37.0, -48.0, 6.0, 16.0, 10.0, AtlasGuidedSource),
+			["MesencephalicTrigeminalNucleus"] = Symmetric(5.0, -11.0, -28.0, 4.0, 10.0, 12.0, AtlasGuidedSource),
+			["FacialMotorNucleus"] = Symmetric(6.0, -31.0, -43.0, 5.0, 8.0, 7.0, AtlasGuidedSource),
+			["OculomotorNucleus"] = Symmetric(4.0, -7.0, -18.0, 5.0, 7.0, 6.0, AtlasGuidedSource),
+			["HypoglossalNucleus"] = Symmetric(4.0, -38.0, -50.0, 5.0, 10.0, 8.0, AtlasGuidedSource),
             ["CochlearNucleus"] = Symmetric(10.0, -30.0, -37.0, 8.0, 10.0, 12.0, AtlasGuidedSource),
             ["SuperiorOlive"] = Symmetric(6.0, -30.0, -28.0, 8.0, 8.0, 10.0, AtlasGuidedSource),
             ["VestibularNuclei"] = Symmetric(7.0, -28.0, -38.0, 10.0, 15.0, 14.0, AtlasGuidedSource),
             ["NucleusTractusSolitarius"] = Symmetric(4.0, -39.0, -40.0, 7.0, 18.0, 10.0, AtlasGuidedSource),
             ["ReticularFormation"] = Midline(0.0, -34.0, -32.0, 16.0, 48.0, 18.0, AtlasGuidedSource),
             ["InferiorOlive"] = Symmetric(5.0, -43.0, -33.0, 9.0, 20.0, 11.0, AtlasGuidedSource),
-            ["Medulla"] = Midline(0.0, -44.0, -33.0, 24.0, 32.0, 24.0, AtlasGuidedSource),
             ["LocusCoeruleus"] = Bilateral(
                 Geometry(-4.40, -27.06, -34.98, 4.0, 14.0, 5.0, Aal3Source),
                 Geometry(6.02, -27.74, -35.26, 5.0, 14.0, 6.0, Aal3Source)),

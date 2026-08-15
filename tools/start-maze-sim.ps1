@@ -23,7 +23,7 @@ $envVars = @{
 
 Assert-DnneSimulatorExclusive `
     -CurrentSimulator 'DNNE Maze Simulator' `
-    -BlockedSignatures @('NRE.WpfWorldSim', 'start-world-sim.ps1') `
+    -BlockedSignatures @('NRE.WpfWorldSim', 'start-world-sim.ps1', 'NRE.BlazorEditor', 'start-blazor-editor.ps1') `
     -WhatIf:$WhatIf
 
 Start-DnneProject `

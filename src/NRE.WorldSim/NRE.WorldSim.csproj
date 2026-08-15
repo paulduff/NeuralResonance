@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepuPhysics" Version="2.4.0" />
+    <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
+    <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\NRE.SimAvatar\NRE.SimAvatar.csproj" />
+  </ItemGroup>
+
+</Project>

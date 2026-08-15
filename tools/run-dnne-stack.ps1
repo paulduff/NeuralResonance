@@ -54,7 +54,7 @@ $ErrorActionPreference = 'Stop'
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = (Resolve-Path (Join-Path $scriptDir '..')).Path
 $controlProj = Join-Path $repoRoot 'ControlProgram\NeuralResonanceEngine.ControlProgram.csproj'
-$editorProj = Join-Path $repoRoot 'src\NRE.WpfEditor\NRE.WpfEditor.csproj'
+$editorProj = Join-Path $repoRoot 'src\NRE.BlazorEditor\NRE.BlazorEditor.csproj'
 $killScript = Join-Path $repoRoot 'tools\kill-dnne-services.ps1'
 $burnInScript = Join-Path $repoRoot 'tools\burnin-dnne.ps1'
 $burnInSummaryPath = Join-Path $repoRoot 'tools\_burnin-summary.txt'
@@ -654,7 +654,7 @@ if ($NoBuild) {
     $contractsDll = Join-Path $repoRoot ("Shared.Contracts\bin\{0}\net8.0\NeuralResonanceEngine.Shared.Contracts.dll" -f $Configuration)
     Ensure-ProjectFreshBuild -ProjectPath $controlProj -DisplayName 'ControlProgram' -DependencyOutputs @($protocolDll, $contractsDll) -BuildConfiguration $Configuration
     if (-not $NoEditor) {
-        Ensure-ProjectFreshBuild -ProjectPath $editorProj -DisplayName 'WPF editor' -DependencyOutputs @() -BuildConfiguration $Configuration
+        Ensure-ProjectFreshBuild -ProjectPath $editorProj -DisplayName 'Blazor editor and headless WorldSim' -DependencyOutputs @() -BuildConfiguration $Configuration
     }
 }
 
@@ -1097,7 +1097,7 @@ if (($ready -or $readyDegraded) -and $UseStartupProfileLock) {
 }
 
 if (-not $NoEditor) {
-    $editorExe = Join-Path $repoRoot ("src\NRE.WpfEditor\bin\{0}\net10.0-windows\NRE.WpfEditor.exe" -f $Configuration)
+    $editorExe = Join-Path $repoRoot ("src\NRE.BlazorEditor\bin\{0}\net8.0\NRE.BlazorEditor.exe" -f $Configuration)
     $editorArgText = if ($NoBuild) {
         if (Test-Path $editorExe -PathType Leaf) {
             "run --no-build --no-launch-profile --configuration $Configuration --project `"$editorProj`""
@@ -1111,18 +1111,37 @@ if (-not $NoEditor) {
         "run --no-launch-profile --configuration $Configuration --project `"$editorProj`""
     }
 
-    Write-Host 'Starting WPF editor...'
-    $editorLogs = New-DnneProcessLogPaths -Name 'wpf-editor'
-    $editorProc = Start-Process `
-        -FilePath 'dotnet' `
-        -ArgumentList $editorArgText `
-        -WorkingDirectory (Split-Path -Parent $editorProj) `
-        -RedirectStandardOutput $editorLogs.StdOut `
-        -RedirectStandardError $editorLogs.StdErr `
-        -PassThru
-    Write-Host ("WPF Editor PID: {0}" -f $editorProc.Id)
-    Write-Host ("WPF Editor stdout: {0}" -f $editorLogs.StdOut)
-    Write-Host ("WPF Editor stderr: {0}" -f $editorLogs.StdErr)
+    Write-Host 'Starting Blazor editor and authoritative headless WorldSim...'
+    $editorLogs = New-DnneProcessLogPaths -Name 'blazor-editor'
+    $previousEditorEnvironment = @{
+        ASPNETCORE_ENVIRONMENT = [Environment]::GetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Process')
+        DOTNET_ENVIRONMENT = [Environment]::GetEnvironmentVariable('DOTNET_ENVIRONMENT', 'Process')
+        NRE_EDITOR_CONTROL_BASE_URL = [Environment]::GetEnvironmentVariable('NRE_EDITOR_CONTROL_BASE_URL', 'Process')
+        NRE_EDITOR_PORT = [Environment]::GetEnvironmentVariable('NRE_EDITOR_PORT', 'Process')
+    }
+    try {
+        [Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Production', 'Process')
+        [Environment]::SetEnvironmentVariable('DOTNET_ENVIRONMENT', 'Production', 'Process')
+        [Environment]::SetEnvironmentVariable('NRE_EDITOR_CONTROL_BASE_URL', $ControlBaseUrl.TrimEnd('/'), 'Process')
+        [Environment]::SetEnvironmentVariable('NRE_EDITOR_PORT', '5090', 'Process')
+        $editorProc = Start-Process `
+            -FilePath 'dotnet' `
+            -ArgumentList $editorArgText `
+            -WorkingDirectory (Split-Path -Parent $editorProj) `
+            -RedirectStandardOutput $editorLogs.StdOut `
+            -RedirectStandardError $editorLogs.StdErr `
+            -WindowStyle Hidden `
+            -PassThru
+    }
+    finally {
+        foreach ($entry in $previousEditorEnvironment.GetEnumerator()) {
+            [Environment]::SetEnvironmentVariable([string]$entry.Key, $entry.Value, 'Process')
+        }
+    }
+    Write-Host ("Blazor Editor PID: {0}" -f $editorProc.Id)
+    Write-Host ("Blazor Editor URL: http://localhost:5090/editor")
+    Write-Host ("Blazor Editor stdout: {0}" -f $editorLogs.StdOut)
+    Write-Host ("Blazor Editor stderr: {0}" -f $editorLogs.StdErr)
 }
 
 if ($readyDegraded) {

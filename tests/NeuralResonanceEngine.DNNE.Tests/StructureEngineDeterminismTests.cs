@@ -67,7 +67,7 @@ public sealed class StructureEngineDeterminismTests
     }
 
     [Fact]
-    public void HemisphereInstancesUseDifferentSynapseFiles()
+    public void HemisphereInstancesUseDifferentCurrentGenerationSynapseFiles()
     {
         lock (EnvironmentGate)
         {
@@ -88,8 +88,15 @@ public sealed class StructureEngineDeterminismTests
                         new DelayWindow(2, 2)));
                 }
 
-                Assert.True(File.Exists(Path.Combine(directory, "PFC_L.synapses.json")));
-                Assert.True(File.Exists(Path.Combine(directory, "PFC_R.synapses.json")));
+                foreach (var instance in new[] { "PFC_L", "PFC_R" })
+                {
+                    var path = Path.Combine(directory, $"{instance}.synapses.json");
+                    Assert.True(File.Exists(path));
+                    using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+                    Assert.Equal(
+                        SynapsePersistenceStore.CurrentSchemaVersion,
+                        document.RootElement.GetProperty("SchemaVersion").GetInt32());
+                }
             }
             finally
             {

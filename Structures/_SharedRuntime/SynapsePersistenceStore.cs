@@ -10,6 +10,7 @@ using NeuralResonanceEngine.Protocol;
 
 internal sealed class SynapsePersistenceStore : IDisposable
 {
+	internal const int CurrentSchemaVersion = 2;
 	private const int DefaultSaveEveryMutationCount = 4096;
 	private const double DefaultSaveEveryMs = 10000.0;
 	private const int DefaultSensoryInboundSynapseLimit = 65_536;
@@ -71,6 +72,12 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			if (snapshot == null || snapshot.StructureId != _structureId ||
 				(!string.IsNullOrWhiteSpace(snapshot.InstanceKey) && !string.Equals(snapshot.InstanceKey, _instanceKey, StringComparison.OrdinalIgnoreCase)))
 			{
+				return;
+			}
+			if (snapshot.SchemaVersion != CurrentSchemaVersion)
+			{
+				Console.Error.WriteLine(
+					$"[{_structureId}] Synapse state generation {snapshot.SchemaVersion} ignored; generation {CurrentSchemaVersion} is required.");
 				return;
 			}
 
@@ -173,6 +180,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
 		return new SynapseStoreSnapshot
 		{
+			SchemaVersion = CurrentSchemaVersion,
 			StructureId = _structureId,
 			InstanceKey = _instanceKey,
 			SavedAtUtc = DateTimeOffset.UtcNow,
@@ -389,6 +397,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 	private sealed class SynapseStoreSnapshot
 	{
+		public int SchemaVersion { get; set; }
+
 		public StructureId StructureId { get; set; }
 
 		public string InstanceKey { get; set; } = string.Empty;

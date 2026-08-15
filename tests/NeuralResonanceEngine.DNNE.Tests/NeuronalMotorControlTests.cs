@@ -39,6 +39,29 @@ public sealed class NeuronalMotorControlTests
     }
 
     [Fact]
+    public void SelectedActionLaneIsNotVetoedByGlobalOutputNucleusAverage()
+    {
+        var circuit = CreateMotorCircuit(
+                20.0f,
+                20.0f,
+                outputInhibition: 1.0f,
+                thalamicDisinhibition: 0.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreateActionCircuit(
+                selectedChannel: 0,
+                selectedOutputInhibition: 0.04f,
+                selectedThalamicRelay: 0.85f))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.True(runtime.Active);
+        Assert.Equal(0.04, runtime.OutputInhibition, 6);
+        Assert.Equal(0.96, runtime.SelectionGate, 6);
+        Assert.True(runtime.ForwardDrive > 0.10);
+    }
+
+    [Fact]
     public void MotorPopulationAblationDropsCoverageAndAuthority()
     {
         var complete = Decode(CreateMotorCircuit(20.0f, 20.0f));
@@ -127,6 +150,7 @@ public sealed class NeuronalMotorControlTests
     public void FifthActionLaneProducesManipulatorDriveWithoutLocomotion()
     {
         var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
             .Concat(CreateActionCircuit(NeuronalActionSelectionDecoder.ManipulatorChannel))
             .ToArray();
 
@@ -137,6 +161,106 @@ public sealed class NeuronalMotorControlTests
         Assert.True(runtime.ManipulatorDrive > 0.10);
         Assert.Equal(0.0, runtime.ForwardDrive, 6);
         Assert.Equal(0.0, runtime.TurnDrive, 6);
+    }
+
+    [Theory]
+    [InlineData(NeuronalActionSelectionDecoder.StandChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.CrouchChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.SitChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.LieChannel)]
+    public void PostureActionLanesRecruitOnlyTheirPosturalDrive(int selectedChannel)
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreateActionCircuit(selectedChannel))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+        var postureDrives = new Dictionary<int, double>
+        {
+            [NeuronalActionSelectionDecoder.StandChannel] = runtime.StandDrive,
+            [NeuronalActionSelectionDecoder.CrouchChannel] = runtime.CrouchDrive,
+            [NeuronalActionSelectionDecoder.SitChannel] = runtime.SitDrive,
+            [NeuronalActionSelectionDecoder.LieChannel] = runtime.LieDrive
+        };
+
+        Assert.True(runtime.Active);
+        Assert.Equal(selectedChannel, runtime.SelectedActionChannel);
+        Assert.True(postureDrives[selectedChannel] > 0.10);
+        Assert.All(postureDrives.Where(pair => pair.Key != selectedChannel), pair =>
+            Assert.Equal(0.0, pair.Value, 6));
+        Assert.Equal(0.0, runtime.ForwardDrive, 6);
+        Assert.Equal(0.0, runtime.TurnDrive, 6);
+        Assert.Equal(0.0, runtime.ManipulatorDrive, 6);
+    }
+
+    [Fact]
+    public void BilateralSpinalRightingPopulationCanRecruitStandWithoutActionSelection()
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreatePrimaryRightingReflex(leftDrive: 0.85f, rightDrive: 0.80f))
+            .Concat(CreateSpinalRightingReflex(leftDrive: 0.80f, rightDrive: 0.75f))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.True(runtime.Active);
+        Assert.Equal(-1, runtime.SelectedActionChannel);
+        Assert.True(runtime.StandDrive > 0.10);
+        Assert.Equal(0.0, runtime.CrouchDrive, 6);
+        Assert.Equal(0.0, runtime.SitDrive, 6);
+        Assert.Equal(0.0, runtime.LieDrive, 6);
+        Assert.Contains("righting=bilateral", runtime.Evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnilateralSpinalRightingPopulationHasNoMotorAuthority()
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreatePrimaryRightingReflex(leftDrive: 0.85f, rightDrive: 0.80f))
+            .Concat(CreateSpinalRightingReflex(leftDrive: 0.80f, rightDrive: null))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.False(runtime.Active);
+        Assert.Equal(0.0, runtime.StandDrive, 6);
+        Assert.Contains("righting=incomplete", runtime.Evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReverberatingSpinalRightingPopulationReleasesWithoutCurrentAfferentDrive()
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreateSpinalRightingReflex(leftDrive: 0.90f, rightDrive: 0.90f))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.False(runtime.Active);
+        Assert.Equal(0.0, runtime.StandDrive, 6);
+        Assert.Contains("righting=incomplete", runtime.Evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SelectedFloorPostureNeurallyInhibitsRightingReflex()
+    {
+        var circuit = CreateMotorCircuit(20.0f, 20.0f)
+            .Where(snapshot => snapshot.ActionSelectionDiagnostics is null)
+            .Concat(CreateActionCircuit(NeuronalActionSelectionDecoder.LieChannel))
+            .Concat(CreatePrimaryRightingReflex(leftDrive: 0.95f, rightDrive: 0.95f))
+            .Concat(CreateSpinalRightingReflex(leftDrive: 0.90f, rightDrive: 0.90f))
+            .ToArray();
+
+        var runtime = Decode(circuit);
+
+        Assert.True(runtime.Active);
+        Assert.Equal(NeuronalActionSelectionDecoder.LieChannel, runtime.SelectedActionChannel);
+        Assert.Equal(0.0, runtime.StandDrive, 6);
+        Assert.True(runtime.LieDrive > 0.10);
     }
 
     [Fact]
@@ -159,6 +283,51 @@ public sealed class NeuronalMotorControlTests
         Assert.DoesNotContain(
             composed,
             spike => spike.SourceNeuronId.StartsWith("population:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SuperiorColliculusTopographyProducesNeuronalHeadOrientation()
+    {
+        var superiorColliculus = Snapshot(
+            StructureId.SuperiorColliculus,
+            "M",
+            20.0f,
+            topActiveNeurons:
+            [
+                new NeuronActivity("M-SuperiorColliculus-015", 24.0f),
+                new NeuronActivity("M-SuperiorColliculus-031", 22.0f)
+            ]);
+
+        var runtime = Decode([superiorColliculus]);
+
+        Assert.True(runtime.Active);
+        Assert.True(runtime.HeadYawDrive > 0.50);
+        Assert.True(runtime.HeadPitchDrive > 0.45);
+        Assert.Equal(0.0, runtime.ForwardDrive, 6);
+        Assert.Equal(0.0, runtime.TurnDrive, 6);
+        Assert.Contains("orienting=topographic", runtime.Evidence, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NeuronalBridgeEmitsSignedOrientingEffectors()
+    {
+        var state = CreateAvatarState(
+            active: true,
+            tick: 14,
+            confidence: 0.8,
+            left: 0.0,
+            right: 0.0,
+            headYaw: 0.75,
+            headPitch: -0.50);
+
+        var composed = AvatarNeuronalMotorBridge.Compose(state, [], -1, out _, out var decoded);
+
+        Assert.Equal(0.75, decoded.HeadYawDrive, 6);
+        Assert.Equal(-0.50, decoded.HeadPitchDrive, 6);
+        Assert.Contains(composed, spike => spike.SourceNeuronId.StartsWith(
+            "effector:orient:yaw:excitatory:", StringComparison.Ordinal));
+        Assert.Contains(composed, spike => spike.SourceNeuronId.StartsWith(
+            "effector:orient:pitch:inhibitory:", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -258,7 +427,7 @@ public sealed class NeuronalMotorControlTests
                 DopamineModulation: 0.5f,
                 ActionSelectionBias: thalamicDisinhibition)));
         snapshots.Add(Snapshot(
-            StructureId.DeepCerebellarNuclei,
+            StructureId.DentateNucleus,
             "M",
             10.0f,
             cerebellar: new CerebellarDiagnostics(
@@ -282,6 +451,10 @@ public sealed class NeuronalMotorControlTests
                 SpinalMotorTone: 0.8f,
                 PostureStability: 0.9f,
                 BalanceError: 0.1f)));
+        snapshots.AddRange(CreateActionCircuit(
+            selectedChannel: 0,
+            selectedOutputInhibition: outputInhibition,
+            selectedThalamicRelay: thalamicDisinhibition));
         return snapshots;
     }
 
@@ -292,7 +465,8 @@ public sealed class NeuronalMotorControlTests
         BasalGangliaDiagnostics? basalGanglia = null,
         CerebellarDiagnostics? cerebellar = null,
         VestibuloReticularDiagnostics? postural = null,
-        ActionSelectionDiagnostics? actionSelection = null)
+        ActionSelectionDiagnostics? actionSelection = null,
+        IReadOnlyList<NeuronActivity>? topActiveNeurons = null)
     {
         var instance = new ServiceInstance(
             structure,
@@ -305,7 +479,7 @@ public sealed class NeuronalMotorControlTests
             ActiveNeuronCount: rate > 0.0f ? 8 : 0,
             MeanFiringRateHz: rate,
             DominantRhythm: BrainRhythm.BETA,
-            TopActiveNeurons: [],
+            TopActiveNeurons: topActiveNeurons ?? [],
             NeuromodLocal: new NeuromodState(),
             SpikeInCount: 0,
             SpikeOutCount: 0,
@@ -316,7 +490,10 @@ public sealed class NeuronalMotorControlTests
             ActionSelectionDiagnostics: actionSelection);
     }
 
-    private static IReadOnlyList<InstanceStructureSnapshot> CreateActionCircuit(int selectedChannel)
+    private static IReadOnlyList<InstanceStructureSnapshot> CreateActionCircuit(
+        int selectedChannel,
+        float selectedOutputInhibition = 0.04f,
+        float selectedThalamicRelay = 0.85f)
     {
         var structures = new[]
         {
@@ -340,8 +517,8 @@ public sealed class NeuronalMotorControlTests
                     DirectPathwayActivation: selected ? 0.90f : 0.10f,
                     IndirectPathwayActivation: selected ? 0.05f : 0.40f,
                     HyperdirectSuppression: selected ? 0.04f : 0.35f,
-                    OutputNucleusInhibition: selected ? 0.04f : 0.70f,
-                    ThalamicRelayActivation: selected ? 0.85f : 0.05f,
+                    OutputNucleusInhibition: selected ? selectedOutputInhibition : 0.70f,
+                    ThalamicRelayActivation: selected ? selectedThalamicRelay : 0.05f,
                     EligibilityTrace: selected ? 0.35f : 0f,
                     LearnedSynapticStrength: selected ? 2.8f : 0.8f,
                     SelectionScore: 0f);
@@ -362,13 +539,85 @@ public sealed class NeuronalMotorControlTests
             .ToArray();
     }
 
+    private static IReadOnlyList<InstanceStructureSnapshot> CreateSpinalRightingReflex(
+        float? leftDrive,
+        float? rightDrive)
+    {
+        var snapshots = new List<InstanceStructureSnapshot>();
+        if (leftDrive is { } left)
+        {
+            snapshots.Add(SpinalRightingSnapshot("L", left));
+        }
+        if (rightDrive is { } right)
+        {
+            snapshots.Add(SpinalRightingSnapshot("R", right));
+        }
+        return snapshots;
+    }
+
+    private static IReadOnlyList<InstanceStructureSnapshot> CreatePrimaryRightingReflex(
+        float? leftDrive,
+        float? rightDrive)
+    {
+        var snapshots = new List<InstanceStructureSnapshot>();
+        if (leftDrive is { } left)
+        {
+            snapshots.Add(RightingSnapshot(StructureId.VestibularAfferents, "L", left));
+        }
+        if (rightDrive is { } right)
+        {
+            snapshots.Add(RightingSnapshot(StructureId.VestibularAfferents, "R", right));
+        }
+        return snapshots;
+    }
+
+    private static InstanceStructureSnapshot SpinalRightingSnapshot(string hemisphere, float standDrive)
+        => RightingSnapshot(StructureId.SpinalCordMotor, hemisphere, standDrive);
+
+    private static InstanceStructureSnapshot RightingSnapshot(
+        StructureId structure,
+        string hemisphere,
+        float standDrive)
+    {
+        var channels = Enumerable.Range(0, NeuronalActionSelectionDecoder.ChannelCount)
+            .Select(channel => new ActionChannelActivity(
+                channel,
+                ProposalDrive: 0f,
+                DirectPathwayActivation: 0f,
+                IndirectPathwayActivation: 0f,
+                HyperdirectSuppression: 0f,
+                OutputNucleusInhibition: 0f,
+                ThalamicRelayActivation: 0f,
+                EligibilityTrace: 0f,
+                LearnedSynapticStrength: 0f,
+                SelectionScore: channel == NeuronalActionSelectionDecoder.StandChannel
+                    ? standDrive
+                    : 0f,
+				ReflexDrive: channel == NeuronalActionSelectionDecoder.StandChannel
+						? standDrive
+						: 0f))
+            .ToArray();
+        return Snapshot(
+            structure,
+            hemisphere,
+            rate: 20.0f,
+            actionSelection: new ActionSelectionDiagnostics(
+                structure,
+                channels,
+                NeuronalActionSelectionDecoder.StandChannel,
+                SelectionMargin: standDrive,
+                DopamineModulation: 0f));
+    }
+
     private static JsonElement CreateAvatarState(
         bool active,
         long tick,
         double confidence,
         double left,
         double right,
-        double manipulator = 0.0)
+        double manipulator = 0.0,
+        double headYaw = 0.0,
+        double headPitch = 0.0)
         => JsonSerializer.SerializeToElement(new
         {
             neuronalMotor = new
@@ -380,6 +629,8 @@ public sealed class NeuronalMotorControlTests
                 leftDrive = left,
                 rightDrive = right,
                 manipulatorDrive = manipulator,
+                headYawDrive = headYaw,
+                headPitchDrive = headPitch,
                 confidence,
                 minimumOutputConfidence = 0.45,
                 maxPopulationEventsPerSide = 8

@@ -21,4 +21,8 @@ public sealed class SpikeMessage
     // NeuromodState that is immediately overwritten. Callers that read this
     // property must coalesce against null (treat as "no modulation").
     [ProtoMember(13)] public NeuromodState? ModulationContext { get; set; }
+    // Axonal tract identity, not a motor command. This bit is set only after a
+    // neuron fires from recent fall-sensitive synaptic input and is propagated
+    // through declared righting-reflex projections.
+    [ProtoMember(14)] public bool IsRightingCircuitSpike { get; set; }
 }

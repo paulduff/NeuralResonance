@@ -23,6 +23,8 @@
     <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
     <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\src\NRE.SimAvatar\NRE.SimAvatar.csproj" />
+    <ProjectReference Include="..\..\src\NRE.BlazorEditor\NRE.BlazorEditor.csproj" />
+    <ProjectReference Include="..\..\src\NRE.WorldSim\NRE.WorldSim.csproj" />
     <ProjectReference Include="..\..\Structures\NeuralResonanceEngine.Structures.Runtime.csproj" />
   </ItemGroup>
 

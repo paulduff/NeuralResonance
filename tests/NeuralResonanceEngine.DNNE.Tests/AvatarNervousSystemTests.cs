@@ -117,8 +117,48 @@ public sealed class AvatarNervousSystemTests
             ["Kinematics", "DriveDecay"],
             typeof(AvatarNervousSystemOptions).GetProperties().Select(static property => property.Name).ToArray());
         Assert.Equal(
-            ["LeftMotorDrive", "RightMotorDrive", "ManipulatorDrive", "MotorEvents", "ManipulatorEvents", "TicksWithoutMotorDispatch"],
+            [
+                "LeftMotorDrive", "RightMotorDrive", "ManipulatorDrive",
+                "HeadYawDrive", "HeadPitchDrive",
+                "StandDrive", "CrouchDrive", "SitDrive", "LieDrive",
+                "MotorEvents", "ManipulatorEvents", "OrientingEvents", "PostureEvents", "TicksWithoutMotorDispatch"
+            ],
             typeof(AvatarNervousSystemSignal).GetProperties().Select(static property => property.Name).ToArray());
+    }
+
+    [Fact]
+    public void OrientingPopulationProducesSignedHeadDriveWithoutLocomotion()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 100, "effector:orient:yaw:excitatory:9:0"),
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 101, "effector:orient:pitch:inhibitory:9:0")
+        ]);
+
+        Assert.Equal(2, signal.OrientingEvents);
+        Assert.True(signal.HeadYawDrive > 0.0);
+        Assert.True(signal.HeadPitchDrive < 0.0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
+    }
+
+    [Fact]
+    public void PosturePopulationEventsRemainPhysicalAndDistinctFromLocomotion()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 100, "effector:posture:crouch:excitatory:9:0")
+        ]);
+
+        Assert.Equal(1, signal.PostureEvents);
+        Assert.True(signal.CrouchDrive > 0.0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
     }
 
     private static AvatarNervousSystem CreateNervousSystem()

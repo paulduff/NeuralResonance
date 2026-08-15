@@ -72,6 +72,22 @@ public sealed class HostVisualAuthorityBoundaryTests
             "RightFieldSaliency");
     }
 
+    [Fact]
+    public void HeadlessWorldPresentsSeparatePhysicalEyeFramesWithoutHostFusion()
+    {
+        var source = ReadSource("src", "NRE.WorldSim", "HeadlessWorldRuntime.cs");
+
+        Assert.Contains("AvatarBinocularVision.ComputeEyePose", source, StringComparison.Ordinal);
+        Assert.Contains("LeftRetinalInputSource", source, StringComparison.Ordinal);
+        Assert.Contains("RightRetinalInputSource", source, StringComparison.Ordinal);
+        AssertSourceOmits(
+            source,
+            "FuseRetinalFrames",
+            "ComputeBinocularDepthMap",
+            "ResolveBinocularCorrespondence",
+            "SelectFixationTarget");
+    }
+
     private static void AssertSourceOmits(string source, params string[] forbiddenSymbols)
     {
         foreach (var symbol in forbiddenSymbols)

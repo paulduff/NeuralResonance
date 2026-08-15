@@ -71,7 +71,7 @@ public sealed class NeuronalAffectValuationTests
                 StructureId.Insula,
                 affect: new SalienceAffectDiagnostics(mode, 0f, 20f, 0f, 8f, 10f, 0f, 5f, 20f)),
             Snapshot(
-                StructureId.Hypothalamus,
+                StructureId.DorsomedialHypothalamicNucleus,
                 homeostasis: new HypothalamicHomeostasisDiagnostics(mode, 12f, 20f, 16f, 15f, 8f, 6f, 2f, 0f)),
             Snapshot(
                 StructureId.PeriaqueductalGray,
@@ -85,10 +85,10 @@ public sealed class NeuronalAffectValuationTests
         =>
         [
             Snapshot(
-                StructureId.Amygdala,
+                StructureId.BasolateralAmygdala,
                 affect: new SalienceAffectDiagnostics(mode, 25f, 2f, 5f, 20f, 2f, 25f, 0f, 25f)),
             Snapshot(
-                StructureId.Hypothalamus,
+                StructureId.DorsomedialHypothalamicNucleus,
                 homeostasis: new HypothalamicHomeostasisDiagnostics(mode, 5f, 8f, 5f, 20f, 18f, 20f, 12f, 25f)),
             Snapshot(
                 StructureId.PeriaqueductalGray,

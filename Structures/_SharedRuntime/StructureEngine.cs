@@ -59,6 +59,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	private readonly string[] _topIds = new string[100];
 
 	private readonly float[] _actionChannelRateSums = new float[ActionChannelTopology.ChannelCount];
+	private readonly float[] _actionChannelPeakRates = new float[ActionChannelTopology.ChannelCount];
 
 	private readonly int[] _actionChannelRateCounts = new int[ActionChannelTopology.ChannelCount];
 
@@ -75,6 +76,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	private readonly float[] _actionChannelSynapticStrength = new float[ActionChannelTopology.ChannelCount];
 
 	private readonly bool[] _actionChannelLearningObserved = new bool[ActionChannelTopology.ChannelCount];
+	private readonly float[] _rightingInputTrace;
+	private float _rightingOutputTrace;
+	private double _lastRightingTraceTimestampMs = double.NaN;
 
 	private readonly float[] _perceptEnsembleRateSums = new float[PerceptEnsembleTopology.EnsembleCount];
 
@@ -118,6 +122,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly float[] _sleepReplayTrace = new float[SleepConsolidationTopology.ReplayEnsembleCount];
 
+	private readonly float[] _corticalPopulationRateSums = new float[CorticalLaminarTopology.PopulationCount];
+
+	private readonly int[] _corticalPopulationRateCounts = new int[CorticalLaminarTopology.PopulationCount];
+
+	private readonly int[] _corticalPopulationActiveCounts = new int[CorticalLaminarTopology.PopulationCount];
+
 	private int _spikeInCount;
 
 	private int _spikeOutCount;
@@ -141,6 +151,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		_kernel = CircuitKernelFactory.For(profile.StructureId);
 		_neurons = (from i in Enumerable.Range(0, _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
+		_rightingInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId);
@@ -266,6 +277,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				throw new StructureTickSequenceException(_profile.StructureId, tickSignal.Tick, _lastProcessedTick);
 			}
 
+			DecayRightingTraces(tickSignal.TimestampMs, tickSignal.TickDurationMs);
 			ProcessDueQueue(_feedForward, tickSignal, isFeedback: false);
 			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
@@ -273,9 +285,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
 			var attentionCircuit = AttentionWorkspaceTopology.EmitsAttentionDiagnostics(_profile.StructureId);
 			var sleepConsolidationCircuit = SleepConsolidationTopology.EmitsDiagnostics(_profile.StructureId);
+			var corticalCircuit = CorticalLaminarTopology.IsCorticalStructure(_profile.StructureId);
 			if (actionCircuit)
 			{
 				Array.Clear(_actionChannelRateSums);
+				Array.Clear(_actionChannelPeakRates);
 				Array.Clear(_actionChannelRateCounts);
 				Array.Clear(_actionChannelDirectSums);
 				Array.Clear(_actionChannelDirectCounts);
@@ -299,6 +313,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				Array.Clear(_sleepReplayRateSums);
 				Array.Clear(_sleepReplayRateCounts);
 			}
+			if (corticalCircuit)
+			{
+				Array.Clear(_corticalPopulationRateSums);
+				Array.Clear(_corticalPopulationRateCounts);
+				Array.Clear(_corticalPopulationActiveCounts);
+			}
 			int num = 0;
 			int num2 = 0;
 			double num3 = 0.0;
@@ -319,6 +339,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			for (int i = 0; i < _neurons.Length; i++)
 			{
 				ModelNeuron modelNeuron = _neurons[i];
+				IntrinsicCircuitDriveTopology.Resolve(
+					_profile.StructureId,
+					modelNeuron.Index,
+					tickSignal.Tick,
+					out var circuitExcitation,
+					out var circuitInhibition);
+				modelNeuron.IntegratePacemakerDrive(circuitExcitation, circuitInhibition);
 				if (sleepConsolidationCircuit)
 				{
 					SleepConsolidationTopology.ResolveIntrinsicDrive(
@@ -330,11 +357,24 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						out var intrinsicInhibition);
 					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
 				}
-				if (modelNeuron.Step(tickSignal.TickDurationMs))
+				var fired = modelNeuron.Step(tickSignal.TickDurationMs);
+				if (fired)
 				{
 					num++;
-					_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, modelNeuron.PreferredNt, isFeedback: false));
-					Interlocked.Increment(ref _spikeOutCount);
+					if (modelNeuron.CorticalPopulationKind is { } corticalPopulation)
+					{
+						ScheduleLocalCorticalSpike(modelNeuron, corticalPopulation, tickSignal);
+						if (CorticalLaminarTopology.EmitsLongRangeProjection(corticalPopulation))
+						{
+							_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, NTEnum.GLUTAMATE, isFeedback: false));
+							Interlocked.Increment(ref _spikeOutCount);
+						}
+					}
+					else
+					{
+						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, modelNeuron.PreferredNt, isFeedback: false));
+						Interlocked.Increment(ref _spikeOutCount);
+					}
 					if (_profile.StructureId == StructureId.CA3)
 					{
 						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, StructureId.CA3, NTEnum.GLUTAMATE, isFeedback: true));
@@ -351,6 +391,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				{
 					var channel = ActionChannelTopology.ChannelForNeuron(modelNeuron.Index, _profile.StructureId);
 					_actionChannelRateSums[channel] += modelNeuron.FiringRateHz;
+					_actionChannelPeakRates[channel] = Math.Max(
+						_actionChannelPeakRates[channel],
+						modelNeuron.FiringRateHz);
 					_actionChannelRateCounts[channel]++;
 					if (_profile.StructureId == StructureId.Striatum)
 					{
@@ -386,6 +429,24 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 					var replayEnsemble = SleepConsolidationTopology.ReplayEnsembleForNeuron(modelNeuron.Index);
 					_sleepReplayRateSums[replayEnsemble] += modelNeuron.FiringRateHz;
 					_sleepReplayRateCounts[replayEnsemble]++;
+				}
+				if (corticalCircuit && modelNeuron.CorticalPopulationKind is { } population)
+				{
+					var populationIndex = (int)population;
+					_corticalPopulationRateSums[populationIndex] += modelNeuron.FiringRateHz;
+					_corticalPopulationRateCounts[populationIndex]++;
+					if (modelNeuron.IsActive)
+					{
+						_corticalPopulationActiveCounts[populationIndex]++;
+					}
+				}
+				if (RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
+					fired &&
+					_rightingInputTrace[i] > 0.01f)
+				{
+					var evokedDrive = NormalizeActionRate(modelNeuron.FiringRateHz) *
+						_rightingInputTrace[i];
+					_rightingOutputTrace = Math.Max(_rightingOutputTrace, evokedDrive);
 				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
@@ -451,7 +512,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var synapticMemory = BuildSynapticMemoryDiagnostics();
 			var neuronalAttentionWorkspace = BuildNeuronalAttentionWorkspaceDiagnostics();
 			var neuronalSleepConsolidation = BuildNeuronalSleepConsolidationDiagnostics();
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation);
+			var corticalLaminar = BuildCorticalLaminarDiagnostics();
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation, corticalLaminar);
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -570,6 +632,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			ModelNeuron modelNeuron = SelectInboundNeuron(message);
 			SynapseState synapse = GetOrCreateInboundSynapse(message);
 			SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
+			effectiveMessage = ApplyRightingRelayEfficacy(effectiveMessage);
+			if (RightingReflexTopology.IsEvokedRightingInput(effectiveMessage))
+			{
+				_rightingInputTrace[modelNeuron.Index] = Math.Max(
+					_rightingInputTrace[modelNeuron.Index],
+					Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f));
+			}
 			modelNeuron.Integrate(effectiveMessage, tickSignal.TickDurationMs);
 			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
 		}
@@ -583,24 +652,162 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private int ResolveInboundNeuronIndex(SpikeMessage message)
 	{
-		if (AttentionWorkspaceTopology.IsAttentionSourceStructure(message.SourceStructure) &&
+		if (message.SourceStructure == _profile.StructureId &&
+			message.TargetStructure == _profile.StructureId &&
+			message.TargetNeuronId.StartsWith("local-", StringComparison.Ordinal) &&
+			CorticalLaminarTopology.TryResolveDeclaredTarget(message.TargetNeuronId, _neurons.Length, out var localTargetIndex))
+		{
+			return localTargetIndex;
+		}
+
+		int mappedIndex;
+		if (RightingReflexTopology.TryProjectInbound(message, _neurons.Length, out var rightingTargetIndex))
+		{
+			mappedIndex = rightingTargetIndex;
+		}
+		else if (AttentionWorkspaceTopology.IsAttentionSourceStructure(message.SourceStructure) &&
 			AttentionWorkspaceTopology.IsAttentionCircuitStructure(message.TargetStructure))
 		{
-			var sourceIndex = TopographicMap.ResolveSignalIndex(
+			var attentionSourceIndex = TopographicMap.ResolveSignalIndex(
 				message.SourceNeuronId,
 				message.TargetNeuronId,
 				message.SynapseId,
 				message.SourceStructure,
 				message.TargetStructure);
-			return AttentionWorkspaceTopology.Project(
-				sourceIndex,
+			mappedIndex = AttentionWorkspaceTopology.Project(
+				attentionSourceIndex,
 				message.SourceStructure,
 				_neurons.Length,
 				message.TargetStructure,
 				message.IsFeedback ? 181 : 179);
 		}
+		else
+		{
+			mappedIndex = _kernel.ResolveInboundNeuronIndex(message, _neurons.Length, _circuit);
+		}
+		if (!CorticalLaminarTopology.IsCorticalStructure(_profile.StructureId))
+		{
+			return mappedIndex;
+		}
 
-		return _kernel.ResolveInboundNeuronIndex(message, _neurons.Length, _circuit);
+		var laminarSourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		var targetPopulation = CorticalLaminarTopology.ResolveAfferentPopulation(message, laminarSourceIndex);
+		return CorticalLaminarTopology.ProjectPreservingEnsemble(
+			mappedIndex,
+			_neurons.Length,
+			targetPopulation,
+			PerceptEnsembleTopology.EnsembleForNeuron(mappedIndex),
+			message.IsFeedback ? 211 : 199);
+	}
+
+	private void DecayRightingTraces(double timestampMs, double tickDurationMs)
+	{
+		if (!RightingReflexTopology.ParticipatesInRightingCircuit(_profile.StructureId))
+		{
+			return;
+		}
+
+		var fallbackDuration = double.IsFinite(tickDurationMs) && tickDurationMs > 0.0
+			? tickDurationMs
+			: 1.0;
+		var elapsedDuration = double.IsFinite(timestampMs) &&
+			double.IsFinite(_lastRightingTraceTimestampMs) &&
+			timestampMs > _lastRightingTraceTimestampMs
+			? timestampMs - _lastRightingTraceTimestampMs
+			: fallbackDuration;
+		_lastRightingTraceTimestampMs = timestampMs;
+		var boundedDuration = Math.Clamp(elapsedDuration, 0.1, 500.0);
+		var inputDecay = (float)Math.Exp(-boundedDuration / 120.0);
+		var outputDecay = (float)Math.Exp(-boundedDuration / 180.0);
+		for (var i = 0; i < _rightingInputTrace.Length; i++)
+		{
+			_rightingInputTrace[i] *= inputDecay;
+			if (_rightingInputTrace[i] < 0.0001f)
+			{
+				_rightingInputTrace[i] = 0f;
+			}
+		}
+
+		_rightingOutputTrace *= outputDecay;
+		if (_rightingOutputTrace < 0.0001f)
+		{
+			_rightingOutputTrace = 0f;
+		}
+	}
+
+	private void ScheduleLocalCorticalSpike(
+		ModelNeuron source,
+		CorticalPopulation sourcePopulation,
+		TickSignal tickSignal)
+	{
+		var targetPopulation = CorticalLaminarTopology.ResolveLocalTargetPopulation(sourcePopulation, source.Index);
+		var targetIndex = CorticalLaminarTopology.ProjectPreservingEnsemble(
+			source.Index,
+			_neurons.Length,
+			targetPopulation,
+			PerceptEnsembleTopology.EnsembleForNeuron(source.Index),
+			197);
+		var targetNeuronId = $"local-{_profile.StructureId}-{targetIndex:000}";
+		var neurotransmitter = CorticalLaminarTopology.NeurotransmitterFor(sourcePopulation);
+		var synapse = GetOrCreateOutboundSynapse(
+			source,
+			_profile.StructureId,
+			neurotransmitter,
+			isFeedback: true,
+			targetNeuronId);
+		var delta = ComputeOutboundPlasticityDelta(
+			synapse,
+			source.ActivityTrace,
+			source.LocalNeuromodState,
+			source.LocalRewardSignal,
+			tickSignal.TimestampMs);
+		synapse.VesicleQuanta = PlasticityRules.ClampQuanta(
+			synapse.VesicleQuanta + (float.IsFinite(delta) ? delta : 0f));
+		synapse.Stabilize();
+		PersistSynapses(tickSignal.TimestampMs);
+
+		var localSpike = new SpikeMessage
+		{
+			MessageId = Guid.NewGuid(),
+			TimestampMs = tickSignal.TimestampMs,
+			SourceStructure = _profile.StructureId,
+			TargetStructure = _profile.StructureId,
+			SourceNeuronId = source.Id,
+			TargetNeuronId = targetNeuronId,
+			SynapseId = synapse.SynapseId,
+			Neurotransmitter = neurotransmitter,
+			VesicleQuanta = Math.Clamp(
+				synapse.VesicleQuanta * CorticalLaminarTopology.LocalProjectionGain(sourcePopulation),
+				0.05f,
+				1.25f),
+			ReuptakeRate = neurotransmitter == NTEnum.GABA ? 12f : 8f,
+			SpikeType = _kernel.SelectSpikeType(
+				_profile.StructureId,
+				true,
+				source.LocalNeuromodState,
+				source.LocalRewardSignal),
+			IsFeedback = true,
+			ModulationContext = null
+		};
+
+		lock (_inboundQueueGate)
+		{
+			var capacity = Math.Clamp(_profile.MaxInboundQueueDepth, 1, 65_536);
+			if (_feedForward.Count + _feedback.Count >= capacity)
+			{
+				return;
+			}
+
+			var deliverAt = tickSignal.TimestampMs + CorticalLaminarTopology.LocalProjectionDelayMs(sourcePopulation);
+			_feedback.Enqueue(new SpikeEnvelope(localSpike, deliverAt), deliverAt);
+			Interlocked.Increment(ref _feedbackDepth);
+			Interlocked.Increment(ref _spikeOutCount);
+		}
 	}
 
 	private SynapseState GetOrCreateInboundSynapse(SpikeMessage message)
@@ -639,7 +846,35 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			ReuptakeRate = message.ReuptakeRate,
 			SpikeType = message.SpikeType,
 			IsFeedback = message.IsFeedback,
-			ModulationContext = null
+			ModulationContext = null,
+			IsRightingCircuitSpike = message.IsRightingCircuitSpike
+		};
+	}
+
+	private static SpikeMessage ApplyRightingRelayEfficacy(SpikeMessage message)
+	{
+		var effectiveQuanta = RightingReflexTopology.ApplySpinalRelayEfficacy(message, message.VesicleQuanta);
+		if (MathF.Abs(effectiveQuanta - message.VesicleQuanta) < 0.000001f)
+		{
+			return message;
+		}
+
+		return new SpikeMessage
+		{
+			MessageId = message.MessageId,
+			TimestampMs = message.TimestampMs,
+			SourceStructure = message.SourceStructure,
+			TargetStructure = message.TargetStructure,
+			SourceNeuronId = message.SourceNeuronId,
+			TargetNeuronId = message.TargetNeuronId,
+			SynapseId = message.SynapseId,
+			Neurotransmitter = message.Neurotransmitter,
+			VesicleQuanta = effectiveQuanta,
+			ReuptakeRate = message.ReuptakeRate,
+			SpikeType = message.SpikeType,
+			IsFeedback = message.IsFeedback,
+			ModulationContext = message.ModulationContext,
+			IsRightingCircuitSpike = message.IsRightingCircuitSpike
 		};
 	}
 
@@ -929,6 +1164,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		// norepinephrine spikes. A scalar context on an arbitrary spike must not
 		// become a second, non-neuronal broadcast channel.
 		spikeMessage.ModulationContext = null;
+		spikeMessage.IsRightingCircuitSpike = RightingReflexTopology.ShouldTagOutboundSpike(
+			_profile.StructureId,
+			source.Index,
+			_rightingInputTrace[source.Index]);
 		return spikeMessage;
 	}
 
@@ -1104,10 +1343,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		var secondScore = float.MinValue;
 		for (var channel = 0; channel < channels.Length; channel++)
 		{
-			var rate = NormalizeActionRate(AverageChannel(
-				_actionChannelRateSums,
-				_actionChannelRateCounts,
-				channel));
+			var rateCodedPopulation = ActionChannelTopology.IsRateCodedAfferentOrReflexStructure(
+				_profile.StructureId);
+			var channelRate = rateCodedPopulation
+				? _actionChannelPeakRates[channel]
+				: AverageChannel(_actionChannelRateSums, _actionChannelRateCounts, channel);
+			var rate = NormalizeActionRate(channelRate);
 			var proposal = ActionChannelTopology.IsProposalStructure(_profile.StructureId) ? rate : 0f;
 			var direct = _profile.StructureId == StructureId.Striatum
 				? NormalizeActionRate(AverageChannel(_actionChannelDirectSums, _actionChannelDirectCounts, channel))
@@ -1120,7 +1361,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var thalamic = _profile.StructureId == StructureId.MotorThalamus ? rate : 0f;
 			var eligibility = _actionChannelLearningObserved[channel] ? _actionChannelEligibility[channel] : 0f;
 			var learnedStrength = _actionChannelLearningObserved[channel] ? _actionChannelSynapticStrength[channel] : 0f;
-			var score = proposal + direct + thalamic - indirect - hyperdirect - outputInhibition;
+			var score = rateCodedPopulation
+				? rate
+				: proposal + direct + thalamic - indirect - hyperdirect - outputInhibition;
+			var reflexDrive = RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
+				channel == RightingReflexTopology.StandChannel
+				? Math.Clamp(_rightingOutputTrace, 0f, 1f)
+				: 0f;
 			channels[channel] = new ActionChannelActivity(
 				channel,
 				proposal,
@@ -1131,7 +1378,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				thalamic,
 				eligibility,
 				learnedStrength,
-				score);
+				score,
+				reflexDrive);
 
 			if (score > bestScore)
 			{
@@ -1534,7 +1782,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.Pfc;
 
 	private static bool IsPerceptSalienceStructure(StructureId structure)
-		=> structure is StructureId.Pulvinar or StructureId.Thalamus or StructureId.Pfc;
+		=> structure is StructureId.Pulvinar or StructureId.IntralaminarThalamus or StructureId.Pfc;
 
 	private static bool IsPerceptFamiliarityStructure(StructureId structure)
 		=> structure is StructureId.PerirhinalCortex or StructureId.ParahippocampalCortex;
@@ -1561,7 +1809,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			return null;
 		}
 
-		var mean = _meanFiringRateHz;
+		var mean = NormalizeActionRate(_meanFiringRateHz);
 		var dopamine = Math.Clamp(neuromod.DopamineLevel, 0f, 1f);
 		var direct = 0f;
 		var indirect = 0f;
@@ -1574,14 +1822,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.Striatum:
 		case StructureId.NucleusAccumbens:
 		{
-			var d1 = AveragePartitionRate(0, 2);
-			var d2 = AveragePartitionRate(1, 2);
-			direct = d1 * (0.75f + dopamine);
-			indirect = d2 * (1.25f - (dopamine * 0.50f));
+			var d1 = NormalizeActionRate(AveragePartitionRate(0, 2));
+			var d2 = NormalizeActionRate(AveragePartitionRate(1, 2));
+			direct = Math.Clamp(d1 * (0.75f + dopamine), 0f, 1f);
+			indirect = Math.Clamp(d2 * (1.25f - (dopamine * 0.50f)), 0f, 1f);
 			break;
 		}
 		case StructureId.GPe:
-		case StructureId.GlobusPallidus:
 		case StructureId.VentralPallidum:
 			indirect = mean;
 			break;
@@ -1593,7 +1840,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			outputInhibition = mean;
 			break;
 		case StructureId.Snc:
-			dopamineModulation = Math.Clamp(dopamine + (mean / 50f), 0f, 2f);
+			dopamineModulation = Math.Clamp(dopamine + (mean * 0.50f), 0f, 2f);
 			break;
 		}
 
@@ -1632,7 +1879,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	private static bool IsBasalGangliaDiagnosticsStructure(StructureId structureId)
 		=> structureId is StructureId.Striatum
 			or StructureId.NucleusAccumbens
-			or StructureId.GlobusPallidus
+			or StructureId.GPe
 			or StructureId.VentralPallidum
 			or StructureId.GPe
 			or StructureId.GPi
@@ -1687,7 +1934,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.PurkinjeCellLayer:
 			purkinje = mean;
 			break;
-		case StructureId.DeepCerebellarNuclei:
+		case StructureId.DentateNucleus:
+		case StructureId.InterposedNuclei:
+		case StructureId.FastigialNucleus:
 			dcn = mean;
 			break;
 		case StructureId.InferiorOlive:
@@ -1713,7 +1962,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.CerebellarVermis
 			or StructureId.CerebellarLobules
 			or StructureId.PurkinjeCellLayer
-			or StructureId.DeepCerebellarNuclei
+			or StructureId.DentateNucleus
+			or StructureId.DentateNucleus
+			or StructureId.InterposedNuclei
+			or StructureId.FastigialNucleus
 			or StructureId.InferiorOlive;
 
 	private static string SelectCerebellarCorrectionMode(float mossy, float climbing, float purkinje, float dcn, float correctionGain)
@@ -1755,6 +2007,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.CerebellarVermis:
 			vermis = mean;
 			break;
+		case StructureId.FastigialNucleus:
+			vermis = mean * 0.45f;
+			spinalTone = mean * 0.30f;
+			break;
 		case StructureId.SpinalCordMotor:
 			spinalTone = mean;
 			break;
@@ -1776,6 +2032,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		=> structureId is StructureId.VestibularNuclei
 			or StructureId.ReticularFormation
 			or StructureId.CerebellarVermis
+			or StructureId.FastigialNucleus
 			or StructureId.SpinalCordMotor;
 
 	private static string SelectVestibuloReticularMode(float vestibular, float reticular, float vermis, float spinalTone, float balanceError)
@@ -1832,7 +2089,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			pulvinar = mean;
 			break;
 		case StructureId.PremotorCortex:
-		case StructureId.Pons:
+		case StructureId.PontineNuclei:
 			headEye = mean * 0.65f;
 			break;
 		}
@@ -1860,7 +2117,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.Snr
 			or StructureId.Pulvinar
 			or StructureId.PremotorCortex
-			or StructureId.Pons;
+			or StructureId.PontineNuclei;
 
 	private static string SelectSuperiorColliculusOrientingMode(float saccadeReadiness, float sensoryDrive, float nigrotectal, float headEye)
 	{
@@ -2006,8 +2263,26 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		switch (_profile.StructureId)
 		{
-		case StructureId.Amygdala:
+		case StructureId.BasolateralAmygdala:
 			threat = mean * neGain;
+			defensive = mean * 0.55f;
+			attention = mean * 0.25f;
+			break;
+		case StructureId.CentralAmygdala:
+			threat = mean * neGain * 0.75f;
+			defensive = mean;
+			break;
+		case StructureId.MedialAmygdala:
+			threat = mean * 0.40f;
+			interoception = mean * 0.35f;
+			break;
+		case StructureId.CorticalAmygdala:
+			threat = mean * 0.30f;
+			attention = mean * 0.30f;
+			break;
+		case StructureId.BedNucleusStriaTerminalis:
+			threat = mean * neGain * 0.70f;
+			arousal = mean * 0.45f;
 			defensive = mean * 0.55f;
 			break;
 		case StructureId.Insula:
@@ -2018,15 +2293,45 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			conflict = mean;
 			control = mean * 0.45f;
 			break;
-		case StructureId.Hypothalamus:
+		case StructureId.DorsomedialHypothalamicNucleus:
 			arousal = mean * 0.70f;
+			interoception = mean * 0.30f;
+			break;
+		case StructureId.VentrolateralPreopticNucleus:
+			interoception = mean * 0.20f;
+			break;
+		case StructureId.SuprachiasmaticNucleus:
 			interoception = mean * 0.25f;
+			arousal = mean * 0.20f;
+			break;
+		case StructureId.ParaventricularHypothalamicNucleus:
+			threat = mean * 0.20f;
+			interoception = mean * 0.45f;
+			defensive = mean * 0.20f;
+			break;
+		case StructureId.SupraopticNucleus:
+			interoception = mean * 0.65f;
+			break;
+		case StructureId.ArcuateNucleus:
+			interoception = mean * 0.75f;
+			break;
+		case StructureId.LateralHypothalamicArea:
+			interoception = mean * 0.45f;
+			arousal = mean * neGain * 0.70f;
+			break;
+		case StructureId.VentromedialHypothalamicNucleus:
+			threat = mean * 0.35f;
+			interoception = mean * 0.45f;
+			defensive = mean * 0.30f;
+			break;
+		case StructureId.MammillaryBodies:
+			interoception = mean * 0.15f;
 			break;
 		case StructureId.LocusCoeruleus:
 			arousal = mean * neGain;
 			threat = mean * 0.20f;
 			break;
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			attention = mean * achGain;
 			break;
 		case StructureId.NucleusAccumbens:
@@ -2056,12 +2361,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsSalienceAffectDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.Amygdala
+		=> StructureAtlas.Get(structureId).ParentGroup is "Hypothalamus" or "Amygdala and extended limbic"
+			|| structureId is StructureId.BasolateralAmygdala
 			or StructureId.Insula
 			or StructureId.Acc
-			or StructureId.Hypothalamus
 			or StructureId.LocusCoeruleus
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
 			or StructureId.NucleusAccumbens
 			or StructureId.Pfc
 			or StructureId.PeriaqueductalGray;
@@ -2134,7 +2439,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			pfc = mean * 0.25f;
 			semantic = mean * 0.25f;
 			break;
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			pfc = mean * 0.20f;
 			break;
 		case StructureId.LocusCoeruleus:
@@ -2164,7 +2469,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.Striatum
 			or StructureId.Acc
 			or StructureId.OrbitofrontalCortex
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
 			or StructureId.LocusCoeruleus;
 
 	private static string SelectPrefrontalWorkingMemoryMode(float stability, float striatalGate, float accDemand, float topDown)
@@ -2206,8 +2511,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		switch (_profile.StructureId)
 		{
-		case StructureId.Thalamus:
+		case StructureId.IntralaminarThalamus:
 			relay = mean * achGain;
+			intralaminar = mean * neGain;
 			break;
 		case StructureId.MotorThalamus:
 			relay = mean * 0.60f;
@@ -2223,9 +2529,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			mediodorsal = mean;
 			relay = mean * 0.25f;
 			break;
-		case StructureId.IntralaminarThalamus:
-			intralaminar = mean * neGain;
-			relay = mean * 0.35f;
+		case StructureId.LateralGeniculateNucleus:
+		case StructureId.MedialGeniculateNucleus:
+		case StructureId.VentralPosterolateralThalamus:
+		case StructureId.VentralPosteromedialThalamus:
+			relay = mean * achGain;
+			break;
+		case StructureId.AnteriorThalamicNuclei:
+		case StructureId.NucleusReuniens:
+			relay = mean * 0.45f;
+			mediodorsal = mean * 0.30f;
 			break;
 		case StructureId.Pfc:
 			corticalContext = mean * 0.30f;
@@ -2240,7 +2553,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.S1:
 			corticalContext = mean * 0.20f;
 			break;
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			relay = mean * 0.20f;
 			break;
 		case StructureId.LocusCoeruleus:
@@ -2264,18 +2577,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsThalamicAttentionGateDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.Thalamus
-			or StructureId.Trn
-			or StructureId.Pulvinar
-			or StructureId.MediodorsalThalamus
-			or StructureId.IntralaminarThalamus
-			or StructureId.MotorThalamus
-			or StructureId.Pfc
+		=> StructureAtlas.Get(structureId).ParentGroup == "Thalamus"
+			|| structureId is StructureId.Pfc
 			or StructureId.Ppc
 			or StructureId.V1
 			or StructureId.A1
 			or StructureId.S1
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
 			or StructureId.LocusCoeruleus;
 
 	private static string SelectThalamicAttentionGateMode(float relay, float trnGate, float pulvinar, float intralaminar, float corticalAccess)
@@ -2334,7 +2642,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				: local[channel];
 			var pulvinar = _profile.StructureId == StructureId.Pulvinar ? local[channel] : 0f;
 			var trn = _profile.StructureId == StructureId.Trn ? local[channel] : 0f;
-			var relay = _profile.StructureId == StructureId.Thalamus ? local[channel] : 0f;
+			var relay = _profile.StructureId == StructureId.IntralaminarThalamus ? local[channel] : 0f;
 			var mediodorsal = _profile.StructureId == StructureId.MediodorsalThalamus ? local[channel] : 0f;
 			var pfc = _profile.StructureId == StructureId.Pfc ? _attentionMaintenanceTrace[channel] : 0f;
 			var broadcast = _profile.StructureId == StructureId.IntralaminarThalamus ? local[channel] : 0f;
@@ -2423,9 +2731,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var rate = stateRates[channel];
 			stateActivities[channel] = new SleepStateChannelActivity(
 				channel,
-				_profile.StructureId == StructureId.Hypothalamus && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
-				(SleepConsolidationTopology.IsWakeStructure(_profile.StructureId) ||
-				 (_profile.StructureId == StructureId.Hypothalamus && channel == SleepConsolidationTopology.WakeChannel)) ? rate : 0f,
+				_profile.StructureId == StructureId.DorsomedialHypothalamicNucleus && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
+				((SleepConsolidationTopology.IsWakeStructure(_profile.StructureId) && channel == SleepConsolidationTopology.WakeChannel) ||
+				 (_profile.StructureId == StructureId.DorsomedialHypothalamicNucleus && channel == SleepConsolidationTopology.WakeChannel)) ? rate : 0f,
 				SleepConsolidationTopology.IsNremStructure(_profile.StructureId) && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
 				SleepConsolidationTopology.IsRemStructure(_profile.StructureId) && channel == SleepConsolidationTopology.RemChannel ? rate : 0f,
 				SleepConsolidationTopology.IsSpindleStructure(_profile.StructureId) && channel == SleepConsolidationTopology.NremChannel ? rate : 0f,
@@ -2469,6 +2777,54 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			replayActivities);
 	}
 
+	private CorticalLaminarDiagnostics? BuildCorticalLaminarDiagnostics()
+	{
+		if (!CorticalLaminarTopology.IsCorticalStructure(_profile.StructureId))
+		{
+			return null;
+		}
+
+		var populations = new CorticalPopulationActivity[CorticalLaminarTopology.PopulationCount];
+		var excitatoryRate = 0f;
+		var inhibitoryRate = 0f;
+		for (var populationIndex = 0; populationIndex < populations.Length; populationIndex++)
+		{
+			var population = (CorticalPopulation)populationIndex;
+			var descriptor = CorticalLaminarTopology.Describe(population);
+			var neuronCount = _corticalPopulationRateCounts[populationIndex];
+			var meanRate = neuronCount == 0
+				? 0f
+				: _corticalPopulationRateSums[populationIndex] / neuronCount;
+			populations[populationIndex] = new CorticalPopulationActivity(
+				populationIndex,
+				descriptor.Name,
+				descriptor.Role,
+				neuronCount,
+				_corticalPopulationActiveCounts[populationIndex],
+				meanRate,
+				descriptor.Neurotransmitter);
+
+			if (CorticalLaminarTopology.IsInhibitory(population))
+			{
+				inhibitoryRate += meanRate;
+			}
+			else
+			{
+				excitatoryRate += meanRate;
+			}
+		}
+
+		var totalPopulationRate = excitatoryRate + inhibitoryRate;
+		return new CorticalLaminarDiagnostics(
+			_profile.StructureId,
+			populations,
+			populations[(int)CorticalPopulation.Layer4Input].MeanFiringRateHz,
+			populations[(int)CorticalPopulation.Layer23Intratelencephalic].MeanFiringRateHz,
+			populations[(int)CorticalPopulation.Layer5PyramidalTract].MeanFiringRateHz,
+			populations[(int)CorticalPopulation.Layer6Corticothalamic].MeanFiringRateHz,
+			totalPopulationRate <= 0f ? 0f : inhibitoryRate / totalPopulationRate);
+	}
+
 	private HypothalamicHomeostasisDiagnostics? BuildHypothalamicHomeostasisDiagnostics(NeuromodState neuromod)
 	{
 		if (!IsHypothalamicHomeostasisDiagnosticsStructure(_profile.StructureId))
@@ -2495,17 +2851,68 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			visceral = mean;
 			autonomic = mean * 0.20f;
 			break;
-		case StructureId.Hypothalamus:
+		case StructureId.DorsomedialHypothalamicNucleus:
 			setpoint = mean * serotoninBuffer;
 			comfortDeficit = mean * 0.35f;
+			autonomic = mean * 0.55f;
+			arousal = mean * 0.60f;
+			break;
+		case StructureId.VentrolateralPreopticNucleus:
+			setpoint = mean * 0.25f;
+			comfortDeficit = mean * 0.12f;
+			break;
+		case StructureId.SuprachiasmaticNucleus:
+			setpoint = mean * 0.45f;
+			arousal = mean * 0.20f;
+			break;
+		case StructureId.ParaventricularHypothalamicNucleus:
+			setpoint = mean * serotoninBuffer;
+			autonomic = mean * 0.70f;
+			defensive = mean * 0.20f;
+			break;
+		case StructureId.SupraopticNucleus:
+			visceral = mean * 0.65f;
+			setpoint = mean * 0.45f;
+			break;
+		case StructureId.ArcuateNucleus:
+			setpoint = mean * 0.75f;
+			comfortDeficit = mean * 0.50f;
+			break;
+		case StructureId.LateralHypothalamicArea:
+			setpoint = mean * 0.60f;
+			arousal = mean * neGain;
+			comfortDeficit = mean * 0.65f;
+			break;
+		case StructureId.VentromedialHypothalamicNucleus:
+			setpoint = mean * 0.70f;
+			defensive = mean * 0.35f;
+			break;
+		case StructureId.MammillaryBodies:
+			limbic = mean * 0.55f;
 			break;
 		case StructureId.Insula:
 			insula = mean;
 			comfortDeficit = mean * 0.20f;
 			break;
-		case StructureId.Amygdala:
+		case StructureId.BasolateralAmygdala:
 			limbic = mean * neGain;
 			defensive = mean * 0.35f;
+			break;
+		case StructureId.CentralAmygdala:
+			limbic = mean * neGain * 0.70f;
+			defensive = mean;
+			break;
+		case StructureId.MedialAmygdala:
+			limbic = mean * 0.55f;
+			setpoint = mean * 0.20f;
+			break;
+		case StructureId.CorticalAmygdala:
+			limbic = mean * 0.45f;
+			break;
+		case StructureId.BedNucleusStriaTerminalis:
+			limbic = mean * neGain * 0.75f;
+			defensive = mean * 0.70f;
+			arousal = mean * 0.45f;
 			break;
 		case StructureId.LocusCoeruleus:
 			arousal = mean * neGain;
@@ -2513,15 +2920,14 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.RapheNuclei:
 			comfortDeficit = Math.Max(0f, mean * 0.18f * serotoninBuffer);
 			break;
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			arousal = mean * achGain * 0.35f;
 			break;
-		case StructureId.Pons:
-		case StructureId.Medulla:
+		case StructureId.ParabrachialComplex:
 			autonomic = mean;
 			break;
 		case StructureId.ReticularFormation:
-			autonomic = mean * 0.45f;
+			autonomic = mean;
 			arousal = mean * 0.35f;
 			break;
 		case StructureId.PeriaqueductalGray:
@@ -2547,15 +2953,14 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsHypothalamicHomeostasisDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.NucleusTractusSolitarius
-			or StructureId.Hypothalamus
+		=> StructureAtlas.Get(structureId).ParentGroup is "Hypothalamus" or "Amygdala and extended limbic"
+			|| structureId is StructureId.NucleusTractusSolitarius
 			or StructureId.Insula
-			or StructureId.Amygdala
+			or StructureId.BasolateralAmygdala
 			or StructureId.LocusCoeruleus
 			or StructureId.RapheNuclei
-			or StructureId.BasalForebrain
-			or StructureId.Pons
-			or StructureId.Medulla
+			or StructureId.NucleusBasalis
+			or StructureId.ParabrachialComplex
 			or StructureId.ReticularFormation
 			or StructureId.PeriaqueductalGray;
 
@@ -2605,14 +3010,24 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		switch (_profile.StructureId)
 		{
-		case StructureId.Hypothalamus:
+		case StructureId.DorsomedialHypothalamicNucleus:
 			sleepPressure = mean * (1.05f - (Math.Clamp(neuromod.NorepinephrineLevel, 0f, 1f) * 0.20f));
+			reticularDrive = mean * 0.65f;
+			break;
+		case StructureId.VentrolateralPreopticNucleus:
+			sleepPressure = mean * (1.15f - (Math.Clamp(neuromod.NorepinephrineLevel, 0f, 1f) * 0.25f));
+			break;
+		case StructureId.SuprachiasmaticNucleus:
+			reticularDrive = mean * 0.35f;
+			break;
+		case StructureId.LateralHypothalamicArea:
+			reticularDrive = mean * neGain;
 			break;
 		case StructureId.ReticularFormation:
 			reticularDrive = mean * neGain;
 			break;
-		case StructureId.Pons:
-		case StructureId.Medulla:
+		case StructureId.PedunculopontineNucleus:
+		case StructureId.LaterodorsalTegmentalNucleus:
 			pontomedullaryTone = mean;
 			break;
 		case StructureId.LocusCoeruleus:
@@ -2621,7 +3036,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.RapheNuclei:
 			rapheTone = mean * serotoninGain;
 			break;
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			basalWake = mean * achGain;
 			break;
 		case StructureId.IntralaminarThalamus:
@@ -2651,13 +3066,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsSleepWakeArousalDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.Hypothalamus
-			or StructureId.ReticularFormation
-			or StructureId.Pons
-			or StructureId.Medulla
+		=> StructureAtlas.Get(structureId).ParentGroup == "Hypothalamus"
+			|| structureId is StructureId.ReticularFormation
+			or StructureId.PedunculopontineNucleus
+			or StructureId.LaterodorsalTegmentalNucleus
 			or StructureId.LocusCoeruleus
 			or StructureId.RapheNuclei
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
 			or StructureId.IntralaminarThalamus;
 
 	private static string SelectSleepWakeArousalMode(float sleepPressure, float reticularDrive, float lcWake, float basalWake, float intralaminar, float corticalReadiness)
@@ -2706,10 +3121,29 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		switch (_profile.StructureId)
 		{
-		case StructureId.Amygdala:
+		case StructureId.BasolateralAmygdala:
 			amygdala = mean * neGain;
 			break;
-		case StructureId.Hypothalamus:
+		case StructureId.CentralAmygdala:
+			amygdala = mean * neGain;
+			break;
+		case StructureId.MedialAmygdala:
+		case StructureId.CorticalAmygdala:
+			amygdala = mean * neGain * 0.45f;
+			break;
+		case StructureId.BedNucleusStriaTerminalis:
+			amygdala = mean * neGain * 0.80f;
+			break;
+		case StructureId.DorsomedialHypothalamicNucleus:
+			hypothalamus = mean;
+			break;
+		case StructureId.ParaventricularHypothalamicNucleus:
+			hypothalamus = mean * 0.80f;
+			break;
+		case StructureId.LateralHypothalamicArea:
+			hypothalamus = mean * 0.55f;
+			break;
+		case StructureId.VentromedialHypothalamicNucleus:
 			hypothalamus = mean;
 			break;
 		case StructureId.PeriaqueductalGray:
@@ -2718,11 +3152,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.RapheNuclei:
 			raphe = mean * serotoninModulation;
 			break;
-		case StructureId.Medulla:
-			medulla = mean;
-			break;
 		case StructureId.ReticularFormation:
 			reticular = mean;
+			break;
+		case StructureId.NucleusTractusSolitarius:
+		case StructureId.ParabrachialComplex:
+			medulla = mean;
 			break;
 		case StructureId.SpinalCordMotor:
 			spinal = mean;
@@ -2751,12 +3186,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsDescendingDefenseDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.Amygdala
-			or StructureId.Hypothalamus
+		=> StructureAtlas.Get(structureId).ParentGroup is "Hypothalamus" or "Amygdala and extended limbic"
+			|| structureId is StructureId.BasolateralAmygdala
 			or StructureId.PeriaqueductalGray
 			or StructureId.RapheNuclei
-			or StructureId.Medulla
 			or StructureId.ReticularFormation
+			or StructureId.NucleusTractusSolitarius
+			or StructureId.ParabrachialComplex
 			or StructureId.SpinalCordMotor;
 
 	private static string SelectDescendingDefenseMode(float pag, float reticular, float spinal, float raphe, float protection)
@@ -2922,8 +3358,15 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		switch (_profile.StructureId)
 		{
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 			septal = mean * achGain;
+			break;
+		case StructureId.MedialSeptalNucleus:
+			septal = mean * achGain;
+			break;
+		case StructureId.DiagonalBandNucleus:
+			septal = mean * achGain * 0.80f;
+			entorhinal = mean * achGain * 0.25f;
 			break;
 		case StructureId.EntorhinalCortex:
 			entorhinal = mean * achGain;
@@ -2986,7 +3429,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	}
 
 	private static bool IsSeptohippocampalThetaDiagnosticsStructure(StructureId structureId)
-		=> structureId is StructureId.BasalForebrain
+		=> structureId is StructureId.NucleusBasalis
+			or StructureId.MedialSeptalNucleus
+			or StructureId.DiagonalBandNucleus
 			or StructureId.EntorhinalCortex
 			or StructureId.DentateGyrus
 			or StructureId.CA3
@@ -3066,7 +3511,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.ReticularFormation:
 			reticular = mean * neGain;
 			break;
-		case StructureId.Thalamus:
+		case StructureId.IntralaminarThalamus:
 			thalamic = mean * achGain;
 			break;
 		case StructureId.MotorThalamus:
@@ -3113,7 +3558,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.CerebellarGranule
 			or StructureId.VestibularNuclei
 			or StructureId.ReticularFormation
-			or StructureId.Thalamus
+			or StructureId.IntralaminarThalamus
 			or StructureId.MotorThalamus;
 
 	private static string SelectSpinalProprioceptiveMode(float spinal, float s1, float m1, float cerebellar, float vestibular, float reticular, float thalamic, float readiness, float coherence)
@@ -3188,8 +3633,14 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			entorhinal = mean * 0.25f;
 			hippocampal = mean * 0.45f;
 			break;
-		case StructureId.Amygdala:
+		case StructureId.BasolateralAmygdala:
 			amygdala = mean * neGain;
+			break;
+		case StructureId.CentralAmygdala:
+		case StructureId.MedialAmygdala:
+		case StructureId.CorticalAmygdala:
+		case StructureId.BedNucleusStriaTerminalis:
+			amygdala = mean * neGain * 0.60f;
 			break;
 		case StructureId.EntorhinalCortex:
 			entorhinal = mean * achGain;
@@ -3248,7 +3699,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.TemporalAssociation
 			or StructureId.PerirhinalCortex
 			or StructureId.ParahippocampalCortex
-			or StructureId.Amygdala
+			or StructureId.BasolateralAmygdala
+			or StructureId.CentralAmygdala
+			or StructureId.MedialAmygdala
+			or StructureId.CorticalAmygdala
+			or StructureId.BedNucleusStriaTerminalis
 			or StructureId.EntorhinalCortex
 			or StructureId.DentateGyrus
 			or StructureId.CA3
@@ -3349,7 +3804,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.Snr:
 			basalGate = mean * 0.55f;
 			break;
-		case StructureId.Thalamus:
+		case StructureId.IntralaminarThalamus:
 			motorThalamic = mean * achGain * 0.35f;
 			break;
 		case StructureId.MotorThalamus:
@@ -3392,7 +3847,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.Striatum
 			or StructureId.GPi
 			or StructureId.Snr
-			or StructureId.Thalamus
+			or StructureId.IntralaminarThalamus
 			or StructureId.MotorThalamus;
 
 	private static string SelectAuditoryLanguageMotorMode(float a1, float wernicke, float arcuate, float broca, float premotor, float m1, float basalGate, float motorThalamic, float coherence)
@@ -3478,7 +3933,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		case StructureId.Pulvinar:
 			pulvinar = mean * neGain;
 			break;
-		case StructureId.Thalamus:
+		case StructureId.IntralaminarThalamus:
 			thalamic = mean * achGain;
 			break;
 		case StructureId.Pfc:
@@ -3521,7 +3976,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			or StructureId.TemporalAssociation
 			or StructureId.PerirhinalCortex
 			or StructureId.Pulvinar
-			or StructureId.Thalamus
+			or StructureId.IntralaminarThalamus
 			or StructureId.Pfc;
 
 	private static string SelectVisualObjectRecognitionMode(float v1, float v2, float v4, float mt, float temporal, float perirhinal, float pulvinar, float thalamic, float pfc, float coherence)
@@ -3801,11 +4256,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		Add(StructureId.CorpusCallosum, StructureCategory.Cortical);
 
 		// Thalamic.
-		Add(StructureId.Thalamus, StructureCategory.Thalamic);
+		Add(StructureId.IntralaminarThalamus, StructureCategory.Thalamic);
 		Add(StructureId.Trn, StructureCategory.Thalamic);
 		Add(StructureId.Pulvinar, StructureCategory.Thalamic);
 		Add(StructureId.MediodorsalThalamus, StructureCategory.Thalamic);
-		Add(StructureId.IntralaminarThalamus, StructureCategory.Thalamic);
 		Add(StructureId.MotorThalamus, StructureCategory.Thalamic);
 
 		// Hippocampal.
@@ -3822,7 +4276,6 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		// Basal ganglia.
 		Add(StructureId.Striatum, StructureCategory.BasalGanglia);
-		Add(StructureId.GlobusPallidus, StructureCategory.BasalGanglia);
 		Add(StructureId.GPe, StructureCategory.BasalGanglia);
 		Add(StructureId.GPi, StructureCategory.BasalGanglia);
 		Add(StructureId.Stn, StructureCategory.BasalGanglia);
@@ -3837,24 +4290,40 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		Add(StructureId.CerebellarVermis, StructureCategory.Cerebellar);
 		Add(StructureId.CerebellarLobules, StructureCategory.Cerebellar);
 		Add(StructureId.PurkinjeCellLayer, StructureCategory.Cerebellar);
-		Add(StructureId.DeepCerebellarNuclei, StructureCategory.Cerebellar);
+		Add(StructureId.DentateNucleus, StructureCategory.Cerebellar);
+		Add(StructureId.InterposedNuclei, StructureCategory.Cerebellar);
+		Add(StructureId.FastigialNucleus, StructureCategory.Cerebellar);
 		Add(StructureId.InferiorOlive, StructureCategory.Cerebellar);
 
 		// Brainstem / modulatory (Snc is also basal ganglia per the original switches).
-		Add(StructureId.Pons, StructureCategory.BrainstemModulatory);
-		Add(StructureId.Medulla, StructureCategory.BrainstemModulatory);
+		Add(StructureId.PontineNuclei, StructureCategory.BrainstemModulatory);
+		Add(StructureId.ReticularFormation, StructureCategory.BrainstemModulatory);
 		Add(StructureId.SuperiorColliculus, StructureCategory.BrainstemModulatory);
-		Add(StructureId.Hypothalamus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.DorsomedialHypothalamicNucleus, StructureCategory.BrainstemModulatory);
 		Add(StructureId.LocusCoeruleus, StructureCategory.BrainstemModulatory);
 		Add(StructureId.RapheNuclei, StructureCategory.BrainstemModulatory);
-		Add(StructureId.BasalForebrain, StructureCategory.BrainstemModulatory);
+		Add(StructureId.NucleusBasalis, StructureCategory.BrainstemModulatory);
 		Add(StructureId.Vta, StructureCategory.BrainstemModulatory);
 		Add(StructureId.Snc, StructureCategory.BrainstemModulatory);
+		Add(StructureId.RedNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.PedunculopontineNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.LaterodorsalTegmentalNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.ParabrachialComplex, StructureCategory.BrainstemModulatory);
+		Add(StructureId.PrincipalSensoryTrigeminalNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.SpinalTrigeminalNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.MesencephalicTrigeminalNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.FacialMotorNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.OculomotorNucleus, StructureCategory.BrainstemModulatory);
+		Add(StructureId.HypoglossalNucleus, StructureCategory.BrainstemModulatory);
 
 		// Motor cortex subset (orthogonal flag preserved by the original IsMotor helper).
 		Add(StructureId.M1, StructureCategory.Motor);
 		Add(StructureId.Sma, StructureCategory.Motor);
 		Add(StructureId.PremotorCortex, StructureCategory.Motor);
+		Add(StructureId.RedNucleus, StructureCategory.Motor);
+		Add(StructureId.FacialMotorNucleus, StructureCategory.Motor);
+		Add(StructureId.OculomotorNucleus, StructureCategory.Motor);
+		Add(StructureId.HypoglossalNucleus, StructureCategory.Motor);
 
 		return table;
 	}

@@ -60,7 +60,8 @@ public sealed record TickAck(
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
     NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
-    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null);
+    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null,
+    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -108,7 +109,8 @@ public sealed record ActionChannelActivity(
     float ThalamicRelayActivation,
     float EligibilityTrace,
     float LearnedSynapticStrength,
-    float SelectionScore);
+    float SelectionScore,
+    float ReflexDrive = 0f);
 
 public sealed record ActionSelectionDiagnostics(
     StructureId SourceStructure,
@@ -233,6 +235,24 @@ public sealed record NeuronalSleepConsolidationDiagnostics(
     StructureId SourceStructure,
     IReadOnlyList<SleepStateChannelActivity> StateChannels,
     IReadOnlyList<SleepReplayEnsembleActivity> ReplayEnsembles);
+
+public sealed record CorticalPopulationActivity(
+    int PopulationIndex,
+    string Name,
+    string Role,
+    int NeuronCount,
+    int ActiveNeuronCount,
+    float MeanFiringRateHz,
+    NTEnum Neurotransmitter);
+
+public sealed record CorticalLaminarDiagnostics(
+    StructureId SourceStructure,
+    IReadOnlyList<CorticalPopulationActivity> Populations,
+    float FeedforwardInput,
+    float RecurrentIntegration,
+    float DescendingOutput,
+    float CorticothalamicFeedback,
+    float InhibitoryBalance);
 
 public sealed record HypothalamicHomeostasisDiagnostics(
     string HomeostasisMode,
@@ -434,7 +454,8 @@ public sealed record StructureSnapshot(
     PerceptEnsembleDiagnostics? PerceptEnsembleDiagnostics = null,
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
     NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
-    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null);
+    NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null,
+    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

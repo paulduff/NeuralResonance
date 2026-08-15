@@ -130,7 +130,7 @@ internal static class NeuronalLanguageGroundingDecoder
             [StructureId.Striatum, StructureId.GPi, StructureId.Snr],
             static item => item.BasalGangliaSpeechGate);
         var motorThalamus = Role(languageSnapshots,
-            [StructureId.MotorThalamus, StructureId.Thalamus],
+            [StructureId.MotorThalamus, StructureId.IntralaminarThalamus],
             static item => item.MotorThalamicRelay);
 
         var roles = new[] { a1, wernicke, arcuate, broca, premotor, m1, basalGanglia, motorThalamus };

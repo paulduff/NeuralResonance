@@ -95,7 +95,7 @@ internal static class Program
             MeasureSeparation(
                 "self-context evidence",
                 StructureId.TemporoparietalJunction,
-                [(StructureId.SecondarySomatosensoryCortex, "context-91"), (StructureId.PosteriorCingulate, "context-91"), (StructureId.Amygdala, "context-91"), (StructureId.TemporalAssociation, "context-91")]),
+                [(StructureId.SecondarySomatosensoryCortex, "context-91"), (StructureId.PosteriorCingulate, "context-91"), (StructureId.BasolateralAmygdala, "context-91"), (StructureId.TemporalAssociation, "context-91")]),
             MeasureSeparation(
                 "executive control streams",
                 StructureId.DorsomedialPrefrontalCortex,
@@ -334,7 +334,7 @@ internal static class Program
         var targetNeuronIndex = kernel.ResolveInboundNeuronIndex(featureProbe, circuit.NeuronCount, circuit);
         var sources = new[]
         {
-            (StructureId.BasalForebrain, NTEnum.ACETYLCHOLINE),
+            (StructureId.NucleusBasalis, NTEnum.ACETYLCHOLINE),
             (StructureId.LocusCoeruleus, NTEnum.NOREPINEPHRINE),
             (StructureId.Vta, NTEnum.DOPAMINE)
         };
@@ -368,7 +368,7 @@ internal static class Program
     {
         var specifications = new[]
         {
-            (StructureId.BasalForebrain, NTEnum.ACETYLCHOLINE, Count: 4, Quanta: 1.2f),
+            (StructureId.NucleusBasalis, NTEnum.ACETYLCHOLINE, Count: 4, Quanta: 1.2f),
             (StructureId.LocusCoeruleus, NTEnum.NOREPINEPHRINE, Count: 4, Quanta: 1.1f),
             (StructureId.Vta, NTEnum.DOPAMINE, Count: 6, Quanta: 1.4f)
         };

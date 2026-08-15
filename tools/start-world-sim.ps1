@@ -25,7 +25,7 @@ if (-not [string]::IsNullOrWhiteSpace($StatePath)) {
 
 Assert-DnneSimulatorExclusive `
     -CurrentSimulator 'DNNE World Simulator' `
-    -BlockedSignatures @('NRE.WpfMazeSim', 'start-maze-sim.ps1') `
+    -BlockedSignatures @('NRE.WpfMazeSim', 'start-maze-sim.ps1', 'NRE.BlazorEditor', 'start-blazor-editor.ps1') `
     -WhatIf:$WhatIf
 
 Start-DnneProject `

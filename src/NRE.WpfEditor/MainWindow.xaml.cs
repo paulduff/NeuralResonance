@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -630,7 +630,7 @@ public partial class MainWindow : Window
             (Name: "Peripheral Sensory Interface", Nodes: new[] { "Retina", "Cochlea", "Somatic Afferents", "Proprioceptive Afferents", "Vestibular Afferents", "Visceral Afferents" }),
             (Name: "Diencephalon", Nodes: new[] { "Thalamus", "Motor Thalamus", "TRN", "Pulvinar", "Mediodorsal Thalamus", "Intralaminar Thalamus", "Hypothalamus", "Habenula", "STN" }),
             (Name: "Mesencephalon", Nodes: new[] { "Superior Colliculus", "Inferior Colliculus", "Periaqueductal Gray", "SNr", "SNc", "VTA" }),
-            (Name: "Metencephalon", Nodes: new[] { "Cochlear Nucleus", "Superior Olive", "Vestibular Nuclei", "Granule Layer", "Purkinje Layer", "Cerebellar Vermis", "Cerebellar Lobules", "DCN", "Pons" }),
+            (Name: "Metencephalon", Nodes: new[] { "Cochlear Nucleus", "Superior Olive", "Vestibular Nuclei", "Granule Layer", "Purkinje Layer", "Cerebellar Vermis", "Cerebellar Lobules", "DCN", "PontineNuclei" }),
             (Name: "Myelencephalon", Nodes: new[] { "Nucleus Tractus Solitarius", "Reticular Formation", "Inferior Olive", "Medulla", "LC", "Raphe", "Spinal Cord Motor" })
         };
 
@@ -878,13 +878,13 @@ public partial class MainWindow : Window
         "DCN" => "DeepCerebellarNuclei",
         "Cerebellar Vermis" => "CerebellarVermis",
         "Cerebellar Lobules" => "CerebellarLobules",
-        "Pons" => "Pons",
+        "PontineNuclei" => "PontineNuclei",
         "Medulla" => "Medulla",
         "Granule Layer" => "CerebellarGranule",
         "Purkinje Layer" => "PurkinjeCellLayer",
         "LC" => "LocusCoeruleus",
         "Raphe" => "RapheNuclei",
-        "Basal Forebrain" => "BasalForebrain",
+        "Basal Forebrain" => "NucleusBasalis",
         "VTA" => "Vta",
         _ => displayName.Replace(" ", string.Empty, StringComparison.Ordinal)
     };
@@ -1385,7 +1385,7 @@ public partial class MainWindow : Window
         {
             "Retina" or "Cochlea" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" or "OlfactoryBulb" or
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" or
-            "Pons" or "Medulla" or "SpinalCordMotor" or "ReticularFormation" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or
+            "PontineNuclei" or "Medulla" or "SpinalCordMotor" or "ReticularFormation" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or
             "CochlearNucleus" or "SuperiorOlive" or "VestibularNuclei" or "NucleusTractusSolitarius" => false,
             _ => true
         };
@@ -3632,7 +3632,7 @@ public partial class MainWindow : Window
            snapshotId.Equals("Pulvinar", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Ppc", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("PremotorCortex", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("Pons", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("PontineNuclei", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("M1", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildHippocampalSpatialInspectorText(HippocampalSpatialTick spatial)
@@ -3681,7 +3681,7 @@ public partial class MainWindow : Window
            snapshotId.Equals("Acc", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Hypothalamus", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("LocusCoeruleus", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("NucleusAccumbens", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Pfc", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("PeriaqueductalGray", StringComparison.OrdinalIgnoreCase);
@@ -3707,7 +3707,7 @@ public partial class MainWindow : Window
            snapshotId.Equals("Striatum", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Acc", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("OrbitofrontalCortex", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("LocusCoeruleus", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildThalamicAttentionGateInspectorText(ThalamicAttentionGateTick gate)
@@ -3734,7 +3734,7 @@ public partial class MainWindow : Window
            snapshotId.Equals("V1", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("A1", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("S1", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("LocusCoeruleus", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildHypothalamicHomeostasisInspectorText(HypothalamicHomeostasisTick homeostasis)
@@ -3757,8 +3757,8 @@ public partial class MainWindow : Window
            snapshotId.Equals("Amygdala", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("LocusCoeruleus", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("RapheNuclei", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("Pons", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("PontineNuclei", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Medulla", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("PeriaqueductalGray", StringComparison.OrdinalIgnoreCase);
@@ -3779,11 +3779,11 @@ public partial class MainWindow : Window
     private static bool IsSleepWakeArousalDiagnosticsStructure(string snapshotId)
         => snapshotId.Equals("Hypothalamus", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("ReticularFormation", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("Pons", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("PontineNuclei", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("Medulla", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("LocusCoeruleus", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("RapheNuclei", StringComparison.OrdinalIgnoreCase) ||
-           snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
+           snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("IntralaminarThalamus", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildDescendingDefenseInspectorText(DescendingDefenseTick defense)
@@ -3846,7 +3846,7 @@ public partial class MainWindow : Window
     }
 
     private static bool IsSeptohippocampalThetaDiagnosticsStructure(string snapshotId)
-        => snapshotId.Equals("BasalForebrain", StringComparison.OrdinalIgnoreCase) ||
+        => snapshotId.Equals("NucleusBasalis", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("EntorhinalCortex", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("DentateGyrus", StringComparison.OrdinalIgnoreCase) ||
            snapshotId.Equals("CA3", StringComparison.OrdinalIgnoreCase) ||

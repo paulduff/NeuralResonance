@@ -2,23 +2,30 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class ActionChannelTopology
 {
-	// Four locomotor lanes plus one general physical manipulator lane. The fifth
-	// lane remains an unlabeled neuronal population throughout the brain; only
-	// the body boundary maps it onto an effector.
-	public const int ChannelCount = 5;
+	// Four locomotor lanes, one manipulator lane, and four posture lanes. The
+	// populations remain unlabeled inside the brain; anatomical meaning is
+	// assigned only where descending populations meet physical effectors.
+	public const int ChannelCount = 9;
 
 	public static bool IsActionCircuitStructure(StructureId structure)
-		=> structure is StructureId.Pfc
+		=> structure is StructureId.ProprioceptiveAfferents
+			or StructureId.VestibularAfferents
+			or StructureId.Pfc
 			or StructureId.Acc
 			or StructureId.PremotorCortex
 			or StructureId.Sma
 			or StructureId.Striatum
 			or StructureId.GPe
-			or StructureId.GlobusPallidus
 			or StructureId.GPi
 			or StructureId.Stn
 			or StructureId.Snr
-			or StructureId.MotorThalamus;
+			or StructureId.MotorThalamus
+			or StructureId.SpinalCordMotor;
+
+	public static bool IsRateCodedAfferentOrReflexStructure(StructureId structure)
+		=> structure is StructureId.ProprioceptiveAfferents
+			or StructureId.VestibularAfferents
+			or StructureId.SpinalCordMotor;
 
 	public static bool IsProposalStructure(StructureId structure)
 		=> structure is StructureId.Pfc
@@ -70,6 +77,24 @@ internal static class ActionChannelTopology
 		var targetLocal = PositiveMod(sourceLocal + salt, targetCellsPerLane);
 		var targetIndex = targetLocal * ChannelCount + channel;
 		return FindBoundedLaneIndex(targetIndex, targetCount, targetStructure, channel);
+	}
+
+	public static int ProjectToChannel(
+		int channel,
+		int targetCount,
+		StructureId targetStructure,
+		int seed)
+	{
+		if (targetCount <= 1)
+		{
+			return 0;
+		}
+
+		var boundedChannel = PositiveMod(channel, ChannelCount);
+		var targetCellsPerLane = Math.Max(1, targetCount / ChannelCount);
+		var local = PositiveMod(seed, targetCellsPerLane);
+		var targetIndex = local * ChannelCount + boundedChannel;
+		return FindBoundedLaneIndex(targetIndex, targetCount, targetStructure, boundedChannel);
 	}
 
 	private static int FindBoundedLaneIndex(int candidate, int targetCount, StructureId targetStructure, int channel)

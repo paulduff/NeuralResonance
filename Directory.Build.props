@@ -12,7 +12,6 @@
   </PropertyGroup>
   <ItemGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('NeuralResonanceEngine.Structures.')) And '$(MSBuildProjectName)' != 'NeuralResonanceEngine.Structures.Runtime'">
     <ProjectReference Include="$(MSBuildThisFileDirectory)Structures\NeuralResonanceEngine.Structures.Runtime.csproj" />
-    <Compile Remove="StructureCircuitProfile.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(UsingMicrosoftNETSdkWeb)' == 'true'">
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2" />

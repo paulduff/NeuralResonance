@@ -2,7 +2,7 @@
     [int]$ControlHttpPort = 5080,
     [int]$ControlHttpsPort = 5081,
     [int]$StructurePortStart = 52166,
-    [int]$StructurePortEnd = 52244,
+    [int]$StructurePortEnd = 52322,
     [int]$RightHemisphereOffset = 1000,
     [string]$AppSettingsPath = "",
     [switch]$IncludeCommandLineProcesses = $true,
@@ -137,7 +137,7 @@ function Get-ExtraDnneProcesses {
     param([string]$WorkspaceRoot)
 
     $escapedRoot = [Regex]::Escape($WorkspaceRoot)
-    $dnneHintPattern = "(NeuralResonanceEngine|NeuralResonanceEngine\.DNN|ControlProgram|Structures\\|NRE\.WpfEditor|NRE\.WpfMazeSim|NRE\.WpfWorldSim|start-maze-sim|start-world-sim)"
+    $dnneHintPattern = "(NeuralResonanceEngine|NeuralResonanceEngine\.DNN|ControlProgram|Structures\\|NRE\.BlazorEditor|NRE\.WpfEditor|NRE\.WpfMazeSim|NRE\.WpfWorldSim|start-blazor-editor|start-maze-sim|start-world-sim)"
 
     return Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
@@ -146,7 +146,7 @@ function Get-ExtraDnneProcesses {
             $exe = [string]$_.ExecutablePath
 
             $isDotnet = $name -ieq "dotnet.exe"
-            $isDnneExe = $name -like "NeuralResonanceEngine.*" -or $name -like "NRE.WpfEditor*" -or $name -like "NRE.WpfMazeSim*" -or $name -like "NRE.WpfWorldSim*"
+            $isDnneExe = $name -like "NeuralResonanceEngine.*" -or $name -like "NRE.BlazorEditor*" -or $name -like "NRE.WpfEditor*" -or $name -like "NRE.WpfMazeSim*" -or $name -like "NRE.WpfWorldSim*"
             if (-not $isDotnet -and -not $isDnneExe) {
                 return $false
             }

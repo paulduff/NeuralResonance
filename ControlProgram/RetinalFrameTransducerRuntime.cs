@@ -165,6 +165,7 @@ internal sealed class RetinalFrameTransducerRuntime
 
         var left = new List<SpikeMessage>(SampleColumns * SampleRows / 2);
         var right = new List<SpikeMessage>(SampleColumns * SampleRows / 2);
+        var receptorBank = ResolveReceptorBank(descriptor.InputSource);
         var onCount = 0;
         var offCount = 0;
         var luminanceTotal = 0f;
@@ -193,6 +194,7 @@ internal sealed class RetinalFrameTransducerRuntime
                         tick,
                         timestampMs,
                         hemisphere,
+                        receptorBank,
                         "on",
                         index,
                         onActivation));
@@ -205,6 +207,7 @@ internal sealed class RetinalFrameTransducerRuntime
                         tick,
                         timestampMs,
                         hemisphere,
+                        receptorBank,
                         "off",
                         (SampleColumns * SampleRows) + index,
                         offActivation));
@@ -300,6 +303,7 @@ internal sealed class RetinalFrameTransducerRuntime
         long tick,
         double timestampMs,
         string hemisphere,
+        string receptorBank,
         string channel,
         int retinotopicIndex,
         float activation)
@@ -311,9 +315,9 @@ internal sealed class RetinalFrameTransducerRuntime
             TimestampMs = timestampMs,
             SourceStructure = StructureId.Retina,
             TargetStructure = StructureId.Retina,
-            SourceNeuronId = $"{hemisphere}:photoreceptor_{channel}_{retinotopicIndex}",
-            TargetNeuronId = $"{hemisphere}:retinal_ganglion_{channel}_{retinotopicIndex}",
-            SynapseId = CreateStableSynapseId(hemisphere, channel, retinotopicIndex),
+            SourceNeuronId = $"{hemisphere}:{receptorBank}:photoreceptor_{channel}_{retinotopicIndex}",
+            TargetNeuronId = $"{hemisphere}:{receptorBank}:retinal_ganglion_{channel}_{retinotopicIndex}",
+            SynapseId = CreateStableSynapseId(hemisphere, receptorBank, channel, retinotopicIndex),
             Neurotransmitter = NTEnum.GLUTAMATE,
             VesicleQuanta = Math.Clamp(0.35f + (boundedActivation * 3.2f), 0.05f, 5f),
             ReuptakeRate = Math.Clamp(3.5f + ((1f - boundedActivation) * 3f), 2f, 8f),
@@ -323,13 +327,25 @@ internal sealed class RetinalFrameTransducerRuntime
         };
     }
 
-    private static Guid CreateStableSynapseId(string hemisphere, string channel, int retinotopicIndex)
+    private static Guid CreateStableSynapseId(
+        string hemisphere,
+        string receptorBank,
+        string channel,
+        int retinotopicIndex)
     {
-        var key = Encoding.UTF8.GetBytes($"retina:{hemisphere}:{channel}:{retinotopicIndex}");
+        var key = Encoding.UTF8.GetBytes($"retina:{hemisphere}:{receptorBank}:{channel}:{retinotopicIndex}");
         Span<byte> digest = stackalloc byte[32];
         SHA256.HashData(key, digest);
         return new Guid(digest[..16]);
     }
+
+    private static string ResolveReceptorBank(string inputSource)
+        => inputSource switch
+        {
+            "avatar_retina_left" => "left_eye",
+            "avatar_retina_right" => "right_eye",
+            _ => "cyclopean_display"
+        };
 
     private sealed record RetinalHistory(int Width, int Height, float[] Luminance);
 }

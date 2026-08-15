@@ -62,6 +62,21 @@ function ConvertTo-ProcessArgument {
     return '"' + $escaped + '"'
 }
 
+function Format-EnvironmentPreviewValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [AllowNull()]
+        [object]$Value
+    )
+
+    if ($Name -match '(?i)(secret|password|token|key)') {
+        return '<set>'
+    }
+
+    return [string]$Value
+}
+
 function Assert-DnneSimulatorExclusive {
     param(
         [Parameter(Mandatory = $true)]
@@ -103,6 +118,8 @@ function Start-DnneProject {
         [string]$Configuration = 'Debug',
         [switch]$NoBuild,
         [hashtable]$EnvironmentVariables,
+        [ValidateSet('Normal', 'Hidden', 'Minimized', 'Maximized')]
+        [string]$WindowStyle = 'Normal',
         [switch]$WhatIf
     )
 
@@ -118,10 +135,12 @@ function Start-DnneProject {
         Write-Host ("  project: {0}" -f $resolvedProjectPath)
         Write-Host ("  configuration: {0}" -f $Configuration)
         Write-Host ("  no-build: {0}" -f [bool]$NoBuild)
+        Write-Host ("  window-style: {0}" -f $WindowStyle)
         if ($EnvironmentVariables) {
             $envPreview = @()
             foreach ($entry in $EnvironmentVariables.GetEnumerator() | Sort-Object Key) {
-                $envPreview += ("{0}={1}" -f $entry.Key, $entry.Value)
+                $previewValue = Format-EnvironmentPreviewValue -Name ([string]$entry.Key) -Value $entry.Value
+                $envPreview += ("{0}={1}" -f $entry.Key, $previewValue)
             }
             if ($envPreview.Count -gt 0) {
                 Write-Host ("  env: {0}" -f ($envPreview -join ', '))
@@ -155,7 +174,8 @@ function Start-DnneProject {
     $envPreview = @()
     if ($EnvironmentVariables) {
         foreach ($entry in $EnvironmentVariables.GetEnumerator() | Sort-Object Key) {
-            $envPreview += ("{0}={1}" -f $entry.Key, $entry.Value)
+            $previewValue = Format-EnvironmentPreviewValue -Name ([string]$entry.Key) -Value $entry.Value
+            $envPreview += ("{0}={1}" -f $entry.Key, $previewValue)
         }
     }
 
@@ -163,6 +183,7 @@ function Start-DnneProject {
     Write-Host ("  project: {0}" -f $resolvedProjectPath)
     Write-Host ("  configuration: {0}" -f $Configuration)
     Write-Host ("  no-build: {0}" -f [bool]$NoBuild)
+    Write-Host ("  window-style: {0}" -f $WindowStyle)
     if ($envPreview.Count -gt 0) {
         Write-Host ("  env: {0}" -f ($envPreview -join ', '))
     }
@@ -184,6 +205,7 @@ function Start-DnneProject {
             -WorkingDirectory $workingDirectory `
             -RedirectStandardOutput $stdoutPath `
             -RedirectStandardError $stderrPath `
+            -WindowStyle $WindowStyle `
             -PassThru
     }
 

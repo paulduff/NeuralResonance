@@ -105,7 +105,18 @@ public static class StructureHostApplication
 
 				using var activity = StructureTelemetry.Source.StartActivity("spike.receive");
 				activity?.SetTag("structure.id", profile.StructureId.ToString());
-				SpikeMessage spike = await SpikeProtocol.receive_spike(request.Body, ct);
+				SpikeMessage? spike;
+				if (request.HasJsonContentType())
+				{
+					spike = await request.ReadFromJsonAsync(
+						StructureJsonContext.Default.SpikeMessage,
+						ct);
+				}
+				else
+				{
+					spike = await SpikeProtocol.receive_spike(request.Body, ct);
+				}
+
 				if (spike == null)
 				{
 					activity?.SetStatus(ActivityStatusCode.Error, "Spike payload missing");
@@ -123,7 +134,7 @@ public static class StructureHostApplication
 			{
 				return Results.BadRequest($"Invalid spike payload: {ex.Message}");
 			}
-		}).Accepts<byte[]>("application/octet-stream");
+		}).Accepts<byte[]>("application/octet-stream", "application/json");
 
 		app.MapPost("/api/v1/structure/spike-batch", async (HttpRequest request, StructureEngine engine, CancellationToken ct) =>
 		{
@@ -181,7 +192,7 @@ public static class StructureHostApplication
 			{
 				return Results.BadRequest($"Invalid spike batch payload: {ex.Message}");
 			}
-		}).Accepts<byte[]>("application/octet-stream");
+		}).Accepts<byte[]>("application/octet-stream", "application/json");
 
 		// Acknowledge-only ticks depended on a separate fire-and-forget publish path.
 		// They could report success while losing the corresponding outbound activity.

@@ -25,7 +25,7 @@ public sealed class DistributedDeploymentTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(90, registered.Length);
+        Assert.Equal(protocolStructures.Length, registered.Length);
         Assert.Equal(protocolStructures, registered);
         Assert.Equal(registered.Length, assigned.Length);
         Assert.Equal(assigned.Length, assigned.Distinct(StringComparer.Ordinal).Count());

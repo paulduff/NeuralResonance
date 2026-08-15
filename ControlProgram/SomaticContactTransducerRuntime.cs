@@ -143,7 +143,9 @@ internal sealed record SomaticContactTransduction(
     float OnsetActivation,
     float VibrationActivation,
     float StretchActivation,
-    float HighThresholdActivation)
+    float HighThresholdActivation,
+    string ReceptorField,
+    float ReceptorDensityScale)
 {
     public int GeneratedSpikes => LeftHemisphereSpikes.Count + RightHemisphereSpikes.Count;
 
@@ -179,7 +181,7 @@ internal sealed record SomaticContactTransduction(
 internal sealed class SomaticContactTransducerRuntime
 {
     private const float MinimumActivation = 0.035f;
-    private const int MaximumFibersPerPopulation = 5;
+    private const int MaximumFibersPerPopulation = 18;
     private const float MidlineHalfWidthMeters = 0.035f;
     private readonly object _gate = new();
     private readonly Dictionary<string, float> _previousPressureBySourceAndSector = new(StringComparer.OrdinalIgnoreCase);
@@ -191,10 +193,12 @@ internal sealed class SomaticContactTransducerRuntime
     {
         ArgumentNullException.ThrowIfNull(descriptor);
 
-        var sector = ComputeReceptorSector(
+        var receptorField = ResolveReceptorField(
             descriptor.BodyPositionX,
             descriptor.BodyPositionY,
-            descriptor.BodyPositionZ);
+            descriptor.BodyPositionZ,
+            descriptor.InputSource);
+        var sector = receptorField.Sector;
         var pressure = Math.Clamp(
             (descriptor.ForceNewtons / 850f) +
             (descriptor.PenetrationMillimeters / 50f * 0.38f),
@@ -214,10 +218,17 @@ internal sealed class SomaticContactTransducerRuntime
         var onset = Math.Clamp((pressureOnset * 0.72f) + (impulse * 0.72f), 0f, 1f);
         var vibration = Math.Clamp((impulse * 0.60f) + (slip * 0.72f), 0f, 1f);
         var stretch = Math.Clamp((slip * 0.62f) + (indentation * 0.38f), 0f, 1f);
+        var sustainedMechanicalThreat = Math.Clamp(
+            MathF.Max(0f, descriptor.ForceNewtons - 180f) / 1_500f *
+            (0.20f + (duration * 0.80f)),
+            0f,
+            1f);
         var highThreshold = Math.Clamp(
             MathF.Max(
-                MathF.Max((descriptor.ForceNewtons - 900f) / 2_600f, (descriptor.PenetrationMillimeters - 12f) / 38f),
-                areaDensity - 0.55f),
+                MathF.Max(
+                    MathF.Max((descriptor.ForceNewtons - 900f) / 2_600f, (descriptor.PenetrationMillimeters - 12f) / 38f),
+                    areaDensity - 0.55f),
+                sustainedMechanicalThreat),
             0f,
             1f);
 
@@ -234,6 +245,7 @@ internal sealed class SomaticContactTransducerRuntime
                 vibration,
                 stretch,
                 highThreshold,
+                receptorField,
                 descriptor,
                 tick,
                 timestampMs);
@@ -250,6 +262,7 @@ internal sealed class SomaticContactTransducerRuntime
                 vibration,
                 stretch,
                 highThreshold,
+                receptorField,
                 descriptor,
                 tick,
                 timestampMs);
@@ -265,7 +278,9 @@ internal sealed class SomaticContactTransducerRuntime
             onset,
             vibration,
             stretch,
-            highThreshold);
+            highThreshold,
+            receptorField.Name,
+            receptorField.DensityScale);
     }
 
     private float ExchangePressure(string key, float current)
@@ -287,15 +302,21 @@ internal sealed class SomaticContactTransducerRuntime
         float vibration,
         float stretch,
         float highThreshold,
+        SomaticReceptorField receptorField,
         SomaticContactDescriptor descriptor,
         long tick,
         double timestampMs)
     {
-        AddPopulation(output, hemisphere, sector, "merkel_sa1", sustainedPressure, descriptor, tick, timestampMs);
-        AddPopulation(output, hemisphere, sector, "meissner_ra1", onset, descriptor, tick, timestampMs);
-        AddPopulation(output, hemisphere, sector, "pacinian_ra2", vibration, descriptor, tick, timestampMs);
-        AddPopulation(output, hemisphere, sector, "ruffini_sa2", stretch, descriptor, tick, timestampMs);
-        AddPopulation(output, hemisphere, sector, "mechanonociceptor", highThreshold, descriptor, tick, timestampMs);
+        AddPopulation(output, hemisphere, sector, "merkel_sa1", sustainedPressure,
+            receptorField.DensityScale * receptorField.DiscriminativeTouchScale, descriptor, tick, timestampMs);
+        AddPopulation(output, hemisphere, sector, "meissner_ra1", onset,
+            receptorField.DensityScale * receptorField.DiscriminativeTouchScale, descriptor, tick, timestampMs);
+        AddPopulation(output, hemisphere, sector, "pacinian_ra2", vibration,
+            0.80f + (receptorField.DensityScale * 0.20f), descriptor, tick, timestampMs);
+        AddPopulation(output, hemisphere, sector, "ruffini_sa2", stretch,
+            0.72f + (receptorField.DensityScale * 0.28f), descriptor, tick, timestampMs);
+        AddPopulation(output, hemisphere, sector, "free_nerve_ending_mechanonociceptor", highThreshold,
+            receptorField.FreeNerveEndingScale, descriptor, tick, timestampMs);
     }
 
     private static void AddPopulation(
@@ -304,6 +325,7 @@ internal sealed class SomaticContactTransducerRuntime
         int sector,
         string receptor,
         float activation,
+        float receptorDensityScale,
         SomaticContactDescriptor descriptor,
         long tick,
         double timestampMs)
@@ -313,8 +335,9 @@ internal sealed class SomaticContactTransducerRuntime
             return;
         }
 
+        var baseFibers = 1 + (int)MathF.Floor((activation - MinimumActivation) * 5.5f);
         var fibers = Math.Clamp(
-            1 + (int)MathF.Floor((activation - MinimumActivation) * 5.5f),
+            (int)MathF.Ceiling(baseFibers * Math.Clamp(receptorDensityScale, 0.35f, 3.5f)),
             1,
             MaximumFibersPerPopulation);
         for (var fiber = 0; fiber < fibers; fiber++)
@@ -341,14 +364,72 @@ internal sealed class SomaticContactTransducerRuntime
         }
     }
 
-    private static int ComputeReceptorSector(float x, float y, float z)
+    private static SomaticReceptorField ResolveReceptorField(float x, float y, float z, string inputSource)
     {
-        var azimuth = MathF.Atan2(x, z);
-        var azimuthBin = Math.Clamp((int)MathF.Floor(((azimuth + MathF.PI) / (2f * MathF.PI)) * 16f), 0, 15);
-        var elevation = Math.Clamp((y + 2f) / 4f, 0f, 0.9999f);
-        var elevationBin = Math.Clamp((int)MathF.Floor(elevation * 8f), 0, 7);
-        var radialBin = Math.Clamp((int)MathF.Floor(MathF.Min(1f, MathF.Sqrt((x * x) + (z * z)) / 2f) * 4f), 0, 3);
-        return (elevationBin * 64) + (azimuthBin * 4) + radialBin;
+        var absoluteX = MathF.Abs(x);
+        var normalizedSource = inputSource.ToLowerInvariant();
+        SomaticReceptorField field;
+        if (normalizedSource.Contains("hand", StringComparison.Ordinal))
+        {
+            field = new SomaticReceptorField("hand", 0.022f, 3.0f, 1.18f, 2.4f);
+        }
+        else if (normalizedSource.Contains("foot", StringComparison.Ordinal))
+        {
+            field = new SomaticReceptorField("foot", 0.050f, 1.8f, 1.05f, 1.7f);
+        }
+        else if (normalizedSource.Contains("head", StringComparison.Ordinal))
+        {
+            field = z >= 0.14f && absoluteX <= 0.15f
+                ? new SomaticReceptorField("lips", 0.018f, 3.4f, 1.15f, 2.6f)
+                : new SomaticReceptorField("face", 0.032f, 2.5f, 1.10f, 2.1f);
+        }
+        else if (normalizedSource.Contains("arm", StringComparison.Ordinal) ||
+                 normalizedSource.Contains("forearm", StringComparison.Ordinal) ||
+                 normalizedSource.Contains("thigh", StringComparison.Ordinal) ||
+                 normalizedSource.Contains("shin", StringComparison.Ordinal) ||
+                 normalizedSource.Contains("knee", StringComparison.Ordinal))
+        {
+            field = new SomaticReceptorField("distal_limb", 0.075f, 1.25f, 1.0f, 1.4f);
+        }
+        else
+        {
+            field = y switch
+            {
+                >= 0.58f when z >= 0.28f && absoluteX <= 0.15f =>
+                    new SomaticReceptorField("lips", 0.018f, 3.4f, 1.15f, 2.6f),
+                >= 0.52f =>
+                    new SomaticReceptorField("face", 0.032f, 2.5f, 1.10f, 2.1f),
+                >= 0.12f when absoluteX >= 0.32f && z >= 0.28f =>
+                    new SomaticReceptorField("hand", 0.022f, 3.0f, 1.18f, 2.4f),
+                <= -0.68f =>
+                    new SomaticReceptorField("foot", 0.050f, 1.8f, 1.05f, 1.7f),
+                _ when absoluteX >= 0.34f =>
+                    new SomaticReceptorField("distal_limb", 0.075f, 1.25f, 1.0f, 1.4f),
+                _ =>
+                    new SomaticReceptorField("general_skin", 0.145f, 0.72f, 0.82f, 1.0f)
+            };
+        }
+
+        return field with { Sector = ComputeSpatialSector(field.Name, field.ReceptiveFieldSpacingMeters, x, y, z) };
+    }
+
+    private static int ComputeSpatialSector(string field, float spacing, float x, float y, float z)
+    {
+        var qx = (int)MathF.Round(x / spacing);
+        var qy = (int)MathF.Round(y / spacing);
+        var qz = (int)MathF.Round(z / spacing);
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (var character in field)
+            {
+                hash = (hash ^ character) * 16777619;
+            }
+            hash = (hash ^ (uint)qx) * 16777619;
+            hash = (hash ^ (uint)qy) * 16777619;
+            hash = (hash ^ (uint)qz) * 16777619;
+            return (int)(hash & 0x7FFFFFFF);
+        }
     }
 
     private static int CountActive(params float[] activations)
@@ -361,4 +442,12 @@ internal sealed class SomaticContactTransducerRuntime
         SHA256.HashData(key, digest);
         return new Guid(digest[..16]);
     }
+
+    private sealed record SomaticReceptorField(
+        string Name,
+        float ReceptiveFieldSpacingMeters,
+        float DensityScale,
+        float DiscriminativeTouchScale,
+        float FreeNerveEndingScale,
+        int Sector = 0);
 }

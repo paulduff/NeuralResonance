@@ -1,0 +1,353 @@
+@page "/editor"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<PageTitle>DNNE Editor</PageTitle>
+
+<div class="editor-shell">
+    <header class="editor-header">
+        <div class="editor-brand">
+            <span class="brand-mark" aria-hidden="true">DN</span>
+            <span>
+                <strong>DNNE Editor</strong>
+                <small>Neural Resonance Engine</small>
+            </span>
+        </div>
+        <nav class="workspace-tabs" aria-label="Editor workspace">
+            <button type="button" class="workspace-tab active" data-workspace-tab="brain">Brain</button>
+            <button type="button" class="workspace-tab" data-workspace-tab="world">World</button>
+            <button type="button" class="workspace-tab" disabled>Network</button>
+        </nav>
+        <div class="runtime-summary" aria-live="polite">
+            <span id="runtimeStatusDot" class="status-dot waiting"></span>
+            <span id="runtimeStatus">Connecting</span>
+            <span class="metric"><b id="runtimeTick">0</b> tick</span>
+            <span class="metric"><b id="runtimeServices">0</b> services</span>
+        </div>
+        <form method="post" action="/editor/logout">
+            <AntiforgeryToken />
+            <button class="icon-command" type="submit" title="Sign out" aria-label="Sign out">
+                <i data-lucide="log-out"></i>
+            </button>
+        </form>
+    </header>
+
+    <aside class="structure-panel workspace-panel brain-panel" data-workspace-panel="brain" aria-label="Brain structures">
+        <div class="panel-heading">
+            <span>
+                <small>Atlas</small>
+                <strong>Structures</strong>
+            </span>
+            <b id="structureCount">0</b>
+        </div>
+        <label class="search-field" for="structureSearch">
+            <i data-lucide="search"></i>
+            <input id="structureSearch" type="search" placeholder="Find a structure" autocomplete="off" />
+        </label>
+        <div id="structureList" class="structure-list" role="listbox" aria-label="Anatomical structures"></div>
+    </aside>
+
+    <main class="brain-workspace workspace-panel brain-panel" data-workspace-panel="brain">
+        <div id="brainViewport" class="brain-viewport" aria-label="Interactive 3D brain model"></div>
+        <div class="viewport-toolbar" aria-label="View tools">
+            <button type="button" class="icon-command" data-editor-action="reset" title="Reset view" aria-label="Reset view">
+                <i data-lucide="rotate-ccw"></i>
+            </button>
+            <button type="button" class="icon-command" data-editor-action="fit" title="Fit brain" aria-label="Fit brain">
+                <i data-lucide="maximize-2"></i>
+            </button>
+            <span class="toolbar-divider"></span>
+            <button type="button" class="view-command active" data-editor-view="anterior">Anterior</button>
+            <button type="button" class="view-command" data-editor-view="posterior">Posterior</button>
+            <button type="button" class="view-command" data-editor-view="left">Left</button>
+            <button type="button" class="view-command" data-editor-view="right">Right</button>
+            <button type="button" class="view-command" data-editor-view="superior">Superior</button>
+            <button type="button" class="view-command" data-editor-view="inferior">Inferior</button>
+        </div>
+        <div class="viewport-mode">
+            <button type="button" class="mode-button active" data-editor-mode="anatomy">Anatomy</button>
+            <button type="button" class="mode-button" data-editor-mode="activity">Activity</button>
+        </div>
+        <div id="anteriorOrientation" class="anterior-orientation" aria-label="Anatomical orientation">
+            <span>R</span>
+            <span>L</span>
+        </div>
+        <div class="viewport-scale">WPF atlas space | mm | +Z anterior</div>
+    </main>
+
+    <aside class="inspector-panel workspace-panel brain-panel" data-workspace-panel="brain" aria-label="Inspector">
+        <div class="panel-heading">
+            <span>
+                <small>Selection</small>
+                <strong>Inspector</strong>
+            </span>
+        </div>
+        <div id="selectionEmpty" class="empty-selection">
+            <i data-lucide="mouse-pointer-2"></i>
+            <p>Select a structure in the model or atlas list.</p>
+        </div>
+        <div id="selectionDetails" class="selection-details" hidden>
+            <p id="selectionHemisphere" class="eyebrow">Hemisphere</p>
+            <h2 id="selectionName">Structure</h2>
+            <dl>
+                <div><dt>Runtime ID</dt><dd id="selectionId">-</dd></div>
+                <div><dt>Neuron model</dt><dd id="selectionModel">-</dd></div>
+                <div><dt>Plasticity</dt><dd id="selectionPlasticity">-</dd></div>
+                <div><dt>Mean rate</dt><dd id="selectionRate">0 Hz</dd></div>
+                <div><dt>Spikes out</dt><dd id="selectionSpikes">0</dd></div>
+            </dl>
+            <div class="activity-meter" aria-label="Current neural activity">
+                <span id="selectionActivity"></span>
+            </div>
+            <section id="selectionLaminar" class="laminar-telemetry" aria-label="Cortical population activity" hidden>
+                <header>
+                    <strong>Cortical populations</strong>
+                    <span id="selectionInhibitoryBalance">0% inhibition</span>
+                </header>
+                <div id="selectionLaminarPopulations" class="laminar-populations"></div>
+            </section>
+            <p id="selectionSource" class="source-note"></p>
+        </div>
+        <div class="display-controls">
+            <label for="shellOpacity">
+                Shell opacity
+                <output id="shellOpacityValue">12%</output>
+            </label>
+            <input id="shellOpacity" type="range" min="4" max="32" value="12" />
+            <label class="toggle-control" for="showPathways">
+                <input id="showPathways" type="checkbox" checked />
+                <span>Show active pathways</span>
+            </label>
+        </div>
+    </aside>
+
+    <section class="telemetry-panel workspace-panel brain-panel" data-workspace-panel="brain" aria-label="Live telemetry">
+        <div class="telemetry-heading">
+            <span>
+                <small>ControlProgram</small>
+                <strong>Live telemetry</strong>
+            </span>
+            <span id="telemetryAge">Awaiting first frame</span>
+        </div>
+        <div class="telemetry-strip">
+            <div><small>Simulation</small><strong id="simulationClock">0.0 ms</strong></div>
+            <div><small>Snapshot</small><strong id="snapshotTick">0</strong></div>
+            <div><small>Non-OK</small><strong id="nonOkServices">0</strong></div>
+            <div><small>Dispatch</small><strong id="dispatchCount">0</strong></div>
+        </div>
+        <div id="telemetryLog" class="telemetry-log" aria-live="polite">Connecting to the local ControlProgram gateway...</div>
+    </section>
+
+    <aside class="world-layers-panel workspace-panel world-panel" data-workspace-panel="world" aria-label="World scene" hidden>
+        <div class="panel-heading">
+            <span>
+                <small>Environment</small>
+                <strong>World scene</strong>
+            </span>
+            <b id="worldSeed">317</b>
+        </div>
+        <div class="world-presence">
+            <span id="worldPresenceDot" class="status-dot waiting"></span>
+            <span><strong id="worldPresence">Offline preview</strong><small id="worldSnapshotAge">Awaiting WorldSim</small></span>
+        </div>
+        <div class="world-layer-list" aria-label="Visible world layers">
+            <div><span class="layer-swatch terrain"></span><span>Fine voxel terrain</span><b id="terrainCellCount">69,696</b></div>
+            <div><span class="layer-swatch water"></span><span>Water</span><b>sea 3</b></div>
+            <div><span class="layer-swatch habitat"></span><span>Habitats</span><b id="habitatCount">12</b></div>
+            <div><span class="layer-swatch flora"></span><span>Flora</span><b id="floraCount">0</b></div>
+            <div><span class="layer-swatch resource"></span><span>Resources</span><b id="resourceCount">0</b></div>
+            <div><span class="layer-swatch predator"></span><span>Predators</span><b id="predatorCount">suspended</b></div>
+        </div>
+        <div class="world-flow" aria-label="Embodied processing loop">
+            <small>Embodied loop</small>
+            <div><span>Brain</span><i data-lucide="arrow-right"></i><span>Avatar</span><i data-lucide="arrow-right"></i><span>World</span></div>
+            <div class="return-flow"><span>Brain</span><i data-lucide="arrow-left"></i><span>Avatar</span><i data-lucide="arrow-left"></i><span>World</span></div>
+        </div>
+    </aside>
+
+    <main class="world-workspace workspace-panel world-panel" data-workspace-panel="world" hidden>
+        <div id="worldViewport" class="world-viewport" aria-label="Interactive 3D world simulation"></div>
+        <div class="viewport-toolbar world-toolbar" aria-label="World view tools">
+            <button type="button" class="icon-command" data-world-command="resume" title="Resume world" aria-label="Resume world" hidden>
+                <i data-lucide="play"></i>
+            </button>
+            <button type="button" class="icon-command" data-world-command="pause" title="Pause world" aria-label="Pause world">
+                <i data-lucide="pause"></i>
+            </button>
+            <button type="button" class="icon-command" data-world-command="reset" title="Reset world" aria-label="Reset world">
+                <i data-lucide="refresh-cw"></i>
+            </button>
+            <span class="toolbar-divider"></span>
+            <button type="button" class="icon-command" data-world-action="reset" title="Reset world view" aria-label="Reset world view">
+                <i data-lucide="rotate-ccw"></i>
+            </button>
+            <button type="button" class="icon-command" data-world-action="overview" title="Overhead view" aria-label="Overhead view">
+                <i data-lucide="map"></i>
+            </button>
+            <span class="toolbar-divider"></span>
+            <button type="button" class="view-command active" data-world-camera="orbit">Orbit</button>
+            <button type="button" class="view-command" data-world-camera="follow">Follow</button>
+        </div>
+        <div class="viewport-mode avatar-mode" aria-label="Avatar display">
+            <button type="button" class="mode-button active" data-avatar-mode="body">Body</button>
+            <button type="button" class="mode-button" data-avatar-mode="neural">Neural</button>
+        </div>
+        <div class="world-compass" aria-hidden="true"><span>N</span><i></i><small id="worldHeading">000 deg</small></div>
+        <div class="viewport-scale">DNNE world space | 0.5 unit visual voxels | Y up</div>
+    </main>
+
+    <aside class="world-inspector-panel workspace-panel world-panel" data-workspace-panel="world" aria-label="Avatar state" hidden>
+        <div class="panel-heading">
+            <span>
+                <small>Embodiment</small>
+                <strong>Avatar state</strong>
+            </span>
+        </div>
+        <div class="avatar-state-heading">
+            <span id="avatarVitalDot" class="status-dot waiting"></span>
+            <span><small>Vital state</small><strong id="avatarVitalState">Preview</strong></span>
+        </div>
+        <div class="physiology-group">
+            <label>Energy <output id="avatarEnergyValue">100%</output></label>
+            <div class="physiology-meter"><span id="avatarEnergy"></span></div>
+            <label>Hydration <output id="avatarHydrationValue">100%</output></label>
+            <div class="physiology-meter hydration"><span id="avatarHydration"></span></div>
+            <label>Tissue integrity <output id="avatarTissueValue">100%</output></label>
+            <div class="physiology-meter tissue"><span id="avatarTissue"></span></div>
+        </div>
+        <dl class="world-stat-list">
+            <div><dt>Brain link</dt><dd id="avatarBrainLink">Waiting</dd></div>
+            <div><dt>Position</dt><dd id="avatarPosition">0.0, 0.0, 0.0</dd></div>
+            <div><dt>Posture</dt><dd id="avatarPosture">Standing</dd></div>
+            <div><dt>Balance</dt><dd id="avatarBalance">0%</dd></div>
+            <div><dt>Distance</dt><dd id="avatarDistance">0.0</dd></div>
+            <div><dt>Shelter</dt><dd id="avatarShelter">No</dd></div>
+            <div><dt>Sleep</dt><dd id="avatarSleep">Awake</dd></div>
+            <div><dt>Food consumed</dt><dd id="avatarFood">0</dd></div>
+            <div><dt>Device charges</dt><dd id="avatarWeapons">0</dd></div>
+        </dl>
+        <div class="neural-drive-panel">
+            <small>Neuronal command channels</small>
+            <div class="drive-row"><span>L</span><div><i id="leftMotorDrive"></i></div><output id="leftMotorDriveValue">0.00</output></div>
+            <div class="drive-row"><span>R</span><div><i id="rightMotorDrive"></i></div><output id="rightMotorDriveValue">0.00</output></div>
+            <div class="drive-row"><span>M</span><div><i id="manipulatorDrive"></i></div><output id="manipulatorDriveValue">0.00</output></div>
+            <div class="drive-row"><span>HY</span><div><i id="headYawDrive"></i></div><output id="headYawDriveValue">0.00</output></div>
+            <div class="drive-row"><span>HP</span><div><i id="headPitchDrive"></i></div><output id="headPitchDriveValue">0.00</output></div>
+            <div class="drive-row"><span>St</span><div><i id="standDrive"></i></div><output id="standDriveValue">0.00</output></div>
+            <div class="drive-row"><span>Cr</span><div><i id="crouchDrive"></i></div><output id="crouchDriveValue">0.00</output></div>
+            <div class="drive-row"><span>Si</span><div><i id="sitDrive"></i></div><output id="sitDriveValue">0.00</output></div>
+            <div class="drive-row"><span>Li</span><div><i id="lieDrive"></i></div><output id="lieDriveValue">0.00</output></div>
+        </div>
+        <div class="motor-channel-panel">
+            <div class="motor-channel-heading">
+                <small>Physical motor channels</small>
+                <output id="motorChannelGroundState">grounded</output>
+            </div>
+            <section class="motor-channel-group" aria-label="Upper limb motor channels">
+                <strong>Upper limbs</strong>
+                <div class="channel-row"><span>L shoulder swing</span><div class="channel-track signed"><i id="leftShoulderChannel"></i></div><output id="leftShoulderChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R shoulder swing</span><div class="channel-track signed"><i id="rightShoulderChannel"></i></div><output id="rightShoulderChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L shoulder lift</span><div class="channel-track signed"><i id="leftShoulderAbductionChannel"></i></div><output id="leftShoulderAbductionChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R shoulder lift</span><div class="channel-track signed"><i id="rightShoulderAbductionChannel"></i></div><output id="rightShoulderAbductionChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L elbow</span><div class="channel-track signed"><i id="leftElbowChannel"></i></div><output id="leftElbowChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R elbow</span><div class="channel-track signed"><i id="rightElbowChannel"></i></div><output id="rightElbowChannelValue">0.0 deg</output></div>
+            </section>
+            <section class="motor-channel-group" aria-label="Lower limb motor channels">
+                <strong>Lower limbs</strong>
+                <div class="channel-row"><span>L hip</span><div class="channel-track signed"><i id="leftHipChannel"></i></div><output id="leftHipChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R hip</span><div class="channel-track signed"><i id="rightHipChannel"></i></div><output id="rightHipChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L knee</span><div class="channel-track signed"><i id="leftKneeChannel"></i></div><output id="leftKneeChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R knee</span><div class="channel-track signed"><i id="rightKneeChannel"></i></div><output id="rightKneeChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L ankle</span><div class="channel-track signed"><i id="leftAnkleChannel"></i></div><output id="leftAnkleChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R ankle</span><div class="channel-track signed"><i id="rightAnkleChannel"></i></div><output id="rightAnkleChannelValue">0.0 deg</output></div>
+            </section>
+            <section class="motor-channel-group" aria-label="Axial motor channels">
+                <strong>Axial posture</strong>
+                <div class="channel-row"><span>Trunk pitch</span><div class="channel-track signed"><i id="trunkPitchChannel"></i></div><output id="trunkPitchChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>Trunk roll</span><div class="channel-track signed"><i id="trunkRollChannel"></i></div><output id="trunkRollChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>Neck yaw</span><div class="channel-track signed"><i id="neckYawChannel"></i></div><output id="neckYawChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>Neck pitch</span><div class="channel-track signed"><i id="neckPitchChannel"></i></div><output id="neckPitchChannelValue">0.0 deg</output></div>
+            </section>
+            <section class="motor-channel-group" aria-label="Effector and support channels">
+                <strong>Effectors and support</strong>
+                <div class="channel-row"><span>Reach</span><div class="channel-track"><i id="manipulatorExtensionChannel"></i></div><output id="manipulatorExtensionChannelValue">0%</output></div>
+                <div class="channel-row"><span>L foot</span><div class="channel-track"><i id="leftFootLoadChannel"></i></div><output id="leftFootLoadChannelValue">0 N</output></div>
+                <div class="channel-row"><span>R foot</span><div class="channel-track"><i id="rightFootLoadChannel"></i></div><output id="rightFootLoadChannelValue">0 N</output></div>
+            </section>
+        </div>
+        <div class="muscle-telemetry-panel">
+            <div class="motor-channel-heading">
+                <small>Muscle receptors</small>
+                <output id="muscleTelemetrySummary">32 muscles</output>
+            </div>
+            <div id="muscleTelemetryList" class="muscle-telemetry-list" aria-label="Major muscle activity"></div>
+        </div>
+        <div class="display-controls world-display-controls">
+            <label class="toggle-control" for="showAvatarTrail">
+                <input id="showAvatarTrail" type="checkbox" checked />
+                <span>Show travelled path</span>
+            </label>
+            <label class="toggle-control" for="showWorldAtmosphere">
+                <input id="showWorldAtmosphere" type="checkbox" checked />
+                <span>Atmosphere and water motion</span>
+            </label>
+        </div>
+    </aside>
+
+    <section class="world-telemetry-panel workspace-panel world-panel" data-workspace-panel="world" aria-label="World telemetry" hidden>
+        <div class="telemetry-heading">
+            <span>
+                <small>WorldSim</small>
+                <strong>Live state</strong>
+            </span>
+            <span id="worldTelemetryAge">offline</span>
+        </div>
+        <div class="telemetry-strip world-telemetry-strip">
+            <div><small>Elapsed</small><strong id="worldElapsed">0.0 s</strong></div>
+            <div><small>Visited</small><strong id="worldVisited">0 / 0</strong></div>
+            <div><small>Motor dispatch</small><strong id="worldMotorDispatch">0</strong></div>
+            <div><small>Sensory frames</small><strong id="worldSensoryFrames">0</strong></div>
+        </div>
+        <div id="worldTelemetryLog" class="telemetry-log" aria-live="polite">World preview ready. Waiting for an authoritative simulator snapshot.</div>
+    </section>
+</div>
+
+@code {
+    private IJSObjectReference? brainModule;
+    private IJSObjectReference? worldModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        brainModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/brain-editor.js?v=128");
+        worldModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/world-editor.js?v=130");
+        await brainModule.InvokeVoidAsync("mountEditor");
+        await worldModule.InvokeVoidAsync("mountWorld");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (brainModule is not null)
+            {
+                await brainModule.InvokeVoidAsync("disposeEditor");
+                await brainModule.DisposeAsync();
+            }
+
+            if (worldModule is not null)
+            {
+                await worldModule.InvokeVoidAsync("disposeWorld");
+                await worldModule.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser circuit has already gone away.
+        }
+    }
+}

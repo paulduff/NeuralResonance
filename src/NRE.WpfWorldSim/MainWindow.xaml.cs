@@ -59,7 +59,7 @@ public partial class MainWindow : Window
     private const double AvatarVisionPredatorWidth = 1.35;
     private const double AvatarVisionPredatorHeight = 1.10;
     private const double AvatarVisionPredatorLength = 1.85;
-    private const int AvatarVisionDispatchTimeoutMs = 3000;
+    private const int AvatarVisionDispatchTimeoutMs = 6000;
     private const int MaxLogLines = 220;
     private const double SpawnSearchRadiusMin = 1.2;
     private const double SpawnSearchRadiusMax = 16.0;
@@ -79,18 +79,18 @@ public partial class MainWindow : Window
     private const double FollowCameraDistance = 42.0;
     private const int AdditionalShelterHomeCount = 11;
     private const double ShelterHomeSpacingMin = 12.0;
-    private const double TelemetryDelayGraceSeconds = 15.0;
+    private const double TelemetryDelayGraceSeconds = 20.0;
     private const int VisionPreviewIntervalMs = 20;
     private const int VisionPreviewMaxLagMs = 250;
     private const int VisionPreviewDropLagMs = 1000;
     private const int VisionBrainInputMaxLagMs = VisionPreviewDropLagMs;
     private const double VisionPreviewEyelidCloseRate = 5.8;
     private const double VisionPreviewEyelidOpenRate = 3.4;
-    private const int EnvironmentAudioDispatchTimeoutMs = 6000;
+    private const int EnvironmentAudioDispatchTimeoutMs = 9000;
     private const int EnvironmentAudioDispatchIntervalMs = 120;
     private const int OptionalInputOverloadRetryMs = 6000;
     private const int BodyFrameDispatchIntervalMs = 350;
-    private const int BodyFrameDispatchTimeoutMs = 1800;
+    private const int BodyFrameDispatchTimeoutMs = 5000;
     private const double MaximumBlockedContactSeconds = 3.0;
     private const double NominalStoredEnergyJoules = 8_000_000.0;
     private const double MetabolicBurnJoulesPerSecond = 3_360.0;
@@ -161,13 +161,13 @@ public partial class MainWindow : Window
 
     // Independent clients keep slow telemetry and sensory calls from blocking each other.
     private readonly HttpClient _httpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(1800) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(6000) });
     private readonly HttpClient _sensoryInputHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(4000) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(8000) });
     private readonly HttpClient _auditoryInputHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(9000) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
-        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(8) });
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(12) });
     private readonly AutoResetEvent _visionRequestSignal = new(false);
     private readonly Thread _visionWorkerThread;
     private readonly AvatarService _avatarService = new(
@@ -372,6 +372,7 @@ public partial class MainWindow : Window
     private readonly AvatarWarningGate _optionalBrainInputPressureWarningGate = new(minimumIntervalMs: 8000);
     private string _resolvedEndpoint = ResolveConfiguredControlEndpoint();
     private readonly AvatarWarningGate _endpointValidationWarningGate = new();
+    private DateTime _lastFrameSuccessUtc = DateTime.MinValue;
     private DateTime _lastTelemetrySuccessUtc = DateTime.MinValue;
     private int _telemetryFailureStreak;
     private int _spawnValidationRetries;
@@ -543,6 +544,7 @@ public partial class MainWindow : Window
         _optionalBrainInputPressureWarningGate.Reset();
         _nextSimulationHudUpdateSeconds = 0.0;
         _nextSurvivalHudUpdateSeconds = 0.0;
+        _lastFrameSuccessUtc = DateTime.MinValue;
         _lastTelemetrySuccessUtc = DateTime.MinValue;
         _telemetryFailureStreak = 0;
         _endpointValidationWarningGate.Reset();
@@ -6063,6 +6065,7 @@ public partial class MainWindow : Window
 
                 return;
             }
+            _lastFrameSuccessUtc = DateTime.UtcNow;
             var root = doc.RootElement;
             var brainState = default(JsonElement);
 
@@ -6508,6 +6511,10 @@ public partial class MainWindow : Window
         var telemetryAgeSeconds = _lastTelemetrySuccessUtc == DateTime.MinValue
             ? double.MaxValue
             : Math.Max(0.0, (DateTime.UtcNow - _lastTelemetrySuccessUtc).TotalSeconds);
+        var frameAgeSeconds = _lastFrameSuccessUtc == DateTime.MinValue
+            ? double.MaxValue
+            : Math.Max(0.0, (DateTime.UtcNow - _lastFrameSuccessUtc).TotalSeconds);
+        var brainLinkAgeSeconds = Math.Min(telemetryAgeSeconds, frameAgeSeconds);
         return new WorldSimulationStatus(
             ProtocolVersion: "dnne.worldsim.state.v1",
             SessionId: _runtimeSessionId,
@@ -6518,8 +6525,9 @@ public partial class MainWindow : Window
             SessionStartedUtc: _runtimeSessionStartedUtc,
             ElapsedSeconds: Math.Max(0.0, (generatedUtc - _runtimeSessionStartedUtc).TotalSeconds),
             ControlEndpoint: GetSelectedEndpoint(),
-            BrainConnected: telemetryAgeSeconds <= 5.0,
+            BrainConnected: brainLinkAgeSeconds <= TelemetryDelayGraceSeconds,
             TelemetryAgeSeconds: telemetryAgeSeconds,
+            FrameAgeSeconds: frameAgeSeconds,
             Seed: _seed,
             AvatarX: _avatarX,
             AvatarY: _avatarY,
@@ -6560,7 +6568,35 @@ public partial class MainWindow : Window
             InShelter: IsInShelter(),
             NeuronalSleep: _sleepState,
             CollisionHits: _collisionHits,
-            TickFailures: _tickFailures);
+            TickFailures: _tickFailures,
+            FoodPickups: _foodPickups
+                .Where(static pickup => pickup.Active)
+                .Select(static pickup => new WorldEntityStatus(
+                    "food", pickup.Position.X, pickup.Position.Y, pickup.Position.Z, 0.0, null))
+                .ToArray(),
+            WeaponPickups: _weaponPickups
+                .Where(static pickup => pickup.Active)
+                .Select(static pickup => new WorldEntityStatus(
+                    "device",
+                    pickup.Position.X,
+                    pickup.Position.Y,
+                    pickup.Position.Z,
+                    0.0,
+                    pickup.RangeProfile.ToString()))
+                .ToArray(),
+            Predators: _predators
+                .Select(static predator => new WorldEntityStatus(
+                    "predator",
+                    predator.Position.X,
+                    predator.Position.Y,
+                    predator.Position.Z,
+                    predator.HeadingDeg,
+                    null))
+                .ToArray(),
+            Shelters: _shelterSites
+                .Select(static shelter => new WorldEntityStatus(
+                    "shelter", shelter.X, shelter.BaseY, shelter.Z, 0.0, null))
+                .ToArray());
     }
 
     private static void WriteRuntimeState(WorldSimulationStatus snapshot)
@@ -7306,6 +7342,7 @@ public partial class MainWindow : Window
         string ControlEndpoint,
         bool BrainConnected,
         double TelemetryAgeSeconds,
+        double FrameAgeSeconds,
         int Seed,
         double AvatarX,
         double AvatarY,
@@ -7346,7 +7383,19 @@ public partial class MainWindow : Window
         bool InShelter,
         bool NeuronalSleep,
         int CollisionHits,
-        long TickFailures);
+        long TickFailures,
+        IReadOnlyList<WorldEntityStatus> FoodPickups,
+        IReadOnlyList<WorldEntityStatus> WeaponPickups,
+        IReadOnlyList<WorldEntityStatus> Predators,
+        IReadOnlyList<WorldEntityStatus> Shelters);
+
+    private sealed record WorldEntityStatus(
+        string Kind,
+        double X,
+        double Y,
+        double Z,
+        double HeadingDeg,
+        string? Variant);
 
     private readonly record struct CollisionBox(
         double MinX,

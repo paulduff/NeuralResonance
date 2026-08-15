@@ -477,7 +477,7 @@ public partial class MainWindow
             var v = stack / (double)stacks;
             var y = b.MinY + ((b.MaxY - b.MinY) * v);
             var normalized = -1.0 + (2.0 * v);
-            var pontine = snapshotId.Equals("Pons", StringComparison.OrdinalIgnoreCase)
+            var pontine = snapshotId.Equals("PontineNuclei", StringComparison.OrdinalIgnoreCase)
                 ? Math.Exp(-Math.Pow(normalized + 0.05, 2) / 0.22)
                 : 0.0;
             var taper = 0.86 - (0.22 * Math.Abs(normalized));
@@ -506,7 +506,7 @@ public partial class MainWindow
     {
         var radius = Math.Max(0.002, Math.Min(b.RadiusX, b.RadiusZ) * 0.035);
         AddGuideTube(root, new Point3D(b.Center.X, b.MinY, b.Center.Z), new Point3D(b.Center.X, b.MaxY, b.Center.Z), radius, color);
-        if (snapshotId.Equals("Pons", StringComparison.OrdinalIgnoreCase))
+        if (snapshotId.Equals("PontineNuclei", StringComparison.OrdinalIgnoreCase))
         {
             AddGuideTube(root, new Point3D(b.Center.X - b.RadiusX * 0.74, b.Center.Y + b.RadiusY * 0.08, b.Center.Z), new Point3D(b.Center.X + b.RadiusX * 0.74, b.Center.Y + b.RadiusY * 0.08, b.Center.Z), radius, color);
         }
@@ -577,7 +577,9 @@ public partial class MainWindow
     }
 
     private static bool IsThalamicGuide(string snapshotId)
-        => snapshotId is "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus";
+        => snapshotId is "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus"
+            or "LateralGeniculateNucleus" or "MedialGeniculateNucleus" or "VentralPosterolateralThalamus"
+            or "VentralPosteromedialThalamus" or "AnteriorThalamicNuclei" or "NucleusReuniens";
 
     private static bool IsBasalGangliaGuide(string snapshotId)
         => snapshotId is "Striatum" or "NucleusAccumbens" or "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Stn" or "Snr" or "Snc";
@@ -586,7 +588,7 @@ public partial class MainWindow
         => snapshotId is "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei";
 
     private static bool IsBrainstemGuide(string snapshotId)
-        => snapshotId is "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor";
+        => snapshotId is "PontineNuclei" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor";
 
     private readonly record struct LocalBounds(
         double MinX,
@@ -1153,7 +1155,7 @@ public partial class MainWindow
 
     private static Point3D BuildBrainstemReferencePoint(double theta, double v)
     {
-        var top = GetCanonicalAtlasCenter("Pons", "M");
+        var top = GetCanonicalAtlasCenter("PontineNuclei", "M");
         var bottom = GetCanonicalAtlasCenter("SpinalCordMotor", "M");
         var center = LerpPoint(top, bottom, v);
         var pontineBulge = Math.Exp(-Math.Pow(v - 0.22, 2) / 0.025);

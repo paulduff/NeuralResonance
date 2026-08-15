@@ -1,6 +1,7 @@
 param(
     [int]$ControlHttpPort = 5080,
     [int]$ControlHttpsPort = 5081,
+    [int]$EditorHttpPort = 5090,
     [int]$RightHemisphereOffset = 1000,
     [int]$GracefulTimeoutSec = 180,
     [string]$CheckpointPath = '',
@@ -37,6 +38,7 @@ function Get-LocalDnneRuntimeProcesses {
             $commandLine = [string]$_.CommandLine
             ($name -eq 'dotnet.exe' -or
              $name -like 'NeuralResonanceEngine.*' -or
+             $name -like 'NRE.Blazor*' -or
              $name -like 'NRE.Wpf*') -and
             $commandLine -match $escapedRoot
         } |
@@ -87,6 +89,7 @@ $workspaceRoot = (Resolve-Path (Join-Path $scriptDir '..')).Path
 $killScript = Join-Path $scriptDir 'kill-dnne-services.ps1'
 $appSettingsPath = Join-Path $workspaceRoot 'ControlProgram\appsettings.json'
 $controlBaseUrl = "http://localhost:$([Math]::Max(1, $ControlHttpPort))"
+$editorBaseUrl = "http://localhost:$([Math]::Max(1, $EditorHttpPort))"
 
 if (-not (Test-Path -LiteralPath $killScript -PathType Leaf)) {
     throw "Required script not found: $killScript"
@@ -109,6 +112,32 @@ if (-not $WhatIf) {
 
     $headers = New-ControlHeaders
     try {
+        $worldStop = Invoke-RestMethod `
+            -Method Post `
+            -Uri "$editorBaseUrl/editor/api/admin/shutdown" `
+            -TimeoutSec 30
+        if ($worldStop.reportPath) {
+            Write-Host ("World report persisted: {0}" -f $worldStop.reportPath)
+        }
+        Write-Host 'Blazor world accepted the graceful shutdown request.'
+    }
+    catch {
+        Write-Warning ("Blazor world graceful shutdown request failed: {0}" -f $_.Exception.Message)
+    }
+
+    try {
+        Invoke-RestMethod `
+            -Method Post `
+            -Uri "$controlBaseUrl/api/v1/admin/quiesce" `
+            -Headers $headers `
+            -TimeoutSec 120 | Out-Null
+        Write-Host 'Brain tick coordinator quiesced.'
+    }
+    catch {
+        Write-Warning ("Brain quiescence request failed: {0}" -f $_.Exception.Message)
+    }
+
+    try {
         $checkpointDirectory = Split-Path -Parent $CheckpointPath
         New-Item -ItemType Directory -Force -Path $checkpointDirectory | Out-Null
         $temporaryCheckpoint = "$CheckpointPath.$PID.tmp"
@@ -117,7 +146,7 @@ if (-not $WhatIf) {
             -Uri "$controlBaseUrl/api/v1/admin/network/export" `
             -Headers $headers `
             -OutFile $temporaryCheckpoint `
-            -TimeoutSec 30 | Out-Null
+            -TimeoutSec 120 | Out-Null
 
         if (-not (Test-Path -LiteralPath $temporaryCheckpoint -PathType Leaf) -or
             (Get-Item -LiteralPath $temporaryCheckpoint).Length -lt 64) {
@@ -132,7 +161,7 @@ if (-not $WhatIf) {
     }
 
     try {
-        Invoke-WebRequest `
+        Invoke-RestMethod `
             -Method Post `
             -Uri "$controlBaseUrl/api/v1/admin/shutdown" `
             -Headers $headers `
@@ -158,7 +187,7 @@ if (-not $WhatIf) {
     }
 }
 else {
-    Write-Host 'WhatIf: would close simulator/editor windows, export the live network checkpoint, and request graceful Control shutdown.'
+    Write-Host 'WhatIf: would stop the Blazor world, quiesce the brain, export one coherent checkpoint, and request graceful Control shutdown.'
 }
 
 $invokeArgs = @{

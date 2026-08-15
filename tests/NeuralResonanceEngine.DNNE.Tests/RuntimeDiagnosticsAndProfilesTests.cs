@@ -23,6 +23,22 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
     }
 
     [Fact]
+    public void Structure_Spike_Endpoints_Accept_Binary_And_Json_Fallbacks()
+    {
+        var root = ResolveRepositoryRoot();
+        var structureSource = File.ReadAllText(Path.Combine(root, "Structures", "_SharedRuntime", "StructureHostApplication.cs"));
+
+        Assert.Contains("request.HasJsonContentType()", structureSource, StringComparison.Ordinal);
+        Assert.Contains("StructureJsonContext.Default.SpikeMessage", structureSource, StringComparison.Ordinal);
+        Assert.Contains("StructureJsonContext.Default.ListSpikeMessage", structureSource, StringComparison.Ordinal);
+        Assert.Equal(
+            2,
+            CountOccurrences(
+                structureSource,
+                ".Accepts<byte[]>(\"application/octet-stream\", \"application/json\")"));
+    }
+
+    [Fact]
     public void Audio_Frame_Ingress_Handles_Interrupted_Uploads()
     {
         var root = ResolveRepositoryRoot();
@@ -698,6 +714,9 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
             .Where(item => item.Length > 0)
             .ToArray();
     }
+
+    private static int CountOccurrences(string value, string needle)
+        => value.Split(needle, StringSplitOptions.None).Length - 1;
 
     private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
     {

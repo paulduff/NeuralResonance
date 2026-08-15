@@ -117,7 +117,7 @@ internal static class NeuronalPerceptionDecoder
         var bindingCoverage = HasAny(observed,
             StructureId.V4, StructureId.InferotemporalCortex, StructureId.FusiformGyrus,
             StructureId.TemporalAssociation, StructureId.Pfc) ? 1.0 : 0.0;
-        var salienceCoverage = HasAny(observed, StructureId.Pulvinar, StructureId.Thalamus, StructureId.Pfc) ? 1.0 : 0.0;
+        var salienceCoverage = HasAny(observed, StructureId.Pulvinar, StructureId.IntralaminarThalamus, StructureId.Pfc) ? 1.0 : 0.0;
         var familiarityCoverage = HasAny(observed, StructureId.PerirhinalCortex, StructureId.ParahippocampalCortex) ? 1.0 : 0.0;
         var indexCoverage = HasAny(observed,
             StructureId.EntorhinalCortex, StructureId.DentateGyrus, StructureId.CA3, StructureId.CA1) ? 1.0 : 0.0;

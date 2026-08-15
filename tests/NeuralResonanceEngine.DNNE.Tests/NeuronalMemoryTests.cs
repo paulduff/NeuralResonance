@@ -248,7 +248,7 @@ public sealed class NeuronalMemoryTests
         modulation.AddRange(CreateMappedNeuromodSpikes(
             targetStructure,
             featureIndex,
-            StructureId.BasalForebrain,
+            StructureId.NucleusBasalis,
             NTEnum.ACETYLCHOLINE,
             4,
             1.2f,

@@ -23,17 +23,35 @@ public sealed class SimulatorAuthorityBoundaryTests
     [Fact]
     public void WorldSimulatorContainsNoHostSteeringOrNoProgressAuthority()
     {
-        var source = ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs");
-        AssertSourceOmits(
+        foreach (var source in new[]
+                 {
+                     ReadSource("src", "NRE.WpfWorldSim", "MainWindow.xaml.cs"),
+                     ReadSource("src", "NRE.WorldSim", "HeadlessWorldRuntime.cs")
+                 })
+        {
+            AssertSourceOmits(
+                source,
+                "ApplyReactiveCollisionAvoidance",
+                "TryApplyNavigationFilter",
+                "TryCornerSidestep",
+                "TryProbeStepAroundObstacle",
+                "UpdateProgressAndRecoverIfStuck",
+                "HandleStuckDeath",
+                "ApplyAboutFaceEscape",
+                "ApplyOrientingTargetLock");
+        }
+    }
+
+    [Fact]
+    public void HeadlessWorldProjectsNeuronalTurnDirectlyIntoBodyHeading()
+    {
+        var source = ReadSource("src", "NRE.WorldSim", "HeadlessWorldRuntime.cs");
+        Assert.Contains("AvatarNeuronalMotorBridge.Compose", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "AvatarKinematics.AdvanceHeading(avatarHeadingDegrees, turnRate, dt)",
             source,
-            "ApplyReactiveCollisionAvoidance",
-            "TryApplyNavigationFilter",
-            "TryCornerSidestep",
-            "TryProbeStepAroundObstacle",
-            "UpdateProgressAndRecoverIfStuck",
-            "HandleStuckDeath",
-            "ApplyAboutFaceEscape",
-            "ApplyOrientingTargetLock");
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("bodyTurnRateDeg =", source, StringComparison.Ordinal);
     }
 
     [Fact]

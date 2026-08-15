@@ -21,13 +21,17 @@ internal sealed record NeuronalActionDecision(
         0.0,
         0.0,
         1.0,
-        [0.0, 0.0, 0.0, 0.0, 0.0]);
+        new double[NeuronalActionSelectionDecoder.ChannelCount]);
 }
 
 internal static class NeuronalActionSelectionDecoder
 {
-    internal const int ChannelCount = 5;
+    internal const int ChannelCount = 9;
     internal const int ManipulatorChannel = 4;
+    internal const int StandChannel = 5;
+    internal const int CrouchChannel = 6;
+    internal const int SitChannel = 7;
+    internal const int LieChannel = 8;
 
     public static NeuronalActionDecision Decode(IReadOnlyList<InstanceStructureSnapshot> snapshots)
     {
@@ -131,7 +135,7 @@ internal static class NeuronalActionSelectionDecoder
         ArgumentNullException.ThrowIfNull(decision);
         if (!decision.Available)
         {
-            return (left, right);
+            return (0.0, 0.0);
         }
 
         if (!decision.Active)

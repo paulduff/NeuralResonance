@@ -12,45 +12,59 @@ internal static class SleepConsolidationTopology
 		=> IsStateStructure(structure) || IsReplayStructure(structure);
 
 	public static bool IsStateStructure(StructureId structure)
-		=> structure is StructureId.Hypothalamus
+		=> structure is StructureId.DorsomedialHypothalamicNucleus
+			or StructureId.VentrolateralPreopticNucleus
+			or StructureId.SuprachiasmaticNucleus
+			or StructureId.LateralHypothalamicArea
 			or StructureId.ReticularFormation
-			or StructureId.Pons
-			or StructureId.Medulla
 			or StructureId.LocusCoeruleus
 			or StructureId.RapheNuclei
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
+			or StructureId.PedunculopontineNucleus
+			or StructureId.LaterodorsalTegmentalNucleus
 			or StructureId.IntralaminarThalamus
-			or StructureId.Thalamus
 			or StructureId.Trn;
 
 	public static bool IsReplayStructure(StructureId structure)
 		=> SynapticMemoryTopology.IsMemoryCircuitStructure(structure)
-			|| structure is StructureId.Thalamus or StructureId.Trn;
+			|| structure is StructureId.IntralaminarThalamus or StructureId.Trn;
 
 	public static bool IsWakeStructure(StructureId structure)
 		=> structure is StructureId.ReticularFormation
+			or StructureId.SuprachiasmaticNucleus
+			or StructureId.LateralHypothalamicArea
+			or StructureId.DorsomedialHypothalamicNucleus
 			or StructureId.LocusCoeruleus
-			or StructureId.BasalForebrain
+			or StructureId.NucleusBasalis
+			or StructureId.PedunculopontineNucleus
+			or StructureId.LaterodorsalTegmentalNucleus
 			or StructureId.IntralaminarThalamus;
 
 	public static bool IsNremStructure(StructureId structure)
-		=> structure is StructureId.Hypothalamus
-			or StructureId.Medulla
+		=> structure is StructureId.DorsomedialHypothalamicNucleus
+			or StructureId.VentrolateralPreopticNucleus
+			or StructureId.ReticularFormation
 			or StructureId.RapheNuclei
-			or StructureId.Thalamus
+			or StructureId.IntralaminarThalamus
 			or StructureId.Trn;
 
 	public static bool IsRemStructure(StructureId structure)
-		=> structure == StructureId.Pons;
+		=> structure is StructureId.PedunculopontineNucleus
+			or StructureId.LaterodorsalTegmentalNucleus;
 
 	public static bool IsSpindleStructure(StructureId structure)
-		=> structure is StructureId.Thalamus or StructureId.Trn;
+		=> structure is StructureId.IntralaminarThalamus or StructureId.Trn;
 
 	public static int StateChannelForNeuron(int neuronIndex, StructureId structure)
 	{
-		if (structure == StructureId.Hypothalamus)
+		if (structure == StructureId.DorsomedialHypothalamicNucleus)
 		{
 			return Math.Max(0, neuronIndex) % StateChannelCount;
+		}
+
+		if (structure is StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus)
+		{
+			return (Math.Max(0, neuronIndex) & 1) == 0 ? WakeChannel : RemChannel;
 		}
 
 		if (IsWakeStructure(structure))
@@ -83,7 +97,7 @@ internal static class SleepConsolidationTopology
 		inhibitory = 0f;
 		var stateChannel = StateChannelForNeuron(neuronIndex, structure);
 
-		if (structure == StructureId.Hypothalamus)
+		if (structure == StructureId.DorsomedialHypothalamicNucleus)
 		{
 			if (stateChannel == NremChannel)
 			{
@@ -99,6 +113,28 @@ internal static class SleepConsolidationTopology
 			{
 				excitatory = sleepDrive * (1f - wakeReserve) * 0.14f;
 				inhibitory = wakeReserve * 0.08f;
+			}
+			return;
+		}
+
+		if (structure == StructureId.VentrolateralPreopticNucleus)
+		{
+			excitatory = sleepDrive * 0.38f;
+			inhibitory = wakeReserve * 0.20f;
+			return;
+		}
+
+		if (structure is StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus)
+		{
+			if (stateChannel == RemChannel)
+			{
+				excitatory = sleepDrive * (1f - (wakeReserve * 0.35f)) * 0.20f;
+				inhibitory = wakeReserve * 0.08f;
+			}
+			else
+			{
+				excitatory = wakeReserve * 0.22f;
+				inhibitory = sleepDrive * 0.15f;
 			}
 			return;
 		}

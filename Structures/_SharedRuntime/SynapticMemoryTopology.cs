@@ -24,7 +24,8 @@ internal static class SynapticMemoryTopology
 			or StructureId.Pfc
 			or StructureId.Striatum
 			or StructureId.PremotorCortex
-			or StructureId.Sma;
+			or StructureId.Sma
+			or StructureId.MammillaryBodies;
 
 	public static bool IsHippocampal(StructureId structure)
 		=> structure is StructureId.EntorhinalCortex
@@ -52,7 +53,7 @@ internal static class SynapticMemoryTopology
 	public static string RoleFor(StructureId structure) => structure switch
 	{
 		StructureId.InferotemporalCortex or StructureId.PerirhinalCortex => "object",
-		StructureId.ParahippocampalCortex or StructureId.RetrosplenialCortex or StructureId.Ppc => "spatial",
+		StructureId.ParahippocampalCortex or StructureId.RetrosplenialCortex or StructureId.Ppc or StructureId.MammillaryBodies => "spatial",
 		StructureId.EntorhinalCortex or StructureId.DentateGyrus or StructureId.CA3 or
 			StructureId.CA2 or StructureId.CA1 or StructureId.Subiculum or
 			StructureId.Presubiculum or StructureId.Parasubiculum => "episodic",

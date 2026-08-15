@@ -538,6 +538,12 @@ public partial class MainWindow
             case "Pulvinar":
             case "MediodorsalThalamus":
             case "IntralaminarThalamus":
+            case "LateralGeniculateNucleus":
+            case "MedialGeniculateNucleus":
+            case "VentralPosterolateralThalamus":
+            case "VentralPosteromedialThalamus":
+            case "AnteriorThalamicNuclei":
+            case "NucleusReuniens":
             {
                 var ovoid = ExpMetric(x, y, z, rx * 1.06, ry * 0.94, rz * 0.88, 1.7, 2.0, 1.7) <= 1.0;
                 if (!ovoid)
@@ -557,6 +563,15 @@ public partial class MainWindow
                 return m <= 1.0 ? new Point3D(x, y, z) : null;
             }
             case "Hypothalamus":
+            case "VentrolateralPreopticNucleus":
+            case "SuprachiasmaticNucleus":
+            case "ParaventricularHypothalamicNucleus":
+            case "SupraopticNucleus":
+            case "ArcuateNucleus":
+            case "LateralHypothalamicArea":
+            case "VentromedialHypothalamicNucleus":
+            case "DorsomedialHypothalamicNucleus":
+            case "MammillaryBodies":
             {
                 var m = ExpMetric(x, y + (0.10 * ry), z, rx * 0.86, ry * 0.74, rz * 0.70, 1.8, 2.2, 1.8);
                 if (m > 1.0)
@@ -1033,6 +1048,12 @@ public partial class MainWindow
             "Pulvinar" => new Vector3D(1.10, 0.94, 0.92),
             "MediodorsalThalamus" => new Vector3D(0.94, 0.90, 0.80),
             "IntralaminarThalamus" => new Vector3D(0.80, 0.92, 0.74),
+            "LateralGeniculateNucleus" => new Vector3D(1.08, 0.90, 0.92),
+            "MedialGeniculateNucleus" => new Vector3D(1.00, 0.92, 0.90),
+            "VentralPosterolateralThalamus" => new Vector3D(0.94, 1.04, 0.86),
+            "VentralPosteromedialThalamus" => new Vector3D(0.88, 1.00, 0.84),
+            "AnteriorThalamicNuclei" => new Vector3D(0.88, 0.92, 0.86),
+            "NucleusReuniens" => new Vector3D(0.72, 1.08, 0.78),
             "Hypothalamus" => new Vector3D(0.82, 0.74, 0.72),
             "Habenula" => new Vector3D(0.62, 0.68, 0.58),
 
@@ -1047,7 +1068,7 @@ public partial class MainWindow
             "Snr" => new Vector3D(0.60, 0.62, 0.56),
             "Snc" => new Vector3D(0.56, 0.62, 0.54),
             "Amygdala" => new Vector3D(0.84, 0.76, 0.74),
-            "BasalForebrain" => new Vector3D(0.78, 0.72, 0.70),
+            "NucleusBasalis" => new Vector3D(0.78, 0.72, 0.70),
 
             // Hippocampal arch nuclei.
             "DentateGyrus" => new Vector3D(0.84, 0.70, 0.76),
@@ -1063,7 +1084,7 @@ public partial class MainWindow
             "InferiorColliculus" => new Vector3D(0.62, 0.56, 0.54),
             "PeriaqueductalGray" => new Vector3D(0.66, 0.72, 0.60),
             "ReticularFormation" => new Vector3D(0.74, 0.98, 0.72),
-            "Pons" => new Vector3D(0.92, 0.88, 0.86),
+            "PontineNuclei" => new Vector3D(0.92, 0.88, 0.86),
             "Medulla" => new Vector3D(0.74, 0.96, 0.70),
             "SpinalCordMotor" => new Vector3D(0.58, 1.12, 0.58),
             "SomaticAfferents" => new Vector3D(0.64, 1.12, 0.64),
@@ -1104,10 +1125,11 @@ public partial class MainWindow
             "Retina" => 0.05,
             "Cochlea" => 0.08,
             "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus" or
+            "LateralGeniculateNucleus" or "MedialGeniculateNucleus" or "VentralPosterolateralThalamus" or "VentralPosteromedialThalamus" or "AnteriorThalamicNuclei" or "NucleusReuniens" or
             "Hypothalamus" or "Habenula" or "Stn" or "Snr" or "Snc" or "Striatum" or "NucleusAccumbens" or
-            "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Amygdala" or "BasalForebrain" or
+            "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Amygdala" or "NucleusBasalis" or
             "CochlearNucleus" or "SuperiorOlive" or "InferiorColliculus" or "VestibularNuclei" or "NucleusTractusSolitarius" or "PeriaqueductalGray" => 0.92,
-            "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" => 0.76,
+            "PontineNuclei" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VestibularAfferents" or "VisceralAfferents" => 0.76,
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" => 1.00,
             _ => 1.0
         };
@@ -1115,18 +1137,19 @@ public partial class MainWindow
         var (dxMm, dyMm, dzMm) = snapshotId switch
         {
             // Move deep nuclei slightly superior/anterior to sit inside telencephalic bowl.
-            "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus" =>
+            "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus" or
+            "LateralGeniculateNucleus" or "MedialGeniculateNucleus" or "VentralPosterolateralThalamus" or "VentralPosteromedialThalamus" or "AnteriorThalamicNuclei" or "NucleusReuniens" =>
                 (0.0, 4.2, 3.6),
             "Striatum" or "NucleusAccumbens" or "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Stn" =>
                 (0.0, 3.8, 3.0),
             "Snr" or "Snc" or "SuperiorColliculus" or "Vta" =>
                 (0.0, 3.0, 5.2),
-            "Amygdala" or "BasalForebrain" or "Hypothalamus" or "Habenula" =>
+            "Amygdala" or "NucleusBasalis" or "Hypothalamus" or "Habenula" =>
                 (0.0, 3.2, 3.2),
             "CochlearNucleus" or "SuperiorOlive" or "InferiorColliculus" or "VestibularNuclei" or "NucleusTractusSolitarius" or "PeriaqueductalGray" =>
                 (0.0, 3.8, 3.0),
             // Brainstem+cerebellum: up and slightly anterior to maintain biological relation under occipital lobe.
-            "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" =>
+            "PontineNuclei" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" =>
                 (0.0, 11.5, 12.0),
             "ReticularFormation" or "SpinalCordMotor" =>
                 (0.0, 10.8, 10.8),
@@ -1189,7 +1212,7 @@ public partial class MainWindow
         var (dxMm, dyMm, dzMm) = snapshotId switch
         {
             // Telencephalic deep nuclei: keep slightly superior/anterior relative to diencephalon.
-            "Striatum" or "NucleusAccumbens" or "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Amygdala" or "BasalForebrain" =>
+            "Striatum" or "NucleusAccumbens" or "GlobusPallidus" or "VentralPallidum" or "GPe" or "GPi" or "Amygdala" or "NucleusBasalis" =>
                 (TowardMidline(hemisphere, 0.8), 1.0, 1.0),
 
             // Medial temporal telencephalon.
@@ -1197,7 +1220,9 @@ public partial class MainWindow
                 (TowardMidline(hemisphere, 0.9), 0.6, -2.0),
 
             // Diencephalon.
-            "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus" or "Hypothalamus" or "Habenula" or "Stn" =>
+            "Thalamus" or "MotorThalamus" or "Trn" or "Pulvinar" or "MediodorsalThalamus" or "IntralaminarThalamus" or
+            "LateralGeniculateNucleus" or "MedialGeniculateNucleus" or "VentralPosterolateralThalamus" or "VentralPosteromedialThalamus" or "AnteriorThalamicNuclei" or "NucleusReuniens" or
+            "Hypothalamus" or "Habenula" or "Stn" =>
                 (TowardMidline(hemisphere, 0.9), 1.5, -0.4),
 
             // Mesencephalon.
@@ -1205,7 +1230,7 @@ public partial class MainWindow
                 (TowardMidline(hemisphere, 0.6), 0.6, -2.8),
 
             // Metencephalon.
-            "Pons" or "SuperiorOlive" or "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" =>
+            "PontineNuclei" or "SuperiorOlive" or "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" or "DeepCerebellarNuclei" =>
                 (0.0, -0.5, -5.6),
 
             // Myelencephalon / caudal brainstem.
@@ -1244,7 +1269,7 @@ public partial class MainWindow
         return snapshotId switch
         {
             // Keep brainstem closer to native inferior position.
-            "Pons" => 0.18,
+            "PontineNuclei" => 0.18,
             "Medulla" => 0.18,
             "InferiorOlive" => 0.18,
             "LocusCoeruleus" => 0.18,
@@ -1270,6 +1295,12 @@ public partial class MainWindow
             "Pulvinar" => 0.24,
             "MediodorsalThalamus" => 0.22,
             "IntralaminarThalamus" => 0.22,
+            "LateralGeniculateNucleus" => 0.20,
+            "MedialGeniculateNucleus" => 0.20,
+            "VentralPosterolateralThalamus" => 0.20,
+            "VentralPosteromedialThalamus" => 0.20,
+            "AnteriorThalamicNuclei" => 0.18,
+            "NucleusReuniens" => 0.18,
             "Striatum" => 0.24,
             "NucleusAccumbens" => 0.18,
             "GlobusPallidus" => 0.20,
@@ -1278,7 +1309,7 @@ public partial class MainWindow
             "GPi" => 0.20,
             "Amygdala" => 0.16,
             "Hypothalamus" => 0.14,
-            "BasalForebrain" => 0.16,
+            "NucleusBasalis" => 0.16,
             "CorpusCallosum" => 0.10,
             "Retina" => 0.00,
             "Cochlea" => 0.00,
@@ -1298,6 +1329,12 @@ public partial class MainWindow
             "Pulvinar" => true,
             "MediodorsalThalamus" => true,
             "IntralaminarThalamus" => true,
+            "LateralGeniculateNucleus" => true,
+            "MedialGeniculateNucleus" => true,
+            "VentralPosterolateralThalamus" => true,
+            "VentralPosteromedialThalamus" => true,
+            "AnteriorThalamicNuclei" => true,
+            "NucleusReuniens" => true,
             "DentateGyrus" => true,
             "CA3" => true,
             "CA2" => true,
@@ -1334,11 +1371,11 @@ public partial class MainWindow
             "Amygdala" => true,
             "DeepCerebellarNuclei" => true,
             "InferiorOlive" => true,
-            "Pons" => true,
+            "PontineNuclei" => true,
             "Medulla" => true,
             "LocusCoeruleus" => true,
             "RapheNuclei" => true,
-            "BasalForebrain" => true,
+            "NucleusBasalis" => true,
             "Vta" => true,
             "OlfactoryBulb" => true,
             _ => false
@@ -1395,7 +1432,7 @@ public partial class MainWindow
             "CerebellarVermis" => false,
             "CerebellarLobules" => false,
             "PurkinjeCellLayer" => false,
-            "Pons" => false,
+            "PontineNuclei" => false,
             "Medulla" => false,
             _ => true
         };
@@ -2097,7 +2134,7 @@ public partial class MainWindow
                 StructureLayout.HippocampalArc,
             "CerebellarGranule" or "PurkinjeCellLayer" or "CerebellarVermis" or "CerebellarLobules" =>
                 StructureLayout.CerebellarSheet,
-            "Pons" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or
+            "PontineNuclei" or "Medulla" or "InferiorOlive" or "LocusCoeruleus" or "RapheNuclei" or "Vta" or
             "ReticularFormation" or "SpinalCordMotor" or "SomaticAfferents" or "ProprioceptiveAfferents" or "VisceralAfferents" =>
                 StructureLayout.BrainstemColumn,
             "OlfactoryBulb" =>
@@ -2160,10 +2197,11 @@ public partial class MainWindow
         {
             "CorpusCallosum",
             "Thalamus", "MotorThalamus", "Trn", "Pulvinar", "MediodorsalThalamus", "IntralaminarThalamus",
+            "LateralGeniculateNucleus", "MedialGeniculateNucleus", "VentralPosterolateralThalamus", "VentralPosteromedialThalamus", "AnteriorThalamicNuclei", "NucleusReuniens",
             "DentateGyrus", "CA3", "CA2", "CA1", "Subiculum", "Presubiculum", "Parasubiculum",
             "Striatum", "NucleusAccumbens", "GlobusPallidus", "VentralPallidum", "GPe", "GPi", "Stn", "Snr", "Snc", "Habenula", "SuperiorColliculus", "Amygdala", "Hypothalamus",
-            "InferiorOlive", "Pons", "Medulla",
-            "LocusCoeruleus", "RapheNuclei", "BasalForebrain", "Vta", "OlfactoryBulb",
+            "InferiorOlive", "PontineNuclei", "Medulla",
+            "LocusCoeruleus", "RapheNuclei", "NucleusBasalis", "Vta", "OlfactoryBulb",
             "Retina", "Cochlea", "SomaticAfferents", "ProprioceptiveAfferents", "VestibularAfferents", "VisceralAfferents", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "VestibularNuclei", "NucleusTractusSolitarius", "ReticularFormation", "PeriaqueductalGray", "SpinalCordMotor"
         };
 
@@ -2262,6 +2300,12 @@ public partial class MainWindow
             ["Pulvinar"] = 10,
             ["MediodorsalThalamus"] = 8,
             ["IntralaminarThalamus"] = 6,
+            ["LateralGeniculateNucleus"] = 18,
+            ["MedialGeniculateNucleus"] = 14,
+            ["VentralPosterolateralThalamus"] = 16,
+            ["VentralPosteromedialThalamus"] = 12,
+            ["AnteriorThalamicNuclei"] = 10,
+            ["NucleusReuniens"] = 8,
             ["Amygdala"] = 35,
             ["Hypothalamus"] = 8,
             ["Acc"] = 70,
@@ -2295,7 +2339,7 @@ public partial class MainWindow
             ["InferiorOlive"] = 1.5,
             ["ReticularFormation"] = 1.2,
             ["PeriaqueductalGray"] = 0.35,
-            ["Pons"] = 18,
+            ["PontineNuclei"] = 18,
             ["Medulla"] = 16,
             ["SpinalCordMotor"] = 1.5,
             ["SomaticAfferents"] = 0.8,
@@ -2304,7 +2348,7 @@ public partial class MainWindow
             ["VisceralAfferents"] = 0.6,
             ["LocusCoeruleus"] = 0.15,
             ["RapheNuclei"] = 0.4,
-            ["BasalForebrain"] = 1.0,
+            ["NucleusBasalis"] = 1.0,
             ["Vta"] = 0.25
         };
     }
@@ -2338,12 +2382,17 @@ public partial class MainWindow
         new StructureDefinition("Olfactory Bulb","OlfactoryBulb",MmToRender(new Point3D(6,20,14)),Color.FromRgb(240,170,122),"Izhikevich","STDP",StructureLayout.OlfactoryBulbShell,10,9,9,MmToRender(10),MmToRender(8),MmToRender(9),0,0,0),
         new StructureDefinition("Corpus Callosum","CorpusCallosum",MmToRender(new Point3D(0,31.5,-4)),Color.FromRgb(204,224,246),"LIF","STDP",StructureLayout.NucleusBlock,24,5,28,MmToRender(54),MmToRender(6),MmToRender(48),0,0,0),
 
-            new StructureDefinition("Thalamus","Thalamus",MmToRender(new Point3D(8,4,-8)),Color.FromRgb(244,186,128),"Izhikevich","STDP",StructureLayout.NucleusBlock,10,8,8,MmToRender(18),MmToRender(14),MmToRender(14),0,0,0),
             new StructureDefinition("Motor Thalamus","MotorThalamus",MmToRender(new Point3D(10,8,-10)),Color.FromRgb(238,178,122),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(14),MmToRender(10),MmToRender(10),0,8,0),
             new StructureDefinition("TRN","Trn",MmToRender(new Point3D(10,6,-8)),Color.FromRgb(198,142,205),"LIF","STDP",StructureLayout.NucleusBlock,7,5,6,MmToRender(12),MmToRender(8),MmToRender(10),0,25,0),
             new StructureDefinition("Pulvinar","Pulvinar",MmToRender(new Point3D(12,10,-24)),Color.FromRgb(232,178,144),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(14),MmToRender(10),MmToRender(10),0,8,0),
             new StructureDefinition("Mediodorsal Thalamus","MediodorsalThalamus",MmToRender(new Point3D(8,12,2)),Color.FromRgb(236,170,132),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(14),MmToRender(10),MmToRender(10),0,12,0),
             new StructureDefinition("Intralaminar Thalamus","IntralaminarThalamus",MmToRender(new Point3D(4,6,-2)),Color.FromRgb(228,162,120),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(12),MmToRender(10),MmToRender(10),0,0,0),
+            new StructureDefinition("Lateral Geniculate Nucleus","LateralGeniculateNucleus",MmToRender(new Point3D(22,0.5,-24)),Color.FromRgb(236,188,118),"Izhikevich","STDP",StructureLayout.NucleusBlock,9,6,7,MmToRender(9),MmToRender(7),MmToRender(10),0,0,0),
+            new StructureDefinition("Medial Geniculate Nucleus","MedialGeniculateNucleus",MmToRender(new Point3D(17,-1,-27)),Color.FromRgb(226,168,112),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(8),MmToRender(7),MmToRender(8),0,0,0),
+            new StructureDefinition("Ventral Posterolateral Thalamus","VentralPosterolateralThalamus",MmToRender(new Point3D(15,2,-19)),Color.FromRgb(230,178,126),"Izhikevich","STDP",StructureLayout.NucleusBlock,9,7,7,MmToRender(10),MmToRender(14),MmToRender(11),0,0,0),
+            new StructureDefinition("Ventral Posteromedial Thalamus","VentralPosteromedialThalamus",MmToRender(new Point3D(10,2,-17)),Color.FromRgb(238,164,136),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(7),MmToRender(11),MmToRender(8),0,0,0),
+            new StructureDefinition("Anterior Thalamic Nuclei","AnteriorThalamicNuclei",MmToRender(new Point3D(7,7,-10)),Color.FromRgb(224,154,144),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(8),MmToRender(9),MmToRender(8),0,0,0),
+            new StructureDefinition("Nucleus Reuniens","NucleusReuniens",MmToRender(new Point3D(0,0,-11)),Color.FromRgb(214,146,176),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,7,6,MmToRender(5),MmToRender(12),MmToRender(7),0,0,0),
             new StructureDefinition("Superior Colliculus","SuperiorColliculus",MmToRender(new Point3D(10,18,-22)),Color.FromRgb(236,186,118),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,5,5,MmToRender(11),MmToRender(8),MmToRender(8),0,10,0),
             new StructureDefinition("Inferior Colliculus","InferiorColliculus",MmToRender(new Point3D(10,12,-26)),Color.FromRgb(228,178,112),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,5,5,MmToRender(11),MmToRender(8),MmToRender(8),0,10,0),
             new StructureDefinition("Periaqueductal Gray","PeriaqueductalGray",MmToRender(new Point3D(0,8,-18)),Color.FromRgb(224,162,138),"Izhikevich","DopamineModulatedSTDP",StructureLayout.NucleusBlock,8,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,0,0),
@@ -2383,7 +2432,6 @@ public partial class MainWindow
 
             new StructureDefinition("Striatum","Striatum",MmToRender(new Point3D(16,4,0)),Color.FromRgb(242,142,158),"LIF","DopamineModulatedSTDP",StructureLayout.NucleusBlock,9,8,8,MmToRender(20),MmToRender(16),MmToRender(15),0,0,0),
             new StructureDefinition("Nucleus Accumbens","NucleusAccumbens",MmToRender(new Point3D(16,-2,8)),Color.FromRgb(236,154,166),"LIF","DopamineModulatedSTDP",StructureLayout.NucleusBlock,8,7,7,MmToRender(14),MmToRender(11),MmToRender(11),0,0,0),
-            new StructureDefinition("Globus Pallidus","GlobusPallidus",MmToRender(new Point3D(12,3,-4)),Color.FromRgb(244,134,126),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(12),MmToRender(9),MmToRender(9),0,8,0),
             new StructureDefinition("Ventral Pallidum","VentralPallidum",MmToRender(new Point3D(12,-3,4)),Color.FromRgb(238,146,118),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(11),MmToRender(8),MmToRender(8),0,6,0),
             new StructureDefinition("GPe","GPe",MmToRender(new Point3D(14,2,-6)),Color.FromRgb(236,126,118),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,5,0),
             new StructureDefinition("GPi","GPi",MmToRender(new Point3D(10,2,-6)),Color.FromRgb(230,118,112),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,10,0),
@@ -2392,28 +2440,53 @@ public partial class MainWindow
             new StructureDefinition("SNc","Snc",MmToRender(new Point3D(7,-1,-14)),Color.FromRgb(252,200,74),"Izhikevich","DopamineHomeostasis",StructureLayout.NucleusBlock,6,5,5,MmToRender(8),MmToRender(6),MmToRender(6),0,18,0),
             new StructureDefinition("Habenula","Habenula",MmToRender(new Point3D(4,10,0)),Color.FromRgb(218,176,124),"Izhikevich","STDP",StructureLayout.NucleusBlock,5,4,4,MmToRender(7),MmToRender(6),MmToRender(6),0,0,0),
 
-            new StructureDefinition("Amygdala","Amygdala",MmToRender(new Point3D(17,1,-6)),Color.FromRgb(246,132,132),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,7,7,MmToRender(14),MmToRender(11),MmToRender(10),0,35,0),
-            new StructureDefinition("Hypothalamus","Hypothalamus",MmToRender(new Point3D(6,-4,4)),Color.FromRgb(238,142,132),"Izhikevich","HomeostaticGain",StructureLayout.NucleusBlock,8,7,7,MmToRender(12),MmToRender(10),MmToRender(9),0,12,0),
+            new StructureDefinition("Basolateral Amygdala","BasolateralAmygdala",MmToRender(new Point3D(24,-17,-5)),Color.FromRgb(238,112,128),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,7,7,MmToRender(12),MmToRender(14),MmToRender(13),0,0,0),
+            new StructureDefinition("Central Amygdala","CentralAmygdala",MmToRender(new Point3D(18.5,-19,-6)),Color.FromRgb(212,92,126),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(7),MmToRender(9),MmToRender(8),0,0,0),
+            new StructureDefinition("Medial Amygdala","MedialAmygdala",MmToRender(new Point3D(20,-16,-9)),Color.FromRgb(224,126,166),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(7),MmToRender(8),MmToRender(9),0,0,0),
+            new StructureDefinition("Cortical Amygdala","CorticalAmygdala",MmToRender(new Point3D(25,-14,-9)),Color.FromRgb(232,148,184),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(8),MmToRender(7),MmToRender(10),0,0,0),
+            new StructureDefinition("Bed Nucleus Stria Terminalis","BedNucleusStriaTerminalis",MmToRender(new Point3D(7,-2,2)),Color.FromRgb(196,104,146),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,7,MmToRender(9),MmToRender(8),MmToRender(12),0,0,0),
+            new StructureDefinition("Medial Septal Nucleus","MedialSeptalNucleus",MmToRender(new Point3D(0,-1,8)),Color.FromRgb(174,218,112),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,7,7,MmToRender(8),MmToRender(10),MmToRender(10),0,0,0),
+            new StructureDefinition("Diagonal Band Nucleus","DiagonalBandNucleus",MmToRender(new Point3D(6,-5,8)),Color.FromRgb(142,206,126),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,7,MmToRender(11),MmToRender(7),MmToRender(14),0,0,0),
+            new StructureDefinition("Ventrolateral Preoptic Nucleus","VentrolateralPreopticNucleus",MmToRender(new Point3D(4,-4,-10)),Color.FromRgb(118,186,214),"Izhikevich","STDP",StructureLayout.NucleusBlock,5,4,4,MmToRender(5),MmToRender(4),MmToRender(4),0,0,0),
+            new StructureDefinition("Suprachiasmatic Nucleus","SuprachiasmaticNucleus",MmToRender(new Point3D(2,-2,-11)),Color.FromRgb(242,202,92),"Izhikevich","STDP",StructureLayout.NucleusBlock,4,4,4,MmToRender(4),MmToRender(4),MmToRender(4),0,0,0),
+            new StructureDefinition("Paraventricular Hypothalamic Nucleus","ParaventricularHypothalamicNucleus",MmToRender(new Point3D(3,-5,-5)),Color.FromRgb(232,126,146),"Izhikevich","STDP",StructureLayout.NucleusBlock,5,7,5,MmToRender(5),MmToRender(7),MmToRender(5),0,0,0),
+            new StructureDefinition("Supraoptic Nucleus","SupraopticNucleus",MmToRender(new Point3D(6,-3,-10)),Color.FromRgb(112,196,224),"Izhikevich","STDP",StructureLayout.NucleusBlock,5,5,5,MmToRender(5),MmToRender(5),MmToRender(5),0,0,0),
+            new StructureDefinition("Arcuate Nucleus","ArcuateNucleus",MmToRender(new Point3D(3,-10,-10)),Color.FromRgb(174,212,112),"Izhikevich","STDP",StructureLayout.NucleusBlock,6,5,5,MmToRender(6),MmToRender(5),MmToRender(5),0,0,0),
+            new StructureDefinition("Lateral Hypothalamic Area","LateralHypothalamicArea",MmToRender(new Point3D(8,-8,-6)),Color.FromRgb(244,170,92),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,8,7,MmToRender(8),MmToRender(8),MmToRender(7),0,0,0),
+            new StructureDefinition("Ventromedial Hypothalamic Nucleus","VentromedialHypothalamicNucleus",MmToRender(new Point3D(4,-7,-8)),Color.FromRgb(216,126,178),"Izhikevich","STDP",StructureLayout.NucleusBlock,6,7,6,MmToRender(6),MmToRender(7),MmToRender(6),0,0,0),
+            new StructureDefinition("Dorsomedial Hypothalamic Nucleus","DorsomedialHypothalamicNucleus",MmToRender(new Point3D(4,-10,-3)),Color.FromRgb(156,146,226),"Izhikevich","STDP",StructureLayout.NucleusBlock,6,7,6,MmToRender(6),MmToRender(7),MmToRender(6),0,0,0),
+            new StructureDefinition("Mammillary Bodies","MammillaryBodies",MmToRender(new Point3D(5,-15,-10)),Color.FromRgb(196,154,106),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,5,6,MmToRender(7),MmToRender(5),MmToRender(6),0,0,0),
         new StructureDefinition("ACC","Acc",MmToRender(new Point3D(8,38,18)),Color.FromRgb(230,132,214),"Izhikevich","STDP",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(11),MmToRender(10),8,22,2),
 
         new StructureDefinition("Granule Layer","CerebellarGranule",MmToRender(new Point3D(0,-50,-46)),Color.FromRgb(184,186,248),"LIF","MossyFiberLTP",StructureLayout.CerebellarSheet,26,12,22,MmToRender(64),MmToRender(26),MmToRender(48),0,0,0),
         new StructureDefinition("Purkinje Layer","PurkinjeCellLayer",MmToRender(new Point3D(0,-49,-46)),Color.FromRgb(186,154,250),"HH","CerebellarLTD",StructureLayout.CerebellarSheet,24,10,22,MmToRender(62),MmToRender(22),MmToRender(46),0,0,0),
         new StructureDefinition("Cerebellar Vermis","CerebellarVermis",MmToRender(new Point3D(0,-50,-44)),Color.FromRgb(202,180,252),"HH","CerebellarLTD",StructureLayout.CerebellarSheet,16,9,16,MmToRender(36),MmToRender(20),MmToRender(34),0,0,0),
         new StructureDefinition("Cerebellar Lobules","CerebellarLobules",MmToRender(new Point3D(0,-51,-48)),Color.FromRgb(170,184,248),"LIF","MossyFiberLTP",StructureLayout.CerebellarSheet,22,11,18,MmToRender(58),MmToRender(24),MmToRender(42),0,0,0),
-            new StructureDefinition("DCN","DeepCerebellarNuclei",MmToRender(new Point3D(8,-44,-42)),Color.FromRgb(158,214,252),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(14),MmToRender(10),MmToRender(10),0,-10,0),
+			new StructureDefinition("Dentate Nucleus","DentateNucleus",MmToRender(new Point3D(12,-31,-58)),Color.FromRgb(126,208,242),"Izhikevich","STDP",StructureLayout.NucleusBlock,8,6,7,MmToRender(16),MmToRender(10),MmToRender(12),0,-8,0),
+			new StructureDefinition("Interposed Nuclei","InterposedNuclei",MmToRender(new Point3D(7,-29,-56)),Color.FromRgb(142,226,190),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(9),MmToRender(10),0,-4,0),
+			new StructureDefinition("Fastigial Nucleus","FastigialNucleus",MmToRender(new Point3D(3,-27,-54)),Color.FromRgb(244,198,112),"Izhikevich","STDP",StructureLayout.NucleusBlock,6,6,6,MmToRender(7),MmToRender(8),MmToRender(9),0,0,0),
             new StructureDefinition("Cochlear Nucleus","CochlearNucleus",MmToRender(new Point3D(14,-24,-20)),Color.FromRgb(224,174,122),"Izhikevich","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,-2,0),
             new StructureDefinition("Superior Olive","SuperiorOlive",MmToRender(new Point3D(12,-22,-16)),Color.FromRgb(220,166,112),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,6,0),
             new StructureDefinition("Vestibular Nuclei","VestibularNuclei",MmToRender(new Point3D(13,-26,-18)),Color.FromRgb(216,186,132),"LIF","STDP",StructureLayout.NucleusBlock,7,6,6,MmToRender(10),MmToRender(8),MmToRender(8),0,-2,0),
             new StructureDefinition("Nucleus Tractus Solitarius","NucleusTractusSolitarius",MmToRender(new Point3D(6,-30,-20)),Color.FromRgb(214,178,126),"LIF","HomeostaticGain",StructureLayout.NucleusBlock,6,6,6,MmToRender(9),MmToRender(8),MmToRender(8),0,-2,0),
             new StructureDefinition("Inferior Olive","InferiorOlive",MmToRender(new Point3D(4,-38,-22)),Color.FromRgb(248,184,96),"HH","STDP",StructureLayout.BrainstemColumn,6,8,6,MmToRender(8),MmToRender(12),MmToRender(8),0,-4,0),
             new StructureDefinition("Reticular Formation","ReticularFormation",MmToRender(new Point3D(0,-24,-16)),Color.FromRgb(226,154,120),"Izhikevich","HomeostaticGain",StructureLayout.BrainstemColumn,8,12,8,MmToRender(10),MmToRender(18),MmToRender(10),0,0,0),
-            new StructureDefinition("Pons","Pons",MmToRender(new Point3D(2,-28,-14)),Color.FromRgb(236,174,112),"LIF","STDP",StructureLayout.BrainstemColumn,8,10,8,MmToRender(10),MmToRender(15),MmToRender(10),0,-2,0),
-            new StructureDefinition("Medulla","Medulla",MmToRender(new Point3D(0,-34,-20)),Color.FromRgb(228,166,104),"LIF","HomeostaticGain",StructureLayout.BrainstemColumn,8,10,8,MmToRender(10),MmToRender(15),MmToRender(10),0,-4,0),
+            new StructureDefinition("PontineNuclei","PontineNuclei",MmToRender(new Point3D(2,-28,-14)),Color.FromRgb(236,174,112),"LIF","STDP",StructureLayout.BrainstemColumn,8,10,8,MmToRender(10),MmToRender(15),MmToRender(10),0,-2,0),
             new StructureDefinition("Spinal Cord Motor","SpinalCordMotor",MmToRender(new Point3D(4,-46,-12)),Color.FromRgb(210,152,108),"Izhikevich","STDP",StructureLayout.BrainstemColumn,8,12,8,MmToRender(10),MmToRender(20),MmToRender(10),0,-2,0),
+			new StructureDefinition("Red Nucleus","RedNucleus",MmToRender(new Point3D(7,-7,-20)),Color.FromRgb(226,104,116),"Izhikevich","STDP",StructureLayout.BrainstemColumn,6,7,6,MmToRender(7),MmToRender(8),MmToRender(9),0,0,0),
+			new StructureDefinition("Pedunculopontine Nucleus","PedunculopontineNucleus",MmToRender(new Point3D(6,-17,-29)),Color.FromRgb(104,214,180),"Izhikevich","STDP",StructureLayout.BrainstemColumn,6,8,6,MmToRender(6),MmToRender(10),MmToRender(8),0,0,0),
+			new StructureDefinition("Laterodorsal Tegmental Nucleus","LaterodorsalTegmentalNucleus",MmToRender(new Point3D(5,-18,-32)),Color.FromRgb(116,194,224),"Izhikevich","STDP",StructureLayout.BrainstemColumn,5,7,5,MmToRender(5),MmToRender(9),MmToRender(7),0,0,0),
+			new StructureDefinition("Parabrachial Complex","ParabrachialComplex",MmToRender(new Point3D(9,-25,-36)),Color.FromRgb(238,162,102),"Izhikevich","STDP",StructureLayout.BrainstemColumn,6,7,6,MmToRender(7),MmToRender(8),MmToRender(8),0,0,0),
+			new StructureDefinition("Principal Sensory Trigeminal Nucleus","PrincipalSensoryTrigeminalNucleus",MmToRender(new Point3D(9,-29,-40)),Color.FromRgb(108,194,226),"Izhikevich","STDP",StructureLayout.BrainstemColumn,6,8,6,MmToRender(6),MmToRender(10),MmToRender(8),0,0,0),
+			new StructureDefinition("Spinal Trigeminal Nucleus","SpinalTrigeminalNucleus",MmToRender(new Point3D(8,-37,-48)),Color.FromRgb(126,178,222),"Izhikevich","STDP",StructureLayout.BrainstemColumn,6,10,6,MmToRender(6),MmToRender(16),MmToRender(10),0,0,0),
+			new StructureDefinition("Mesencephalic Trigeminal Nucleus","MesencephalicTrigeminalNucleus",MmToRender(new Point3D(5,-11,-28)),Color.FromRgb(100,218,210),"Izhikevich","STDP",StructureLayout.BrainstemColumn,5,8,5,MmToRender(4),MmToRender(10),MmToRender(12),0,0,0),
+			new StructureDefinition("Facial Motor Nucleus","FacialMotorNucleus",MmToRender(new Point3D(6,-31,-43)),Color.FromRgb(244,148,128),"Izhikevich","STDP",StructureLayout.BrainstemColumn,5,7,5,MmToRender(5),MmToRender(8),MmToRender(7),0,0,0),
+			new StructureDefinition("Oculomotor Nucleus","OculomotorNucleus",MmToRender(new Point3D(4,-7,-18)),Color.FromRgb(240,188,94),"Izhikevich","STDP",StructureLayout.BrainstemColumn,5,6,5,MmToRender(5),MmToRender(7),MmToRender(6),0,0,0),
+			new StructureDefinition("Hypoglossal Nucleus","HypoglossalNucleus",MmToRender(new Point3D(4,-38,-50)),Color.FromRgb(228,134,174),"Izhikevich","STDP",StructureLayout.BrainstemColumn,5,8,5,MmToRender(5),MmToRender(10),MmToRender(8),0,0,0),
 
             new StructureDefinition("LC","LocusCoeruleus",MmToRender(new Point3D(6,-22,-24)),Color.FromRgb(248,214,96),"LIF","HomeostaticGain",StructureLayout.BrainstemColumn,5,8,5,MmToRender(8),MmToRender(13),MmToRender(8),0,-6,0),
             new StructureDefinition("Raphe","RapheNuclei",MmToRender(new Point3D(0,-20,-22)),Color.FromRgb(246,160,218),"LIF","HomeostaticGain",StructureLayout.BrainstemColumn,5,8,5,MmToRender(8),MmToRender(13),MmToRender(8),0,6,0),
-            new StructureDefinition("Basal Forebrain","BasalForebrain",MmToRender(new Point3D(10,2,2)),Color.FromRgb(190,236,120),"LIF","HomeostaticGain",StructureLayout.NucleusBlock,6,6,6,MmToRender(11),MmToRender(9),MmToRender(9),0,15,0),
+            new StructureDefinition("Basal Forebrain","NucleusBasalis",MmToRender(new Point3D(10,2,2)),Color.FromRgb(190,236,120),"LIF","HomeostaticGain",StructureLayout.NucleusBlock,6,6,6,MmToRender(11),MmToRender(9),MmToRender(9),0,15,0),
             new StructureDefinition("VTA","Vta",MmToRender(new Point3D(6,-16,-18)),Color.FromRgb(254,214,86),"Izhikevich","DopamineHomeostasis",StructureLayout.BrainstemColumn,5,8,5,MmToRender(8),MmToRender(12),MmToRender(8),0,10,0),
 
         new StructureDefinition("SMA","Sma",MmToRender(new Point3D(12,52,26)),Color.FromRgb(136,238,184),"LIF","STDP",StructureLayout.CorticalSheet,8,5,4,MmToRender(18),MmToRender(10),MmToRender(10),2,12,0),

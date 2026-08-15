@@ -22,17 +22,17 @@ public sealed class NeuronalAttentionWorkspaceTests
                 pulvinar,
                 StructureId.Pulvinar,
                 350,
-                StructureId.Thalamus,
+                StructureId.IntralaminarThalamus,
                 181);
             var returned = AttentionWorkspaceTopology.Project(
                 thalamus,
-                StructureId.Thalamus,
+                StructureId.IntralaminarThalamus,
                 350,
                 StructureId.Pfc,
                 191);
 
             Assert.Equal(channel, AttentionWorkspaceTopology.ChannelForNeuron(pulvinar, StructureId.Pulvinar));
-            Assert.Equal(channel, AttentionWorkspaceTopology.ChannelForNeuron(thalamus, StructureId.Thalamus));
+            Assert.Equal(channel, AttentionWorkspaceTopology.ChannelForNeuron(thalamus, StructureId.IntralaminarThalamus));
             Assert.Equal(channel, AttentionWorkspaceTopology.ChannelForNeuron(returned, StructureId.Pfc));
         }
     }
@@ -108,7 +108,7 @@ public sealed class NeuronalAttentionWorkspaceTests
     {
         var ablated = NeuronalAttentionWorkspaceDecoder.Decode(
             CreateCircuit(1).Where(static snapshot => snapshot.StructureId is not (
-                StructureId.Pulvinar or StructureId.Thalamus)).ToArray());
+                StructureId.Pulvinar or StructureId.IntralaminarThalamus)).ToArray());
 
         Assert.True(ablated.Available);
         Assert.False(ablated.Active);
@@ -160,7 +160,7 @@ public sealed class NeuronalAttentionWorkspaceTests
         [
             Snapshot(StructureId.V1, selected, competitor, sensory: 0.96f),
             Snapshot(StructureId.Pulvinar, selected, competitor, pulvinar: 0.90f),
-            Snapshot(StructureId.Thalamus, selected, competitor, relay: 0.86f),
+            Snapshot(StructureId.IntralaminarThalamus, selected, competitor, relay: 0.86f),
             Snapshot(StructureId.Trn, selected, competitor, trn: selectedTrnSuppression, competitorTrn: 0.22f),
             Snapshot(StructureId.MediodorsalThalamus, selected, competitor, mediodorsal: 0.72f),
             Snapshot(StructureId.Pfc, selected, competitor, pfc: 0.78f),

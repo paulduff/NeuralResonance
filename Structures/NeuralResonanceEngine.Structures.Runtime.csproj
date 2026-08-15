@@ -13,7 +13,5 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="_SharedRuntime\*.cs" />
-    <!-- The circuit catalogue is identical across structure hosts; compile it once. -->
-    <Compile Include="M1\StructureCircuitProfile.cs" Link="StructureCircuitProfile.cs" />
   </ItemGroup>
 </Project>

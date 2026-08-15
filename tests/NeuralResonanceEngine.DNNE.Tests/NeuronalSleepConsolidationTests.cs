@@ -10,7 +10,7 @@ public sealed class NeuronalSleepConsolidationTests
     public void HomeostaticDriveTargetsSleepPopulationsAndOpposesWakePopulations()
     {
         SleepConsolidationTopology.ResolveIntrinsicDrive(
-            StructureId.Hypothalamus,
+            StructureId.DorsomedialHypothalamicNucleus,
             1,
             sleepDrive: 0.95f,
             wakeReserve: 0.10f,
@@ -27,7 +27,7 @@ public sealed class NeuronalSleepConsolidationTests
         Assert.True(sleepExcitation > sleepInhibition);
         Assert.True(wakeInhibition > wakeExcitation);
         Assert.Equal(SleepConsolidationTopology.NremChannel,
-            SleepConsolidationTopology.StateChannelForNeuron(1, StructureId.Hypothalamus));
+            SleepConsolidationTopology.StateChannelForNeuron(1, StructureId.DorsomedialHypothalamicNucleus));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class NeuronalSleepConsolidationTests
         var nrem = NeuronalSleepConsolidationDecoder.Decode(CreateNremCircuit(1));
         var entered = state.AdvanceMetabolicPhysiology(IdleTick(), nrem);
         var incomplete = NeuronalSleepConsolidationDecoder.Decode([
-            CreateNremCircuit(1).Single(static snapshot => snapshot.StructureId == StructureId.Hypothalamus)
+            CreateNremCircuit(1).Single(static snapshot => snapshot.StructureId == StructureId.DorsomedialHypothalamicNucleus)
         ]);
         var released = state.AdvanceMetabolicPhysiology(IdleTick(), incomplete);
 
@@ -154,14 +154,14 @@ public sealed class NeuronalSleepConsolidationTests
         float wakeDrive = 0.04f)
         =>
         [
-            Snapshot(StructureId.Hypothalamus, selectedEnsemble, homeostatic: 0.95f, nrem: 0.82f, replayGate: 0.76f),
+            Snapshot(StructureId.DorsomedialHypothalamicNucleus, selectedEnsemble, homeostatic: 0.95f, nrem: 0.82f, replayGate: 0.76f),
             Snapshot(StructureId.ReticularFormation, selectedEnsemble, wake: wakeDrive),
-            Snapshot(StructureId.Pons, selectedEnsemble, rem: 0.05f),
+            Snapshot(StructureId.PontineNuclei, selectedEnsemble, rem: 0.05f),
             Snapshot(StructureId.LocusCoeruleus, selectedEnsemble, wake: wakeDrive),
-            Snapshot(StructureId.BasalForebrain, selectedEnsemble, wake: wakeDrive),
+            Snapshot(StructureId.NucleusBasalis, selectedEnsemble, wake: wakeDrive),
             Snapshot(StructureId.IntralaminarThalamus, selectedEnsemble, wake: wakeDrive),
             Snapshot(StructureId.Trn, selectedEnsemble, nrem: 0.78f, spindle: 0.88f),
-            Snapshot(StructureId.Thalamus, selectedEnsemble, nrem: 0.76f, spindle: 0.84f),
+            Snapshot(StructureId.IntralaminarThalamus, selectedEnsemble, nrem: 0.76f, spindle: 0.84f),
             Snapshot(StructureId.CA3, selectedEnsemble, nrem: 0.60f, replayGate: 0.90f, hippocampal: 0.96f, engram: 0.82f),
             Snapshot(StructureId.CA1, selectedEnsemble, nrem: 0.58f, replayGate: 0.72f, hippocampal: 0.76f, engram: 0.74f),
             Snapshot(StructureId.Pfc, selectedEnsemble, nrem: 0.68f, slowWave: 0.80f, corticalEcho: 0.74f, consolidation: 0.66f)

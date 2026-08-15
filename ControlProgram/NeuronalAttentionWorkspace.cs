@@ -144,7 +144,7 @@ internal static class NeuronalAttentionWorkspaceDecoder
         var required = new[]
         {
             StructureId.Pulvinar,
-            StructureId.Thalamus,
+            StructureId.IntralaminarThalamus,
             StructureId.Trn,
             StructureId.Pfc
         };

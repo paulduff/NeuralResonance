@@ -78,8 +78,8 @@ public sealed class MajorPathwayIntegrationTests
     public async Task BasalGanglia_Loop_Snr_To_Thalamus_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();
-        Assert.True(HasPath(graph, StructureId.Snr, StructureId.Thalamus));
-        Assert.True(HasPath(graph, StructureId.Thalamus, StructureId.Pfc));
+        Assert.True(HasPath(graph, StructureId.Snr, StructureId.IntralaminarThalamus));
+        Assert.True(HasPath(graph, StructureId.IntralaminarThalamus, StructureId.Pfc));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public sealed class MajorPathwayIntegrationTests
     public async Task Cerebellar_Error_Correction_Dcn_To_M1_Exists()
     {
         var graph = await LoadGraphAsync();
-        Assert.True(HasPath(graph, StructureId.DeepCerebellarNuclei, StructureId.M1));
+        Assert.True(HasPath(graph, StructureId.DentateNucleus, StructureId.M1));
     }
 
     [Fact]
@@ -112,10 +112,10 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.CerebellarLobules, StructureId.PurkinjeCellLayer, "lobular_parallel_fiber"));
         Assert.True(HasDirectConnection(rules, StructureId.CerebellarVermis, StructureId.PurkinjeCellLayer, "vermis_purkinje_loop"));
         Assert.True(HasDirectConnection(rules, StructureId.InferiorOlive, StructureId.PurkinjeCellLayer, "climbing_fiber_teaching"));
-        Assert.True(HasDirectConnection(rules, StructureId.PurkinjeCellLayer, StructureId.DeepCerebellarNuclei, "purkinje_inhibition"));
-        Assert.True(HasDirectConnection(rules, StructureId.CerebellarVermis, StructureId.DeepCerebellarNuclei, "vermis_dcn_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.CerebellarLobules, StructureId.DeepCerebellarNuclei, "lobular_dcn_output"));
-        Assert.True(HasDirectConnection(rules, StructureId.DeepCerebellarNuclei, StructureId.MotorThalamus, "cerebellothalamic_motor"));
+        Assert.True(HasDirectConnection(rules, StructureId.PurkinjeCellLayer, StructureId.DentateNucleus, "purkinje_dentate_inhibition"));
+        Assert.True(HasDirectConnection(rules, StructureId.CerebellarVermis, StructureId.FastigialNucleus, "vermal_lobule_fastigial_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.CerebellarLobules, StructureId.DentateNucleus, "lateral_lobule_dentate_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.DentateNucleus, StructureId.MotorThalamus, "dentatothalamic_motor_planning"));
     }
 
     [Fact]
@@ -124,8 +124,9 @@ public sealed class MajorPathwayIntegrationTests
         var rules = await LoadRulesAsync();
         Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.CerebellarVermis, "vestibulo_cerebellar_alignment"));
         Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.ReticularFormation, "vestibulo_reticular_posture"));
-        Assert.True(HasDirectConnection(rules, StructureId.DeepCerebellarNuclei, StructureId.VestibularNuclei, "cerebellovestibular_balance_correction"));
-        Assert.True(HasDirectConnection(rules, StructureId.DeepCerebellarNuclei, StructureId.ReticularFormation, "cerebelloreticular_posture_correction"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.SpinalCordMotor, "lateral_vestibulospinal_posture"));
+        Assert.True(HasDirectConnection(rules, StructureId.FastigialNucleus, StructureId.VestibularNuclei, "fastigiovestibular_balance_correction"));
+        Assert.True(HasDirectConnection(rules, StructureId.FastigialNucleus, StructureId.ReticularFormation, "fastigioreticular_posture"));
         Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.CerebellarGranule, "spinocerebellar_mossy_input"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.ReticularFormation, "spinal_state_feedback"));
@@ -138,10 +139,10 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.Retina, StructureId.SuperiorColliculus, "retinotectal_orienting"));
         Assert.True(HasDirectConnection(rules, StructureId.InferiorColliculus, StructureId.SuperiorColliculus, "orienting_multisensory_link"));
         Assert.True(HasDirectConnection(rules, StructureId.Snr, StructureId.SuperiorColliculus, "nigrotectal_inhibition"));
-        Assert.True(HasDirectConnection(rules, StructureId.DeepCerebellarNuclei, StructureId.SuperiorColliculus, "cerebellotectal_orienting"));
+        Assert.True(HasDirectConnection(rules, StructureId.DentateNucleus, StructureId.SuperiorColliculus, "dentatotectal_orienting"));
         Assert.True(HasDirectConnection(rules, StructureId.SuperiorColliculus, StructureId.Pulvinar, "tectopulvinar_orienting"));
         Assert.True(HasDirectConnection(rules, StructureId.SuperiorColliculus, StructureId.PremotorCortex, "orienting_to_premotor"));
-        Assert.True(HasDirectConnection(rules, StructureId.PremotorCortex, StructureId.Pons, "premotor_corticopontine"));
+        Assert.True(HasDirectConnection(rules, StructureId.PremotorCortex, StructureId.PontineNuclei, "premotor_corticopontine"));
         Assert.True(HasDirectConnection(rules, StructureId.SuperiorColliculus, StructureId.Retina, "tectoretinal_feedback"));
     }
 
@@ -166,18 +167,18 @@ public sealed class MajorPathwayIntegrationTests
     public async Task AmygdalaInsulaAcc_Salience_Connectome_Uses_Threat_Interoception_Conflict_And_Arousal_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.Acc, "salience_to_conflict"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.Insula, "interoceptive_salience"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.Hypothalamus, "limbic_homeostatic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.NucleusAccumbens, "salience_to_ventral_striatum"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.PeriaqueductalGray, "fear_defense_output"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasolateralAmygdala, StructureId.Acc, "basolateral_cingulate_salience"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasolateralAmygdala, StructureId.Insula, "basolateral_insular_salience"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasolateralAmygdala, StructureId.CentralAmygdala, "basolateral_central_conditioned_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasolateralAmygdala, StructureId.NucleusAccumbens, "basolateral_ventral_striatal_salience"));
+        Assert.True(HasDirectConnection(rules, StructureId.CentralAmygdala, StructureId.PeriaqueductalGray, "central_amygdala_pag_inhibitory_pattern"));
         Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.Acc, "insula_conflict_affect"));
-        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.Amygdala, "insula_salience"));
-        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.Hypothalamus, "insula_homeostatic"));
+        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.BasolateralAmygdala, "insula_basolateral_salience"));
+        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.ParaventricularHypothalamicNucleus, "insula_pvn_interoception"));
         Assert.True(HasDirectConnection(rules, StructureId.Acc, StructureId.Pfc, "error_to_control"));
         Assert.True(HasDirectConnection(rules, StructureId.Acc, StructureId.LocusCoeruleus, "arousal_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Acc, StructureId.BasalForebrain, "attention_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.LocusCoeruleus, StructureId.Amygdala, "lc_salience_arousal_bias"));
+        Assert.True(HasDirectConnection(rules, StructureId.Acc, StructureId.NucleusBasalis, "attention_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.LocusCoeruleus, StructureId.BasolateralAmygdala, "lc_basolateral_arousal_bias"));
     }
 
     [Fact]
@@ -192,7 +193,7 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.Striatum, "corticostriatal_direct"));
         Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.Acc, "conflict_control"));
         Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.OrbitofrontalCortex, "orbitofrontal_value_update"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.Pfc, "cholinergic_prefrontal_attention"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusBasalis, StructureId.Pfc, "cholinergic_prefrontal_attention"));
         Assert.True(HasDirectConnection(rules, StructureId.LocusCoeruleus, StructureId.Pfc, "lc_cortical_gain"));
     }
 
@@ -200,36 +201,35 @@ public sealed class MajorPathwayIntegrationTests
     public async Task ThalamicTrn_AttentionGate_Connectome_Uses_Relay_Reticular_And_Corticothalamic_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.V1, "thalamocortical_relay"));
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.A1, "thalamocortical_relay"));
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.S1, "thalamocortical_relay"));
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.Pulvinar, "thalamic_attention_hub"));
-        Assert.True(HasDirectConnection(rules, StructureId.Trn, StructureId.Thalamus, "reticular_thalamic_gating"));
+        Assert.True(HasDirectConnection(rules, StructureId.LateralGeniculateNucleus, StructureId.V1, "lgn_v1_retinotopic_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.MedialGeniculateNucleus, StructureId.A1, "mgn_a1_tonotopic_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.VentralPosterolateralThalamus, StructureId.S1, "vpl_s1_somatotopic_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.SuperiorColliculus, StructureId.Pulvinar, "tectopulvinar_orienting"));
         Assert.True(HasDirectConnection(rules, StructureId.Trn, StructureId.Pulvinar, "reticular_pulvinar_gating"));
         Assert.True(HasDirectConnection(rules, StructureId.Trn, StructureId.MediodorsalThalamus, "reticular_association_gating"));
         Assert.True(HasDirectConnection(rules, StructureId.Trn, StructureId.IntralaminarThalamus, "reticular_matrix_gating"));
         Assert.True(HasDirectConnection(rules, StructureId.Pulvinar, StructureId.Ppc, "pulvinar_parietal_attention"));
         Assert.True(HasDirectConnection(rules, StructureId.Ppc, StructureId.Pulvinar, "pulvinar_attention_loop"));
-        Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.Thalamus, "corticothalamic_feedback"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.Thalamus, "cholinergic_thalamic_gate"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.Trn, "cholinergic_trn_attention"));
+        Assert.True(HasDirectConnection(rules, StructureId.Pfc, StructureId.MediodorsalThalamus, "prefrontal_mediodorsal_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.LocusCoeruleus, StructureId.IntralaminarThalamus, "lc_intralaminar_gain"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusBasalis, StructureId.Trn, "cholinergic_trn_attention"));
     }
 
     [Fact]
     public async Task HypothalamicHomeostasis_Connectome_Uses_Visceral_Interoceptive_Autonomic_And_Defensive_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.Hypothalamus, "visceral_homeostasis_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.ParaventricularHypothalamicNucleus, "nts_pvn_autonomic_input"));
         Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.LocusCoeruleus, "autonomic_arousal_gate"));
         Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.ReticularFormation, "cardiorespiratory_patterning"));
-        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.Hypothalamus, "insula_homeostatic"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.Hypothalamus, "limbic_homeostatic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.LocusCoeruleus, "arousal_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.RapheNuclei, "serotonergic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.BasalForebrain, "cholinergic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.Pons, "autonomic_brainstem"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.Medulla, "autonomic_brainstem"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.PeriaqueductalGray, "homeostatic_defense_command"));
+        Assert.True(HasDirectConnection(rules, StructureId.Insula, StructureId.ParaventricularHypothalamicNucleus, "insula_pvn_interoception"));
+        Assert.True(HasDirectConnection(rules, StructureId.CentralAmygdala, StructureId.LateralHypothalamicArea, "central_amygdala_lha_defensive_pattern"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.LocusCoeruleus, "dmh_locus_coeruleus_arousal"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.RapheNuclei, "dmh_raphe_state_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.LateralHypothalamicArea, StructureId.NucleusBasalis, "lha_basal_forebrain_wake_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.PedunculopontineNucleus, "reticular_pedunculopontine_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.ReticularFormation, "dmh_reticular_arousal"));
+        Assert.True(HasDirectConnection(rules, StructureId.ParaventricularHypothalamicNucleus, StructureId.PeriaqueductalGray, "pvn_pag_stress_defense"));
         Assert.True(HasDirectConnection(rules, StructureId.PeriaqueductalGray, StructureId.ReticularFormation, "defensive_pattern_release"));
     }
 
@@ -237,31 +237,30 @@ public sealed class MajorPathwayIntegrationTests
     public async Task SleepWakeArousal_Connectome_Uses_Hypothalamic_Brainstem_Monoaminergic_And_Intralaminar_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.LocusCoeruleus, "arousal_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.RapheNuclei, "serotonergic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.BasalForebrain, "cholinergic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.Pons, "autonomic_brainstem"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.Medulla, "autonomic_brainstem"));
-        Assert.True(HasDirectConnection(rules, StructureId.Medulla, StructureId.Pons, "reticular_ascending"));
-        Assert.True(HasDirectConnection(rules, StructureId.Medulla, StructureId.LocusCoeruleus, "reticular_ne"));
-        Assert.True(HasDirectConnection(rules, StructureId.Medulla, StructureId.RapheNuclei, "reticular_5ht"));
-        Assert.True(HasDirectConnection(rules, StructureId.Pons, StructureId.IntralaminarThalamus, "ascending_arousal"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.LocusCoeruleus, "dmh_locus_coeruleus_arousal"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.RapheNuclei, "dmh_raphe_state_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.LateralHypothalamicArea, StructureId.NucleusBasalis, "lha_basal_forebrain_wake_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.DorsomedialHypothalamicNucleus, StructureId.ReticularFormation, "dmh_reticular_arousal"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.PedunculopontineNucleus, "reticular_pedunculopontine_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.LocusCoeruleus, "reticular_locus_coeruleus_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.RapheNuclei, "reticular_raphe_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.PedunculopontineNucleus, StructureId.IntralaminarThalamus, "ppn_intralaminar_arousal"));
         Assert.True(HasDirectConnection(rules, StructureId.IntralaminarThalamus, StructureId.Pfc, "intralaminar_prefrontal_arousal"));
         Assert.True(HasDirectConnection(rules, StructureId.LocusCoeruleus, StructureId.Pfc, "lc_cortical_gain"));
         Assert.True(HasDirectConnection(rules, StructureId.RapheNuclei, StructureId.Pfc, "raphe_prefrontal_modulation"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.Pfc, "cholinergic_prefrontal_attention"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusBasalis, StructureId.Pfc, "cholinergic_prefrontal_attention"));
     }
 
     [Fact]
     public async Task DescendingDefense_Connectome_Uses_Amygdala_Hypothalamus_Pag_Raphe_Reticular_And_Spinal_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.PeriaqueductalGray, "fear_defense_output"));
-        Assert.True(HasDirectConnection(rules, StructureId.Amygdala, StructureId.Hypothalamus, "limbic_homeostatic_drive"));
-        Assert.True(HasDirectConnection(rules, StructureId.Hypothalamus, StructureId.PeriaqueductalGray, "homeostatic_defense_command"));
+        Assert.True(HasDirectConnection(rules, StructureId.BasolateralAmygdala, StructureId.CentralAmygdala, "basolateral_central_conditioned_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.CentralAmygdala, StructureId.LateralHypothalamicArea, "central_amygdala_lha_defensive_pattern"));
+        Assert.True(HasDirectConnection(rules, StructureId.ParaventricularHypothalamicNucleus, StructureId.PeriaqueductalGray, "pvn_pag_stress_defense"));
         Assert.True(HasDirectConnection(rules, StructureId.PeriaqueductalGray, StructureId.ReticularFormation, "defensive_pattern_release"));
         Assert.True(HasDirectConnection(rules, StructureId.PeriaqueductalGray, StructureId.RapheNuclei, "descending_pain_modulation"));
-        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.Medulla, "reticulo_bulbar_drive"));
+        Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.HypoglossalNucleus, "reticular_hypoglossal_premotor"));
         Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.ReticularFormation, "spinal_state_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.M1, StructureId.SpinalCordMotor, "corticospinal_output"));
@@ -290,9 +289,10 @@ public sealed class MajorPathwayIntegrationTests
     public async Task SeptohippocampalThetaNavigation_Connectome_Uses_Septal_Entorhinal_Hippocampal_HeadDirection_And_Retrosplenial_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.EntorhinalCortex, "septal_entorhinal_theta"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.DentateGyrus, "septodentate_theta_gate"));
-        Assert.True(HasDirectConnection(rules, StructureId.BasalForebrain, StructureId.CA1, "septohippocampal_theta_ca1"));
+        Assert.True(HasDirectConnection(rules, StructureId.NucleusBasalis, StructureId.MedialSeptalNucleus, "nucleus_basalis_medial_septal_coordination"));
+        Assert.True(HasDirectConnection(rules, StructureId.MedialSeptalNucleus, StructureId.EntorhinalCortex, "medial_septal_entorhinal_theta"));
+        Assert.True(HasDirectConnection(rules, StructureId.MedialSeptalNucleus, StructureId.DentateGyrus, "medial_septal_dentate_theta"));
+        Assert.True(HasDirectConnection(rules, StructureId.MedialSeptalNucleus, StructureId.CA1, "medial_septal_ca1_theta"));
         Assert.True(HasDirectConnection(rules, StructureId.EntorhinalCortex, StructureId.DentateGyrus, "perforant_path_l2"));
         Assert.True(HasDirectConnection(rules, StructureId.DentateGyrus, StructureId.CA3, "mossy_fiber_ltp"));
         Assert.True(HasDirectConnection(rules, StructureId.CA3, StructureId.CA1, "schaffer_collateral"));
@@ -309,10 +309,10 @@ public sealed class MajorPathwayIntegrationTests
     public async Task SpinalProprioceptiveReflex_Connectome_Uses_Spinal_S1_M1_Cerebellar_Vestibular_Reticular_And_Thalamic_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.Thalamus, "somatothalamic_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.VentralPosterolateralThalamus, "somatic_vpl_lemniscal_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.SomaticAfferents, StructureId.SpinalCordMotor, "cutaneous_reflex_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.SomaticAfferents, "corticofugal_somatic_gain_feedback"));
-        Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.Thalamus, "proprioceptive_lemniscal_afference"));
+        Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.VentralPosterolateralThalamus, "proprioceptive_vpl_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.CerebellarGranule, "primary_spinocerebellar_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.ProprioceptiveAfferents, StructureId.SpinalCordMotor, "proprioceptive_reflex_afference"));
         Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.ProprioceptiveAfferents, "corticofugal_proprioceptive_gain_feedback"));
@@ -322,13 +322,14 @@ public sealed class MajorPathwayIntegrationTests
         Assert.True(HasDirectConnection(rules, StructureId.NucleusTractusSolitarius, StructureId.VisceralAfferents, "vagal_efferent_afferent_gain_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.M1, StructureId.SpinalCordMotor, "corticospinal_output"));
         Assert.True(HasDirectConnection(rules, StructureId.ReticularFormation, StructureId.SpinalCordMotor, "reticulospinal_posture"));
-        Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.Thalamus, "proprioceptive_ascending_feedback"));
+        Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.VentralPosterolateralThalamus, "spinal_vpl_proprioceptive_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.CerebellarGranule, "spinocerebellar_mossy_input"));
         Assert.True(HasDirectConnection(rules, StructureId.SpinalCordMotor, StructureId.ReticularFormation, "spinal_state_feedback"));
         Assert.True(HasDirectConnection(rules, StructureId.S1, StructureId.CerebellarGranule, "somatocerebellar_proprioceptive_mossy"));
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.S1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.VentralPosterolateralThalamus, StructureId.S1, "vpl_s1_somatotopic_relay"));
         Assert.True(HasDirectConnection(rules, StructureId.MotorThalamus, StructureId.M1, "motor_thalamocortical_relay"));
         Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.ReticularFormation, "vestibulo_reticular_posture"));
+        Assert.True(HasDirectConnection(rules, StructureId.VestibularNuclei, StructureId.SpinalCordMotor, "lateral_vestibulospinal_posture"));
     }
 
     [Fact]
@@ -336,10 +337,11 @@ public sealed class MajorPathwayIntegrationTests
     {
         var rules = await LoadRulesAsync();
         Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.TemporalAssociation, "olfactory_cortical"));
-        Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.Amygdala, "olfactory_limbic"));
+        Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.CorticalAmygdala, "olfactory_cortical_amygdala"));
+        Assert.True(HasDirectConnection(rules, StructureId.CorticalAmygdala, StructureId.BasolateralAmygdala, "cortical_basolateral_olfactory_association"));
         Assert.True(HasDirectConnection(rules, StructureId.OlfactoryBulb, StructureId.EntorhinalCortex, "olfactory_hippocampal"));
         Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.EntorhinalCortex, "semantic_to_memory"));
-        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.Amygdala, "salience_labeling"));
+        Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.BasolateralAmygdala, "temporal_basolateral_salience"));
         Assert.True(HasDirectConnection(rules, StructureId.TemporalAssociation, StructureId.PerirhinalCortex, "semantic_to_familiarity"));
         Assert.True(HasDirectConnection(rules, StructureId.PerirhinalCortex, StructureId.EntorhinalCortex, "perirhinal_entorhinal_object_memory"));
         Assert.True(HasDirectConnection(rules, StructureId.ParahippocampalCortex, StructureId.EntorhinalCortex, "context_to_hippocampal_index"));
@@ -353,7 +355,7 @@ public sealed class MajorPathwayIntegrationTests
     public async Task AuditoryLanguageMotorIntegration_Connectome_Uses_A1_Wernicke_Arcuate_Broca_Motor_BasalGanglia_And_Thalamic_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.A1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.MedialGeniculateNucleus, StructureId.A1, "mgn_a1_tonotopic_relay"));
         Assert.True(HasDirectConnection(rules, StructureId.A1, StructureId.WernickePstgPsts, "auditory_language_comprehension_feedforward"));
         Assert.True(HasDirectConnection(rules, StructureId.WernickePstgPsts, StructureId.ArcuateFasciculus, "phonological_dorsal_stream"));
         Assert.True(HasDirectConnection(rules, StructureId.ArcuateFasciculus, StructureId.BrocaBa44Ba45, "dorsal_language_relay"));
@@ -371,7 +373,7 @@ public sealed class MajorPathwayIntegrationTests
     public async Task VisualTemporalObjectRecognition_Connectome_Uses_V1_V2_V4_Mt_Temporal_Perirhinal_Pfc_And_Pulvinar_Routes()
     {
         var rules = await LoadRulesAsync();
-        Assert.True(HasDirectConnection(rules, StructureId.Thalamus, StructureId.V1, "thalamocortical_relay"));
+        Assert.True(HasDirectConnection(rules, StructureId.LateralGeniculateNucleus, StructureId.V1, "lgn_v1_retinotopic_relay"));
         Assert.True(HasDirectConnection(rules, StructureId.V1, StructureId.V2, "visual_secondary_feedforward"));
         Assert.True(HasDirectConnection(rules, StructureId.V2, StructureId.V4, "visual_ventral_progression"));
         Assert.True(HasDirectConnection(rules, StructureId.V2, StructureId.Mt, "visual_dorsal_motion"));
@@ -387,7 +389,7 @@ public sealed class MajorPathwayIntegrationTests
     public async Task Limbic_Modulation_Amygdala_To_Pfc_Exists()
     {
         var graph = await LoadGraphAsync();
-        Assert.True(HasPath(graph, StructureId.Amygdala, StructureId.Pfc));
+        Assert.True(HasPath(graph, StructureId.BasolateralAmygdala, StructureId.Pfc));
     }
 
     [Fact]

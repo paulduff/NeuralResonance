@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$OutputPath = "docs/reports/dnne-circuit-audit.md"
 )
 
@@ -29,20 +29,22 @@ function Get-ProfileName([string]$structure) {
     switch ($structure) {
         { $_ -in @('Pfc','DorsomedialPrefrontalCortex','VentromedialPrefrontalCortex','FrontalEyeFields','BrocaBa44Ba45','WernickePstgPsts','SupramarginalAngular','OrbitofrontalCortex','Insula','Ppc','TemporalAssociation','InferotemporalCortex','FusiformGyrus','TemporalPole','TemporoparietalJunction','Precuneus','MidcingulateCortex','PremotorCortex','ParahippocampalCortex','PerirhinalCortex','PosteriorCingulate','RetrosplenialCortex','Acc','M1','Sma') } { return 'cortical-association/motor' }
         { $_ -in @('V1','V2','V3','V4','Mt','A1','AuditoryAssociationCortex','S1','SecondarySomatosensoryCortex','EntorhinalCortex','CorpusCallosum') } { return 'primary-sensory/callosal' }
-        { $_ -in @('Thalamus','MotorThalamus','Trn','Pulvinar','MediodorsalThalamus','IntralaminarThalamus') } { return 'thalamic' }
-        { $_ -in @('CerebellarGranule','CerebellarVermis','CerebellarLobules','PurkinjeCellLayer','DeepCerebellarNuclei','InferiorOlive','Pons') } { return 'cerebellar/pontine' }
+        { $_ -in @('MotorThalamus','Trn','Pulvinar','MediodorsalThalamus','IntralaminarThalamus','LateralGeniculateNucleus','MedialGeniculateNucleus','VentralPosterolateralThalamus','VentralPosteromedialThalamus','AnteriorThalamicNuclei','NucleusReuniens') } { return 'thalamic' }
+        { $_ -in @('CerebellarGranule','CerebellarVermis','CerebellarLobules','PurkinjeCellLayer','DentateNucleus','InterposedNuclei','FastigialNucleus','InferiorOlive','PontineNuclei') } { return 'cerebellar/pontine' }
         { $_ -in @('Retina') } { return 'retinal' }
         { $_ -in @('Cochlea','CochlearNucleus','SuperiorOlive','InferiorColliculus') } { return 'auditory-brainstem' }
         { $_ -in @('SomaticAfferents') } { return 'somatic-afferent' }
         { $_ -in @('ProprioceptiveAfferents') } { return 'proprioceptive-afferent' }
         { $_ -in @('VestibularAfferents') } { return 'vestibular-afferent' }
         { $_ -in @('VisceralAfferents') } { return 'visceral-afferent' }
-        { $_ -in @('VestibularNuclei','NucleusTractusSolitarius','OlfactoryBulb') } { return 'sensory-autonomic' }
+        { $_ -in @('VestibularNuclei','NucleusTractusSolitarius','OlfactoryBulb','ParabrachialComplex') } { return 'sensory-autonomic' }
         { $_ -in @('ArcuateFasciculus') } { return 'white-matter-relay' }
-        { $_ -in @('Striatum','GlobusPallidus','GPe','GPi','Stn','Snr') } { return 'basal-ganglia' }
-        { $_ -in @('Snc','Vta','LocusCoeruleus','RapheNuclei','BasalForebrain') } { return 'neuromodulatory' }
-        { $_ -in @('Hypothalamus','Amygdala','NucleusAccumbens','VentralPallidum') } { return 'limbic-homeostatic' }
-        { $_ -in @('ReticularFormation','PeriaqueductalGray','Medulla') } { return 'brainstem-arousal' }
+        { $_ -in @('Striatum','GPe','GPi','Stn','Snr') } { return 'basal-ganglia' }
+        { $_ -in @('Snc','Vta','LocusCoeruleus','RapheNuclei','NucleusBasalis') } { return 'neuromodulatory' }
+        { $_ -in @('VentrolateralPreopticNucleus','SuprachiasmaticNucleus','ParaventricularHypothalamicNucleus','SupraopticNucleus','ArcuateNucleus','LateralHypothalamicArea','VentromedialHypothalamicNucleus','DorsomedialHypothalamicNucleus','MammillaryBodies','BasolateralAmygdala','CentralAmygdala','MedialAmygdala','CorticalAmygdala','BedNucleusStriaTerminalis','NucleusAccumbens','VentralPallidum') } { return 'limbic-homeostatic' }
+        { $_ -in @('MedialSeptalNucleus','DiagonalBandNucleus') } { return 'septohippocampal' }
+        { $_ -in @('ReticularFormation','PeriaqueductalGray','PedunculopontineNucleus','LaterodorsalTegmentalNucleus') } { return 'brainstem-arousal' }
+        { $_ -in @('RedNucleus','PrincipalSensoryTrigeminalNucleus','SpinalTrigeminalNucleus','MesencephalicTrigeminalNucleus','FacialMotorNucleus','OculomotorNucleus','HypoglossalNucleus') } { return 'brainstem-sensorimotor' }
         { $_ -in @('SpinalCordMotor') } { return 'spinal-motor' }
         { $_ -in @('CA1','CA2','CA3','DentateGyrus','Subiculum','Presubiculum','Parasubiculum','Habenula','SuperiorColliculus') } { return 'hippocampal/tectal' }
         default { return 'default-low' }

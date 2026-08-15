@@ -28,7 +28,7 @@ internal static class PerceptEnsembleTopology
 			or StructureId.CA3
 			or StructureId.CA1
 			or StructureId.Pulvinar
-			or StructureId.Thalamus
+			or StructureId.IntralaminarThalamus
 			or StructureId.Pfc;
 
 	public static int EnsembleForNeuron(int neuronIndex)

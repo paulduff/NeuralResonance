@@ -49,7 +49,7 @@
       "required": true,
       "platforms": [ "windows", "linux" ],
       "apps": [],
-      "structures": [ "Retina", "V1", "V2", "V3", "V4", "Mt", "TemporalAssociation", "Pulvinar", "SuperiorColliculus" ]
+      "structures": [ "Retina", "LateralGeniculateNucleus", "V1", "V2", "V3", "V4", "Mt", "TemporalAssociation", "Pulvinar", "SuperiorColliculus" ]
     },
     {
       "name": "auditory",
@@ -57,7 +57,7 @@
       "required": true,
       "platforms": [ "windows", "linux" ],
       "apps": [],
-      "structures": [ "Cochlea", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "A1", "AuditoryAssociationCortex" ]
+      "structures": [ "Cochlea", "CochlearNucleus", "SuperiorOlive", "InferiorColliculus", "MedialGeniculateNucleus", "A1", "AuditoryAssociationCortex" ]
     },
     {
       "name": "body-motor-cerebellum",
@@ -74,19 +74,32 @@
         "VisceralAfferents",
         "VestibularNuclei",
         "NucleusTractusSolitarius",
+        "VentralPosterolateralThalamus",
+        "VentralPosteromedialThalamus",
         "M1",
         "PremotorCortex",
         "Sma",
         "MotorThalamus",
         "SpinalCordMotor",
         "ReticularFormation",
-        "Pons",
-        "Medulla",
+        "PontineNuclei",
+        "RedNucleus",
+        "PedunculopontineNucleus",
+        "LaterodorsalTegmentalNucleus",
+        "ParabrachialComplex",
+        "PrincipalSensoryTrigeminalNucleus",
+        "SpinalTrigeminalNucleus",
+        "MesencephalicTrigeminalNucleus",
+        "FacialMotorNucleus",
+        "OculomotorNucleus",
+        "HypoglossalNucleus",
         "CerebellarGranule",
         "CerebellarVermis",
         "CerebellarLobules",
         "PurkinjeCellLayer",
-        "DeepCerebellarNuclei",
+        "DentateNucleus",
+        "InterposedNuclei",
+        "FastigialNucleus",
         "InferiorOlive"
       ]
     },
@@ -108,7 +121,11 @@
         "ParahippocampalCortex",
         "PerirhinalCortex",
         "PosteriorCingulate",
-        "RetrosplenialCortex"
+        "RetrosplenialCortex",
+        "AnteriorThalamicNuclei",
+        "NucleusReuniens",
+        "MedialSeptalNucleus",
+        "DiagonalBandNucleus"
       ]
     },
     {
@@ -125,7 +142,6 @@
         "Ppc",
         "Precuneus",
         "TemporoparietalJunction",
-        "Thalamus",
         "Trn",
         "MediodorsalThalamus",
         "IntralaminarThalamus",
@@ -149,13 +165,24 @@
       "platforms": [ "windows", "linux" ],
       "apps": [],
       "structures": [
-        "Hypothalamus",
-        "Amygdala",
+        "VentrolateralPreopticNucleus",
+        "SuprachiasmaticNucleus",
+        "ParaventricularHypothalamicNucleus",
+        "SupraopticNucleus",
+        "ArcuateNucleus",
+        "LateralHypothalamicArea",
+        "VentromedialHypothalamicNucleus",
+        "DorsomedialHypothalamicNucleus",
+        "MammillaryBodies",
+        "BasolateralAmygdala",
+        "CentralAmygdala",
+        "MedialAmygdala",
+        "CorticalAmygdala",
+        "BedNucleusStriaTerminalis",
         "Acc",
         "NucleusAccumbens",
         "VentralPallidum",
         "Striatum",
-        "GlobusPallidus",
         "GPe",
         "GPi",
         "Stn",
@@ -165,7 +192,7 @@
         "Habenula",
         "LocusCoeruleus",
         "RapheNuclei",
-        "BasalForebrain",
+        "NucleusBasalis",
         "PeriaqueductalGray",
         "OlfactoryBulb"
       ]

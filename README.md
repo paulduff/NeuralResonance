@@ -1,11 +1,16 @@
 # Neural Resonance Engine (NRE) — Canon v2.0 (Next Notch: Regions + Waves)
 
-This solution contains a distributed control program, anatomy-inspired structure services, shared avatar cognition, and WPF editor, maze, and world simulators. The control program defaults to `http://localhost:5080` and can start structure services directly from their projects.
+This solution contains a distributed control program, anatomy-inspired structure services, shared avatar cognition, a Blazor editor, and WPF maze and world simulators. The legacy WPF editor remains during migration. The control program defaults to `http://localhost:5080` and can start structure services directly from their projects.
 
 ## Run
 1. Start `ControlProgram/NeuralResonanceEngine.ControlProgram.csproj`.
-2. Start either `src/NRE.WpfWorldSim`, `src/NRE.WpfMazeSim`, or `src/NRE.WpfEditor`.
+2. Start `tools/start-blazor-editor.ps1`. The Blazor host now owns the authoritative headless WorldSim; WPF WorldSim and MazeSim are retained only as mutually exclusive legacy diagnostics.
 3. For a remote deployment, set the same `NRE_CONTROL_SHARED_SECRET` on the control program and every client, then explicitly configure the external listener with `NRE_CONTROL_LISTEN_ANY_IP=true`.
+
+The Blazor editor listens only on the command machine by default. To expose it to
+the trusted LAN, set `NRE_EDITOR_ACCESS_KEY` and use
+`tools/start-blazor-editor.ps1 -ListenAnyIp`. ControlProgram still remains on its
+loopback endpoint behind the editor gateway.
 
 ## Visualization
 - **Spikes**: particle flashes; tint encodes region (Thalamus/Hippocampus/Memory/Cortex) and base color reflects energy.
@@ -13,12 +18,12 @@ This solution contains a distributed control program, anatomy-inspired structure
 - **Callosum bridge**: brightness scales with inter-hemispheric spike delivery events.
 
 ## Next notch additions
-- **Homeostatic Pons**: adapts arousal/stability/reset to keep spike density near a target (Self-Organizing Criticality bias).
+- **Homeostatic PontineNuclei**: adapts arousal/stability/reset to keep spike density near a target (Self-Organizing Criticality bias).
 - **Thought clustering**: `GET /api/monitor/thought-clusters` clusters resonant voxels into "thought objects" (centroid/size/coherence).
 
 
 ## UI notch
-- Sidebar with tabs (Stimulus / Neuromods / Pons / Monitor)
+- Sidebar with tabs (Stimulus / Neuromods / PontineNuclei / Monitor)
 - Dark mode toggle
 - Hemispheres + modules are ellipsoid masks (nodes outside are inert)
 - Renderer draws ellipsoid wireframes for hemispheres and modules
@@ -37,7 +42,7 @@ This solution contains a distributed control program, anatomy-inspired structure
 
 The API now exposes `GET /api/engine/anatomy/validate` to return a structured report of atlas region summaries and biological spatial invariants for the current canon.
 
-Latest Folded Archive entry: `docs/Entry_032_UI_Decomposition.md`
+Latest Folded Archive entry: `docs/Entry_128_Musculoskeletal_Motor_Learning.md`
 
 
 ## Blazor runtime structure

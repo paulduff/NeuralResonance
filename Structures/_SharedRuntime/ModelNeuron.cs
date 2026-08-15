@@ -45,6 +45,10 @@ internal sealed class ModelNeuron
 
 	private double _adrenergicBetaCurrent;
 
+	private double _pacemakerExcitatoryDrive;
+
+	private double _pacemakerInhibitoryDrive;
+
 	private double _aisVoltage;
 
 	private double _basalDendriteVoltage;
@@ -101,6 +105,8 @@ internal sealed class ModelNeuron
 
 	public NTEnum PreferredNt { get; private set; }
 
+	public CorticalPopulation? CorticalPopulationKind { get; }
+
 	public float MicrotubulePlasticitySupport => FiniteFloat(_microtubules.PlasticitySupport, 1f);
 
 	public float MicrotubuleTracePersistenceSupport => FiniteFloat(_microtubules.TracePersistenceSupport, 1f);
@@ -137,7 +143,12 @@ internal sealed class ModelNeuron
 		Id = $"n-{index:000}";
 		_circuitProfile = circuitProfile;
 		PreferredTarget = circuitProfile.DefaultTarget;
-		PreferredNt = circuitProfile.DefaultNt;
+		CorticalPopulationKind = CorticalLaminarTopology.IsCorticalStructure(circuitProfile.StructureId)
+			? CorticalLaminarTopology.PopulationForNeuron(index)
+			: null;
+		PreferredNt = CorticalPopulationKind is { } corticalPopulation
+			? CorticalLaminarTopology.NeurotransmitterFor(corticalPopulation)
+			: circuitProfile.DefaultNt;
 		_microtubules = IntracellularMicrotubuleState.Create(index);
 		_subtype = NeuronSubtypeProfile.For(circuitProfile, index);
 		_receptors = ReceptorProfile.For(circuitProfile, index);
@@ -217,6 +228,18 @@ internal sealed class ModelNeuron
 		}
 	}
 
+	public void IntegratePacemakerDrive(float excitatory, float inhibitory)
+	{
+		_pacemakerExcitatoryDrive = Math.Clamp(
+			_pacemakerExcitatoryDrive + Math.Max(0f, excitatory),
+			0.0,
+			2.0);
+		_pacemakerInhibitoryDrive = Math.Clamp(
+			_pacemakerInhibitoryDrive + Math.Max(0f, inhibitory),
+			0.0,
+			2.0);
+	}
+
 	public bool Step(double dtMs)
 	{
 		dtMs = double.IsFinite(dtMs) && dtMs > 0.0 ? Math.Min(dtMs, 100.0) : 1.0;
@@ -277,7 +300,14 @@ internal sealed class ModelNeuron
 		var nmdaVoltageRelief = 1.0 / (1.0 + 0.28 * Math.Exp(-0.062 * _v));
 		var excitatorySynCurrent = _ampaCurrent + (_nmdaCurrent * nmdaVoltageRelief) + _metabotropicGlutamateCurrent * 0.35;
 		var inhibitorySynCurrent = (_gabaACurrent * 1.05) + (_gabaBCurrent * 0.85);
-		var netSynCurrent = excitatorySynCurrent - (inhibitorySynCurrent * inhibitoryGain) + phasicDrive;
+		// HH currents use conductance-density units while the compact LIF/Izhikevich
+		// models use membrane-current units. Convert the normalized cell-autonomous
+		// drive into the corresponding model scale before membrane integration.
+		var pacemakerCurrentScale = _modelKind == NeuronModelKind.Hh ? 2_000.0 : 30.0;
+		var intrinsicMembraneCurrent =
+			(_pacemakerExcitatoryDrive * pacemakerCurrentScale) -
+			(_pacemakerInhibitoryDrive * 24.0 * inhibitoryGain);
+		var netSynCurrent = excitatorySynCurrent - (inhibitorySynCurrent * inhibitoryGain) + phasicDrive + intrinsicMembraneCurrent;
 		netSynCurrent -= _metabolicFatigueTrace * 1.8;
 		netSynCurrent -= _astrocytePotassiumLoad * 0.22;
 		excitabilityGain *= _microtubules.IntegrationGain;
@@ -325,6 +355,8 @@ internal sealed class ModelNeuron
 			break;
 		}
 
+		_pacemakerExcitatoryDrive = 0.0;
+		_pacemakerInhibitoryDrive = 0.0;
 		StabilizeDynamicState();
 		ActivityTrace = (float)(0.84 * (double)ActivityTrace + (IsActive ? 0.16 : 0.0));
 		FiringRateHz = (float)(0.72 * (double)FiringRateHz + (IsActive ? (1000.0 / Math.Max(dtMs, 1.0) * 0.28) : 0.0));
@@ -379,11 +411,12 @@ internal sealed class ModelNeuron
 	{
 		return _circuitProfile.StructureId switch
 		{
-			StructureId.Snc or StructureId.Vta or StructureId.LocusCoeruleus or StructureId.RapheNuclei or StructureId.BasalForebrain => 0.035,
+			StructureId.Snc or StructureId.Vta or StructureId.LocusCoeruleus or StructureId.RapheNuclei or StructureId.NucleusBasalis or StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus => 0.035,
 			StructureId.Striatum or StructureId.NucleusAccumbens => 0.045,
-			StructureId.GlobusPallidus or StructureId.GPe or StructureId.GPi or StructureId.Snr or StructureId.Trn => 0.075,
+			StructureId.GPe or StructureId.GPi or StructureId.Snr or StructureId.Trn => 0.075,
 			StructureId.CerebellarGranule => 0.04,
 			StructureId.PurkinjeCellLayer => 0.09,
+			StructureId.DentateNucleus or StructureId.InterposedNuclei or StructureId.FastigialNucleus => 0.065,
 			_ when _circuitProfile.DefaultNt == NTEnum.GABA => 0.08,
 			_ => 0.06,
 		};
@@ -483,16 +516,22 @@ internal sealed class ModelNeuron
 	{
 		public static NeuronSubtypeProfile For(StructureCircuitProfile circuitProfile, int index)
 		{
+			if (CorticalLaminarTopology.IsCorticalStructure(circuitProfile.StructureId))
+			{
+				return SelectCorticalSubtype(CorticalLaminarTopology.PopulationForNeuron(index));
+			}
+
 			return circuitProfile.StructureId switch
 			{
 				StructureId.PurkinjeCellLayer => new NeuronSubtypeProfile(-66.0, 68.0, 0.9, 0.064, 3.0, 1.45, 260.0, 2.4, 0.75, 1.2, 1.25, 0.75, 0.82),
 				StructureId.CerebellarGranule => new NeuronSubtypeProfile(-70.0, 30.0, 0.82, 0.1, -1.0, 0.65, 145.0, 1.2, 0.55, 0.82, 1.0, 0.8, 1.08),
-				StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.DeepCerebellarNuclei or StructureId.InferiorOlive => new NeuronSubtypeProfile(-67.0, 54.0, 0.95, 0.078, 0.8, 0.95, 220.0, 1.9, 0.85, 1.0, 1.12, 0.9, 0.94),
+				StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.DentateNucleus or StructureId.InterposedNuclei or StructureId.FastigialNucleus or StructureId.InferiorOlive => new NeuronSubtypeProfile(-67.0, 54.0, 0.95, 0.078, 0.8, 0.95, 220.0, 1.9, 0.85, 1.0, 1.12, 0.9, 0.94),
 				StructureId.Striatum or StructureId.NucleusAccumbens => new NeuronSubtypeProfile(-72.0, 62.0, 1.15, 0.065, 4.0, 1.25, 310.0, 2.6, 0.88, 1.1, 1.35, 1.0, 0.66),
-				StructureId.GlobusPallidus or StructureId.GPe or StructureId.GPi or StructureId.Stn or StructureId.Snr or StructureId.VentralPallidum or StructureId.Habenula => new NeuronSubtypeProfile(-68.0, 50.0, 1.0, 0.08, 1.0, 1.1, 215.0, 2.0, 0.78, 0.95, 1.25, 0.9, 0.82),
-				StructureId.Thalamus or StructureId.Trn or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.IntralaminarThalamus or StructureId.MotorThalamus => new NeuronSubtypeProfile(-67.0, 45.0, 0.96, 0.08, 0.5, 0.78, 190.0, 1.7, 0.72, 0.95, 1.2, 0.86, 0.92),
-				StructureId.BasalForebrain => new NeuronSubtypeProfile(-63.0, 72.0, 1.18, 0.074, -0.4, 0.72, 640.0, 2.2, 0.82, 1.25, 0.92, 1.08, 1.08),
+				StructureId.GPe or StructureId.GPi or StructureId.Stn or StructureId.Snr or StructureId.VentralPallidum or StructureId.Habenula => new NeuronSubtypeProfile(-68.0, 50.0, 1.0, 0.08, 1.0, 1.1, 215.0, 2.0, 0.78, 0.95, 1.25, 0.9, 0.82),
+				StructureId.IntralaminarThalamus or StructureId.Trn or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.MotorThalamus => new NeuronSubtypeProfile(-67.0, 45.0, 0.96, 0.08, 0.5, 0.78, 190.0, 1.7, 0.72, 0.95, 1.2, 0.86, 0.92),
+				StructureId.NucleusBasalis or StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus => new NeuronSubtypeProfile(-63.0, 72.0, 1.18, 0.074, -0.4, 0.72, 640.0, 2.2, 0.82, 1.25, 0.92, 1.08, 1.08),
 				StructureId.Snc or StructureId.Vta or StructureId.LocusCoeruleus or StructureId.RapheNuclei => new NeuronSubtypeProfile(-63.0, 72.0, 1.35, 0.056, 2.5, 0.82, 520.0, 2.4, 0.72, 1.35, 1.1, 1.1, 0.76),
+				StructureId.RedNucleus or StructureId.ParabrachialComplex or StructureId.PrincipalSensoryTrigeminalNucleus or StructureId.SpinalTrigeminalNucleus or StructureId.MesencephalicTrigeminalNucleus or StructureId.FacialMotorNucleus or StructureId.OculomotorNucleus or StructureId.HypoglossalNucleus => new NeuronSubtypeProfile(-66.0, 46.0, 0.92, 0.088, -0.2, 0.88, 205.0, 1.65, 0.76, 0.96, 1.08, 0.92, 1.02),
 				StructureId.EntorhinalCortex or StructureId.DentateGyrus or StructureId.CA3 or StructureId.CA2 or StructureId.CA1 or StructureId.Subiculum or StructureId.Presubiculum or StructureId.Parasubiculum => new NeuronSubtypeProfile(-65.0, 58.0, 1.05, 0.082, -0.5, 1.05, 240.0, 1.9, 1.18, 1.15, 1.0, 1.18, 1.08),
 				_ when circuitProfile.DefaultNt == NTEnum.GABA => new NeuronSubtypeProfile(-67.0, 42.0, 0.9, 0.092, -0.8, 0.8, 165.0, 1.4, 0.65, 0.9, 1.15, 0.78, 0.96),
 				_ => SelectCorticalSubtype(index),
@@ -500,17 +539,21 @@ internal sealed class ModelNeuron
 		}
 
 		private static NeuronSubtypeProfile SelectCorticalSubtype(int index)
+			=> SelectCorticalSubtype(CorticalLaminarTopology.PopulationForNeuron(index));
+
+		private static NeuronSubtypeProfile SelectCorticalSubtype(CorticalPopulation population)
 		{
-			var band = Math.Abs(index) % 20;
-			if (band < 3)
+			return population switch
 			{
-				return new NeuronSubtypeProfile(-66.0, 34.0, 0.78, 0.1, -1.2, 0.7, 150.0, 1.3, 0.62, 0.88, 1.18, 0.74, 0.95);
-			}
-			if (band == 3)
-			{
-				return new NeuronSubtypeProfile(-64.0, 72.0, 1.2, 0.06, 1.4, 1.25, 360.0, 2.2, 1.3, 1.18, 0.92, 1.22, 1.02);
-			}
-			return new NeuronSubtypeProfile(-65.0, 48.0, 1.0, 0.082, 0.0, 1.0, 220.0, 1.8, 1.0, 1.0, 1.0, 1.0, 1.0);
+				CorticalPopulation.Layer1Modulatory => new NeuronSubtypeProfile(-67.0, 62.0, 0.92, 0.072, 1.0, 0.75, 260.0, 1.9, 0.90, 1.00, 1.05, 1.05, 0.82),
+				CorticalPopulation.Layer23Intratelencephalic => new NeuronSubtypeProfile(-65.0, 48.0, 1.00, 0.082, 0.0, 0.95, 220.0, 1.8, 1.05, 1.00, 1.00, 1.05, 1.00),
+				CorticalPopulation.Layer4Input => new NeuronSubtypeProfile(-66.0, 38.0, 0.90, 0.095, -0.7, 0.78, 170.0, 1.45, 0.75, 0.90, 1.05, 0.88, 1.04),
+				CorticalPopulation.Layer5PyramidalTract => new NeuronSubtypeProfile(-64.0, 72.0, 1.20, 0.060, 1.4, 1.25, 360.0, 2.2, 1.30, 1.18, 0.92, 1.22, 1.02),
+				CorticalPopulation.Layer6Corticothalamic => new NeuronSubtypeProfile(-66.0, 60.0, 1.08, 0.072, 0.8, 1.15, 300.0, 2.0, 1.10, 1.08, 1.00, 1.15, 0.90),
+				CorticalPopulation.PvInterneuron => new NeuronSubtypeProfile(-66.0, 30.0, 0.76, 0.110, -1.4, 0.62, 120.0, 1.1, 0.55, 0.82, 1.12, 0.70, 0.96),
+				CorticalPopulation.SstInterneuron => new NeuronSubtypeProfile(-68.0, 58.0, 1.00, 0.075, 0.2, 1.15, 300.0, 2.1, 0.95, 1.00, 1.20, 0.92, 0.82),
+				_ => new NeuronSubtypeProfile(-64.0, 42.0, 0.90, 0.095, -0.8, 0.72, 165.0, 1.4, 0.70, 0.95, 1.05, 0.80, 1.05)
+			};
 		}
 	}
 
@@ -531,15 +574,21 @@ internal sealed class ModelNeuron
 	{
 		public static ReceptorProfile For(StructureCircuitProfile circuitProfile, int index)
 		{
+			if (CorticalLaminarTopology.IsCorticalStructure(circuitProfile.StructureId))
+			{
+				return SelectCorticalSubtype(CorticalLaminarTopology.PopulationForNeuron(index));
+			}
+
 			return circuitProfile.StructureId switch
 			{
 				StructureId.PurkinjeCellLayer => new ReceptorProfile(1.05, 0.72, 1.45, 1.25, 1.15, 0.55, 0.8, 0.9, 0.7, 0.55, 0.9, 0.8, 0.75),
 				StructureId.CerebellarGranule => new ReceptorProfile(1.15, 0.85, 0.7, 0.9, 0.75, 0.45, 0.55, 0.65, 0.55, 0.55, 0.55, 0.6, 0.65),
-				StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.DeepCerebellarNuclei or StructureId.InferiorOlive => new ReceptorProfile(1.05, 0.95, 0.9, 1.05, 1.0, 0.65, 0.75, 0.8, 0.7, 0.7, 0.75, 0.75, 0.8),
+				StructureId.CerebellarVermis or StructureId.CerebellarLobules or StructureId.DentateNucleus or StructureId.InterposedNuclei or StructureId.FastigialNucleus or StructureId.InferiorOlive => new ReceptorProfile(1.05, 0.95, 0.9, 1.05, 1.0, 0.65, 0.75, 0.8, 0.7, 0.7, 0.75, 0.75, 0.8),
 				StructureId.Striatum or StructureId.NucleusAccumbens => SelectStriatalSubtype(index),
-				StructureId.GlobusPallidus or StructureId.GPe or StructureId.GPi or StructureId.Stn or StructureId.Snr or StructureId.VentralPallidum or StructureId.Habenula => new ReceptorProfile(0.92, 1.02, 0.95, 1.05, 1.25, 0.75, 1.1, 0.92, 0.68, 0.7, 0.88, 0.88, 0.8),
-				StructureId.Thalamus or StructureId.Trn or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.IntralaminarThalamus or StructureId.MotorThalamus => new ReceptorProfile(1.05, 0.9, 0.75, 1.15, 1.05, 0.7, 0.78, 0.85, 0.75, 1.05, 0.92, 0.82, 1.05),
-				StructureId.Snc or StructureId.Vta or StructureId.LocusCoeruleus or StructureId.RapheNuclei or StructureId.BasalForebrain => new ReceptorProfile(0.9, 0.88, 0.82, 1.0, 1.1, 0.85, 1.28, 1.18, 0.72, 0.9, 1.12, 1.2, 0.88),
+				StructureId.GPe or StructureId.GPi or StructureId.Stn or StructureId.Snr or StructureId.VentralPallidum or StructureId.Habenula => new ReceptorProfile(0.92, 1.02, 0.95, 1.05, 1.25, 0.75, 1.1, 0.92, 0.68, 0.7, 0.88, 0.88, 0.8),
+				StructureId.IntralaminarThalamus or StructureId.Trn or StructureId.Pulvinar or StructureId.MediodorsalThalamus or StructureId.MotorThalamus => new ReceptorProfile(1.05, 0.9, 0.75, 1.15, 1.05, 0.7, 0.78, 0.85, 0.75, 1.05, 0.92, 0.82, 1.05),
+				StructureId.Snc or StructureId.Vta or StructureId.LocusCoeruleus or StructureId.RapheNuclei or StructureId.NucleusBasalis or StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus => new ReceptorProfile(0.9, 0.88, 0.82, 1.0, 1.1, 0.85, 1.28, 1.18, 0.72, 0.9, 1.12, 1.2, 0.88),
+				StructureId.RedNucleus or StructureId.ParabrachialComplex or StructureId.PrincipalSensoryTrigeminalNucleus or StructureId.SpinalTrigeminalNucleus or StructureId.MesencephalicTrigeminalNucleus or StructureId.FacialMotorNucleus or StructureId.OculomotorNucleus or StructureId.HypoglossalNucleus => new ReceptorProfile(1.1, 0.98, 0.88, 1.08, 0.92, 0.62, 0.74, 0.82, 0.76, 0.86, 0.9, 0.88, 0.94),
 				StructureId.EntorhinalCortex or StructureId.DentateGyrus or StructureId.CA3 or StructureId.CA2 or StructureId.CA1 or StructureId.Subiculum or StructureId.Presubiculum or StructureId.Parasubiculum => new ReceptorProfile(1.0, 1.25, 1.1, 0.95, 1.0, 0.85, 0.82, 0.92, 0.86, 1.1, 1.08, 0.8, 0.95),
 				_ when circuitProfile.DefaultNt == NTEnum.GABA => new ReceptorProfile(1.15, 0.72, 0.7, 0.78, 0.82, 0.6, 0.72, 0.8, 0.65, 0.82, 0.78, 0.78, 0.86),
 				_ => SelectCorticalSubtype(index),
@@ -553,17 +602,21 @@ internal sealed class ModelNeuron
 		}
 
 		private static ReceptorProfile SelectCorticalSubtype(int index)
+			=> SelectCorticalSubtype(CorticalLaminarTopology.PopulationForNeuron(index));
+
+		private static ReceptorProfile SelectCorticalSubtype(CorticalPopulation population)
 		{
-			var band = Math.Abs(index) % 20;
-			if (band < 3)
+			return population switch
 			{
-				return new ReceptorProfile(1.2, 0.72, 0.68, 0.75, 0.7, 0.55, 0.65, 0.78, 0.65, 0.9, 0.72, 0.78, 0.9);
-			}
-			if (band == 3)
-			{
-				return new ReceptorProfile(0.95, 1.28, 1.12, 1.0, 1.08, 0.95, 0.82, 0.9, 0.88, 1.08, 1.1, 0.82, 0.98);
-			}
-			return new ReceptorProfile(1.0, 1.0, 1.0, 1.0, 1.0, 0.85, 0.85, 0.85, 0.85, 1.0, 1.0, 0.9, 0.95);
+				CorticalPopulation.Layer1Modulatory => new ReceptorProfile(0.92, 1.08, 1.18, 1.05, 1.08, 0.72, 0.82, 0.92, 1.05, 1.16, 1.24, 1.05, 1.08),
+				CorticalPopulation.Layer23Intratelencephalic => new ReceptorProfile(1.00, 1.12, 1.02, 1.00, 0.96, 0.88, 0.82, 0.86, 0.90, 1.00, 1.02, 0.92, 0.96),
+				CorticalPopulation.Layer4Input => new ReceptorProfile(1.22, 0.92, 0.78, 1.08, 0.92, 0.62, 0.70, 0.78, 0.76, 1.08, 0.90, 0.88, 1.02),
+				CorticalPopulation.Layer5PyramidalTract => new ReceptorProfile(0.96, 1.30, 1.16, 1.00, 1.10, 0.98, 0.82, 0.90, 0.88, 1.06, 1.12, 0.86, 1.00),
+				CorticalPopulation.Layer6Corticothalamic => new ReceptorProfile(0.98, 1.18, 1.12, 1.06, 1.12, 0.82, 0.92, 0.86, 0.84, 1.02, 1.08, 0.92, 1.04),
+				CorticalPopulation.PvInterneuron => new ReceptorProfile(1.24, 0.70, 0.68, 0.84, 0.76, 0.58, 0.68, 0.76, 0.66, 0.94, 0.74, 0.82, 0.94),
+				CorticalPopulation.SstInterneuron => new ReceptorProfile(0.94, 1.02, 1.20, 0.92, 1.14, 0.70, 0.82, 0.94, 0.82, 0.86, 1.08, 0.92, 0.88),
+				_ => new ReceptorProfile(1.06, 0.88, 0.82, 0.90, 0.86, 0.62, 0.72, 0.92, 1.12, 1.18, 1.22, 0.90, 1.00)
+			};
 		}
 	}
 

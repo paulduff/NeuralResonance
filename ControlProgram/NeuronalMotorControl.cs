@@ -52,6 +52,10 @@ internal sealed class NeuronalMotorPopulationWindow
         StructureId.Sma,
         StructureId.M1,
         StructureId.MotorThalamus,
+		StructureId.RedNucleus,
+		StructureId.DentateNucleus,
+		StructureId.InterposedNuclei,
+		StructureId.FastigialNucleus,
         StructureId.ReticularFormation,
         StructureId.SpinalCordMotor
     ];
@@ -107,6 +111,7 @@ internal sealed class NeuronalMotorPopulationWindow
 
     private static bool IsRelevant(InstanceStructureSnapshot snapshot)
         => MotorStructures.Contains(snapshot.StructureId) ||
+           snapshot.StructureId == StructureId.SuperiorColliculus ||
            snapshot.ActionSelectionDiagnostics is not null ||
            snapshot.BasalGangliaDiagnostics is not null ||
            snapshot.CerebellarDiagnostics is not null ||
@@ -138,6 +143,8 @@ internal sealed record NeuronalMotorRuntime(
     double ForwardDrive,
     double TurnDrive,
     double ManipulatorDrive,
+    double HeadYawDrive,
+    double HeadPitchDrive,
     double MotorCircuitCoverage,
     double SelectionGate,
     double OutputInhibition,
@@ -150,7 +157,11 @@ internal sealed record NeuronalMotorRuntime(
     double ActionSelectionConfidence = 0.0,
     double ActionCircuitCoverage = 0.0,
     double ActionSelectionMargin = 0.0,
-    bool ActionCircuitObserved = false)
+    bool ActionCircuitObserved = false,
+    double StandDrive = 0.0,
+    double CrouchDrive = 0.0,
+    double SitDrive = 0.0,
+    double LieDrive = 0.0)
 {
     public static NeuronalMotorRuntime Default { get; } = new(
         Active: false,
@@ -161,6 +172,8 @@ internal sealed record NeuronalMotorRuntime(
         ForwardDrive: 0.0,
         TurnDrive: 0.0,
         ManipulatorDrive: 0.0,
+        HeadYawDrive: 0.0,
+        HeadPitchDrive: 0.0,
         MotorCircuitCoverage: 0.0,
         SelectionGate: 0.0,
         OutputInhibition: 1.0,
@@ -177,6 +190,16 @@ internal sealed record NeuronalMotorRuntime(
 
 internal static class NeuronalMotorPopulationDecoder
 {
+    private static readonly HashSet<StructureId> RequiredMotorStructures =
+    [
+        StructureId.PremotorCortex,
+        StructureId.Sma,
+        StructureId.M1,
+        StructureId.MotorThalamus,
+        StructureId.ReticularFormation,
+        StructureId.SpinalCordMotor
+    ];
+
     private static readonly IReadOnlyDictionary<StructureId, double> MotorWeights =
         new Dictionary<StructureId, double>
         {
@@ -184,6 +207,10 @@ internal static class NeuronalMotorPopulationDecoder
             [StructureId.Sma] = 0.12,
             [StructureId.M1] = 0.30,
             [StructureId.MotorThalamus] = 0.08,
+			[StructureId.RedNucleus] = 0.08,
+			[StructureId.DentateNucleus] = 0.04,
+			[StructureId.InterposedNuclei] = 0.05,
+			[StructureId.FastigialNucleus] = 0.04,
             [StructureId.ReticularFormation] = 0.10,
             [StructureId.SpinalCordMotor] = 0.25
         };
@@ -201,7 +228,9 @@ internal static class NeuronalMotorPopulationDecoder
         ArgumentNullException.ThrowIfNull(previous);
 
         var settings = control.Settings;
-        var expectedWeightPerSide = MotorWeights.Values.Sum();
+        var requiredWeightPerSide = MotorWeights
+            .Where(pair => RequiredMotorStructures.Contains(pair.Key))
+            .Sum(static pair => pair.Value);
         var ratesByPopulation = new Dictionary<(StructureId Structure, string Hemisphere), (double Sum, int Count)>();
         var observedStructures = new HashSet<StructureId>();
 
@@ -225,18 +254,28 @@ internal static class NeuronalMotorPopulationDecoder
         var rightWeightedRate = 0.0;
         var leftObservedWeight = 0.0;
         var rightObservedWeight = 0.0;
+        var leftRequiredObservedWeight = 0.0;
+        var rightRequiredObservedWeight = 0.0;
         foreach (var pair in MotorWeights)
         {
             if (ratesByPopulation.TryGetValue((pair.Key, "L"), out var left))
             {
                 leftWeightedRate += (left.Sum / left.Count) * pair.Value;
                 leftObservedWeight += pair.Value;
+                if (RequiredMotorStructures.Contains(pair.Key))
+                {
+                    leftRequiredObservedWeight += pair.Value;
+                }
             }
 
             if (ratesByPopulation.TryGetValue((pair.Key, "R"), out var right))
             {
                 rightWeightedRate += (right.Sum / right.Count) * pair.Value;
                 rightObservedWeight += pair.Value;
+                if (RequiredMotorStructures.Contains(pair.Key))
+                {
+                    rightRequiredObservedWeight += pair.Value;
+                }
             }
 
             if (ratesByPopulation.TryGetValue((pair.Key, "M"), out var midline))
@@ -246,6 +285,11 @@ internal static class NeuronalMotorPopulationDecoder
                 rightWeightedRate += midlineRate * pair.Value * 0.5;
                 leftObservedWeight += pair.Value * 0.5;
                 rightObservedWeight += pair.Value * 0.5;
+                if (RequiredMotorStructures.Contains(pair.Key))
+                {
+                    leftRequiredObservedWeight += pair.Value * 0.5;
+                    rightRequiredObservedWeight += pair.Value * 0.5;
+                }
             }
         }
 
@@ -253,24 +297,35 @@ internal static class NeuronalMotorPopulationDecoder
         var rightPopulation = rightObservedWeight > 0.0 ? rightWeightedRate / rightObservedWeight : 0.0;
         // Authority requires a bilateral descending path. An arithmetic total can
         // hide a complete hemisphere loss, so coverage is set by the weaker side.
-        var leftCoverage = Math.Clamp(leftObservedWeight / Math.Max(0.001, expectedWeightPerSide), 0.0, 1.0);
-        var rightCoverage = Math.Clamp(rightObservedWeight / Math.Max(0.001, expectedWeightPerSide), 0.0, 1.0);
+        var leftCoverage = Math.Clamp(leftRequiredObservedWeight / Math.Max(0.001, requiredWeightPerSide), 0.0, 1.0);
+        var rightCoverage = Math.Clamp(rightRequiredObservedWeight / Math.Max(0.001, requiredWeightPerSide), 0.0, 1.0);
         var motorCoverage = Math.Min(leftCoverage, rightCoverage);
 
+        var actionDecision = NeuronalActionSelectionDecoder.Decode(snapshots);
+        var rightingReflex = DecodeBilateralRightingReflex(snapshots);
         var basalGanglia = snapshots
             .Select(static snapshot => snapshot.BasalGangliaDiagnostics)
             .Where(static diagnostics => diagnostics is not null)
             .Cast<BasalGangliaDiagnostics>()
             .ToArray();
-        var selectionGate = basalGanglia.Length == 0
+        var coarseSelectionGate = basalGanglia.Length == 0
             ? 0.50
             : Math.Clamp(basalGanglia.Average(static item =>
                 (item.ThalamicDisinhibition * 0.55) +
                 (item.DirectPathwayActivation * 0.25) +
                 (Math.Max(0.0f, item.ActionSelectionBias) * 0.20)), 0.0, 1.0);
-        var outputInhibition = basalGanglia.Length == 0
+        var coarseOutputInhibition = basalGanglia.Length == 0
             ? 0.50
             : Math.Clamp(basalGanglia.Average(static item => item.OutputNucleusInhibition), 0.0, 1.0);
+        // Once the action circuit has selected a lane, its own GPi/SNr output is
+        // the relevant motor gate. A global average includes inhibited competing
+        // lanes and tonic output-nucleus activity, so it must not veto the winner.
+        var outputInhibition = actionDecision.Available
+            ? Math.Clamp(actionDecision.OutputInhibition, 0.0, 1.0)
+            : coarseOutputInhibition;
+        var selectionGate = actionDecision.Available
+            ? 1.0 - outputInhibition
+            : coarseSelectionGate;
         var basalGangliaCoverage = basalGanglia.Length > 0 ? 1.0 : 0.0;
         var effectiveGate = Math.Clamp((selectionGate * 0.75) + ((1.0 - outputInhibition) * 0.25), 0.0, 1.0);
 
@@ -297,7 +352,6 @@ internal static class NeuronalMotorPopulationDecoder
                 ((1.0f - item.BalanceError) * 0.20)), 0.0, 1.0);
 
         var supportGain = 0.75 + (cerebellarSupport * 0.15) + (posturalSupport * 0.10);
-        var actionDecision = NeuronalActionSelectionDecoder.Decode(snapshots);
         var unshapedLeft = Math.Clamp(leftPopulation * effectiveGate * supportGain, 0.0, 1.0);
         var unshapedRight = Math.Clamp(rightPopulation * effectiveGate * supportGain, 0.0, 1.0);
         var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(
@@ -314,9 +368,32 @@ internal static class NeuronalMotorPopulationDecoder
                 ? Math.Clamp(effectiveGate * supportGain, 0.0, 1.0)
                 : 0.0;
         var manipulatorDrive = Lerp(previous.ManipulatorDrive, rawManipulator, alpha);
-        var signalStrength = Math.Max(
-            Math.Max(Math.Abs(leftDrive), Math.Abs(rightDrive)),
-            Math.Abs(manipulatorDrive));
+        var orienting = DecodeOrientingPopulation(snapshots, settings);
+        var headYawDrive = Lerp(previous.HeadYawDrive, orienting.YawDrive, alpha);
+        var headPitchDrive = Lerp(previous.HeadPitchDrive, orienting.PitchDrive, alpha);
+        double PostureLaneDrive(int channel) => actionDecision.Active &&
+            actionDecision.SelectedChannel == channel
+                ? Math.Clamp(effectiveGate * supportGain, 0.0, 1.0)
+                : 0.0;
+        var descendingStandDrive = PostureLaneDrive(NeuronalActionSelectionDecoder.StandChannel);
+        var voluntaryFloorPostureSelected = actionDecision.Active &&
+            actionDecision.SelectedChannel is NeuronalActionSelectionDecoder.SitChannel or
+                NeuronalActionSelectionDecoder.LieChannel;
+        var reflexStandDrive = voluntaryFloorPostureSelected ? 0.0 : rightingReflex.Drive;
+        var standDrive = Lerp(previous.StandDrive,
+            Math.Max(descendingStandDrive, reflexStandDrive), alpha);
+        var crouchDrive = Lerp(previous.CrouchDrive,
+            PostureLaneDrive(NeuronalActionSelectionDecoder.CrouchChannel), alpha);
+        var sitDrive = Lerp(previous.SitDrive,
+            PostureLaneDrive(NeuronalActionSelectionDecoder.SitChannel), alpha);
+        var lieDrive = Lerp(previous.LieDrive,
+            PostureLaneDrive(NeuronalActionSelectionDecoder.LieChannel), alpha);
+        var signalStrength = new[]
+        {
+            Math.Abs(leftDrive), Math.Abs(rightDrive), Math.Abs(manipulatorDrive),
+            Math.Abs(headYawDrive), Math.Abs(headPitchDrive),
+            Math.Abs(standDrive), Math.Abs(crouchDrive), Math.Abs(sitDrive), Math.Abs(lieDrive)
+        }.Max();
 
         var supportCoverage = ((cerebellar.Length > 0 ? 1.0 : 0.0) + (postural.Length > 0 ? 1.0 : 0.0)) * 0.5;
         var motorConfidence = Math.Clamp(
@@ -329,15 +406,24 @@ internal static class NeuronalMotorPopulationDecoder
         var confidence = actionDecision.Available
             ? Math.Clamp((motorConfidence * 0.72) + (actionDecision.Confidence * 0.28), 0.0, 1.0)
             : motorConfidence;
+        confidence = Math.Max(confidence, rightingReflex.Confidence);
+        confidence = Math.Max(confidence, orienting.Confidence);
         var confidenceEma = previous.Tick <= 0
             ? confidence
             : Lerp(previous.ConfidenceEma, confidence, MetricsAlpha);
-        var actionAuthorityReady = !actionDecision.Available ||
-            (actionDecision.Active && actionDecision.Confidence >= settings.MinimumOutputConfidence);
-        var active = actionAuthorityReady &&
-            motorCoverage >= settings.MinimumCircuitCoverage &&
-            confidence >= settings.MinimumOutputConfidence &&
-            signalStrength >= 0.01;
+        var actionAuthorityReady = actionDecision.Available &&
+            actionDecision.Active &&
+            actionDecision.Confidence >= settings.MinimumOutputConfidence;
+        var rightingAuthorityReady = rightingReflex.Bilateral &&
+            !voluntaryFloorPostureSelected &&
+            rightingReflex.Drive >= 0.04;
+        var descendingMotorReady = motorCoverage >= settings.MinimumCircuitCoverage &&
+            ((actionAuthorityReady && confidence >= settings.MinimumOutputConfidence) ||
+             rightingAuthorityReady);
+        var orientingAuthorityReady = orienting.Available &&
+            orienting.Confidence >= settings.MinimumOutputConfidence;
+        var active = signalStrength >= 0.01 &&
+            (descendingMotorReady || orientingAuthorityReady);
 
         var forwardDrive = Math.Clamp((leftDrive + rightDrive) * 0.5, 0.0, 1.0);
         var turnDrive = Math.Clamp(rightDrive - leftDrive, -1.0, 1.0);
@@ -350,6 +436,8 @@ internal static class NeuronalMotorPopulationDecoder
             ForwardDrive: forwardDrive,
             TurnDrive: turnDrive,
             ManipulatorDrive: manipulatorDrive,
+            HeadYawDrive: headYawDrive,
+            HeadPitchDrive: headPitchDrive,
             MotorCircuitCoverage: motorCoverage,
             SelectionGate: selectionGate,
             OutputInhibition: outputInhibition,
@@ -357,12 +445,88 @@ internal static class NeuronalMotorPopulationDecoder
             ConfidenceEma: confidenceEma,
             MinimumOutputConfidence: settings.MinimumOutputConfidence,
             MaxPopulationEventsPerSide: settings.MaxPopulationEventsPerSide,
-            Evidence: $"motor-populations={observedStructures.Count}/{MotorWeights.Count}; bilateral-coverage={motorCoverage:0.000}; basal-ganglia={(basalGanglia.Length > 0 ? "observed" : "missing")}; action-channels={(actionDecision.Available ? (actionDecision.Active ? "selected" : "suppressed") : "missing")}; cerebellar={(cerebellar.Length > 0 ? "observed" : "missing")}; posture={(postural.Length > 0 ? "observed" : "missing")}",
+            Evidence: $"motor-populations={observedStructures.Count}/{MotorWeights.Count}; bilateral-coverage={motorCoverage:0.000}; orienting={(orienting.Available ? $"topographic:{orienting.Coverage:0.000}" : "missing")}; basal-ganglia={(basalGanglia.Length > 0 ? "observed" : "missing")}; action-channels={(actionDecision.Available ? (actionDecision.Active ? "selected" : "suppressed") : "missing")}; righting={(rightingReflex.Bilateral ? $"bilateral:{rightingReflex.Drive:0.000}(afferent={rightingReflex.AfferentDrive:0.000}[L={rightingReflex.AfferentLeft:0.000},R={rightingReflex.AfferentRight:0.000}],descending={rightingReflex.DescendingDrive:0.000}[L={rightingReflex.DescendingLeft:0.000},R={rightingReflex.DescendingRight:0.000}])" : "incomplete")}; cerebellar={(cerebellar.Length > 0 ? "observed" : "missing")}; posture={(postural.Length > 0 ? "observed" : "missing")}",
             SelectedActionChannel: actionDecision.SelectedChannel,
             ActionSelectionConfidence: actionDecision.Confidence,
             ActionCircuitCoverage: actionDecision.CircuitCoverage,
             ActionSelectionMargin: actionDecision.SelectionMargin,
-            ActionCircuitObserved: actionDecision.Available);
+            ActionCircuitObserved: actionDecision.Available,
+            StandDrive: standDrive,
+            CrouchDrive: crouchDrive,
+            SitDrive: sitDrive,
+            LieDrive: lieDrive);
+    }
+
+    private static OrientingPopulation DecodeOrientingPopulation(
+        IReadOnlyList<InstanceStructureSnapshot> snapshots,
+        NeuronalMotorControlSettings settings)
+    {
+        const int columns = 16;
+        const int rows = 14;
+        var weightedX = 0.0;
+        var weightedY = 0.0;
+        var totalWeight = 0.0;
+        var observed = 0;
+        var expected = 0;
+        var populationGain = 0.0;
+
+        foreach (var snapshot in snapshots.Where(static item =>
+                     item.StructureId == StructureId.SuperiorColliculus))
+        {
+            expected++;
+            populationGain = Math.Max(populationGain, NormalizeRate(snapshot.MeanFiringRateHz, settings));
+            var usedSnapshot = false;
+            foreach (var neuron in snapshot.TopActiveNeurons)
+            {
+                if (!TryParseRetinotopicIndex(neuron.NeuronId, columns * rows, out var index))
+                {
+                    continue;
+                }
+
+                var weight = Math.Max(0.0, neuron.FiringRateHz - settings.BaselineRateHz);
+                if (weight <= 0.0)
+                {
+                    continue;
+                }
+
+                var column = index % columns;
+                var row = index / columns;
+                weightedX += ((column - ((columns - 1) * 0.5)) / ((columns - 1) * 0.5)) * weight;
+                weightedY += ((((rows - 1) * 0.5) - row) / ((rows - 1) * 0.5)) * weight;
+                totalWeight += weight;
+                usedSnapshot = true;
+            }
+
+            if (usedSnapshot)
+            {
+                observed++;
+            }
+        }
+
+        if (totalWeight <= 0.0 || observed == 0)
+        {
+            return OrientingPopulation.None;
+        }
+
+        var coverage = Math.Clamp(observed / (double)Math.Max(1, expected), 0.0, 1.0);
+        var yaw = Math.Clamp((weightedX / totalWeight) * populationGain, -1.0, 1.0);
+        var pitch = Math.Clamp((weightedY / totalWeight) * populationGain, -1.0, 1.0);
+        var directionalStrength = Math.Clamp(Math.Sqrt((yaw * yaw) + (pitch * pitch)), 0.0, 1.0);
+        var confidence = Math.Clamp((coverage * 0.55) + (populationGain * 0.25) + (directionalStrength * 0.20), 0.0, 1.0);
+        return new OrientingPopulation(true, yaw, pitch, coverage, confidence);
+    }
+
+    private static bool TryParseRetinotopicIndex(string neuronId, int count, out int index)
+    {
+        index = -1;
+        if (string.IsNullOrWhiteSpace(neuronId))
+        {
+            return false;
+        }
+
+        var separator = neuronId.LastIndexOf('-');
+        var token = separator >= 0 ? neuronId[(separator + 1)..] : neuronId;
+        return int.TryParse(token, out index) && index >= 0 && index < count;
     }
 
     private static double NormalizeRate(float rateHz, NeuronalMotorControlSettings settings)
@@ -372,6 +536,103 @@ internal static class NeuronalMotorPopulationDecoder
             0.0,
             1.0);
 
+    private static BilateralRightingReflex DecodeBilateralRightingReflex(
+        IReadOnlyList<InstanceStructureSnapshot> snapshots)
+    {
+        var descendingLeft = new List<double>();
+        var descendingRight = new List<double>();
+        var afferentLeft = new List<double>();
+        var afferentRight = new List<double>();
+        foreach (var snapshot in snapshots)
+        {
+            if (snapshot.StructureId is not (StructureId.ProprioceptiveAfferents or
+                    StructureId.VestibularAfferents or
+                    StructureId.SpinalCordMotor) ||
+                snapshot.ActionSelectionDiagnostics is not { } diagnostics)
+            {
+                continue;
+            }
+
+            var standLane = diagnostics.Channels.FirstOrDefault(static channel =>
+                channel.ChannelIndex == NeuronalActionSelectionDecoder.StandChannel);
+            if (standLane is null)
+            {
+                continue;
+            }
+
+			var drive = Math.Clamp(standLane.ReflexDrive, 0.0f, 1.0f);
+            var left = snapshot.StructureId == StructureId.SpinalCordMotor
+                ? descendingLeft
+                : afferentLeft;
+            var right = snapshot.StructureId == StructureId.SpinalCordMotor
+                ? descendingRight
+                : afferentRight;
+            switch (snapshot.Instance.HemisphereNormalized)
+            {
+                case "L":
+                    left.Add(drive);
+                    break;
+                case "R":
+                    right.Add(drive);
+                    break;
+                default:
+                    left.Add(drive);
+                    right.Add(drive);
+                    break;
+            }
+        }
+
+        var descendingLeftDrive = descendingLeft.Count > 0 ? descendingLeft.Average() : 0.0;
+        var descendingRightDrive = descendingRight.Count > 0 ? descendingRight.Average() : 0.0;
+        var afferentLeftDrive = afferentLeft.Count > 0 ? afferentLeft.Max() : 0.0;
+        var afferentRightDrive = afferentRight.Count > 0 ? afferentRight.Max() : 0.0;
+        var bilateral = descendingLeft.Count > 0 && descendingRight.Count > 0 &&
+            afferentLeft.Count > 0 && afferentRight.Count > 0;
+        var descendingDrive = bilateral
+            ? Math.Min(descendingLeftDrive, descendingRightDrive)
+            : 0.0;
+        var afferentDrive = bilateral
+            ? Math.Min(afferentLeftDrive, afferentRightDrive)
+            : 0.0;
+        var driveValue = bilateral
+            ? Math.Min(descendingDrive, afferentDrive)
+            : 0.0;
+        var confidence = bilateral
+            ? Math.Clamp(0.65 + (driveValue * 0.35), 0.0, 1.0)
+            : 0.0;
+        return new BilateralRightingReflex(
+            bilateral,
+            driveValue,
+            confidence,
+            afferentDrive,
+            descendingDrive,
+            afferentLeftDrive,
+            afferentRightDrive,
+            descendingLeftDrive,
+            descendingRightDrive);
+    }
+
     private static double Lerp(double current, double target, double alpha)
         => current + ((target - current) * alpha);
+
+    private readonly record struct BilateralRightingReflex(
+        bool Bilateral,
+        double Drive,
+        double Confidence,
+        double AfferentDrive,
+        double DescendingDrive,
+        double AfferentLeft,
+        double AfferentRight,
+        double DescendingLeft,
+        double DescendingRight);
+
+    private readonly record struct OrientingPopulation(
+        bool Available,
+        double YawDrive,
+        double PitchDrive,
+        double Coverage,
+        double Confidence)
+    {
+        public static OrientingPopulation None { get; } = new(false, 0.0, 0.0, 0.0, 0.0);
+    }
 }

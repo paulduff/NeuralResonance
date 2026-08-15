@@ -14,7 +14,7 @@ public sealed class NeuronalActionSelectionTests
     {
         for (var channel = 0; channel < ActionChannelTopology.ChannelCount; channel++)
         {
-            var corticalIndex = 20 + channel;
+            var corticalIndex = (ActionChannelTopology.ChannelCount * 4) + channel;
             var striatal = ActionChannelTopology.Project(
                 corticalIndex,
                 StructureId.Pfc,
@@ -205,9 +205,37 @@ public sealed class NeuronalActionSelectionTests
         var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: 4));
         var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
 
-        Assert.Equal(5, ActionChannelTopology.ChannelCount);
+        Assert.Equal(9, ActionChannelTopology.ChannelCount);
         Assert.True(decision.Active);
         Assert.Equal(NeuronalActionSelectionDecoder.ManipulatorChannel, decision.SelectedChannel);
+        Assert.Equal(0.0, shaped.Left);
+        Assert.Equal(0.0, shaped.Right);
+    }
+
+    [Theory]
+    [InlineData(NeuronalActionSelectionDecoder.StandChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.CrouchChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.SitChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.LieChannel)]
+    public void PostureLanesDoNotLeakIntoLocomotorPopulations(int channel)
+    {
+        var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: channel));
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
+
+        Assert.True(decision.Active);
+        Assert.Equal(channel, decision.SelectedChannel);
+        Assert.Equal(0.0, shaped.Left);
+        Assert.Equal(0.0, shaped.Right);
+    }
+
+    [Fact]
+    public void MissingActionCircuitCannotFallBackToRawLocomotorDrive()
+    {
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(
+            NeuronalActionDecision.Unavailable,
+            0.9,
+            0.7);
+
         Assert.Equal(0.0, shaped.Left);
         Assert.Equal(0.0, shaped.Right);
     }

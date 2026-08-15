@@ -1,6 +1,6 @@
 # Distributed Deployment
 
-This packaging layer runs DNNE as separate deployables without changing the biological connectome or reducing the 32 x 32 x 32 engine density. The manifest owns all 90 registered structures and validates 180 left/right service ports before packaging.
+This packaging layer runs DNNE as separate deployables without changing the biological connectome or reducing the 32 x 32 x 32 engine density. The manifest owns all 119 concrete registered structures and validates 238 left/right service ports before packaging.
 
 ## Deployable Groups
 

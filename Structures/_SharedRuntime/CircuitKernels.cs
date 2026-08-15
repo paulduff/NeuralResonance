@@ -20,11 +20,17 @@ internal static class CircuitKernelFactory
 
 	private static readonly ICircuitKernel Thalamic = new ThalamicCircuitKernel();
 
+	private static readonly ICircuitKernel Hypothalamic = new HypothalamicCircuitKernel();
+
+	private static readonly ICircuitKernel AmygdalaSeptal = new AmygdalaSeptalCircuitKernel();
+
 	private static readonly ICircuitKernel Hippocampal = new HippocampalCircuitKernel();
 
 	private static readonly ICircuitKernel BasalGanglia = new BasalGangliaCircuitKernel();
 
 	private static readonly ICircuitKernel Cerebellar = new CerebellarCircuitKernel();
+
+	private static readonly ICircuitKernel BrainstemCranial = new BrainstemCranialCircuitKernel();
 
 	private static readonly ICircuitKernel Neuromod = new NeuromodulatoryCircuitKernel();
 
@@ -82,6 +88,14 @@ internal static class CircuitKernelFactory
 		{
 			return Thalamic;
 		}
+		if (IsHypothalamic(structureId))
+		{
+			return Hypothalamic;
+		}
+		if (IsAmygdalaSeptal(structureId))
+		{
+			return AmygdalaSeptal;
+		}
 		if (IsHippocampal(structureId))
 		{
 			return Hippocampal;
@@ -93,6 +107,10 @@ internal static class CircuitKernelFactory
 		if (IsCerebellar(structureId))
 		{
 			return Cerebellar;
+		}
+		if (IsBrainstemCranial(structureId))
+		{
+			return BrainstemCranial;
 		}
 		if (IsNeuromodulatory(structureId))
 		{
@@ -133,12 +151,17 @@ internal static class CircuitKernelFactory
 	{
 		switch (id)
 		{
-		case StructureId.Thalamus:
+		case StructureId.IntralaminarThalamus:
 		case StructureId.Trn:
 		case StructureId.Pulvinar:
 		case StructureId.MediodorsalThalamus:
-		case StructureId.IntralaminarThalamus:
 		case StructureId.MotorThalamus:
+		case StructureId.LateralGeniculateNucleus:
+		case StructureId.MedialGeniculateNucleus:
+		case StructureId.VentralPosterolateralThalamus:
+		case StructureId.VentralPosteromedialThalamus:
+		case StructureId.AnteriorThalamicNuclei:
+		case StructureId.NucleusReuniens:
 			return true;
 		default:
 			return false;
@@ -165,12 +188,21 @@ internal static class CircuitKernelFactory
 		}
 	}
 
+	private static bool IsHypothalamic(StructureId id)
+	{
+		return StructureAtlas.Get(id).ParentGroup == "Hypothalamus";
+	}
+
+	private static bool IsAmygdalaSeptal(StructureId id)
+	{
+		return StructureAtlas.Get(id).ParentGroup is "Amygdala and extended limbic" or "Septal basal forebrain";
+	}
+
 	private static bool IsBasalGanglia(StructureId id)
 	{
 		switch (id)
 		{
 		case StructureId.Striatum:
-		case StructureId.GlobusPallidus:
 		case StructureId.GPe:
 		case StructureId.GPi:
 		case StructureId.Stn:
@@ -193,8 +225,30 @@ internal static class CircuitKernelFactory
 		case StructureId.CerebellarVermis:
 		case StructureId.CerebellarLobules:
 		case StructureId.PurkinjeCellLayer:
-		case StructureId.DeepCerebellarNuclei:
+		case StructureId.DentateNucleus:
+		case StructureId.InterposedNuclei:
+		case StructureId.FastigialNucleus:
 		case StructureId.InferiorOlive:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	private static bool IsBrainstemCranial(StructureId id)
+	{
+		switch (id)
+		{
+		case StructureId.RedNucleus:
+		case StructureId.PedunculopontineNucleus:
+		case StructureId.LaterodorsalTegmentalNucleus:
+		case StructureId.ParabrachialComplex:
+		case StructureId.PrincipalSensoryTrigeminalNucleus:
+		case StructureId.SpinalTrigeminalNucleus:
+		case StructureId.MesencephalicTrigeminalNucleus:
+		case StructureId.FacialMotorNucleus:
+		case StructureId.OculomotorNucleus:
+		case StructureId.HypoglossalNucleus:
 			return true;
 		default:
 			return false;
@@ -207,7 +261,7 @@ internal static class CircuitKernelFactory
 		{
 		case StructureId.LocusCoeruleus:
 		case StructureId.RapheNuclei:
-		case StructureId.BasalForebrain:
+		case StructureId.NucleusBasalis:
 		case StructureId.Vta:
 			return true;
 		default:
@@ -447,6 +501,18 @@ internal sealed class SensoryCircuitKernel : CircuitKernelBase
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
 	{
 		int sourceIndex = TopographicMap.ResolveSignalIndex(message.SourceNeuronId, message.TargetNeuronId, message.SynapseId, message.SourceStructure, message.TargetStructure);
+		if (message.TargetStructure == StructureId.LateralGeniculateNucleus)
+		{
+			return TopographicMap.ProjectGrid(sourceIndex, neuronCount, 32, 32, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 43 : 41);
+		}
+		if (message.TargetStructure == StructureId.MedialGeniculateNucleus)
+		{
+			return TopographicMap.ProjectChannel(sourceIndex, neuronCount, 32, 8, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 47 : 43);
+		}
+		if (message.TargetStructure is StructureId.VentralPosterolateralThalamus or StructureId.VentralPosteromedialThalamus)
+		{
+			return TopographicMap.ProjectChannel(sourceIndex, neuronCount, 16, 12, message.SourceStructure, message.TargetStructure, message.IsFeedback ? 53 : 47);
+		}
 		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(message.SourceStructure) &&
 			PerceptEnsembleTopology.IsPerceptCircuitStructure(message.TargetStructure))
 		{
@@ -507,6 +573,18 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
+		if (circuit.StructureId == StructureId.LateralGeniculateNucleus)
+		{
+			return TopographicMap.ProjectGrid(source.Index, Math.Max(16, circuit.TargetMapModulo), 32, 32, circuit.StructureId, targetStructure, 43);
+		}
+		if (circuit.StructureId == StructureId.MedialGeniculateNucleus)
+		{
+			return TopographicMap.ProjectChannel(source.Index, Math.Max(16, circuit.TargetMapModulo), 32, 8, circuit.StructureId, targetStructure, 47);
+		}
+		if (circuit.StructureId is StructureId.VentralPosterolateralThalamus or StructureId.VentralPosteromedialThalamus)
+		{
+			return TopographicMap.ProjectChannel(source.Index, Math.Max(16, circuit.TargetMapModulo), 16, 12, circuit.StructureId, targetStructure, 53);
+		}
 		if (PerceptEnsembleTopology.IsPerceptCircuitStructure(circuit.StructureId) &&
 			PerceptEnsembleTopology.IsPerceptCircuitStructure(targetStructure))
 		{
@@ -537,6 +615,133 @@ internal sealed class ThalamicCircuitKernel : CircuitKernelBase
 		}
 		return (localNeuromod.NorepinephrineLevel > 0.35f) ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
 	}
+}
+
+internal sealed class HypothalamicCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int channelOffset = NucleusChannel(circuit.StructureId) * 37;
+		return TopographicMap.ProjectChannel(
+			sourceIndex + channelOffset,
+			neuronCount,
+			9,
+			16,
+			message.SourceStructure,
+			message.TargetStructure,
+			message.IsFeedback ? 61 : 59);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		int targetCount = Math.Max(16, circuit.TargetMapModulo);
+		return TopographicMap.ProjectChannel(
+			source.Index + (NucleusChannel(circuit.StructureId) * 41),
+			targetCount,
+			9,
+			16,
+			circuit.StructureId,
+			targetStructure,
+			67);
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
+	{
+		bool burstCapable = sourceStructure is StructureId.ParaventricularHypothalamicNucleus
+			or StructureId.SupraopticNucleus
+			or StructureId.LateralHypothalamicArea;
+		return burstCapable && localNeuromod.NorepinephrineLevel > 0.35f
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static int NucleusChannel(StructureId structureId)
+		=> structureId switch
+		{
+			StructureId.VentrolateralPreopticNucleus => 0,
+			StructureId.SuprachiasmaticNucleus => 1,
+			StructureId.ParaventricularHypothalamicNucleus => 2,
+			StructureId.SupraopticNucleus => 3,
+			StructureId.ArcuateNucleus => 4,
+			StructureId.LateralHypothalamicArea => 5,
+			StructureId.VentromedialHypothalamicNucleus => 6,
+			StructureId.DorsomedialHypothalamicNucleus => 7,
+			StructureId.MammillaryBodies => 8,
+			_ => 4
+		};
+}
+
+internal sealed class AmygdalaSeptalCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		return TopographicMap.ProjectChannel(
+			sourceIndex + (PopulationChannel(circuit.StructureId) * 43),
+			neuronCount,
+			7,
+			16,
+			message.SourceStructure,
+			message.TargetStructure,
+			message.IsFeedback ? 79 : 73);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		return TopographicMap.ProjectChannel(
+			source.Index + (PopulationChannel(circuit.StructureId) * 47),
+			Math.Max(16, circuit.TargetMapModulo),
+			7,
+			16,
+			circuit.StructureId,
+			targetStructure,
+			83);
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
+	{
+		bool threatBurst = sourceStructure is StructureId.BasolateralAmygdala
+			or StructureId.CentralAmygdala
+			or StructureId.BedNucleusStriaTerminalis;
+		bool thetaBurst = sourceStructure is StructureId.MedialSeptalNucleus
+			or StructureId.DiagonalBandNucleus;
+		return (threatBurst && localNeuromod.NorepinephrineLevel > 0.30f) ||
+			(thetaBurst && localNeuromod.AcetylcholineLevel > 0.30f)
+			? SpikeTypeEnum.BURST
+			: SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static int PopulationChannel(StructureId structureId)
+		=> structureId switch
+		{
+			StructureId.BasolateralAmygdala => 0,
+			StructureId.CentralAmygdala => 1,
+			StructureId.MedialAmygdala => 2,
+			StructureId.CorticalAmygdala => 3,
+			StructureId.BedNucleusStriaTerminalis => 4,
+			StructureId.MedialSeptalNucleus => 5,
+			StructureId.DiagonalBandNucleus => 6,
+			_ => 0
+		};
 }
 
 internal sealed class HippocampalCircuitKernel : CircuitKernelBase
@@ -663,6 +868,52 @@ internal sealed class CerebellarCircuitKernel : CircuitKernelBase
 	}
 }
 
+internal sealed class BrainstemCranialCircuitKernel : CircuitKernelBase
+{
+	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
+	{
+		int sourceIndex = TopographicMap.ResolveSignalIndex(
+			message.SourceNeuronId,
+			message.TargetNeuronId,
+			message.SynapseId,
+			message.SourceStructure,
+			message.TargetStructure);
+		int channels = IsCranialSensorimotor(circuit.StructureId) ? 16 : 8;
+		return TopographicMap.ProjectChannel(sourceIndex, neuronCount, channels, 10, message.SourceStructure, message.TargetStructure, 61);
+	}
+
+	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
+	{
+		int channels = IsCranialSensorimotor(circuit.StructureId) ? 16 : 8;
+		return TopographicMap.ProjectChannel(source.Index, Math.Max(16, circuit.TargetMapModulo), channels, 10, circuit.StructureId, targetStructure, 67);
+	}
+
+	public override SpikeTypeEnum SelectSpikeType(
+		StructureId sourceStructure,
+		bool isFeedback,
+		NeuromodState localNeuromod,
+		float localRewardSignal)
+	{
+		if (sourceStructure is StructureId.PedunculopontineNucleus or StructureId.LaterodorsalTegmentalNucleus)
+		{
+			return localNeuromod.AcetylcholineLevel > 0.45f || isFeedback
+				? SpikeTypeEnum.BURST
+				: SpikeTypeEnum.ACTION_POTENTIAL;
+		}
+
+		return isFeedback ? SpikeTypeEnum.BURST : SpikeTypeEnum.ACTION_POTENTIAL;
+	}
+
+	private static bool IsCranialSensorimotor(StructureId id)
+		=> id is StructureId.PrincipalSensoryTrigeminalNucleus
+			or StructureId.SpinalTrigeminalNucleus
+			or StructureId.MesencephalicTrigeminalNucleus
+			or StructureId.FacialMotorNucleus
+			or StructureId.OculomotorNucleus
+			or StructureId.HypoglossalNucleus
+			or StructureId.RedNucleus;
+}
+
 internal sealed class NeuromodulatoryCircuitKernel : CircuitKernelBase
 {
 	public override int ResolveInboundNeuronIndex(SpikeMessage message, int neuronCount, StructureCircuitProfile circuit)
@@ -696,7 +947,14 @@ internal sealed class CorticalAssociationCircuitKernel : CircuitKernelBase
 
 	public override int ResolveOutboundTargetIndex(ModelNeuron source, StructureId targetStructure, StructureCircuitProfile circuit)
 	{
-		return TopographicMap.ProjectLayeredColumn(source.Index, Math.Max(16, circuit.TargetMapModulo), 6, targetStructure, targetStructure, 89);
+		var sourcePopulation = source.CorticalPopulationKind ?? CorticalPopulation.Layer23Intratelencephalic;
+		var targetPopulation = sourcePopulation switch
+		{
+			CorticalPopulation.Layer5PyramidalTract => CorticalPopulation.Layer23Intratelencephalic,
+			CorticalPopulation.Layer6Corticothalamic => CorticalPopulation.Layer1Modulatory,
+			_ => CorticalPopulation.Layer4Input
+		};
+		return CorticalLaminarTopology.ProjectToPopulation(source.Index, Math.Max(16, circuit.TargetMapModulo), targetPopulation, 89);
 	}
 }
 
@@ -756,7 +1014,7 @@ internal sealed class VisualAssociationCircuitKernel : CircuitKernelBase
 		{
 			StructureId.V3 or StructureId.V4 => 0,
 			StructureId.Mt => 1,
-			StructureId.Pulvinar or StructureId.Thalamus => 2,
+			StructureId.Pulvinar or StructureId.IntralaminarThalamus => 2,
 			StructureId.TemporalAssociation or StructureId.PerirhinalCortex => 3,
 			StructureId.Pfc => 4,
 			_ => 5
@@ -977,7 +1235,7 @@ internal sealed class SelfContextCircuitKernel : CircuitKernelBase
 		{
 			StructureId.SecondarySomatosensoryCortex or StructureId.S1 or StructureId.Ppc => 0,
 			StructureId.PosteriorCingulate or StructureId.RetrosplenialCortex or StructureId.EntorhinalCortex or StructureId.CA1 => 1,
-			StructureId.Amygdala or StructureId.Insula or StructureId.VentromedialPrefrontalCortex => 2,
+			StructureId.BasolateralAmygdala or StructureId.Insula or StructureId.VentromedialPrefrontalCortex => 2,
 			StructureId.TemporalAssociation or StructureId.FusiformGyrus or StructureId.AuditoryAssociationCortex => 3,
 			StructureId.Pfc or StructureId.DorsomedialPrefrontalCortex => 4,
 			_ => 5
@@ -1068,7 +1326,7 @@ internal sealed class ExecutiveControlCircuitKernel : CircuitKernelBase
 		{
 			StructureId.Pfc or StructureId.DorsomedialPrefrontalCortex => 0,
 			StructureId.Acc or StructureId.MidcingulateCortex => 1,
-			StructureId.OrbitofrontalCortex or StructureId.VentromedialPrefrontalCortex or StructureId.Amygdala => 2,
+			StructureId.OrbitofrontalCortex or StructureId.VentromedialPrefrontalCortex or StructureId.BasolateralAmygdala => 2,
 			StructureId.Striatum or StructureId.NucleusAccumbens or StructureId.MediodorsalThalamus => 3,
 			StructureId.Ppc or StructureId.Pulvinar or StructureId.SuperiorColliculus or StructureId.FrontalEyeFields => 4,
 			_ => 5
@@ -1291,7 +1549,7 @@ internal sealed class PosteriorParietalBodySchemaCircuitKernel : CircuitKernelBa
 			},
 			StructureId.M1 or StructureId.PremotorCortex or StructureId.Sma => BodyZone.LegFoot,
 			StructureId.VestibularNuclei or StructureId.ReticularFormation or StructureId.CerebellarVermis => BodyZone.Trunk,
-			StructureId.Insula or StructureId.NucleusTractusSolitarius or StructureId.Hypothalamus => BodyZone.Trunk,
+			StructureId.Insula or StructureId.NucleusTractusSolitarius or StructureId.DorsomedialHypothalamicNucleus => BodyZone.Trunk,
 			_ => PositiveMod(sourceIndex, 4) switch
 			{
 				0 => BodyZone.FaceHead,

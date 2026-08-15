@@ -1,0 +1,44 @@
+@page "/editor/login"
+@using NRE.BlazorEditor.Services
+@inject EditorHostOptions HostOptions
+
+<PageTitle>Sign in | DNNE Editor</PageTitle>
+
+<main class="login-shell">
+    <section class="login-panel" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true">DN</div>
+        <p class="eyebrow">Neural Resonance Engine</p>
+        <h1 id="login-title">DNNE Editor</h1>
+        @if (!HostOptions.RequiresAuthentication)
+        {
+            <p>This local editor does not require a session key.</p>
+            <a class="command-link" href="/editor">Open editor</a>
+        }
+        else
+        {
+            <p>Enter the editor access key configured on this Control machine.</p>
+            @if (HasLoginError)
+            {
+                <p class="form-error" role="alert">The access key was not accepted.</p>
+            }
+            <form method="post" action="/editor/session" class="login-form">
+                <AntiforgeryToken />
+                <label for="accessKey">Access key</label>
+                <input id="accessKey"
+                       name="accessKey"
+                       type="password"
+                       autocomplete="current-password"
+                       autofocus
+                       required />
+                <button type="submit">Sign in</button>
+            </form>
+        }
+    </section>
+</main>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public int? Error { get; set; }
+
+    private bool HasLoginError => Error == 1;
+}

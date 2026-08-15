@@ -5,7 +5,7 @@ internal static class AttentionWorkspaceTopology
 	public const int ChannelCount = 7;
 
 	public static bool IsAttentionCircuitStructure(StructureId structure)
-		=> structure is StructureId.Thalamus
+		=> structure is StructureId.IntralaminarThalamus
 			or StructureId.Trn
 			or StructureId.Pulvinar
 			or StructureId.MediodorsalThalamus
@@ -26,7 +26,7 @@ internal static class AttentionWorkspaceTopology
 			or StructureId.SecondarySomatosensoryCortex
 			or StructureId.Insula
 			or StructureId.NucleusTractusSolitarius
-			or StructureId.Hypothalamus
+			or StructureId.DorsomedialHypothalamicNucleus
 			or StructureId.CA1
 			or StructureId.CA3
 			or StructureId.Subiculum
@@ -88,7 +88,7 @@ internal static class AttentionWorkspaceTopology
 		StructureId.V1 or StructureId.V2 or StructureId.V4 or StructureId.Mt => 0,
 		StructureId.A1 or StructureId.AuditoryAssociationCortex => 1,
 		StructureId.S1 or StructureId.SecondarySomatosensoryCortex => 2,
-		StructureId.Insula or StructureId.NucleusTractusSolitarius or StructureId.Hypothalamus => 3,
+		StructureId.Insula or StructureId.NucleusTractusSolitarius or StructureId.DorsomedialHypothalamicNucleus => 3,
 		StructureId.CA1 or StructureId.CA3 or StructureId.Subiculum or StructureId.EntorhinalCortex or
 			StructureId.TemporalAssociation => 4,
 		StructureId.BrocaBa44Ba45 or StructureId.WernickePstgPsts or StructureId.ArcuateFasciculus => 5,

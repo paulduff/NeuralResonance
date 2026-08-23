@@ -18,6 +18,8 @@ public static class AvatarPlanarDynamics
     private const double ActiveBrakingAcceleration = 4.8;
     private const double AirborneLinearDrag = 0.08;
     private const double AirborneAngularDrag = 1.5;
+    private const double RightingPropulsionScale = 0.34;
+    private const double FallenPropulsionScale = 0.12;
 
     public static AvatarPlanarMotionState Advance(
         AvatarPlanarMotionState current,
@@ -34,12 +36,18 @@ public static class AvatarPlanarDynamics
 
         var dt = Math.Clamp(deltaSeconds, 0.001, 0.25);
         var state = Sanitize(current);
-        var canPropel = posture is "standing" or "crouching";
-        var forwardRequest = canPropel && double.IsFinite(requestedForwardSpeed)
-            ? Math.Clamp(requestedForwardSpeed, -MaximumReverseSpeed, MaximumForwardSpeed)
+        var propulsionScale = posture switch
+        {
+            "standing" or "crouching" => 1.0,
+            "righting" => RightingPropulsionScale,
+            "falling" or "fallen" => FallenPropulsionScale,
+            _ => 0.0
+        };
+        var forwardRequest = propulsionScale > 0.0 && double.IsFinite(requestedForwardSpeed)
+            ? Math.Clamp(requestedForwardSpeed, -MaximumReverseSpeed, MaximumForwardSpeed) * propulsionScale
             : 0.0;
-        var turnRequest = canPropel && double.IsFinite(requestedTurnRate)
-            ? Math.Clamp(requestedTurnRate, -MaximumTurnRate, MaximumTurnRate)
+        var turnRequest = propulsionScale > 0.0 && double.IsFinite(requestedTurnRate)
+            ? Math.Clamp(requestedTurnRate, -MaximumTurnRate, MaximumTurnRate) * propulsionScale
             : 0.0;
 
         if (!grounded)
@@ -54,6 +62,8 @@ public static class AvatarPlanarDynamics
             "crouching" => 1.25,
             "sitting" => 1.85,
             "lying" => 2.40,
+            "righting" => 1.35,
+            "falling" or "fallen" => 1.80,
             _ => 0.90
         };
         var angularFriction = posture switch
@@ -61,6 +71,8 @@ public static class AvatarPlanarDynamics
             "crouching" => 110.0,
             "sitting" => 145.0,
             "lying" => 180.0,
+            "righting" => 125.0,
+            "falling" or "fallen" => 155.0,
             _ => 80.0
         };
 

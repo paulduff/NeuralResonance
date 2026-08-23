@@ -1,10 +1,10 @@
 ﻿{
     "schemaVersion":  1,
-    "savedAtUtc":  "2026-08-15T17:56:44.8757698Z",
+    "savedAtUtc":  "2026-08-23T12:05:11.3763842Z",
     "readiness":  "strict",
     "summary":  "tick=2 services=119 nonOk=0 lastSnapshotTick=0 snapshotAgeTicks=2 allowableNonOk=4 softAllowableNonOk=6",
     "settings":  {
-                     "startupTimeoutSec":  240,
+                     "startupTimeoutSec":  180,
                      "allowableNonOkServices":  1,
                      "startupSoftNonOkAllowance":  2,
                      "startupSoftMinTick":  40,

@@ -2,9 +2,16 @@ import * as THREE from '../vendor/three/three.module.min.js';
 import { OrbitControls } from '../vendor/three/addons/controls/OrbitControls.js';
 
 const WORLD_SIZE = 132;
-const VISUAL_SUBDIVISIONS = 2;
+const VISUAL_SUBDIVISIONS = 4;
 const VISUAL_VOXEL_SIZE = 1 / VISUAL_SUBDIVISIONS;
-const SEA_LEVEL = 3;
+const HEIGHT_UNITS_PER_METER = 4;
+const TERRAIN_HEIGHT_UNIT = 0.25;
+const TERRAIN_HALF_HEIGHT_UNIT = TERRAIN_HEIGHT_UNIT * 0.5;
+const MINIMUM_TERRAIN_HEIGHT = 1 * HEIGHT_UNITS_PER_METER;
+const MAXIMUM_TERRAIN_HEIGHT = 18 * HEIGHT_UNITS_PER_METER;
+const SEA_LEVEL_METERS = 3;
+const SEA_LEVEL_HEIGHT_UNITS = SEA_LEVEL_METERS * HEIGHT_UNITS_PER_METER;
+const CLIFF_THRESHOLD_HEIGHT_UNITS = 4;
 const SHELTER_FOUNDATION_HALF_EXTENT = 4.55;
 const SHELTER_ENTRANCE_HALF_WIDTH = 1.75;
 const SHELTER_ENTRANCE_START = 3.45;
@@ -18,8 +25,10 @@ const JOINT_LIMITS = Object.freeze({
     shoulderAbduction: [-0.18, 2.45],
     elbow: [0, 2.62],
     hip: [-0.35, 2.09],
+    hipAbduction: [-0.45, 0.78],
     knee: [0, 2.45],
     ankle: [-0.78, 0.52],
+    ankleRoll: [-0.26, 0.52],
     neckYaw: [-1.35, 1.35],
     neckPitch: [-0.78, 0.95]
 });
@@ -128,20 +137,28 @@ function createWorld(host) {
         currentHeading: 180,
         motorDrive: {
             left: 0, right: 0, manipulator: 0,
+            leftHipCoronal: 0, rightHipCoronal: 0,
+            leftAnkleSagittal: 0, rightAnkleSagittal: 0,
+            leftAnkleCoronal: 0, rightAnkleCoronal: 0,
+            trunkYaw: 0,
             headYaw: 0, headPitch: 0,
             stand: 0, crouch: 0, sit: 0, lie: 0
         },
         motion: { forwardSpeed: 0, verticalVelocity: 0, grounded: true },
         articulation: {
             leftHip: 0, rightHip: 0,
+            leftHipAbduction: 0, rightHipAbduction: 0,
             leftKnee: 0, rightKnee: 0,
             leftAnkle: 0, rightAnkle: 0,
+            leftAnkleRoll: 0, rightAnkleRoll: 0,
             leftFootLoad: 0, rightFootLoad: 0,
+            leftFootPressure: { heelMedial: 0, heelLateral: 0, forefootMedial: 0, forefootLateral: 0 },
+            rightFootPressure: { heelMedial: 0, heelLateral: 0, forefootMedial: 0, forefootLateral: 0 },
             leftShoulder: 0, rightShoulder: 0,
             leftShoulderAbduction: 0, rightShoulderAbduction: 0,
             leftElbow: 0, rightElbow: 0,
             manipulatorExtension: 0,
-            trunkPitch: 0, trunkRoll: 0,
+            trunkPitch: 0, trunkRoll: 0, trunkYaw: 0,
             neckYaw: 0, neckPitch: 0,
             supportPlaneOffset: 0,
             posture: 'standing', bodyHeight: 1.74,
@@ -321,14 +338,20 @@ function generateHeightMap(seed) {
             if (radius < valleyRadius) {
                 sculpted -= (1 - (radius / valleyRadius)) * 0.25;
             }
-            heights[x][z] = clamp(1 + Math.round(sculpted * 10), 1, 18);
+            heights[x][z] = clamp(
+                Math.round((1 + (sculpted * 10)) * HEIGHT_UNITS_PER_METER),
+                MINIMUM_TERRAIN_HEIGHT,
+                MAXIMUM_TERRAIN_HEIGHT);
         }
     }
     return heights;
 }
 
 function addFineVoxelTerrain(state) {
-    const geometry = new THREE.BoxGeometry(VISUAL_VOXEL_SIZE * 0.985, 1, VISUAL_VOXEL_SIZE * 0.985);
+    const geometry = new THREE.BoxGeometry(
+        VISUAL_VOXEL_SIZE * 0.985,
+        TERRAIN_HEIGHT_UNIT,
+        VISUAL_VOXEL_SIZE * 0.985);
     const palette = {
         seabed: 0xb7a274,
         shore: 0xd0bb82,
@@ -338,10 +361,18 @@ function addFineVoxelTerrain(state) {
         snow: 0xe1e7e5
     };
     const counts = Object.fromEntries(Object.keys(palette).map(key => [key, 0]));
+    const half = (WORLD_SIZE - 1) * 0.5;
     for (let x = 0; x < WORLD_SIZE; x++) {
         for (let z = 0; z < WORLD_SIZE; z++) {
-            counts[terrainCategory(state.heights[x][z], localSlope(state.heights, x, z))] +=
-                VISUAL_SUBDIVISIONS * VISUAL_SUBDIVISIONS;
+            const slope = localSlope(state.heights, x, z);
+            for (let sx = 0; sx < VISUAL_SUBDIVISIONS; sx++) {
+                for (let sz = 0; sz < VISUAL_SUBDIVISIONS; sz++) {
+                    const worldX = visualVoxelCoordinate(x, sx, half);
+                    const worldZ = visualVoxelCoordinate(z, sz, half);
+                    const height = heightUnitsAtWorld(state.heights, worldX, worldZ);
+                    counts[terrainCategory(height, slope)]++;
+                }
+            }
         }
     }
     const meshes = {};
@@ -359,19 +390,21 @@ function addFineVoxelTerrain(state) {
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
-    const half = (WORLD_SIZE - 1) * 0.5;
 
     for (let x = 0; x < WORLD_SIZE; x++) {
         for (let z = 0; z < WORLD_SIZE; z++) {
-            const height = state.heights[x][z];
             const slope = localSlope(state.heights, x, z);
-            const category = terrainCategory(height, slope);
-            const mesh = meshes[category];
             for (let sx = 0; sx < VISUAL_SUBDIVISIONS; sx++) {
                 for (let sz = 0; sz < VISUAL_SUBDIVISIONS; sz++) {
-                    const offsetX = ((sx + 0.5) / VISUAL_SUBDIVISIONS) - 0.5;
-                    const offsetZ = ((sz + 0.5) / VISUAL_SUBDIVISIONS) - 0.5;
-                    position.set((x - half) + offsetX, (height * 0.5) - 0.5, (z - half) + offsetZ);
+                    const worldX = visualVoxelCoordinate(x, sx, half);
+                    const worldZ = visualVoxelCoordinate(z, sz, half);
+                    const height = heightUnitsAtWorld(state.heights, worldX, worldZ);
+                    const category = terrainCategory(height, slope);
+                    const mesh = meshes[category];
+                    position.set(
+                        worldX,
+                        (height * TERRAIN_HEIGHT_UNIT * 0.5) - TERRAIN_HALF_HEIGHT_UNIT,
+                        worldZ);
                     scale.set(1, height, 1);
                     matrix.compose(position, quaternion, scale);
                     mesh.setMatrixAt(indices[category]++, matrix);
@@ -383,27 +416,36 @@ function addFineVoxelTerrain(state) {
 }
 
 function terrainCategory(height, slope) {
-    if (height < SEA_LEVEL) {
+    if (height < SEA_LEVEL_HEIGHT_UNITS) {
         return 'seabed';
     }
-    if (height === SEA_LEVEL) {
+    if (height === SEA_LEVEL_HEIGHT_UNITS) {
         return 'shore';
     }
-    if (height >= 13) {
+    if (height >= 13 * HEIGHT_UNITS_PER_METER) {
         return 'snow';
     }
-    if (height >= 9 || slope >= 4) {
+    if (height >= 9 * HEIGHT_UNITS_PER_METER || slope >= 4 * HEIGHT_UNITS_PER_METER) {
         return 'rock';
     }
-    return height >= 7 || slope >= 2 ? 'upland' : 'grass';
+    return height >= 7 * HEIGHT_UNITS_PER_METER || slope >= 2 * HEIGHT_UNITS_PER_METER
+        ? 'upland'
+        : 'grass';
 }
 
 function addWater(state) {
     let count = 0;
+    const half = (WORLD_SIZE - 1) * 0.5;
     for (let x = 0; x < WORLD_SIZE; x++) {
         for (let z = 0; z < WORLD_SIZE; z++) {
-            if (state.heights[x][z] < SEA_LEVEL) {
-                count += VISUAL_SUBDIVISIONS * VISUAL_SUBDIVISIONS;
+            for (let sx = 0; sx < VISUAL_SUBDIVISIONS; sx++) {
+                for (let sz = 0; sz < VISUAL_SUBDIVISIONS; sz++) {
+                    const worldX = visualVoxelCoordinate(x, sx, half);
+                    const worldZ = visualVoxelCoordinate(z, sz, half);
+                    if (heightUnitsAtWorld(state.heights, worldX, worldZ) < SEA_LEVEL_HEIGHT_UNITS) {
+                        count++;
+                    }
+                }
             }
         }
     }
@@ -424,19 +466,20 @@ function addWater(state) {
     mesh.renderOrder = 2;
     mesh.userData.water = true;
     const dummy = new THREE.Object3D();
-    const half = (WORLD_SIZE - 1) * 0.5;
     let index = 0;
     for (let x = 0; x < WORLD_SIZE; x++) {
         for (let z = 0; z < WORLD_SIZE; z++) {
-            if (state.heights[x][z] >= SEA_LEVEL) {
-                continue;
-            }
             for (let sx = 0; sx < VISUAL_SUBDIVISIONS; sx++) {
                 for (let sz = 0; sz < VISUAL_SUBDIVISIONS; sz++) {
+                    const worldX = visualVoxelCoordinate(x, sx, half);
+                    const worldZ = visualVoxelCoordinate(z, sz, half);
+                    if (heightUnitsAtWorld(state.heights, worldX, worldZ) >= SEA_LEVEL_HEIGHT_UNITS) {
+                        continue;
+                    }
                     dummy.position.set(
-                        (x - half) + (((sx + 0.5) / VISUAL_SUBDIVISIONS) - 0.5),
-                        SEA_LEVEL - 0.05,
-                        (z - half) + (((sz + 0.5) / VISUAL_SUBDIVISIONS) - 0.5));
+                        worldX,
+                        SEA_LEVEL_METERS - 0.05,
+                        worldZ);
                     dummy.updateMatrix();
                     mesh.setMatrixAt(index++, dummy.matrix);
                 }
@@ -452,7 +495,7 @@ function addTrees(state, seed, shelterSites) {
     for (let x = 2; x < WORLD_SIZE - 2; x++) {
         for (let z = 2; z < WORLD_SIZE - 2; z++) {
             const height = state.heights[x][z];
-            if (height <= SEA_LEVEL + 1) {
+            if (height <= SEA_LEVEL_HEIGHT_UNITS + HEIGHT_UNITS_PER_METER) {
                 continue;
             }
             const worldX = x - half;
@@ -462,7 +505,7 @@ function addTrees(state, seed, shelterSites) {
             }
             const placement = fractalNoise((x * 0.31) + (seed * 0.013), (z * 0.31) + (seed * 0.017), 2, 0.5);
             if (placement >= 0.81 && Math.hypot(x - half, z - half) > 8) {
-                trees.push({ x: worldX, y: height - 0.5, z: worldZ, size: 0.9 + placement * 0.35 });
+                trees.push({ x: worldX, y: terrainTopAt(state.heights, worldX, worldZ), z: worldZ, size: 0.9 + placement * 0.35 });
             }
         }
     }
@@ -542,7 +585,9 @@ function buildPreviewShelterSites(seed) {
 function prepareShelterGround(heights, sites) {
     const half = (WORLD_SIZE - 1) * 0.5;
     for (const site of sites) {
-        const targetHeight = Math.max(SEA_LEVEL + 1, heightAtWorld(heights, site.x, site.z));
+        const targetHeight = Math.max(
+            SEA_LEVEL_HEIGHT_UNITS + HEIGHT_UNITS_PER_METER,
+            heightAtWorld(heights, site.x, site.z));
         const gradeWidth = SHELTER_GRADE_WIDTH * site.scale;
         const entranceCenter = (SHELTER_ENTRANCE_START + SHELTER_ENTRANCE_END) * 0.5;
         for (let x = 0; x < WORLD_SIZE; x++) {
@@ -564,7 +609,10 @@ function prepareShelterGround(heights, sites) {
                     heights[x][z] = targetHeight;
                 } else if (distance < gradeWidth) {
                     const blend = 1 - (distance / gradeWidth);
-                    heights[x][z] = clamp(Math.round(heights[x][z] + ((targetHeight - heights[x][z]) * blend)), 1, 18);
+                    heights[x][z] = clamp(
+                        Math.round(heights[x][z] + ((targetHeight - heights[x][z]) * blend)),
+                        MINIMUM_TERRAIN_HEIGHT,
+                        MAXIMUM_TERRAIN_HEIGHT);
                 }
             }
         }
@@ -572,10 +620,7 @@ function prepareShelterGround(heights, sites) {
 }
 
 function heightAtWorld(heights, worldX, worldZ) {
-    const half = (WORLD_SIZE - 1) * 0.5;
-    const x = clamp(Math.round(worldX + half), 0, WORLD_SIZE - 1);
-    const z = clamp(Math.round(worldZ + half), 0, WORLD_SIZE - 1);
-    return heights[x][z];
+    return heightUnitsAtWorld(heights, worldX, worldZ);
 }
 
 function distanceToRectangle(x, z, halfWidth, halfDepth) {
@@ -629,7 +674,6 @@ function createHabitat(item, central) {
     slab(wall, 3.8, 1.2, 0, 0.32, 2.4, 7.3);
     slab(wall, -2.5, 1.2, 3.8, 2.8, 2.4, 0.32);
     slab(wall, 2.5, 1.2, 3.8, 2.8, 2.4, 0.32);
-    slab(wall, 0, 2.20, 3.8, 2.2, 0.40, 0.32);
     slab(glass, 0, 2.55, 0, 6.4, 0.28, 6.4);
     if (central) {
         const core = new THREE.Mesh(
@@ -1193,16 +1237,20 @@ function animate(state, now) {
     // X rotates a downward femur posteriorly, so the visual transform is negated.
     rotateToward(state.avatar.limbs.leftLeg.pivot, 'x', -clampJoint(state.articulation.leftHip, 'hip'));
     rotateToward(state.avatar.limbs.rightLeg.pivot, 'x', -clampJoint(state.articulation.rightHip, 'hip'));
+    rotateToward(state.avatar.limbs.leftLeg.pivot, 'z', -clampJoint(state.articulation.leftHipAbduction, 'hipAbduction'));
+    rotateToward(state.avatar.limbs.rightLeg.pivot, 'z', clampJoint(state.articulation.rightHipAbduction, 'hipAbduction'));
     rotateToward(state.avatar.limbs.leftLeg.joint, 'x', clampJoint(state.articulation.leftKnee, 'knee'));
     rotateToward(state.avatar.limbs.rightLeg.joint, 'x', clampJoint(state.articulation.rightKnee, 'knee'));
     rotateToward(state.avatar.limbs.leftLeg.distal, 'x', clampJoint(state.articulation.leftAnkle, 'ankle'));
     rotateToward(state.avatar.limbs.rightLeg.distal, 'x', clampJoint(state.articulation.rightAnkle, 'ankle'));
+    rotateToward(state.avatar.limbs.leftLeg.distal, 'z', -clampJoint(state.articulation.leftAnkleRoll, 'ankleRoll'));
+    rotateToward(state.avatar.limbs.rightLeg.distal, 'z', clampJoint(state.articulation.rightAnkleRoll, 'ankleRoll'));
     rotateToward(state.avatar.limbs.leftLeg.toe, 'x', Math.max(0.02, -state.articulation.leftAnkle * 0.35));
     rotateToward(state.avatar.limbs.rightLeg.toe, 'x', Math.max(0.02, -state.articulation.rightAnkle * 0.35));
-    const hipCounterRotation = (state.articulation.leftHip - state.articulation.rightHip) * 0.04;
-    rotateToward(state.avatar.rig.pelvis, 'y', hipCounterRotation);
+    rotateToward(state.avatar.rig.pelvis, 'y', 0);
     rotateToward(state.avatar.rig.pelvis, 'z', state.articulation.trunkRoll * 0.24);
     rotateToward(state.avatar.rig.lumbar, 'x', -state.articulation.trunkPitch * 0.42);
+    rotateToward(state.avatar.rig.lumbar, 'y', state.articulation.trunkYaw);
     rotateToward(state.avatar.rig.lumbar, 'z', state.articulation.trunkRoll * 0.36);
     rotateToward(state.avatar.rig.thoracic, 'x', -state.articulation.trunkPitch * 0.58);
     rotateToward(state.avatar.rig.thoracic, 'z', state.articulation.trunkRoll * 0.40);
@@ -1302,6 +1350,13 @@ function applyWorldState(state, snapshot, envelope) {
     state.motorDrive.left = numberValue(snapshot, 'leftMotorDrive');
     state.motorDrive.right = numberValue(snapshot, 'rightMotorDrive');
     state.motorDrive.manipulator = numberValue(snapshot, 'manipulatorDrive');
+    state.motorDrive.leftHipCoronal = numberValue(snapshot, 'leftHipCoronalDrive');
+    state.motorDrive.rightHipCoronal = numberValue(snapshot, 'rightHipCoronalDrive');
+    state.motorDrive.leftAnkleSagittal = numberValue(snapshot, 'leftAnkleSagittalDrive');
+    state.motorDrive.rightAnkleSagittal = numberValue(snapshot, 'rightAnkleSagittalDrive');
+    state.motorDrive.leftAnkleCoronal = numberValue(snapshot, 'leftAnkleCoronalDrive');
+    state.motorDrive.rightAnkleCoronal = numberValue(snapshot, 'rightAnkleCoronalDrive');
+    state.motorDrive.trunkYaw = numberValue(snapshot, 'trunkYawDrive');
     state.motorDrive.headYaw = numberValue(snapshot, 'headYawDrive');
     state.motorDrive.headPitch = numberValue(snapshot, 'headPitchDrive');
     state.motorDrive.stand = numberValue(snapshot, 'standDrive');
@@ -1315,12 +1370,18 @@ function applyWorldState(state, snapshot, envelope) {
     if (articulation && typeof articulation === 'object') {
         state.articulation.leftHip = numberValue(articulation, 'leftHipAngleRadians');
         state.articulation.rightHip = numberValue(articulation, 'rightHipAngleRadians');
+        state.articulation.leftHipAbduction = numberValue(articulation, 'leftHipAbductionRadians');
+        state.articulation.rightHipAbduction = numberValue(articulation, 'rightHipAbductionRadians');
         state.articulation.leftKnee = numberValue(articulation, 'leftKneeAngleRadians');
         state.articulation.rightKnee = numberValue(articulation, 'rightKneeAngleRadians');
         state.articulation.leftAnkle = numberValue(articulation, 'leftAnkleAngleRadians');
         state.articulation.rightAnkle = numberValue(articulation, 'rightAnkleAngleRadians');
+        state.articulation.leftAnkleRoll = numberValue(articulation, 'leftAnkleRollRadians');
+        state.articulation.rightAnkleRoll = numberValue(articulation, 'rightAnkleRollRadians');
         state.articulation.leftFootLoad = numberValue(articulation, 'leftFootLoadNewtons');
         state.articulation.rightFootLoad = numberValue(articulation, 'rightFootLoadNewtons');
+        readFootPressure(state.articulation.leftFootPressure, value(articulation, 'leftFootPressure'));
+        readFootPressure(state.articulation.rightFootPressure, value(articulation, 'rightFootPressure'));
         state.articulation.leftShoulder = numberValue(articulation, 'leftShoulderAngleRadians');
         state.articulation.rightShoulder = numberValue(articulation, 'rightShoulderAngleRadians');
         state.articulation.leftShoulderAbduction = numberValue(articulation, 'leftShoulderAbductionRadians');
@@ -1330,6 +1391,7 @@ function applyWorldState(state, snapshot, envelope) {
         state.articulation.manipulatorExtension = numberValue(articulation, 'manipulatorExtensionFraction');
         state.articulation.trunkPitch = numberValue(articulation, 'trunkPitchRadians');
         state.articulation.trunkRoll = numberValue(articulation, 'trunkRollRadians');
+        state.articulation.trunkYaw = numberValue(articulation, 'trunkYawRadians');
         state.articulation.neckYaw = numberValue(articulation, 'neckYawRadians');
         state.articulation.neckPitch = numberValue(articulation, 'neckPitchRadians');
         state.articulation.supportPlaneOffset = numberValue(articulation, 'supportPlaneOffsetMeters');
@@ -1401,8 +1463,21 @@ function applyWorldState(state, snapshot, envelope) {
         .filter(candidate => Number.isFinite(candidate));
     const brainLinkAge = brainLinkAges.length > 0 ? Math.min(...brainLinkAges) : Number.POSITIVE_INFINITY;
     setText('avatarBrainLink', brainConnected ? 'Connected' : Number.isFinite(brainLinkAge) ? `Delayed ${Math.round(brainLinkAge)}s` : 'Waiting');
+    setText('avatarPhysiologyMode', booleanValue(snapshot, 'motorTrainingMode')
+        ? 'Motor training | sustained metabolism'
+        : 'Standard metabolism');
+    setText('avatarDevelopmentStage', splitCamel(textValue(snapshot, 'developmentStage') || 'Terrain'));
     setText('avatarPosition', `${authoritativeX.toFixed(1)}, ${authoritativeY.toFixed(1)}, ${authoritativeZ.toFixed(1)}`);
     setText('avatarPosture', capitalize(state.articulation.posture));
+    const ascentMode = textValue(snapshot, 'terrainAscentMode') || 'none';
+    const ascentProgress = clamp(numberValue(snapshot, 'terrainAscentProgress'), 0, 1);
+    const ascentStarted = Math.max(0, Math.round(numberValue(snapshot, 'terrainAscentStarted')));
+    const ascentCompleted = Math.max(0, Math.round(numberValue(snapshot, 'terrainAscentCompleted')));
+    const ascentAborted = Math.max(0, Math.round(numberValue(snapshot, 'terrainAscentAborted')));
+    const ascentRejected = Math.max(0, Math.round(numberValue(snapshot, 'terrainAscentRejected')));
+    setText('avatarTerrainAscent', ascentMode === 'none'
+        ? `${ascentCompleted}/${ascentStarted} complete | ${ascentAborted} aborted | ${ascentRejected} rejected`
+        : `${capitalize(ascentMode)} ${Math.round(ascentProgress * 100)}% | ${ascentCompleted}/${ascentStarted} complete`);
     const marginMillimeters = Math.round(state.articulation.balance.margin * 1_000);
     setText('avatarBalance', `${capitalize(state.articulation.balance.phase.replaceAll('_', ' '))} | ${marginMillimeters} mm | ${Math.round(state.articulation.balanceError * 100)}% error`);
     setText('avatarDistance', numberValue(snapshot, 'distanceTravelled').toFixed(1));
@@ -1413,13 +1488,22 @@ function applyWorldState(state, snapshot, envelope) {
     setDrive('leftMotorDrive', 'leftMotorDriveValue', state.motorDrive.left);
     setDrive('rightMotorDrive', 'rightMotorDriveValue', state.motorDrive.right);
     setDrive('manipulatorDrive', 'manipulatorDriveValue', state.motorDrive.manipulator);
+    setDrive('leftHipCoronalDrive', 'leftHipCoronalDriveValue', state.motorDrive.leftHipCoronal);
+    setDrive('rightHipCoronalDrive', 'rightHipCoronalDriveValue', state.motorDrive.rightHipCoronal);
+    setDrive('leftAnkleSagittalDrive', 'leftAnkleSagittalDriveValue', state.motorDrive.leftAnkleSagittal);
+    setDrive('rightAnkleSagittalDrive', 'rightAnkleSagittalDriveValue', state.motorDrive.rightAnkleSagittal);
+    setDrive('leftAnkleCoronalDrive', 'leftAnkleCoronalDriveValue', state.motorDrive.leftAnkleCoronal);
+    setDrive('rightAnkleCoronalDrive', 'rightAnkleCoronalDriveValue', state.motorDrive.rightAnkleCoronal);
+    setDrive('trunkYawDrive', 'trunkYawDriveValue', state.motorDrive.trunkYaw);
     setDrive('headYawDrive', 'headYawDriveValue', state.motorDrive.headYaw);
     setDrive('headPitchDrive', 'headPitchDriveValue', state.motorDrive.headPitch);
     setDrive('standDrive', 'standDriveValue', state.motorDrive.stand);
     setDrive('crouchDrive', 'crouchDriveValue', state.motorDrive.crouch);
     setDrive('sitDrive', 'sitDriveValue', state.motorDrive.sit);
     setDrive('lieDrive', 'lieDriveValue', state.motorDrive.lie);
-    setText('motorChannelGroundState', state.motion.grounded ? 'grounded' : 'airborne');
+    setText('motorChannelGroundState', ascentMode !== 'none'
+        ? ascentMode
+        : state.motion.grounded ? 'grounded' : 'airborne');
     setSignedChannel('leftShoulderChannel', 'leftShoulderChannelValue', state.articulation.leftShoulder, 1.2);
     setSignedChannel('rightShoulderChannel', 'rightShoulderChannelValue', state.articulation.rightShoulder, 1.2);
     setSignedChannel('leftShoulderAbductionChannel', 'leftShoulderAbductionChannelValue', state.articulation.leftShoulderAbduction, 1.2);
@@ -1428,20 +1512,57 @@ function applyWorldState(state, snapshot, envelope) {
     setSignedChannel('rightElbowChannel', 'rightElbowChannelValue', state.articulation.rightElbow, 1.5);
     setSignedChannel('leftHipChannel', 'leftHipChannelValue', state.articulation.leftHip, 0.65);
     setSignedChannel('rightHipChannel', 'rightHipChannelValue', state.articulation.rightHip, 0.65);
+    setSignedChannel('leftHipAbductionChannel', 'leftHipAbductionChannelValue', state.articulation.leftHipAbduction, 0.78);
+    setSignedChannel('rightHipAbductionChannel', 'rightHipAbductionChannelValue', state.articulation.rightHipAbduction, 0.78);
     setSignedChannel('leftKneeChannel', 'leftKneeChannelValue', state.articulation.leftKnee, 1.2);
     setSignedChannel('rightKneeChannel', 'rightKneeChannelValue', state.articulation.rightKnee, 1.2);
     setSignedChannel('leftAnkleChannel', 'leftAnkleChannelValue', state.articulation.leftAnkle, 0.65);
     setSignedChannel('rightAnkleChannel', 'rightAnkleChannelValue', state.articulation.rightAnkle, 0.65);
+    setSignedChannel('leftAnkleRollChannel', 'leftAnkleRollChannelValue', state.articulation.leftAnkleRoll, 0.52);
+    setSignedChannel('rightAnkleRollChannel', 'rightAnkleRollChannelValue', state.articulation.rightAnkleRoll, 0.52);
     setSignedChannel('trunkPitchChannel', 'trunkPitchChannelValue', state.articulation.trunkPitch, 0.25);
     setSignedChannel('trunkRollChannel', 'trunkRollChannelValue', state.articulation.trunkRoll, 0.25);
+    setSignedChannel('trunkYawChannel', 'trunkYawChannelValue', state.articulation.trunkYaw, 0.61);
     setSignedChannel('neckYawChannel', 'neckYawChannelValue', state.articulation.neckYaw, 1.35);
     setSignedChannel('neckPitchChannel', 'neckPitchChannelValue', state.articulation.neckPitch, 0.95);
     setUnsignedChannel('manipulatorExtensionChannel', 'manipulatorExtensionChannelValue', state.articulation.manipulatorExtension, 1.0,
         value => `${Math.round(value * 100)}%`);
+    const leftHandAperture = clamp(numberValue(snapshot, 'leftHandApertureFraction'), 0, 1);
+    const rightHandAperture = clamp(numberValue(snapshot, 'rightHandApertureFraction'), 0, 1);
+    const leftGripForce = Math.max(0, numberValue(snapshot, 'leftGripForceNewtons'));
+    const rightGripForce = Math.max(0, numberValue(snapshot, 'rightGripForceNewtons'));
+    setUnsignedChannel('leftHandApertureChannel', 'leftHandApertureChannelValue', leftHandAperture, 1.0,
+        value => `${Math.round(value * 100)}%`);
+    setUnsignedChannel('rightHandApertureChannel', 'rightHandApertureChannelValue', rightHandAperture, 1.0,
+        value => `${Math.round(value * 100)}%`);
+    setUnsignedChannel('leftGripForceChannel', 'leftHandState', leftGripForce, 180.0,
+        value => `${splitCamel(textValue(snapshot, 'leftHandPhase') || 'Open')} | ${Math.round(value)} N`);
+    setUnsignedChannel('rightGripForceChannel', 'rightHandState', rightGripForce, 180.0,
+        value => `${splitCamel(textValue(snapshot, 'rightHandPhase') || 'Open')} | ${Math.round(value)} N`);
     setUnsignedChannel('leftFootLoadChannel', 'leftFootLoadChannelValue', state.articulation.leftFootLoad, 720.0,
         value => `${Math.round(value)} N`);
     setUnsignedChannel('rightFootLoadChannel', 'rightFootLoadChannelValue', state.articulation.rightFootLoad, 720.0,
         value => `${Math.round(value)} N`);
+    setPressureBalanceChannel(
+        'leftFootLongitudinalChannel',
+        'leftFootLongitudinalChannelValue',
+        state.articulation.leftFootPressure.heelMedial + state.articulation.leftFootPressure.heelLateral,
+        state.articulation.leftFootPressure.forefootMedial + state.articulation.leftFootPressure.forefootLateral);
+    setPressureBalanceChannel(
+        'rightFootLongitudinalChannel',
+        'rightFootLongitudinalChannelValue',
+        state.articulation.rightFootPressure.heelMedial + state.articulation.rightFootPressure.heelLateral,
+        state.articulation.rightFootPressure.forefootMedial + state.articulation.rightFootPressure.forefootLateral);
+    setPressureBalanceChannel(
+        'leftFootLateralChannel',
+        'leftFootLateralChannelValue',
+        state.articulation.leftFootPressure.heelMedial + state.articulation.leftFootPressure.forefootMedial,
+        state.articulation.leftFootPressure.heelLateral + state.articulation.leftFootPressure.forefootLateral);
+    setPressureBalanceChannel(
+        'rightFootLateralChannel',
+        'rightFootLateralChannelValue',
+        state.articulation.rightFootPressure.heelMedial + state.articulation.rightFootPressure.forefootMedial,
+        state.articulation.rightFootPressure.heelLateral + state.articulation.rightFootPressure.forefootLateral);
     renderMuscleTelemetry(state.articulation.muscles);
     setText('worldElapsed', `${numberValue(snapshot, 'elapsedSeconds').toFixed(1)} s`);
     setText('worldVisited', `${integerValue(snapshot, 'visitedTerrainCells').toLocaleString()} / ${integerValue(snapshot, 'explorableTerrainCells').toLocaleString()}`);
@@ -1449,6 +1570,7 @@ function applyWorldState(state, snapshot, envelope) {
     const sensoryFrames = integerValue(snapshot, 'retinalFramesAccepted') + integerValue(snapshot, 'cochlearFramesAccepted') +
         integerValue(snapshot, 'physicalBodyFramesAccepted') + integerValue(snapshot, 'somaticFramesAccepted');
     setText('worldSensoryFrames', sensoryFrames.toLocaleString());
+    setText('worldHandSequence', `${integerValue(snapshot, 'handContacts').toLocaleString()} / ${integerValue(snapshot, 'holds').toLocaleString()} / ${integerValue(snapshot, 'releases').toLocaleString()}`);
     setText('worldHeading', `${String(Math.round(state.targetHeading)).padStart(3, '0')} deg`);
     document.querySelector('.world-compass > i').style.transform = `rotate(${state.targetHeading - 90}deg)`;
 
@@ -1462,7 +1584,9 @@ function applyWorldState(state, snapshot, envelope) {
         : `${predators?.length ?? 0} predators`;
     const entityNote = foods ? `${foods.length} food, ${devices?.length ?? 0} devices, ${predatorNote}.` :
         'Live avatar pose; this older snapshot has no entity coordinates.';
-    setText('worldTelemetryLog', `${status}. ${entityNote} Last interaction: ${textValue(snapshot, 'lastInteractionOutcome') || 'none'}.`);
+    const handMisses = integerValue(snapshot, 'graspMisses');
+    const fatigueReleases = integerValue(snapshot, 'fatigueReleases');
+    setText('worldTelemetryLog', `${status}. ${entityNote} Last interaction: ${textValue(snapshot, 'lastInteractionOutcome') || 'none'}. Hand misses: ${handMisses.toLocaleString()}; fatigue releases: ${fatigueReleases.toLocaleString()}.`);
 }
 
 function applyWorldOffline(state, message) {
@@ -1522,6 +1646,14 @@ function capitalize(text) {
     return text ? `${text[0].toUpperCase()}${text.slice(1)}` : '';
 }
 
+function readFootPressure(target, source) {
+    if (!source || typeof source !== 'object') return;
+    target.heelMedial = numberValue(source, 'heelMedialLoadNewtons');
+    target.heelLateral = numberValue(source, 'heelLateralLoadNewtons');
+    target.forefootMedial = numberValue(source, 'forefootMedialLoadNewtons');
+    target.forefootLateral = numberValue(source, 'forefootLateralLoadNewtons');
+}
+
 function setSignedChannel(id, outputId, value, fullScale) {
     const bar = document.getElementById(id);
     if (!bar) return;
@@ -1541,6 +1673,18 @@ function setUnsignedChannel(id, outputId, value, fullScale, formatter) {
     bar.style.width = `${clamp(value / fullScale, 0, 1) * 100}%`;
     bar.classList.remove('negative');
     setText(outputId, formatter(value));
+}
+
+function setPressureBalanceChannel(id, outputId, firstLoad, secondLoad) {
+    const bar = document.getElementById(id);
+    if (!bar) return;
+    const total = Math.max(0, firstLoad) + Math.max(0, secondLoad);
+    const normalized = total > 0.001 ? clamp((secondLoad - firstLoad) / total, -1, 1) : 0;
+    const width = Math.abs(normalized) * 50;
+    bar.style.left = `${normalized < 0 ? 50 - width : 50}%`;
+    bar.style.width = `${width}%`;
+    bar.classList.toggle('negative', normalized < 0);
+    setText(outputId, `${Math.round(firstLoad)} / ${Math.round(secondLoad)} N`);
 }
 
 function clampJoint(value, joint) {
@@ -1569,10 +1713,42 @@ function frameAvatar(state, immediate) {
 }
 
 function terrainTopAt(heights, worldX, worldZ) {
+    return (heightUnitsAtWorld(heights, worldX, worldZ) * TERRAIN_HEIGHT_UNIT) -
+        TERRAIN_HALF_HEIGHT_UNIT;
+}
+
+function heightUnitsAtWorld(heights, worldX, worldZ) {
     const half = (WORLD_SIZE - 1) * 0.5;
-    const x = clamp(Math.round(worldX + half), 0, WORLD_SIZE - 1);
-    const z = clamp(Math.round(worldZ + half), 0, WORLD_SIZE - 1);
-    return heights[x][z] - 0.5;
+    const gridX = clamp(worldX + half, 0, WORLD_SIZE - 1);
+    const gridZ = clamp(worldZ + half, 0, WORLD_SIZE - 1);
+    const x0 = Math.floor(gridX);
+    const z0 = Math.floor(gridZ);
+    const x1 = Math.min(WORLD_SIZE - 1, x0 + 1);
+    const z1 = Math.min(WORLD_SIZE - 1, z0 + 1);
+    const h00 = heights[x0][z0];
+    const h10 = heights[x1][z0];
+    const h01 = heights[x0][z1];
+    const h11 = heights[x1][z1];
+    const containsCliff = Math.abs(h10 - h00) >= CLIFF_THRESHOLD_HEIGHT_UNITS ||
+        Math.abs(h11 - h01) >= CLIFF_THRESHOLD_HEIGHT_UNITS ||
+        Math.abs(h01 - h00) >= CLIFF_THRESHOLD_HEIGHT_UNITS ||
+        Math.abs(h11 - h10) >= CLIFF_THRESHOLD_HEIGHT_UNITS;
+    if (containsCliff) {
+        const nearestX = clamp(Math.floor(gridX + 0.5), 0, WORLD_SIZE - 1);
+        const nearestZ = clamp(Math.floor(gridZ + 0.5), 0, WORLD_SIZE - 1);
+        return heights[nearestX][nearestZ];
+    }
+
+    const tx = smoothStep(gridX - x0);
+    const tz = smoothStep(gridZ - z0);
+    return clamp(
+        Math.round(lerp(lerp(h00, h10, tx), lerp(h01, h11, tx), tz)),
+        MINIMUM_TERRAIN_HEIGHT,
+        MAXIMUM_TERRAIN_HEIGHT);
+}
+
+function visualVoxelCoordinate(cell, subdivision, half) {
+    return (cell - half) + (((subdivision + 0.5) / VISUAL_SUBDIVISIONS) - 0.5);
 }
 
 function localSlope(heights, x, z) {

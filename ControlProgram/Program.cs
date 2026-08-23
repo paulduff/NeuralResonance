@@ -86,6 +86,7 @@ builder.Services.AddSingleton<RetinalFrameTransducerRuntime>();
 builder.Services.AddSingleton<CochlearFrameTransducerRuntime>();
 builder.Services.AddSingleton<SomaticContactTransducerRuntime>();
 builder.Services.AddSingleton<PhysicalBodyTransducerRuntime>();
+builder.Services.AddSingleton<TeachingTelemetryAccumulator>();
 builder.Services.AddSingleton<HttpRequestProfiler>();
 builder.Services.AddSingleton(EntityLanguageBridgeOptions.FromConfiguration(builder.Configuration));
 builder.Services.AddHttpClient("dnne")
@@ -220,6 +221,8 @@ app.MapGet("/api/v1/neuronal-motor", (SimulationState state, NeuronalMotorContro
     Control = control.GetSnapshot(),
     Runtime = state.GetNeuronalMotorSnapshot()
 }));
+app.MapGet("/api/v1/sensorimotor-timing", (SimulationState state) =>
+    Results.Ok(state.GetSensorimotorTimingSnapshot()));
 app.MapGet("/api/v1/neuronal-perception", (NeuronalPerceptionRuntime perception) =>
     Results.Ok(perception.GetSnapshot()));
 app.MapGet("/api/v1/neuronal-memory", (NeuronalMemoryRuntime memory) =>
@@ -712,11 +715,19 @@ app.MapPost("/api/v1/admin/input/contact-frame", (
     }
 
     var liveTargets = catalog.GetByStructure(StructureId.SomaticAfferents, hemisphere: null);
+    var liveSpinalTargets = catalog.GetByStructure(StructureId.SpinalCordMotor, hemisphere: null);
     var transduction = transducer.Transduce(descriptor, state.Tick, state.SimulationClockMs);
     var generatedForTargets = 0;
     for (var i = 0; i < liveTargets.Count; i++)
     {
         generatedForTargets += transduction.ForHemisphere(liveTargets[i].HemisphereNormalized).Count;
+    }
+    var generatedSpinalForTargets = 0;
+    for (var i = 0; i < liveSpinalTargets.Count; i++)
+    {
+        generatedSpinalForTargets += transduction
+            .ForSpinalHemisphere(liveSpinalTargets[i].HemisphereNormalized)
+            .Count;
     }
 
     if (liveTargets.Count > 0 && generatedForTargets > 0)
@@ -732,16 +743,32 @@ app.MapPost("/api/v1/admin/input/contact-frame", (
             logSuccess: false);
     }
 
+    if (liveSpinalTargets.Count > 0 && generatedSpinalForTargets > 0)
+    {
+        DispatchStimulusToInstancesInBackground(
+            "Spinal nociceptive collateral input",
+            liveSpinalTargets,
+            instance => transduction.ForSpinalHemisphere(instance.HemisphereNormalized),
+            clientFactory,
+            state,
+            state.Tick,
+            state.SimulationClockMs,
+            logSuccess: false);
+    }
+
     return Results.Ok(new
     {
         Accepted = true,
-        DispatchDeferred = liveTargets.Count > 0 && generatedForTargets > 0,
+        DispatchDeferred =
+            (liveTargets.Count > 0 && generatedForTargets > 0) ||
+            (liveSpinalTargets.Count > 0 && generatedSpinalForTargets > 0),
         InputSource = descriptor.InputSource,
         Target = StructureId.SomaticAfferents.ToString(),
         TargetInstances = liveTargets.Count,
         KnownTargetInstances = knownTargets.Count,
         LiveTargetInstances = liveTargets.Count,
         GeneratedSpikes = generatedForTargets,
+        GeneratedSpinalWithdrawalSpikes = generatedSpinalForTargets,
         DeliveredSpikes = 0,
         ReceptorSector = transduction.ReceptorSector,
         ActiveReceptorPopulations = transduction.ActiveReceptorPopulations,
@@ -761,6 +788,7 @@ app.MapPost("/api/v1/admin/input/body-frame", (
     IHttpClientFactory clientFactory,
     SimulationState state,
     PhysicalBodyTransducerRuntime transducer,
+    TeachingTelemetryAccumulator teachingTelemetry,
     InputIngressRuntime ingress) =>
 {
     if (!PhysicalBodyFrameDescriptor.TryCreate(request, out var descriptor, out var descriptorError) ||
@@ -789,6 +817,7 @@ app.MapPost("/api/v1/admin/input/body-frame", (
     StructureId[] targetStructures =
     [
         .. requiredTargetStructures,
+        StructureId.SomaticAfferents,
         StructureId.Habenula,
         StructureId.Vta,
         StructureId.Snc
@@ -812,6 +841,7 @@ app.MapPost("/api/v1/admin/input/body-frame", (
         .ToList();
     var transduction = transducer.Transduce(descriptor, state.Tick, state.SimulationClockMs);
     state.ObserveEmbodiedCurriculum(transduction);
+    teachingTelemetry.Observe(state.Tick, transduction);
     var generatedForTargets = liveTargets.Sum(instance =>
         transduction.For(instance.StructureId, instance.HemisphereNormalized).Count);
 
@@ -843,9 +873,19 @@ app.MapPost("/api/v1/admin/input/body-frame", (
         transduction.TissueIntegrity,
         transduction.HomeostaticDeviation,
         transduction.HomeostaticChange,
+        transduction.HungerDrive,
+        transduction.ThirstDrive,
+        transduction.EnergyRestorationTeachingSignal,
+        transduction.HydrationRestorationTeachingSignal,
         transduction.PositiveTeachingSignal,
         transduction.NegativeTeachingSignal,
+        transduction.SupportMarginImprovement,
+        transduction.BalanceImprovement,
+        transduction.IneffectiveForceEvidence,
+        transduction.PeakMuscleFatigueDistress,
+        transduction.SaturatedMuscleVelocityCount,
         transduction.ActiveProprioceptivePopulations,
+        transduction.ActiveSomaticPopulations,
         transduction.ActiveVestibularPopulations,
         transduction.ActiveVisceralPopulations,
         Errors = liveTargets.Count == 0
@@ -1690,6 +1730,7 @@ internal sealed record IssuedDyadPrompt(
 internal sealed class SimulationState
 {
     private readonly object _gate = new();
+    private readonly ActionAuthorityTelemetryAccumulator _actionAuthorityTelemetry = new();
     private object? _lastStartupHealthSnapshot;
     private object? _lastValidationSnapshot;
     private readonly Queue<RuntimeLogEntry> _outputLog = new();
@@ -1720,6 +1761,7 @@ internal sealed class SimulationState
     private long _restartGeneration;
     private int _curriculumStageIndex;
     private long _curriculumLastStageTransitionTick;
+    private long _latestPhysicalBodyReceivedMonotonicMs = -1;
 
     public double SimulationClockMs { get; private set; }
     public double TickDurationMs { get; private set; } = 1.0;
@@ -1754,6 +1796,7 @@ internal sealed class SimulationState
     public NeuronalAffectValuationDecision NeuronalAffectValuation { get; private set; } = NeuronalAffectValuationDecision.Unavailable;
     public NeuronalExecutiveDecision NeuronalExecutive { get; private set; } = NeuronalExecutiveDecision.Unavailable;
     public CurriculumRuntime Curriculum { get; private set; } = CurriculumRuntime.Default;
+    public SensorimotorTimingRuntime SensorimotorTiming { get; private set; } = SensorimotorTimingRuntime.Default;
     public Dictionary<StructureId, ServiceRuntimeTelemetry> ServiceTelemetry { get; } = new();
     public TransportRuntimeStats TransportStats { get; private set; } = TransportRuntimeStats.Empty;
 
@@ -1982,12 +2025,32 @@ internal sealed class SimulationState
         ArgumentNullException.ThrowIfNull(transduction);
         lock (_gate)
         {
+            _latestPhysicalBodyReceivedMonotonicMs = Environment.TickCount64;
             if (!Curriculum.Enabled)
             {
                 return;
             }
 
             var stageIndex = Math.Clamp(_curriculumStageIndex, 0, CurriculumTaskAccumulator.StageNames.Count - 1);
+            if (transduction.MotorTrainingMode)
+            {
+                var selectedAction = NeuronalMotor.ActionCircuitObserved &&
+                    NeuronalMotor.SelectedActionChannel >= 0 &&
+                    NeuronalMotor.Active;
+                var beneficialOutcome = Math.Clamp(
+                    transduction.PositiveTeachingSignal,
+                    0f,
+                    1f);
+                var informativeFailure = Math.Clamp(
+                    (transduction.IneffectiveForceEvidence * 0.65f) +
+                    (transduction.NegativeTeachingSignal * 0.35f),
+                    0f,
+                    1f);
+                var associationEvidence = selectedAction
+                    ? Math.Clamp(0.25f + (Math.Max(beneficialOutcome, informativeFailure) * 0.75f), 0f, 1f)
+                    : Math.Max(beneficialOutcome, informativeFailure) * 0.10f;
+                ObserveCurriculumTaskAnyStageLocked("action_outcome_association", associationEvidence);
+            }
             if (stageIndex == 0)
             {
                 var afferentCoverage = Math.Clamp(
@@ -1997,9 +2060,8 @@ internal sealed class SimulationState
                     0f,
                     1f);
                 var physicalContrast = Math.Clamp(
-                    (transduction.MotionMagnitude * 0.40f) +
-                    (MathF.Abs(transduction.HomeostaticChange) * 0.35f) +
-                    (Math.Max(transduction.PositiveTeachingSignal, transduction.NegativeTeachingSignal) * 0.25f),
+                    (MathF.Abs(transduction.HomeostaticChange) * 0.55f) +
+                    (Math.Max(transduction.PositiveTeachingSignal, transduction.NegativeTeachingSignal) * 0.45f),
                     0f,
                     1f);
                 ObserveCurriculumTaskLocked("sensory_discrimination", (afferentCoverage * 0.65f) + (physicalContrast * 0.35f));
@@ -2018,13 +2080,15 @@ internal sealed class SimulationState
                     NeuronalMotor.SelectedActionChannel >= 0 &&
                     NeuronalMotor.Active;
                 var physicalOutcome = Math.Clamp(
-                    (transduction.MotionMagnitude * 0.55f) +
-                    (Math.Max(transduction.PositiveTeachingSignal, transduction.NegativeTeachingSignal) * 0.45f),
+                    Math.Max(transduction.PositiveTeachingSignal, transduction.NegativeTeachingSignal),
                     0f,
                     1f);
-                ObserveCurriculumTaskLocked(
-                    "action_outcome_association",
-                    selectedAction ? 0.35f + (physicalOutcome * 0.65f) : physicalOutcome * 0.20f);
+                if (!transduction.MotorTrainingMode)
+                {
+                    ObserveCurriculumTaskLocked(
+                        "action_outcome_association",
+                        selectedAction ? 0.35f + (physicalOutcome * 0.65f) : physicalOutcome * 0.20f);
+                }
 
                 var memoryStability = NeuronalMemory.Available
                     ? Math.Clamp(
@@ -2047,6 +2111,13 @@ internal sealed class SimulationState
     {
         var task = _curriculumTasks.FirstOrDefault(item =>
             item.StageIndex == _curriculumStageIndex &&
+            string.Equals(item.Name, name, StringComparison.Ordinal));
+        task?.Observe(score, Tick);
+    }
+
+    private void ObserveCurriculumTaskAnyStageLocked(string name, float score)
+    {
+        var task = _curriculumTasks.FirstOrDefault(item =>
             string.Equals(item.Name, name, StringComparison.Ordinal));
         task?.Observe(score, Tick);
     }
@@ -2195,6 +2266,15 @@ internal sealed class SimulationState
         lock (_gate)
         {
             NeuronalMotor = runtime;
+            _actionAuthorityTelemetry.Observe(runtime);
+        }
+    }
+
+    public ActionAuthorityCumulativeTelemetry GetActionAuthorityTelemetrySnapshot()
+    {
+        lock (_gate)
+        {
+            return _actionAuthorityTelemetry.Capture();
         }
     }
 
@@ -2204,6 +2284,33 @@ internal sealed class SimulationState
         lock (_gate)
         {
             NeuronalLanguageGrounding = grounding;
+        }
+    }
+
+    public long GetPhysicalBodyInputAgeMilliseconds(long monotonicMilliseconds)
+    {
+        lock (_gate)
+        {
+            return _latestPhysicalBodyReceivedMonotonicMs < 0
+                ? -1
+                : Math.Max(0, monotonicMilliseconds - _latestPhysicalBodyReceivedMonotonicMs);
+        }
+    }
+
+    public SensorimotorTimingRuntime GetSensorimotorTimingSnapshot()
+    {
+        lock (_gate)
+        {
+            return SensorimotorTiming;
+        }
+    }
+
+    public void UpdateSensorimotorTiming(SensorimotorTimingRuntime runtime)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        lock (_gate)
+        {
+            SensorimotorTiming = runtime;
         }
     }
 
@@ -2727,6 +2834,9 @@ internal sealed class SimulationState
             MetabolicPhysiology = MetabolicPhysiologyRuntime.Default;
             VisualAttention = NeuronalVisualAttentionDecision.Unavailable;
             Curriculum = CurriculumRuntime.Default;
+            SensorimotorTiming = SensorimotorTimingRuntime.Default;
+            _actionAuthorityTelemetry.Reset();
+            _latestPhysicalBodyReceivedMonotonicMs = -1;
             TransportStats = TransportRuntimeStats.Empty;
             ServiceTelemetry.Clear();
             _dispatchLifetimeOut.Clear();
@@ -4130,6 +4240,8 @@ internal sealed class SimulationState
             LegacyWinnerEnabled = false
         },
         NeuronalMotor,
+        ActionAuthorityHistory = _actionAuthorityTelemetry.Capture(),
+        SensorimotorTiming,
         NeuronalLanguageGrounding,
         NeuronalPerception,
         NeuronalMemory,
@@ -5617,6 +5729,7 @@ internal sealed class TickCoordinator(
     NeuronalAffectValuationRuntime neuronalAffectValuation,
     NeuronalExecutiveRuntime neuronalExecutive,
     NeuronalCognitionAuthorityRuntime neuronalCognitionAuthority,
+    TeachingTelemetryAccumulator teachingTelemetry,
     SimulationQuiescenceState quiescence,
     ILogger<TickCoordinator> logger) : BackgroundService
 {
@@ -5793,7 +5906,11 @@ internal sealed class TickCoordinator(
             var tickWallSamples = new Queue<double>(256);
             var lastAutoProfileSignal = "none";
             var spontaneousGateStarvationTicks = 0;
-            var tickParticipantCursor = 0;
+            var fastLaneTickCursor = 0;
+            var generalLaneTickCursor = 0;
+            var sensorimotorCadenceTracker = new SensorimotorCadenceTracker();
+            var structureIntegrationCadence = new StructureIntegrationCadence();
+            var latestInstanceSnapshots = new Dictionary<string, InstanceStructureSnapshot>(StringComparer.OrdinalIgnoreCase);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -5889,6 +6006,7 @@ internal sealed class TickCoordinator(
                         restartStructureServicesOnSimRestart,
                         stoppingToken);
                     topQueryCursor = 0;
+                    latestInstanceSnapshots.Clear();
                 }
 
                 autoHealRestartTask = await ObserveCompletedAutoHealRestartAsync(
@@ -6043,17 +6161,26 @@ internal sealed class TickCoordinator(
                     effectiveTickAckTimeoutMs = Math.Max(effectiveTickAckTimeoutMs, startupWarmupAckTimeoutMs);
                     effectiveTickIoTimeoutMs = Math.Max(effectiveTickIoTimeoutMs, startupWarmupIoTimeoutMs);
                 }
-                var tickParticipantSelection = SelectTickParticipants(
+                var tickParticipantSelection = SensorimotorTickScheduler.Select(
                     availableServices,
-                    ref tickParticipantCursor,
+                    ref fastLaneTickCursor,
+                    ref generalLaneTickCursor,
                     maxTickRequestConcurrency,
                     adaptivePressure,
                     tickSignal.Tick <= Math.Max(1, startupWarmupTicks));
                 var activeServices = tickParticipantSelection.Participants;
+                var sensorimotorNowMs = Environment.TickCount64;
+                state.UpdateSensorimotorTiming(sensorimotorCadenceTracker.Observe(
+                    tickSignal.Tick,
+                    sensorimotorNowMs,
+                    state.GetPhysicalBodyInputAgeMilliseconds(sensorimotorNowMs),
+                    tickParticipantSelection));
                 if (tickParticipantSelection.Throttled && tickSignal.Tick % 24 == 0)
                 {
                     state.AppendOutputLog(
-                        $"Tick load shed @ tick {tickSignal.Tick}: ticking {activeServices.Count}/{availableServices.Count} available structures (pressure={adaptivePressure:0.000}).");
+                        $"Tick load shed @ tick {tickSignal.Tick}: ticking {activeServices.Count}/{availableServices.Count} available structures " +
+                        $"(sensorimotor={tickParticipantSelection.FastLaneSelected}/{tickParticipantSelection.FastLaneAvailable}, " +
+                        $"general={tickParticipantSelection.GeneralLaneSelected}, pressure={adaptivePressure:0.000}).");
                 }
                 var shouldQueryTop = (tickSignal.Tick % topQueryEveryNTicks) == 0;
                 var remainingDispatchBudget = effectiveMaxSpikeDispatchTotalPerTick;
@@ -6095,6 +6222,7 @@ internal sealed class TickCoordinator(
                     effectiveTickAckTimeoutMs,
                     effectiveTickPublishWaitMs,
                     effectiveTickPublishSettleMs,
+                    structureIntegrationCadence,
                     useDirectStepFastPath,
                     degradedModeIgnoreOffline,
                     degradedLogEveryTicks,
@@ -6401,10 +6529,22 @@ internal sealed class TickCoordinator(
                     ack.SynapticMemoryDiagnostics,
                     ack.NeuronalAttentionWorkspaceDiagnostics,
                     ack.NeuronalSleepConsolidationDiagnostics,
-                    ack.CorticalLaminarDiagnostics);
+                    ack.CorticalLaminarDiagnostics,
+                    SourceTick: tickSignal.Tick,
+                    SourceTimestampMs: tickSignal.TimestampMs);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
+            foreach (var snapshot in processedSnapshots)
+            {
+                var cadenceTicks = latestInstanceSnapshots.TryGetValue(snapshot.Instance.InstanceKey, out var previousSnapshot)
+                    ? Math.Max(1L, snapshot.SourceTick - previousSnapshot.SourceTick)
+                    : 0L;
+                latestInstanceSnapshots[snapshot.Instance.InstanceKey] = snapshot with
+                {
+                    CadenceTicks = cadenceTicks
+                };
+            }
             var neuronalPercept = neuronalPerception.Update(tickSignal.Tick, processedSnapshots);
             var neuronalMemoryDecision = neuronalMemory.Update(tickSignal.Tick, processedSnapshots);
             var neuronalAttention = neuronalAttentionWorkspace.Update(tickSignal.Tick, processedSnapshots);
@@ -6440,7 +6580,10 @@ internal sealed class TickCoordinator(
                     $"Last={queueFlush.LastError ?? "n/a"}");
             }
 
-            var aggregatedSnapshots = AggregateInstanceSnapshots(processedSnapshots);
+            var aggregatedSnapshots = AggregateInstanceSnapshots(
+                processedSnapshots,
+                tickSignal.Tick,
+                tickSignal.TimestampMs);
             var previousNeuronalMotor = state.GetNeuronalMotorSnapshot();
             var neuronalControl = neuronalMotorControl.GetSnapshot();
             var neuronalMotorPopulation = neuronalMotorPopulationWindow.UpdateAndGet(
@@ -6451,7 +6594,8 @@ internal sealed class TickCoordinator(
                 tickSignal.Tick,
                 neuronalMotorPopulation,
                 neuronalControl,
-                previousNeuronalMotor);
+                previousNeuronalMotor,
+                Environment.TickCount64);
             state.UpdateNeuronalMotor(neuronalMotor);
             var neuronalExecutiveDecision = neuronalExecutive.Update(
                 tickSignal.Tick,
@@ -6523,7 +6667,11 @@ internal sealed class TickCoordinator(
                     stoppingToken);
             }
 
-            snapshots.AddRange(MergeSpontaneousNeuronHighlights(aggregatedSnapshots, spontaneousNeuronIdsByStructure));
+            var persistedSnapshots = AggregateInstanceSnapshots(
+                latestInstanceSnapshots.Values.ToArray(),
+                tickSignal.Tick,
+                tickSignal.TimestampMs);
+            snapshots.AddRange(MergeSpontaneousNeuronHighlights(persistedSnapshots, spontaneousNeuronIdsByStructure));
             foreach (var structureId in registry.Keys)
             {
                 if (!instanceKeysByStructure.TryGetValue(structureId, out var instanceKeys) || instanceKeys.Length == 0)
@@ -6709,14 +6857,44 @@ internal sealed class TickCoordinator(
 
             if (tickSignal.Tick % snapshotEvery == 0)
             {
+                var globalNeuromod = AggregateGlobalNeuromodState(snapshots);
+                var rewardPredictionError = AggregateRewardPredictionError(snapshots);
+                var actionTrace = new ActionAuthorityTrace(
+                    neuronalMotor.ActionCircuitObserved,
+                    neuronalMotor.Active && neuronalMotor.SelectedActionChannel >= 0,
+                    neuronalMotor.SelectedActionChannel,
+                    neuronalMotor.SelectedActionChannel >= 0 &&
+                        neuronalMotor.ActionChannelTraces is { Count: > 0 }
+                            ? neuronalMotor.ActionChannelTraces
+                                .FirstOrDefault(trace => trace.ChannelIndex == neuronalMotor.SelectedActionChannel)
+                                ?.SelectionScore ?? 0f
+                            : 0f,
+                    (float)neuronalMotor.ActionSelectionMargin,
+                    (float)neuronalMotor.ActionCircuitCoverage,
+                    (float)neuronalMotor.ActionFunctionalCoverage,
+                    neuronalMotor.ActionAuthorityReason,
+                    neuronalMotor.ActionChannelTraces ?? []);
+                var observedStructureTypes = snapshots.Select(static item => item.StructureId).Distinct().Count();
+                var freshStructureTypes = snapshots.Count(static item => item.Fresh);
+                var snapshotDiagnostics = new BrainSnapshotDiagnostics(
+                    registry.Count,
+                    observedStructureTypes,
+                    freshStructureTypes,
+                    Math.Max(0, observedStructureTypes - freshStructureTypes),
+                    snapshots.Select(static item => item.AgeTicks).DefaultIfEmpty(0).Max(),
+                    RawLocalDiagnosticsPreserved: true,
+                    actionTrace,
+                    teachingTelemetry.GetSnapshot(),
+                    state.GetActionAuthorityTelemetrySnapshot());
                 var brainSnapshot = new BrainSnapshot(
                     tickSignal.Tick,
                     tickSignal.TimestampMs,
-                    new NeuromodState(),
+                    globalNeuromod,
                     tickSignal.PhaseContext,
-                    0f,
+                    rewardPredictionError,
                     snapshots,
-                    activePathways.Select(x => new ActivePathway(x.Key.Source, x.Key.Target, x.Value, x.Key.Nt)).ToList());
+                    activePathways.Select(x => new ActivePathway(x.Key.Source, x.Key.Target, x.Value, x.Key.Nt)).ToList(),
+                    snapshotDiagnostics);
 
                 await snapshotStore.AppendAsync(brainSnapshot, stoppingToken);
                 state.MarkSnapshot(brainSnapshot);
@@ -6969,6 +7147,7 @@ internal sealed class TickCoordinator(
         int effectiveTickAckTimeoutMs,
         int effectiveTickPublishWaitMs,
         int effectiveTickPublishSettleMs,
+        StructureIntegrationCadence structureIntegrationCadence,
         bool useDirectStepFastPath,
         bool degradedModeIgnoreOffline,
         int degradedLogEveryTicks,
@@ -6986,6 +7165,7 @@ internal sealed class TickCoordinator(
                 var stopwatch = Stopwatch.StartNew();
                 var tickPermit = false;
                 var includeTop = topQueryInstanceKeys.Contains(instance.InstanceKey);
+                var structureTickSignal = structureIntegrationCadence.CreateSignal(instance, tickSignal);
 
                 try
                 {
@@ -6993,7 +7173,7 @@ internal sealed class TickCoordinator(
                     tickPermit = true;
                     using var ctsAck = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
                     ctsAck.CancelAfter(TimeSpan.FromMilliseconds(effectiveTickAckTimeoutMs));
-                    var stepRequest = new StructureStepRequest(tickSignal, includeTop ? 8 : 0, includeTop);
+                    var stepRequest = new StructureStepRequest(structureTickSignal, includeTop ? 8 : 0, includeTop);
                     using var stepResponse = await client.PostAsJsonAsync("/api/v1/structure/step", stepRequest, ctsAck.Token);
                     stepResponse.EnsureSuccessStatusCode();
                     var step = await stepResponse.Content.ReadFromJsonAsync<StructureStepResult>(cancellationToken: ctsAck.Token)
@@ -7003,6 +7183,8 @@ internal sealed class TickCoordinator(
                         throw new InvalidOperationException(
                             $"Mismatched step tick from {instance.InstanceKey}: expected {tickSignal.Tick}, received {step.Ack.Tick}");
                     }
+
+                    structureIntegrationCadence.MarkSuccessful(instance, structureTickSignal);
 
                     if (includeTop)
                     {
@@ -7107,40 +7289,6 @@ internal sealed class TickCoordinator(
                 serviceHealth.TryGetValue(instance.InstanceKey, out var health) &&
                 string.Equals(health.CreateTelemetry(nowMs).LastStatus, "OK", StringComparison.OrdinalIgnoreCase))
             .ToList();
-
-    private static TickParticipantSelection SelectTickParticipants(
-        IReadOnlyList<ServiceInstance> availableServices,
-        ref int cursor,
-        int maxTickRequestConcurrency,
-        double adaptivePressure,
-        bool startupWarmup)
-    {
-        if (availableServices.Count == 0)
-        {
-            return new TickParticipantSelection([], false);
-        }
-
-        var baselineMultiplier = startupWarmup ? 2.0 : 3.0;
-        var relaxedBudget = Math.Max(1, (int)Math.Round(maxTickRequestConcurrency * baselineMultiplier));
-        var pressureRatio = Math.Clamp(adaptivePressure, 0.0, 1.0);
-        var pressureScale = 1.0 - (pressureRatio * 0.45);
-        var pressureBudget = Math.Max(1, (int)Math.Round(maxTickRequestConcurrency * pressureScale));
-        var participantBudget = Math.Clamp(Math.Min(relaxedBudget, Math.Max(maxTickRequestConcurrency, pressureBudget)), 1, availableServices.Count);
-        if (participantBudget >= availableServices.Count)
-        {
-            cursor = 0;
-            return new TickParticipantSelection(availableServices.ToList(), false);
-        }
-
-        var selected = new List<ServiceInstance>(participantBudget);
-        for (var i = 0; i < participantBudget; i++)
-        {
-            selected.Add(availableServices[(cursor + i) % availableServices.Count]);
-        }
-
-        cursor = (cursor + participantBudget) % availableServices.Count;
-        return new TickParticipantSelection(selected, true);
-    }
 
     private Task<RestartServiceResult>? MaybeStartAutoHealRestartAsync(
         bool autoHealEnabled,
@@ -7427,11 +7575,6 @@ internal sealed class TickCoordinator(
         List<TickStepResult> SuccessfulSteps,
         List<ServiceInstance> HealthySources,
         int TopQueryCount);
-
-    private sealed record TickParticipantSelection(
-        List<ServiceInstance> Participants,
-        bool Throttled);
-
 
     private static string NormalizeHemisphere(string? hemisphere)
     {
@@ -8077,7 +8220,10 @@ internal sealed class TickCoordinator(
         return "M";
     }
 
-    private static IReadOnlyList<StructureSnapshot> AggregateInstanceSnapshots(IReadOnlyList<InstanceStructureSnapshot> instanceSnapshots)
+    private static IReadOnlyList<StructureSnapshot> AggregateInstanceSnapshots(
+        IReadOnlyList<InstanceStructureSnapshot> instanceSnapshots,
+        long currentTick,
+        double currentTimestampMs)
     {
         if (instanceSnapshots.Count == 0)
         {
@@ -8113,6 +8259,20 @@ internal sealed class TickCoordinator(
                 .ThenByDescending(g => g.Average(x => x.MeanFiringRateHz))
                 .Select(g => g.Key)
                 .FirstOrDefault();
+            var sourceTick = members.Max(static item => item.SourceTick);
+            var sourceTimestampMs = members
+                .Where(item => item.SourceTick == sourceTick)
+                .Select(static item => item.SourceTimestampMs)
+                .DefaultIfEmpty(0.0)
+                .Max();
+            var ageTicks = Math.Max(0L, currentTick - sourceTick);
+            var ageMilliseconds = Math.Max(0.0, currentTimestampMs - sourceTimestampMs);
+            var observedCadenceTicks = members
+                .Where(static item => item.CadenceTicks > 0)
+                .Select(static item => (double)item.CadenceTicks)
+                .DefaultIfEmpty(0.0)
+                .Average();
+            var freshnessBoundTicks = Math.Max(2L, (long)Math.Ceiling(observedCadenceTicks * 2.0));
 
             aggregated.Add(new StructureSnapshot(
                 group.Key,
@@ -8148,10 +8308,20 @@ internal sealed class TickCoordinator(
                 AverageSynapticMemoryDiagnostics(members),
                 AverageNeuronalAttentionWorkspaceDiagnostics(members),
                 AverageNeuronalSleepConsolidationDiagnostics(members),
-                AverageCorticalLaminarDiagnostics(members)));
+                AverageCorticalLaminarDiagnostics(members),
+                SourceTick: sourceTick,
+                AgeTicks: ageTicks,
+                SourceTimestampMs: sourceTimestampMs,
+                AgeMilliseconds: ageMilliseconds,
+                SourceInstanceCount: members.Count,
+                ObservedCadenceTicks: observedCadenceTicks,
+                Fresh: sourceTick > 0 && ageTicks <= freshnessBoundTicks));
         }
 
-        return EnrichActionSelectionDiagnostics(EnrichVisualObjectRecognitionDiagnostics(
+        // Cross-structure displays are enriched independently, but action-selection
+        // diagnostics remain the raw local source for each nucleus. The authoritative
+        // composite and its admission reason live at BrainSnapshot.Diagnostics.
+        return EnrichVisualObjectRecognitionDiagnostics(
             EnrichAuditoryLanguageMotorDiagnostics(
                 EnrichOlfactoryLimbicMemoryDiagnostics(
                     EnrichSpinalProprioceptiveDiagnostics(
@@ -8167,7 +8337,34 @@ internal sealed class TickCoordinator(
                                                             EnrichSuperiorColliculusOrientingDiagnostics(
                                                                 EnrichVestibuloReticularPostureDiagnostics(
                                                                     EnrichCerebellarCorrectionDiagnostics(
-                                                                        EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()));
+                                                                    EnrichBasalGangliaActionSelectionDiagnostics(aggregated).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList()).ToList());
+    }
+
+    private static NeuromodState AggregateGlobalNeuromodState(IReadOnlyList<StructureSnapshot> snapshots)
+    {
+        if (snapshots.Count == 0)
+        {
+            return new NeuromodState();
+        }
+
+        return NeuromodState.Clamp(new NeuromodState
+        {
+            DopamineLevel = (float)snapshots.Average(static item => item.NeuromodLocal.DopamineLevel),
+            SerotoninLevel = (float)snapshots.Average(static item => item.NeuromodLocal.SerotoninLevel),
+            AcetylcholineLevel = (float)snapshots.Average(static item => item.NeuromodLocal.AcetylcholineLevel),
+            NorepinephrineLevel = (float)snapshots.Average(static item => item.NeuromodLocal.NorepinephrineLevel)
+        });
+    }
+
+    private static float AggregateRewardPredictionError(IReadOnlyList<StructureSnapshot> snapshots)
+    {
+        var evidence = snapshots
+            .Where(static item => item.StructureId is StructureId.Vta or StructureId.Snc or StructureId.NucleusAccumbens)
+            .Select(static item => item.DopamineRewardDiagnostics?.RewardPredictionError)
+            .Where(static value => value.HasValue)
+            .Select(static value => value!.Value)
+            .ToArray();
+        return evidence.Length == 0 ? 0f : (float)evidence.Average();
     }
 
     private static IReadOnlyList<StructureSnapshot> MergeSpontaneousNeuronHighlights(
@@ -9088,7 +9285,7 @@ internal sealed class TickCoordinator(
         var error = (float)diagnostics.Average(d => d.BalanceError);
 
         return new VestibuloReticularDiagnostics(
-            SelectVestibuloReticularMode(vestibular, reticular, vermis, spinalTone, error),
+            VestibuloReticularPopulationDecoder.SelectMode(vestibular, reticular, vermis, spinalTone, error),
             vestibular,
             reticular,
             vermis,
@@ -9113,17 +9310,12 @@ internal sealed class TickCoordinator(
             ? rf.NeuromodLocal.NorepinephrineLevel
             : 0f;
 
-        var arousal = reticular * (0.80f + Math.Clamp(norepinephrine, 0f, 1f) * 0.55f);
-        var balanceError = Math.Max(0f, vestibular - ((vermis * 0.55f) + (spinalTone * 0.25f)));
-        var postureStability = Math.Clamp((vermis * 0.35f) + (spinalTone * 0.30f) + (arousal * 0.20f) - (balanceError * 0.25f), 0f, 120f);
-        var composite = new VestibuloReticularDiagnostics(
-            SelectVestibuloReticularMode(vestibular, arousal, vermis, spinalTone, balanceError),
+        var composite = VestibuloReticularPopulationDecoder.Compose(
             vestibular,
-            arousal,
+            reticular,
             vermis,
             spinalTone,
-            postureStability,
-            balanceError);
+            norepinephrine);
 
         for (var i = 0; i < snapshots.Count; i++)
         {
@@ -9147,21 +9339,6 @@ internal sealed class TickCoordinator(
             or StructureId.CerebellarLobules
             or StructureId.DentateNucleus
             or StructureId.M1;
-
-    private static string SelectVestibuloReticularMode(float vestibular, float reticular, float vermis, float spinalTone, float balanceError)
-    {
-        if (balanceError > Math.Max(0.20f, vermis * 0.75f))
-        {
-            return "Rebalancing";
-        }
-
-        if (reticular > Math.Max(0.18f, spinalTone * 1.20f))
-        {
-            return "Aroused";
-        }
-
-        return "Steady";
-    }
 
     private static SuperiorColliculusDiagnostics? AverageSuperiorColliculusDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
     {
@@ -13120,7 +13297,10 @@ internal sealed record InstanceStructureSnapshot(
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
     NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
     NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null,
-    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null);
+    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null,
+    long SourceTick = 0,
+    double SourceTimestampMs = 0,
+    long CadenceTicks = 0);
 
 internal sealed class AdminInputRestartGate
 {

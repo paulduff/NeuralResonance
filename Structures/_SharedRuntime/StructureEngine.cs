@@ -9,6 +9,9 @@ using NeuralResonanceEngine.Shared.Contracts;
 
 public sealed class StructureEngine : IStructureHost, IDisposable
 {
+	private const double MaximumIntegrationSubstepMilliseconds = 4.0;
+	private const double MaximumCatchUpMilliseconds = 100.0;
+
 	private readonly StructureProfile _profile;
 
 	private readonly StructureCircuitProfile _circuit;
@@ -71,6 +74,22 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private readonly int[] _actionChannelIndirectCounts = new int[ActionChannelTopology.ChannelCount];
 
+	private readonly float[] _actionChannelDirectMembraneSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelIndirectMembraneSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelDirectCurrentSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelIndirectCurrentSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelDirectUpStateSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly float[] _actionChannelIndirectUpStateSums = new float[ActionChannelTopology.ChannelCount];
+
+	private readonly int[] _actionChannelDirectActiveCounts = new int[ActionChannelTopology.ChannelCount];
+
+	private readonly int[] _actionChannelIndirectActiveCounts = new int[ActionChannelTopology.ChannelCount];
+
 	private readonly float[] _actionChannelEligibility = new float[ActionChannelTopology.ChannelCount];
 
 	private readonly float[] _actionChannelSynapticStrength = new float[ActionChannelTopology.ChannelCount];
@@ -79,6 +98,11 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	private readonly float[] _rightingInputTrace;
 	private float _rightingOutputTrace;
 	private double _lastRightingTraceTimestampMs = double.NaN;
+	private readonly float[] _withdrawalInputTrace;
+	private readonly float[] _withdrawalOutputTrace = new float[ActionChannelTopology.ChannelCount];
+	private readonly float[] _withdrawalInhibitoryTrace = new float[ActionChannelTopology.ChannelCount];
+	private readonly Dictionary<string, WithdrawalSourceTraceState> _withdrawalSourceTraces = new(StringComparer.Ordinal);
+	private double _lastWithdrawalTraceTimestampMs = double.NaN;
 
 	private readonly float[] _perceptEnsembleRateSums = new float[PerceptEnsembleTopology.EnsembleCount];
 
@@ -152,10 +176,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		_neurons = (from i in Enumerable.Range(0, _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
 		_rightingInputTrace = new float[_neurons.Length];
+		_withdrawalInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId);
 		_synapseStore.Load(_inboundSynapses, _outboundSynapses);
+		_synapseStore.EnsureInitialized(_inboundSynapses, _outboundSynapses);
 		RebuildSynapticMemoryAggregates();
 		// Capture the handlers as fields so they can be unsubscribed in Dispose.
 		// Without this, recreating an engine in-process (tests, hot reload) would
@@ -277,9 +303,13 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				throw new StructureTickSequenceException(_profile.StructureId, tickSignal.Tick, _lastProcessedTick);
 			}
 
-			DecayRightingTraces(tickSignal.TimestampMs, tickSignal.TickDurationMs);
-			ProcessDueQueue(_feedForward, tickSignal, isFeedback: false);
-			ProcessDueQueue(_feedback, tickSignal, isFeedback: true);
+			var elapsedMilliseconds = NormalizeElapsedMilliseconds(tickSignal.TickDurationMs);
+			var integrationStepCount = Math.Max(
+				1,
+				(int)Math.Ceiling(elapsedMilliseconds / MaximumIntegrationSubstepMilliseconds));
+			var integrationStepMilliseconds = elapsedMilliseconds / integrationStepCount;
+			DecayRightingTraces(tickSignal.TimestampMs, elapsedMilliseconds);
+			DecayWithdrawalTraces(tickSignal.TimestampMs, elapsedMilliseconds);
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
 			var perceptCircuit = PerceptEnsembleTopology.IsPerceptCircuitStructure(_profile.StructureId);
 			var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
@@ -295,6 +325,14 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				Array.Clear(_actionChannelDirectCounts);
 				Array.Clear(_actionChannelIndirectSums);
 				Array.Clear(_actionChannelIndirectCounts);
+				Array.Clear(_actionChannelDirectMembraneSums);
+				Array.Clear(_actionChannelIndirectMembraneSums);
+				Array.Clear(_actionChannelDirectCurrentSums);
+				Array.Clear(_actionChannelIndirectCurrentSums);
+				Array.Clear(_actionChannelDirectUpStateSums);
+				Array.Clear(_actionChannelIndirectUpStateSums);
+				Array.Clear(_actionChannelDirectActiveCounts);
+				Array.Clear(_actionChannelIndirectActiveCounts);
 			}
 			if (perceptCircuit || memoryCircuit)
 			{
@@ -321,6 +359,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			}
 			int num = 0;
 			int num2 = 0;
+			var activeDuringInterval = integrationStepCount > 1
+				? new bool[_neurons.Length]
+				: null;
 			double num3 = 0.0;
 			double num4 = 0.0;
 			double stabilityTotal = 0.0;
@@ -336,8 +377,21 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			double acetylcholineTotal = 0.0;
 			double norepinephrineTotal = 0.0;
 			double rewardSignalTotal = 0.0;
-			for (int i = 0; i < _neurons.Length; i++)
+			var intervalStartTimestampMs = Math.Max(0.0, tickSignal.TimestampMs - elapsedMilliseconds);
+			for (var integrationStep = 0; integrationStep < integrationStepCount; integrationStep++)
 			{
+				var captureDiagnostics = integrationStep == integrationStepCount - 1;
+				var substepTimestampMs = intervalStartTimestampMs +
+					((integrationStep + 1) * integrationStepMilliseconds);
+				var substepSignal = tickSignal with
+				{
+					TimestampMs = substepTimestampMs,
+					TickDurationMs = integrationStepMilliseconds
+				};
+				ProcessDueQueue(_feedForward, substepSignal, integrationStepMilliseconds, isFeedback: false);
+				ProcessDueQueue(_feedback, substepSignal, integrationStepMilliseconds, isFeedback: true);
+				for (int i = 0; i < _neurons.Length; i++)
+				{
 				ModelNeuron modelNeuron = _neurons[i];
 				IntrinsicCircuitDriveTopology.Resolve(
 					_profile.StructureId,
@@ -357,31 +411,66 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						out var intrinsicInhibition);
 					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
 				}
-				var fired = modelNeuron.Step(tickSignal.TickDurationMs);
+				var fired = modelNeuron.Step(integrationStepMilliseconds);
+				if (activeDuringInterval is not null && (fired || modelNeuron.IsActive))
+				{
+					activeDuringInterval[i] = true;
+				}
 				if (fired)
 				{
 					num++;
 					if (modelNeuron.CorticalPopulationKind is { } corticalPopulation)
 					{
-						ScheduleLocalCorticalSpike(modelNeuron, corticalPopulation, tickSignal);
+						ScheduleLocalCorticalSpike(modelNeuron, corticalPopulation, substepSignal);
 						if (CorticalLaminarTopology.EmitsLongRangeProjection(corticalPopulation))
 						{
-							_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, NTEnum.GLUTAMATE, isFeedback: false));
+							_outbound.Enqueue(BuildOutboundSpike(modelNeuron, substepSignal, modelNeuron.PreferredTarget, NTEnum.GLUTAMATE, isFeedback: false));
 							Interlocked.Increment(ref _spikeOutCount);
 						}
 					}
 					else
 					{
-						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, modelNeuron.PreferredTarget, modelNeuron.PreferredNt, isFeedback: false));
+						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, substepSignal, modelNeuron.PreferredTarget, modelNeuron.PreferredNt, isFeedback: false));
 						Interlocked.Increment(ref _spikeOutCount);
 					}
 					if (_profile.StructureId == StructureId.CA3)
 					{
-						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, tickSignal, StructureId.CA3, NTEnum.GLUTAMATE, isFeedback: true));
+						_outbound.Enqueue(BuildOutboundSpike(modelNeuron, substepSignal, StructureId.CA3, NTEnum.GLUTAMATE, isFeedback: true));
 						Interlocked.Increment(ref _spikeOutCount);
 					}
 				}
-				if (modelNeuron.IsActive)
+				if (RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
+					fired &&
+					_rightingInputTrace[i] > 0.01f)
+				{
+					var evokedDrive = NormalizeActionRate(modelNeuron.FiringRateHz) *
+						_rightingInputTrace[i];
+					_rightingOutputTrace = Math.Max(_rightingOutputTrace, evokedDrive);
+				}
+				if (_profile.StructureId == StructureId.SpinalCordMotor &&
+					fired &&
+					_withdrawalInputTrace[i] > 0.01f)
+				{
+					var channel = ActionChannelTopology.ChannelForNeuron(i, _profile.StructureId);
+					if (WithdrawalReflexTopology.IsWithdrawalChannel(channel))
+					{
+						var evokedDrive = NormalizeActionRate(modelNeuron.FiringRateHz) *
+							_withdrawalInputTrace[i];
+						_withdrawalOutputTrace[channel] = Math.Max(
+							_withdrawalOutputTrace[channel],
+							evokedDrive);
+						_withdrawalInhibitoryTrace[channel] = Math.Max(
+							_withdrawalInhibitoryTrace[channel],
+							Math.Clamp(0.32f + (evokedDrive * 0.68f), 0f, 1f));
+						AttributeWithdrawalOutput(channel, evokedDrive);
+					}
+				}
+				if (!captureDiagnostics)
+				{
+					continue;
+				}
+				var activeInInterval = activeDuringInterval?[i] ?? modelNeuron.IsActive;
+				if (activeInInterval)
 				{
 					num2++;
 				}
@@ -400,12 +489,26 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 						if (ActionChannelTopology.IsDirectPathwayNeuron(modelNeuron.Index))
 						{
 							_actionChannelDirectSums[channel] += modelNeuron.FiringRateHz;
+							_actionChannelDirectMembraneSums[channel] += modelNeuron.MembranePotentialMillivolts;
+							_actionChannelDirectCurrentSums[channel] += modelNeuron.NetSynapticCurrent;
+							_actionChannelDirectUpStateSums[channel] += modelNeuron.StriatalUpStateTrace;
 							_actionChannelDirectCounts[channel]++;
+							if (activeInInterval)
+							{
+								_actionChannelDirectActiveCounts[channel]++;
+							}
 						}
 						else
 						{
 							_actionChannelIndirectSums[channel] += modelNeuron.FiringRateHz;
+							_actionChannelIndirectMembraneSums[channel] += modelNeuron.MembranePotentialMillivolts;
+							_actionChannelIndirectCurrentSums[channel] += modelNeuron.NetSynapticCurrent;
+							_actionChannelIndirectUpStateSums[channel] += modelNeuron.StriatalUpStateTrace;
 							_actionChannelIndirectCounts[channel]++;
+							if (activeInInterval)
+							{
+								_actionChannelIndirectActiveCounts[channel]++;
+							}
 						}
 					}
 				}
@@ -435,18 +538,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 					var populationIndex = (int)population;
 					_corticalPopulationRateSums[populationIndex] += modelNeuron.FiringRateHz;
 					_corticalPopulationRateCounts[populationIndex]++;
-					if (modelNeuron.IsActive)
+					if (activeInInterval)
 					{
 						_corticalPopulationActiveCounts[populationIndex]++;
 					}
-				}
-				if (RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
-					fired &&
-					_rightingInputTrace[i] > 0.01f)
-				{
-					var evokedDrive = NormalizeActionRate(modelNeuron.FiringRateHz) *
-						_rightingInputTrace[i];
-					_rightingOutputTrace = Math.Max(_rightingOutputTrace, evokedDrive);
 				}
 				stabilityTotal += (double)modelNeuron.MicrotubuleStability;
 				spineEligibilityTotal += (double)modelNeuron.MicrotubuleSpineInvasionEligibility;
@@ -462,6 +557,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				acetylcholineTotal += neuronNeuromod.AcetylcholineLevel;
 				norepinephrineTotal += neuronNeuromod.NorepinephrineLevel;
 				rewardSignalTotal += modelNeuron.LocalRewardSignal;
+				}
 			}
 			_activeNeuronCount = num2;
 			_meanFiringRateHz = (float)(num3 / (double)_neurons.Length);
@@ -601,7 +697,16 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 	}
 
-	private void ProcessDueQueue(PriorityQueue<SpikeEnvelope, double> queue, TickSignal tickSignal, bool isFeedback)
+	private static double NormalizeElapsedMilliseconds(double elapsedMilliseconds)
+		=> double.IsFinite(elapsedMilliseconds) && elapsedMilliseconds > 0.0
+			? Math.Min(elapsedMilliseconds, MaximumCatchUpMilliseconds)
+			: 1.0;
+
+	private void ProcessDueQueue(
+		PriorityQueue<SpikeEnvelope, double> queue,
+		TickSignal tickSignal,
+		double integrationStepMilliseconds,
+		bool isFeedback)
 	{
 		List<SpikeEnvelope>? due = null;
 		lock (_inboundQueueGate)
@@ -633,14 +738,54 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SynapseState synapse = GetOrCreateInboundSynapse(message);
 			SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
 			effectiveMessage = ApplyRightingRelayEfficacy(effectiveMessage);
+			effectiveMessage = ApplyWithdrawalRecurrentInhibition(effectiveMessage, modelNeuron.Index);
+			effectiveMessage = ApplyWithdrawalRelayEfficacy(effectiveMessage);
 			if (RightingReflexTopology.IsEvokedRightingInput(effectiveMessage))
 			{
 				_rightingInputTrace[modelNeuron.Index] = Math.Max(
 					_rightingInputTrace[modelNeuron.Index],
 					Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f));
 			}
-			modelNeuron.Integrate(effectiveMessage, tickSignal.TickDurationMs);
-			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, tickSignal.TimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
+			if (WithdrawalReflexTopology.IsEvokedWithdrawalInput(effectiveMessage))
+			{
+				var afferentDrive = Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f);
+				_withdrawalInputTrace[modelNeuron.Index] = Math.Max(
+					_withdrawalInputTrace[modelNeuron.Index],
+					afferentDrive);
+				if (WithdrawalReflexTopology.TryResolveSourceRoute(effectiveMessage, out var route))
+				{
+					ObserveWithdrawalSource(route, afferentDrive);
+				}
+			}
+			IntegrateInboundArbor(effectiveMessage, modelNeuron, integrationStepMilliseconds);
+			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, envelope.DeliverAtTimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
+		}
+	}
+
+	private void IntegrateInboundArbor(
+		SpikeMessage message,
+		ModelNeuron primary,
+		double tickDurationMs)
+	{
+		primary.Integrate(message, tickDurationMs);
+		if (!ActionChannelTopology.UsesConvergentStriatalArbor(message))
+		{
+			return;
+		}
+
+		// A cortical or thalamic axon branches across a small population of MSNs in
+		// the same action lane and receptor class. This supplies anatomical
+		// convergence without creating a host-side preference or motor command.
+		for (var offset = 1; offset <= 2; offset++)
+		{
+			var targetIndex = ActionChannelTopology.StriatalArborTarget(
+				primary.Index,
+				_neurons.Length,
+				offset);
+			if (targetIndex != primary.Index)
+			{
+				_neurons[targetIndex].Integrate(message, tickDurationMs);
+			}
 		}
 	}
 
@@ -664,6 +809,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		if (RightingReflexTopology.TryProjectInbound(message, _neurons.Length, out var rightingTargetIndex))
 		{
 			mappedIndex = rightingTargetIndex;
+		}
+		else if (WithdrawalReflexTopology.TryProjectInbound(message, _neurons.Length, out var withdrawalTargetIndex))
+		{
+			mappedIndex = withdrawalTargetIndex;
 		}
 		else if (AttentionWorkspaceTopology.IsAttentionSourceStructure(message.SourceStructure) &&
 			AttentionWorkspaceTopology.IsAttentionCircuitStructure(message.TargetStructure))
@@ -740,6 +889,137 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 	}
 
+	private void DecayWithdrawalTraces(double timestampMs, double tickDurationMs)
+	{
+		if (_profile.StructureId != StructureId.SpinalCordMotor)
+		{
+			return;
+		}
+
+		var fallbackDuration = double.IsFinite(tickDurationMs) && tickDurationMs > 0.0
+			? tickDurationMs
+			: 1.0;
+		var elapsedDuration = double.IsFinite(timestampMs) &&
+			double.IsFinite(_lastWithdrawalTraceTimestampMs) &&
+			timestampMs > _lastWithdrawalTraceTimestampMs
+				? timestampMs - _lastWithdrawalTraceTimestampMs
+				: fallbackDuration;
+		_lastWithdrawalTraceTimestampMs = timestampMs;
+		var boundedDuration = Math.Clamp(elapsedDuration, 0.1, 500.0);
+		var inputDecay = (float)Math.Exp(-boundedDuration / 90.0);
+		var outputDecay = (float)Math.Exp(-boundedDuration / 140.0);
+		var inhibitoryDecay = (float)Math.Exp(-boundedDuration / 650.0);
+		for (var i = 0; i < _withdrawalInputTrace.Length; i++)
+		{
+			_withdrawalInputTrace[i] *= inputDecay;
+			if (_withdrawalInputTrace[i] < 0.0001f)
+			{
+				_withdrawalInputTrace[i] = 0f;
+			}
+		}
+
+		for (var channel = 0; channel < _withdrawalOutputTrace.Length; channel++)
+		{
+			_withdrawalOutputTrace[channel] *= outputDecay;
+			if (_withdrawalOutputTrace[channel] < 0.0001f)
+			{
+				_withdrawalOutputTrace[channel] = 0f;
+			}
+
+			_withdrawalInhibitoryTrace[channel] *= inhibitoryDecay;
+			if (_withdrawalInhibitoryTrace[channel] < 0.0001f)
+			{
+				_withdrawalInhibitoryTrace[channel] = 0f;
+			}
+		}
+
+		if (_withdrawalSourceTraces.Count > 0)
+		{
+			List<string>? releasedSources = null;
+			foreach (var pair in _withdrawalSourceTraces)
+			{
+				pair.Value.Decay(inputDecay, outputDecay, (float)boundedDuration);
+				if (pair.Value.IsQuiet || pair.Value.IsExpired)
+				{
+					releasedSources ??= [];
+					releasedSources.Add(pair.Key);
+				}
+			}
+
+			if (releasedSources is not null)
+			{
+				foreach (var source in releasedSources)
+				{
+					var channel = _withdrawalSourceTraces[source].Route.ChannelIndex;
+					_withdrawalSourceTraces.Remove(source);
+					if (!_withdrawalSourceTraces.Values.Any(candidate =>
+						candidate.Route.ChannelIndex == channel && !candidate.IsExpired))
+					{
+						_withdrawalOutputTrace[channel] = 0f;
+					}
+				}
+			}
+		}
+	}
+
+	private void ObserveWithdrawalSource(WithdrawalSourceRoute route, float afferentDrive)
+	{
+		if (!_withdrawalSourceTraces.TryGetValue(route.SourceKey, out var source))
+		{
+			source = new WithdrawalSourceTraceState(route);
+			_withdrawalSourceTraces.Add(route.SourceKey, source);
+		}
+
+		source.ObserveAfferent(afferentDrive);
+	}
+
+	private void AttributeWithdrawalOutput(int channel, float reflexDrive)
+	{
+		var matching = _withdrawalSourceTraces.Values
+			.Where(source => source.Route.ChannelIndex == channel && source.AfferentDrive > 0.0001f)
+			.ToArray();
+		if (matching.Length == 0)
+		{
+			return;
+		}
+
+		var totalAfferentDrive = matching.Sum(static source => source.AfferentDrive);
+		if (totalAfferentDrive <= 0.0001f)
+		{
+			return;
+		}
+
+		foreach (var source in matching)
+		{
+			source.ObserveReflex(reflexDrive * (source.AfferentDrive / totalAfferentDrive));
+		}
+	}
+
+	private IReadOnlyList<SpinalWithdrawalSourceActivity> BuildWithdrawalSourceDiagnostics()
+	{
+		if (_profile.StructureId != StructureId.SpinalCordMotor || _withdrawalSourceTraces.Count == 0)
+		{
+			return [];
+		}
+
+		return _withdrawalSourceTraces.Values
+			.OrderByDescending(static source => Math.Max(source.ReflexDrive, source.AfferentDrive))
+			.ThenBy(static source => source.Route.SourceKey, StringComparer.Ordinal)
+			.Take(64)
+			.Select(source => new SpinalWithdrawalSourceActivity(
+				source.Route.SourceKey,
+				source.Route.BodySide,
+				source.Route.Region,
+				source.Route.ContactNormalSector,
+				source.Route.ChannelIndex,
+				source.Route.MotorProjection,
+				Math.Clamp(source.AfferentDrive, 0f, 1f),
+				Math.Clamp(source.ReflexDrive, 0f, 1f),
+				Math.Clamp(_withdrawalInhibitoryTrace[source.Route.ChannelIndex], 0f, 1f),
+				Math.Max(0f, source.AfferentAgeMilliseconds)))
+			.ToArray();
+	}
+
 	private void ScheduleLocalCorticalSpike(
 		ModelNeuron source,
 		CorticalPopulation sourcePopulation,
@@ -766,8 +1046,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			source.LocalNeuromodState,
 			source.LocalRewardSignal,
 			tickSignal.TimestampMs);
-		synapse.VesicleQuanta = PlasticityRules.ClampQuanta(
-			synapse.VesicleQuanta + (float.IsFinite(delta) ? delta : 0f));
+		delta = PlasticityRules.ApplyCadenceInvariantBudget(synapse, delta, tickSignal.TimestampMs);
+		synapse.VesicleQuanta = PlasticityRules.ClampQuanta(synapse.VesicleQuanta + delta);
 		synapse.Stabilize();
 		PersistSynapses(tickSignal.TimestampMs);
 
@@ -818,6 +1098,15 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			// synapse begins at a neutral local weight so a caller cannot install a
 			// learned memory merely by choosing a large vesicle payload.
 			value = new SynapseState(message.SynapseId, message.Neurotransmitter, 1f, 1f);
+			if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) &&
+				message.Neurotransmitter == NTEnum.GLUTAMATE)
+			{
+				// Hippocampal and consolidation circuits retain a larger one-time
+				// formation reserve for burst-tagged one-shot encoding. It is still
+				// bounded by the common plasticity bucket and is not replenished by
+				// host call volume.
+				value.PlasticityBudgetQuanta = PlasticityRules.PlasticityBurstCapacityQuanta;
+			}
 			_inboundSynapses[message.SynapseId] = value;
 		}
 		return value;
@@ -878,6 +1167,77 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		};
 	}
 
+	private SpikeMessage ApplyWithdrawalRecurrentInhibition(SpikeMessage message, int targetNeuronIndex)
+	{
+		if (_profile.StructureId != StructureId.SpinalCordMotor ||
+			!WithdrawalReflexTopology.IsEvokedWithdrawalInput(message))
+		{
+			return message;
+		}
+
+		var channel = ActionChannelTopology.ChannelForNeuron(
+			targetNeuronIndex,
+			_profile.StructureId);
+		if (!WithdrawalReflexTopology.IsWithdrawalChannel(channel))
+		{
+			return message;
+		}
+
+		var effectiveQuanta = WithdrawalReflexTopology.ApplyRecurrentInhibition(
+			message,
+			message.VesicleQuanta,
+			_withdrawalInhibitoryTrace[channel]);
+		if (MathF.Abs(effectiveQuanta - message.VesicleQuanta) < 0.000001f)
+		{
+			return message;
+		}
+
+		return new SpikeMessage
+		{
+			MessageId = message.MessageId,
+			TimestampMs = message.TimestampMs,
+			SourceStructure = message.SourceStructure,
+			TargetStructure = message.TargetStructure,
+			SourceNeuronId = message.SourceNeuronId,
+			TargetNeuronId = message.TargetNeuronId,
+			SynapseId = message.SynapseId,
+			Neurotransmitter = message.Neurotransmitter,
+			VesicleQuanta = effectiveQuanta,
+			ReuptakeRate = message.ReuptakeRate,
+			SpikeType = message.SpikeType,
+			IsFeedback = message.IsFeedback,
+			ModulationContext = message.ModulationContext,
+			IsRightingCircuitSpike = message.IsRightingCircuitSpike
+		};
+	}
+
+	private static SpikeMessage ApplyWithdrawalRelayEfficacy(SpikeMessage message)
+	{
+		var effectiveQuanta = WithdrawalReflexTopology.ApplySpinalRelayEfficacy(message, message.VesicleQuanta);
+		if (MathF.Abs(effectiveQuanta - message.VesicleQuanta) < 0.000001f)
+		{
+			return message;
+		}
+
+		return new SpikeMessage
+		{
+			MessageId = message.MessageId,
+			TimestampMs = message.TimestampMs,
+			SourceStructure = message.SourceStructure,
+			TargetStructure = message.TargetStructure,
+			SourceNeuronId = message.SourceNeuronId,
+			TargetNeuronId = message.TargetNeuronId,
+			SynapseId = message.SynapseId,
+			Neurotransmitter = message.Neurotransmitter,
+			VesicleQuanta = effectiveQuanta,
+			ReuptakeRate = message.ReuptakeRate,
+			SpikeType = message.SpikeType,
+			IsFeedback = message.IsFeedback,
+			ModulationContext = null,
+			IsRightingCircuitSpike = message.IsRightingCircuitSpike
+		};
+	}
+
 	internal static float CombineInboundSynapticStrength(float presynapticQuanta, float learnedPostsynapticQuanta)
 	{
 		float presynaptic = PlasticityRules.ClampQuanta(presynapticQuanta);
@@ -898,9 +1258,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float localTeachingSignal)
 	{
 		var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
+		var memoryBearingSynapse = memoryCircuit && value.Neurotransmitter == NTEnum.GLUTAMATE;
 		var previousTargetNeuronIndex = value.LastTargetNeuronIndex;
-		var previousContribution = memoryCircuit ? ComputeSynapticMemoryContribution(value) : default;
-		var previouslySupported = memoryCircuit && value.UpdateCount > 0 && previousTargetNeuronIndex >= 0;
+		var previousContribution = memoryBearingSynapse ? ComputeSynapticMemoryContribution(value) : default;
+		var previouslySupported = memoryBearingSynapse && value.UpdateCount > 0 && previousTargetNeuronIndex >= 0;
 		double num = Math.Max(0.0, timestampMs - value.LastUpdateTimestampMs);
 		float traceDelta = UpdateTraceState(value, num, 1f, postsynActivity, message.Neurotransmitter, microtubuleTracePersistenceSupport);
 		if (IsCorticostriatalActionInput(message))
@@ -934,10 +1295,14 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				(0.008f + Math.Clamp(postsynActivity, 0f, 1f) * 0.025f);
 			delta -= extinctionDrive;
 		}
-		delta = float.IsFinite(delta) ? delta : 0f;
+		delta = PlasticityRules.ApplyCadenceInvariantBudget(
+			value,
+			delta,
+			timestampMs,
+			memoryCircuit ? 1f : PlasticityRules.RestoredSpikeDensityLearningScale);
 		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
 		value.Stabilize();
-		if (memoryCircuit)
+		if (memoryBearingSynapse)
 		{
 			UpdateSynapticMemoryAggregate(
 				previousTargetNeuronIndex,
@@ -1072,6 +1437,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		float traceDelta = UpdateTraceState(synapse, num, 1f, sourceActivity * 0.35f, synapse.Neurotransmitter, 1f);
 		synapse.ThetaM = PlasticityRules.UpdateBcmTheta(synapse.ThetaM, sourceActivity, num);
 		synapse.LastUpdateTimestampMs = timestampMs;
+		synapse.UpdateCount = synapse.UpdateCount < int.MaxValue ? synapse.UpdateCount + 1 : int.MaxValue;
 		float microtubulePlasticitySupport = Math.Clamp(0.98f + sourceActivity * 0.04f, 0.98f, 1.02f);
 		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, localTeachingSignal, microtubulePlasticitySupport);
 		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
@@ -1129,7 +1495,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		string targetNeuronId = $"auto-{target}-{num:000}";
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
 		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, source.LocalNeuromodState, source.LocalRewardSignal, tickSignal.TimestampMs);
-		outboundDelta = float.IsFinite(outboundDelta) ? outboundDelta : 0f;
+		outboundDelta = PlasticityRules.ApplyCadenceInvariantBudget(synapseState, outboundDelta, tickSignal.TimestampMs);
 		synapseState.VesicleQuanta = PlasticityRules.ClampQuanta(synapseState.VesicleQuanta + outboundDelta);
 		synapseState.Stabilize();
 		PersistSynapses(tickSignal.TimestampMs);
@@ -1364,10 +1730,15 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var score = rateCodedPopulation
 				? rate
 				: proposal + direct + thalamic - indirect - hyperdirect - outputInhibition;
-			var reflexDrive = RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
+			var rightingReflexDrive = RightingReflexTopology.EmitsRightingReflexDiagnostic(_profile.StructureId) &&
 				channel == RightingReflexTopology.StandChannel
 				? Math.Clamp(_rightingOutputTrace, 0f, 1f)
 				: 0f;
+			var withdrawalReflexDrive = _profile.StructureId == StructureId.SpinalCordMotor &&
+				WithdrawalReflexTopology.IsWithdrawalChannel(channel)
+				? Math.Clamp(_withdrawalOutputTrace[channel], 0f, 1f)
+				: 0f;
+			var reflexDrive = Math.Max(rightingReflexDrive, withdrawalReflexDrive);
 			channels[channel] = new ActionChannelActivity(
 				channel,
 				proposal,
@@ -1379,7 +1750,31 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				eligibility,
 				learnedStrength,
 				score,
-				reflexDrive);
+				reflexDrive,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelDirectMembraneSums, _actionChannelDirectCounts, channel)
+					: 0f,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelIndirectMembraneSums, _actionChannelIndirectCounts, channel)
+					: 0f,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelDirectCurrentSums, _actionChannelDirectCounts, channel)
+					: 0f,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelIndirectCurrentSums, _actionChannelIndirectCounts, channel)
+					: 0f,
+				_profile.StructureId == StructureId.Striatum
+					? _actionChannelDirectActiveCounts[channel]
+					: 0,
+				_profile.StructureId == StructureId.Striatum
+					? _actionChannelIndirectActiveCounts[channel]
+					: 0,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelDirectUpStateSums, _actionChannelDirectCounts, channel)
+					: 0f,
+				_profile.StructureId == StructureId.Striatum
+					? AverageChannel(_actionChannelIndirectUpStateSums, _actionChannelIndirectCounts, channel)
+					: 0f);
 
 			if (score > bestScore)
 			{
@@ -1399,7 +1794,45 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			channels,
 			bestChannel,
 			margin,
-			Math.Clamp(neuromod.DopamineLevel, 0f, 1f));
+			Math.Clamp(neuromod.DopamineLevel, 0f, 1f),
+			BuildWithdrawalSourceDiagnostics());
+	}
+
+	private sealed class WithdrawalSourceTraceState(WithdrawalSourceRoute route)
+	{
+		public WithdrawalSourceRoute Route { get; } = route;
+		public float AfferentDrive { get; private set; }
+		public float ReflexDrive { get; private set; }
+		public float AfferentAgeMilliseconds { get; private set; }
+		public bool IsQuiet => AfferentDrive < 0.0001f && ReflexDrive < 0.0001f;
+		public bool IsExpired =>
+			AfferentAgeMilliseconds >= WithdrawalReflexTopology.MaximumAfferentSilenceMilliseconds;
+
+		public void ObserveAfferent(float drive)
+		{
+			AfferentDrive = Math.Max(AfferentDrive, Math.Clamp(drive, 0f, 1f));
+			AfferentAgeMilliseconds = 0f;
+		}
+
+		public void ObserveReflex(float drive)
+			=> ReflexDrive = Math.Max(ReflexDrive, Math.Clamp(drive, 0f, 1f));
+
+		public void Decay(float afferentDecay, float reflexDecay, float elapsedMilliseconds)
+		{
+			AfferentAgeMilliseconds = Math.Min(
+				float.MaxValue,
+				AfferentAgeMilliseconds + Math.Max(0f, elapsedMilliseconds));
+			AfferentDrive *= afferentDecay;
+			ReflexDrive *= reflexDecay;
+			if (AfferentDrive < 0.0001f)
+			{
+				AfferentDrive = 0f;
+			}
+			if (ReflexDrive < 0.0001f)
+			{
+				ReflexDrive = 0f;
+			}
+		}
 	}
 
 	private PerceptEnsembleDiagnostics? BuildPerceptEnsembleDiagnostics(NeuromodState neuromod)
@@ -1518,7 +1951,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		foreach (var synapse in _inboundSynapses.Values)
 		{
-			if (synapse.UpdateCount <= 0 || synapse.LastTargetNeuronIndex < 0)
+			if (synapse.Neurotransmitter != NTEnum.GLUTAMATE ||
+				synapse.UpdateCount <= 0 ||
+				synapse.LastTargetNeuronIndex < 0)
 			{
 				continue;
 			}

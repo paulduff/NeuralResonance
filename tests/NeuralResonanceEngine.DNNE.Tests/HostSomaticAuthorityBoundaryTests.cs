@@ -67,6 +67,23 @@ public sealed class HostSomaticAuthorityBoundaryTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HeadlessWorldSomaticTransportIsBoundedParallelAndSequenceIdempotent()
+    {
+        var source = ReadSource("src", "NRE.WorldSim", "HeadlessWorldRuntime.cs")
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        Assert.Contains("somaticClient", source, StringComparison.Ordinal);
+        Assert.Contains("MaxDegreeOfParallelism = 4", source, StringComparison.Ordinal);
+        Assert.Contains("somaticFrameRetries", source, StringComparison.Ordinal);
+        Assert.Contains("_replayCache", ReadSource("ControlProgram", "SomaticContactTransducerRuntime.cs"), StringComparison.Ordinal);
+        Assert.Contains("PostSomaticContactFrameAsync(\n                            somaticClient", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "PostSomaticContactFrameAsync(\n                            sensoryClient",
+            source,
+            StringComparison.Ordinal);
+    }
+
     private static string ReadSource(params string[] pathParts)
         => File.ReadAllText(Path.Combine([ResolveRepositoryRoot(), .. pathParts]));
 

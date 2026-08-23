@@ -20,7 +20,16 @@ public readonly record struct AvatarNervousSystemSignal(
     int ManipulatorEvents,
     int OrientingEvents,
     int PostureEvents,
-    int TicksWithoutMotorDispatch)
+    int TicksWithoutMotorDispatch,
+    double LeftHipCoronalDrive = 0.0,
+    double RightHipCoronalDrive = 0.0,
+    double LeftAnkleSagittalDrive = 0.0,
+    double RightAnkleSagittalDrive = 0.0,
+    double LeftAnkleCoronalDrive = 0.0,
+    double RightAnkleCoronalDrive = 0.0,
+    double TrunkYawDrive = 0.0,
+    double LeftHandGraspDrive = 0.0,
+    double RightHandGraspDrive = 0.0)
 {
     public AvatarNervousSystemSignal(
         double leftMotorDrive,

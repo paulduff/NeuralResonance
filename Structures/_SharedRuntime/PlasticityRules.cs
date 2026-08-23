@@ -4,6 +4,10 @@ internal static class PlasticityRules
 {
 	private const float MinQuanta = 0.05f;
 	private const float MaxQuanta = 5f;
+	internal const float InitialPlasticityBudgetQuanta = 0.005f;
+	internal const float PlasticityBurstCapacityQuanta = 0.04f;
+	internal const float PlasticityRefillQuantaPerBiologicalSecond = 0.01f;
+	internal const float RestoredSpikeDensityLearningScale = 0.02f;
 
 	public static float Stdp(float quanta)
 	{
@@ -126,6 +130,56 @@ internal static class PlasticityRules
 		float capture = FiniteClamp(acetylcholine, 0f, 1f, 0f) * (0.35f + 0.65f * FiniteClamp(dopamine, 0f, 1f, 0f));
 		float intracellularSupport = FiniteClamp(microtubuleSupport, 0.95f, 1.05f, 1f);
 		return LocalTraceDelta(signedTag, quanta) * 0.35f * capture * intracellularSupport;
+	}
+
+	public static float ApplyCadenceInvariantBudget(
+		SynapseState synapse,
+		float rawDelta,
+		double biologicalTimestampMs,
+		float learningScale = RestoredSpikeDensityLearningScale)
+	{
+		ArgumentNullException.ThrowIfNull(synapse);
+		synapse.Stabilize();
+		if (!float.IsFinite(rawDelta) || MathF.Abs(rawDelta) <= 0.0000001f)
+		{
+			return 0f;
+		}
+
+		var timestamp = double.IsFinite(biologicalTimestampMs)
+			? Math.Max(0.0, biologicalTimestampMs)
+			: Math.Max(0.0, synapse.LastPlasticityBudgetTimestampMs);
+		if (synapse.LastPlasticityBudgetTimestampMs < 0.0)
+		{
+			synapse.LastPlasticityBudgetTimestampMs = timestamp;
+		}
+		else if (timestamp > synapse.LastPlasticityBudgetTimestampMs)
+		{
+			var elapsedSeconds = (timestamp - synapse.LastPlasticityBudgetTimestampMs) / 1000.0;
+			synapse.PlasticityBudgetQuanta = Math.Min(
+				PlasticityBurstCapacityQuanta,
+				synapse.PlasticityBudgetQuanta +
+					(float)(elapsedSeconds * PlasticityRefillQuantaPerBiologicalSecond));
+			synapse.LastPlasticityBudgetTimestampMs = timestamp;
+		}
+
+		var boundedLearningScale = float.IsFinite(learningScale)
+			? Math.Clamp(learningScale, 0f, 1f)
+			: RestoredSpikeDensityLearningScale;
+		var scaledDelta = rawDelta * boundedLearningScale;
+		var available = Math.Clamp(
+			synapse.PlasticityBudgetQuanta,
+			0f,
+			PlasticityBurstCapacityQuanta);
+		var appliedMagnitude = Math.Min(MathF.Abs(scaledDelta), available);
+		if (appliedMagnitude <= 0f)
+		{
+			return 0f;
+		}
+
+		var applied = MathF.CopySign(appliedMagnitude, scaledDelta);
+		synapse.PlasticityBudgetQuanta = Math.Max(0f, available - appliedMagnitude);
+		synapse.TotalAbsolutePlasticityChange += appliedMagnitude;
+		return applied;
 	}
 
 	public static float CerebellarLtdCoincidence(float quanta, bool climbingCoincident, float parallelFiberActivity)

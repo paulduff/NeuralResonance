@@ -61,7 +61,8 @@ public sealed record PhysicalBodyFrameRequest(
     float BloodOxygenSaturationFraction,
     float HydrationFraction,
     string? InputSource,
-    PhysicalArticulationFrame? Articulation = null);
+    PhysicalArticulationFrame? Articulation = null,
+    bool MotorTrainingMode = false);
 
 /// <summary>
 /// Direct physical measurements from the simulated musculoskeletal body. These
@@ -90,7 +91,22 @@ public sealed record PhysicalArticulationFrame(
     float RightShoulderAbductionRadians = 0f,
     float NeckYawRadians = 0f,
     float NeckPitchRadians = 0f,
-    float SupportPlaneOffsetMeters = 0f)
+    float SupportPlaneOffsetMeters = 0f,
+    float LeftHipAbductionRadians = 0f,
+    float RightHipAbductionRadians = 0f,
+    float LeftAnkleRollRadians = 0f,
+    float RightAnkleRollRadians = 0f,
+    PhysicalFootPressureFrame? LeftFootPressure = null,
+    PhysicalFootPressureFrame? RightFootPressure = null,
+    float TrunkYawRadians = 0f,
+    float LeftHandApertureFraction = 1f,
+    float RightHandApertureFraction = 1f,
+    float LeftGripForceNewtons = 0f,
+    float RightGripForceNewtons = 0f,
+    float LeftHandFatigue = 0f,
+    float RightHandFatigue = 0f,
+    float LeftHandSlip = 0f,
+    float RightHandSlip = 0f)
 {
     public static PhysicalArticulationFrame Neutral { get; } = new(
         LeftHipAngleRadians: 0f,
@@ -115,7 +131,35 @@ public sealed record PhysicalArticulationFrame(
         RightShoulderAbductionRadians: 0f,
         NeckYawRadians: 0f,
         NeckPitchRadians: 0f,
-        SupportPlaneOffsetMeters: 0f);
+        SupportPlaneOffsetMeters: 0f,
+        LeftHipAbductionRadians: 0f,
+        RightHipAbductionRadians: 0f,
+        LeftAnkleRollRadians: 0f,
+        RightAnkleRollRadians: 0f,
+        LeftFootPressure: PhysicalFootPressureFrame.Unloaded,
+        RightFootPressure: PhysicalFootPressureFrame.Unloaded,
+        TrunkYawRadians: 0f,
+        LeftHandApertureFraction: 1f,
+        RightHandApertureFraction: 1f,
+        LeftGripForceNewtons: 0f,
+        RightGripForceNewtons: 0f,
+        LeftHandFatigue: 0f,
+        RightHandFatigue: 0f,
+        LeftHandSlip: 0f,
+        RightHandSlip: 0f);
+}
+
+/// <summary>
+/// Loads measured at four plantar receptor fields. Their sum approximates the
+/// corresponding foot load; the values are sensory facts, not balance commands.
+/// </summary>
+public sealed record PhysicalFootPressureFrame(
+    float HeelMedialLoadNewtons,
+    float HeelLateralLoadNewtons,
+    float ForefootMedialLoadNewtons,
+    float ForefootLateralLoadNewtons)
+{
+    public static PhysicalFootPressureFrame Unloaded { get; } = new(0f, 0f, 0f, 0f);
 }
 
 /// <summary>
@@ -164,7 +208,8 @@ public sealed record PhysicalBalanceStateFrame(
     float FallPitchVelocityRadiansPerSecond,
     float FallRollVelocityRadiansPerSecond,
     string Phase,
-    float RightingForceFraction = 0f)
+    float RightingForceFraction = 0f,
+    float DynamicStabilityAllowanceMeters = 0f)
 {
     public static PhysicalBalanceStateFrame Neutral { get; } = new(
         CenterOfMassXMeters: 0f,

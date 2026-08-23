@@ -9,6 +9,12 @@ using NRE.WorldSim;
 
 var builder = WebApplication.CreateBuilder(args);
 var editorOptions = EditorHostOptions.FromConfiguration(builder.Configuration);
+var developmentStage = Enum.TryParse<WorldDevelopmentStage>(
+    builder.Configuration["World:DevelopmentStage"],
+    ignoreCase: true,
+    out var configuredDevelopmentStage)
+    ? configuredDevelopmentStage
+    : WorldDevelopmentStage.Terrain;
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -26,7 +32,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddSingleton(editorOptions);
 builder.Services.AddSingleton(new HeadlessWorldRuntime(new HeadlessWorldOptions(
-    editorOptions.ControlProgramBaseUri)));
+    editorOptions.ControlProgramBaseUri,
+    MotorTrainingMode: false,
+    DevelopmentStage: developmentStage)));
 builder.Services.AddHostedService<WorldRuntimeHostedService>();
 builder.Services.AddSingleton<WorldStateReader>();
 builder.Services

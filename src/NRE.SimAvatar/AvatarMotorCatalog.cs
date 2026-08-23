@@ -93,13 +93,17 @@ public static class AvatarMotorCatalog
             ? -1.0
             : 1.0;
         var contribution = weight * sign;
+        // The hemisphere tag identifies the descending neural population, not
+        // the anatomical body side. Corticospinal output crosses before it
+        // reaches the limb motor pools, so each cerebral hemisphere drives the
+        // opposite side of the body. Midline populations remain bilateral.
         switch (dispatch.SourceHemisphere)
         {
             case "L":
-                leftInput += contribution;
+                rightInput += contribution;
                 break;
             case "R":
-                rightInput += contribution;
+                leftInput += contribution;
                 break;
             default:
                 leftInput += contribution * 0.5;

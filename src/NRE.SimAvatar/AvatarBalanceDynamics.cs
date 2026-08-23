@@ -12,7 +12,8 @@ public enum AvatarBalancePhase
     Fallen,
     Righting,
     Airborne,
-    BroadSupport
+    BroadSupport,
+    Dynamic
 }
 
 public readonly record struct AvatarExternalBodyContact(
@@ -33,7 +34,8 @@ public readonly record struct AvatarBalanceState(
     double FallRollVelocityRadiansPerSecond,
     double InstabilitySeconds,
     double RightingSeconds,
-    AvatarBalancePhase Phase)
+    AvatarBalancePhase Phase,
+    double RecoveryStableSeconds = 0.0)
 {
     public static AvatarBalanceState Neutral { get; } = new(
         false,
@@ -67,9 +69,18 @@ public static class AvatarBalanceDynamics
     private const double MinimumComHeightMeters = 0.20;
     private const double InstabilityMarginMeters = -0.012;
     private const double MarginalMarginMeters = 0.035;
-    private const double FallCommitSeconds = 0.10;
+    private const double AcceptablePosturalTiltRadians = 0.075;
+    private const double FallCommitSeconds = 0.20;
+    private const double SevereDynamicFallMarginMeters = -0.09;
+    private const double FallTiltEvidenceRadians = 0.18;
     private const double RightingCommitSeconds = 0.14;
+    private const double RightingEvidenceHoldSeconds = 0.45;
     private const double RightingCompletionAngleRadians = 0.16;
+    private const double RightingStableCommitSeconds = 0.18;
+    private const double PassiveRecoveryCompletionAngleRadians = 0.10;
+    private const double PassiveRecoveryMaximumAngularSpeedRadiansPerSecond = 0.12;
+    private const double PassiveRecoveryMaximumComSpeedMetersPerSecond = 0.10;
+    private const double PassiveRecoveryStableCommitSeconds = 0.35;
     private const double MinimumRightingDrive = 0.16;
     private const double MinimumRightingForceFraction = 0.10;
     private const double FallenAngleRadians = 1.30;
@@ -78,6 +89,9 @@ public static class AvatarBalanceDynamics
     private const double StableAngularDampingPerSecond = 5.5;
     private const double MaximumComSpeedMetersPerSecond = 5.0;
     private const double MinimumSupportLoadNewtons = 0.5;
+    private const double MaximumDynamicStabilityAllowanceMeters = 0.075;
+    private const double MinimumUnobstructedFootClearanceMeters = 0.16;
+    private const double RecumbentMaximumUprightFraction = 0.22;
 
     public static AvatarBalanceResult Advance(
         AvatarBalanceState current,
@@ -89,7 +103,9 @@ public static class AvatarBalanceDynamics
         double commandedBodyHeightMeters,
         double deltaSeconds,
         double rightingDrive = 0.0,
-        double rightingForceFraction = 0.0)
+        double rightingForceFraction = 0.0,
+        double locomotorEffort = 0.0,
+        double commandedForwardSpeedMetersPerSecond = 0.0)
     {
         ArgumentNullException.ThrowIfNull(articulation);
         ArgumentNullException.ThrowIfNull(groundContacts);
@@ -124,20 +140,45 @@ public static class AvatarBalanceDynamics
         var pendularVelocity = new Vector2(
             centerVelocity.X - (float)(rollVelocity * comHeight),
             centerVelocity.Y - (float)(pitchVelocity * comHeight));
+        var crossedLegConstraint = ResolveCrossedLegConstraint(colliders, supportSamples);
+        // Root translation is not present in the body-local collider positions.
+        // During an ordinary gait the swing leg can establish the next support
+        // point, but crossed legs remove that capture step. In that configuration
+        // the achieved root velocity must therefore remain in the extrapolated
+        // centre of mass instead of being hidden by the local coordinate frame.
+        pendularVelocity.Y += (float)(
+            Sanitize(commandedForwardSpeedMetersPerSecond) *
+            Math.Clamp(Sanitize(locomotorEffort), 0.0, 1.0) *
+            crossedLegConstraint);
         var extrapolatedCenter = center2 + (pendularVelocity / (float)naturalFrequency);
         var staticMargin = SignedMargin(supportHull, center2);
         var dynamicMargin = SignedMargin(supportHull, extrapolatedCenter);
 
-        var broadSupport = groundContacts.Any(static contact =>
-            contact.Region is "pelvis" or "chest" or "head" or
-                "left_knee" or "right_knee" or
-                "left_shin" or "right_shin" or
-                "left_thigh" or "right_thigh");
+        var broadSupport = HasBroadBodySupport(groundContacts);
+        var recumbentSupport = HasRecumbentSupport(externalContacts);
         var hasSupport = grounded && supportHull.Count >= 3 && supportArea > 0.0001;
+        var dynamicStabilityAllowance = ResolveDynamicStabilityAllowance(
+            locomotorEffort,
+            commandedForwardSpeedMetersPerSecond,
+            supportSamples,
+            broadSupport,
+            pitch,
+            roll,
+            crossedLegConstraint);
+        var effectiveInstabilityMargin = InstabilityMarginMeters - dynamicStabilityAllowance;
+        var tiltMagnitude = Math.Max(Math.Abs(pitch), Math.Abs(roll));
+        var physicalFallEvidence = recumbentSupport ||
+            !hasSupport ||
+            staticMargin < SevereDynamicFallMarginMeters ||
+            dynamicMargin < SevereDynamicFallMarginMeters ||
+            (dynamicStabilityAllowance <= 0.0 &&
+             staticMargin < InstabilityMarginMeters) ||
+            (tiltMagnitude >= FallTiltEvidenceRadians &&
+             dynamicMargin < effectiveInstabilityMargin);
         var instabilitySeconds = current.InstabilitySeconds;
-        if (!hasSupport || broadSupport || dynamicMargin >= InstabilityMarginMeters)
+        if (!physicalFallEvidence || (broadSupport && !recumbentSupport))
         {
-            instabilitySeconds = Math.Max(0.0, instabilitySeconds - (dt * 2.0));
+            instabilitySeconds = Math.Max(0.0, instabilitySeconds - (dt * 4.0));
         }
         else
         {
@@ -162,73 +203,138 @@ public static class AvatarBalanceDynamics
                                 recoveryDrive >= MinimumRightingDrive * 0.5 &&
                                 recoveryForce >= MinimumRightingForceFraction * 0.6;
         var rightingSeconds = current.RightingSeconds;
+        var recoveryStableSeconds = Math.Max(0.0, current.RecoveryStableSeconds);
+        var phase = current.Phase;
+        // Neural righting can arrest momentum while the body's actual mass is
+        // still over its base. It cannot hold the body upright after the mass
+        // itself has passed beyond the measured support polygon.
+        var rightingSupportAvailable = hasSupport &&
+                                       staticMargin >= InstabilityMarginMeters;
+        var rightingEvidencePresent = requestsRighting || continuesRighting;
+        var retainedRightingEvidence = phase is AvatarBalancePhase.Righting &&
+                                       rightingSeconds > 0.0;
         var controlledDescent = commandedPosture is "sitting" or "lying" &&
                                 current.Phase is not AvatarBalancePhase.Falling and
                                     not AvatarBalancePhase.Fallen and
                                     not AvatarBalancePhase.Righting &&
                                 hasSupport &&
                                 externalContacts.Count == 0;
-
-        var phase = current.Phase;
+        var passiveRecoveryMeasured =
+            (phase is AvatarBalancePhase.Falling or AvatarBalancePhase.Fallen or AvatarBalancePhase.Righting) &&
+            !recumbentSupport &&
+            hasSupport &&
+            dynamicMargin >= MarginalMarginMeters &&
+            Math.Max(Math.Abs(pitch), Math.Abs(roll)) <= PassiveRecoveryCompletionAngleRadians &&
+            Math.Max(Math.Abs(pitchVelocity), Math.Abs(rollVelocity)) <=
+                PassiveRecoveryMaximumAngularSpeedRadiansPerSecond &&
+            centerVelocity.Length() <= PassiveRecoveryMaximumComSpeedMetersPerSecond;
         if (!grounded)
         {
             phase = AvatarBalancePhase.Airborne;
             rightingSeconds = 0.0;
+            recoveryStableSeconds = 0.0;
             pitch += pitchVelocity * dt;
             roll += rollVelocity * dt;
         }
-        else if (phase is (AvatarBalancePhase.Falling or AvatarBalancePhase.Fallen or AvatarBalancePhase.Righting) &&
-                 (requestsRighting || phase is AvatarBalancePhase.Righting && continuesRighting))
+        else if (rightingSupportAvailable &&
+                 phase is (AvatarBalancePhase.Falling or AvatarBalancePhase.Fallen or AvatarBalancePhase.Righting) &&
+                 (rightingEvidencePresent || retainedRightingEvidence))
         {
-            rightingSeconds += dt;
-            pitchVelocity = Damp(pitchVelocity, 8.0, dt);
-            rollVelocity = Damp(rollVelocity, 8.0, dt);
-            centerVelocity *= (float)Math.Exp(-8.0 * dt);
+            rightingSeconds = rightingEvidencePresent
+                ? Math.Min(RightingCommitSeconds + RightingEvidenceHoldSeconds, rightingSeconds + dt)
+                : Math.Max(0.0, rightingSeconds - dt);
+            // Righting populations recruit real axial force. Convert that
+            // measured force into torque around the body's measured inertias;
+            // never author an angle or snap the pose toward upright.
+            var rightingTorqueNewtonMeters =
+                totalMass * GravityMetersPerSecondSquared * 0.22 * recoveryDrive * recoveryForce;
+            var pitchRestoringDirection = RestoringDirection(pitch, pitchVelocity);
+            var rollRestoringDirection = RestoringDirection(roll, rollVelocity);
+            pitchVelocity += pitchRestoringDirection *
+                (rightingTorqueNewtonMeters / pitchInertia) * dt;
+            rollVelocity += rollRestoringDirection *
+                (rightingTorqueNewtonMeters / rollInertia) * dt;
+            var muscularDamping = 1.2 + (3.8 * recoveryDrive * recoveryForce);
+            pitchVelocity = Damp(pitchVelocity, muscularDamping, dt);
+            rollVelocity = Damp(rollVelocity, muscularDamping, dt);
+            pitch += pitchVelocity * dt;
+            roll += rollVelocity * dt;
 
-            if (rightingSeconds >= RightingCommitSeconds)
+            if (phase is AvatarBalancePhase.Righting || rightingSeconds >= RightingCommitSeconds)
             {
                 phase = AvatarBalancePhase.Righting;
-                var rightingRate = 0.22 + (1.35 * recoveryDrive * recoveryForce);
-                pitch = MoveTowards(pitch, 0.0, rightingRate * dt);
-                roll = MoveTowards(roll, 0.0, rightingRate * dt);
-
-                if (Math.Max(Math.Abs(pitch), Math.Abs(roll)) <= RightingCompletionAngleRadians &&
-                    hasSupport &&
-                    dynamicMargin >= InstabilityMarginMeters)
+                var physicallyStable = Math.Max(Math.Abs(pitch), Math.Abs(roll)) <= RightingCompletionAngleRadians &&
+                    !recumbentSupport && hasSupport && dynamicMargin >= MarginalMarginMeters;
+                recoveryStableSeconds = physicallyStable
+                    ? recoveryStableSeconds + dt
+                    : Math.Max(0.0, recoveryStableSeconds - (dt * 2.0));
+                if (recoveryStableSeconds >= RightingStableCommitSeconds)
                 {
-                    pitch = 0.0;
-                    roll = 0.0;
-                    pitchVelocity = 0.0;
-                    rollVelocity = 0.0;
-                    centerVelocity = Vector2.Zero;
                     instabilitySeconds = 0.0;
                     rightingSeconds = 0.0;
-                    phase = hasSupport ? AvatarBalancePhase.Marginal : AvatarBalancePhase.Airborne;
+                    recoveryStableSeconds = 0.0;
+                    phase = dynamicMargin < MarginalMarginMeters
+                        ? AvatarBalancePhase.Marginal
+                        : AvatarBalancePhase.Stable;
                 }
+            }
+        }
+        else if (passiveRecoveryMeasured)
+        {
+            // This is state reconciliation, not a recovery controller: the body
+            // has already become upright, slow, and well supported through its
+            // own measured mechanics. No joint, pose, or root motion is authored.
+            recoveryStableSeconds += dt;
+            pitchVelocity = Damp(pitchVelocity, StableAngularDampingPerSecond, dt);
+            rollVelocity = Damp(rollVelocity, StableAngularDampingPerSecond, dt);
+            centerVelocity *= (float)Math.Exp(-StableAngularDampingPerSecond * dt);
+            if (recoveryStableSeconds >= PassiveRecoveryStableCommitSeconds)
+            {
+                phase = dynamicMargin < MarginalMarginMeters
+                    ? AvatarBalancePhase.Marginal
+                    : AvatarBalancePhase.Stable;
+                instabilitySeconds = 0.0;
+                rightingSeconds = 0.0;
+                recoveryStableSeconds = 0.0;
             }
         }
         else if (phase is AvatarBalancePhase.Righting)
         {
             phase = AvatarBalancePhase.Falling;
             rightingSeconds = 0.0;
+            recoveryStableSeconds = 0.0;
         }
         else if (controlledDescent && !broadSupport)
         {
             phase = AvatarBalancePhase.Marginal;
             rightingSeconds = 0.0;
+            recoveryStableSeconds = 0.0;
             pitchVelocity = Damp(pitchVelocity, StableAngularDampingPerSecond, dt);
             rollVelocity = Damp(rollVelocity, StableAngularDampingPerSecond, dt);
-            pitch = MoveTowards(pitch, 0.0, Math.Abs(pitchVelocity) * dt + (dt * 0.7));
-            roll = MoveTowards(roll, 0.0, Math.Abs(rollVelocity) * dt + (dt * 0.7));
+            pitch += pitchVelocity * dt;
+            roll += rollVelocity * dt;
+        }
+        else if (recumbentSupport && commandedPosture != "lying")
+        {
+            // Multiple load-bearing axial contacts are direct physical evidence
+            // that the body is recumbent. They may arrest a fall, but they do
+            // not turn it into upright broad support or author a recovery.
+            phase = AvatarBalancePhase.Fallen;
+            instabilitySeconds = Math.Max(instabilitySeconds, FallCommitSeconds);
+            rightingSeconds = 0.0;
+            recoveryStableSeconds = 0.0;
+            pitchVelocity = Damp(pitchVelocity, 7.5, dt);
+            rollVelocity = Damp(rollVelocity, 7.5, dt);
         }
         else if (broadSupport && phase is not AvatarBalancePhase.Falling and not AvatarBalancePhase.Fallen)
         {
             phase = AvatarBalancePhase.BroadSupport;
             rightingSeconds = 0.0;
+            recoveryStableSeconds = 0.0;
             pitchVelocity = Damp(pitchVelocity, StableAngularDampingPerSecond, dt);
             rollVelocity = Damp(rollVelocity, StableAngularDampingPerSecond, dt);
-            pitch = MoveTowards(pitch, 0.0, Math.Abs(pitchVelocity) * dt + (dt * 0.7));
-            roll = MoveTowards(roll, 0.0, Math.Abs(rollVelocity) * dt + (dt * 0.7));
+            pitch += pitchVelocity * dt;
+            roll += rollVelocity * dt;
         }
         else
         {
@@ -238,10 +344,19 @@ public static class AvatarBalanceDynamics
             {
                 phase = AvatarBalancePhase.Falling;
                 rightingSeconds = 0.0;
-                var lever = center2 - centerOfPressure;
+                recoveryStableSeconds = 0.0;
+                var staticLever = center2 - centerOfPressure;
+                var dynamicLever = extrapolatedCenter - centerOfPressure;
+                // Once momentum has carried the capture point farther outside
+                // support than the static mass, fall direction follows that
+                // dynamic lever. Using only the static COM can make a body that
+                // is travelling forward rotate backward around its feet.
+                var lever = dynamicMargin < staticMargin
+                    ? dynamicLever
+                    : staticLever;
                 if (lever.LengthSquared() < 0.000001f)
                 {
-                    lever = extrapolatedCenter - centerOfPressure;
+                    lever = dynamicLever;
                 }
                 if (lever.LengthSquared() < 0.000001f)
                 {
@@ -272,7 +387,9 @@ public static class AvatarBalanceDynamics
             else
             {
                 phase = dynamicMargin < InstabilityMarginMeters
-                    ? AvatarBalancePhase.Unstable
+                    ? dynamicMargin >= effectiveInstabilityMargin && dynamicStabilityAllowance > 0.0
+                        ? AvatarBalancePhase.Dynamic
+                        : AvatarBalancePhase.Unstable
                     : dynamicMargin < MarginalMarginMeters
                         ? AvatarBalancePhase.Marginal
                         : AvatarBalancePhase.Stable;
@@ -285,13 +402,27 @@ public static class AvatarBalanceDynamics
         roll = Math.Clamp(roll, -MaximumFallAngleRadians, MaximumFallAngleRadians);
         var tilt = Math.Max(Math.Abs(pitch), Math.Abs(roll));
         var uprightFraction = Math.Clamp(Math.Cos(Math.Min(Math.PI * 0.5, tilt)), 0.0, 1.0);
+        if (recumbentSupport && phase is AvatarBalancePhase.Fallen)
+        {
+            uprightFraction = Math.Min(uprightFraction, RecumbentMaximumUprightFraction);
+        }
         var physicalHeight = phase is AvatarBalancePhase.Falling or AvatarBalancePhase.Fallen or AvatarBalancePhase.Righting
             ? Math.Clamp(
                 (commandedBodyHeightMeters * uprightFraction) + (0.28 * (1.0 - uprightFraction)),
                 0.28,
                 commandedBodyHeightMeters)
             : commandedBodyHeightMeters;
-        var balanceError = ResolveBalanceError(dynamicMargin, instabilitySeconds, tilt, phase);
+        // Standing remains a controlled instability. The raw centre-of-mass,
+        // capture-point, and support-margin measurements continue upstream for
+        // neuronal learning, but sway inside the mechanically recoverable
+        // envelope is not itself an aversive balance error.
+        var acceptableControlMargin = effectiveInstabilityMargin;
+        var balanceError = ResolveBalanceError(
+            dynamicMargin,
+            acceptableControlMargin,
+            instabilitySeconds,
+            tilt,
+            phase);
         var physicalPosture = phase switch
         {
             AvatarBalancePhase.Falling => "falling",
@@ -309,7 +440,8 @@ public static class AvatarBalanceDynamics
             rollVelocity,
             instabilitySeconds,
             rightingSeconds,
-            phase);
+            phase,
+            recoveryStableSeconds);
         var frame = new PhysicalBalanceStateFrame(
             (float)centerOfMass.X,
             (float)centerOfMass.Y,
@@ -327,7 +459,8 @@ public static class AvatarBalanceDynamics
             (float)pitchVelocity,
             (float)rollVelocity,
             PhaseName(phase),
-            (float)recoveryForce);
+            (float)recoveryForce,
+            (float)dynamicStabilityAllowance);
         return new AvatarBalanceResult(
             next,
             frame,
@@ -397,6 +530,97 @@ public static class AvatarBalanceDynamics
                 new Vector2((float)radius, (float)radius)));
         }
         return samples;
+    }
+
+    private static bool HasBroadBodySupport(IReadOnlyList<AvatarGroundContactProbe> contacts)
+        => contacts.Any(static contact =>
+            contact.LoadNewtons >= MinimumSupportLoadNewtons &&
+            IsBroadSupportRegion(contact.Region));
+
+    private static bool HasRecumbentSupport(IReadOnlyList<AvatarExternalBodyContact> contacts)
+    {
+        var regions = contacts
+            .Where(static contact =>
+                contact.ForceNewtons >= MinimumSupportLoadNewtons &&
+                contact.BodyNormal.Y >= 0.55f)
+            .Select(static contact => contact.Region)
+            .ToHashSet(StringComparer.Ordinal);
+        var chest = regions.Contains("chest");
+        var head = regions.Contains("head");
+        var pelvis = regions.Contains("pelvis");
+        var leftLeg = regions.Overlaps(["left_knee", "left_shin", "left_thigh"]);
+        var rightLeg = regions.Overlaps(["right_knee", "right_shin", "right_thigh"]);
+
+        return (chest && (head || pelvis || leftLeg || rightLeg)) ||
+               (head && pelvis && (leftLeg || rightLeg)) ||
+               (pelvis && leftLeg && rightLeg && (head || chest));
+    }
+
+    private static bool IsBroadSupportRegion(string region)
+        => region is "pelvis" or "chest" or "head" or
+            "left_knee" or "right_knee" or
+            "left_shin" or "right_shin" or
+            "left_thigh" or "right_thigh";
+
+    private static double ResolveDynamicStabilityAllowance(
+        double locomotorEffort,
+        double commandedForwardSpeedMetersPerSecond,
+        IReadOnlyList<SupportSample> supportSamples,
+        bool broadSupport,
+        double pitch,
+        double roll,
+        double crossedLegConstraint)
+    {
+        if (broadSupport || supportSamples.Count == 0)
+        {
+            return 0.0;
+        }
+
+        var hasFootSupport = supportSamples.Any(static sample =>
+            sample.Region.StartsWith("left_foot", StringComparison.Ordinal) ||
+            sample.Region.StartsWith("right_foot", StringComparison.Ordinal));
+        if (!hasFootSupport)
+        {
+            return 0.0;
+        }
+
+        var effort = Math.Clamp(Sanitize(locomotorEffort), 0.0, 1.0);
+        var speed = Math.Clamp(Math.Abs(Sanitize(commandedForwardSpeedMetersPerSecond)) / 1.8, 0.0, 1.0);
+        var upright = Math.Clamp(Math.Cos(Math.Min(Math.PI * 0.5, Math.Max(Math.Abs(pitch), Math.Abs(roll)))), 0.0, 1.0);
+        var availableStepReserve = 1.0 - Math.Clamp(crossedLegConstraint, 0.0, 1.0);
+        return MaximumDynamicStabilityAllowanceMeters * effort * (0.35 + (speed * 0.65)) * upright *
+            availableStepReserve;
+    }
+
+    private static double ResolveCrossedLegConstraint(
+        IReadOnlyList<AvatarBodyCollider> colliders,
+        IReadOnlyList<SupportSample> supportSamples)
+    {
+        var hasLeftSupport = supportSamples.Any(static sample =>
+            sample.Region.StartsWith("left_foot", StringComparison.Ordinal));
+        var hasRightSupport = supportSamples.Any(static sample =>
+            sample.Region.StartsWith("right_foot", StringComparison.Ordinal));
+        if (!hasLeftSupport || !hasRightSupport)
+        {
+            return 0.0;
+        }
+
+        var leftFoot = colliders.FirstOrDefault(static collider => collider.Region == "left_foot");
+        var rightFoot = colliders.FirstOrDefault(static collider => collider.Region == "right_foot");
+        if (leftFoot.Region is null || rightFoot.Region is null)
+        {
+            return 0.0;
+        }
+
+        // Left is negative X and right is positive X in body space. As that
+        // ordering closes and reverses, the legs obstruct one another and a
+        // normal forward capture step ceases to be mechanically available.
+        var lateralClearance = rightFoot.Position.X - leftFoot.Position.X;
+        return Math.Clamp(
+            (MinimumUnobstructedFootClearanceMeters - lateralClearance) /
+            MinimumUnobstructedFootClearanceMeters,
+            0.0,
+            1.0);
     }
 
     private static Vector2 PatchHalfExtents(string region, double areaSquareMillimeters) => region switch
@@ -555,15 +779,22 @@ public static class AvatarBalanceDynamics
 
     private static double ResolveBalanceError(
         double dynamicMargin,
+        double acceptableControlMargin,
         double instabilitySeconds,
         double tilt,
         AvatarBalancePhase phase)
     {
-        var marginError = dynamicMargin >= 0.0
-            ? Math.Clamp((MarginalMarginMeters - dynamicMargin) / MarginalMarginMeters, 0.0, 0.45)
-            : Math.Clamp((-dynamicMargin) / 0.22, 0.0, 1.0);
+        var marginError = dynamicMargin >= acceptableControlMargin
+            ? 0.0
+            : Math.Clamp((acceptableControlMargin - dynamicMargin) / 0.22, 0.0, 1.0);
         var timeError = Math.Clamp(instabilitySeconds / FallCommitSeconds, 0.0, 1.0);
-        var tiltError = Math.Clamp(tilt / FallenAngleRadians, 0.0, 1.0);
+        var tiltError = tilt <= AcceptablePosturalTiltRadians
+            ? 0.0
+            : Math.Clamp(
+                (tilt - AcceptablePosturalTiltRadians) /
+                (FallenAngleRadians - AcceptablePosturalTiltRadians),
+                0.0,
+                1.0);
         var phaseFloor = phase switch
         {
             AvatarBalancePhase.Falling => 0.68,
@@ -585,10 +816,16 @@ public static class AvatarBalanceDynamics
     private static double Damp(double value, double dampingPerSecond, double dt)
         => value * Math.Exp(-Math.Max(0.0, dampingPerSecond) * dt);
 
-    private static double MoveTowards(double current, double target, double maximumDelta)
+    private static double RestoringDirection(double angle, double angularVelocity)
     {
-        var delta = target - current;
-        return Math.Abs(delta) <= maximumDelta ? target : current + (Math.Sign(delta) * maximumDelta);
+        if (Math.Abs(angle) > 0.002)
+        {
+            return -Math.Sign(angle);
+        }
+
+        return Math.Abs(angularVelocity) > 0.002
+            ? -Math.Sign(angularVelocity)
+            : 0.0;
     }
 
     private static float Cross(Vector2 first, Vector2 second) =>

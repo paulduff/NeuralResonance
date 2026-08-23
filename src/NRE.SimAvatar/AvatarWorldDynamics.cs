@@ -17,6 +17,22 @@ public readonly record struct AvatarVitalAssessment(
     double MotorCapacity,
     bool CanInteract);
 
+public readonly record struct AvatarPhysicalContactExposure(
+    string Region,
+    double ForceNewtons,
+    double ImpulseNewtonSeconds,
+    double ContactAreaSquareMillimeters,
+    double ContinuousSeconds,
+    double SampleSeconds);
+
+public readonly record struct AvatarPhysicalContactDamageAssessment(
+    AvatarPhysiologyState State,
+    double DamageFraction,
+    double ImpactDamageFraction,
+    double SustainedPressureDamageFraction,
+    bool ImpactEvent,
+    bool SustainedPressureEpisodeBegan);
+
 public readonly record struct AvatarPhysiologyOptions(
     double NominalStoredEnergyJoules,
     double MetabolicBurnJoulesPerSecond,
@@ -176,6 +192,70 @@ public static class AvatarWorldDynamics
                 0.0,
                 1.0)
         };
+    }
+
+    public static AvatarPhysicalContactDamageAssessment ApplyPhysicalContact(
+        AvatarPhysiologyState state,
+        AvatarPhysicalContactExposure exposure)
+    {
+        ValidateState(state);
+        if (string.IsNullOrWhiteSpace(exposure.Region) ||
+            !double.IsFinite(exposure.ForceNewtons) || exposure.ForceNewtons < 0.0 ||
+            !double.IsFinite(exposure.ImpulseNewtonSeconds) || exposure.ImpulseNewtonSeconds < 0.0 ||
+            !double.IsFinite(exposure.ContactAreaSquareMillimeters) || exposure.ContactAreaSquareMillimeters < 0.0 ||
+            !double.IsFinite(exposure.ContinuousSeconds) || exposure.ContinuousSeconds < 0.0 ||
+            !double.IsFinite(exposure.SampleSeconds) || exposure.SampleSeconds < 0.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(exposure));
+        }
+
+        var region = exposure.Region.Trim().ToLowerInvariant();
+        var plantar =
+            region.StartsWith("left_foot", StringComparison.Ordinal) ||
+            region.StartsWith("right_foot", StringComparison.Ordinal);
+        var firstContactSample = exposure.ContinuousSeconds <= Math.Max(0.15, exposure.SampleSeconds * 2.5);
+        var impactThreshold = region.Contains("head", StringComparison.Ordinal)
+            ? 8.0
+            : plantar
+                ? 24.0
+                : region.Contains("torso", StringComparison.Ordinal) ||
+                  region.Contains("pelvis", StringComparison.Ordinal)
+                    ? 14.0
+                    : 11.0;
+        var impactExcess = firstContactSample
+            ? Math.Max(0.0, exposure.ImpulseNewtonSeconds - impactThreshold)
+            : 0.0;
+        var impactDamage = Math.Min(
+            0.025,
+            Math.Pow(impactExcess / 90.0, 1.20) * 0.012);
+
+        const double pressureGraceSeconds = 8.0;
+        var pressure = exposure.ForceNewtons / Math.Max(1.0, exposure.ContactAreaSquareMillimeters);
+        var pressureThreat = plantar
+            ? 0.0
+            : Math.Clamp((pressure - 0.045) / 0.20, 0.0, 1.0);
+        var pressureDuration = Math.Clamp(
+            (exposure.ContinuousSeconds - pressureGraceSeconds) / 52.0,
+            0.0,
+            1.0);
+        var sustainedDamage = pressureThreat * pressureDuration * 0.00030 * exposure.SampleSeconds;
+        var totalDamage = Math.Clamp(impactDamage + sustainedDamage, 0.0, 0.03);
+        var next = state with
+        {
+            TissueIntegrityFraction = Math.Clamp(
+                state.TissueIntegrityFraction - totalDamage,
+                0.0,
+                1.0)
+        };
+        var previousContinuousSeconds = Math.Max(0.0, exposure.ContinuousSeconds - exposure.SampleSeconds);
+        return new AvatarPhysicalContactDamageAssessment(
+            next,
+            totalDamage,
+            impactDamage,
+            sustainedDamage,
+            ImpactEvent: impactDamage > 0.0,
+            SustainedPressureEpisodeBegan: sustainedDamage > 0.0 &&
+                previousContinuousSeconds <= pressureGraceSeconds);
     }
 
     public static AvatarVitalAssessment AssessVitalState(

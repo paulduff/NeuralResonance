@@ -107,6 +107,58 @@ public sealed class InboundPlasticityApplicationTests
         }
     }
 
+    [Fact]
+    public void DenseBurstCannotExceedInitialBiologicalPlasticityBudget()
+    {
+        var synapse = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f, 1f);
+        float total = 0f;
+
+        for (var index = 0; index < 100_000; index++)
+        {
+            total += MathF.Abs(PlasticityRules.ApplyCadenceInvariantBudget(
+                synapse,
+                rawDelta: 0.05f,
+                biologicalTimestampMs: 100));
+        }
+
+        Assert.Equal(PlasticityRules.InitialPlasticityBudgetQuanta, total, precision: 6);
+        Assert.Equal(0f, synapse.PlasticityBudgetQuanta, precision: 6);
+    }
+
+    [Fact]
+    public void PlasticityBudgetRefillsFromBiologicalTimeNotHostCallVolume()
+    {
+        var sparse = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f, 1f);
+        var dense = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f, 1f);
+
+        var sparseApplied = ApplyTimedTrain(sparse, callsPerTimestamp: 1);
+        var denseApplied = ApplyTimedTrain(dense, callsPerTimestamp: 50);
+
+        Assert.Equal(sparseApplied, denseApplied, precision: 6);
+        Assert.InRange(
+            denseApplied,
+            PlasticityRules.InitialPlasticityBudgetQuanta,
+            PlasticityRules.InitialPlasticityBudgetQuanta +
+                PlasticityRules.PlasticityRefillQuantaPerBiologicalSecond + 0.0001f);
+    }
+
+    private static float ApplyTimedTrain(SynapseState synapse, int callsPerTimestamp)
+    {
+        float applied = 0f;
+        for (var timestamp = 0; timestamp <= 1000; timestamp += 10)
+        {
+            for (var call = 0; call < callsPerTimestamp; call++)
+            {
+                applied += MathF.Abs(PlasticityRules.ApplyCadenceInvariantBudget(
+                    synapse,
+                    rawDelta: 0.05f,
+                    biologicalTimestampMs: timestamp));
+            }
+        }
+
+        return applied;
+    }
+
     private static SpikeMessage CreateSpike(Guid synapseId, double timestampMs) => new()
     {
         MessageId = Guid.NewGuid(),

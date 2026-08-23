@@ -94,17 +94,20 @@ public sealed class AvatarNervousSystemTests
     }
 
     [Fact]
-    public void LocomotorAndManipulatorPopulationEventsRemainDistinct()
+    public void LocomotorAndExplicitHandPopulationEventsRemainDistinct()
     {
         var locomotor = new AvatarDispatchSpike(
             "SpinalCordMotor", "L", 100, "population:l:excitatory:4:0");
-        var manipulator = new AvatarDispatchSpike(
-            "SpinalCordMotor", "M", 101, "effector:manipulator:excitatory:4:0");
+        var hand = new AvatarDispatchSpike(
+            "SpinalCordMotor", "L", 101, "effector:hand:left:grasp:excitatory:4:0");
 
         Assert.True(AvatarMotorCatalog.IsLocomotorPopulationEvent(locomotor));
-        Assert.False(AvatarEffectorCatalog.IsManipulatorEvent(locomotor));
-        Assert.False(AvatarMotorCatalog.IsLocomotorPopulationEvent(manipulator));
-        Assert.True(AvatarEffectorCatalog.IsManipulatorEvent(manipulator));
+        Assert.Equal(0, AvatarEffectorCatalog.SummarizeHandDrive([locomotor]).Events);
+        Assert.False(AvatarMotorCatalog.IsLocomotorPopulationEvent(hand));
+        var handDrive = AvatarEffectorCatalog.SummarizeHandDrive([hand]);
+        Assert.Equal(1, handDrive.Events);
+        Assert.True(handDrive.LeftDelta > 0.0);
+        Assert.Equal(0.0, handDrive.RightDelta);
     }
 
     [Fact]
@@ -124,9 +127,70 @@ public sealed class AvatarNervousSystemTests
                 "LeftElbowDrive", "RightElbowDrive",
                 "HeadYawDrive", "HeadPitchDrive",
                 "StandDrive", "CrouchDrive", "SitDrive", "LieDrive",
-                "MotorEvents", "ManipulatorEvents", "OrientingEvents", "PostureEvents", "TicksWithoutMotorDispatch"
+                "MotorEvents", "ManipulatorEvents", "OrientingEvents", "PostureEvents", "TicksWithoutMotorDispatch",
+                "LeftHipCoronalDrive", "RightHipCoronalDrive",
+                "LeftAnkleSagittalDrive", "RightAnkleSagittalDrive",
+                "LeftAnkleCoronalDrive", "RightAnkleCoronalDrive",
+                "TrunkYawDrive", "LeftHandGraspDrive", "RightHandGraspDrive"
             ],
             typeof(AvatarNervousSystemSignal).GetProperties().Select(static property => property.Name).ToArray());
+    }
+
+    [Fact]
+    public void LateralHipPopulationProducesSignedLegDriveWithoutLocomotion()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "L", 100, "effector:leg:left:hip:coronal:excitatory:9:0"),
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "R", 101, "effector:leg:right:hip:coronal:inhibitory:9:0")
+        ]);
+
+        Assert.True(signal.LeftHipCoronalDrive > 0.0);
+        Assert.True(signal.RightHipCoronalDrive < 0.0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
+    }
+
+    [Fact]
+    public void TwoAxisAnklePopulationsProduceIndependentSignedLegDrive()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "L", 100, "effector:leg:left:ankle:sagittal:excitatory:9:0"),
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "R", 101, "effector:leg:right:ankle:sagittal:inhibitory:9:0"),
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "L", 102, "effector:leg:left:ankle:coronal:excitatory:9:0"),
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "R", 103, "effector:leg:right:ankle:coronal:inhibitory:9:0")
+        ]);
+
+        Assert.True(signal.LeftAnkleSagittalDrive > 0.0);
+        Assert.True(signal.RightAnkleSagittalDrive < 0.0);
+        Assert.True(signal.LeftAnkleCoronalDrive > 0.0);
+        Assert.True(signal.RightAnkleCoronalDrive < 0.0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
+    }
+
+    [Fact]
+    public void AxialPopulationProducesSignedTrunkDriveWithoutLocomotion()
+    {
+        var nervousSystem = CreateNervousSystem();
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 100, "effector:axial:trunk:yaw:excitatory:9:0")
+        ]);
+
+        Assert.True(signal.TrunkYawDrive > 0.0);
+        Assert.Equal(0.0, signal.LeftMotorDrive);
+        Assert.Equal(0.0, signal.RightMotorDrive);
     }
 
     [Fact]
@@ -162,6 +226,47 @@ public sealed class AvatarNervousSystemTests
         Assert.True(signal.CrouchDrive > 0.0);
         Assert.Equal(0.0, signal.LeftMotorDrive);
         Assert.Equal(0.0, signal.RightMotorDrive);
+    }
+
+    [Fact]
+    public void NewPosturePopulationInhibitsThePreviouslyAccumulatedPosture()
+    {
+        var nervousSystem = CreateNervousSystem();
+        nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 100, "effector:posture:sit:excitatory:9:0")
+        ]);
+
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "M", 101, "effector:posture:stand:excitatory:10:0")
+        ]);
+
+        Assert.True(signal.StandDrive > 0.0);
+        Assert.Equal(0.0, signal.CrouchDrive);
+        Assert.Equal(0.0, signal.SitDrive);
+        Assert.Equal(0.0, signal.LieDrive);
+    }
+
+    [Fact]
+    public void OpposingEffectorPopulationReleasesItsAntagonistTraceImmediately()
+    {
+        var nervousSystem = CreateNervousSystem();
+        nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "L", 100, "effector:arm:left:shoulder:sagittal:excitatory:9:0")
+        ]);
+
+        var signal = nervousSystem.InterpretBrainSignals(
+        [
+            new AvatarDispatchSpike(
+                "SpinalCordMotor", "L", 101, "effector:arm:left:shoulder:sagittal:inhibitory:10:0")
+        ]);
+
+        Assert.True(signal.LeftShoulderSagittalDrive < 0.0);
     }
 
     private static AvatarNervousSystem CreateNervousSystem()

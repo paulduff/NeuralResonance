@@ -87,6 +87,10 @@ internal sealed class ModelNeuron
 
 	private double _astrocyteLactateSupport;
 
+	private double _striatalUpStateTrace;
+
+	private double _lastNetSynapticCurrent;
+
 	private readonly NeuromodState _localNeuromodState = new();
 
 	private float _localRewardSignal;
@@ -100,6 +104,12 @@ internal sealed class ModelNeuron
 	public float FiringRateHz { get; private set; }
 
 	public float ActivityTrace { get; private set; }
+
+	public float MembranePotentialMillivolts => FiniteFloat(_v, -72f);
+
+	public float NetSynapticCurrent => FiniteFloat(_lastNetSynapticCurrent, 0f);
+
+	public float StriatalUpStateTrace => FiniteFloat(_striatalUpStateTrace, 0f);
 
 	public StructureId PreferredTarget { get; private set; }
 
@@ -308,8 +318,18 @@ internal sealed class ModelNeuron
 			(_pacemakerExcitatoryDrive * pacemakerCurrentScale) -
 			(_pacemakerInhibitoryDrive * 24.0 * inhibitoryGain);
 		var netSynCurrent = excitatorySynCurrent - (inhibitorySynCurrent * inhibitoryGain) + phasicDrive + intrinsicMembraneCurrent;
+		if (_circuitProfile.StructureId == StructureId.Striatum)
+		{
+			AdvanceStriatalUpState(
+				dtMs,
+				excitatorySynCurrent,
+				inhibitorySynCurrent,
+				neuromod,
+				ref netSynCurrent);
+		}
 		netSynCurrent -= _metabolicFatigueTrace * 1.8;
 		netSynCurrent -= _astrocytePotassiumLoad * 0.22;
+		_lastNetSynapticCurrent = netSynCurrent;
 		excitabilityGain *= _microtubules.IntegrationGain;
 		AdvanceCompartmentalBiology(dtMs, neuromod, nmdaVoltageRelief, excitatorySynCurrent, inhibitorySynCurrent, tonicDrive, phasicDrive, inhibitoryGain, excitabilityGain, ref netSynCurrent, out var thresholdOffset);
 		var canSpike = _refractoryMs <= 0.0;
@@ -364,6 +384,36 @@ internal sealed class ModelNeuron
 		AdvanceMetabolicState(dtMs, neuromod, excitatorySynCurrent, inhibitorySynCurrent);
 		_microtubules.Advance(dtMs, neuromod, excitatorySynCurrent, netSynCurrent, ActivityTrace, IsActive);
 		return IsActive;
+	}
+
+	private void AdvanceStriatalUpState(
+		double dtMs,
+		double excitatorySynCurrent,
+		double inhibitorySynCurrent,
+		NeuromodState neuromod,
+		ref double netSynCurrent)
+	{
+		// Medium-spiny neurons require convergent corticostriatal or thalamostriatal
+		// input to leave their hyperpolarized down state. NMDA/metabotropic currents
+		// persist that depolarization long enough for successive biological volleys
+		// to cooperate; neither this state nor its receptor bias selects an action.
+		var convergentExcitation = Math.Clamp(
+			(excitatorySynCurrent + (_proximalClusterTrace * 8.0) + (_distalClusterTrace * 5.0) -
+			 (inhibitorySynCurrent * 0.55) - 3.0) / 24.0,
+			0.0,
+			1.0);
+		var onset = 1.0 - Math.Exp(0.0 - dtMs / 36.0);
+		var decay = Math.Exp(0.0 - dtMs / 260.0);
+		_striatalUpStateTrace = Math.Clamp(
+			Math.Max(_striatalUpStateTrace * decay, convergentExcitation * onset),
+			0.0,
+			1.0);
+
+		var d1Dominant = _receptors.DopamineD1Weight > _receptors.DopamineD2Weight;
+		var dopamineBias = d1Dominant
+			? 1.0 + (neuromod.DopamineLevel * 0.22)
+			: 1.0 - (neuromod.DopamineLevel * 0.14);
+		netSynCurrent += _striatalUpStateTrace * 10.5 * dopamineBias;
 	}
 
 	private void UpdateLocalNeuromodulation()
@@ -702,6 +752,8 @@ internal sealed class ModelNeuron
 		_astrocyteGlutamateLoad = FiniteClamp(_astrocyteGlutamateLoad, 0.0, 1.0, 0.0);
 		_astrocytePotassiumLoad = FiniteClamp(_astrocytePotassiumLoad, 0.0, 1.0, 0.0);
 		_astrocyteLactateSupport = FiniteClamp(_astrocyteLactateSupport, 0.0, 1.0, 0.0);
+		_striatalUpStateTrace = FiniteClamp(_striatalUpStateTrace, 0.0, 1.0, 0.0);
+		_lastNetSynapticCurrent = FiniteClamp(_lastNetSynapticCurrent, -10000.0, 10000.0, 0.0);
 		ActivityTrace = float.IsFinite(ActivityTrace) ? Math.Clamp(ActivityTrace, 0f, 1f) : 0f;
 		FiringRateHz = float.IsFinite(FiringRateHz) ? Math.Max(0f, FiringRateHz) : 0f;
 	}

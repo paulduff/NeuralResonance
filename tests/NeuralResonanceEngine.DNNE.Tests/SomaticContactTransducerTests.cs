@@ -64,6 +64,34 @@ public sealed class SomaticContactTransducerTests
     }
 
     [Fact]
+    public void RetriedSourceSequenceReusesTheOriginalTransductionAndSpikeIdentities()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(bodyPositionX: 0.2f));
+
+        var first = transducer.Transduce(descriptor, tick: 20, timestampMs: 60.0);
+        var replay = transducer.Transduce(descriptor, tick: 21, timestampMs: 2_060.0);
+        var newSessionFrame = transducer.Transduce(
+            descriptor with { TimestampMs = descriptor.TimestampMs + 1 },
+            tick: 22,
+            timestampMs: 2_080.0);
+
+        Assert.Same(first, replay);
+        Assert.NotSame(first, newSessionFrame);
+        Assert.Equal(
+            first.LeftHemisphereSpikes
+                .Concat(first.RightHemisphereSpikes)
+                .Concat(first.LeftSpinalWithdrawalSpikes)
+                .Concat(first.RightSpinalWithdrawalSpikes)
+                .Select(static spike => spike.MessageId),
+            replay.LeftHemisphereSpikes
+                .Concat(replay.RightHemisphereSpikes)
+                .Concat(replay.LeftSpinalWithdrawalSpikes)
+                .Concat(replay.RightSpinalWithdrawalSpikes)
+                .Select(static spike => spike.MessageId));
+    }
+
+    [Fact]
     public void HighForceAndPenetrationActivateMechanicalNociceptors()
     {
         var transducer = new SomaticContactTransducerRuntime();
@@ -74,6 +102,7 @@ public sealed class SomaticContactTransducerTests
         Assert.True(result.HighThresholdActivation > 0f);
         Assert.Contains(result.LeftHemisphereSpikes, spike =>
             spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+        Assert.Equal(0, result.GeneratedSpinalWithdrawalSpikes);
     }
 
     [Fact]
@@ -103,6 +132,350 @@ public sealed class SomaticContactTransducerTests
         Assert.True(sustained.HighThresholdActivation > brief.HighThresholdActivation);
         Assert.Contains(sustained.LeftHemisphereSpikes, spike =>
             spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+        Assert.True(sustained.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.True(sustained.GeneratedSpinalWithdrawalSpikes >= brief.GeneratedSpinalWithdrawalSpikes);
+        Assert.All(sustained.LeftSpinalWithdrawalSpikes, spike =>
+        {
+            Assert.Equal(StructureId.SomaticAfferents, spike.SourceStructure);
+            Assert.Equal(StructureId.SpinalCordMotor, spike.TargetStructure);
+            Assert.Contains("mechanonociceptor", spike.SourceNeuronId, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void OrdinaryLongDurationPlantarSupportDoesNotBecomePainfulFromDurationAlone()
+    {
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: -0.14f,
+            force: 360f,
+            impulse: 8f,
+            penetration: 1.2f,
+            bodyPositionY: -0.72f,
+            bodyPositionZ: 0.08f,
+            contactArea: 6_200f,
+            duration: 60_000f) with
+        {
+            SurfaceNormalY = 1f,
+            SurfaceNormalZ = 0f,
+            InputSource = "avatar_world_left_foot_support"
+        });
+
+        var result = new SomaticContactTransducerRuntime().Transduce(
+            descriptor,
+            tick: 34,
+            timestampMs: 74.0);
+
+        Assert.Equal(0f, result.HighThresholdActivation);
+        Assert.DoesNotContain(result.RightHemisphereSpikes, spike =>
+            spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PhysiologicalPeakPlantarPressureDoesNotRecruitSpinalWithdrawal()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: -0.14f,
+            force: 542.5f,
+            impulse: 12f,
+            penetration: 1.2f,
+            bodyPositionY: -0.72f,
+            bodyPositionZ: 0.08f,
+            contactArea: 1_550f,
+            duration: 60_000f) with
+        {
+            SurfaceNormalY = 1f,
+            SurfaceNormalZ = 0f,
+            InputSource = "avatar_world_left_foot_forefoot_medial_support"
+        });
+
+        var onset = transducer.Transduce(descriptor, tick: 34, timestampMs: 100.0);
+        var later = transducer.Transduce(
+            descriptor with { Sequence = 2 },
+            tick: 134,
+            timestampMs: 4_100.0);
+
+        Assert.Equal(0f, onset.HighThresholdActivation);
+        Assert.Equal(0, onset.GeneratedSpinalWithdrawalSpikes);
+        Assert.Equal(0f, later.HighThresholdActivation);
+        Assert.Equal(0, later.GeneratedSpinalWithdrawalSpikes);
+        Assert.True(later.PressureActivation > 0f);
+    }
+
+    [Fact]
+    public void ExcessiveLocalizedPlantarPressureStillRecruitsSpinalWithdrawal()
+    {
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.14f,
+            force: 1_007.5f,
+            impulse: 12f,
+            penetration: 1.2f,
+            bodyPositionY: -0.72f,
+            bodyPositionZ: 0.08f,
+            contactArea: 1_550f,
+            duration: 120f) with
+        {
+            SurfaceNormalY = 1f,
+            SurfaceNormalZ = 0f,
+            InputSource = "avatar_world_right_foot_heel_lateral_support"
+        });
+
+        var result = new SomaticContactTransducerRuntime().Transduce(
+            descriptor,
+            tick: 35,
+            timestampMs: 120.0);
+
+        Assert.True(result.HighThresholdActivation > 0f);
+        Assert.True(result.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.Contains(result.LeftSpinalWithdrawalSpikes, spike =>
+            spike.SourceNeuronId.Contains(":foot:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PenetratingPlantarContactStillRecruitsSpinalWithdrawalBelowPressureLimit()
+    {
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: -0.14f,
+            force: 360f,
+            impulse: 12f,
+            penetration: 24f,
+            bodyPositionY: -0.72f,
+            bodyPositionZ: 0.08f,
+            contactArea: 6_200f,
+            duration: 120f) with
+        {
+            SurfaceNormalY = 1f,
+            SurfaceNormalZ = 0f,
+            InputSource = "avatar_world_left_foot_penetrating_contact"
+        });
+
+        var result = new SomaticContactTransducerRuntime().Transduce(
+            descriptor,
+            tick: 36,
+            timestampMs: 140.0);
+
+        Assert.True(result.HighThresholdActivation > 0f);
+        Assert.True(result.GeneratedSpinalWithdrawalSpikes > 0);
+    }
+
+    [Fact]
+    public void SustainedNonFootSupportProducesLocalizedPressurePain()
+    {
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.18f,
+            force: 420f,
+            impulse: 0f,
+            penetration: 1.2f,
+            bodyPositionY: -0.34f,
+            bodyPositionZ: -0.08f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            SurfaceNormalY = 1f,
+            SurfaceNormalZ = 0f,
+            InputSource = "avatar_world_pelvis_support"
+        });
+
+        var result = new SomaticContactTransducerRuntime().Transduce(
+            descriptor,
+            tick: 35,
+            timestampMs: 75.0);
+
+        Assert.True(result.HighThresholdActivation > 0f);
+        Assert.Contains(result.LeftHemisphereSpikes, spike =>
+            spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AxialCollisionProducesDirectionCodedSpinalNociception()
+    {
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0f,
+            force: 3_500f,
+            penetration: 30f,
+            bodyPositionY: 0.24f,
+            bodyPositionZ: -0.18f,
+            duration: 4_000f) with
+        {
+            SurfaceNormalX = 0f,
+            SurfaceNormalY = 0f,
+            SurfaceNormalZ = -1f,
+            InputSource = "avatar_world_chest_contact_z_neg"
+        });
+
+        var result = new SomaticContactTransducerRuntime().Transduce(
+            descriptor,
+            tick: 36,
+            timestampMs: 100.0);
+
+        Assert.True(result.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.All(
+            result.LeftSpinalWithdrawalSpikes.Concat(result.RightSpinalWithdrawalSpikes),
+            spike => Assert.Contains(
+                ":chest:free_nerve_ending_mechanonociceptor:normal_z_neg:",
+                spike.SourceNeuronId,
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StaticPressurePainPersistsWhileSpinalWithdrawalAdaptsIntoPulses()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.42f,
+            force: 520f,
+            impulse: 0f,
+            penetration: 0.3f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            TangentialSpeedMetersPerSecond = 0f,
+            InputSource = "avatar_world_left_hand_contact"
+        });
+
+        var onset = transducer.Transduce(descriptor, tick: 40, timestampMs: 1_000.0);
+        var adapted = transducer.Transduce(
+            descriptor with { Sequence = 2 },
+            tick: 41,
+            timestampMs: 1_033.0);
+        var laterPulse = transducer.Transduce(
+            descriptor with { Sequence = 3 },
+            tick: 134,
+            timestampMs: 4_100.0);
+
+        Assert.True(onset.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.True(adapted.HighThresholdActivation > 0f);
+        Assert.Contains(adapted.LeftHemisphereSpikes, spike =>
+            spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+        Assert.Equal(0, adapted.GeneratedSpinalWithdrawalSpikes);
+        Assert.True(laterPulse.HighThresholdActivation > 0f);
+        Assert.True(laterPulse.GeneratedSpinalWithdrawalSpikes > 0);
+    }
+
+    [Fact]
+    public void RisingForceRetriggersWithdrawalDuringStaticPressureRefractoryPeriod()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.42f,
+            force: 520f,
+            impulse: 0f,
+            penetration: 0.3f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            TangentialSpeedMetersPerSecond = 0f,
+            InputSource = "avatar_world_left_hand_contact"
+        });
+
+        _ = transducer.Transduce(descriptor, tick: 40, timestampMs: 1_000.0);
+        var increasedLoad = transducer.Transduce(
+            descriptor with
+            {
+                Sequence = 2,
+                ForceNewtons = 1_200f
+            },
+            tick: 41,
+            timestampMs: 1_033.0);
+
+        Assert.True(increasedLoad.OnsetActivation > 0f);
+        Assert.True(increasedLoad.GeneratedSpinalWithdrawalSpikes > 0);
+    }
+
+    [Fact]
+    public void ColliderFacesWithinOneAnatomicalFieldShareWithdrawalRefractoryGate()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.42f,
+            force: 520f,
+            impulse: 0f,
+            penetration: 0.3f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            TangentialSpeedMetersPerSecond = 0f,
+            InputSource = "avatar_world_right_hand_palm_contact"
+        });
+
+        var palm = transducer.Transduce(descriptor, tick: 50, timestampMs: 2_000.0);
+        var fingers = transducer.Transduce(
+            descriptor with
+            {
+                Sequence = 2,
+                BodyPositionY = descriptor.BodyPositionY + 0.06f,
+                BodyPositionZ = descriptor.BodyPositionZ + 0.09f,
+                InputSource = "avatar_world_right_hand_finger_contact"
+            },
+            tick: 51,
+            timestampMs: 2_033.0);
+
+        Assert.True(palm.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.True(fingers.HighThresholdActivation > 0f);
+        Assert.Contains(fingers.LeftHemisphereSpikes, spike =>
+            spike.SourceNeuronId.Contains("mechanonociceptor", StringComparison.Ordinal));
+        Assert.Equal(0, fingers.GeneratedSpinalWithdrawalSpikes);
+    }
+
+    [Fact]
+    public void SeparateAnatomicalFieldsRetainIndependentWithdrawalGates()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.42f,
+            force: 520f,
+            impulse: 0f,
+            penetration: 0.3f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            TangentialSpeedMetersPerSecond = 0f,
+            InputSource = "avatar_world_right_hand_contact"
+        });
+
+        var hand = transducer.Transduce(descriptor, tick: 60, timestampMs: 3_000.0);
+        var forearm = transducer.Transduce(
+            descriptor with
+            {
+                Sequence = 2,
+                BodyPositionY = descriptor.BodyPositionY - 0.18f,
+                InputSource = "avatar_world_right_forearm_contact"
+            },
+            tick: 61,
+            timestampMs: 3_033.0);
+
+        Assert.True(hand.GeneratedSpinalWithdrawalSpikes > 0);
+        Assert.True(forearm.GeneratedSpinalWithdrawalSpikes > 0);
+    }
+
+    [Fact]
+    public void StrongerLoadOnAnotherColliderFaceBypassesSharedRecoveryGate()
+    {
+        var transducer = new SomaticContactTransducerRuntime();
+        var descriptor = CreateDescriptor(CreateFrame(
+            bodyPositionX: 0.42f,
+            force: 520f,
+            impulse: 0f,
+            penetration: 0.3f,
+            contactArea: 20_000f,
+            duration: 60_000f) with
+        {
+            TangentialSpeedMetersPerSecond = 0f,
+            InputSource = "avatar_world_right_hand_palm_contact"
+        });
+
+        _ = transducer.Transduce(descriptor, tick: 70, timestampMs: 4_000.0);
+        var increasedLoad = transducer.Transduce(
+            descriptor with
+            {
+                Sequence = 2,
+                ForceNewtons = 1_200f,
+                InputSource = "avatar_world_right_hand_finger_contact"
+            },
+            tick: 71,
+            timestampMs: 4_033.0);
+
+        Assert.True(increasedLoad.GeneratedSpinalWithdrawalSpikes > 0);
     }
 
     [Fact]
@@ -134,6 +507,19 @@ public sealed class SomaticContactTransducerTests
 
         Assert.False(SomaticContactDescriptor.TryCreate(frame, out _, out var error));
         Assert.Contains("surface normal", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OutOfRangeTangentialVelocityNamesTheRejectedMeasurement()
+    {
+        var frame = CreateFrame(bodyPositionX: 0f) with
+        {
+            TangentialSpeedMetersPerSecond = 101f
+        };
+
+        Assert.False(SomaticContactDescriptor.TryCreate(frame, out _, out var error));
+        Assert.Contains("tangentialSpeedMetersPerSecond", error, StringComparison.Ordinal);
+        Assert.Contains("101", error, StringComparison.Ordinal);
     }
 
     [Fact]

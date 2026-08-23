@@ -1,16 +1,29 @@
 namespace NRE.WorldSim;
 
+public readonly record struct WorldTerrainRise(
+    double ContactDistance,
+    double TargetX,
+    double TargetZ,
+    double CurrentSurfaceY,
+    double TargetSurfaceY,
+    double RiseMeters);
+
 public sealed class WorldTerrain
 {
     public const int Size = 132;
-    public const int SeaLevel = 3;
+    public const int HeightUnitsPerMeter = 4;
+    public const double SeaLevelMeters = 3.0;
+    public const int SeaLevelHeightUnits = (int)SeaLevelMeters * HeightUnitsPerMeter;
+    public const double HeightUnitMeters = 0.25;
+    public const double HalfHeightUnitMeters = HeightUnitMeters * 0.5;
+    public const int CliffThresholdHeightUnits = 4;
     public const double ShelterFoundationHalfExtent = 4.55;
     public const double ShelterEntranceHalfWidth = 1.75;
     public const double ShelterEntranceStart = 3.45;
     public const double ShelterEntranceEnd = 8.0;
     public const double ShelterGradeWidth = 2.5;
-    private const int MinimumHeight = 1;
-    private const int MaximumHeight = 18;
+    private const int MinimumHeight = 1 * HeightUnitsPerMeter;
+    private const int MaximumHeight = 18 * HeightUnitsPerMeter;
     private readonly short[,] heights = new short[Size, Size];
     private readonly List<WorldStaticObstacle> staticObstacles = [];
     private readonly List<WorldShelterSite> shelterSites = [];
@@ -29,24 +42,18 @@ public sealed class WorldTerrain
 
     public int HeightAtCell(int x, int z) => heights[Math.Clamp(x, 0, Size - 1), Math.Clamp(z, 0, Size - 1)];
 
-    public double SurfaceAt(double worldX, double worldZ)
-    {
-        var half = (Size - 1) * 0.5;
-        var gridX = Math.Clamp(worldX + half, 0.0, Size - 1.0);
-        var gridZ = Math.Clamp(worldZ + half, 0.0, Size - 1.0);
-        var x0 = (int)Math.Floor(gridX);
-        var z0 = (int)Math.Floor(gridZ);
-        var x1 = Math.Min(Size - 1, x0 + 1);
-        var z1 = Math.Min(Size - 1, z0 + 1);
-        var tx = SmoothStep(gridX - x0);
-        var tz = SmoothStep(gridZ - z0);
-        return Lerp(
-            Lerp(heights[x0, z0], heights[x1, z0], tx),
-            Lerp(heights[x0, z1], heights[x1, z1], tx),
-            tz) - 0.5;
-    }
+    public double SurfaceHeightAtCell(int x, int z) =>
+        (HeightAtCell(x, z) * HeightUnitMeters) - HalfHeightUnitMeters;
 
-    public bool IsWater(double worldX, double worldZ) => SurfaceAt(worldX, worldZ) + 0.5 < SeaLevel;
+    public double SurfaceAt(double worldX, double worldZ)
+        => (HeightAtWorld(worldX, worldZ) * HeightUnitMeters) - HalfHeightUnitMeters;
+
+    public bool IsWater(double worldX, double worldZ) =>
+        HeightAtWorld(worldX, worldZ) < SeaLevelHeightUnits;
+
+    public bool IsCliffBetweenCells(int firstX, int firstZ, int secondX, int secondZ) =>
+        Math.Abs(HeightAtCell(firstX, firstZ) - HeightAtCell(secondX, secondZ)) >=
+        CliffThresholdHeightUnits;
 
     public bool IsWalkable(double worldX, double worldZ) => IsInside(worldX, worldZ) && !IsWater(worldX, worldZ);
 
@@ -56,11 +63,79 @@ public sealed class WorldTerrain
         return worldX >= -half && worldX <= half && worldZ >= -half && worldZ <= half;
     }
 
+    public bool TryProbeRise(
+        double worldX,
+        double worldZ,
+        double directionX,
+        double directionZ,
+        double maximumDistance,
+        out WorldTerrainRise rise)
+    {
+        var length = Math.Sqrt((directionX * directionX) + (directionZ * directionZ));
+        if (!double.IsFinite(length) || length < 0.0001 ||
+            !double.IsFinite(maximumDistance) || maximumDistance <= 0.0 ||
+            !IsInside(worldX, worldZ))
+        {
+            rise = default;
+            return false;
+        }
+
+        var forwardX = directionX / length;
+        var forwardZ = directionZ / length;
+        var currentHeight = HeightAtWorld(worldX, worldZ);
+        for (var distance = 0.10; distance <= maximumDistance + 0.0001; distance += 0.05)
+        {
+            var sampleX = worldX + (forwardX * distance);
+            var sampleZ = worldZ + (forwardZ * distance);
+            if (!IsInside(sampleX, sampleZ))
+            {
+                break;
+            }
+
+            var sampleHeight = HeightAtWorld(sampleX, sampleZ);
+            if (sampleHeight <= currentHeight)
+            {
+                continue;
+            }
+
+            var targetDistance = FindSupportedTargetDistance(
+                worldX,
+                worldZ,
+                forwardX,
+                forwardZ,
+                distance,
+                sampleHeight);
+            if (targetDistance <= 0.0)
+            {
+                break;
+            }
+
+            var targetX = worldX + (forwardX * targetDistance);
+            var targetZ = worldZ + (forwardZ * targetDistance);
+            if (!IsWalkable(targetX, targetZ))
+            {
+                break;
+            }
+
+            rise = new WorldTerrainRise(
+                distance,
+                targetX,
+                targetZ,
+                (currentHeight * HeightUnitMeters) - HalfHeightUnitMeters,
+                (sampleHeight * HeightUnitMeters) - HalfHeightUnitMeters,
+                (sampleHeight - currentHeight) * HeightUnitMeters);
+            return true;
+        }
+
+        rise = default;
+        return false;
+    }
+
     public int CellKey(double worldX, double worldZ)
     {
         var half = (Size - 1) * 0.5;
-        var x = Math.Clamp((int)Math.Round(worldX + half), 0, Size - 1);
-        var z = Math.Clamp((int)Math.Round(worldZ + half), 0, Size - 1);
+        var x = Math.Clamp((int)Math.Floor(worldX + half + 0.5), 0, Size - 1);
+        var z = Math.Clamp((int)Math.Floor(worldZ + half + 0.5), 0, Size - 1);
         return (x * Size) + z;
     }
 
@@ -170,7 +245,12 @@ public sealed class WorldTerrain
                     sculpted -= (1.0 - (radius / valleyRadius)) * 0.25;
                 }
 
-                var height = Math.Clamp(1 + (int)Math.Round(sculpted * 10.0), MinimumHeight, MaximumHeight);
+                var height = Math.Clamp(
+                    (int)Math.Round(
+                        (1.0 + (sculpted * 10.0)) * HeightUnitsPerMeter,
+                        MidpointRounding.AwayFromZero),
+                    MinimumHeight,
+                    MaximumHeight);
                 heights[x, z] = (short)height;
             }
         }
@@ -202,7 +282,9 @@ public sealed class WorldTerrain
         var half = (Size - 1) * 0.5;
         foreach (var site in shelterSites)
         {
-            var targetHeight = Math.Max(SeaLevel + 1, HeightAtWorld(site.X, site.Z));
+            var targetHeight = Math.Max(
+                SeaLevelHeightUnits + HeightUnitsPerMeter,
+                HeightAtWorld(site.X, site.Z));
             var gradeWidth = ShelterGradeWidth * site.Scale;
             for (var x = 0; x < Size; x++)
             {
@@ -242,9 +324,63 @@ public sealed class WorldTerrain
     private int HeightAtWorld(double worldX, double worldZ)
     {
         var half = (Size - 1) * 0.5;
-        var x = Math.Clamp((int)Math.Round(worldX + half), 0, Size - 1);
-        var z = Math.Clamp((int)Math.Round(worldZ + half), 0, Size - 1);
-        return heights[x, z];
+        var gridX = Math.Clamp(worldX + half, 0.0, Size - 1.0);
+        var gridZ = Math.Clamp(worldZ + half, 0.0, Size - 1.0);
+        var x0 = (int)Math.Floor(gridX);
+        var z0 = (int)Math.Floor(gridZ);
+        var x1 = Math.Min(Size - 1, x0 + 1);
+        var z1 = Math.Min(Size - 1, z0 + 1);
+        var h00 = heights[x0, z0];
+        var h10 = heights[x1, z0];
+        var h01 = heights[x0, z1];
+        var h11 = heights[x1, z1];
+
+        if (ContainsCliff(h00, h10, h01, h11))
+        {
+            var nearestX = Math.Clamp((int)Math.Floor(gridX + 0.5), 0, Size - 1);
+            var nearestZ = Math.Clamp((int)Math.Floor(gridZ + 0.5), 0, Size - 1);
+            return heights[nearestX, nearestZ];
+        }
+
+        var tx = SmoothStep(gridX - x0);
+        var tz = SmoothStep(gridZ - z0);
+        return Math.Clamp(
+            (int)Math.Round(
+                Lerp(
+                    Lerp(h00, h10, tx),
+                    Lerp(h01, h11, tx),
+                    tz),
+                MidpointRounding.AwayFromZero),
+            MinimumHeight,
+            MaximumHeight);
+    }
+
+    private static bool ContainsCliff(int h00, int h10, int h01, int h11) =>
+        Math.Abs(h10 - h00) >= CliffThresholdHeightUnits ||
+        Math.Abs(h11 - h01) >= CliffThresholdHeightUnits ||
+        Math.Abs(h01 - h00) >= CliffThresholdHeightUnits ||
+        Math.Abs(h11 - h10) >= CliffThresholdHeightUnits;
+
+    private double FindSupportedTargetDistance(
+        double worldX,
+        double worldZ,
+        double forwardX,
+        double forwardZ,
+        double firstRiseDistance,
+        int minimumHeight)
+    {
+        for (var offset = 0.48; offset >= 0.22; offset -= 0.02)
+        {
+            var distance = firstRiseDistance + offset;
+            var targetX = worldX + (forwardX * distance);
+            var targetZ = worldZ + (forwardZ * distance);
+            if (IsInside(targetX, targetZ) && HeightAtWorld(targetX, targetZ) >= minimumHeight)
+            {
+                return distance;
+            }
+        }
+
+        return 0.0;
     }
 
     private int CountExplorableCells()
@@ -252,7 +388,7 @@ public sealed class WorldTerrain
         var count = 0;
         foreach (var height in heights)
         {
-            if (height >= SeaLevel)
+            if (height >= SeaLevelHeightUnits)
             {
                 count++;
             }
@@ -281,7 +417,7 @@ public sealed class WorldTerrain
         {
             for (var z = 2; z < Size - 2; z++)
             {
-                if (heights[x, z] <= SeaLevel + 1)
+                if (heights[x, z] <= SeaLevelHeightUnits + HeightUnitsPerMeter)
                 {
                     continue;
                 }

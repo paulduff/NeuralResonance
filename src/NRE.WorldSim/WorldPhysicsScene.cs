@@ -141,6 +141,7 @@ public sealed class WorldPhysicsScene : IDisposable
             headingSweep,
             resolvedRoot,
             resolvedHeading,
+            resolvedArticulation,
             proposedGeometry,
             dt));
 
@@ -171,6 +172,7 @@ public sealed class WorldPhysicsScene : IDisposable
                 chainSweep,
                 resolvedRoot,
                 resolvedHeading,
+                resolvedArticulation,
                 proposedGeometry,
                 dt));
         }
@@ -233,7 +235,13 @@ public sealed class WorldPhysicsScene : IDisposable
 
             constrained = true;
             current += remaining * sweep.AllowedFraction;
-            contacts.AddRange(CreateContacts(sweep, current, headingDegrees, forceFrame, dt));
+            contacts.AddRange(CreateContacts(
+                sweep,
+                current,
+                headingDegrees,
+                articulation,
+                forceFrame,
+                dt));
             var residual = remaining * (1f - sweep.AllowedFraction);
             var projected = residual;
             foreach (var normal in sweep.ConstraintNormals)
@@ -363,6 +371,7 @@ public sealed class WorldPhysicsScene : IDisposable
         MotionSweep sweep,
         Vector3 resolvedRoot,
         float resolvedHeading,
+        PhysicalArticulationFrame resolvedArticulation,
         PhysicalArticulationFrame forceFrame,
         float dt)
     {
@@ -372,15 +381,25 @@ public sealed class WorldPhysicsScene : IDisposable
         }
 
         var inverseRootOrientation = Quaternion.Conjugate(HeadingOrientation(resolvedHeading));
+        var resolvedRootOrientation = HeadingOrientation(resolvedHeading);
+        var resolvedColliders = AvatarColliderRig.CaptureResolved(resolvedArticulation)
+            .ToDictionary(static collider => collider.Region, StringComparer.Ordinal);
         var contacts = new List<AvatarPhysicsContact>(sweep.Hits.Count);
         foreach (var hit in sweep.Hits)
         {
             var hitLocation = hit.Location == default ? hit.PreviousPose.Position : hit.Location;
             var localPosition = Vector3.Transform(hitLocation - resolvedRoot, inverseRootOrientation);
             var localNormal = Vector3.Normalize(Vector3.Transform(hit.Normal, inverseRootOrientation));
-            var contactVelocity = hit.LinearVelocity + Vector3.Cross(
-                hit.AngularVelocity,
-                hitLocation - hit.PreviousPose.Position);
+            var resolvedCollider = resolvedColliders[hit.Proposed.Region];
+            var resolvedPose = ToWorldPose(resolvedCollider, resolvedRoot, resolvedRootOrientation);
+            var acceptedLinearVelocity = (resolvedPose.Position - hit.PreviousPose.Position) / dt;
+            var acceptedAngularVelocity = AngularVelocity(
+                hit.PreviousPose.Orientation,
+                resolvedPose.Orientation,
+                dt);
+            var contactVelocity = acceptedLinearVelocity + Vector3.Cross(
+                acceptedAngularVelocity,
+                hitLocation - resolvedPose.Position);
             var normalSpeed = MathF.Max(0f, -Vector3.Dot(contactVelocity, hit.Normal));
             var tangentialVelocity = contactVelocity - (Vector3.Dot(contactVelocity, hit.Normal) * hit.Normal);
             var muscleForce = ResolveMuscleEffort(forceFrame.Musculoskeletal, hit.Proposed.Chain);
@@ -448,9 +467,19 @@ public sealed class WorldPhysicsScene : IDisposable
         {
             LeftFootLoadNewtons = measurements.LeftFootLoadNewtons,
             RightFootLoadNewtons = measurements.RightFootLoadNewtons,
+            LeftFootPressure = measurements.LeftFootPressure,
+            RightFootPressure = measurements.RightFootPressure,
             LeftHandLoadNewtons = measurements.LeftHandLoadNewtons,
             RightHandLoadNewtons = measurements.RightHandLoadNewtons,
             ManipulatorExtensionFraction = measurements.ManipulatorExtensionFraction,
+            LeftHandApertureFraction = measurements.LeftHandApertureFraction,
+            RightHandApertureFraction = measurements.RightHandApertureFraction,
+            LeftGripForceNewtons = measurements.LeftGripForceNewtons,
+            RightGripForceNewtons = measurements.RightGripForceNewtons,
+            LeftHandFatigue = measurements.LeftHandFatigue,
+            RightHandFatigue = measurements.RightHandFatigue,
+            LeftHandSlip = measurements.LeftHandSlip,
+            RightHandSlip = measurements.RightHandSlip,
             Musculoskeletal = geometryBody with
             {
                 SupportFraction = measurementBody.SupportFraction,
@@ -546,25 +575,31 @@ public sealed class WorldPhysicsScene : IDisposable
         {
             for (var z = 0; z < WorldTerrain.Size; z++)
             {
-                var height = terrain.HeightAtCell(x, z) - 0.5f;
+                var height = (float)terrain.SurfaceHeightAtCell(x, z);
                 if (x + 1 < WorldTerrain.Size)
                 {
-                    var adjacent = terrain.HeightAtCell(x + 1, z) - 0.5f;
-                    AddTerrainFace(
-                        new Vector3((x - half) + 0.5f, 0f, z - half),
-                        new Vector3(TerrainFaceThicknessMeters, 0f, 1.002f),
-                        height,
-                        adjacent);
+                    var adjacent = (float)terrain.SurfaceHeightAtCell(x + 1, z);
+                    if (terrain.IsCliffBetweenCells(x, z, x + 1, z))
+                    {
+                        AddTerrainFace(
+                            new Vector3((x - half) + 0.5f, 0f, z - half),
+                            new Vector3(TerrainFaceThicknessMeters, 0f, 1.002f),
+                            height,
+                            adjacent);
+                    }
                 }
 
                 if (z + 1 < WorldTerrain.Size)
                 {
-                    var adjacent = terrain.HeightAtCell(x, z + 1) - 0.5f;
-                    AddTerrainFace(
-                        new Vector3(x - half, 0f, (z - half) + 0.5f),
-                        new Vector3(1.002f, 0f, TerrainFaceThicknessMeters),
-                        height,
-                        adjacent);
+                    var adjacent = (float)terrain.SurfaceHeightAtCell(x, z + 1);
+                    if (terrain.IsCliffBetweenCells(x, z, x, z + 1))
+                    {
+                        AddTerrainFace(
+                            new Vector3(x - half, 0f, (z - half) + 0.5f),
+                            new Vector3(1.002f, 0f, TerrainFaceThicknessMeters),
+                            height,
+                            adjacent);
+                    }
                 }
             }
         }
@@ -600,7 +635,6 @@ public sealed class WorldPhysicsScene : IDisposable
             AddShelterBox(origin, scale, "shelter_right", 3.8f, 1.2f, 0f, 0.32f, 2.4f, 7.3f);
             AddShelterBox(origin, scale, "shelter_front_left", -2.5f, 1.2f, 3.8f, 2.8f, 2.4f, 0.32f);
             AddShelterBox(origin, scale, "shelter_front_right", 2.5f, 1.2f, 3.8f, 2.8f, 2.4f, 0.32f);
-            AddShelterBox(origin, scale, "shelter_lintel", 0f, 2.2f, 3.8f, 2.2f, 0.4f, 0.32f);
             AddShelterBox(origin, scale, "shelter_roof", 0f, 2.55f, 0f, 6.4f, 0.28f, 6.4f);
             if (index == 0)
             {

@@ -7,6 +7,34 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class HeadlessWorldRuntimeTests
 {
     [Fact]
+    public void FallbackContactImpulseUsesOnlyTheCurrentBodyFrame()
+    {
+        var impulse = HeadlessWorldRuntime.CalculateFrameImpulseNewtonSeconds(
+            forceNewtons: 450f,
+            frameInterval: TimeSpan.FromMilliseconds(25));
+
+        Assert.Equal(11.25f, impulse, 3);
+        Assert.Equal(0f, HeadlessWorldRuntime.CalculateFrameImpulseNewtonSeconds(
+            float.NaN,
+            TimeSpan.FromMilliseconds(25)));
+    }
+
+    [Theory]
+    [InlineData(0.0, 0.0)]
+    [InlineData(24.0, 0.5)]
+    [InlineData(-48.0, -1.0)]
+    [InlineData(240.0, 1.0)]
+    public void MotorRecruitmentUsesThePhysiologicalPopulationEnvelope(
+        double accumulatedDrive,
+        double expectedRecruitment)
+    {
+        Assert.Equal(
+            expectedRecruitment,
+            HeadlessWorldRuntime.NormalizeMotorRecruitment(accumulatedDrive),
+            precision: 6);
+    }
+
+    [Fact]
     public void TerrainGenerationIsDeterministicAndMatchesWorldBounds()
     {
         var first = new WorldTerrain(317);
@@ -31,7 +59,7 @@ public sealed class HeadlessWorldRuntimeTests
         var waterCell = (
             from x in Enumerable.Range(0, WorldTerrain.Size)
             from z in Enumerable.Range(0, WorldTerrain.Size)
-            where terrain.HeightAtCell(x, z) < WorldTerrain.SeaLevel
+            where terrain.HeightAtCell(x, z) < WorldTerrain.SeaLevelHeightUnits
             select (X: x - half, Z: z - half)).First();
 
         Assert.True(terrain.IsInside(waterCell.X, waterCell.Z));
@@ -84,7 +112,152 @@ public sealed class HeadlessWorldRuntimeTests
 
         Assert.Equal(TimeSpan.FromMilliseconds(50), options.EffectiveBodyFrameInterval);
         Assert.Equal(TimeSpan.FromMilliseconds(125), options.EffectiveVisionFrameInterval);
+        Assert.Equal(TimeSpan.FromSeconds(30), options.EffectiveRollingReportInterval);
+        Assert.Equal(TimeSpan.FromSeconds(4), options.EffectiveBrainFrameOverloadThreshold);
+        Assert.Equal(3, options.ConsecutiveBrainFrameOverloadLimit);
+        Assert.False(options.MotorTrainingMode);
         options.Validate();
+    }
+
+    [Fact]
+    public void PascalCasedBrainAuthorityHistoryIsReadFromControlFrameState()
+    {
+        var expected = new ActionAuthorityCumulativeTelemetry(
+            Samples: 120,
+            CircuitObservedTicks: 118,
+            AuthorityGrantedTicks: 9,
+            AuthorityGrantEpisodes: 2,
+            FirstAuthorityGrantTick: 31,
+            LastAuthorityGrantTick: 104,
+            Channels: []);
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            ActionAuthorityHistory = expected
+        });
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+
+        var actual = HeadlessWorldRuntime.ReadActionAuthorityHistory(document.RootElement);
+
+        Assert.NotNull(actual);
+        Assert.Equal(expected.Samples, actual.Samples);
+        Assert.Equal(expected.AuthorityGrantedTicks, actual.AuthorityGrantedTicks);
+        Assert.Equal(expected.AuthorityGrantEpisodes, actual.AuthorityGrantEpisodes);
+    }
+
+    [Fact]
+    public async Task RunningWorldLeavesAnAtomicRollingReportBeforeGracefulShutdown()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dnne-world-rolling-tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
+                new Uri("http://127.0.0.1:1"),
+                SimulationInterval: TimeSpan.FromMilliseconds(10),
+                FramePollInterval: TimeSpan.FromSeconds(1),
+                BodyFrameInterval: TimeSpan.FromSeconds(1),
+                VisionFrameInterval: TimeSpan.FromSeconds(1),
+                AudioFrameInterval: TimeSpan.FromSeconds(1),
+                ReportDirectory: directory,
+                RollingReportInterval: TimeSpan.FromMilliseconds(100)));
+            runtime.Start();
+
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(3);
+            while (runtime.LastRollingReportPath is null && DateTimeOffset.UtcNow < deadline)
+            {
+                await Task.Delay(20);
+            }
+
+            Assert.NotNull(runtime.LastRollingReportPath);
+            Assert.Null(runtime.LastRollingReportError);
+            Assert.True(File.Exists(runtime.LastRollingReportPath));
+            Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
+            var report = System.Text.Json.JsonSerializer.Deserialize<WorldRunReport>(
+                await File.ReadAllTextAsync(runtime.LastRollingReportPath!));
+            Assert.NotNull(report);
+            Assert.Equal("rolling-heartbeat", report.Reason);
+            Assert.True(report.Snapshot.WorldTick > 0);
+            Assert.EndsWith("-rolling.json", runtime.LastRollingReportPath, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task OnlySustainedBrainFrameLatencySafetyPausesPhysicalTime()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dnne-world-overload-tests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
+                new Uri("http://127.0.0.1:1"),
+                ReportDirectory: directory,
+                BrainFrameOverloadThreshold: TimeSpan.FromMilliseconds(100),
+                ConsecutiveBrainFrameOverloadLimit: 3));
+
+            Assert.False(runtime.ObserveBrainFrameLatency(TimeSpan.FromMilliseconds(150), frameSucceeded: true));
+            Assert.True(runtime.GetSnapshot().Running);
+            Assert.Equal(1, runtime.GetSnapshot().ConsecutiveSlowBrainFrames);
+
+            Assert.False(runtime.ObserveBrainFrameLatency(TimeSpan.FromMilliseconds(20), frameSucceeded: false));
+            Assert.Equal(0, runtime.GetSnapshot().ConsecutiveSlowBrainFrames);
+
+            Assert.False(runtime.ObserveBrainFrameLatency(TimeSpan.FromMilliseconds(110), frameSucceeded: false));
+            Assert.False(runtime.ObserveBrainFrameLatency(TimeSpan.FromMilliseconds(120), frameSucceeded: true));
+            Assert.True(runtime.ObserveBrainFrameLatency(TimeSpan.FromMilliseconds(130), frameSucceeded: true));
+
+            var paused = runtime.GetSnapshot();
+            Assert.False(paused.Running);
+            Assert.Equal(3, paused.ConsecutiveSlowBrainFrames);
+            Assert.Equal(1, paused.BrainFrameOverloadSafetyPauses);
+            Assert.Contains("3 consecutive", paused.LastBrainFrameOverloadReason, StringComparison.Ordinal);
+            Assert.Contains("safety pause", paused.LastInteractionOutcome, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(runtime.LastRunReportPath);
+            Assert.True(File.Exists(runtime.LastRunReportPath));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(WorldDevelopmentStage.HandSpace, 1, 0)]
+    [InlineData(WorldDevelopmentStage.NearFlat, 1, 0)]
+    [InlineData(WorldDevelopmentStage.NormalDistance, 4, 0)]
+    [InlineData(WorldDevelopmentStage.Terrain, 12, 5)]
+    [InlineData(WorldDevelopmentStage.Ecology, 12, 5)]
+    public async Task DevelopmentStageControlsForagingDistanceAndComplexity(
+        WorldDevelopmentStage stage,
+        int expectedFood,
+        int expectedDevices)
+    {
+        await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
+            new Uri("http://127.0.0.1:1"),
+            DevelopmentStage: stage));
+
+        var snapshot = runtime.GetSnapshot();
+
+        Assert.Equal(stage.ToString(), snapshot.DevelopmentStage);
+        Assert.Equal(expectedFood, snapshot.FoodPickups.Count);
+        Assert.Equal(expectedDevices, snapshot.WeaponPickups.Count);
+        Assert.Empty(snapshot.Predators);
+        if (stage == WorldDevelopmentStage.HandSpace)
+        {
+            var target = Assert.Single(snapshot.FoodPickups);
+            var distance = Math.Sqrt(
+                Math.Pow(target.X - snapshot.AvatarX, 2) +
+                Math.Pow(target.Z - snapshot.AvatarZ, 2));
+            Assert.InRange(distance, 0.70, 0.78);
+            Assert.True(target.Y > snapshot.AvatarY + 0.75);
+        }
     }
 
     [Fact]
@@ -149,11 +322,12 @@ public sealed class HeadlessWorldRuntimeTests
     }
 
     [Fact]
-    public async Task PredatorsRequireAnExplicitTrainingOverride()
+    public async Task PredatorsRequireAnExplicitEcologyStageOverride()
     {
         await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
             new Uri("http://127.0.0.1:1"),
-            PredatorsEnabled: true));
+            PredatorsEnabled: true,
+            DevelopmentStage: WorldDevelopmentStage.Ecology));
 
         var snapshot = runtime.GetSnapshot();
 
@@ -205,6 +379,21 @@ public sealed class HeadlessWorldRuntimeTests
 
             Assert.Equal(default, state);
         }
+    }
+
+    [Fact]
+    public void RightingPostureCanUseBoundedNeuronalPropulsionToRepositionSupport()
+    {
+        var state = AvatarPlanarDynamics.Advance(
+            default,
+            requestedForwardSpeed: 1.8,
+            requestedTurnRate: 120.0,
+            posture: "righting",
+            grounded: true,
+            deltaSeconds: 0.25);
+
+        Assert.InRange(state.ForwardVelocityMetersPerSecond, 0.001, 0.612);
+        Assert.InRange(state.TurnVelocityDegreesPerSecond, 0.001, 40.81);
     }
 
     [Fact]

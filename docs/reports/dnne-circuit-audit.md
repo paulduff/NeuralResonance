@@ -1,6 +1,6 @@
 ﻿# DNNE Circuit Functionality Audit
 
-Generated: 2026-08-12 14:53:34 +01:00
+Generated: 2026-08-22 14:20:05 +01:00
 
 ## Summary
 
@@ -57,7 +57,7 @@ Generated: 2026-08-12 14:53:34 +01:00
 | InterposedNuclei | OK | 4 | 4 | 4 | 4 | cerebellar/pontine | InterposedNuclei |
 | IntralaminarThalamus | OK | 3 | 3 | 3 | 3 | thalamic | IntralaminarThalamus |
 | LateralGeniculateNucleus | OK | 3 | 2 | 3 | 2 | thalamic | LateralGeniculateNucleus |
-| LateralHypothalamicArea | OK | 7 | 4 | 7 | 4 | limbic-homeostatic | LateralHypothalamicArea |
+| LateralHypothalamicArea | OK | 8 | 4 | 8 | 4 | limbic-homeostatic | LateralHypothalamicArea |
 | LaterodorsalTegmentalNucleus | OK | 2 | 5 | 2 | 5 | brainstem-arousal | LaterodorsalTegmentalNucleus |
 | LocusCoeruleus | OK | 9 | 5 | 9 | 5 | neuromodulatory | LocusCoeruleus |
 | M1 | OK | 6 | 6 | 6 | 6 | cortical-association/motor | M1 |
@@ -73,7 +73,7 @@ Generated: 2026-08-12 14:53:34 +01:00
 | NucleusAccumbens | OK | 6 | 2 | 6 | 2 | limbic-homeostatic | NucleusAccumbens |
 | NucleusBasalis | OK | 4 | 4 | 4 | 4 | neuromodulatory | NucleusBasalis |
 | NucleusReuniens | OK | 5 | 4 | 5 | 4 | thalamic | NucleusReuniens |
-| NucleusTractusSolitarius | OK | 4 | 8 | 4 | 8 | sensory-autonomic | NucleusTractusSolitarius |
+| NucleusTractusSolitarius | OK | 4 | 9 | 4 | 9 | sensory-autonomic | NucleusTractusSolitarius |
 | OculomotorNucleus | OK | 3 | 4 | 3 | 4 | brainstem-sensorimotor | OculomotorNucleus |
 | OlfactoryBulb | OK | 2 | 3 | 2 | 3 | sensory-autonomic | OlfactoryBulb |
 | OrbitofrontalCortex | OK | 5 | 5 | 5 | 5 | cortical-association/motor | OrbitofrontalCortex |
@@ -106,7 +106,7 @@ Generated: 2026-08-12 14:53:34 +01:00
 | Snc | OK | 2 | 4 | 2 | 4 | neuromodulatory | SNc |
 | Snr | OK | 3 | 2 | 3 | 2 | basal-ganglia | SNr |
 | SomaticAfferents | OK | 1 | 4 | 1 | 4 | somatic-afferent | SomaticAfferents |
-| SpinalCordMotor | OK | 8 | 4 | 8 | 4 | spinal-motor | SpinalCordMotor |
+| SpinalCordMotor | OK | 9 | 4 | 9 | 4 | spinal-motor | SpinalCordMotor |
 | SpinalTrigeminalNucleus | OK | 2 | 4 | 2 | 4 | brainstem-sensorimotor | SpinalTrigeminalNucleus |
 | Stn | OK | 3 | 3 | 3 | 3 | basal-ganglia | STN |
 | Striatum | OK | 7 | 4 | 7 | 4 | basal-ganglia | Striatum |
@@ -131,7 +131,7 @@ Generated: 2026-08-12 14:53:34 +01:00
 | VentromedialHypothalamicNucleus | OK | 2 | 2 | 2 | 2 | limbic-homeostatic | VentromedialHypothalamicNucleus |
 | VentromedialPrefrontalCortex | OK | 2 | 3 | 2 | 3 | cortical-association/motor | VentromedialPrefrontalCortex |
 | VestibularAfferents | OK | 1 | 1 | 1 | 1 | vestibular-afferent | VestibularAfferents |
-| VestibularNuclei | OK | 3 | 6 | 3 | 6 | sensory-autonomic | VestibularNuclei |
+| VestibularNuclei | OK | 3 | 7 | 3 | 7 | sensory-autonomic | VestibularNuclei |
 | VisceralAfferents | OK | 1 | 1 | 1 | 1 | visceral-afferent | VisceralAfferents |
 | Vta | OK | 3 | 4 | 3 | 4 | neuromodulatory | VTA |
 | WernickePstgPsts | OK | 4 | 3 | 4 | 3 | cortical-association/motor | WernickePstgPsts |

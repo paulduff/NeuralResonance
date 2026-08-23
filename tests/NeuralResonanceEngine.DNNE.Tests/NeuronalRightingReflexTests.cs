@@ -116,7 +116,7 @@ public sealed class NeuronalRightingReflexTests
         var otherLane = Relay(
             StructureId.ProprioceptiveAfferents,
             StructureId.SpinalCordMotor,
-            sourceIndex: 40);
+            sourceIndex: NonRightingSourceIndex(localIndex: 2));
 
         var strengthened = RightingReflexTopology.ApplySpinalRelayEfficacy(righting, 1.4f);
         var unchanged = RightingReflexTopology.ApplySpinalRelayEfficacy(otherLane, 1.4f);
@@ -167,7 +167,7 @@ public sealed class NeuronalRightingReflexTests
         var spike = Relay(
             StructureId.VestibularNuclei,
             StructureId.SpinalCordMotor,
-            sourceIndex: 40);
+            sourceIndex: NonRightingSourceIndex(localIndex: 2));
 
         Assert.False(RightingReflexTopology.TryProjectInbound(spike, 256, out _));
     }
@@ -486,4 +486,7 @@ public sealed class NeuronalRightingReflexTests
     private static int RightingSourceIndex(int localIndex)
         => (Math.Max(0, localIndex) * ActionChannelTopology.ChannelCount) +
             RightingReflexTopology.StandChannel;
+
+    private static int NonRightingSourceIndex(int localIndex)
+        => Math.Max(0, localIndex) * ActionChannelTopology.ChannelCount;
 }

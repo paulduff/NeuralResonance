@@ -68,6 +68,7 @@ public sealed class HypothalamicStructuralCompletionTests
         AssertRoute(edges, StructureId.NucleusTractusSolitarius, StructureId.ParaventricularHypothalamicNucleus, "nts_pvn_autonomic_input");
         AssertRoute(edges, StructureId.ParaventricularHypothalamicNucleus, StructureId.NucleusTractusSolitarius, "pvn_solitary_autonomic_command");
         AssertRoute(edges, StructureId.ArcuateNucleus, StructureId.LateralHypothalamicArea, "arcuate_lha_satiety_inhibition", NTEnum.GABA);
+        AssertRoute(edges, StructureId.NucleusTractusSolitarius, StructureId.LateralHypothalamicArea, "nts_lha_homeostatic_drive");
         AssertRoute(edges, StructureId.LateralHypothalamicArea, StructureId.ReticularFormation, "lha_reticular_motivational_drive");
         AssertRoute(edges, StructureId.VentromedialHypothalamicNucleus, StructureId.PeriaqueductalGray, "vmh_pag_defense_recruitment");
         AssertRoute(edges, StructureId.DorsomedialHypothalamicNucleus, StructureId.LocusCoeruleus, "dmh_locus_coeruleus_arousal");

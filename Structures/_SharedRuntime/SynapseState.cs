@@ -31,6 +31,12 @@ internal sealed class SynapseState(
 
 	public int UpdateCount { get; set; }
 
+	public float PlasticityBudgetQuanta { get; set; } = PlasticityRules.InitialPlasticityBudgetQuanta;
+
+	public double LastPlasticityBudgetTimestampMs { get; set; } = -1.0;
+
+	public double TotalAbsolutePlasticityChange { get; set; }
+
 	public void Stabilize()
 	{
 		VesicleQuanta = PlasticityRules.ClampQuanta(VesicleQuanta);
@@ -44,6 +50,17 @@ internal sealed class SynapseState(
 			? Math.Max(0.0, LastUpdateTimestampMs)
 			: 0.0;
 		UpdateCount = Math.Max(0, UpdateCount);
+		PlasticityBudgetQuanta = FiniteClamp(
+			PlasticityBudgetQuanta,
+			0f,
+			PlasticityRules.PlasticityBurstCapacityQuanta,
+			PlasticityRules.InitialPlasticityBudgetQuanta);
+		LastPlasticityBudgetTimestampMs = double.IsFinite(LastPlasticityBudgetTimestampMs)
+			? Math.Max(-1.0, LastPlasticityBudgetTimestampMs)
+			: -1.0;
+		TotalAbsolutePlasticityChange = double.IsFinite(TotalAbsolutePlasticityChange)
+			? Math.Max(0.0, TotalAbsolutePlasticityChange)
+			: 0.0;
 	}
 
 	private static float FiniteClamp(float value, float minimum, float maximum, float fallback)

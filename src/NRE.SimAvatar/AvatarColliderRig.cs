@@ -99,7 +99,7 @@ public static class AvatarColliderRig
             Quaternion.Normalize(commandedLyingRotation * physicalFallRotation));
         var pelvis = Child(bodyPose, new Vector3(0f, pelvisHeight, 0f), Quaternion.Identity);
         var axialRotation = Quaternion.CreateFromYawPitchRoll(
-            0f,
+            frame.TrunkYawRadians * (1f - lyingProgress),
             -frame.TrunkPitchRadians * (1f - lyingProgress),
             frame.TrunkRollRadians * 0.72f);
         var lumbar = Child(pelvis, new Vector3(0f, 0.19f, 0f), axialRotation);
@@ -171,7 +171,22 @@ public static class AvatarColliderRig
             Lerp(previous.RightShoulderAbductionRadians, proposed.RightShoulderAbductionRadians, t),
             Lerp(previous.NeckYawRadians, proposed.NeckYawRadians, t),
             Lerp(previous.NeckPitchRadians, proposed.NeckPitchRadians, t),
-            Lerp(previous.SupportPlaneOffsetMeters, proposed.SupportPlaneOffsetMeters, t));
+            Lerp(previous.SupportPlaneOffsetMeters, proposed.SupportPlaneOffsetMeters, t),
+            Lerp(previous.LeftHipAbductionRadians, proposed.LeftHipAbductionRadians, t),
+            Lerp(previous.RightHipAbductionRadians, proposed.RightHipAbductionRadians, t),
+            Lerp(previous.LeftAnkleRollRadians, proposed.LeftAnkleRollRadians, t),
+            Lerp(previous.RightAnkleRollRadians, proposed.RightAnkleRollRadians, t),
+            proposed.LeftFootPressure,
+            proposed.RightFootPressure,
+            Lerp(previous.TrunkYawRadians, proposed.TrunkYawRadians, t),
+            Lerp(previous.LeftHandApertureFraction, proposed.LeftHandApertureFraction, t),
+            Lerp(previous.RightHandApertureFraction, proposed.RightHandApertureFraction, t),
+            Lerp(previous.LeftGripForceNewtons, proposed.LeftGripForceNewtons, t),
+            Lerp(previous.RightGripForceNewtons, proposed.RightGripForceNewtons, t),
+            Lerp(previous.LeftHandFatigue, proposed.LeftHandFatigue, t),
+            Lerp(previous.RightHandFatigue, proposed.RightHandFatigue, t),
+            Lerp(previous.LeftHandSlip, proposed.LeftHandSlip, t),
+            Lerp(previous.RightHandSlip, proposed.RightHandSlip, t));
         return interpolated;
     }
 
@@ -189,6 +204,7 @@ public static class AvatarColliderRig
             {
                 TrunkPitchRadians = proposed.TrunkPitchRadians,
                 TrunkRollRadians = proposed.TrunkRollRadians,
+                TrunkYawRadians = proposed.TrunkYawRadians,
                 NeckYawRadians = proposed.NeckYawRadians,
                 NeckPitchRadians = proposed.NeckPitchRadians,
                 Musculoskeletal = proposed.Musculoskeletal,
@@ -209,14 +225,18 @@ public static class AvatarColliderRig
             AvatarKinematicChain.LeftLeg => current with
             {
                 LeftHipAngleRadians = proposed.LeftHipAngleRadians,
+                LeftHipAbductionRadians = proposed.LeftHipAbductionRadians,
                 LeftKneeAngleRadians = proposed.LeftKneeAngleRadians,
-                LeftAnkleAngleRadians = proposed.LeftAnkleAngleRadians
+                LeftAnkleAngleRadians = proposed.LeftAnkleAngleRadians,
+                LeftAnkleRollRadians = proposed.LeftAnkleRollRadians
             },
             AvatarKinematicChain.RightLeg => current with
             {
                 RightHipAngleRadians = proposed.RightHipAngleRadians,
+                RightHipAbductionRadians = proposed.RightHipAbductionRadians,
                 RightKneeAngleRadians = proposed.RightKneeAngleRadians,
-                RightAnkleAngleRadians = proposed.RightAnkleAngleRadians
+                RightAnkleAngleRadians = proposed.RightAnkleAngleRadians,
+                RightAnkleRollRadians = proposed.RightAnkleRollRadians
             },
             _ => throw new ArgumentOutOfRangeException(nameof(chain), chain, "Unknown avatar kinematic chain.")
         };
@@ -249,6 +269,7 @@ public static class AvatarColliderRig
             {
                 TrunkPitchRadians = Lerp(previous.TrunkPitchRadians, proposed.TrunkPitchRadians, t),
                 TrunkRollRadians = Lerp(previous.TrunkRollRadians, proposed.TrunkRollRadians, t),
+                TrunkYawRadians = Lerp(previous.TrunkYawRadians, proposed.TrunkYawRadians, t),
                 NeckYawRadians = Lerp(previous.NeckYawRadians, proposed.NeckYawRadians, t),
                 NeckPitchRadians = Lerp(previous.NeckPitchRadians, proposed.NeckPitchRadians, t),
                 Musculoskeletal = body,
@@ -280,14 +301,22 @@ public static class AvatarColliderRig
             AvatarKinematicChain.LeftLeg => previous with
             {
                 LeftHipAngleRadians = Lerp(previous.LeftHipAngleRadians, proposed.LeftHipAngleRadians, t),
+                LeftHipAbductionRadians = Lerp(
+                    previous.LeftHipAbductionRadians, proposed.LeftHipAbductionRadians, t),
                 LeftKneeAngleRadians = Lerp(previous.LeftKneeAngleRadians, proposed.LeftKneeAngleRadians, t),
-                LeftAnkleAngleRadians = Lerp(previous.LeftAnkleAngleRadians, proposed.LeftAnkleAngleRadians, t)
+                LeftAnkleAngleRadians = Lerp(previous.LeftAnkleAngleRadians, proposed.LeftAnkleAngleRadians, t),
+                LeftAnkleRollRadians = Lerp(
+                    previous.LeftAnkleRollRadians, proposed.LeftAnkleRollRadians, t)
             },
             AvatarKinematicChain.RightLeg => previous with
             {
                 RightHipAngleRadians = Lerp(previous.RightHipAngleRadians, proposed.RightHipAngleRadians, t),
+                RightHipAbductionRadians = Lerp(
+                    previous.RightHipAbductionRadians, proposed.RightHipAbductionRadians, t),
                 RightKneeAngleRadians = Lerp(previous.RightKneeAngleRadians, proposed.RightKneeAngleRadians, t),
-                RightAnkleAngleRadians = Lerp(previous.RightAnkleAngleRadians, proposed.RightAnkleAngleRadians, t)
+                RightAnkleAngleRadians = Lerp(previous.RightAnkleAngleRadians, proposed.RightAnkleAngleRadians, t),
+                RightAnkleRollRadians = Lerp(
+                    previous.RightAnkleRollRadians, proposed.RightAnkleRollRadians, t)
             },
             _ => throw new ArgumentOutOfRangeException(nameof(chain), chain, "Unknown avatar kinematic chain.")
         };
@@ -339,16 +368,22 @@ public static class AvatarColliderRig
         var chain = left ? AvatarKinematicChain.LeftLeg : AvatarKinematicChain.RightLeg;
         var prefix = left ? "left" : "right";
         var hipAngle = left ? frame.LeftHipAngleRadians : frame.RightHipAngleRadians;
+        var hipAbduction = left ? frame.LeftHipAbductionRadians : frame.RightHipAbductionRadians;
         var kneeAngle = left ? frame.LeftKneeAngleRadians : frame.RightKneeAngleRadians;
         var ankleAngle = left ? frame.LeftAnkleAngleRadians : frame.RightAnkleAngleRadians;
+        var ankleRoll = left ? frame.LeftAnkleRollRadians : frame.RightAnkleRollRadians;
         var hip = Child(
             pelvis,
             new Vector3(side * 0.135f, -0.02f, 0f),
-            Quaternion.CreateFromAxisAngle(Vector3.UnitX, -hipAngle));
+            Quaternion.Normalize(
+                Quaternion.CreateFromAxisAngle(Vector3.UnitZ, side * hipAbduction) *
+                Quaternion.CreateFromAxisAngle(Vector3.UnitX, -hipAngle)));
         var knee = Child(hip, new Vector3(0f, -ThighLength, 0f),
             Quaternion.CreateFromAxisAngle(Vector3.UnitX, kneeAngle));
         var ankle = Child(knee, new Vector3(0f, -ShinLength, 0f),
-            Quaternion.CreateFromAxisAngle(Vector3.UnitX, ankleAngle));
+            Quaternion.Normalize(
+                Quaternion.CreateFromAxisAngle(Vector3.UnitZ, side * ankleRoll) *
+                Quaternion.CreateFromAxisAngle(Vector3.UnitX, ankleAngle)));
         var footCenter = Child(ankle, new Vector3(0f, -0.035f, 0.105f), Quaternion.Identity);
 
         colliders.Add(Capsule($"{prefix}_thigh", chain,
@@ -430,6 +465,45 @@ public static class AvatarColliderRig
 
     public static float LowestSurfaceY(AvatarBodyCollider collider) =>
         collider.Position.Y - VerticalHalfExtent(collider);
+
+    public static Vector3 LowestSurfacePoint(AvatarBodyCollider collider)
+    {
+        return collider.Shape switch
+        {
+            AvatarColliderShape.Sphere => collider.Position - (Vector3.UnitY * collider.Size.X),
+            AvatarColliderShape.Capsule => CapsuleLowestSurfacePoint(collider),
+            AvatarColliderShape.Box => BoxLowestSurfacePoint(collider),
+            _ => collider.Position
+        };
+    }
+
+    private static Vector3 CapsuleLowestSurfacePoint(AvatarBodyCollider collider)
+    {
+        var axis = Vector3.Transform(Vector3.UnitY, collider.Orientation);
+        var endpointDirection = MathF.Abs(axis.Y) < 0.000001f
+            ? Vector3.Zero
+            : -axis * MathF.Sign(axis.Y);
+        return collider.Position +
+            (endpointDirection * collider.Size.Y * 0.5f) -
+            (Vector3.UnitY * collider.Size.X);
+    }
+
+    private static Vector3 BoxLowestSurfacePoint(AvatarBodyCollider collider)
+    {
+        var localX = Vector3.Transform(Vector3.UnitX, collider.Orientation);
+        var localY = Vector3.Transform(Vector3.UnitY, collider.Orientation);
+        var localZ = Vector3.Transform(Vector3.UnitZ, collider.Orientation);
+        var localSupport = new Vector3(
+            LowestLocalCoordinate(localX.Y, collider.Size.X * 0.5f),
+            LowestLocalCoordinate(localY.Y, collider.Size.Y * 0.5f),
+            LowestLocalCoordinate(localZ.Y, collider.Size.Z * 0.5f));
+        return collider.Position + Vector3.Transform(localSupport, collider.Orientation);
+    }
+
+    private static float LowestLocalCoordinate(float worldVerticalComponent, float halfExtent) =>
+        MathF.Abs(worldVerticalComponent) < 0.000001f
+            ? 0f
+            : -MathF.Sign(worldVerticalComponent) * halfExtent;
 
     private static float VerticalHalfExtent(AvatarBodyCollider collider)
     {

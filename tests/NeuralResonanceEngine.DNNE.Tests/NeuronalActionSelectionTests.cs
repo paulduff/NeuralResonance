@@ -113,6 +113,253 @@ public sealed class NeuronalActionSelectionTests
     }
 
     [Fact]
+    public void CorticostriatalArborPreservesLaneAndReceptorClass()
+    {
+        const int channel = 7;
+        const int neuronCount = 320;
+        var directPrimary = channel * 2;
+        var indirectPrimary = directPrimary + 1;
+
+        var directTargets = Enumerable.Range(1, 2)
+            .Select(offset => ActionChannelTopology.StriatalArborTarget(
+                directPrimary,
+                neuronCount,
+                offset))
+            .ToArray();
+        var indirectTargets = Enumerable.Range(1, 2)
+            .Select(offset => ActionChannelTopology.StriatalArborTarget(
+                indirectPrimary,
+                neuronCount,
+                offset))
+            .ToArray();
+
+        Assert.Equal(2, directTargets.Distinct().Count());
+        Assert.Equal(2, indirectTargets.Distinct().Count());
+        Assert.All(directTargets, target =>
+        {
+            Assert.Equal(channel, ActionChannelTopology.ChannelForNeuron(target, StructureId.Striatum));
+            Assert.True(ActionChannelTopology.IsDirectPathwayNeuron(target));
+        });
+        Assert.All(indirectTargets, target =>
+        {
+            Assert.Equal(channel, ActionChannelTopology.ChannelForNeuron(target, StructureId.Striatum));
+            Assert.False(ActionChannelTopology.IsDirectPathwayNeuron(target));
+        });
+    }
+
+    [Fact]
+    public void IndependentCorticalAxonsConvergeWithinTheSameMsnEnsemble()
+    {
+        const int channel = 11;
+        const int neuronCount = 320;
+        const int salt = 0;
+        var sourceA = channel;
+        var sourceB = (ActionChannelTopology.ChannelCount * 2) + channel;
+
+        var primaryA = ActionChannelTopology.Project(
+            sourceA,
+            StructureId.Pfc,
+            neuronCount,
+            StructureId.Striatum,
+            salt);
+        var primaryB = ActionChannelTopology.Project(
+            sourceB,
+            StructureId.Pfc,
+            neuronCount,
+            StructureId.Striatum,
+            salt);
+        var arborA = Enumerable.Range(0, 3)
+            .Select(offset => offset == 0
+                ? primaryA
+                : ActionChannelTopology.StriatalArborTarget(primaryA, neuronCount, offset))
+            .ToHashSet();
+        var arborB = Enumerable.Range(0, 3)
+            .Select(offset => offset == 0
+                ? primaryB
+                : ActionChannelTopology.StriatalArborTarget(primaryB, neuronCount, offset))
+            .ToHashSet();
+
+        Assert.NotEqual(primaryA, primaryB);
+        Assert.NotEmpty(arborA.Intersect(arborB));
+        Assert.All(arborA.Concat(arborB), target =>
+        {
+            Assert.Equal(channel, ActionChannelTopology.ChannelForNeuron(target, StructureId.Striatum));
+            Assert.Equal(primaryA & 1, target & 1);
+        });
+    }
+
+    [Fact]
+    public async Task FreshStriatumRecruitsBothMsnPopulationsAtLiveOneMillisecondCadence()
+    {
+        await EnvironmentGate.WaitAsync();
+        var directory = Path.Combine(Path.GetTempPath(), "nre-fresh-striatal-recruitment", Guid.NewGuid().ToString("N"));
+        var previousDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+        var previousInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+        const int channel = 6;
+
+        try
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", $"fresh-striatum-{Guid.NewGuid():N}");
+            using var engine = CreateStriatalEngine("fresh convergent MSN recruitment assay");
+            var peakDirectActivation = 0f;
+            var peakIndirectActivation = 0f;
+            var peakDirectUpState = 0f;
+            var peakIndirectUpState = 0f;
+            var peakDirectCurrent = float.MinValue;
+            var peakIndirectCurrent = float.MinValue;
+
+            long structureTick = 0;
+            double lastStructureTimestamp = 0.0;
+            for (var globalTick = 1L; globalTick <= 2_400; globalTick++)
+            {
+                var timestamp = (double)globalTick;
+                if (globalTick % 4 == 0)
+                {
+                    var sourceLocal = (int)((globalTick / 4) % 8);
+                    var sourceIndex = (sourceLocal * ActionChannelTopology.ChannelCount) + channel;
+                    await engine.EnqueueSpikeAsync(CorticostriatalSpike(
+                        sourceIndex,
+                        channel,
+                        timestamp,
+                        1.0f));
+                }
+
+                // The stable laptop profile selected about 25 of 68 fast-lane
+                // instances per coordinator pass. This deterministic three-pass
+                // cadence exercises the same sparse 1 ms stream without using a
+                // concentrated synthetic barrage.
+                if (globalTick != 1 && (globalTick - 1) % 3 != 0)
+                {
+                    continue;
+                }
+
+                structureTick++;
+                var elapsed = timestamp - lastStructureTimestamp;
+                lastStructureTimestamp = timestamp;
+                var ack = await engine.ProcessTickAsync(new TickSignal(
+                    structureTick,
+                    timestamp,
+                    elapsed,
+                    new NeuromodState(),
+                    new Dictionary<BrainRhythm, double>(),
+                    0f));
+                var striatal = Assert.IsType<ActionSelectionDiagnostics>(ack.ActionSelectionDiagnostics);
+                var activity = striatal.Channels[channel];
+                peakDirectActivation = Math.Max(peakDirectActivation, activity.DirectPathwayActivation);
+                peakIndirectActivation = Math.Max(peakIndirectActivation, activity.IndirectPathwayActivation);
+                peakDirectUpState = Math.Max(peakDirectUpState, activity.DirectMeanUpState);
+                peakIndirectUpState = Math.Max(peakIndirectUpState, activity.IndirectMeanUpState);
+                peakDirectCurrent = Math.Max(peakDirectCurrent, activity.DirectMeanSynapticCurrent);
+                peakIndirectCurrent = Math.Max(peakIndirectCurrent, activity.IndirectMeanSynapticCurrent);
+            }
+
+            Assert.True(peakDirectUpState > 0.01f, $"D1 up-state remained silent ({peakDirectUpState:F5}).");
+            Assert.True(peakIndirectUpState > 0.01f, $"D2 up-state remained silent ({peakIndirectUpState:F5}).");
+            Assert.True(peakDirectCurrent > 0f, $"D1 synaptic current remained non-positive ({peakDirectCurrent:F5}).");
+            Assert.True(peakIndirectCurrent > 0f, $"D2 synaptic current remained non-positive ({peakIndirectCurrent:F5}).");
+            Assert.True(peakDirectActivation > 0f, $"D1 population emitted no activity ({peakDirectActivation:F5}).");
+            Assert.True(peakIndirectActivation > 0f, $"D2 population emitted no activity ({peakIndirectActivation:F5}).");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", previousDirectory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", previousInstance);
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            EnvironmentGate.Release();
+        }
+    }
+
+    [Fact]
+    public void SilentStriatumCannotAuthorizeVoluntaryAction()
+    {
+        var snapshots = CreateCircuit(selectedChannel: ForwardChannel())
+            .Select(snapshot => snapshot.StructureId == StructureId.Striatum
+                ? snapshot with
+                {
+                    ActionSelectionDiagnostics = snapshot.ActionSelectionDiagnostics! with
+                    {
+                        Channels = snapshot.ActionSelectionDiagnostics!.Channels
+                            .Select(channel => channel with
+                            {
+                                DirectPathwayActivation = 0f,
+                                IndirectPathwayActivation = 0f,
+                                EligibilityTrace = 1f,
+                                LearnedSynapticStrength = 5f
+                            })
+                            .ToArray()
+                    }
+                }
+                : snapshot)
+            .ToArray();
+
+        var decision = NeuronalActionSelectionDecoder.Decode(snapshots);
+
+        Assert.True(decision.Available);
+        Assert.False(decision.Active);
+        Assert.Equal(-1, decision.SelectedChannel);
+        Assert.Contains("silent D1/D2", decision.AuthorityReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SaturatedEligibilityAndPersistenceCannotReplaceFunctionalCompetition()
+    {
+        var snapshots = CreateCircuit(selectedChannel: ForwardChannel())
+            .Select(snapshot => snapshot.StructureId == StructureId.Striatum
+                ? snapshot with
+                {
+                    ActionSelectionDiagnostics = snapshot.ActionSelectionDiagnostics! with
+                    {
+                        Channels = snapshot.ActionSelectionDiagnostics!.Channels
+                            .Select(channel => channel with
+                            {
+                                DirectPathwayActivation = 0f,
+                                IndirectPathwayActivation = 0f,
+                                EligibilityTrace = 1f,
+                                LearnedSynapticStrength = 5f
+                            })
+                            .ToArray()
+                    }
+                }
+                : snapshot)
+            .ToArray();
+
+        var decision = NeuronalActionSelectionDecoder.Decode(
+            snapshots,
+            preferredChannel: ForwardChannel(),
+            persistenceBias: 0.25);
+
+        Assert.False(decision.Active);
+        Assert.Equal(0f, decision.ChannelTraces[ForwardChannel()].PersistenceBias);
+    }
+
+    [Fact]
+    public void SilentMotorThalamusCannotAuthorizeVoluntaryAction()
+    {
+        var snapshots = CreateCircuit(selectedChannel: ForwardChannel())
+            .Select(snapshot => snapshot.StructureId == StructureId.MotorThalamus
+                ? snapshot with
+                {
+                    ActionSelectionDiagnostics = snapshot.ActionSelectionDiagnostics! with
+                    {
+                        Channels = snapshot.ActionSelectionDiagnostics!.Channels
+                            .Select(channel => channel with { ThalamicRelayActivation = 0f })
+                            .ToArray()
+                    }
+                }
+                : snapshot)
+            .ToArray();
+
+        var decision = NeuronalActionSelectionDecoder.Decode(snapshots);
+
+        Assert.False(decision.Active);
+        Assert.Contains("motor-thalamic relay", decision.AuthorityReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task DopamineContingencyReversalChangesCorticostriatalSynapticPreference()
     {
         await EnvironmentGate.WaitAsync();
@@ -205,9 +452,39 @@ public sealed class NeuronalActionSelectionTests
         var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: 4));
         var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
 
-        Assert.Equal(20, ActionChannelTopology.ChannelCount);
+        Assert.Equal(38, ActionChannelTopology.ChannelCount);
         Assert.True(decision.Active);
         Assert.Equal(NeuronalActionSelectionDecoder.LeftShoulderFlexionChannel, decision.SelectedChannel);
+        Assert.Equal(0.0, shaped.Left);
+        Assert.Equal(0.0, shaped.Right);
+    }
+
+    [Theory]
+    [InlineData(NeuronalActionSelectionDecoder.LeftHipAbductionChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.LeftHipAdductionChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.RightHipAbductionChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.RightHipAdductionChannel)]
+    public void LateralHipLanesDoNotLeakIntoLocomotorPopulations(int channel)
+    {
+        var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: channel));
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
+
+        Assert.True(decision.Active);
+        Assert.Equal(channel, decision.SelectedChannel);
+        Assert.Equal(0.0, shaped.Left);
+        Assert.Equal(0.0, shaped.Right);
+    }
+
+    [Theory]
+    [InlineData(NeuronalActionSelectionDecoder.TrunkRotateLeftChannel)]
+    [InlineData(NeuronalActionSelectionDecoder.TrunkRotateRightChannel)]
+    public void AxialRotationLanesDoNotLeakIntoLocomotorPopulations(int channel)
+    {
+        var decision = NeuronalActionSelectionDecoder.Decode(CreateCircuit(selectedChannel: channel));
+        var shaped = NeuronalActionSelectionDecoder.ShapeMotorPopulation(decision, 0.8, 0.8);
+
+        Assert.True(decision.Active);
+        Assert.Equal(channel, decision.SelectedChannel);
         Assert.Equal(0.0, shaped.Left);
         Assert.Equal(0.0, shaped.Right);
     }
@@ -382,6 +659,26 @@ public sealed class NeuronalActionSelectionTests
             new Dictionary<BrainRhythm, double>(),
             legacyReward);
 
+    private static SpikeMessage CorticostriatalSpike(
+        int sourceIndex,
+        int channel,
+        double timestamp,
+        float vesicleQuanta)
+        => new()
+        {
+            MessageId = Guid.NewGuid(),
+            TimestampMs = timestamp,
+            SourceStructure = StructureId.Pfc,
+            TargetStructure = StructureId.Striatum,
+            SourceNeuronId = $"n-{sourceIndex:000}",
+            TargetNeuronId = $"striatal-lane-{channel:000}",
+            SynapseId = Guid.NewGuid(),
+            Neurotransmitter = NTEnum.GLUTAMATE,
+            VesicleQuanta = vesicleQuanta,
+            ReuptakeRate = 8f,
+            SpikeType = SpikeTypeEnum.BURST
+        };
+
     private static StructureEngine CreateStriatalEngine(string description)
         => new(new StructureProfile(
             StructureId.Striatum,
@@ -408,6 +705,8 @@ public sealed class NeuronalActionSelectionTests
             Snapshot(StructureId.MotorThalamus, RoleChannels(selectedChannel, thalamic: 0.82f))
         ];
     }
+
+    private static int ForwardChannel() => NeuronalActionSelectionDecoder.ForwardChannel;
 
     private static ActionChannelActivity[] ProposalChannels(int selected, float activation)
         => Enumerable.Range(0, ActionChannelTopology.ChannelCount)

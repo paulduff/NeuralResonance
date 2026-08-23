@@ -26,6 +26,56 @@ public sealed class WorldPhysicsSceneTests
     }
 
     [Fact]
+    public void HipAbductionMovesBothLegColliderChainsLaterally()
+    {
+        var neutral = AvatarColliderRig.Capture(PhysicalArticulationFrame.Neutral);
+        var abducted = AvatarColliderRig.Capture(
+            PhysicalArticulationFrame.Neutral with
+            {
+                LeftHipAbductionRadians = 0.60f,
+                RightHipAbductionRadians = 0.60f
+            });
+
+        var neutralLeftFoot = Assert.Single(neutral, collider => collider.Region == "left_foot");
+        var neutralRightFoot = Assert.Single(neutral, collider => collider.Region == "right_foot");
+        var abductedLeftFoot = Assert.Single(abducted, collider => collider.Region == "left_foot");
+        var abductedRightFoot = Assert.Single(abducted, collider => collider.Region == "right_foot");
+
+        Assert.True(abductedLeftFoot.Position.X < neutralLeftFoot.Position.X - 0.20f);
+        Assert.True(abductedRightFoot.Position.X > neutralRightFoot.Position.X + 0.20f);
+    }
+
+    [Fact]
+    public void UnilateralHipAbductionRaisesThatSoleOffTheSupportPlane()
+    {
+        var abducted = AvatarColliderRig.Capture(
+            PhysicalArticulationFrame.Neutral with
+            {
+                LeftHipAbductionRadians = 0.60f
+            });
+
+        var leftFoot = Assert.Single(abducted, collider => collider.Region == "left_foot");
+        var rightFoot = Assert.Single(abducted, collider => collider.Region == "right_foot");
+        var leftClearance = AvatarColliderRig.LowestSurfaceY(leftFoot) - AvatarColliderRig.LocalGroundPlaneY;
+        var rightClearance = AvatarColliderRig.LowestSurfaceY(rightFoot) - AvatarColliderRig.LocalGroundPlaneY;
+
+        Assert.True(leftClearance > 0.08f, $"Left sole clearance was {leftClearance:0.000} m.");
+        Assert.InRange(rightClearance, -0.001f, 0.001f);
+
+        var recontacted = AvatarColliderRig.Capture(PhysicalArticulationFrame.Neutral);
+        var recontactedLeft = Assert.Single(recontacted, collider => collider.Region == "left_foot");
+        var recontactedRight = Assert.Single(recontacted, collider => collider.Region == "right_foot");
+        Assert.InRange(
+            AvatarColliderRig.LowestSurfaceY(recontactedLeft) - AvatarColliderRig.LocalGroundPlaneY,
+            -0.001f,
+            0.001f);
+        Assert.InRange(
+            AvatarColliderRig.LowestSurfaceY(recontactedRight) - AvatarColliderRig.LocalGroundPlaneY,
+            -0.001f,
+            0.001f);
+    }
+
+    [Fact]
     public void SeatedArticulationKeepsEverySkinColliderAboveTheGroundPlane()
     {
         var body = new AvatarArticulatedBody();
@@ -56,6 +106,29 @@ public sealed class WorldPhysicsSceneTests
             });
 
         Assert.Equal(accepted.SupportPlaneOffsetMeters, armsLowered.SupportPlaneOffsetMeters, 5);
+    }
+
+    [Fact]
+    public void StandingAvatarCanPassThroughCentralShelterDoorwayWithoutHeadContact()
+    {
+        var terrain = new WorldTerrain(317);
+        using var scene = new WorldPhysicsScene(terrain);
+        var rootY = (float)terrain.SurfaceAt(0.0, 4.6) + 0.03f;
+        var outside = new Vector3(0f, rootY, 4.6f);
+        var inside = new Vector3(0f, rootY, 3.0f);
+
+        var result = scene.ResolveAvatar(
+            outside,
+            180f,
+            PhysicalArticulationFrame.Neutral,
+            inside,
+            180f,
+            PhysicalArticulationFrame.Neutral,
+            0.25f);
+
+        Assert.False(result.RootMotionConstrained);
+        Assert.Equal(inside.Z, result.RootPosition.Z, 3);
+        Assert.DoesNotContain(result.Contacts, contact => contact.Region == "head");
     }
 
     [Fact]
@@ -239,6 +312,33 @@ public sealed class WorldPhysicsSceneTests
         Assert.Contains(result.Contacts, contact => contact.Chain == AvatarKinematicChain.LeftArm);
         Assert.All(result.Contacts, contact => Assert.StartsWith("avatar_world_left_", contact.InputSource));
     }
+
+    [Fact]
+    public void ContactVelocityUsesTheCollisionAcceptedLimbPose()
+    {
+        var proposed = PhysicalArticulationFrame.Neutral with
+        {
+            LeftShoulderAngleRadians = 1.40f,
+            ManipulatorExtensionFraction = 1f
+        };
+        var proposedHand = AvatarColliderRig.Capture(proposed)
+            .Single(collider => collider.Region == "left_hand");
+        using var scene = CreateWallScene(proposedHand.Position, new Vector3(0.16f, 0.16f, 0.05f));
+
+        var result = scene.ResolveAvatar(
+            Vector3.Zero,
+            0f,
+            PhysicalArticulationFrame.Neutral,
+            Vector3.Zero,
+            0f,
+            proposed,
+            0.025f);
+
+        Assert.NotEmpty(result.Contacts);
+        Assert.All(result.Contacts, contact =>
+            Assert.InRange(contact.TangentialSpeedMetersPerSecond, 0f, 100f));
+    }
+
 
     [Fact]
     public void GreaterMuscleEffortProducesGreaterLocalContactForce()

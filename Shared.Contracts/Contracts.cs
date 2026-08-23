@@ -110,14 +110,129 @@ public sealed record ActionChannelActivity(
     float EligibilityTrace,
     float LearnedSynapticStrength,
     float SelectionScore,
-    float ReflexDrive = 0f);
+    float ReflexDrive = 0f,
+    float DirectMeanMembraneMillivolts = 0f,
+    float IndirectMeanMembraneMillivolts = 0f,
+    float DirectMeanSynapticCurrent = 0f,
+    float IndirectMeanSynapticCurrent = 0f,
+    int DirectActiveNeurons = 0,
+    int IndirectActiveNeurons = 0,
+    float DirectMeanUpState = 0f,
+    float IndirectMeanUpState = 0f);
+
+public sealed record SpinalWithdrawalSourceActivity(
+    string SourceKey,
+    string BodySide,
+    string Region,
+    string ContactNormalSector,
+    int ChannelIndex,
+    string MotorProjection,
+    float AfferentDrive,
+    float ReflexDrive,
+    float RecurrentInhibition,
+    float AfferentAgeMilliseconds = 0f);
 
 public sealed record ActionSelectionDiagnostics(
     StructureId SourceStructure,
     IReadOnlyList<ActionChannelActivity> Channels,
     int SelectedChannel,
     float SelectionMargin,
-    float DopamineModulation);
+    float DopamineModulation,
+    IReadOnlyList<SpinalWithdrawalSourceActivity>? WithdrawalSources = null);
+
+public sealed record ActionAuthorityChannelTrace(
+    int ChannelIndex,
+    float ProposalDrive,
+    float DirectPathwayActivation,
+    float IndirectPathwayActivation,
+    float HyperdirectSuppression,
+    float OutputNucleusInhibition,
+    float ThalamicRelayActivation,
+    float EligibilityTrace,
+    float LearnedSynapticStrength,
+    float SelectionScore,
+    float PersistenceBias,
+    float AversiveInhibition,
+    bool FunctionalProposal,
+    bool FunctionalStriatalCompetition,
+    bool FunctionalOutputNucleus,
+    bool FunctionalThalamicRelay,
+    bool Selected,
+    bool AuthorityGranted,
+    string AuthorityReason,
+    float DirectMeanMembraneMillivolts = 0f,
+    float IndirectMeanMembraneMillivolts = 0f,
+    float DirectMeanSynapticCurrent = 0f,
+    float IndirectMeanSynapticCurrent = 0f,
+    int DirectActiveNeurons = 0,
+    int IndirectActiveNeurons = 0,
+    float DirectMeanUpState = 0f,
+    float IndirectMeanUpState = 0f);
+
+public sealed record ActionAuthorityTrace(
+    bool CircuitObserved,
+    bool AuthorityGranted,
+    int SelectedChannel,
+    float SelectionScore,
+    float SelectionMargin,
+    float StructuralCoverage,
+    float FunctionalCoverage,
+    string AuthorityReason,
+    IReadOnlyList<ActionAuthorityChannelTrace> Channels);
+
+public sealed record ActionAuthorityChannelCumulativeTelemetry(
+    int ChannelIndex,
+    long Samples,
+    long SelectedTicks,
+    long AuthorityGrantedTicks,
+    float PeakProposalDrive,
+    float PeakDirectPathwayActivation,
+    float PeakIndirectPathwayActivation,
+    float PeakHyperdirectSuppression,
+    float MinimumOutputNucleusInhibition,
+    float PeakThalamicRelayActivation,
+    float PeakSelectionScore,
+    int PeakDirectActiveNeurons,
+    int PeakIndirectActiveNeurons,
+    float PeakDirectMeanUpState,
+    float PeakIndirectMeanUpState);
+
+public sealed record ActionAuthorityCumulativeTelemetry(
+    long Samples,
+    long CircuitObservedTicks,
+    long AuthorityGrantedTicks,
+    long AuthorityGrantEpisodes,
+    long FirstAuthorityGrantTick,
+    long LastAuthorityGrantTick,
+    IReadOnlyList<ActionAuthorityChannelCumulativeTelemetry> Channels);
+
+public sealed record TeachingCauseTelemetry(
+    string Cause,
+    long EventCount,
+    double MagnitudeSum,
+    float PeakMagnitude,
+    long LastObservedTick);
+
+public sealed record TeachingTelemetry(
+    IReadOnlyList<TeachingCauseTelemetry> Causes,
+    long PhysicalFramesObserved,
+    long RespawnTransitions,
+    long LastPhysicalFrameTick,
+    long HomeostaticDispatches = 0,
+    long HomeostaticFramesBuffered = 0,
+    int HomeostaticCadenceMilliseconds = 0,
+    long LastHomeostaticDispatchTick = 0);
+
+public sealed record BrainSnapshotDiagnostics(
+    int ExpectedStructureTypes,
+    int ObservedStructureTypes,
+    int FreshStructureTypes,
+    int StaleStructureTypes,
+    long MaximumStructureAgeTicks,
+    bool RawLocalDiagnosticsPreserved,
+    ActionAuthorityTrace? ActionAuthority,
+    TeachingTelemetry? Teaching,
+    ActionAuthorityCumulativeTelemetry? ActionAuthorityHistory = null);
 
 public sealed record CerebellarDiagnostics(
     string CorrectionMode,
@@ -455,7 +570,14 @@ public sealed record StructureSnapshot(
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
     NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
     NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null,
-    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null);
+    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null,
+    long SourceTick = 0,
+    long AgeTicks = 0,
+    double SourceTimestampMs = 0,
+    double AgeMilliseconds = 0,
+    int SourceInstanceCount = 0,
+    double ObservedCadenceTicks = 0,
+    bool Fresh = false);
 
 public sealed record ActivePathway(
     StructureId Source,
@@ -470,7 +592,8 @@ public sealed record BrainSnapshot(
     IReadOnlyDictionary<BrainRhythm, double> OscillationPhases,
     float RewardPredictionError,
     IReadOnlyList<StructureSnapshot> StructureStates,
-    IReadOnlyList<ActivePathway> ActivePathways);
+    IReadOnlyList<ActivePathway> ActivePathways,
+    BrainSnapshotDiagnostics? Diagnostics = null);
 
 public sealed record SynapticConnection(StructureId Target, Guid SynapseId, NTEnum Neurotransmitter, string ProjectionType);
 public sealed record ConnectivityRule(StructureId Source, IReadOnlyList<SynapticConnection> Connections);

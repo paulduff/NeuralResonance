@@ -111,6 +111,80 @@ public sealed class StructureEngineDeterminismTests
     }
 
     [Fact]
+    public void ServiceStartupMaterializesAnInspectableEmptyGenerationFile()
+    {
+        lock (EnvironmentGate)
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "nre-engine-tests", Guid.NewGuid().ToString("N"));
+            var previousDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+            var previousInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+            try
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", "L_VentralPallidum");
+                using var engine = new StructureEngine(new StructureProfile(
+                    StructureId.VentralPallidum,
+                    "LIF",
+                    "STDP",
+                    "startup generation test",
+                    new DelayWindow(6, 14)));
+
+                var path = Path.Combine(directory, "L_VentralPallidum.synapses.json");
+                Assert.True(File.Exists(path));
+                using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+                Assert.Equal((int)StructureId.VentralPallidum, document.RootElement.GetProperty("StructureId").GetInt32());
+                Assert.Empty(document.RootElement.GetProperty("Inbound").EnumerateArray());
+                Assert.Empty(document.RootElement.GetProperty("Outbound").EnumerateArray());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", previousDirectory);
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", previousInstance);
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void MutationVolumeAloneDoesNotAmplifyFullSnapshots()
+    {
+        lock (EnvironmentGate)
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "nre-engine-tests", Guid.NewGuid().ToString("N"));
+            var previousDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+            var previousInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+            try
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", directory);
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", "snapshot-cadence");
+                using var store = new SynapsePersistenceStore(StructureId.Pfc);
+                var inbound = new Dictionary<Guid, SynapseState>();
+                var outbound = new Dictionary<string, SynapseState>();
+                store.EnsureInitialized(inbound, outbound);
+
+                for (var mutation = 0; mutation < 1_000_000; mutation++)
+                {
+                    store.MarkChanged(inbound, outbound, timestampMs: 10);
+                }
+
+                Assert.Equal(1, store.SnapshotBuildCount);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", previousDirectory);
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", previousInstance);
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
+    }
+
+    [Fact]
     public void DuplicateAndStaleTicksAreRejectedBeforeTheyCanMutateState()
     {
         WithEngine(16, engine =>

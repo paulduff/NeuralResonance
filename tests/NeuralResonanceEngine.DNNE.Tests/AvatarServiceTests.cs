@@ -59,16 +59,16 @@ public sealed class AvatarServiceTests
     }
 
     [Fact]
-    public void ActionOutputCarriesOnlyNeuronalManipulatorDrive()
+    public void ActionOutputCarriesOnlyExplicitSidedNeuronalHandDrive()
     {
         using var service = CreateService();
         service.PostBrainSignals(
         [
             new AvatarDispatchSpike(
                 "SpinalCordMotor",
-                "M",
+                "L",
                 100,
-                "effector:manipulator:excitatory:1:0")
+                "effector:hand:left:grasp:excitatory:1:0")
         ]);
 
         var signal = WaitForSignal(service, static item => item.ManipulatorEvents == 1);
@@ -76,6 +76,10 @@ public sealed class AvatarServiceTests
 
         Assert.True(signal.ManipulatorDrive > 0.0);
         Assert.True(output.Interaction.ManipulatorDrive > 0.0);
+        Assert.True(signal.LeftHandGraspDrive > 0.0);
+        Assert.Equal(0.0, signal.RightHandGraspDrive);
+        Assert.True(output.Interaction.LeftHandGraspDrive > 0.0);
+        Assert.Equal(0.0, output.Interaction.RightHandGraspDrive);
         Assert.Equal(0.0, output.Movement.ForwardSpeed);
         Assert.Equal(0.0, output.Movement.TurnRateDeg);
     }

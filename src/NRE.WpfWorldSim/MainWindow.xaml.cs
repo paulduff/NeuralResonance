@@ -5119,7 +5119,7 @@ public partial class MainWindow : Window
             if (AvatarMotorCatalog.IsMotorStructure(dispatches[i].SourceStructure))
             {
                 _neuronalMotorDispatchTotal++;
-                if (AvatarEffectorCatalog.IsManipulatorEvent(dispatches[i]))
+                if (AvatarEffectorCatalog.IsHandEvent(dispatches[i]))
                 {
                     _neuronalManipulatorDispatchTotal++;
                 }

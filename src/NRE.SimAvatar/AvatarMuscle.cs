@@ -8,6 +8,9 @@ internal sealed class AvatarMuscle
     private const double ActivationFallSeconds = 0.090;
     private const double FatigueRatePerSecond = 0.020;
     private const double RecoveryRatePerSecond = 0.032;
+    private const double RestingRecoveryActivation = 0.10;
+    private const double ActiveRecoveryScale = 0.04;
+    private const double RelaxedActivationEpsilon = 0.0001;
 
     private double previousLength = 1.0;
 
@@ -26,6 +29,7 @@ internal sealed class AvatarMuscle
     public double LengthFraction { get; private set; } = 1.0;
     public double VelocityPerSecond { get; private set; }
     public double FatigueFraction { get; private set; }
+    public double FatigueCapacityFraction => Math.Pow(1.0 - FatigueFraction, 2.2);
 
     public void Advance(double excitation, double lengthFraction, double dt)
     {
@@ -38,19 +42,37 @@ internal sealed class AvatarMuscle
         VelocityPerSecond = (LengthFraction - previousLength) / Math.Max(0.001, dt);
         previousLength = LengthFraction;
 
+        // Recovery is strongest at rest. Once a muscle is carrying a sustained
+        // isometric load it may still recover a little through motor-unit
+        // rotation, but that recovery cannot erase the cost of holding posture.
+        var recoveryScale = Activation <= RestingRecoveryActivation
+            ? 1.0
+            : ActiveRecoveryScale;
         FatigueFraction = Math.Clamp(
             FatigueFraction +
             (Activation * FatigueRatePerSecond * dt) -
-            ((1.0 - Activation) * RecoveryRatePerSecond * dt),
+            ((1.0 - Activation) * RecoveryRatePerSecond * recoveryScale * dt),
             0.0,
             1.0);
+
+        if (target <= 0.0 && Activation < RelaxedActivationEpsilon)
+        {
+            Activation = 0.0;
+        }
 
         var lengthDeparture = (LengthFraction - 1.0) / 0.42;
         var forceLength = Math.Exp(-(lengthDeparture * lengthDeparture));
         var shorteningPenalty = Math.Clamp(1.0 - Math.Max(0.0, -VelocityPerSecond) * 0.10, 0.45, 1.0);
-        var fatigueCapacity = 1.0 - (FatigueFraction * 0.58);
+        // Exhaustion is a property of the muscle plant. A maximally fatigued
+        // muscle cannot preserve a hidden reserve of holding force; removing
+        // excitation also remains a true zero-force, recovering state.
+        var fatigueCapacity = FatigueCapacityFraction;
         ForceNewtons = MaximumIsometricForceNewtons * Activation *
             (0.35 + (forceLength * 0.65)) * shorteningPenalty * fatigueCapacity;
+        if (Activation <= 0.0 || fatigueCapacity < 0.0001)
+        {
+            ForceNewtons = 0.0;
+        }
     }
 
     public PhysicalMuscleMeasurement Capture()
@@ -62,6 +84,13 @@ internal sealed class AvatarMuscle
             (float)LengthFraction,
             (float)VelocityPerSecond,
             (float)FatigueFraction);
+
+    public void ReconcileLength(double lengthFraction)
+    {
+        LengthFraction = Math.Clamp(lengthFraction, 0.55, 1.45);
+        previousLength = LengthFraction;
+        VelocityPerSecond = 0.0;
+    }
 
     public void Reset()
     {
@@ -158,6 +187,21 @@ internal sealed class AvatarMuscleJoint
         {
             Angle = next;
         }
+    }
+
+    public void Reconcile(double previousAcceptedAngle, double resolvedAngle, double dt)
+    {
+        var previous = Math.Clamp(previousAcceptedAngle, minimum, maximum);
+        Angle = Math.Clamp(resolvedAngle, minimum, maximum);
+        AngularVelocity = Math.Clamp(
+            (Angle - previous) / Math.Max(0.001, dt),
+            -5.5,
+            5.5);
+
+        var span = Math.Max(0.1, maximum - minimum);
+        var normalized = (Angle - restAngle) / span;
+        Flexor.ReconcileLength(1.0 - (normalized * 0.34));
+        Extensor.ReconcileLength(1.0 + (normalized * 0.34));
     }
 
     public void Reset()

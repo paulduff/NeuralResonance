@@ -68,6 +68,89 @@ public sealed class AvatarWorldDynamicsTests
         Assert.Equal(initial.HydrationFraction, struck.HydrationFraction);
     }
 
+    [Theory]
+    [InlineData("left_foot")]
+    [InlineData("left_foot_heel_medial")]
+    [InlineData("left_foot_heel_lateral")]
+    [InlineData("left_foot_forefoot_medial")]
+    [InlineData("left_foot_forefoot_lateral")]
+    [InlineData("right_foot_heel_medial")]
+    [InlineData("right_foot_forefoot_lateral")]
+    public void Ordinary_Plantar_Support_Does_Not_Damage_Tissue(string region)
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+
+        var supported = AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                region, 420.0, 18.0, 7_500.0, 600.0, 0.02));
+
+        Assert.Equal(0.0, supported.DamageFraction);
+        Assert.Equal(initial, supported.State);
+        Assert.False(supported.ImpactEvent);
+    }
+
+    [Fact]
+    public void Severe_Fine_Grained_Heel_Impact_Still_Damages_Tissue()
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+
+        var struck = AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                "right_foot_heel_lateral", 2_400.0, 80.0, 1_500.0, 0.02, 0.02));
+
+        Assert.True(struck.ImpactEvent);
+        Assert.True(struck.ImpactDamageFraction > 0.0);
+        Assert.True(struck.State.TissueIntegrityFraction < initial.TissueIntegrityFraction);
+    }
+
+    [Fact]
+    public void Severe_New_Impact_Produces_Immediate_Graded_Tissue_Damage()
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+
+        var struck = AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                "left_forearm", 2_400.0, 70.0, 1_100.0, 0.02, 0.02));
+
+        Assert.InRange(struck.ImpactDamageFraction, 0.005, 0.02);
+        Assert.Equal(struck.ImpactDamageFraction, struck.DamageFraction, precision: 10);
+        Assert.True(struck.ImpactEvent);
+        Assert.True(struck.State.TissueIntegrityFraction < initial.TissueIntegrityFraction);
+    }
+
+    [Fact]
+    public void Sustained_NonFoot_Pressure_Accumulates_Slow_Local_Consequence()
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+        var early = AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                "right_hand", 300.0, 2.0, 1_200.0, 7.0, 0.02));
+        var sustained = AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                "right_hand", 300.0, 2.0, 1_200.0, 35.0, 0.02));
+
+        Assert.Equal(0.0, early.DamageFraction);
+        Assert.InRange(sustained.SustainedPressureDamageFraction, 0.0, 0.00001);
+        Assert.True(sustained.State.TissueIntegrityFraction < initial.TissueIntegrityFraction);
+        Assert.False(sustained.ImpactEvent);
+    }
+
+    [Fact]
+    public void Invalid_Physical_Contact_Is_Rejected()
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => AvatarWorldDynamics.ApplyPhysicalContact(
+            initial,
+            new AvatarPhysicalContactExposure(
+                "left_hand", double.NaN, 0.0, 1_000.0, 1.0, 0.02)));
+    }
+
     [Fact]
     public void Vital_Assessment_Uses_Only_Physical_State()
     {

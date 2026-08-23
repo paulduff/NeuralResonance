@@ -19,11 +19,10 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private const double GravityMetersPerSecondSquared = 9.81;
     private const double TerminalVelocityMetersPerSecond = 24.0;
     private const double AvatarFootClearance = 0.03;
-    private const double ManipulatorReach = 1.20;
-    private const double ManipulatorHalfAngleDegrees = 72.0;
-    private const double ManipulatorActivationDrive = 0.75;
-    private const double ManipulatorReleaseDrive = 0.20;
-    private const long ManipulatorCycleMilliseconds = 420;
+    private const double HandTargetContactRadiusMeters = 0.24;
+    private const double HandReachObservationRadiusMeters = 0.70;
+    private const double StableFoodHoldSeconds = 0.24;
+    private const double StableDeviceHoldSeconds = 0.35;
     private const double ShelterRadius = 4.8;
     private const double PredatorSenseRadius = 10.0;
     private const double PredatorStrikeRadius = 0.65;
@@ -31,7 +30,12 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private const int SightHeight = 40;
     private const int AudioSampleRate = 8_000;
     private const int AudioSamples = 960;
+    private const double NominalFullRecruitmentMotorDrive = 48.0;
     private static readonly TimeSpan BrainFreshness = TimeSpan.FromSeconds(5);
+    private static readonly JsonSerializerOptions ControlFrameJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     private static readonly AvatarKinematicsOptions KinematicsOptions = new(
         MaxMotorDrive: 240.0,
@@ -65,12 +69,14 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private readonly HeadlessWorldOptions options;
     private readonly HttpClient frameClient;
     private readonly HttpClient sensoryClient;
+    private readonly HttpClient somaticClient;
     private readonly HttpClient audioClient;
     private readonly AvatarService avatarService = new(
         NervousSystemOptions,
         "NRE.HeadlessWorld.AvatarService",
         new AvatarServiceClockOptions(Enabled: true, TickIntervalMs: 50));
     private readonly AvatarArticulatedBody articulatedBody = new();
+    private readonly AvatarTerrainAscentController terrainAscent = new();
     private readonly string sessionId = Guid.NewGuid().ToString("N");
     private readonly DateTimeOffset sessionStartedUtc = DateTimeOffset.UtcNow;
     private readonly HashSet<int> visitedCells = [];
@@ -80,7 +86,13 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private readonly List<MutableEntity> shelters = [];
     private readonly List<BodyContactSample> activeBodyContacts = [];
     private readonly Dictionary<string, double> contactDurationMilliseconds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, double> fallbackHandContactDurationMilliseconds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, WorldRunContactObservation> activeFallbackHandContacts =
+        new(StringComparer.Ordinal);
     private readonly Queue<PhysicalBodyFrameRequest> pendingCriticalBodyFrames = [];
+    private readonly WorldRunTelemetryAccumulator runTelemetry = new();
+    private readonly AvatarHandPlant leftHandPlant = new();
+    private readonly AvatarHandPlant rightHandPlant = new();
 
     private CancellationTokenSource? lifetime;
     private Task[] loops = [];
@@ -105,6 +117,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private bool neuronalSleep;
     private long dispatchSinceMilliseconds;
     private long lastNeuronalMotorTick = -1;
+    private double latestSpinalWithdrawalDrive;
+    private IReadOnlyList<SpinalWithdrawalSourceActivity> latestSpinalWithdrawalSources = [];
     private DateTimeOffset? lastFrameUtc;
     private string brainStatus = "Waiting for ControlProgram";
     private double lastForwardSpeed;
@@ -129,8 +143,17 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private long interactionOccluded;
     private long interactionUnavailable;
     private string lastInteractionOutcome = "none";
-    private bool manipulatorLatched;
-    private long lastManipulatorCycleMilliseconds;
+    private MutableEntity? leftHeldTarget;
+    private MutableEntity? rightHeldTarget;
+    private bool leftReachObserved;
+    private bool rightReachObserved;
+    private long reachEntries;
+    private long handContacts;
+    private long grasps;
+    private long holds;
+    private long releases;
+    private long graspMisses;
+    private long fatigueReleases;
     private long retinalFramesAccepted;
     private long leftRetinalFramesAccepted;
     private long rightRetinalFramesAccepted;
@@ -139,6 +162,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private long physicalBodyFramesRejected;
     private long somaticFramesAccepted;
     private long somaticFramesRejected;
+    private long somaticFrameRetries;
+    private long somaticFrameRetryRecoveries;
     private long bodyInputFailures;
     private string lastBodyInputError = "none";
     private DateTimeOffset lastBodyInputDiagnosticUtc = DateTimeOffset.MinValue;
@@ -151,9 +176,21 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private AvatarDeviceInventory inventory;
     private int waterInteractions;
     private int predatorsNeutralized;
+    private double physicalContactTissueDamageFraction;
+    private long physicalImpactDamageEvents;
+    private long sustainedPressureDamageEpisodes;
+    private readonly Dictionary<string, double> physicalContactDamageByRegion = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> bodyTissueDamageByCause = new(StringComparer.Ordinal);
     private bool previousWaterContact;
     private string? lastRunReportPath;
     private string? lastRunReportError;
+    private string? lastRollingReportPath;
+    private string? lastRollingReportError;
+    private DateTimeOffset lastRollingReportAttemptUtc = DateTimeOffset.MinValue;
+    private double latestBrainFrameLatencyMilliseconds;
+    private int consecutiveSlowBrainFrames;
+    private long brainFrameOverloadSafetyPauses;
+    private string lastBrainFrameOverloadReason = "none";
 
     public HeadlessWorldRuntime(HeadlessWorldOptions options)
     {
@@ -163,6 +200,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         physiology = AvatarWorldDynamics.CreateRespawnState(PhysiologyOptions);
         frameClient = CreateHttpClient(TimeSpan.FromSeconds(5));
         sensoryClient = CreateHttpClient(TimeSpan.FromSeconds(6));
+        somaticClient = CreateHttpClient(TimeSpan.FromSeconds(5));
         audioClient = CreateHttpClient(TimeSpan.FromSeconds(9));
         ResetCore(options.Seed);
     }
@@ -200,6 +238,28 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         }
     }
 
+    public string? LastRollingReportPath
+    {
+        get
+        {
+            lock (gate)
+            {
+                return lastRollingReportPath;
+            }
+        }
+    }
+
+    public string? LastRollingReportError
+    {
+        get
+        {
+            lock (gate)
+            {
+                return lastRollingReportError;
+            }
+        }
+    }
+
     public void Start(CancellationToken cancellationToken = default)
     {
         lock (lifecycleGate)
@@ -229,6 +289,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         lock (gate)
         {
             running = true;
+            consecutiveSlowBrainFrames = 0;
         }
     }
 
@@ -265,7 +326,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             var signal = avatarService.LatestSignal;
             var assessment = AvatarWorldDynamics.AssessVitalState(physiology, PhysiologyOptions);
             return new WorldSimulationSnapshot(
-                ProtocolVersion: "dnne.worldsim.state.v2",
+                ProtocolVersion: "dnne.worldsim.state.v3",
                 SessionId: sessionId,
                 ProcessId: Environment.ProcessId,
                 Running: running,
@@ -288,6 +349,19 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 AvatarTurnRateDeg: lastTurnRateDegrees,
                 AvatarVerticalVelocity: avatarVerticalVelocity,
                 AvatarGrounded: avatarGrounded,
+                MotorTrainingMode: options.MotorTrainingMode,
+                TerrainAscentMode: terrainAscent.ModeName,
+                TerrainAscentProgress: terrainAscent.Progress,
+                TerrainAscentEncounters: terrainAscent.EncounterCount,
+                TerrainAscentStarted: terrainAscent.StartedCount,
+                TerrainStepStarted: terrainAscent.StepStartedCount,
+                TerrainMantleStarted: terrainAscent.MantleStartedCount,
+                TerrainAscentCompleted: terrainAscent.CompletedCount,
+                TerrainStepCompleted: terrainAscent.StepCompletedCount,
+                TerrainMantleCompleted: terrainAscent.MantleCompletedCount,
+                TerrainAscentAborted: terrainAscent.AbortedCount,
+                TerrainAscentRejected: terrainAscent.RejectedCount,
+                TerrainAscentLastOutcome: terrainAscent.LastOutcome,
                 DistanceTravelled: distanceTravelled,
                 VisitedTerrainCells: visitedCells.Count,
                 ExplorableTerrainCells: terrain.ExplorableCellCount,
@@ -303,6 +377,13 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 CrouchDrive: signal.CrouchDrive,
                 SitDrive: signal.SitDrive,
                 LieDrive: signal.LieDrive,
+                LeftHipCoronalDrive: signal.LeftHipCoronalDrive,
+                RightHipCoronalDrive: signal.RightHipCoronalDrive,
+                LeftAnkleSagittalDrive: signal.LeftAnkleSagittalDrive,
+                RightAnkleSagittalDrive: signal.RightAnkleSagittalDrive,
+                LeftAnkleCoronalDrive: signal.LeftAnkleCoronalDrive,
+                RightAnkleCoronalDrive: signal.RightAnkleCoronalDrive,
+                TrunkYawDrive: signal.TrunkYawDrive,
                 Articulation: acceptedArticulation,
                 InteractionAttempts: interactionAttempts,
                 InteractionSuccesses: interactionSuccesses,
@@ -319,6 +400,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 PhysicalBodyFramesRejected: physicalBodyFramesRejected,
                 SomaticFramesAccepted: somaticFramesAccepted,
                 SomaticFramesRejected: somaticFramesRejected,
+                SomaticFrameRetries: somaticFrameRetries,
+                SomaticFrameRetryRecoveries: somaticFrameRetryRecoveries,
                 BodyInputFailures: bodyInputFailures,
                 LastBodyInputError: lastBodyInputError,
                 FoodConsumed: foodConsumed,
@@ -341,7 +424,39 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 FoodPickups: SnapshotEntities(foods),
                 WeaponPickups: SnapshotEntities(devices),
                 Predators: SnapshotEntities(predators),
-                Shelters: SnapshotEntities(shelters));
+                Shelters: SnapshotEntities(shelters),
+                PhysicalContactTissueDamageFraction: physicalContactTissueDamageFraction,
+                PhysicalImpactDamageEvents: physicalImpactDamageEvents,
+                SustainedPressureDamageEpisodes: sustainedPressureDamageEpisodes,
+                MostDamagedContactRegion: physicalContactDamageByRegion.Count == 0
+                    ? "none"
+                    : physicalContactDamageByRegion.MaxBy(static pair => pair.Value).Key,
+                DevelopmentStage: options.DevelopmentStage.ToString(),
+                LeftHandGraspDrive: signal.LeftHandGraspDrive,
+                RightHandGraspDrive: signal.RightHandGraspDrive,
+                LeftHandPhase: leftHandPlant.State.Phase.ToString(),
+                RightHandPhase: rightHandPlant.State.Phase.ToString(),
+                LeftHandPhaseSeconds: leftHandPlant.State.PhaseDurationSeconds,
+                RightHandPhaseSeconds: rightHandPlant.State.PhaseDurationSeconds,
+                LeftHandApertureFraction: leftHandPlant.State.ApertureFraction,
+                RightHandApertureFraction: rightHandPlant.State.ApertureFraction,
+                LeftGripForceNewtons: leftHandPlant.State.GripForceNewtons,
+                RightGripForceNewtons: rightHandPlant.State.GripForceNewtons,
+                LeftHandFatigue: leftHandPlant.State.FatigueFraction,
+                RightHandFatigue: rightHandPlant.State.FatigueFraction,
+                LeftHandSlip: leftHandPlant.State.SlipFraction,
+                RightHandSlip: rightHandPlant.State.SlipFraction,
+                ReachEntries: reachEntries,
+                HandContacts: handContacts,
+                Grasps: grasps,
+                Holds: holds,
+                Releases: releases,
+                GraspMisses: graspMisses,
+                FatigueReleases: fatigueReleases,
+                BrainFrameLatencyMilliseconds: latestBrainFrameLatencyMilliseconds,
+                ConsecutiveSlowBrainFrames: consecutiveSlowBrainFrames,
+                BrainFrameOverloadSafetyPauses: brainFrameOverloadSafetyPauses,
+                LastBrainFrameOverloadReason: lastBrainFrameOverloadReason);
         }
     }
 
@@ -391,6 +506,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         avatarService.Dispose();
         frameClient.Dispose();
         sensoryClient.Dispose();
+        somaticClient.Dispose();
         audioClient.Dispose();
         lock (gate)
         {
@@ -420,6 +536,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     tickFailures++;
                 }
             }
+
+            PersistRollingRunReportIfDue();
         }
     }
 
@@ -428,6 +546,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         using var timer = new PeriodicTimer(options.EffectiveFramePollInterval);
         while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
         {
+            var frameClock = Stopwatch.StartNew();
             try
             {
                 var since = Interlocked.Read(ref dispatchSinceMilliseconds);
@@ -439,12 +558,19 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 using var document = response.Document;
                 if (!response.IsSuccessStatusCode || document is null)
                 {
+                    ObserveBrainFrameLatency(frameClock.Elapsed, frameSucceeded: false);
+                    ClearSpinalWithdrawalTelemetry();
                     SetBrainStatus($"ControlProgram returned HTTP {(int)response.StatusCode}");
                     continue;
                 }
 
                 var root = document.RootElement;
                 var state = TryGetObject(root, "state", out var stateElement) ? stateElement : default;
+                var actionAuthorityHistory = ReadActionAuthorityHistory(state);
+                if (actionAuthorityHistory is not null)
+                {
+                    runTelemetry.ObserveActionAuthority(actionAuthorityHistory);
+                }
                 var dispatches = AvatarDispatchSpikeParser.ParseDispatchSpikes(root, since, out var maximumWallClock);
                 if (maximumWallClock > since)
                 {
@@ -462,7 +588,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     dispatches,
                     previousNeuronalTick,
                     out var nextNeuronalTick,
-                    out _);
+                    out var neuronalState);
                 var motorEvents = 0;
                 var locomotorEvents = 0;
                 var manipulatorEvents = 0;
@@ -476,7 +602,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     {
                         locomotorEvents++;
                     }
-                    if (AvatarEffectorCatalog.IsManipulatorEvent(dispatch))
+                    if (AvatarEffectorCatalog.IsHandEvent(dispatch))
                     {
                         manipulatorEvents++;
                     }
@@ -486,6 +612,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 lock (gate)
                 {
                     lastNeuronalMotorTick = nextNeuronalTick;
+                    latestSpinalWithdrawalDrive = neuronalState.SpinalWithdrawalDrive;
+                    latestSpinalWithdrawalSources = neuronalState.SpinalWithdrawalSources?.ToArray() ?? [];
                     neuronalMotorDispatchTotal += motorEvents;
                     neuronalLocomotorDispatchTotal += locomotorEvents;
                     neuronalManipulatorDispatchTotal += manipulatorEvents;
@@ -493,6 +621,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     lastFrameUtc = DateTimeOffset.UtcNow;
                     brainStatus = "Neuronal frame stream live";
                 }
+                ObserveBrainFrameLatency(frameClock.Elapsed, frameSucceeded: true);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -500,8 +629,19 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             }
             catch (Exception error)
             {
+                ObserveBrainFrameLatency(frameClock.Elapsed, frameSucceeded: false);
+                ClearSpinalWithdrawalTelemetry();
                 SetBrainStatus($"Brain link unavailable ({error.GetType().Name})");
             }
+        }
+    }
+
+    private void ClearSpinalWithdrawalTelemetry()
+    {
+        lock (gate)
+        {
+            latestSpinalWithdrawalDrive = 0.0;
+            latestSpinalWithdrawalSources = [];
         }
     }
 
@@ -560,11 +700,31 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     }
                     if (!activeBodyContacts.Any(static sample => sample.Region == "left_hand"))
                     {
-                        AddHandContactFrame(contacts, nowMs, articulation.LeftHandLoadNewtons, bodyPositionX: -0.42f);
+                        AddHandContactFrame(
+                            contacts,
+                            nowMs,
+                            articulation.LeftHandLoadNewtons,
+                            bodyPositionX: -0.42f,
+                            region: "left_hand");
+                    }
+                    else
+                    {
+                        fallbackHandContactDurationMilliseconds.Remove("left_hand");
+                        activeFallbackHandContacts.Remove("left_hand");
                     }
                     if (!activeBodyContacts.Any(static sample => sample.Region == "right_hand"))
                     {
-                        AddHandContactFrame(contacts, nowMs, articulation.RightHandLoadNewtons, bodyPositionX: 0.42f);
+                        AddHandContactFrame(
+                            contacts,
+                            nowMs,
+                            articulation.RightHandLoadNewtons,
+                            bodyPositionX: 0.42f,
+                            region: "right_hand");
+                    }
+                    else
+                    {
+                        fallbackHandContactDurationMilliseconds.Remove("right_hand");
+                        activeFallbackHandContacts.Remove("right_hand");
                     }
                     while (pendingCriticalBodyFrames.Count > 0)
                     {
@@ -573,35 +733,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     bodies.Add(CreatePhysicalBodyFrameCore(nowMs, articulation));
                 }
 
-                foreach (var contact in contacts)
-                {
-                    try
-                    {
-                        var contactResult = await AvatarControlApi.PostSomaticContactFrameAsync(
-                            sensoryClient, options.ControlEndpoint, contact, token).ConfigureAwait(false);
-                        if (contactResult.Accepted && contactResult.TargetInstances > 0)
-                        {
-                            Interlocked.Increment(ref somaticFramesAccepted);
-                        }
-                        else
-                        {
-                            Interlocked.Increment(ref somaticFramesRejected);
-                            RecordBodyInputFailure(
-                                "somatic",
-                                $"source={contact.InputSource} accepted={contactResult.Accepted} " +
-                                $"targets={contactResult.TargetInstances}");
-                        }
-                    }
-                    catch (OperationCanceledException) when (token.IsCancellationRequested)
-                    {
-                        throw;
-                    }
-                    catch (Exception error)
-                    {
-                        Interlocked.Increment(ref somaticFramesRejected);
-                        RecordBodyInputFailure("somatic", DescribeRejectedContact(contact, error));
-                    }
-                }
+                await DispatchSomaticContactsAsync(contacts, token).ConfigureAwait(false);
 
                 foreach (var body in bodies)
                 {
@@ -645,6 +777,89 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 RecordBodyInputFailure("body-cycle", $"{error.GetType().Name}: {error.Message}");
                 SetBrainStatus($"Body input delayed ({error.GetType().Name})");
             }
+        }
+    }
+
+    private async Task DispatchSomaticContactsAsync(
+        IReadOnlyList<SomaticContactFrameRequest> contacts,
+        CancellationToken token)
+    {
+        await Parallel.ForEachAsync(
+            contacts,
+            new ParallelOptions
+            {
+                CancellationToken = token,
+                MaxDegreeOfParallelism = 4
+            },
+            async (contact, cancellationToken) =>
+            {
+                var retried = false;
+                for (var attempt = 0; attempt < 2; attempt++)
+                {
+                    try
+                    {
+                        var result = await AvatarControlApi.PostSomaticContactFrameAsync(
+                            somaticClient,
+                            options.ControlEndpoint,
+                            contact,
+                            cancellationToken).ConfigureAwait(false);
+                        if (result.Accepted && result.TargetInstances > 0)
+                        {
+                            Interlocked.Increment(ref somaticFramesAccepted);
+                            if (retried)
+                            {
+                                Interlocked.Increment(ref somaticFrameRetryRecoveries);
+                            }
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref somaticFramesRejected);
+                            RecordBodyInputFailure(
+                                "somatic",
+                                $"source={contact.InputSource} accepted={result.Accepted} " +
+                                $"targets={result.TargetInstances}");
+                        }
+                        return;
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception error) when (attempt == 0 && IsTransientSomaticFailure(error))
+                    {
+                        retried = true;
+                        Interlocked.Increment(ref somaticFrameRetries);
+                        await Task.Delay(TimeSpan.FromMilliseconds(40), cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception error)
+                    {
+                        Interlocked.Increment(ref somaticFramesRejected);
+                        RecordBodyInputFailure("somatic", DescribeRejectedContact(contact, error));
+                        return;
+                    }
+                }
+            }).ConfigureAwait(false);
+    }
+
+    private static bool IsTransientSomaticFailure(Exception error)
+        => error is HttpRequestException or TaskCanceledException or TimeoutException;
+
+    internal static ActionAuthorityCumulativeTelemetry? ReadActionAuthorityHistory(JsonElement state)
+    {
+        if (state.ValueKind != JsonValueKind.Object ||
+            !TryGetObject(state, "actionAuthorityHistory", out var history) ||
+            history.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        try
+        {
+            return history.Deserialize<ActionAuthorityCumulativeTelemetry>(ControlFrameJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -782,13 +997,15 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             elapsedSeconds += dt;
             collisionPulse = Math.Max(0.0, collisionPulse - (dt * 2.4));
             var inShelter = IsInShelterCore();
+            var physiologyBeforeMetabolism = physiology;
             physiology = AvatarWorldDynamics.AdvancePhysiology(
                 physiology,
                 PhysiologyOptions,
                 dt,
-                metabolicRateScale: 1.0,
+                metabolicRateScale: options.MotorTrainingMode ? 0.0 : 1.0,
                 sleeping: neuronalSleep,
                 inShelter: inShelter);
+            ObserveMetabolicTissueDamageCore(physiologyBeforeMetabolism, physiology);
             var assessment = AvatarWorldDynamics.AssessVitalState(physiology, PhysiologyOptions);
             if (assessment.State != vitalState)
             {
@@ -799,6 +1016,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             if (assessment.State == AvatarVitalState.Dead)
             {
                 physicalDeaths++;
+                runTelemetry.ObserveDeath(CreateDeathRunEventCore());
                 pendingCriticalBodyFrames.Enqueue(CreatePhysicalBodyFrameCore(
                     DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                     acceptedArticulation));
@@ -815,8 +1033,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             var previousArticulation = acceptedArticulation;
             var mechanics = articulatedBody.Advance(
                 dt,
-                motorSignal.LeftMotorDrive / KinematicsOptions.MaxMotorDrive,
-                motorSignal.RightMotorDrive / KinematicsOptions.MaxMotorDrive,
+                NormalizeMotorRecruitment(motorSignal.LeftMotorDrive),
+                NormalizeMotorRecruitment(motorSignal.RightMotorDrive),
                 desiredForwardSpeed,
                 desiredTurnRate,
                 action.Interaction.ManipulatorDrive,
@@ -833,7 +1051,14 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 motorSignal.LeftShoulderCoronalDrive,
                 motorSignal.RightShoulderCoronalDrive,
                 motorSignal.LeftElbowDrive,
-                motorSignal.RightElbowDrive);
+                motorSignal.RightElbowDrive,
+                motorSignal.LeftHipCoronalDrive,
+                motorSignal.RightHipCoronalDrive,
+                motorSignal.LeftAnkleSagittalDrive,
+                motorSignal.RightAnkleSagittalDrive,
+                motorSignal.LeftAnkleCoronalDrive,
+                motorSignal.RightAnkleCoronalDrive,
+                motorSignal.TrunkYawDrive);
             var proposedArticulation = articulatedBody.CaptureFrame();
             var planarMotion = AvatarPlanarDynamics.Advance(
                 new AvatarPlanarMotionState(lastForwardSpeed, lastTurnRateDegrees),
@@ -851,8 +1076,10 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             var previousZ = avatarZ;
             var proposedX = avatarX + (directionX * forwardSpeed * dt);
             var proposedZ = avatarZ + (directionZ * forwardSpeed * dt);
-            var blockedByWater = terrain.IsInside(proposedX, proposedZ) && terrain.IsWater(proposedX, proposedZ);
-            var candidateRoot = blockedByWater
+            var blockedByWater = !terrainAscent.IsActive &&
+                terrain.IsInside(proposedX, proposedZ) &&
+                terrain.IsWater(proposedX, proposedZ);
+            var candidateRoot = blockedByWater || terrainAscent.IsActive
                 ? previousRoot
                 : new Vector3((float)proposedX, (float)avatarY, (float)proposedZ);
             var physicsResolution = physicsScene?.ResolveAvatar(
@@ -874,24 +1101,73 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     false,
                     []);
 
+            var initialRootMotionConstrained = physicsResolution.RootMotionConstrained;
+            var resolvedContacts = physicsResolution.Contacts.ToList();
+            var ascentReadiness = CreateTerrainAscentReadiness(
+                motorSignal,
+                mechanics,
+                proposedArticulation,
+                resolvedContacts);
+            if (!terrainAscent.IsActive &&
+                !blockedByWater &&
+                forwardSpeed > 0.015 &&
+                initialRootMotionConstrained &&
+                terrain.TryProbeRise(
+                    previousRoot.X,
+                    previousRoot.Z,
+                    directionX,
+                    directionZ,
+                    maximumDistance: 0.85,
+                    out var terrainRise))
+            {
+                terrainAscent.TryBegin(physicsResolution.RootPosition, terrainRise, ascentReadiness);
+            }
+
+            var ascentMoved = false;
+            if (terrainAscent.IsActive)
+            {
+                var proposal = terrainAscent.Propose(dt, ascentReadiness);
+                if (proposal.Active && physicsScene is not null)
+                {
+                    var beforeAscent = physicsResolution.RootPosition;
+                    var ascentResolution = physicsScene.ResolveAvatar(
+                        beforeAscent,
+                        physicsResolution.HeadingDegrees,
+                        physicsResolution.Articulation,
+                        proposal.RootPosition,
+                        physicsResolution.HeadingDegrees,
+                        physicsResolution.Articulation,
+                        (float)dt);
+                    terrainAscent.Commit(proposal, ascentResolution.RootPosition, dt);
+                    resolvedContacts = MergePhysicsContacts(resolvedContacts, ascentResolution.Contacts);
+                    physicsResolution = ascentResolution;
+                    ascentMoved = Vector3.DistanceSquared(beforeAscent, ascentResolution.RootPosition) > 0.000001f;
+                }
+            }
+
             avatarX = physicsResolution.RootPosition.X;
             avatarY = physicsResolution.RootPosition.Y;
             avatarZ = physicsResolution.RootPosition.Z;
             avatarHeadingDegrees = physicsResolution.HeadingDegrees;
             acceptedArticulation = physicsResolution.Articulation;
+            articulatedBody.ReconcileResolvedFrame(
+                previousArticulation,
+                proposedArticulation,
+                acceptedArticulation,
+                dt);
             var movedDistance = Math.Sqrt(
                 ((avatarX - previousX) * (avatarX - previousX)) +
                 ((avatarZ - previousZ) * (avatarZ - previousZ)));
             distanceTravelled += movedDistance;
             var attemptedRootMotion = Math.Abs(proposedX - previousX) + Math.Abs(proposedZ - previousZ) > 0.00001;
             var rootMotionConstrained = blockedByWater ||
-                                        (attemptedRootMotion && physicsResolution.RootMotionConstrained);
-            if ((rootMotionConstrained || physicsResolution.Contacts.Count > 0) && Math.Abs(forwardSpeed) > 0.001)
+                                        (attemptedRootMotion && initialRootMotionConstrained && !ascentMoved);
+            if ((rootMotionConstrained || resolvedContacts.Count > 0) && Math.Abs(forwardSpeed) > 0.001)
             {
                 collisionHits++;
             }
 
-            foreach (var contact in physicsResolution.Contacts)
+            foreach (var contact in resolvedContacts)
             {
                 articulatedBody.ApplyExternalContact(new AvatarExternalBodyContact(
                     contact.Region,
@@ -903,20 +1179,31 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
 
                 if (contact.Region is "left_hand" or "right_hand")
                 {
-                    articulatedBody.ApplyManipulatorContact(contact.ForceNewtons, contact.BodyPosition.X);
+                    articulatedBody.ApplyHandContact(contact.Region, contact.ForceNewtons);
                 }
             }
 
-            ApplyVerticalPhysicsCore(dt);
+            if (terrainAscent.IsActive)
+            {
+                avatarVerticalVelocity = 0.0;
+                avatarGrounded = false;
+            }
+            else
+            {
+                ApplyVerticalPhysicsCore(dt);
+            }
             visitedCells.Add(terrain.CellKey(avatarX, avatarZ));
-            lastForwardSpeed = blockedByWater
+            lastForwardSpeed = ascentMoved
+                ? movedDistance / Math.Max(0.001, dt)
+                : blockedByWater
                 ? 0.0
                 : forwardSpeed * physicsResolution.RootProgressFraction;
             lastTurnRateDegrees = turnRate * physicsResolution.HeadingProgressFraction;
             movementBlockedLastTick = rootMotionConstrained;
-            RefreshBodyContactsCore(physicsResolution.Contacts, dt * 1_000.0);
+            RefreshBodyContactsCore(resolvedContacts, dt * 1_000.0);
+            ApplyPhysicalContactDamageCore(dt);
             ApplyWaterContactCore(blockedByWater || terrain.IsWater(avatarX, avatarZ));
-            ApplyManipulatorCore(action.Interaction.ManipulatorDrive, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            AdvanceHandInteractionsCore(action.Interaction, dt);
             var contactAdjustedArticulation = articulatedBody.CaptureFrame();
             acceptedArticulation = acceptedArticulation with
             {
@@ -925,11 +1212,112 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     contactAdjustedArticulation.LeftHandLoadNewtons),
                 RightHandLoadNewtons = Math.Max(
                     acceptedArticulation.RightHandLoadNewtons,
-                    contactAdjustedArticulation.RightHandLoadNewtons)
+                    contactAdjustedArticulation.RightHandLoadNewtons),
+                LeftHandApertureFraction = (float)leftHandPlant.State.ApertureFraction,
+                RightHandApertureFraction = (float)rightHandPlant.State.ApertureFraction,
+                LeftGripForceNewtons = (float)leftHandPlant.State.GripForceNewtons,
+                RightGripForceNewtons = (float)rightHandPlant.State.GripForceNewtons,
+                LeftHandFatigue = (float)leftHandPlant.State.FatigueFraction,
+                RightHandFatigue = (float)rightHandPlant.State.FatigueFraction,
+                LeftHandSlip = (float)leftHandPlant.State.SlipFraction,
+                RightHandSlip = (float)rightHandPlant.State.SlipFraction
             };
+            runTelemetry.Observe(
+                dt,
+                acceptedArticulation.Musculoskeletal?.Balance,
+                acceptedArticulation,
+                motorSignal,
+                activeBodyContacts
+                    .Select(static contact => new WorldRunContactObservation(
+                        contact.InputSource,
+                        contact.Region,
+                        contact.ForceNewtons,
+                        contact.ImpulseNewtonSeconds,
+                        contact.ForceNewtons * Math.Max(0.0, contact.NormalY)))
+                    .Concat(activeFallbackHandContacts.Values)
+                    .ToArray(),
+                latestSpinalWithdrawalDrive,
+                latestSpinalWithdrawalSources);
             AdvancePredatorsCore(dt);
         }
     }
+
+    private static AvatarTerrainAscentReadiness CreateTerrainAscentReadiness(
+        AvatarNervousSystemSignal motorSignal,
+        AvatarMechanicalOutput mechanics,
+        PhysicalArticulationFrame articulation,
+        IReadOnlyList<AvatarPhysicsContact> contacts)
+    {
+        var muscles = articulation.Musculoskeletal?.Muscles ?? [];
+        var legEffort = MaximumMuscleActivation(muscles, arm: false);
+        var armEffort = MaximumMuscleActivation(muscles, arm: true);
+        var forwardEffort = Math.Clamp(
+            (NormalizeMotorRecruitment(motorSignal.LeftMotorDrive) +
+             NormalizeMotorRecruitment(motorSignal.RightMotorDrive)) * 0.5,
+            0.0,
+            1.0);
+        var leftHandSupported = articulation.LeftHandLoadNewtons >= 12f ||
+            contacts.Any(static contact => contact.Region == "left_hand" && contact.ForceNewtons >= 12f);
+        var rightHandSupported = articulation.RightHandLoadNewtons >= 12f ||
+            contacts.Any(static contact => contact.Region == "right_hand" && contact.ForceNewtons >= 12f);
+
+        return new AvatarTerrainAscentReadiness(
+            forwardEffort,
+            legEffort,
+            armEffort,
+            Math.Clamp(motorSignal.ManipulatorDrive, 0.0, 1.0),
+            mechanics.UprightFraction,
+            mechanics.SupportFraction,
+            leftHandSupported,
+            rightHandSupported);
+    }
+
+    internal static double NormalizeMotorRecruitment(double accumulatedDrive)
+    {
+        if (!double.IsFinite(accumulatedDrive))
+        {
+            return 0.0;
+        }
+
+        // MaxMotorDrive is an accumulator safety ceiling, not the motor pool's
+        // physiological full-recruitment point. Calibrating the muscle plant to
+        // the sustained population envelope preserves low-speed translation
+        // while giving spinal gait enough excursion to lift a swing foot.
+        return Math.Clamp(
+            accumulatedDrive / NominalFullRecruitmentMotorDrive,
+            -1.0,
+            1.0);
+    }
+
+    private static double MaximumMuscleActivation(
+        IReadOnlyList<PhysicalMuscleMeasurement> muscles,
+        bool arm)
+    {
+        var maximum = 0.0;
+        foreach (var muscle in muscles)
+        {
+            var included = arm
+                ? muscle.Name is "AnteriorDeltoid" or "LatissimusDorsi" or "MiddleDeltoid" or
+                    "PectoralisMajor" or "BicepsBrachii" or "TricepsBrachii"
+                : muscle.Name is "Iliopsoas" or "GluteusMaximus" or "Hamstrings" or "Quadriceps" or
+                    "TibialisAnterior" or "GastrocnemiusSoleus";
+            if (included)
+            {
+                maximum = Math.Max(maximum, muscle.Activation);
+            }
+        }
+
+        return maximum;
+    }
+
+    private static List<AvatarPhysicsContact> MergePhysicsContacts(
+        IEnumerable<AvatarPhysicsContact> first,
+        IEnumerable<AvatarPhysicsContact> second)
+        => first
+            .Concat(second)
+            .GroupBy(static contact => contact.InputSource, StringComparer.Ordinal)
+            .Select(static group => group.OrderByDescending(static contact => contact.ForceNewtons).First())
+            .ToList();
 
     private void ApplyVerticalPhysicsCore(double dt)
     {
@@ -1063,6 +1451,52 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             source));
     }
 
+    private void ApplyPhysicalContactDamageCore(double elapsedSecondsForSample)
+    {
+        foreach (var contact in activeBodyContacts)
+        {
+            var assessment = AvatarWorldDynamics.ApplyPhysicalContact(
+                physiology,
+                new AvatarPhysicalContactExposure(
+                    contact.Region,
+                    contact.ForceNewtons,
+                    contact.ImpulseNewtonSeconds,
+                    contact.ContactAreaSquareMillimeters,
+                    contact.DurationMilliseconds / 1_000.0,
+                    elapsedSecondsForSample));
+            physiology = assessment.State;
+            if (assessment.DamageFraction <= 0.0)
+            {
+                continue;
+            }
+
+            if (assessment.ImpactDamageFraction > 0.0)
+            {
+                ObserveTissueDamageCore(
+                    $"contact_impact:{NormalizeDamageRegion(contact.Region)}",
+                    assessment.ImpactDamageFraction);
+            }
+            if (assessment.SustainedPressureDamageFraction > 0.0)
+            {
+                ObserveTissueDamageCore(
+                    $"sustained_pressure:{NormalizeDamageRegion(contact.Region)}",
+                    assessment.SustainedPressureDamageFraction);
+            }
+
+            physicalContactTissueDamageFraction += assessment.DamageFraction;
+            physicalContactDamageByRegion[contact.Region] =
+                physicalContactDamageByRegion.GetValueOrDefault(contact.Region) + assessment.DamageFraction;
+            if (assessment.ImpactEvent)
+            {
+                physicalImpactDamageEvents++;
+            }
+            if (assessment.SustainedPressureEpisodeBegan)
+            {
+                sustainedPressureDamageEpisodes++;
+            }
+        }
+    }
+
     private double ContinueContactDuration(
         string source,
         double elapsedMilliseconds,
@@ -1114,14 +1548,25 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         List<SomaticContactFrameRequest> contacts,
         long timestampMs,
         float loadNewtons,
-        float bodyPositionX)
+        float bodyPositionX,
+        string region)
     {
         if (loadNewtons < 0.5f)
         {
+            fallbackHandContactDurationMilliseconds.Remove(region);
+            activeFallbackHandContacts.Remove(region);
             return;
         }
 
-        var durationMilliseconds = (float)options.EffectiveBodyFrameInterval.TotalMilliseconds;
+        var durationMilliseconds = Math.Min(
+            fallbackHandContactDurationMilliseconds.GetValueOrDefault(region) +
+            options.EffectiveBodyFrameInterval.TotalMilliseconds,
+            60_000.0);
+        fallbackHandContactDurationMilliseconds[region] = durationMilliseconds;
+        var impulseNewtonSeconds = CalculateFrameImpulseNewtonSeconds(
+            loadNewtons,
+            options.EffectiveBodyFrameInterval);
+        var source = $"avatar_world_{region}_load";
         contacts.Add(new SomaticContactFrameRequest(
             Interlocked.Increment(ref somaticSequence),
             timestampMs,
@@ -1132,67 +1577,170 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             0f,
             -1f,
             loadNewtons,
-            loadNewtons * durationMilliseconds / 1_000f,
+            impulseNewtonSeconds,
             0.8f,
             0f,
             480f,
-            durationMilliseconds,
-            "avatar_hand_contact"));
+            (float)durationMilliseconds,
+            source));
+        activeFallbackHandContacts[region] = new WorldRunContactObservation(
+            source,
+            region,
+            loadNewtons,
+            impulseNewtonSeconds,
+            VerticalSupportNewtons: 0.0);
     }
 
-    private void ApplyManipulatorCore(double drive, long nowMilliseconds)
+    internal static float CalculateFrameImpulseNewtonSeconds(float forceNewtons, TimeSpan frameInterval)
     {
-        if (drive <= ManipulatorReleaseDrive)
+        if (!float.IsFinite(forceNewtons) || forceNewtons <= 0f ||
+            !double.IsFinite(frameInterval.TotalSeconds) || frameInterval <= TimeSpan.Zero)
         {
-            manipulatorLatched = false;
-            return;
-        }
-        if (drive < ManipulatorActivationDrive || manipulatorLatched ||
-            nowMilliseconds - lastManipulatorCycleMilliseconds < ManipulatorCycleMilliseconds)
-        {
-            return;
+            return 0f;
         }
 
-        manipulatorLatched = true;
-        lastManipulatorCycleMilliseconds = nowMilliseconds;
-        interactionAttempts++;
-        var targets = foods.Concat(devices).Concat(predators).ToArray();
-        if (targets.Length == 0)
+        return (float)Math.Clamp(forceNewtons * frameInterval.TotalSeconds, 0.0, 1_000.0);
+    }
+
+    private void AdvanceHandInteractionsCore(AvatarInteractionOutput interaction, double deltaSeconds)
+    {
+        var colliders = AvatarColliderRig.CaptureResolved(acceptedArticulation);
+        AdvanceHandInteractionCore(
+            left: true,
+            interaction.LeftHandGraspDrive,
+            colliders.First(static collider => collider.Region == "left_hand"),
+            deltaSeconds);
+        AdvanceHandInteractionCore(
+            left: false,
+            interaction.RightHandGraspDrive,
+            colliders.First(static collider => collider.Region == "right_hand"),
+            deltaSeconds);
+    }
+
+    private void AdvanceHandInteractionCore(
+        bool left,
+        double signedDrive,
+        AvatarBodyCollider handCollider,
+        double deltaSeconds)
+    {
+        var plant = left ? leftHandPlant : rightHandPlant;
+        var heldTarget = left ? leftHeldTarget : rightHeldTarget;
+        var handPosition = ToWorldPosition(handCollider.Position);
+        var target = heldTarget ?? FindHandContactTarget(handPosition, left);
+        var targetContact = target is not null &&
+            Vector3.Distance(handPosition, EntityPosition(target)) <= HandTargetContactRadiusMeters;
+        var targetOccluded = target is not null && !targetContact && IsHandTargetOccluded(handPosition, target);
+        var targetDistance = target is null
+            ? double.PositiveInfinity
+            : Vector3.Distance(handPosition, EntityPosition(target));
+        var reachObserved = targetDistance <= HandReachObservationRadiusMeters && !targetOccluded;
+        var wasReachObserved = left ? leftReachObserved : rightReachObserved;
+        if (reachObserved && !wasReachObserved)
         {
-            interactionUnavailable++;
-            lastInteractionOutcome = "no physical target";
-            return;
+            reachEntries++;
         }
-        var reachable = targets.Where(target => DistanceTo(target) <= ManipulatorReach).ToArray();
-        if (reachable.Length == 0)
+        if (left)
         {
+            leftReachObserved = reachObserved;
+        }
+        else
+        {
+            rightReachObserved = reachObserved;
+        }
+
+        var requiredGrip = heldTarget is null ? RequiredGripForce(target) : RequiredGripForce(heldTarget);
+        var previousState = plant.State;
+        var output = plant.Advance(deltaSeconds, new AvatarHandPlantInput(
+            signedDrive,
+            targetContact || heldTarget is not null,
+            heldTarget is not null,
+            requiredGrip));
+
+        if (targetContact && previousState.Phase != AvatarHandPhase.Contact && heldTarget is null)
+        {
+            handContacts++;
+            lastInteractionOutcome = $"{(left ? "left" : "right")} hand physical contact";
+        }
+        if (targetOccluded && signedDrive > 0.08)
+        {
+            interactionOccluded++;
+            lastInteractionOutcome = $"{(left ? "left" : "right")} hand target occluded";
+        }
+
+        if (output.GraspAcquired && target is not null && heldTarget is null)
+        {
+            heldTarget = target;
+            grasps++;
+            interactionAttempts++;
+            lastInteractionOutcome = $"{(left ? "left" : "right")} hand grasp acquired";
+        }
+        else if (signedDrive > 0.65 && target is null &&
+                 previousState.Phase != AvatarHandPhase.Closing &&
+                 previousState.Phase != AvatarHandPhase.Contact)
+        {
+            interactionAttempts++;
             interactionOutOfReach++;
-            lastInteractionOutcome = "target out of reach";
-            return;
+            graspMisses++;
+            lastInteractionOutcome = $"{(left ? "left" : "right")} hand closed without contact";
         }
-        var contactTargets = reachable.Where(IsInsideManipulatorCone).ToArray();
-        if (contactTargets.Length == 0)
-        {
-            interactionOutsideCone++;
-            lastInteractionOutcome = "target outside manipulator cone";
-            return;
-        }
-        var target = contactTargets.MinBy(DistanceTo)!;
-        var targetDirection = BodyLocalDirection(target.X - avatarX, target.Z - avatarZ);
 
-        if (target.Kind == "food")
+        if (heldTarget is not null)
         {
-            articulatedBody.ApplyManipulatorContact(18.0, targetDirection.X);
+            heldTarget.X = handPosition.X;
+            heldTarget.Y = handPosition.Y;
+            heldTarget.Z = handPosition.Z;
+            holds++;
+            if (output.Released)
+            {
+                releases++;
+                if (output.FatigueRelease)
+                {
+                    fatigueReleases++;
+                }
+                lastInteractionOutcome = output.FatigueRelease
+                    ? $"{(left ? "left" : "right")} hand fatigue release"
+                    : $"{(left ? "left" : "right")} hand opened and released";
+                heldTarget = null;
+            }
+            else if (TryCompleteHeldInteraction(heldTarget, output.PhaseDurationSeconds))
+            {
+                heldTarget = null;
+            }
+        }
+
+        if (left)
+        {
+            leftHeldTarget = heldTarget;
+        }
+        else
+        {
+            rightHeldTarget = heldTarget;
+        }
+    }
+
+    private MutableEntity? FindHandContactTarget(Vector3 handPosition, bool left)
+    {
+        var otherHeld = left ? rightHeldTarget : leftHeldTarget;
+        return foods.Concat(devices)
+            .Where(target => !ReferenceEquals(target, otherHeld))
+            .OrderBy(target => Vector3.DistanceSquared(handPosition, EntityPosition(target)))
+            .FirstOrDefault(target =>
+                Vector3.Distance(handPosition, EntityPosition(target)) <= HandReachObservationRadiusMeters);
+    }
+
+    private bool TryCompleteHeldInteraction(MutableEntity target, double holdSeconds)
+    {
+        if (target.Kind == "food" && holdSeconds >= StableFoodHoldSeconds)
+        {
             foods.Remove(target);
             physiology = AvatarWorldDynamics.ConsumeFood(physiology, PhysiologyOptions, 0.16);
             foodConsumed++;
             interactionSuccesses++;
-            lastInteractionOutcome = "food contact consumed";
-            return;
+            lastInteractionOutcome = "food physically grasped and consumed";
+            return true;
         }
-        if (target.Kind == "device")
+        if (target.Kind == "device" && holdSeconds >= StableDeviceHoldSeconds)
         {
-            articulatedBody.ApplyManipulatorContact(32.0, targetDirection.X);
             var profile = string.Equals(target.Variant, "Long", StringComparison.OrdinalIgnoreCase)
                 ? AvatarDeviceRangeProfile.Long
                 : AvatarDeviceRangeProfile.Short;
@@ -1202,30 +1750,50 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 devices.Remove(target);
                 devicePickupsCollected++;
                 interactionSuccesses++;
-                lastInteractionOutcome = "device collected";
+                lastInteractionOutcome = "device physically grasped and collected";
+                return true;
             }
-            else
-            {
-                interactionUnavailable++;
-                lastInteractionOutcome = "device capacity reached";
-            }
-            return;
-        }
-        if (target.Kind == "predator" && inventory.ActiveProfile != AvatarDeviceRangeProfile.None &&
-            inventory.TryDischarge(inventory.ActiveProfile, out var discharged))
-        {
-            articulatedBody.ApplyManipulatorContact(95.0, targetDirection.X);
-            inventory = discharged;
-            predators.Remove(target);
-            predatorsNeutralized++;
-            interactionSuccesses++;
-            lastInteractionOutcome = "predator physically neutralized";
-            return;
-        }
 
-        articulatedBody.ApplyManipulatorContact(55.0, targetDirection.X);
-        interactionUnavailable++;
-        lastInteractionOutcome = "physical interaction unavailable";
+            interactionUnavailable++;
+            lastInteractionOutcome = "device capacity reached";
+        }
+        return false;
+    }
+
+    private Vector3 ToWorldPosition(Vector3 bodyPosition)
+    {
+        var headingRadians = AvatarKinematics.DegreesToRadians(avatarHeadingDegrees);
+        var sin = Math.Sin(headingRadians);
+        var cos = Math.Cos(headingRadians);
+        return new Vector3(
+            (float)(avatarX + (bodyPosition.X * cos) + (bodyPosition.Z * sin)),
+            (float)(avatarY + bodyPosition.Y),
+            (float)(avatarZ - (bodyPosition.X * sin) + (bodyPosition.Z * cos)));
+    }
+
+    private static Vector3 EntityPosition(MutableEntity entity) =>
+        new((float)entity.X, (float)entity.Y, (float)entity.Z);
+
+    private static double RequiredGripForce(MutableEntity? target) => target?.Kind switch
+    {
+        "food" => 6.0,
+        "device" => 16.0,
+        _ => 4.0
+    };
+
+    private bool IsHandTargetOccluded(Vector3 handPosition, MutableEntity target)
+    {
+        var targetPosition = EntityPosition(target);
+        for (var sample = 1; sample < 8; sample++)
+        {
+            var fraction = sample / 8f;
+            var point = Vector3.Lerp(handPosition, targetPosition, fraction);
+            if (terrain.SurfaceAt(point.X, point.Z) + 0.025 > point.Y)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void AdvancePredatorsCore(double dt)
@@ -1262,7 +1830,11 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
 
             if (distance <= PredatorStrikeRadius)
             {
+                var tissueBeforePredatorContact = physiology.TissueIntegrityFraction;
                 physiology = AvatarWorldDynamics.ApplyPredatorContact(physiology, dt, 0.035, 1.0);
+                ObserveTissueDamageCore(
+                    "predator_contact",
+                    tissueBeforePredatorContact - physiology.TissueIntegrityFraction);
                 collisionPulse = Math.Max(collisionPulse, 0.75);
                 SetCollisionContactFromWorldDirection(
                     predator.X - avatarX,
@@ -1345,8 +1917,10 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     var distance = 2.0 + ((row - (SightHeight * 0.46)) * 0.9);
                     var bearing = heading + (((column / (double)(SightWidth - 1)) - 0.5) * 62.0);
                     var (dirX, dirZ) = AvatarKinematics.ForwardDirection(bearing);
-                    var height = terrain.SurfaceAt(x + (dirX * distance), z + (dirZ * distance)) + 0.5;
-                    var water = height < WorldTerrain.SeaLevel;
+                    var sampleX = x + (dirX * distance);
+                    var sampleZ = z + (dirZ * distance);
+                    var height = terrain.SurfaceAt(sampleX, sampleZ) + WorldTerrain.HalfHeightUnitMeters;
+                    var water = terrain.IsWater(sampleX, sampleZ);
                     pixels[offset] = water ? (byte)56 : (byte)(70 + Math.Clamp(height * 4.0, 0.0, 70.0));
                     pixels[offset + 1] = water ? (byte)142 : (byte)(105 + Math.Clamp(height * 6.0, 0.0, 110.0));
                     pixels[offset + 2] = water ? (byte)178 : (byte)68;
@@ -1490,6 +2064,11 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         inventory = default;
         waterInteractions = 0;
         predatorsNeutralized = 0;
+        physicalContactTissueDamageFraction = 0.0;
+        physicalImpactDamageEvents = 0;
+        sustainedPressureDamageEpisodes = 0;
+        physicalContactDamageByRegion.Clear();
+        bodyTissueDamageByCause.Clear();
         interactionAttempts = 0;
         interactionSuccesses = 0;
         interactionOutOfReach = 0;
@@ -1497,11 +2076,35 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         interactionOccluded = 0;
         interactionUnavailable = 0;
         lastInteractionOutcome = "world reset";
-        manipulatorLatched = false;
+        leftHeldTarget = null;
+        rightHeldTarget = null;
+        leftReachObserved = false;
+        rightReachObserved = false;
+        reachEntries = 0;
+        handContacts = 0;
+        grasps = 0;
+        holds = 0;
+        releases = 0;
+        graspMisses = 0;
+        fatigueReleases = 0;
+        leftHandPlant.Reset();
+        rightHandPlant.Reset();
         previousWaterContact = terrain.IsWater(avatarX, avatarZ);
         movementBlockedLastTick = false;
+        terrainAscent.Reset();
         activeBodyContacts.Clear();
         contactDurationMilliseconds.Clear();
+        fallbackHandContactDurationMilliseconds.Clear();
+        activeFallbackHandContacts.Clear();
+        leftHeldTarget = null;
+        rightHeldTarget = null;
+        leftReachObserved = false;
+        rightReachObserved = false;
+        leftHandPlant.Reset();
+        rightHandPlant.Reset();
+        latestSpinalWithdrawalDrive = 0.0;
+        latestSpinalWithdrawalSources = [];
+        runTelemetry.Reset();
         articulatedBody.Reset();
         acceptedArticulation = articulatedBody.CaptureFrame();
         RefreshBodyContactsCore(null, 0.0);
@@ -1524,8 +2127,12 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         lastTurnRateDegrees = 0.0;
         collisionPulse = 0.0;
         movementBlockedLastTick = false;
+        terrainAscent.CancelActive("physical body respawned");
         activeBodyContacts.Clear();
         contactDurationMilliseconds.Clear();
+        fallbackHandContactDurationMilliseconds.Clear();
+        activeFallbackHandContacts.Clear();
+        bodyTissueDamageByCause.Clear();
         articulatedBody.Reset();
         acceptedArticulation = articulatedBody.CaptureFrame();
         RefreshBodyContactsCore(null, 0.0);
@@ -1533,16 +2140,73 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         lastInteractionOutcome = "physical body respawned";
     }
 
+    private void ObserveMetabolicTissueDamageCore(
+        AvatarPhysiologyState before,
+        AvatarPhysiologyState after)
+    {
+        var damage = before.TissueIntegrityFraction - after.TissueIntegrityFraction;
+        if (damage <= 0.0)
+        {
+            return;
+        }
+
+        var energyDepletion = 1.0 -
+            (after.StoredEnergyJoules / PhysiologyOptions.NominalStoredEnergyJoules);
+        var energyStress = energyDepletion > PhysiologyOptions.EnergyDepletionStressEnter;
+        var dehydrationStress = after.HydrationFraction < PhysiologyOptions.DehydrationDamageThreshold;
+        var cause = (energyStress, dehydrationStress) switch
+        {
+            (true, true) => "combined_energy_dehydration_failure",
+            (true, false) => "energy_depletion",
+            (false, true) => "dehydration",
+            _ => "unclassified_physiological_damage"
+        };
+        ObserveTissueDamageCore(cause, damage);
+    }
+
+    private void ObserveTissueDamageCore(string cause, double damageFraction)
+    {
+        if (string.IsNullOrWhiteSpace(cause) ||
+            !double.IsFinite(damageFraction) ||
+            damageFraction <= 0.0)
+        {
+            return;
+        }
+
+        bodyTissueDamageByCause[cause] =
+            bodyTissueDamageByCause.GetValueOrDefault(cause) + damageFraction;
+    }
+
+    private WorldDeathRunEvent CreateDeathRunEventCore()
+    {
+        var primary = bodyTissueDamageByCause.Count == 0
+            ? new KeyValuePair<string, double>("unknown", 0.0)
+            : bodyTissueDamageByCause.MaxBy(static pair => pair.Value);
+        return new WorldDeathRunEvent(
+            worldTick,
+            elapsedSeconds,
+            primary.Key,
+            primary.Value,
+            physiology.StoredEnergyJoules,
+            physiology.HydrationFraction,
+            physiology.TissueIntegrityFraction,
+            lastInteractionOutcome,
+            new Dictionary<string, double>(bodyTissueDamageByCause, StringComparer.Ordinal));
+    }
+
+    private static string NormalizeDamageRegion(string region)
+        => string.IsNullOrWhiteSpace(region)
+            ? "unknown"
+            : region.Trim().ToLowerInvariant().Replace(' ', '_');
+
     private PhysicalBodyFrameRequest CreatePhysicalBodyFrameCore(
         long timestampMs,
         PhysicalArticulationFrame articulation)
     {
-        var headingRadians = AvatarKinematics.DegreesToRadians(avatarHeadingDegrees);
         var balance = articulation.Musculoskeletal?.Balance ?? PhysicalBalanceStateFrame.Neutral;
         return new PhysicalBodyFrameRequest(
             Interlocked.Increment(ref physicalSequence), timestampMs,
-            (float)(Math.Sin(headingRadians) * lastForwardSpeed), (float)avatarVerticalVelocity,
-            (float)(Math.Cos(headingRadians) * lastForwardSpeed),
+            0f, (float)avatarVerticalVelocity, (float)lastForwardSpeed,
             balance.FallPitchVelocityRadiansPerSecond,
             (float)AvatarKinematics.DegreesToRadians(lastTurnRateDegrees),
             balance.FallRollVelocityRadiansPerSecond,
@@ -1550,14 +2214,19 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             (float)physiology.TissueIntegrityFraction,
             37f, 0.98f, (float)physiology.HydrationFraction,
             AvatarRuntimeDefaults.UnifiedBodyInputSource,
-            articulation);
+            articulation,
+            options.MotorTrainingMode);
     }
 
     private void PersistRunReport(string reason)
     {
         try
         {
-            var path = WorldRunReportStore.WriteAtomic(options.EffectiveReportDirectory, reason, GetSnapshot());
+            var path = WorldRunReportStore.WriteAtomic(
+                options.EffectiveReportDirectory,
+                reason,
+                GetSnapshot(),
+                runTelemetry.Capture());
             lock (gate)
             {
                 lastRunReportPath = path;
@@ -1571,6 +2240,77 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                 lastRunReportError = $"{error.GetType().Name}: {error.Message}";
             }
         }
+    }
+
+    private void PersistRollingRunReportIfDue()
+    {
+        var now = DateTimeOffset.UtcNow;
+        lock (gate)
+        {
+            if (now - lastRollingReportAttemptUtc < options.EffectiveRollingReportInterval)
+            {
+                return;
+            }
+
+            lastRollingReportAttemptUtc = now;
+        }
+
+        try
+        {
+            var path = WorldRunReportStore.WriteRollingAtomic(
+                options.EffectiveReportDirectory,
+                GetSnapshot(),
+                runTelemetry.Capture());
+            lock (gate)
+            {
+                lastRollingReportPath = path;
+                lastRollingReportError = null;
+            }
+        }
+        catch (Exception error)
+        {
+            lock (gate)
+            {
+                lastRollingReportError = $"{error.GetType().Name}: {error.Message}";
+            }
+        }
+    }
+
+    internal bool ObserveBrainFrameLatency(TimeSpan elapsed, bool frameSucceeded)
+    {
+        var pauseForOverload = false;
+        lock (gate)
+        {
+            latestBrainFrameLatencyMilliseconds = Math.Max(0.0, elapsed.TotalMilliseconds);
+            if (elapsed < options.EffectiveBrainFrameOverloadThreshold)
+            {
+                consecutiveSlowBrainFrames = 0;
+                return false;
+            }
+
+            consecutiveSlowBrainFrames++;
+            if (running && consecutiveSlowBrainFrames >= options.ConsecutiveBrainFrameOverloadLimit)
+            {
+                running = false;
+                lastForwardSpeed = 0.0;
+                lastTurnRateDegrees = 0.0;
+                brainFrameOverloadSafetyPauses++;
+                lastBrainFrameOverloadReason =
+                    $"{consecutiveSlowBrainFrames} consecutive brain frames at or above " +
+                    $"{options.EffectiveBrainFrameOverloadThreshold.TotalMilliseconds:F0} ms; " +
+                    $"latest {latestBrainFrameLatencyMilliseconds:F0} ms; success={frameSucceeded}";
+                brainStatus = "World safety-paused for sustained brain-frame latency";
+                lastInteractionOutcome = "host safety pause: sustained brain-frame latency";
+                pauseForOverload = true;
+            }
+        }
+
+        if (pauseForOverload)
+        {
+            PersistRunReport("brain-frame-overload-safety-pause");
+        }
+
+        return pauseForOverload;
     }
 
     private void PopulateEntitiesCore(int seed)
@@ -1587,12 +2327,50 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         }
 
         var random = new Mulberry32(unchecked((uint)(seed + 2111)));
-        AddRadialEntities(foods, 12, "food", 12.0, 56.0, random);
-        AddRadialEntities(devices, 5, "device", 10.0, 48.0, random);
-        if (options.PredatorsEnabled)
+        switch (options.DevelopmentStage)
+        {
+            case WorldDevelopmentStage.HandSpace:
+                AddDevelopmentTarget(foods, "food", 0.74, 1.00);
+                break;
+            case WorldDevelopmentStage.NearFlat:
+                AddDevelopmentTarget(foods, "food", 2.8, 0.20);
+                break;
+            case WorldDevelopmentStage.NormalDistance:
+                AddRadialEntities(foods, 4, "food", 4.0, 12.0, random);
+                break;
+            case WorldDevelopmentStage.Terrain:
+                AddRadialEntities(foods, 12, "food", 12.0, 56.0, random);
+                AddRadialEntities(devices, 5, "device", 10.0, 48.0, random);
+                break;
+            case WorldDevelopmentStage.Ecology:
+                AddRadialEntities(foods, 12, "food", 12.0, 56.0, random);
+                AddRadialEntities(devices, 5, "device", 10.0, 48.0, random);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(options.DevelopmentStage));
+        }
+        if (options.PredatorsEnabled && options.DevelopmentStage == WorldDevelopmentStage.Ecology)
         {
             AddRadialEntities(predators, 3, "predator", 24.0, 52.0, random);
         }
+    }
+
+    private void AddDevelopmentTarget(
+        List<MutableEntity> destination,
+        string kind,
+        double forwardDistance,
+        double heightAboveTerrain)
+    {
+        var (forwardX, forwardZ) = AvatarKinematics.ForwardDirection(180.0);
+        var x = forwardX * forwardDistance;
+        var z = 6.0 + (forwardZ * forwardDistance);
+        destination.Add(new MutableEntity(
+            kind,
+            x,
+            terrain.SurfaceAt(x, z) + heightAboveTerrain,
+            z,
+            0.0,
+            "Developmental"));
     }
 
     private void AddRadialEntities(
@@ -1627,14 +2405,6 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         }
     }
 
-    private bool IsInsideManipulatorCone(MutableEntity entity)
-    {
-        var bearing = AvatarKinematics.NormalizeDegrees(
-            Math.Atan2(entity.X - avatarX, entity.Z - avatarZ) * 180.0 / Math.PI);
-        var relative = ((bearing - avatarHeadingDegrees + 540.0) % 360.0) - 180.0;
-        return Math.Abs(relative) <= ManipulatorHalfAngleDegrees;
-    }
-
     private bool IsInShelterCore() => shelters.Any(shelter => DistanceTo(shelter) <= ShelterRadius);
 
     private double DistanceTo(MutableEntity entity)
@@ -1667,6 +2437,20 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         {
             return true;
         }
+
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in root.EnumerateObject())
+            {
+                if (property.Value.ValueKind == JsonValueKind.Object &&
+                    string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
         value = default;
         return false;
     }

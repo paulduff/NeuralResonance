@@ -99,6 +99,36 @@ public sealed class ClosedNeuronalLoopTests
     }
 
     [Fact]
+    public void MotorTrainingAccumulatesActionOutcomeSamplesDuringPerceptualBootstrap()
+    {
+        var state = new SimulationState();
+        state.Configure(1.0, [], []);
+        state.UpdateNeuronalMotor(NeuronalMotorRuntime.Default with
+        {
+            Active = true,
+            ActionCircuitObserved = true,
+            SelectedActionChannel = 0
+        });
+        var transducer = new PhysicalBodyTransducerRuntime();
+        Assert.True(PhysicalBodyFrameDescriptor.TryCreate(
+            new PhysicalBodyFrameRequest(
+                1, 1_000, 0.4f, 0f, 1.2f, 0f, 0.3f, 0f,
+                8_000_000f, 1f, 37f, 0.98f, 0.8f, "curriculum_body",
+                MotorTrainingMode: true),
+            out var descriptor,
+            out var error), error);
+
+        state.ObserveEmbodiedCurriculum(transducer.Transduce(descriptor!, 1, 1));
+
+        Assert.Equal(0, state.Curriculum.StageIndex);
+        var actionOutcome = Assert.Single(
+            state.Curriculum.Tasks,
+            task => task.Name == "action_outcome_association");
+        Assert.Equal(1, actionOutcome.Samples);
+        Assert.True(actionOutcome.Score > 0f);
+    }
+
+    [Fact]
     public async Task PausingWorldWritesAnAtomicPersistentRunReport()
     {
         var directory = Path.Combine(Path.GetTempPath(), "dnne-world-report-tests", Guid.NewGuid().ToString("N"));
@@ -106,8 +136,21 @@ public sealed class ClosedNeuronalLoopTests
         {
             await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
                 new Uri("http://127.0.0.1:1"),
+                SimulationInterval: TimeSpan.FromMilliseconds(10),
+                FramePollInterval: TimeSpan.FromSeconds(1),
+                BodyFrameInterval: TimeSpan.FromSeconds(1),
+                VisionFrameInterval: TimeSpan.FromSeconds(1),
+                AudioFrameInterval: TimeSpan.FromSeconds(1),
                 ReportDirectory: directory));
 
+            runtime.Start();
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(2);
+            while (runtime.GetSnapshot().WorldTick < 3 && DateTimeOffset.UtcNow < deadline)
+            {
+                await Task.Delay(10);
+            }
+
+            Assert.True(runtime.GetSnapshot().WorldTick >= 3);
             runtime.Pause();
 
             Assert.NotNull(runtime.LastRunReportPath);
@@ -115,8 +158,21 @@ public sealed class ClosedNeuronalLoopTests
             Assert.True(File.Exists(runtime.LastRunReportPath));
             Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
             var json = await File.ReadAllTextAsync(runtime.LastRunReportPath!);
-            Assert.Contains("dnne.world-run.v1", json, StringComparison.Ordinal);
+            Assert.Contains("dnne.world-run.v8", json, StringComparison.Ordinal);
+            Assert.Contains("physicalContactTissueDamageFraction", json, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("paused", json, StringComparison.Ordinal);
+            Assert.Contains("balancePhaseSeconds", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("motorChannels", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("contacts", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("withdrawalSources", json, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("alternatingSwingTransitions", json, StringComparison.OrdinalIgnoreCase);
+            var report = System.Text.Json.JsonSerializer.Deserialize<WorldRunReport>(json);
+            Assert.NotNull(report);
+            Assert.True(report.Statistics.ObservedSeconds > 0.0);
+            Assert.NotEmpty(report.Statistics.BalancePhaseSeconds);
+            Assert.Equal(22, report.Statistics.MotorChannels.Count);
+            Assert.All(report.Statistics.MotorChannels, channel => Assert.True(channel.Samples > 0));
+            Assert.True(report.Statistics.SpinalWithdrawalSamples > 0);
         }
         finally
         {

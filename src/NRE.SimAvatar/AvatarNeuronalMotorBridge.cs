@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NRE.SimAvatar;
 
@@ -21,9 +22,20 @@ public sealed record AvatarNeuronalMotorState(
     double CrouchDrive,
     double SitDrive,
     double LieDrive,
+    double LeftHipCoronalDrive,
+    double RightHipCoronalDrive,
+    double LeftAnkleSagittalDrive,
+    double RightAnkleSagittalDrive,
+    double LeftAnkleCoronalDrive,
+    double RightAnkleCoronalDrive,
     double Confidence,
     double MinimumOutputConfidence,
-    int MaxPopulationEventsPerSide)
+    int MaxPopulationEventsPerSide,
+    double TrunkYawDrive = 0.0,
+    double SpinalWithdrawalDrive = 0.0,
+    IReadOnlyList<SpinalWithdrawalSourceActivity>? SpinalWithdrawalSources = null,
+    double LeftHandGraspDrive = 0.0,
+    double RightHandGraspDrive = 0.0)
 {
     public static AvatarNeuronalMotorState UnavailableDefault { get; } = new(
         Active: false,
@@ -44,6 +56,12 @@ public sealed record AvatarNeuronalMotorState(
         CrouchDrive: 0.0,
         SitDrive: 0.0,
         LieDrive: 0.0,
+        LeftHipCoronalDrive: 0.0,
+        RightHipCoronalDrive: 0.0,
+        LeftAnkleSagittalDrive: 0.0,
+        RightAnkleSagittalDrive: 0.0,
+        LeftAnkleCoronalDrive: 0.0,
+        RightAnkleCoronalDrive: 0.0,
         Confidence: 0.0,
         MinimumOutputConfidence: 1.0,
         MaxPopulationEventsPerSide: 12);
@@ -78,7 +96,10 @@ public static class AvatarNeuronalMotorBridge
         nextNeuronalTick = neuronalState.Tick;
         AppendPopulationEvents(result, neuronalState, "L", neuronalState.LeftDrive);
         AppendPopulationEvents(result, neuronalState, "R", neuronalState.RightDrive);
-        AppendManipulatorEvents(result, neuronalState);
+        AppendSignedEffectorEvents(result, neuronalState, "hand:left:grasp",
+            neuronalState.LeftHandGraspDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "hand:right:grasp",
+            neuronalState.RightHandGraspDrive, "R");
         AppendSignedEffectorEvents(result, neuronalState, "arm:left:shoulder:sagittal",
             neuronalState.LeftShoulderSagittalDrive, "L");
         AppendSignedEffectorEvents(result, neuronalState, "arm:right:shoulder:sagittal",
@@ -91,6 +112,20 @@ public static class AvatarNeuronalMotorBridge
             neuronalState.LeftElbowDrive, "L");
         AppendSignedEffectorEvents(result, neuronalState, "arm:right:elbow",
             neuronalState.RightElbowDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:left:hip:coronal",
+            neuronalState.LeftHipCoronalDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:right:hip:coronal",
+            neuronalState.RightHipCoronalDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:left:ankle:sagittal",
+            neuronalState.LeftAnkleSagittalDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:right:ankle:sagittal",
+            neuronalState.RightAnkleSagittalDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:left:ankle:coronal",
+            neuronalState.LeftAnkleCoronalDrive, "L");
+        AppendSignedEffectorEvents(result, neuronalState, "leg:right:ankle:coronal",
+            neuronalState.RightAnkleCoronalDrive, "R");
+        AppendSignedEffectorEvents(result, neuronalState, "axial:trunk:yaw",
+            neuronalState.TrunkYawDrive);
         AppendSignedEffectorEvents(result, neuronalState, "orient:yaw", neuronalState.HeadYawDrive);
         AppendSignedEffectorEvents(result, neuronalState, "orient:pitch", neuronalState.HeadPitchDrive);
         AppendPostureEvents(result, neuronalState, "stand", neuronalState.StandDrive);
@@ -131,9 +166,75 @@ public static class AvatarNeuronalMotorBridge
             CrouchDrive: Math.Clamp(AvatarJson.GetDouble(motor, "crouchDrive"), 0.0, 1.0),
             SitDrive: Math.Clamp(AvatarJson.GetDouble(motor, "sitDrive"), 0.0, 1.0),
             LieDrive: Math.Clamp(AvatarJson.GetDouble(motor, "lieDrive"), 0.0, 1.0),
+            LeftHipCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftHipCoronalDrive"), -1.0, 1.0),
+            RightHipCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightHipCoronalDrive"), -1.0, 1.0),
+            LeftAnkleSagittalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftAnkleSagittalDrive"), -1.0, 1.0),
+            RightAnkleSagittalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightAnkleSagittalDrive"), -1.0, 1.0),
+            LeftAnkleCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftAnkleCoronalDrive"), -1.0, 1.0),
+            RightAnkleCoronalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightAnkleCoronalDrive"), -1.0, 1.0),
             Confidence: Math.Clamp(AvatarJson.GetDouble(motor, "confidence"), 0.0, 1.0),
             MinimumOutputConfidence: Math.Clamp(AvatarJson.GetDouble(motor, "minimumOutputConfidence"), 0.0, 1.0),
-            MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64));
+            MaxPopulationEventsPerSide: Math.Clamp(AvatarJson.GetInt(motor, "maxPopulationEventsPerSide"), 1, 64),
+            TrunkYawDrive: Math.Clamp(AvatarJson.GetDouble(motor, "trunkYawDrive"), -1.0, 1.0),
+            SpinalWithdrawalDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "spinalWithdrawalDrive"),
+                0.0,
+                1.0),
+            SpinalWithdrawalSources: ParseWithdrawalSources(motor),
+            LeftHandGraspDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "leftHandGraspDrive"), -1.0, 1.0),
+            RightHandGraspDrive: Math.Clamp(
+                AvatarJson.GetDouble(motor, "rightHandGraspDrive"), -1.0, 1.0));
+    }
+
+    private static IReadOnlyList<SpinalWithdrawalSourceActivity> ParseWithdrawalSources(JsonElement motor)
+    {
+        if (!AvatarJson.TryGetProperty(motor, "spinalWithdrawalSources", out var sources) ||
+            sources.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var parsed = new List<SpinalWithdrawalSourceActivity>();
+        foreach (var source in sources.EnumerateArray())
+        {
+            if (source.ValueKind != JsonValueKind.Object || parsed.Count >= 64)
+            {
+                continue;
+            }
+
+            var sourceKey = AvatarJson.GetString(source, "sourceKey").Trim();
+            var channelIndex = AvatarJson.GetInt(source, "channelIndex");
+            if (sourceKey.Length == 0 || channelIndex < 0)
+            {
+                continue;
+            }
+
+            parsed.Add(new SpinalWithdrawalSourceActivity(
+                SourceKey: sourceKey,
+                BodySide: AvatarJson.GetString(source, "bodySide").Trim().ToLowerInvariant(),
+                Region: AvatarJson.GetString(source, "region").Trim().ToLowerInvariant(),
+                ContactNormalSector: AvatarJson.GetString(source, "contactNormalSector").Trim().ToLowerInvariant(),
+                ChannelIndex: channelIndex,
+                MotorProjection: AvatarJson.GetString(source, "motorProjection").Trim().ToLowerInvariant(),
+                AfferentDrive: (float)Math.Clamp(AvatarJson.GetDouble(source, "afferentDrive"), 0.0, 1.0),
+                ReflexDrive: (float)Math.Clamp(AvatarJson.GetDouble(source, "reflexDrive"), 0.0, 1.0),
+                RecurrentInhibition: (float)Math.Clamp(
+                    AvatarJson.GetDouble(source, "recurrentInhibition"),
+                    0.0,
+                    1.0),
+                AfferentAgeMilliseconds: (float)Math.Max(
+                    0.0,
+                    AvatarJson.GetDouble(source, "afferentAgeMilliseconds"))));
+        }
+
+        return parsed;
     }
 
     private static List<AvatarDispatchSpike> FilterNonNeuronalMotorTraffic(
@@ -177,31 +278,6 @@ public static class AvatarNeuronalMotorBridge
                 SourceHemisphere: hemisphere,
                 WallClockUnixMs: wallClockMs,
                 SourceNeuronId: $"population:{hemisphere.ToLowerInvariant()}:{polarity}:{state.Tick}:{i}"));
-        }
-    }
-
-    private static void AppendManipulatorEvents(
-        List<AvatarDispatchSpike> output,
-        AvatarNeuronalMotorState state)
-    {
-        var magnitude = Math.Clamp(state.ManipulatorDrive, 0.0, 1.0);
-        if (magnitude < 0.01)
-        {
-            return;
-        }
-
-        var eventCount = Math.Clamp(
-            (int)Math.Round(magnitude * state.MaxPopulationEventsPerSide, MidpointRounding.AwayFromZero),
-            1,
-            state.MaxPopulationEventsPerSide);
-        var wallClockMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        for (var i = 0; i < eventCount; i++)
-        {
-            output.Add(new AvatarDispatchSpike(
-                SourceStructure: "SpinalCordMotor",
-                SourceHemisphere: "M",
-                WallClockUnixMs: wallClockMs,
-                SourceNeuronId: $"effector:manipulator:excitatory:{state.Tick}:{i}:n{state.MaxPopulationEventsPerSide}"));
         }
     }
 

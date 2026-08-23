@@ -1518,6 +1518,12 @@
                                 "projectionType":  "nts_arcuate_metabolic_input"
                             },
                             {
+                                "target":  "LateralHypothalamicArea",
+                                "synapseId":  "1d61b475-0082-4991-b775-f77269569c82",
+                                "neurotransmitter":  "GLUTAMATE",
+                                "projectionType":  "nts_lha_homeostatic_drive"
+                            },
+                            {
                                 "target":  "LocusCoeruleus",
                                 "synapseId":  "7f8f58cb-ef95-4f17-89ec-74b49f4f1015",
                                 "neurotransmitter":  "GLUTAMATE",

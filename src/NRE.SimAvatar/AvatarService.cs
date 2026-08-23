@@ -382,7 +382,10 @@ public sealed class AvatarService : IDisposable
             turnGain);
         return new AvatarActionOutput(
             new AvatarMotorOutput(forwardSpeed, turnRateDeg),
-            new AvatarInteractionOutput(signal.ManipulatorDrive),
+            new AvatarInteractionOutput(
+                signal.ManipulatorDrive,
+                signal.LeftHandGraspDrive,
+                signal.RightHandGraspDrive),
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
     }
 
@@ -428,7 +431,16 @@ public sealed class AvatarService : IDisposable
             _nervousSystem.LastManipulatorDispatchCount,
             _nervousSystem.LastOrientingDispatchCount,
             _nervousSystem.LastPostureDispatchCount,
-            _nervousSystem.TicksWithoutMotorDispatch);
+            _nervousSystem.TicksWithoutMotorDispatch,
+            _nervousSystem.LeftHipCoronalDrive,
+            _nervousSystem.RightHipCoronalDrive,
+            _nervousSystem.LeftAnkleSagittalDrive,
+            _nervousSystem.RightAnkleSagittalDrive,
+            _nervousSystem.LeftAnkleCoronalDrive,
+            _nervousSystem.RightAnkleCoronalDrive,
+            _nervousSystem.TrunkYawDrive,
+            _nervousSystem.LeftHandGraspDrive,
+            _nervousSystem.RightHandGraspDrive);
 
     private interface IAvatarServiceCommand
     {

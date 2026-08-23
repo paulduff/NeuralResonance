@@ -10,9 +10,9 @@ using NeuralResonanceEngine.Protocol;
 
 internal sealed class SynapsePersistenceStore : IDisposable
 {
-	internal const int CurrentSchemaVersion = 2;
-	private const int DefaultSaveEveryMutationCount = 4096;
-	private const double DefaultSaveEveryMs = 10000.0;
+	internal const int CurrentSchemaVersion = 3;
+	private const double DefaultSaveEveryMs = 300000.0;
+	private const double DefaultSaveEveryBiologicalMs = 30000.0;
 	private const int DefaultSensoryInboundSynapseLimit = 65_536;
 	private const int DefaultGeneralInboundSynapseLimit = 262_144;
 
@@ -24,12 +24,14 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly StructureId _structureId;
 	private readonly string _instanceKey;
 	private readonly string _path;
-	private readonly int _saveEveryMutationCount;
 	private readonly double _saveEveryMs;
+	private readonly double _saveEveryBiologicalMs;
 	private readonly int _maxInboundSynapseCount;
 	private int _pendingMutations;
 	private long _lastSaveTimestamp;
+	private double _lastSaveBiologicalTimestampMs = double.NaN;
 	private long _totalPrunedInboundSynapses;
+	private long _snapshotBuildCount;
 
 	// Off-lock async writer. Snapshot construction happens on the tick-loop thread
 	// (which holds the dictionary lock), and the resulting frozen snapshot is handed
@@ -51,8 +53,12 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_structureId = structureId;
 		_instanceKey = ResolveInstanceKey(structureId);
 		_path = ResolvePath(_instanceKey);
-		_saveEveryMutationCount = ResolvePositiveInt("NRE_SYNAPSE_SAVE_MUTATIONS", DefaultSaveEveryMutationCount, 64, 1_000_000);
-		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 1000.0, 300_000.0);
+		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 5000.0, 900_000.0);
+		_saveEveryBiologicalMs = ResolvePositiveDouble(
+			"NRE_SYNAPSE_SAVE_BIOLOGICAL_INTERVAL_MS",
+			DefaultSaveEveryBiologicalMs,
+			1000.0,
+			300_000.0);
 		_maxInboundSynapseCount = ResolveInboundSynapseLimit(structureId);
 		_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		_writerTask = Task.Run(WriterLoopAsync);
@@ -111,22 +117,43 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		}
 	}
 
+	public void EnsureInitialized(
+		Dictionary<Guid, SynapseState> inboundSynapses,
+		Dictionary<string, SynapseState> outboundSynapses)
+	{
+		if (File.Exists(_path))
+		{
+			return;
+		}
+
+		WriteSnapshot(BuildSnapshot(inboundSynapses, outboundSynapses));
+		_lastSaveTimestamp = Stopwatch.GetTimestamp();
+		_lastSaveBiologicalTimestampMs = ResolveLatestBiologicalTimestamp(
+			inboundSynapses,
+			outboundSynapses);
+	}
+
 	public void MarkChanged(
 		Dictionary<Guid, SynapseState> inboundSynapses,
 		Dictionary<string, SynapseState> outboundSynapses,
 		double timestampMs)
 	{
 		_pendingMutations++;
-		// Hot path: called once per inbound and once per outbound spike. Skip the
-		// CurrentMilliseconds() syscall and the snapshot copy until the mutation gate
-		// fires or we periodically sample the time gate every 64 mutations.
-		if (_pendingMutations < _saveEveryMutationCount && (_pendingMutations & 0xFF) != 0)
+		// Sample the clocks on the first dirty mutation and then every 256 mutations.
+		// Full snapshots are due by biological or wall time, never merely because a
+		// high-rate population generated another fixed count of spikes.
+		if (_pendingMutations != 1 && (_pendingMutations & 0xFF) != 0)
 		{
 			return;
 		}
 
 		long now = Stopwatch.GetTimestamp();
-		if (_pendingMutations < _saveEveryMutationCount && Stopwatch.GetElapsedTime(_lastSaveTimestamp, now).TotalMilliseconds < _saveEveryMs)
+		var wallTimeDue = Stopwatch.GetElapsedTime(_lastSaveTimestamp, now).TotalMilliseconds >= _saveEveryMs;
+		var biologicalTimeDue = double.IsFinite(timestampMs) && timestampMs >= 0.0 &&
+			(!double.IsFinite(_lastSaveBiologicalTimestampMs)
+				? timestampMs >= _saveEveryBiologicalMs
+				: timestampMs - _lastSaveBiologicalTimestampMs >= _saveEveryBiologicalMs);
+		if (!wallTimeDue && !biologicalTimeDue)
 		{
 			return;
 		}
@@ -137,6 +164,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_writeQueue.Writer.TryWrite(snapshot);
 		_pendingMutations = 0;
 		_lastSaveTimestamp = now;
+		_lastSaveBiologicalTimestampMs = timestampMs;
 	}
 
 	public void Save(Dictionary<Guid, SynapseState> inboundSynapses, Dictionary<string, SynapseState> outboundSynapses)
@@ -148,6 +176,9 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		WriteSnapshot(snapshot);
 		_pendingMutations = 0;
 		_lastSaveTimestamp = Stopwatch.GetTimestamp();
+		_lastSaveBiologicalTimestampMs = ResolveLatestBiologicalTimestamp(
+			inboundSynapses,
+			outboundSynapses);
 	}
 
 	public void SaveAndDispose(Dictionary<Guid, SynapseState> inboundSynapses, Dictionary<string, SynapseState> outboundSynapses)
@@ -177,6 +208,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		Dictionary<Guid, SynapseState> inboundSynapses,
 		Dictionary<string, SynapseState> outboundSynapses)
 	{
+		Interlocked.Increment(ref _snapshotBuildCount);
 		_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
 		return new SynapseStoreSnapshot
 		{
@@ -192,6 +224,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	internal int MaxInboundSynapseCount => _maxInboundSynapseCount;
 
 	internal long TotalPrunedInboundSynapses => Interlocked.Read(ref _totalPrunedInboundSynapses);
+
+	internal long SnapshotBuildCount => Interlocked.Read(ref _snapshotBuildCount);
 
 	internal static int PruneInboundSynapses(Dictionary<Guid, SynapseState> synapses, int maximumCount)
 	{
@@ -230,6 +264,27 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			Math.Abs(synapse.SynapticTagTrace) +
 			(synapse.PreTrace * 0.05) +
 			(synapse.PostTrace * 0.05);
+	}
+
+	private static double ResolveLatestBiologicalTimestamp(
+		Dictionary<Guid, SynapseState> inboundSynapses,
+		Dictionary<string, SynapseState> outboundSynapses)
+	{
+		var latestInbound = inboundSynapses.Count == 0
+			? double.NaN
+			: inboundSynapses.Values.Max(static synapse => synapse.LastUpdateTimestampMs);
+		var latestOutbound = outboundSynapses.Count == 0
+			? double.NaN
+			: outboundSynapses.Values.Max(static synapse => synapse.LastUpdateTimestampMs);
+		if (!double.IsFinite(latestInbound))
+		{
+			return latestOutbound;
+		}
+		if (!double.IsFinite(latestOutbound))
+		{
+			return latestInbound;
+		}
+		return Math.Max(latestInbound, latestOutbound);
 	}
 
 	private async Task WriterLoopAsync()
@@ -341,7 +396,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			: Path.Combine(
 				Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 				"NeuralResonanceEngine",
-				"synapses");
+				ActionChannelTopology.PersistenceNamespace);
 
 		var invalid = Path.GetInvalidFileNameChars();
 		var safeInstanceKey = string.Concat(instanceKey.Select(character => invalid.Contains(character) ? '_' : character));
@@ -438,6 +493,12 @@ internal sealed class SynapsePersistenceStore : IDisposable
 
 		public int UpdateCount { get; set; }
 
+		public float PlasticityBudgetQuanta { get; set; }
+
+		public double LastPlasticityBudgetTimestampMs { get; set; }
+
+		public double TotalAbsolutePlasticityChange { get; set; }
+
 		public static SynapseStoreEntry FromSynapseState(string? key, SynapseState synapse)
 		{
 			synapse.Stabilize();
@@ -455,7 +516,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				SynapticTagTrace = synapse.SynapticTagTrace,
 				LastUpdateTimestampMs = synapse.LastUpdateTimestampMs,
 				LastTargetNeuronIndex = synapse.LastTargetNeuronIndex,
-				UpdateCount = synapse.UpdateCount
+				UpdateCount = synapse.UpdateCount,
+				PlasticityBudgetQuanta = synapse.PlasticityBudgetQuanta,
+				LastPlasticityBudgetTimestampMs = synapse.LastPlasticityBudgetTimestampMs,
+				TotalAbsolutePlasticityChange = synapse.TotalAbsolutePlasticityChange
 			};
 		}
 
@@ -475,7 +539,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				SynapticTagTrace = SynapticTagTrace,
 				LastUpdateTimestampMs = LastUpdateTimestampMs,
 				LastTargetNeuronIndex = LastTargetNeuronIndex,
-				UpdateCount = UpdateCount
+				UpdateCount = UpdateCount,
+				PlasticityBudgetQuanta = PlasticityBudgetQuanta,
+				LastPlasticityBudgetTimestampMs = LastPlasticityBudgetTimestampMs,
+				TotalAbsolutePlasticityChange = TotalAbsolutePlasticityChange
 			};
 			synapse.Stabilize();
 			return synapse;

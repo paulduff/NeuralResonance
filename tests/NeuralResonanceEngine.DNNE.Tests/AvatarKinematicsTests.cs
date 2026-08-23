@@ -28,10 +28,10 @@ public sealed class AvatarKinematicsTests
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
 
         Assert.Equal(2, summary.MotorEvents);
-        Assert.True(leftDrive < 0.0, $"Expected left drive to reverse for pivot, got {leftDrive:0.000}.");
-        Assert.True(rightDrive > 0.0, $"Expected right drive to push forward for pivot, got {rightDrive:0.000}.");
+        Assert.True(leftDrive > 0.0, $"Expected right-hemisphere output to drive the left side forward, got {leftDrive:0.000}.");
+        Assert.True(rightDrive < 0.0, $"Expected left-hemisphere output to drive the right side in reverse, got {rightDrive:0.000}.");
         Assert.InRange(Math.Abs(forwardSpeed), 0.0, 0.0001);
-        Assert.True(turnRateDeg > 0.0, $"Expected positive left turn rate, got {turnRateDeg:0.000}.");
+        Assert.True(turnRateDeg < 0.0, $"Expected contralateral output to reverse the pivot direction, got {turnRateDeg:0.000}.");
     }
 
     [Fact]
@@ -55,10 +55,10 @@ public sealed class AvatarKinematicsTests
         AvatarKinematics.IntegrateMotorSpikes(dispatches, ref leftDrive, ref rightDrive, options);
         var (forwardSpeed, turnRateDeg) = AvatarKinematics.ComputeBrainMotorOutput(leftDrive, rightDrive, options);
 
-        Assert.Equal(0.0, leftDrive);
-        Assert.True(rightDrive > 0.0);
+        Assert.True(leftDrive > 0.0);
+        Assert.Equal(0.0, rightDrive);
         Assert.True(forwardSpeed > 0.0);
-        Assert.True(turnRateDeg > 0.0);
+        Assert.True(turnRateDeg < 0.0);
     }
 
     [Fact]

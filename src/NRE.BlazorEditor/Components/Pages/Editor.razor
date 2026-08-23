@@ -151,7 +151,7 @@
             <span><strong id="worldPresence">Offline preview</strong><small id="worldSnapshotAge">Awaiting WorldSim</small></span>
         </div>
         <div class="world-layer-list" aria-label="Visible world layers">
-            <div><span class="layer-swatch terrain"></span><span>Fine voxel terrain</span><b id="terrainCellCount">69,696</b></div>
+            <div><span class="layer-swatch terrain"></span><span>Fine voxel terrain</span><b id="terrainCellCount">278,784</b></div>
             <div><span class="layer-swatch water"></span><span>Water</span><b>sea 3</b></div>
             <div><span class="layer-swatch habitat"></span><span>Habitats</span><b id="habitatCount">12</b></div>
             <div><span class="layer-swatch flora"></span><span>Flora</span><b id="floraCount">0</b></div>
@@ -193,7 +193,7 @@
             <button type="button" class="mode-button" data-avatar-mode="neural">Neural</button>
         </div>
         <div class="world-compass" aria-hidden="true"><span>N</span><i></i><small id="worldHeading">000 deg</small></div>
-        <div class="viewport-scale">DNNE world space | 0.5 unit visual voxels | Y up</div>
+        <div class="viewport-scale">DNNE world space | 0.25 m terrain voxels | Y up</div>
     </main>
 
     <aside class="world-inspector-panel workspace-panel world-panel" data-workspace-panel="world" aria-label="Avatar state" hidden>
@@ -217,8 +217,11 @@
         </div>
         <dl class="world-stat-list">
             <div><dt>Brain link</dt><dd id="avatarBrainLink">Waiting</dd></div>
+            <div><dt>Physiology</dt><dd id="avatarPhysiologyMode">Standard</dd></div>
+            <div><dt>Development</dt><dd id="avatarDevelopmentStage">Terrain</dd></div>
             <div><dt>Position</dt><dd id="avatarPosition">0.0, 0.0, 0.0</dd></div>
             <div><dt>Posture</dt><dd id="avatarPosture">Standing</dd></div>
+            <div><dt>Terrain ascent</dt><dd id="avatarTerrainAscent">None</dd></div>
             <div><dt>Balance</dt><dd id="avatarBalance">0%</dd></div>
             <div><dt>Distance</dt><dd id="avatarDistance">0.0</dd></div>
             <div><dt>Shelter</dt><dd id="avatarShelter">No</dd></div>
@@ -231,6 +234,13 @@
             <div class="drive-row"><span>L</span><div><i id="leftMotorDrive"></i></div><output id="leftMotorDriveValue">0.00</output></div>
             <div class="drive-row"><span>R</span><div><i id="rightMotorDrive"></i></div><output id="rightMotorDriveValue">0.00</output></div>
             <div class="drive-row"><span>M</span><div><i id="manipulatorDrive"></i></div><output id="manipulatorDriveValue">0.00</output></div>
+            <div class="drive-row"><span>HL</span><div><i id="leftHipCoronalDrive"></i></div><output id="leftHipCoronalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>HR</span><div><i id="rightHipCoronalDrive"></i></div><output id="rightHipCoronalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>APL</span><div><i id="leftAnkleSagittalDrive"></i></div><output id="leftAnkleSagittalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>APR</span><div><i id="rightAnkleSagittalDrive"></i></div><output id="rightAnkleSagittalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>ARL</span><div><i id="leftAnkleCoronalDrive"></i></div><output id="leftAnkleCoronalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>ARR</span><div><i id="rightAnkleCoronalDrive"></i></div><output id="rightAnkleCoronalDriveValue">0.00</output></div>
+            <div class="drive-row"><span>TY</span><div><i id="trunkYawDrive"></i></div><output id="trunkYawDriveValue">0.00</output></div>
             <div class="drive-row"><span>HY</span><div><i id="headYawDrive"></i></div><output id="headYawDriveValue">0.00</output></div>
             <div class="drive-row"><span>HP</span><div><i id="headPitchDrive"></i></div><output id="headPitchDriveValue">0.00</output></div>
             <div class="drive-row"><span>St</span><div><i id="standDrive"></i></div><output id="standDriveValue">0.00</output></div>
@@ -256,29 +266,42 @@
                 <strong>Lower limbs</strong>
                 <div class="channel-row"><span>L hip</span><div class="channel-track signed"><i id="leftHipChannel"></i></div><output id="leftHipChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>R hip</span><div class="channel-track signed"><i id="rightHipChannel"></i></div><output id="rightHipChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L hip lateral</span><div class="channel-track signed"><i id="leftHipAbductionChannel"></i></div><output id="leftHipAbductionChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R hip lateral</span><div class="channel-track signed"><i id="rightHipAbductionChannel"></i></div><output id="rightHipAbductionChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>L knee</span><div class="channel-track signed"><i id="leftKneeChannel"></i></div><output id="leftKneeChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>R knee</span><div class="channel-track signed"><i id="rightKneeChannel"></i></div><output id="rightKneeChannelValue">0.0 deg</output></div>
-                <div class="channel-row"><span>L ankle</span><div class="channel-track signed"><i id="leftAnkleChannel"></i></div><output id="leftAnkleChannelValue">0.0 deg</output></div>
-                <div class="channel-row"><span>R ankle</span><div class="channel-track signed"><i id="rightAnkleChannel"></i></div><output id="rightAnkleChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L ankle pitch</span><div class="channel-track signed"><i id="leftAnkleChannel"></i></div><output id="leftAnkleChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R ankle pitch</span><div class="channel-track signed"><i id="rightAnkleChannel"></i></div><output id="rightAnkleChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>L ankle roll</span><div class="channel-track signed"><i id="leftAnkleRollChannel"></i></div><output id="leftAnkleRollChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>R ankle roll</span><div class="channel-track signed"><i id="rightAnkleRollChannel"></i></div><output id="rightAnkleRollChannelValue">0.0 deg</output></div>
             </section>
             <section class="motor-channel-group" aria-label="Axial motor channels">
                 <strong>Axial posture</strong>
                 <div class="channel-row"><span>Trunk pitch</span><div class="channel-track signed"><i id="trunkPitchChannel"></i></div><output id="trunkPitchChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>Trunk roll</span><div class="channel-track signed"><i id="trunkRollChannel"></i></div><output id="trunkRollChannelValue">0.0 deg</output></div>
+                <div class="channel-row"><span>Trunk yaw</span><div class="channel-track signed"><i id="trunkYawChannel"></i></div><output id="trunkYawChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>Neck yaw</span><div class="channel-track signed"><i id="neckYawChannel"></i></div><output id="neckYawChannelValue">0.0 deg</output></div>
                 <div class="channel-row"><span>Neck pitch</span><div class="channel-track signed"><i id="neckPitchChannel"></i></div><output id="neckPitchChannelValue">0.0 deg</output></div>
             </section>
             <section class="motor-channel-group" aria-label="Effector and support channels">
                 <strong>Effectors and support</strong>
                 <div class="channel-row"><span>Reach</span><div class="channel-track"><i id="manipulatorExtensionChannel"></i></div><output id="manipulatorExtensionChannelValue">0%</output></div>
+                <div class="channel-row"><span>L hand aperture</span><div class="channel-track"><i id="leftHandApertureChannel"></i></div><output id="leftHandApertureChannelValue">100%</output></div>
+                <div class="channel-row"><span>R hand aperture</span><div class="channel-track"><i id="rightHandApertureChannel"></i></div><output id="rightHandApertureChannelValue">100%</output></div>
+                <div class="channel-row"><span>L hand phase</span><div class="channel-track"><i id="leftGripForceChannel"></i></div><output id="leftHandState">Open</output></div>
+                <div class="channel-row"><span>R hand phase</span><div class="channel-track"><i id="rightGripForceChannel"></i></div><output id="rightHandState">Open</output></div>
                 <div class="channel-row"><span>L foot</span><div class="channel-track"><i id="leftFootLoadChannel"></i></div><output id="leftFootLoadChannelValue">0 N</output></div>
                 <div class="channel-row"><span>R foot</span><div class="channel-track"><i id="rightFootLoadChannel"></i></div><output id="rightFootLoadChannelValue">0 N</output></div>
+                <div class="channel-row"><span>L heel / forefoot</span><div class="channel-track signed"><i id="leftFootLongitudinalChannel"></i></div><output id="leftFootLongitudinalChannelValue">0 / 0 N</output></div>
+                <div class="channel-row"><span>R heel / forefoot</span><div class="channel-track signed"><i id="rightFootLongitudinalChannel"></i></div><output id="rightFootLongitudinalChannelValue">0 / 0 N</output></div>
+                <div class="channel-row"><span>L medial / lateral</span><div class="channel-track signed"><i id="leftFootLateralChannel"></i></div><output id="leftFootLateralChannelValue">0 / 0 N</output></div>
+                <div class="channel-row"><span>R medial / lateral</span><div class="channel-track signed"><i id="rightFootLateralChannel"></i></div><output id="rightFootLateralChannelValue">0 / 0 N</output></div>
             </section>
         </div>
         <div class="muscle-telemetry-panel">
             <div class="motor-channel-heading">
                 <small>Muscle receptors</small>
-                <output id="muscleTelemetrySummary">32 muscles</output>
+                <output id="muscleTelemetrySummary">40 muscles</output>
             </div>
             <div id="muscleTelemetryList" class="muscle-telemetry-list" aria-label="Major muscle activity"></div>
         </div>
@@ -307,6 +330,7 @@
             <div><small>Visited</small><strong id="worldVisited">0 / 0</strong></div>
             <div><small>Motor dispatch</small><strong id="worldMotorDispatch">0</strong></div>
             <div><small>Sensory frames</small><strong id="worldSensoryFrames">0</strong></div>
+            <div><small>Hand sequence</small><strong id="worldHandSequence">0 / 0 / 0</strong></div>
         </div>
         <div id="worldTelemetryLog" class="telemetry-log" aria-live="polite">World preview ready. Waiting for an authoritative simulator snapshot.</div>
     </section>
@@ -324,7 +348,7 @@
         }
 
         brainModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/brain-editor.js?v=128");
-        worldModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/world-editor.js?v=130");
+        worldModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/world-editor.js?v=137");
         await brainModule.InvokeVoidAsync("mountEditor");
         await worldModule.InvokeVoidAsync("mountWorld");
     }

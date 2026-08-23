@@ -2,10 +2,15 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class ActionChannelTopology
 {
-	// Four locomotor lanes, twelve opposing upper-limb lanes, and four posture lanes. The
+	public const string PersistenceNamespace = "synapses-action38-hand-v1";
+
+	// Four locomotor lanes, twelve opposing upper-limb lanes, four posture lanes,
+	// four opposing lateral hip lanes, eight opposing two-axis ankle lanes, and
+	// two opposing axial-rotation lanes, and four antagonistic hand open/close
+	// lanes. The
 	// populations remain unlabeled inside the brain; anatomical meaning is
 	// assigned only where descending populations meet physical effectors.
-	public const int ChannelCount = 20;
+	public const int ChannelCount = 38;
 	public const int ForwardChannel = 0;
 	public const int LeftTurnChannel = 1;
 	public const int RightTurnChannel = 2;
@@ -26,6 +31,24 @@ internal static class ActionChannelTopology
 	public const int CrouchChannel = 17;
 	public const int SitChannel = 18;
 	public const int LieChannel = 19;
+	public const int LeftHipAbductionChannel = 20;
+	public const int LeftHipAdductionChannel = 21;
+	public const int RightHipAbductionChannel = 22;
+	public const int RightHipAdductionChannel = 23;
+	public const int LeftAnkleDorsiflexionChannel = 24;
+	public const int LeftAnklePlantarflexionChannel = 25;
+	public const int RightAnkleDorsiflexionChannel = 26;
+	public const int RightAnklePlantarflexionChannel = 27;
+	public const int LeftAnkleInversionChannel = 28;
+	public const int LeftAnkleEversionChannel = 29;
+	public const int RightAnkleInversionChannel = 30;
+	public const int RightAnkleEversionChannel = 31;
+	public const int TrunkRotateLeftChannel = 32;
+	public const int TrunkRotateRightChannel = 33;
+	public const int LeftHandCloseChannel = 34;
+	public const int LeftHandOpenChannel = 35;
+	public const int RightHandCloseChannel = 36;
+	public const int RightHandOpenChannel = 37;
 
 	public static bool IsActionCircuitStructure(StructureId structure)
 		=> structure is StructureId.ProprioceptiveAfferents
@@ -58,6 +81,44 @@ internal static class ActionChannelTopology
 
 	public static bool IsDirectPathwayNeuron(int neuronIndex)
 		=> (Math.Max(0, neuronIndex) & 1) == 0;
+
+	public static bool UsesConvergentStriatalArbor(SpikeMessage message)
+		=> message.TargetStructure == StructureId.Striatum &&
+			message.Neurotransmitter == NTEnum.GLUTAMATE &&
+			message.SourceStructure is StructureId.Pfc
+				or StructureId.PremotorCortex
+				or StructureId.Sma
+				or StructureId.OrbitofrontalCortex
+				or StructureId.IntralaminarThalamus;
+
+	public static int StriatalArborTarget(
+		int primaryIndex,
+		int targetCount,
+		int arborOffset)
+	{
+		if (targetCount <= 1 || arborOffset <= 0)
+		{
+			return Math.Clamp(primaryIndex, 0, Math.Max(0, targetCount - 1));
+		}
+
+		var primary = Math.Clamp(primaryIndex, 0, targetCount - 1);
+		var channel = ChannelForNeuron(primary, StructureId.Striatum);
+		var receptorClass = primary & 1;
+		var stride = ChannelCount * 2;
+		var localCount = Math.Max(1, (targetCount + stride - 1) / stride);
+		var primaryLocal = primary / stride;
+		for (var attempt = 1; attempt <= localCount; attempt++)
+		{
+			var local = PositiveMod(primaryLocal + arborOffset + attempt - 1, localCount);
+			var candidate = ((local * ChannelCount + channel) * 2) + receptorClass;
+			if (candidate >= 0 && candidate < targetCount && candidate != primary)
+			{
+				return candidate;
+			}
+		}
+
+		return primary;
+	}
 
 	public static int ChannelForNeuron(int neuronIndex, StructureId structure)
 	{

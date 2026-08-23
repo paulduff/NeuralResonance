@@ -679,6 +679,10 @@ input[type="range"] {
     border-right: 1px solid var(--line-soft);
 }
 
+.world-telemetry-strip {
+    grid-template-columns: repeat(5, minmax(70px, 1fr));
+}
+
 .telemetry-strip > div {
     display: flex;
     flex-direction: column;

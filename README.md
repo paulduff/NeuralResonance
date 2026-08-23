@@ -42,7 +42,7 @@ loopback endpoint behind the editor gateway.
 
 The API now exposes `GET /api/engine/anatomy/validate` to return a structured report of atlas region summaries and biological spatial invariants for the current canon.
 
-Latest Folded Archive entry: `docs/Entry_128_Musculoskeletal_Motor_Learning.md`
+Latest Folded Archive entry: `docs/Entry_158_Population_Balance_Truth_At_Motor_Authority.md`
 
 
 ## Blazor runtime structure

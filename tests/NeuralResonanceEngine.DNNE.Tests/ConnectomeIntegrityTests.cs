@@ -72,6 +72,33 @@ public sealed class ConnectomeIntegrityTests
         }
     }
 
+    [Fact]
+    public void VentralPallidumRetainsItsMotivationalInhibitionAndOutputGates()
+    {
+        var edges = LoadEdges();
+
+        Assert.Contains(edges, edge =>
+            edge.Source == StructureId.NucleusAccumbens &&
+            edge.Target == StructureId.VentralPallidum &&
+            edge.Neurotransmitter == NTEnum.GABA &&
+            edge.ProjectionType == "ventral_striatopallidal_inhibition");
+        Assert.Contains(edges, edge =>
+            edge.Source == StructureId.VentralPallidum &&
+            edge.Target == StructureId.Habenula &&
+            edge.Neurotransmitter == NTEnum.GABA &&
+            edge.ProjectionType == "ventral_pallidal_habenula_control");
+        Assert.Contains(edges, edge =>
+            edge.Source == StructureId.VentralPallidum &&
+            edge.Target == StructureId.MediodorsalThalamus &&
+            edge.Neurotransmitter == NTEnum.GABA &&
+            edge.ProjectionType == "ventral_pallidal_association_gating");
+        Assert.Contains(edges, edge =>
+            edge.Source == StructureId.VentralPallidum &&
+            edge.Target == StructureId.MotorThalamus &&
+            edge.Neurotransmitter == NTEnum.GABA &&
+            edge.ProjectionType == "ventral_pallidal_thalamic_gating");
+    }
+
     private static IReadOnlyList<ConnectomeEdge> LoadEdges()
     {
         using var document = JsonDocument.Parse(File.ReadAllText(ResolveConnectivityPath()));

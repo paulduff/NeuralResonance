@@ -194,7 +194,7 @@ public sealed class BlazorEditorHostTests
         Assert.True(result.Available);
         Assert.Equal("live", result.Status);
         Assert.Equal(911, result.State!.Value.GetProperty("seed").GetInt32());
-        Assert.Equal("dnne.worldsim.state.v2", result.State.Value.GetProperty("protocolVersion").GetString());
+        Assert.Equal("dnne.worldsim.state.v3", result.State.Value.GetProperty("protocolVersion").GetString());
     }
 
     [Fact]
@@ -206,7 +206,12 @@ public sealed class BlazorEditorHostTests
         var page = File.ReadAllText(Path.Combine(
             root, "src", "NRE.BlazorEditor", "Components", "Pages", "Editor.razor"));
 
-        Assert.Contains("const VISUAL_SUBDIVISIONS = 2", renderer, StringComparison.Ordinal);
+        Assert.Contains("const VISUAL_SUBDIVISIONS = 4", renderer, StringComparison.Ordinal);
+        Assert.Contains("const HEIGHT_UNITS_PER_METER = 4", renderer, StringComparison.Ordinal);
+        Assert.Contains("const TERRAIN_HEIGHT_UNIT = 0.25", renderer, StringComparison.Ordinal);
+        Assert.Contains("const SEA_LEVEL_METERS = 3", renderer, StringComparison.Ordinal);
+        Assert.Contains("const CLIFF_THRESHOLD_HEIGHT_UNITS = 4", renderer, StringComparison.Ordinal);
+        Assert.Contains("heightUnitsAtWorld(state.heights, worldX, worldZ)", renderer, StringComparison.Ordinal);
         Assert.Contains("new THREE.InstancedMesh", renderer, StringComparison.Ordinal);
         Assert.Contains("function createAvatar()", renderer, StringComparison.Ordinal);
         Assert.Contains("new THREE.Bone()", renderer, StringComparison.Ordinal);
@@ -214,7 +219,9 @@ public sealed class BlazorEditorHostTests
         Assert.Contains("createRigVisuals(rig)", renderer, StringComparison.Ordinal);
         Assert.Contains("state.articulation.leftKnee", renderer, StringComparison.Ordinal);
         Assert.Contains("leftHipAngleRadians", renderer, StringComparison.Ordinal);
+        Assert.Contains("leftHipAbductionRadians", renderer, StringComparison.Ordinal);
         Assert.Contains("trunkPitchRadians", renderer, StringComparison.Ordinal);
+        Assert.Contains("trunkYawRadians", renderer, StringComparison.Ordinal);
         Assert.Contains("setSignedChannel('leftShoulderChannel'", renderer, StringComparison.Ordinal);
         Assert.Contains("setUnsignedChannel('leftFootLoadChannel'", renderer, StringComparison.Ordinal);
         Assert.Contains("new THREE.LatheGeometry(torsoProfile", renderer, StringComparison.Ordinal);
@@ -226,19 +233,29 @@ public sealed class BlazorEditorHostTests
         Assert.Contains("terrainTopAt(state.heights, state.avatar.root.position.x", renderer, StringComparison.Ordinal);
         Assert.Contains("prepareShelterGround(state.heights, state.shelterSites)", renderer, StringComparison.Ordinal);
         Assert.Contains("isInsideShelterClearance(worldX, worldZ, shelterSites)", renderer, StringComparison.Ordinal);
-        Assert.Contains("slab(wall, 0, 2.20, 3.8, 2.2, 0.40, 0.32)", renderer, StringComparison.Ordinal);
+        Assert.Contains("slab(wall, -2.5, 1.2, 3.8, 2.8, 2.4, 0.32)", renderer, StringComparison.Ordinal);
+        Assert.Contains("slab(wall, 2.5, 1.2, 3.8, 2.8, 2.4, 0.32)", renderer, StringComparison.Ordinal);
+        Assert.DoesNotContain("slab(wall, 0, 2.20, 3.8, 2.2, 0.40, 0.32)", renderer, StringComparison.Ordinal);
         Assert.DoesNotContain("slab(glass, 0, 1.55, 3.82", renderer, StringComparison.Ordinal);
         Assert.DoesNotContain("state.avatar.root.position.y +=", renderer, StringComparison.Ordinal);
         Assert.Contains("data-avatar-mode=\"neural\"", page, StringComparison.Ordinal);
         Assert.Contains("data-workspace-tab=\"world\"", page, StringComparison.Ordinal);
         Assert.Contains("id=\"leftShoulderChannel\"", page, StringComparison.Ordinal);
         Assert.Contains("id=\"rightAnkleChannel\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"leftHipAbductionChannel\"", page, StringComparison.Ordinal);
         Assert.Contains("id=\"manipulatorExtensionChannel\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"leftHandApertureChannel\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"rightHandApertureChannel\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"avatarDevelopmentStage\"", page, StringComparison.Ordinal);
+        Assert.Contains("id=\"worldHandSequence\"", page, StringComparison.Ordinal);
+        Assert.Contains("numberValue(snapshot, 'leftGripForceNewtons')", renderer, StringComparison.Ordinal);
+        Assert.Contains("integerValue(snapshot, 'graspMisses')", renderer, StringComparison.Ordinal);
+        Assert.Contains("id=\"trunkYawChannel\"", page, StringComparison.Ordinal);
         Assert.Contains("const JOINT_LIMITS = Object.freeze", renderer, StringComparison.Ordinal);
         Assert.Contains("clampJoint(state.articulation.leftElbow, 'elbow')", renderer, StringComparison.Ordinal);
         Assert.Contains("clampJoint(state.articulation.leftKnee, 'knee')", renderer, StringComparison.Ordinal);
         Assert.Contains("-clampJoint(state.articulation.leftHip, 'hip')", renderer, StringComparison.Ordinal);
-        Assert.Contains("./js/world-editor.js?v=130", page, StringComparison.Ordinal);
+        Assert.Contains("./js/world-editor.js?v=137", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -272,7 +289,12 @@ public sealed class BlazorEditorHostTests
         Assert.Contains("AvatarNeuronalMotorBridge.Compose", worldSource, StringComparison.Ordinal);
         Assert.Contains("PostRetinalFrameAsync", worldSource, StringComparison.Ordinal);
         Assert.Contains("PostPhysicalBodyFrameAsync", worldSource, StringComparison.Ordinal);
+        Assert.Contains("options.MotorTrainingMode ? 0.0 : 1.0", worldSource, StringComparison.Ordinal);
+        Assert.Contains("TerrainAscentCompleted: terrainAscent.CompletedCount", worldSource, StringComparison.Ordinal);
         Assert.Contains("AddHostedService<WorldRuntimeHostedService>", hostSource, StringComparison.Ordinal);
+        Assert.Contains("MotorTrainingMode: false", hostSource, StringComparison.Ordinal);
+        Assert.Contains("builder.Configuration[\"World:DevelopmentStage\"]", hostSource, StringComparison.Ordinal);
+        Assert.Contains("DevelopmentStage: developmentStage", hostSource, StringComparison.Ordinal);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values) =>

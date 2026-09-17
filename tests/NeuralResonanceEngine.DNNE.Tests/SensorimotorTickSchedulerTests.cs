@@ -5,6 +5,36 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 
 public sealed class SensorimotorTickSchedulerTests
 {
+    [Theory]
+    [InlineData(48, 0.0, false)]
+    [InlineData(48, 1.0, false)]
+    [InlineData(48, 0.0, true)]
+    [InlineData(48, 1.0, true)]
+    [InlineData(int.MaxValue, 0.0, false)]
+    public void WorkerBudgetLargerThanAvailableServicesSelectsEveryService(
+        int concurrency, double pressure, bool warmup)
+    {
+        var services = new[]
+        {
+            Instance(StructureId.V1, "visual"),
+            Instance(StructureId.S1, "somatic"),
+            Instance(StructureId.CA1, "memory")
+        };
+        var fastCursor = 7;
+        var generalCursor = 5;
+
+        var selected = SensorimotorTickScheduler.Select(
+            services, ref fastCursor, ref generalCursor, concurrency, pressure, warmup);
+
+        Assert.Equal(services, selected.Participants);
+        Assert.False(selected.Throttled);
+        Assert.Equal(2, selected.FastLaneAvailable);
+        Assert.Equal(2, selected.FastLaneSelected);
+        Assert.Equal(1, selected.GeneralLaneSelected);
+        Assert.Equal(0, fastCursor);
+        Assert.Equal(0, generalCursor);
+    }
+
     [Fact]
     public void StableLaptopBudgetPrioritizesSensorimotorLaneWithoutStarvingGeneralLane()
     {

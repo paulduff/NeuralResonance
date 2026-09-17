@@ -270,7 +270,7 @@ public sealed class BlazorEditorHostTests
         Assert.DoesNotContain("updateWorldHeader", worldRenderer, StringComparison.Ordinal);
         Assert.DoesNotContain("setText('runtimeTick'", worldRenderer, StringComparison.Ordinal);
         Assert.DoesNotContain("setText('runtimeServices'", worldRenderer, StringComparison.Ordinal);
-        Assert.Contains("applyFrame(state, frame);\n        setRuntimeState(frame, 'online');", brainRenderer, StringComparison.Ordinal);
+        Assert.Contains("applyFrame(state, frame);\n        setRuntimeState(frame, 'online');", brainRenderer.ReplaceLineEndings("\n"), StringComparison.Ordinal);
     }
 
     [Fact]

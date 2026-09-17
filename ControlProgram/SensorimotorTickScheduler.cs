@@ -241,7 +241,7 @@ internal static class SensorimotorTickScheduler
             return new TickParticipantSelection([], false, 0, 0, 0, []);
         }
 
-        var concurrency = Math.Max(1, maxTickRequestConcurrency);
+        var concurrency = Math.Clamp(maxTickRequestConcurrency, 1, availableServices.Count);
         var baselineMultiplier = startupWarmup ? 2.0 : 3.0;
         var pressure = Math.Clamp(adaptivePressure, 0.0, 1.0);
         var totalBudget = Math.Clamp(

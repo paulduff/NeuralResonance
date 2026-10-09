@@ -153,7 +153,10 @@ function Start-DnneProject {
 
     if (-not $NoBuild) {
         Write-Host ("Building {0} ({1})..." -f $FriendlyName, $Configuration)
-        & dotnet build $resolvedProjectPath -c $Configuration --nologo --verbosity minimal
+        # Native build output belongs in the console, not this function's return
+        # stream. Callers must receive one Process, never strings plus a Process.
+        & dotnet build $resolvedProjectPath -c $Configuration --nologo --verbosity minimal |
+            ForEach-Object { Write-Host $_ }
         if ($LASTEXITCODE -ne 0) {
             throw ("Build failed for {0}" -f $FriendlyName)
         }
@@ -216,6 +219,9 @@ function Start-DnneProject {
         & $startAction
     }
 
+    # Keep the native handle open before the child exits. Windows PowerShell
+    # otherwise can expose an empty ExitCode after WaitForExit.
+    $null = $process.Handle
     Write-Host ("  pid: {0}" -f $process.Id)
     Write-Host ("  stdout: {0}" -f $stdoutPath)
     Write-Host ("  stderr: {0}" -f $stderrPath)

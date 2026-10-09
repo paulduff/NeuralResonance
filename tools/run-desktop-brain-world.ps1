@@ -4,6 +4,7 @@ param(
     [string]$TrainingStatusPath = '',
     [string]$BackupRoot = 'D:\DNNE-desktop-runs',
     [switch]$WithEntity,
+    [switch]$UseRunningStack,
     [switch]$NoPause,
     [switch]$WhatIf
 )
@@ -31,9 +32,23 @@ if ($training.Status -ne 'FINISHED' -or $training.ExitCode -ne 0) {
     throw 'Training did not finish successfully. Inspect its results before starting this experiment.'
 }
 foreach ($port in @(5080, 5090)) {
-    if (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue) {
+    $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)
+    if ($UseRunningStack) {
+        if ($listeners.Count -eq 0) { throw "The existing stack has no listener on port $port." }
+        foreach ($listenerPid in @($listeners.OwningProcess | Select-Object -Unique)) {
+            $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$listenerPid"
+            $inRepo = $owner -and (
+                ($owner.ExecutablePath -and $owner.ExecutablePath.StartsWith($repoRoot + '\', [StringComparison]::OrdinalIgnoreCase)) -or
+                ($owner.CommandLine -and $owner.CommandLine.IndexOf($repoRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0))
+            if (-not $inRepo) { throw "Port $port is not owned by this DNNE checkout; refusing to reuse it." }
+        }
+    }
+    elseif ($listeners.Count -gt 0) {
         throw "Port $port is already in use. This first-run rig requires a stopped DNNE/editor stack."
     }
+}
+if ($UseRunningStack -and $WithEntity) {
+    throw 'Reuse mode measures the existing brain/world configuration; it cannot enable Entity in an already running DNNE process.'
 }
 if ($WithEntity -and [string]::IsNullOrWhiteSpace($env:NRE_ENTITY_CHECKPOINT_PATH)) {
     throw 'WithEntity requires an explicitly selected NRE_ENTITY_CHECKPOINT_PATH. Review the candidate first.'
@@ -86,6 +101,7 @@ try {
         GpuNames = @(Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name })
         Commit = (& git -C $repoRoot rev-parse HEAD)
         EntityEnabled = [bool]$WithEntity
+        ReusedRunningStack = [bool]$UseRunningStack
         DurationSec = $DurationSec
         TrainingStatus = $training
     })
@@ -95,20 +111,32 @@ try {
     }
     $env:NRE_ENTITY_ENABLED = if ($WithEntity) { 'true' } else { 'false' }
 
-    Write-Host 'Checking sensory, body, motor, inquiry and authority boundaries...'
-    & dotnet test (Join-Path $repoRoot 'tests\NeuralResonanceEngine.DNNE.Tests\NeuralResonanceEngine.DNNE.Tests.csproj') `
-        --configuration Release --verbosity minimal `
-        --logger trx --results-directory (Join-Path $output 'tests') `
-        --filter 'FullyQualifiedName~AvatarWorldDynamicsTests|FullyQualifiedName~AvatarInquiryApiTests|FullyQualifiedName~HostStructuredLanguageAuthorityBoundaryTests'
-    if ($LASTEXITCODE -ne 0) { throw 'Preflight qualification failed.' }
+    if ($UseRunningStack) {
+        Write-Host 'Resuming measurement of the existing DNNE and WorldSim without rebuilding or restarting them.'
+        $existingHealth = Invoke-RestMethod 'http://127.0.0.1:5080/api/v1/admin/startup-health' -TimeoutSec 15
+        $existingWorld = Invoke-RestMethod 'http://127.0.0.1:5090/editor/api/world-state' -TimeoutSec 15
+        if ($existingHealth.serviceCount -le 0 -or -not $existingWorld.available -or
+            -not $existingWorld.state.worldReady -or -not $existingWorld.state.brainConnected) {
+            throw 'The existing DNNE/world stack is not ready and connected.'
+        }
+        Save-ResultJson 'reuse-startup-health.json' $existingHealth
+        Save-ResultJson 'reuse-world.json' $existingWorld
+    }
+    else {
+        Write-Host 'Checking sensory, body, motor, inquiry and authority boundaries...'
+        & dotnet test (Join-Path $repoRoot 'tests\NeuralResonanceEngine.DNNE.Tests\NeuralResonanceEngine.DNNE.Tests.csproj') `
+            --configuration Release --verbosity minimal `
+            --logger trx --results-directory (Join-Path $output 'tests') `
+            --filter 'FullyQualifiedName~AvatarWorldDynamicsTests|FullyQualifiedName~AvatarInquiryApiTests|FullyQualifiedName~HostStructuredLanguageAuthorityBoundaryTests'
+        if ($LASTEXITCODE -ne 0) { throw 'Preflight qualification failed.' }
 
-    # The existing stack launcher builds/starts nuclei and checks their health.
-    # Start the modern editor separately so its ready-world check also runs.
-    & (Join-Path $PSScriptRoot 'run-dnne-stack.ps1') -CleanStart:$false -NoBuild:$false -NoEditor `
-        -SkipBurnInGate -Configuration Release -StartupTimeoutSec 600 `
-        -AllowableNonOkServices 0 -StartupSoftNonOkAllowance 0 -AutoRestartNonOk:$false
-    if ($LASTEXITCODE -ne 0) { throw 'DNNE startup did not succeed.' }
-    & (Join-Path $PSScriptRoot 'start-blazor-editor.ps1') -Configuration Release -OpenBrowser | Out-Null
+        & (Join-Path $PSScriptRoot 'run-dnne-stack.ps1') -CleanStart:$false -NoBuild:$false -NoEditor `
+            -SkipBurnInGate -Configuration Release -StartupTimeoutSec 600 `
+            -StartupProfilePath (Join-Path $output 'startup-profile.lock.json') `
+            -AllowableNonOkServices 0 -StartupSoftNonOkAllowance 0 -AutoRestartNonOk:$false
+        if ($LASTEXITCODE -ne 0) { throw 'DNNE startup did not succeed.' }
+        & (Join-Path $PSScriptRoot 'start-blazor-editor.ps1') -Configuration Release -OpenBrowser | Out-Null
+    }
 
     Write-Host 'World view: http://localhost:5090/editor' -ForegroundColor Cyan
     Write-Host 'Leave this window open. DNNE and WorldSim remain running when measurement finishes.'

@@ -3,6 +3,7 @@ param(
     [string]$TrainingStatusPath = '',
     [string]$BackupRoot = 'D:\DNNE-desktop-runs',
     [switch]$WithEntity,
+    [switch]$UseRunningStack,
     [switch]$WhatIf,
     [switch]$InWindow,
     [string]$LaunchTaskName = '',
@@ -29,6 +30,7 @@ if (-not $InWindow) {
         '-GitExecutable', $GitExecutable, '-DotnetExecutable', $DotnetExecutable)
     if (-not [string]::IsNullOrWhiteSpace($TrainingStatusPath)) { $arguments += @('-TrainingStatusPath', $TrainingStatusPath) }
     if ($WithEntity) { $arguments += '-WithEntity' }
+    if ($UseRunningStack) { $arguments += '-UseRunningStack' }
     $argumentText = ($arguments | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join ' '
     $action = New-ScheduledTaskAction -Execute $powershell -Argument $argumentText -WorkingDirectory (Get-DnneRepoRoot -ScriptPath $PSCommandPath)
     $principal = New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
@@ -60,6 +62,7 @@ try {
     $invokeArguments = @{ DurationSec = $DurationSec; BackupRoot = $BackupRoot; NoPause = $true }
     if (-not [string]::IsNullOrWhiteSpace($TrainingStatusPath)) { $invokeArguments.TrainingStatusPath = $TrainingStatusPath }
     if ($WithEntity) { $invokeArguments.WithEntity = $true }
+    if ($UseRunningStack) { $invokeArguments.UseRunningStack = $true }
     & (Join-Path $PSScriptRoot 'run-desktop-brain-world.ps1') @invokeArguments
 }
 finally {

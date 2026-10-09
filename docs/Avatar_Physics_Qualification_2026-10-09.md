@@ -25,6 +25,27 @@ Each comparison reports bilateral swing, clearance, progress, constrained leg sa
 
 Launch with `tools/start-avatar-mechanics-probe-window.ps1`. It builds into a new artifact directory, runs in an independent visible PowerShell window, writes `results.json` and `window-status.json`, and hashes its report/log backups on D:. It requires no agent monitoring. Existing DNNE/world processes remain available. It uses a one-shot interactive scheduled task solely to escape the calling tool's process lifetime, then unregisters that task.
 
+## Completed comparison
+
+Run `artifacts/avatar-mechanics-20261009-121130-72f103` completed successfully at 13:11:49 BST on revision `d98b11a`. All six comparisons completed. The report, completion status and PowerShell transcript independently match their D: backups by SHA-256.
+
+| Ground condition | Step | Progress in 7.5 s | Bilateral swing observed | Falling/fallen time | Qualified |
+| --- | --- | --- | --- | --- | --- |
+| Separate support, no floor collider | 20 ms | 2.057 m | Yes | 0 s | Yes |
+| Separate support, no floor collider | 25 ms | 2.043 m | Yes | 0 s | Yes |
+| Separate support, no floor collider | 50 ms | 1.979 m | Yes | 0 s | Yes |
+| Separate support plus explicit floor collider | 20 ms | 0.00768 m | Yes | 5.14 s | No |
+| Separate support plus explicit floor collider | 25 ms | 0.02138 m | Left only | 0 s | No |
+| Separate support plus explicit floor collider | 50 ms | 0.04200 m | Yes | 6.75 s | No |
+
+All six ended with tissue integrity 1.0. This confirms that the corrected contact assessment does not produce tissue loss in these short cases; it does not establish long-duration injury or pressure behaviour. The reported foot clearances measure each sole relative to the opposite sole, rather than absolute clearance over terrain. `Qualified` is the probe's short mechanical criterion, not a claim of learned walking.
+
+Adding the floor suppresses progress by approximately 97.9–99.6%. The failing pattern changes with the timestep: 20 and 50 ms lead to substantial falling, whereas 25 ms keeps the body out of the falling phase but constrains the right leg on 282 of 300 samples and fails to produce its swing. That is a material sensitivity in the body's contact integration.
+
+There is no DNNE process or neuronal learning in this comparison. The body receives identical fixed recruitment in both conditions. The result therefore establishes a mechanical failure under the explicit-floor condition; additional DNNE training cannot fix that isolated condition. It does not certify DNNE's circuits or establish that this exact condition explains the current world's behaviour, because the current world uses separate ground support rather than this floor collider.
+
+The combination of a pose-based support mechanism and collision constraints is the leading integration hypothesis. This comparison does not show that Bepu cannot support walking: the existing scene uses Bepu sweeps to reject kinematic motion, rather than simulating a fully dynamic articulated body. A Unity prototype should test a body whose joints, gravity and contacts participate in one physical solver. It should first qualify controlled physical response and then connect DNNE recruitment and sensory feedback, retaining DNNE authority. More language training or a larger brain is not the next intervention supported by this probe.
+
 ## Unity body prototype
 
 A Unity trial should initially contain one physical humanoid on a flat floor. A rigged FBX with a complete skeleton and a T-pose, clear hands and feet, modest mesh complexity and permission to modify it provides a visual starting point. Unity's humanoid bone mapping is described in its [import documentation](https://docs.unity.com/en-us/engine/7000.0/manual/assets-and-media/asset-types/models/importing/configuringthe-avatar). The skeletal mesh does not supply calibrated masses, physical joint limits, friction or torque capacities; these need separate setup and measurement.

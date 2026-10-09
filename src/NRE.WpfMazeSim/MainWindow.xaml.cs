@@ -82,6 +82,11 @@ public partial class MainWindow : Window
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private readonly HttpClient _httpClient;
     private readonly HttpClient _auditoryInputHttpClient;
+    private readonly HttpClient _avatarInquiryHttpClient = NreHttpClientFactory.Create(
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(90) });
+    private readonly string _avatarInquirySessionId = "maze-avatar-" + Guid.NewGuid().ToString("N");
+    private AvatarInquiryReceipt? _avatarInquiryReceipt;
+    private bool _avatarInquiryInFlight;
 
     private readonly AvatarService _avatarService = new(
         MazeNervousSystemOptions,
@@ -272,6 +277,7 @@ public partial class MainWindow : Window
         _visionTimer.Stop();
         _avatarService.Dispose();
         _auditoryInputHttpClient.Dispose();
+        _avatarInquiryHttpClient.Dispose();
         _httpClient.Dispose();
         _shutdown.Dispose();
     }
@@ -2407,7 +2413,7 @@ public partial class MainWindow : Window
 
     private async Task PresentTextToRetinaAsync()
     {
-        if (_textDisplayInFlight)
+        if (_textDisplayInFlight || _avatarInquiryInFlight)
         {
             return;
         }
@@ -2426,6 +2432,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        ClearAvatarInquiry();
         _textDisplayInFlight = true;
         PresentTextButton.IsEnabled = false;
         TextDisplayStatusText.Text = "Text display: presenting pixels to Retina...";

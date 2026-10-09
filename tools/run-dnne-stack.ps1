@@ -685,6 +685,7 @@ try {
         -FilePath 'dotnet' `
         -ArgumentList $runArgText `
         -WorkingDirectory (Split-Path -Parent $controlProj) `
+        -WindowStyle Hidden `
         -RedirectStandardOutput $controlLogs.StdOut `
         -RedirectStandardError $controlLogs.StdErr `
         -PassThru

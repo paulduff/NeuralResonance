@@ -1,0 +1,115 @@
+@rendermode InteractiveServer
+@implements IDisposable
+@using NRE.SimAvatar
+@using NRE.BlazorEditor.Services
+@inject IHttpClientFactory ClientFactory
+@inject EditorHostOptions HostOptions
+
+<section class="avatar-inquiry" aria-label="Ask Avatar">
+    <h3>Ask Avatar</h3>
+    <div class="inquiry-presets">
+        @foreach (var preset in Presets)
+        {
+            <button type="button" disabled="@_busy" @onclick="() => ChangeQuestion(preset.Question)">@preset.Label</button>
+        }
+    </div>
+    <label for="avatar-question">Your question</label>
+    <input id="avatar-question" maxlength="120" value="@_question" disabled="@_busy"
+           @oninput="e => ChangeQuestion(e.Value?.ToString() ?? string.Empty)" />
+    <div class="inquiry-actions">
+        <button type="button" disabled="@_busy" @onclick="PresentAsync">Present question</button>
+        <button type="button" disabled="@(_busy || _receipt is null)" @onclick="ReplyAsync">Request reply</button>
+    </div>
+    <p role="status">@_status</p>
+    @if (!string.IsNullOrEmpty(_reply))
+    {
+        <strong>DNNE-reviewed Entity reply</strong>
+        <p class="inquiry-reply">@_reply</p>
+    }
+</section>
+
+@code {
+    private static readonly (string Label, string Question)[] Presets =
+    [
+        ("Feeling", "How do you feel?"),
+        ("Doing", "What are you doing?"),
+        ("Thinking", "What are you thinking about?"),
+        ("Attention", "What has your attention?")
+    ];
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly string _sessionId = "world-avatar-" + Guid.NewGuid().ToString("N");
+    private HttpClient? _client;
+    private AvatarInquiryReceipt? _receipt;
+    private string _question = "How do you feel?";
+    private string _reply = string.Empty;
+    private string _status = "Present a question, then request a reply.";
+    private int _generation;
+    private bool _busy;
+
+    protected override void OnInitialized() => _client = ClientFactory.CreateClient("AvatarInquiry");
+
+    private void ChangeQuestion(string question)
+    {
+        _question = question;
+        _receipt = null;
+        _reply = string.Empty;
+        _status = "Present the question, then request a reply.";
+    }
+
+    private async Task PresentAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _receipt = null;
+        _reply = string.Empty;
+        _status = "Presenting the question...";
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(6));
+            var result = await AvatarInquiryApi.PresentQuestionAsync(
+                _client!, HostOptions.ControlProgramBaseUri, _question, _sessionId,
+                Interlocked.Increment(ref _generation), Environment.TickCount64, timeout.Token);
+            _receipt = result.Receipt;
+            _status = result.Status;
+        }
+        catch (Exception ex)
+        {
+            _status = "Question unavailable: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReplyAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _reply = string.Empty;
+        _status = "Requesting a DNNE-reviewed reply...";
+        try
+        {
+            var result = await AvatarInquiryApi.RequestReplyAsync(
+                _client!, HostOptions.ControlProgramBaseUri, _question, _receipt, _shutdown.Token);
+            _reply = result.AcceptedText;
+            _status = result.Status;
+        }
+        catch (Exception ex)
+        {
+            _status = "Reply unavailable: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _shutdown.Cancel();
+        _client?.Dispose();
+        _shutdown.Dispose();
+    }
+}

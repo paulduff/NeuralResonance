@@ -1,0 +1,9 @@
+.avatar-inquiry { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #29476a; }
+.avatar-inquiry h3 { margin: 0 0 .5rem; }
+.inquiry-presets, .inquiry-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin: .5rem 0; }
+.avatar-inquiry label { display: block; margin-bottom: .3rem; }
+.avatar-inquiry input { width: 100%; padding: .5rem; box-sizing: border-box; color: inherit; background: #030e24; border: 1px solid #29476a; }
+.avatar-inquiry button { padding: .4rem .6rem; color: inherit; background: #12273e; border: 1px solid #29476a; border-radius: .25rem; cursor: pointer; }
+.avatar-inquiry button:disabled { opacity: .5; cursor: default; }
+.avatar-inquiry p { font-size: .85rem; line-height: 1.4; overflow-wrap: anywhere; }
+.inquiry-reply { white-space: pre-wrap; }

@@ -3,6 +3,8 @@
 This solution contains a distributed control program, anatomy-inspired structure services, shared avatar cognition, a Blazor editor, and WPF maze and world simulators. The legacy WPF editor remains during migration. The control program defaults to `http://localhost:5080` and can start structure services directly from their projects.
 
 ## Run
+The [Ask Avatar interface](docs/Avatar_Inquiry_2026-10-09.md) provides questions about feelings, activity, thought and attention through Dyad and Entity. The [desktop brain–body–world experiment](docs/Desktop_Brain_World_2026-10-09.md) is prepared for after the current Entity training run finishes.
+
 1. Start `ControlProgram/NeuralResonanceEngine.ControlProgram.csproj`.
 2. Start `tools/start-blazor-editor.ps1`. The Blazor host now owns the authoritative headless WorldSim; WPF WorldSim and MazeSim are retained only as mutually exclusive legacy diagnostics.
 3. For a remote deployment, set the same `NRE_CONTROL_SHARED_SECRET` on the control program and every client, then explicitly configure the external listener with `NRE_CONTROL_LISTEN_ANY_IP=true`.

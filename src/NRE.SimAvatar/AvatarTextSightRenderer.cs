@@ -22,6 +22,9 @@ public static class AvatarTextSightRenderer
 
     private static readonly IReadOnlyDictionary<char, byte[]> Glyphs = BuildGlyphs();
 
+    public static bool CanRenderCharacter(char character) =>
+        character == ' ' || Glyphs.ContainsKey(char.ToUpperInvariant(character));
+
     public static AvatarSightFrame Render(
         string text,
         int generation,

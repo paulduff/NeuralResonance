@@ -114,6 +114,24 @@
                                 Content="Present to Retina"
                                 Click="PresentTextButton_OnClick" />
                         <TextBlock x:Name="TextDisplayStatusText" Margin="0,3,0,0" Text="Text display: idle" TextWrapping="Wrap" />
+                        <StackPanel x:Name="AvatarInquiryPanel" Margin="0,10,0,0">
+                            <TextBlock Text="Ask Avatar" FontWeight="SemiBold" />
+                            <WrapPanel Margin="0,4,0,0">
+                                <Button Content="Feeling" Tag="How do you feel?" Padding="6,3" Margin="0,0,4,4" Click="AvatarQuestionPreset_OnClick" />
+                                <Button Content="Doing" Tag="What are you doing?" Padding="6,3" Margin="0,0,4,4" Click="AvatarQuestionPreset_OnClick" />
+                                <Button Content="Thinking" Tag="What are you thinking about?" Padding="6,3" Margin="0,0,4,4" Click="AvatarQuestionPreset_OnClick" />
+                                <Button Content="Attention" Tag="What has your attention?" Padding="6,3" Margin="0,0,4,4" Click="AvatarQuestionPreset_OnClick" />
+                            </WrapPanel>
+                            <TextBox x:Name="AvatarQuestionTextBox" Padding="6,4" Background="#030E24" Foreground="#D8E6FF" BorderBrush="#264B7E"
+                                     MaxLength="120" Text="How do you feel?" TextChanged="AvatarQuestionTextBox_OnTextChanged" />
+                            <WrapPanel Margin="0,4,0,0">
+                                <Button Content="Present question" Padding="8,3" Margin="0,0,6,0" Click="PresentAvatarQuestion_OnClick" />
+                                <Button x:Name="RequestAvatarReplyButton" Content="Request reply" Padding="8,3" IsEnabled="False" Click="RequestAvatarReply_OnClick" />
+                            </WrapPanel>
+                            <TextBlock x:Name="AvatarInquiryStatusText" Margin="0,4,0,0" Text="Present a question, then request a reply." TextWrapping="Wrap" />
+                            <TextBlock Text="DNNE-reviewed Entity reply" FontWeight="SemiBold" Margin="0,6,0,0" />
+                            <TextBlock x:Name="AvatarReplyText" Margin="0,4,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
                         <Separator Margin="0,10,0,10" />
                         <TextBlock Text="Survival Imperative" FontWeight="SemiBold" />
                         <TextBlock x:Name="SurvivalEnergyText" Margin="0,6,0,0" Text="Energy reserve: -" />

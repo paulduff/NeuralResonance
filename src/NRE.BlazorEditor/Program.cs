@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using NRE.BlazorEditor.Components;
 using NRE.BlazorEditor.Services;
 using NRE.WorldSim;
+using NeuralResonanceEngine.Shared.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 var editorOptions = EditorHostOptions.FromConfiguration(builder.Configuration);
@@ -37,6 +38,21 @@ builder.Services.AddSingleton(new HeadlessWorldRuntime(new HeadlessWorldOptions(
     DevelopmentStage: developmentStage)));
 builder.Services.AddHostedService<WorldRuntimeHostedService>();
 builder.Services.AddSingleton<WorldStateReader>();
+builder.Services.AddHttpClient("AvatarInquiry", client =>
+    {
+        client.BaseAddress = editorOptions.ControlProgramBaseUri;
+        client.Timeout = TimeSpan.FromSeconds(90);
+        if (!string.IsNullOrWhiteSpace(editorOptions.ControlSharedSecret))
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation(NreControlPlaneSecurity.HeaderName, editorOptions.ControlSharedSecret);
+        }
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        UseProxy = false,
+        ConnectTimeout = TimeSpan.FromSeconds(2),
+        AutomaticDecompression = System.Net.DecompressionMethods.All
+    });
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

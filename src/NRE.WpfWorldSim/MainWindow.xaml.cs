@@ -168,6 +168,11 @@ public partial class MainWindow : Window
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromMilliseconds(9000) });
     private readonly HttpClient _telemetryHttpClient = NreHttpClientFactory.Create(
         NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(12) });
+    private readonly HttpClient _avatarInquiryHttpClient = NreHttpClientFactory.Create(
+        NreHttpClientOptions.Default with { RequestTimeout = TimeSpan.FromSeconds(90) });
+    private readonly string _avatarInquirySessionId = "world-avatar-" + Guid.NewGuid().ToString("N");
+    private AvatarInquiryReceipt? _avatarInquiryReceipt;
+    private bool _avatarInquiryInFlight;
     private readonly AutoResetEvent _visionRequestSignal = new(false);
     private readonly Thread _visionWorkerThread;
     private readonly AvatarService _avatarService = new(
@@ -507,6 +512,7 @@ public partial class MainWindow : Window
         _sensoryInputHttpClient.Dispose();
         _auditoryInputHttpClient.Dispose();
         _telemetryHttpClient.Dispose();
+        _avatarInquiryHttpClient.Dispose();
         _avatarService.Dispose();
         try
         {
@@ -582,7 +588,7 @@ public partial class MainWindow : Window
 
     private async Task PresentTextToRetinaAsync()
     {
-        if (_textDisplayInFlight)
+        if (_textDisplayInFlight || _avatarInquiryInFlight)
         {
             return;
         }
@@ -594,6 +600,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        ClearAvatarInquiry();
         _textDisplayInFlight = true;
         PresentTextButton.IsEnabled = false;
         TextDisplayStatusText.Text = "Text display: presenting pixels to Retina...";

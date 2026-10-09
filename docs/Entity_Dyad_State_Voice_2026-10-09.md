@@ -1,6 +1,8 @@
 # Entity numeric-state voice integration — 9 October 2026
 
-DNNE is the brain simulation and authority. WorldSim and MazeSim are this project's environment simulations. Entity is the language component connected through Dyad. CIV is a standalone experiment outside this path.
+DNNE is the neuronal analogue of the brain and the authority, distributed across separate nuclei. Avatar is its body and nervous system. WorldSim and MazeSim are this project's environment simulations. The embodied loop is brain → Avatar → environment → Avatar → brain. Dyad and our own Entity language model provide interaction with that brain. CIV is a standalone experiment outside this path.
+
+The [Ask Avatar interface](Avatar_Inquiry_2026-10-09.md) supplies a question/accepted-reply path while preserving neuronal sensory ingress and emission authority. The [first desktop run](Desktop_Brain_World_2026-10-09.md) is prepared for after Entity training finishes. Neither the interface nor Entity training establishes DNNE language comprehension on its own.
 
 EntityLLM's new own-model candidate uses a learned numeric state encoder whose representations participate in decoder attention. It does not import third-party language weights. Its first training package contains measurement calibration fixtures, not verified external-scene or intention meanings. The training run must finish and its replies must be reviewed before choosing it as the configured voice.
 

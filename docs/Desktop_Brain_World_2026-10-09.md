@@ -1,0 +1,21 @@
+# First desktop brain–body–world run — 9 October 2026
+
+The next runtime experiment is DNNE plus the authoritative headless WorldSim hosted by the Blazor editor on this desktop. It establishes the actual machine capacity before moving nuclei to the cluster. The WPF simulators are mutually exclusive diagnostics; do not run them alongside the authoritative world.
+
+After the current Entity training window reports **FINISHED**, invoke:
+
+```powershell
+& C:\Users\duff_\source\repos\NeuralResonance\tools\start-desktop-brain-world-window.ps1
+```
+
+This opens an independent visible PowerShell window. It checks the saved training completion status once, qualifies the relevant software, builds/starts DNNE nuclei, checks startup health, opens the browser world, and records a 30-minute baseline. There is no agent monitoring and no training watcher. The run refuses to start if training did not finish successfully or the DNNE/editor ports are occupied. It preserves existing saves and does not perform a clean-start kill.
+
+The default baseline measures DNNE and WorldSim with Entity generation disabled. The completed Entity candidate is assessed separately before selecting it. A later comparison can use `-WithEntity` once the Entity API is running and `NRE_ENTITY_CHECKPOINT_PATH` explicitly selects a reviewed candidate. This option uses the existing configuration; it does not promote the training output automatically. GPU inference reduces Entity's CPU demand, while tokenisation, API handling and system memory still consume shared resources.
+
+Artifacts are saved under `artifacts/desktop-brain-world-<unique run>/`, with verified copies under `D:\DNNE-desktop-runs`. They contain hardware and Git identity, console output, startup health, initial/latest world snapshots, sampled ticks, service health, sensory/body/motor counters, DNNE/world CPU consumption, summed process working sets, failures and a summary. Summed working sets can include shared pages and are not a measurement of unique committed RAM. CPU percentages describe the DNNE/world processes as a fraction of total machine CPU capacity.
+
+`COMPLETE.json` means measurement completed; inspect `summary.json` for runtime checks. The checks require brain/world advancement, retinal and body traffic, brain motor output, connectivity, healthy services and no new tick/body failures or sample errors. Movement is reported separately. A healthy transport loop does not prove language comprehension, useful behaviour, or a human-equivalent brain. Language comprehension is explicitly marked unassessed.
+
+DNNE and WorldSim remain running after measurement for observation. A startup failure leaves logs and `RUN_FAILED.json` for diagnosis. The existing stop tools remain available when observation is finished.
+
+Preparation verification consists of script parsing and a side-effect-free `-WhatIf`. Live qualification and performance measurements have not been run while the current training job is active.

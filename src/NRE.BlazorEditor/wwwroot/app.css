@@ -262,7 +262,7 @@ button {
     grid-column: 1;
     grid-row: 2 / 4;
     display: grid;
-    grid-template-rows: 58px 48px minmax(0, 1fr);
+    grid-template-rows: 58px 48px 44px minmax(0, 1fr);
     border-right: 1px solid var(--line);
 }
 
@@ -630,6 +630,39 @@ button {
     color: var(--muted);
     font-size: 11px;
 }
+
+.atlas-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 4px 10px 10px;
+}
+
+.atlas-filters select,
+.rate-scale-control select {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #14181b;
+    color: var(--text);
+    padding: 6px;
+    font: inherit;
+    font-size: 11px;
+}
+
+.rate-scale-control { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
+.text-command { background: transparent; color: var(--teal); cursor: pointer; font-size: 11px; }
+.brain-selection-label { position: absolute; z-index: 4; pointer-events: none; padding: 7px 10px; border: 1px solid #69bbae; border-radius: 5px; background: rgba(15,25,28,.94); color: #eafffa; font-size: 11px; max-width: 240px; }
+.brain-activity-legend { position: absolute; bottom: 16px; left: 16px; width: 170px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(15,21,26,.94); pointer-events: none; font-size: 10px; }
+.brain-activity-legend strong { display: block; font-weight: 600; margin-bottom: 8px; }
+.brain-activity-legend > div { display: flex; justify-content: space-between; margin: 4px 0 7px; color: var(--muted); }
+.brain-activity-legend small { display: block; line-height: 15px; color: var(--muted); }
+.rate-gradient { display: block; height: 6px; border-radius: 3px; background: linear-gradient(90deg,#263951,#3798d4,#62d4ba,#f7c65f,#ff6d50); }
+.brain-activity-legend.stale { border-color: var(--amber); }
+.brain-activity-legend.stale small { color: var(--amber); }
+.viewport-scale { text-align: right; line-height: 16px; max-width: 320px; pointer-events: none; }
+.viewport-scale a { color: #8eaaa8; pointer-events: auto; text-decoration: none; }
+.viewport-scale a:hover { text-decoration: underline; }
 
 .display-controls output {
     color: var(--text);

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using NRE.BlazorEditor.Components;
 using NRE.BlazorEditor.Services;
 using NRE.WorldSim;
@@ -123,7 +124,9 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseStaticFiles();
+var staticContentTypes = new FileExtensionContentTypeProvider();
+staticContentTypes.Mappings[".glb"] = "model/gltf-binary";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = staticContentTypes });
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();

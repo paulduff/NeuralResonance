@@ -1,0 +1,32 @@
+{
+  "author": "mo99ghahremani (https://sketchfab.com/mo99ghahremani)",
+  "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "source": "https://sketchfab.com/3d-models/human-brain-1-copy-1-315449e9517047edb65e3b462c259b91",
+  "title": "human-brain (1) - copy 1",
+  "sourceFile": "human-brain_1_-_copy_1.glb",
+  "sourceSha256": "aae333aee6cac7e6dfa6d7e4c540ccfcc0027c60ad3f814bc1c27476f52a34b0",
+  "sourceTriangles": 36708,
+  "displayTriangles": 36632,
+  "displayVertices": 18867,
+  "displayBytes": 902236,
+  "displaySha256": "59a79005863ee42f90d3b2aa01a3f2dedcd99f2397a17a605c3819088ae8997e",
+  "removedLabels": [
+    {
+      "name": "Object_6",
+      "material": "Foregrou",
+      "triangles": 50
+    },
+    {
+      "name": "Object_11",
+      "material": "Foregrou",
+      "triangles": 16
+    },
+    {
+      "name": "Object_17",
+      "material": "Foregrou",
+      "triangles": 10
+    }
+  ],
+  "preparation": "Number label meshes removed; transforms baked; duplicate vertices welded; normals smoothed; uniform display material.",
+  "coordinateRegistration": "Illustrative atlas alignment; source +X anterior, +Y superior after baked scene transforms."
+}

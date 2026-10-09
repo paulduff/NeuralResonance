@@ -1,0 +1,855 @@
+{
+  "atlas": "SPL/NAC Brain Atlas",
+  "revision": "bec24db25aad5f7600e2df3becfb1f883e61ff56",
+  "parts": [
+    {
+      "instanceId": "L_Striatum",
+      "files": [
+        "Model_11_left_caudate_nucleus.vtk",
+        "Model_12_left_putamen.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_Striatum",
+      "files": [
+        "Model_50_right_caudate_nucleus.vtk",
+        "Model_51_right_putamen.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_NucleusAccumbens",
+      "files": [
+        "Model_26_left_nucleus_accumbens.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_NucleusAccumbens",
+      "files": [
+        "Model_58_right_nucleus_accumbens.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_GPe",
+      "files": [
+        "Model_13_left_globus_pallidus_pars_externa.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_GPe",
+      "files": [
+        "Model_52_right_globus_pallidus_pars_externa.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_GPi",
+      "files": [
+        "Model_25_left_globus_pallidus_pars_interna.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_GPi",
+      "files": [
+        "Model_83_right_globus_pallidus_pars_interna.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_Stn",
+      "files": [
+        "Model_391_left_subthalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_Stn",
+      "files": [
+        "Model_390_right_subthalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_RedNucleus",
+      "files": [
+        "Model_79_left_red_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_RedNucleus",
+      "files": [
+        "Model_84_right_red_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_DentateNucleus",
+      "files": [
+        "Model_371_left-Dentate-nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_DentateNucleus",
+      "files": [
+        "Model_375_right-Dentate-nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_Pulvinar",
+      "files": [
+        "Model_507_left_pulvinar.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_Pulvinar",
+      "files": [
+        "Model_506_right_pulvinar.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_MediodorsalThalamus",
+      "files": [
+        "Model_511_left_dorsomedial_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_MediodorsalThalamus",
+      "files": [
+        "Model_510_right_dorsomedial_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_VentralPosterolateralThalamus",
+      "files": [
+        "Model_525_left_ventral_posterolateral_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_VentralPosterolateralThalamus",
+      "files": [
+        "Model_524_right_ventral_posterolateral_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_VentralPosteromedialThalamus",
+      "files": [
+        "Model_523_left_ventral_posteromedial_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_VentralPosteromedialThalamus",
+      "files": [
+        "Model_522_right_ventral_posteromedial_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_AnteriorThalamicNuclei",
+      "files": [
+        "Model_509_left_anterior_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_AnteriorThalamicNuclei",
+      "files": [
+        "Model_508_right_anterior_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_LateralGeniculateNucleus",
+      "files": [
+        "Model_505_left_lateral_geniculate_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_LateralGeniculateNucleus",
+      "files": [
+        "Model_504_right_lateral_geniculate_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_MedialGeniculateNucleus",
+      "files": [
+        "Model_503_left_medial_geniculate_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_MedialGeniculateNucleus",
+      "files": [
+        "Model_502_right_medial_geniculate_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_SuperiorColliculus",
+      "files": [
+        "Model_3021_left_superior_colliculus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_SuperiorColliculus",
+      "files": [
+        "Model_3020_right_superior_colliculus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_InferiorColliculus",
+      "files": [
+        "Model_3023_left_inferior_colliculus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_InferiorColliculus",
+      "files": [
+        "Model_3022_right_inferior_colliculus.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_MammillaryBodies",
+      "files": [
+        "Model_3003_left_mammillary_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_MammillaryBodies",
+      "files": [
+        "Model_3002_right_mammillary_body.vtk"
+      ]
+    },
+    {
+      "instanceId": "L_MotorThalamus",
+      "files": [
+        "Model_515_left_ventral_anterior_thalamic_nucleus.vtk",
+        "Model_517_left_ventral_lateral_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "R_MotorThalamus",
+      "files": [
+        "Model_514_right_ventral_anterior_thalamic_nucleus.vtk",
+        "Model_516_right_ventral_lateral_thalamic_nucleus.vtk"
+      ]
+    },
+    {
+      "instanceId": "M_CorpusCallosum",
+      "files": [
+        "Model_3004_corpus_callosum.vtk"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "file": "Model_11_left_caudate_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_11_left_caudate_nucleus.vtk",
+      "sha256": "bae94f36e477b6525e86eb6e00ee92df77d9640f9557f1e02f88be1f0f0f4263"
+    },
+    {
+      "file": "Model_12_left_putamen.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_12_left_putamen.vtk",
+      "sha256": "feeece720c070f9b1de4834af2c6e68afa65dbfe731c4ab3ed385fd314615f4c"
+    },
+    {
+      "file": "Model_13_left_globus_pallidus_pars_externa.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_13_left_globus_pallidus_pars_externa.vtk",
+      "sha256": "26117439155f95561caccede6a158005885575e3edd8180e1f3502e66bc6c64f"
+    },
+    {
+      "file": "Model_25_left_globus_pallidus_pars_interna.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_25_left_globus_pallidus_pars_interna.vtk",
+      "sha256": "669de67af4e5806e5c83aefe3f4d788ffa1beb0022bde86e5a67d011cbcac3f6"
+    },
+    {
+      "file": "Model_26_left_nucleus_accumbens.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_26_left_nucleus_accumbens.vtk",
+      "sha256": "287371032b83820de44ac6fdb68791e96e84cd8faaf5f94f01ffc1d06a7207bb"
+    },
+    {
+      "file": "Model_3002_right_mammillary_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3002_right_mammillary_body.vtk",
+      "sha256": "7d62b5dc325e4c853697f0a1d55b786bda14c9713674a943d7665b6ad84617d6"
+    },
+    {
+      "file": "Model_3003_left_mammillary_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3003_left_mammillary_body.vtk",
+      "sha256": "afe7daec21875a0b1b5f007e1fa1561817344f585d8b62e9a4b605aef96ca3b3"
+    },
+    {
+      "file": "Model_3004_corpus_callosum.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3004_corpus_callosum.vtk",
+      "sha256": "398bc014ebafb72feed86e2579ea1037075d546fcde60c541b68a565afaa93e5"
+    },
+    {
+      "file": "Model_3020_right_superior_colliculus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3020_right_superior_colliculus.vtk",
+      "sha256": "4ca3a5fa1efc3a8382f46a24a3c522af19be3bd7a896b40cd5ba9c01449aab1c"
+    },
+    {
+      "file": "Model_3021_left_superior_colliculus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3021_left_superior_colliculus.vtk",
+      "sha256": "9a32c8b34c29ae9efdf783bf5a7e9b8daa322295086206bb34b87bd1c055c2d6"
+    },
+    {
+      "file": "Model_3022_right_inferior_colliculus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3022_right_inferior_colliculus.vtk",
+      "sha256": "4cdeb42aad3d6f7cf35c9980cb50e709419d06b455eef96e7d986165f2792517"
+    },
+    {
+      "file": "Model_3023_left_inferior_colliculus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_3023_left_inferior_colliculus.vtk",
+      "sha256": "949ca9dafeb145a0ce74a5a821eefccc8230b1b1fe53963793303b025fc530e3"
+    },
+    {
+      "file": "Model_371_left-Dentate-nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_371_left-Dentate-nucleus.vtk",
+      "sha256": "c59c2da15d097c5690833ffe19f759444a554c016d762b4f761a8ef9208bd173"
+    },
+    {
+      "file": "Model_375_right-Dentate-nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_375_right-Dentate-nucleus.vtk",
+      "sha256": "13b6b2f2c2b5e8e01545dafc161c332a47ebcf53818a0a9ef062be9c0565caf1"
+    },
+    {
+      "file": "Model_390_right_subthalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_390_right_subthalamic_nucleus.vtk",
+      "sha256": "03a509470901910a988ce9f48328285f62b393793f93ca90938fdb7419aea274"
+    },
+    {
+      "file": "Model_391_left_subthalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_391_left_subthalamic_nucleus.vtk",
+      "sha256": "282854ae962713ea667a20a97a51aa8e6eb607ee6064998e9e83a3de0417ebe9"
+    },
+    {
+      "file": "Model_502_right_medial_geniculate_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_502_right_medial_geniculate_body.vtk",
+      "sha256": "6387dfb48d7777231a08cdc5fe67701688ba3f44195d9718d8859f1b65f2e567"
+    },
+    {
+      "file": "Model_503_left_medial_geniculate_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_503_left_medial_geniculate_body.vtk",
+      "sha256": "efb3da4991ec74054aae924215759f4c50f57bf83d2954c18f93c3658c34cf3e"
+    },
+    {
+      "file": "Model_504_right_lateral_geniculate_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_504_right_lateral_geniculate_body.vtk",
+      "sha256": "562677d48a49828a732391f3b7d033c47dff1c6484ac7d419adf1d411798d338"
+    },
+    {
+      "file": "Model_505_left_lateral_geniculate_body.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_505_left_lateral_geniculate_body.vtk",
+      "sha256": "39915964bd6c27732dbfcef411834f9ee3564f201acbb41b31033d5bc07bdec0"
+    },
+    {
+      "file": "Model_506_right_pulvinar.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_506_right_pulvinar.vtk",
+      "sha256": "e647ae4337b3a12f461b7058a185bc7e601c8ab430e023095f2a3dc0400a7ce1"
+    },
+    {
+      "file": "Model_507_left_pulvinar.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_507_left_pulvinar.vtk",
+      "sha256": "f40b6fb158b1424cbb54107666a27548665be816718692b1b17df8d0afcba17a"
+    },
+    {
+      "file": "Model_508_right_anterior_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_508_right_anterior_thalamic_nucleus.vtk",
+      "sha256": "d425d8a3e01254150f93dbaf6cbbb8cc0815143ec39e866786c660f60a67a8ee"
+    },
+    {
+      "file": "Model_509_left_anterior_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_509_left_anterior_thalamic_nucleus.vtk",
+      "sha256": "acb0fc9b523186e146d93ce8833276e9889ea455ab7b19812810b66066a5a392"
+    },
+    {
+      "file": "Model_50_right_caudate_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_50_right_caudate_nucleus.vtk",
+      "sha256": "3ac7a5f5be289ea26eed69197b4dff95077c542b79481f5620cccbef59d30fe7"
+    },
+    {
+      "file": "Model_510_right_dorsomedial_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_510_right_dorsomedial_thalamic_nucleus.vtk",
+      "sha256": "7db4085bcd06881762686d16cffd0198a60b6a7f5b66e9f3d5f0670e688a9caa"
+    },
+    {
+      "file": "Model_511_left_dorsomedial_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_511_left_dorsomedial_thalamic_nucleus.vtk",
+      "sha256": "7de19b779308a3958b32006f975019887f2ceb2974b4b6a49201a22806753f6c"
+    },
+    {
+      "file": "Model_514_right_ventral_anterior_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_514_right_ventral_anterior_thalamic_nucleus.vtk",
+      "sha256": "ded5f48ebbd20c8cf9eca7d067ec4a99b68e8bf49dfda6fbe34d1f59592f9649"
+    },
+    {
+      "file": "Model_515_left_ventral_anterior_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_515_left_ventral_anterior_thalamic_nucleus.vtk",
+      "sha256": "1c4ace957d80dc61005a22edcbad3c26c606ff0afa645544e9fb471cfff29f90"
+    },
+    {
+      "file": "Model_516_right_ventral_lateral_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_516_right_ventral_lateral_thalamic_nucleus.vtk",
+      "sha256": "003ccb9bd11193d4039a866e4c62e09472cf9f2b5a194483e6d4c0657f102ffb"
+    },
+    {
+      "file": "Model_517_left_ventral_lateral_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_517_left_ventral_lateral_thalamic_nucleus.vtk",
+      "sha256": "4964aee1c52ff6fa702b85860b600cbfd37ab2a90ec8ba74dd412f52a3003044"
+    },
+    {
+      "file": "Model_51_right_putamen.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_51_right_putamen.vtk",
+      "sha256": "8634d54a15c963890d7682654be74beadfd984ed147e5c3a6fbf811cfc354d4a"
+    },
+    {
+      "file": "Model_522_right_ventral_posteromedial_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_522_right_ventral_posteromedial_thalamic_nucleus.vtk",
+      "sha256": "1957421208ff52c4338a8344e9eee4768077fa56eef30f4dbc9a3c0f7d16b3ff"
+    },
+    {
+      "file": "Model_523_left_ventral_posteromedial_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_523_left_ventral_posteromedial_thalamic_nucleus.vtk",
+      "sha256": "7acd3328742c00116ecbc3875d7b072f9b9896a2195464a66097641694e32f9c"
+    },
+    {
+      "file": "Model_524_right_ventral_posterolateral_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_524_right_ventral_posterolateral_thalamic_nucleus.vtk",
+      "sha256": "474cdb0aa00535c7098b4903ca71576d437e57f435799f22b2a1fb2b48c3b440"
+    },
+    {
+      "file": "Model_525_left_ventral_posterolateral_thalamic_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_525_left_ventral_posterolateral_thalamic_nucleus.vtk",
+      "sha256": "cc0612eb32ccbc3f85031c0cba81ba52319136ae0b2fdf03cad30833d96dbff0"
+    },
+    {
+      "file": "Model_52_right_globus_pallidus_pars_externa.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_52_right_globus_pallidus_pars_externa.vtk",
+      "sha256": "85ccbc9d7330956d17fa23f6e0315e79924a82806da3c7533ce940c4fa2f57b9"
+    },
+    {
+      "file": "Model_58_right_nucleus_accumbens.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_58_right_nucleus_accumbens.vtk",
+      "sha256": "ff7dd3f1f66c2eeb74f4507158ffbbabfa4273f2a3355136ed093f06362c117e"
+    },
+    {
+      "file": "Model_79_left_red_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_79_left_red_nucleus.vtk",
+      "sha256": "7269d43e2fcc4c67303d1b2382edc5d69cd09b5f2cb02b3c611c08dc9150734c"
+    },
+    {
+      "file": "Model_83_right_globus_pallidus_pars_interna.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_83_right_globus_pallidus_pars_interna.vtk",
+      "sha256": "7bab350c9d1fabe0f71ed98f99f010aadcb5b8b4a473b6520644527072844f04"
+    },
+    {
+      "file": "Model_84_right_red_nucleus.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_84_right_red_nucleus.vtk",
+      "sha256": "7f9bff8fdec9b3962961b4c64ae115922b8e748e4e01cd66abadf39f228fda7e"
+    }
+  ],
+  "modifications": "Named anatomical shapes uniformly scaled and recentered to the DNNE display atlas; not a medical registration.",
+  "instances": [
+    {
+      "instanceId": "L_Striatum",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_11_left_caudate_nucleus.vtk",
+        "Model_12_left_putamen.vtk"
+      ],
+      "sourceGeometry": "Composite anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.015645768645045,
+      "triangles": 11696
+    },
+    {
+      "instanceId": "R_Striatum",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_50_right_caudate_nucleus.vtk",
+        "Model_51_right_putamen.vtk"
+      ],
+      "sourceGeometry": "Composite anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.0189117900934477,
+      "triangles": 11468
+    },
+    {
+      "instanceId": "L_NucleusAccumbens",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_26_left_nucleus_accumbens.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7604018743148283,
+      "triangles": 1418
+    },
+    {
+      "instanceId": "R_NucleusAccumbens",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_58_right_nucleus_accumbens.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7651486124253792,
+      "triangles": 1410
+    },
+    {
+      "instanceId": "L_GPe",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_13_left_globus_pallidus_pars_externa.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.8071215317068886,
+      "triangles": 2330
+    },
+    {
+      "instanceId": "R_GPe",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_52_right_globus_pallidus_pars_externa.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7962451849784371,
+      "triangles": 2118
+    },
+    {
+      "instanceId": "L_GPi",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_25_left_globus_pallidus_pars_interna.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.6599646721542141,
+      "triangles": 1580
+    },
+    {
+      "instanceId": "R_GPi",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_83_right_globus_pallidus_pars_interna.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.6894677156346317,
+      "triangles": 1640
+    },
+    {
+      "instanceId": "L_Stn",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_391_left_subthalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.9468997757348967,
+      "triangles": 128
+    },
+    {
+      "instanceId": "R_Stn",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_390_right_subthalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 2.0121937124702702,
+      "triangles": 128
+    },
+    {
+      "instanceId": "L_RedNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_79_left_red_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.1983820228635347,
+      "triangles": 342
+    },
+    {
+      "instanceId": "R_RedNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_84_right_red_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.218507537622615,
+      "triangles": 332
+    },
+    {
+      "instanceId": "L_DentateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_371_left-Dentate-nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.6806232281276745,
+      "triangles": 2418
+    },
+    {
+      "instanceId": "R_DentateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_375_right-Dentate-nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.6610375719250314,
+      "triangles": 2370
+    },
+    {
+      "instanceId": "L_Pulvinar",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_507_left_pulvinar.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.0135395681793182,
+      "triangles": 2588
+    },
+    {
+      "instanceId": "R_Pulvinar",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_506_right_pulvinar.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.0684074714876988,
+      "triangles": 2330
+    },
+    {
+      "instanceId": "L_MediodorsalThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_511_left_dorsomedial_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.2090070725849351,
+      "triangles": 1304
+    },
+    {
+      "instanceId": "R_MediodorsalThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_510_right_dorsomedial_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.2084180940818248,
+      "triangles": 1328
+    },
+    {
+      "instanceId": "L_VentralPosterolateralThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_525_left_ventral_posterolateral_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.8125661319086533,
+      "triangles": 1524
+    },
+    {
+      "instanceId": "R_VentralPosterolateralThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_524_right_ventral_posterolateral_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7653628067146612,
+      "triangles": 1562
+    },
+    {
+      "instanceId": "L_VentralPosteromedialThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_523_left_ventral_posteromedial_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.9997954702205321,
+      "triangles": 512
+    },
+    {
+      "instanceId": "R_VentralPosteromedialThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_522_right_ventral_posteromedial_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.834559353945923,
+      "triangles": 624
+    },
+    {
+      "instanceId": "L_AnteriorThalamicNuclei",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_509_left_anterior_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.8823314527797466,
+      "triangles": 522
+    },
+    {
+      "instanceId": "R_AnteriorThalamicNuclei",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_508_right_anterior_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7364562986321816,
+      "triangles": 572
+    },
+    {
+      "instanceId": "L_LateralGeniculateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_505_left_lateral_geniculate_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.0716706791960993,
+      "triangles": 516
+    },
+    {
+      "instanceId": "R_LateralGeniculateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_504_right_lateral_geniculate_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.0314209557418257,
+      "triangles": 486
+    },
+    {
+      "instanceId": "L_MedialGeniculateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_503_left_medial_geniculate_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.1057819661044523,
+      "triangles": 372
+    },
+    {
+      "instanceId": "R_MedialGeniculateNucleus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_502_right_medial_geniculate_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.1023550449799417,
+      "triangles": 374
+    },
+    {
+      "instanceId": "L_SuperiorColliculus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3021_left_superior_colliculus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.9673824514140936,
+      "triangles": 198
+    },
+    {
+      "instanceId": "R_SuperiorColliculus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3020_right_superior_colliculus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 2.022963897396329,
+      "triangles": 186
+    },
+    {
+      "instanceId": "L_InferiorColliculus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3023_left_inferior_colliculus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 2.1113644870241997,
+      "triangles": 194
+    },
+    {
+      "instanceId": "R_InferiorColliculus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3022_right_inferior_colliculus.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.3535450873531226,
+      "triangles": 192
+    },
+    {
+      "instanceId": "L_MammillaryBodies",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3003_left_mammillary_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.3388526909975924,
+      "triangles": 170
+    },
+    {
+      "instanceId": "R_MammillaryBodies",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3002_right_mammillary_body.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.2570514422417431,
+      "triangles": 192
+    },
+    {
+      "instanceId": "L_MotorThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_515_left_ventral_anterior_thalamic_nucleus.vtk",
+        "Model_517_left_ventral_lateral_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Composite anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.3383104294166475,
+      "triangles": 2712
+    },
+    {
+      "instanceId": "R_MotorThalamus",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_514_right_ventral_anterior_thalamic_nucleus.vtk",
+        "Model_516_right_ventral_lateral_thalamic_nucleus.vtk"
+      ],
+      "sourceGeometry": "Composite anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 1.316096635651768,
+      "triangles": 2668
+    },
+    {
+      "instanceId": "M_CorpusCallosum",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_3004_corpus_callosum.vtk"
+      ],
+      "sourceGeometry": "Named anatomical mesh",
+      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
+      "uniformScale": 0.7494907272779786,
+      "triangles": 23364
+    }
+  ],
+  "displayBytes": 2052124,
+  "displaySha256": "7cf5f3c2c588801e3d8f499fb34c6c0ab600bd2c6f222e87c202e0a00fa447ab"
+}

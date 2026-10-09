@@ -1,11 +1,15 @@
 import * as THREE from '../vendor/three/three.module.min.js';
 import { OrbitControls } from '../vendor/three/addons/controls/OrbitControls.js';
+import { loadBrainShell, disposeBrainObject } from './brain-shell.js';
+import { firingRateLevel, snapshotIsFresh, observeSnapshot, recentDispatches } from './brain-activity.js';
+import { buildCorticalSurfaceParcels } from './brain-surface.js';
+import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 
 const viewPresets = {
     anterior: { position: [0, -3, 245], target: [0, -3, -4], up: [0, 1, 0] },
     posterior: { position: [0, -3, -245], target: [0, -3, -4], up: [0, 1, 0] },
-    left: { position: [245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
-    right: { position: [-245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
+    left: { position: [-245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
+    right: { position: [245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
     superior: { position: [0, 245, -4], target: [0, -3, -4], up: [0, 0, 1] },
     inferior: { position: [0, -245, -4], target: [0, -3, -4], up: [0, 0, 1] }
 };
@@ -87,7 +91,7 @@ function createEditor(host, atlas) {
     const corticalShells = [];
     corticalShells.push(addCorticalShell(root, -1));
     corticalShells.push(addCorticalShell(root, 1));
-    addAnatomicalScaffold(root);
+    const scaffold = addAnatomicalScaffold(root);
 
     const structureMeshes = [];
     const meshesByInstance = new Map();
@@ -128,13 +132,13 @@ function createEditor(host, atlas) {
         controls,
         root,
         corticalShells,
+        scaffold,
         structureMeshes,
         meshesByInstance,
         meshesByStructure,
         structureByInstance,
         definitionsById,
         structureIdByProtocol,
-        structureCounters: new Map(),
         pathwayGroup,
         raycaster: new THREE.Raycaster(),
         pointer: new THREE.Vector2(),
@@ -144,6 +148,12 @@ function createEditor(host, atlas) {
         currentView: 'anterior',
         showPathways: true,
         shellOpacity: 0.12,
+        rateCeilingHz: 200,
+        groupFilter: '',
+        hemisphereFilter: '',
+        isolateSelection: false,
+        lastDispatchTraces: [],
+        snapshotObservation: { tick: null, receivedAt: null },
         frameAbort: null,
         frameTimer: 0,
         ageTimer: 0,
@@ -173,15 +183,19 @@ function createEditor(host, atlas) {
 
     return {
         async start() {
+            void loadDisplayShell(state);
+            void loadDeepStructures(state);
             renderer.setAnimationLoop(() => {
                 if (!state.active) {
                     return;
                 }
                 controls.update();
                 animateActivity(state);
+                updateSelectionLabel(state);
                 renderer.render(scene, camera);
             });
             await pollFrame(state);
+            if (state.disposed) return;
             scheduleFramePoll(state);
             state.ageTimer = window.setInterval(() => updateFrameAge(state), 1000);
         },
@@ -194,22 +208,81 @@ function createEditor(host, atlas) {
             state.cleanup.forEach(cleanup => cleanup());
             renderer.setAnimationLoop(null);
             controls.dispose();
-            sphereGeometry.dispose();
-            scene.traverse(object => {
-                object.geometry?.dispose?.();
-                if (Array.isArray(object.material)) {
-                    object.material.forEach(material => material.dispose?.());
-                } else {
-                    object.material?.dispose?.();
-                }
-            });
+            disposeBrainObject(scene);
             renderer.dispose();
             host.replaceChildren();
         }
     };
 }
 
+async function loadDisplayShell(state) {
+    try {
+        const imported = await loadBrainShell(state.shellOpacity);
+        if (state.disposed) {
+            disposeBrainObject(imported.model);
+            return;
+        }
+        // A control may have changed while the asset was loading.
+        imported.shells.forEach(shell => { shell.material.opacity = state.shellOpacity; });
+        state.corticalShells.forEach(shell => { shell.visible = false; });
+        state.scaffold.visible = false;
+        state.root.add(imported.model);
+        state.corticalShells = imported.shells;
+        const surface = buildCorticalSurfaceParcels(imported.model, state.structureMeshes.filter(mesh => mesh.userData.isCortical));
+        for (const mesh of state.structureMeshes) {
+            const parcel = surface.parcels.get(mesh.userData.structure.instanceId);
+            if (!parcel) continue;
+            mesh.geometry.dispose();
+            mesh.geometry = parcel.geometry;
+            mesh.userData.focusPoint.copy(parcel.focusPoint);
+            mesh.userData.isImportedCortex = true;
+            mesh.userData.geometrySource = 'Imported folded surface; approximate nearest-anchor DNNE territory.';
+        }
+        surface.corticalShells.forEach(shell => { shell.visible = false; });
+        state.surfaceCortex = surface.corticalShells;
+        applyDisplayMode(state);
+        setText('brainModelStatus', `Folded cortex · ${surface.parcels.size}/70 approximate territories`);
+    } catch (error) {
+        if (!state.disposed) {
+            setText('brainModelStatus', 'Atlas shell · imported model unavailable');
+            console.warn('Brain shell fallback:', error);
+        }
+    }
+}
+
+async function loadDeepStructures(state) {
+    let model = null;
+    try {
+        model = (await new GLTFLoader().loadAsync('/data/models/subcortical-parts.glb')).scene;
+        if (state.disposed) return;
+        let count = 0;
+        model.traverse(object => {
+            if (!object.isMesh) return;
+            const mesh = state.meshesByInstance.get(normalizeId(object.userData.instanceId ?? object.name));
+            if (!mesh) return;
+            // The sphere template remains shared by the schematic structures.
+            mesh.geometry = object.geometry.clone();
+            mesh.position.set(0, 0, 0);
+            mesh.rotation.set(0, 0, 0);
+            mesh.scale.set(1, 1, 1);
+            mesh.userData.baseScale.set(1, 1, 1);
+            mesh.userData.geometrySource = `${object.userData.sourceGeometry} · SPL/NAC atlas; uniform display registration.`;
+            count++;
+        });
+        setText('brainDeepModelStatus', `${count} named anatomical meshes · other nuclei schematic`);
+        if (state.selected) setText('selectionSource', `${state.selected.userData.structure.source}. ${state.selected.userData.geometrySource ?? 'Schematic atlas geometry.'}`);
+    } catch (error) {
+        if (!state.disposed) {
+            setText('brainDeepModelStatus', 'Schematic nuclei · anatomical models unavailable');
+            console.warn('Deep brain model fallback:', error);
+        }
+    } finally {
+        if (model) disposeBrainObject(model);
+    }
+}
+
 function scheduleFramePoll(state) {
+    if (state.disposed) return;
     state.frameTimer = window.setTimeout(async () => {
         await pollFrame(state);
         if (!state.disposed) {
@@ -303,6 +376,7 @@ function addAnatomicalScaffold(root) {
     scaffold.add(callosum);
 
     root.add(scaffold);
+    return scaffold;
 }
 
 function createStructureMesh(structure, geometry) {
@@ -317,7 +391,7 @@ function createStructureMesh(structure, geometry) {
         emissive: color.clone().multiplyScalar(0.08),
         emissiveIntensity: 0.18,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.48,
         depthWrite: false,
         roughness: 0.68,
         metalness: 0,
@@ -342,7 +416,8 @@ function createStructureMesh(structure, geometry) {
     mesh.userData = {
         structure,
         activity: 0,
-        meanRateHz: 0,
+        meanRateHz: null,
+        hasTelemetry: false,
         spikeOut: 0,
         laminarDiagnostics: null,
         isCortical: false,
@@ -375,7 +450,8 @@ function createCorticalStructureMesh(structure) {
     mesh.userData = {
         structure,
         activity: 0,
-        meanRateHz: 0,
+        meanRateHz: null,
+        hasTelemetry: false,
         spikeOut: 0,
         laminarDiagnostics: null,
         isCortical: true,
@@ -663,12 +739,24 @@ function buildStructureList(state) {
     const count = document.getElementById('structureCount');
     const search = document.getElementById('structureSearch');
     const definitions = [...state.definitionsById.values()];
+    const groupFilter = document.getElementById('structureGroup');
+    const hemisphereFilter = document.getElementById('brainHemisphere');
+    if (groupFilter) {
+        for (const group of [...new Set(definitions.map(definition => definition.group))].sort()) {
+            const option = document.createElement('option');
+            option.value = group;
+            option.textContent = group;
+            groupFilter.appendChild(option);
+        }
+    }
     count.textContent = String(definitions.length);
 
     const render = () => {
         const query = normalizeId(search.value);
         const filtered = definitions.filter(definition =>
+            (!state.groupFilter || definition.group === state.groupFilter) &&
             normalizeId(`${definition.displayName} ${definition.structureId} ${definition.group}`).includes(query));
+        count.textContent = `${filtered.length}/${definitions.length}`;
         const groups = new Map();
         for (const definition of filtered) {
             if (!groups.has(definition.group)) {
@@ -702,10 +790,24 @@ function buildStructureList(state) {
         }
         list.replaceChildren(fragment);
         syncListSelection(state);
+        updateStructureHealthRows(state);
     };
 
     search.addEventListener('input', render);
     state.cleanup.push(() => search.removeEventListener('input', render));
+    for (const [control, property] of [[groupFilter, 'groupFilter'], [hemisphereFilter, 'hemisphereFilter']]) {
+        if (!control) continue;
+        const handler = () => {
+            state[property] = control.value;
+            state.structureMeshes.forEach(mesh => { mesh.visible = structureVisible(state, mesh); });
+            if (state.selected && !state.selected.visible) clearSelection(state);
+            state.hovered = null;
+            updatePathways(state, state.lastDispatchTraces);
+            render();
+        };
+        control.addEventListener('change', handler);
+        state.cleanup.push(() => control.removeEventListener('change', handler));
+    }
     render();
 }
 
@@ -743,6 +845,7 @@ function bindControls(state) {
         state.shellOpacity = Number(opacity.value) / 100;
         opacityValue.value = `${opacity.value}%`;
         state.corticalShells.forEach(shell => { shell.material.opacity = state.shellOpacity; });
+        applyDisplayMode(state);
     };
     opacity.addEventListener('input', opacityHandler);
     state.cleanup.push(() => opacity.removeEventListener('input', opacityHandler));
@@ -754,6 +857,41 @@ function bindControls(state) {
     };
     pathways.addEventListener('change', pathwaysHandler);
     state.cleanup.push(() => pathways.removeEventListener('change', pathwaysHandler));
+
+    const isolate = document.getElementById('isolateBrainSelection');
+    const isolateHandler = () => { state.isolateSelection = isolate.checked; applyDisplayMode(state); };
+    isolate?.addEventListener('change', isolateHandler);
+    state.cleanup.push(() => isolate?.removeEventListener('change', isolateHandler));
+    const rateScale = document.getElementById('brainRateScale');
+    const rateHandler = () => {
+        state.rateCeilingHz = Number(rateScale.value);
+        setText('brainRateCeiling', `${state.rateCeilingHz}+ Hz`);
+        applyDisplayMode(state);
+        updateSelectionTelemetry(state);
+    };
+    rateScale?.addEventListener('change', rateHandler);
+    state.cleanup.push(() => rateScale?.removeEventListener('change', rateHandler));
+    const clear = document.getElementById('clearBrainSelection');
+    const clearHandler = () => clearSelection(state);
+    clear?.addEventListener('click', clearHandler);
+    state.cleanup.push(() => clear?.removeEventListener('click', clearHandler));
+}
+
+function structureVisible(state, mesh) {
+    const structure = mesh.userData.structure;
+    return (!state.groupFilter || structure.group === state.groupFilter) &&
+        (!state.hemisphereFilter || structure.hemisphere === 'M' || structure.hemisphere === state.hemisphereFilter);
+}
+
+function clearSelection(state) {
+    state.selected = null;
+    document.getElementById('selectionEmpty').hidden = false;
+    document.getElementById('selectionEmpty').style.display = '';
+    document.getElementById('selectionDetails').hidden = true;
+    const clear = document.getElementById('clearBrainSelection');
+    if (clear) clear.hidden = true;
+    syncListSelection(state);
+    applyDisplayMode(state);
 }
 
 function bindPicking(state) {
@@ -763,7 +901,7 @@ function bindPicking(state) {
         state.pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
         state.pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
         state.raycaster.setFromCamera(state.pointer, state.camera);
-        const hit = state.raycaster.intersectObjects(state.structureMeshes, false)[0]?.object ?? null;
+        const hit = state.raycaster.intersectObjects(state.structureMeshes.filter(mesh => mesh.visible && mesh.material.opacity > 0.04), false)[0]?.object ?? null;
         state.hovered = hit;
         canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
@@ -789,7 +927,9 @@ function selectStructureById(state, structureId) {
     if (!candidates?.length) {
         return;
     }
-    const preferred = candidates.find(mesh => mesh.userData.structure.hemisphere === 'L') ?? candidates[0];
+    const visible = candidates.filter(mesh => mesh.visible);
+    const preferred = visible.find(mesh => mesh.userData.structure.hemisphere === 'L') ?? visible[0];
+    if (!preferred) return;
     selectMesh(state, preferred);
 }
 
@@ -800,15 +940,18 @@ function selectMesh(state, mesh) {
     emptySelection.hidden = true;
     emptySelection.style.display = 'none';
     document.getElementById('selectionDetails').hidden = false;
+    const clear = document.getElementById('clearBrainSelection');
+    if (clear) clear.hidden = false;
     document.getElementById('selectionHemisphere').textContent =
         structure.hemisphere === 'M' ? 'Midline structure' : `${structure.hemisphere === 'L' ? 'Left' : 'Right'} hemisphere`;
     document.getElementById('selectionName').textContent = structure.displayName;
     document.getElementById('selectionId').textContent = structure.structureId;
     document.getElementById('selectionModel').textContent = structure.neuronModel;
     document.getElementById('selectionPlasticity').textContent = structure.plasticity;
-    document.getElementById('selectionSource').textContent = structure.source;
+    document.getElementById('selectionSource').textContent = `${structure.source}. ${mesh.userData.geometrySource ?? 'Schematic atlas geometry.'}`;
     updateSelectionTelemetry(state);
     syncListSelection(state);
+    applyDisplayMode(state);
 
     const target = mesh.userData.focusPoint.clone();
     const direction = state.camera.position.clone().sub(state.controls.target).normalize();
@@ -840,16 +983,22 @@ function applyView(state, name) {
 }
 
 function applyDisplayMode(state) {
+    const legend = document.getElementById('brainActivityLegend');
+    if (legend) legend.hidden = state.mode !== 'activity';
     for (const mesh of state.structureMeshes) {
-        const baseOpacity = mesh.userData.baseOpacity;
-        const activity = mesh.userData.activity;
-        mesh.material.opacity = state.mode === 'activity'
-            ? Math.min(0.9, 0.08 + (activity * 0.78))
-            : baseOpacity;
-        mesh.material.emissiveIntensity = state.mode === 'activity'
-            ? 0.12 + (activity * 2.4)
-            : 0.18;
+        const level = firingRateLevel(mesh.userData.meanRateHz, state.rateCeilingHz);
+        mesh.userData.activity = level ?? 0;
+        mesh.material.color.copy(state.mode === 'activity' ? activityColor(level) : mesh.userData.baseColor);
+        mesh.material.emissive.copy(mesh.material.color);
     }
+    animateActivity(state);
+}
+
+const activityPalette = ['#263951', '#3798d4', '#62d4ba', '#f7c65f', '#ff6d50'].map(color => new THREE.Color(color));
+function activityColor(level) {
+    if (level === null) return new THREE.Color('#48505a');
+    const index = Math.min(activityPalette.length - 2, Math.floor(level * (activityPalette.length - 1)));
+    return activityPalette[index].clone().lerp(activityPalette[index + 1], level * (activityPalette.length - 1) - index);
 }
 
 async function pollFrame(state) {
@@ -866,6 +1015,7 @@ async function pollFrame(state) {
             throw new Error(`Telemetry gateway returned HTTP ${response.status}.`);
         }
         const frame = await response.json();
+        if (state.disposed) return;
         state.lastFrameAt = Date.now();
         state.frameFailureCount = 0;
         applyFrame(state, frame);
@@ -890,7 +1040,10 @@ function applyFrame(state, frame) {
     const runtime = value(frame, 'state') ?? {};
     const snapshot = value(frame, 'latestSnapshot') ?? {};
     const structureStates = value(snapshot, 'structureStates') ?? [];
-    const dispatchSpikes = value(frame, 'dispatchSpikes') ?? [];
+    const dispatchSpikes = recentDispatches(value(frame, 'dispatchSpikes'), Date.now());
+    state.lastDispatchTraces = dispatchSpikes;
+    state.snapshotObservation = observeSnapshot(state.snapshotObservation,
+        Number(value(snapshot, 'tick')), Date.now(), Array.isArray(structureStates) && structureStates.length > 0);
     const outputLog = value(frame, 'outputLog') ?? [];
     const dispatchActivity = new Map();
 
@@ -917,7 +1070,8 @@ function applyFrame(state, frame) {
 
     for (const mesh of state.structureMeshes) {
         mesh.userData.activity = 0;
-        mesh.userData.meanRateHz = 0;
+        mesh.userData.meanRateHz = null;
+        mesh.userData.hasTelemetry = false;
         mesh.userData.spikeOut = 0;
         mesh.userData.laminarDiagnostics = null;
     }
@@ -929,39 +1083,21 @@ function applyFrame(state, frame) {
             if (!structureId) {
                 continue;
             }
-            const meanRate = firstNumberValue(structureState, 'meanFiringRateHz', 'meanRateHz');
+            const rawRate = value(structureState, 'meanFiringRateHz') ?? value(structureState, 'meanRateHz');
+            const parsedRate = rawRate === null || rawRate === undefined || rawRate === '' ? null : Number(rawRate);
+            const meanRate = firingRateLevel(parsedRate, state.rateCeilingHz) === null ? null : parsedRate;
             const spikeOut = firstNumberValue(structureState, 'spikeOutCount', 'spikeOut');
-            const spikeIn = firstNumberValue(structureState, 'spikeInCount', 'spikeIn');
-            const activeNeurons = firstNumberValue(structureState, 'activeNeuronCount');
             const laminarDiagnostics = value(structureState, 'corticalLaminarDiagnostics') ?? null;
             const structureKey = normalizeId(structureId);
-            const previous = state.structureCounters.get(structureKey);
-            const spikeDelta = previous
-                ? Math.max(0, spikeOut - previous.spikeOut) + Math.max(0, spikeIn - previous.spikeIn)
-                : 0;
-            state.structureCounters.set(structureKey, { spikeOut, spikeIn });
-            const baselineActivity = Math.min(
-                1,
-                (meanRate / 8) +
-                (activeNeurons / 24) +
-                (Math.min(48, spikeDelta) / 64));
-            for (const mesh of state.meshesByStructure.get(structureKey) ?? []) {
-                const recentDispatches = dispatchActivityForMesh(dispatchActivity, structureKey, mesh);
-                mesh.userData.activity = Math.min(
-                    1,
-                    baselineActivity + (Math.min(12, recentDispatches) / 12));
+            const hemisphere = normalizeHemisphere(value(structureState, 'hemisphere'));
+            for (const mesh of meshesForStructureHemisphere(state, structureKey, hemisphere)) {
+                mesh.userData.hasTelemetry = meanRate !== null;
+                mesh.userData.telemetryScope = hemisphere ? 'Hemisphere sample' : 'Structure aggregate · shared across displayed hemispheres';
+                mesh.userData.recentDispatchCount = dispatchActivityForMesh(dispatchActivity, structureKey, mesh);
                 mesh.userData.meanRateHz = meanRate;
                 mesh.userData.spikeOut = spikeOut;
                 mesh.userData.laminarDiagnostics = laminarDiagnostics;
             }
-        }
-    }
-
-    for (const [dispatchKey, recentDispatches] of dispatchActivity) {
-        const [structureKey, hemisphere] = dispatchKey.split('|');
-        const dispatchLevel = Math.min(1, recentDispatches / 8);
-        for (const mesh of meshesForStructureHemisphere(state, structureKey, hemisphere)) {
-            mesh.userData.activity = Math.max(mesh.userData.activity, dispatchLevel);
         }
     }
 
@@ -976,7 +1112,7 @@ function applyFrame(state, frame) {
     setText('snapshotTick', integerValue(snapshot, 'tick').toLocaleString());
     setText('nonOkServices', countNonOk(runtime).toLocaleString());
     setText('dispatchCount', (Array.isArray(dispatchSpikes) ? dispatchSpikes.length : 0).toLocaleString());
-    setText('telemetryAge', 'live');
+    updateFrameAge(state);
     setText('telemetryLog', formatLog(outputLog));
 }
 
@@ -1008,7 +1144,7 @@ function updatePathways(state, traces) {
     for (const { sourceId, sourceHemisphere, targetId, targetHemisphere } of unique.values()) {
         const source = meshesForStructureHemisphere(state, sourceId, sourceHemisphere)[0];
         const target = meshesForStructureHemisphere(state, targetId, targetHemisphere)[0];
-        if (!source || !target) {
+        if (!source?.visible || !target?.visible) {
             continue;
         }
         const sourcePoint = source.userData.focusPoint;
@@ -1023,25 +1159,19 @@ function updatePathways(state, traces) {
             opacity: 0.3,
             depthWrite: false
         });
-        state.pathwayGroup.add(new THREE.Line(geometry, material));
+        const line = new THREE.Line(geometry, material);
+        line.renderOrder = 4;
+        state.pathwayGroup.add(line);
     }
 }
 
 function updateStructureHealthRows(state) {
+    const fresh = snapshotIsFresh(state.snapshotObservation.receivedAt, Date.now());
     document.querySelectorAll('.structure-row').forEach(row => {
-        const meshes = state.meshesByStructure.get(normalizeId(row.dataset.structureId)) ?? [];
-        const activity = meshes.reduce((maximum, mesh) => Math.max(maximum, mesh.userData.activity), 0);
+        const meshes = (state.meshesByStructure.get(normalizeId(row.dataset.structureId)) ?? []).filter(mesh => mesh.visible && mesh.userData.hasTelemetry);
         const health = row.querySelector('.structure-health');
-        if (activity > 0.45) {
-            health.textContent = 'active';
-            health.style.color = '#8fddcf';
-        } else if (activity > 0.05) {
-            health.textContent = 'signal';
-            health.style.color = '#e3b35a';
-        } else {
-            health.textContent = 'quiet';
-            health.style.color = '';
-        }
+        health.textContent = !meshes.length ? 'no sample' : !fresh ? 'stale' : `${Math.max(...meshes.map(mesh => mesh.userData.meanRateHz)).toFixed(1)} Hz`;
+        health.style.color = meshes.length && fresh ? '#8fddcf' : '';
     });
 }
 
@@ -1049,10 +1179,14 @@ function updateSelectionTelemetry(state) {
     if (!state.selected) {
         return;
     }
-    setText('selectionRate', `${state.selected.userData.meanRateHz.toFixed(2)} Hz`);
-    setText('selectionSpikes', Math.round(state.selected.userData.spikeOut).toLocaleString());
+    const data = state.selected.userData;
+    const fresh = snapshotIsFresh(state.snapshotObservation.receivedAt, Date.now());
+    setText('selectionRate', data.hasTelemetry ? `${data.meanRateHz.toFixed(2)} Hz${fresh ? '' : ' (last)'}` : 'No sample');
+    setText('selectionSpikes', data.hasTelemetry ? Math.round(data.spikeOut).toLocaleString() : 'No sample');
+    setText('selectionTelemetryScope', !data.hasTelemetry ? 'No telemetry for this structure.' :
+        `${data.telemetryScope}. ${fresh ? 'Current snapshot.' : 'Snapshot stale; activity dimmed.'}`);
     document.getElementById('selectionActivity').style.width =
-        `${Math.round(state.selected.userData.activity * 100)}%`;
+        `${fresh ? Math.round(data.activity * 100) : 0}%`;
     updateLaminarTelemetry(state.selected.userData.laminarDiagnostics);
 }
 
@@ -1093,20 +1227,45 @@ function updateLaminarTelemetry(diagnostics) {
 }
 
 function animateActivity(state) {
-    const now = performance.now() * 0.004;
+    const fresh = snapshotIsFresh(state.snapshotObservation.receivedAt, Date.now());
+    state.pathwayGroup.visible = state.showPathways && fresh;
     for (const mesh of state.structureMeshes) {
         const selected = mesh === state.selected;
         const hovered = mesh === state.hovered;
-        const activity = mesh.userData.activity;
-        const pulse = activity > 0.02 ? 1 + (Math.sin(now + mesh.id) * activity * 0.045) : 1;
-        const emphasis = selected ? 1.18 : hovered ? 1.08 : 1;
-        const geometryEmphasis = mesh.userData.isCortical ? 1 : pulse * emphasis;
-        mesh.scale.copy(mesh.userData.baseScale).multiplyScalar(geometryEmphasis);
-        mesh.material.emissiveIntensity +=
-            ((selected ? 1.6 : state.mode === 'activity' ? 0.12 + (activity * 2.4) : 0.18) -
-                mesh.material.emissiveIntensity) * 0.12;
-        mesh.userData.renderPulse = pulse * emphasis;
+        const activity = fresh && mesh.userData.hasTelemetry ? mesh.userData.activity : 0;
+        // Nucleus size represents atlas geometry, not firing rate or selection.
+        mesh.scale.copy(mesh.userData.baseScale);
+        const dimmed = state.isolateSelection && state.selected && !selected;
+        const opacity = dimmed ? 0.025 : selected ? 0.95 : hovered ? 0.7 :
+            state.mode === 'activity' ? 0.12 + activity * 0.64 : mesh.userData.baseOpacity;
+        mesh.material.opacity = Math.min(1, opacity * (mesh.userData.isImportedCortex ? state.shellOpacity / 0.24 : 1));
+        mesh.material.emissiveIntensity = dimmed ? 0 : selected ? 0.45 :
+            state.mode === 'activity' ? activity * 0.7 : 0.05;
+        if (state.mode === 'activity') {
+            mesh.material.color.copy(activityColor(fresh ? firingRateLevel(mesh.userData.meanRateHz, state.rateCeilingHz) : null));
+            mesh.material.emissive.copy(mesh.material.color);
+        }
     }
+}
+
+function updateSelectionLabel(state) {
+    const label = document.getElementById('brainSelectionLabel');
+    if (!label) return;
+    const mesh = state.selected ?? state.hovered;
+    label.hidden = !mesh?.visible;
+    if (label.hidden) return;
+    const point = mesh.userData.focusPoint.clone().project(state.camera);
+    if (point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1) {
+        label.hidden = true;
+        return;
+    }
+    const structure = mesh.userData.structure;
+    const side = structure.hemisphere === 'M' ? 'Midline' : structure.hemisphere === 'L' ? 'Left' : 'Right';
+    const sample = mesh.userData.hasTelemetry ? `${mesh.userData.meanRateHz.toFixed(1)} Hz` : 'no sample';
+    const suffix = mesh.userData.hasTelemetry && !snapshotIsFresh(state.snapshotObservation.receivedAt, Date.now()) ? ' · stale' : '';
+    label.textContent = `${side} ${structure.displayName} · ${sample}${suffix}`;
+    label.style.left = `${Math.max(8, Math.min(state.host.clientWidth - label.offsetWidth - 8, (point.x + 1) * state.host.clientWidth / 2 + 12))}px`;
+    label.style.top = `${Math.max(72, Math.min(state.host.clientHeight - label.offsetHeight - 8, (1 - point.y) * state.host.clientHeight / 2 - 30))}px`;
 }
 
 function setRuntimeState(frame, stateName) {
@@ -1135,11 +1294,17 @@ function setRuntimeDelayed(message, ageMs) {
 }
 
 function updateFrameAge(state) {
-    if (!state.lastFrameAt) {
-        return;
-    }
-    const seconds = Math.max(0, Math.round((Date.now() - state.lastFrameAt) / 1000));
-    setText('telemetryAge', seconds < 2 ? 'live' : `${seconds}s ago`);
+    const receivedAt = state.snapshotObservation.receivedAt;
+    const fresh = snapshotIsFresh(receivedAt, Date.now());
+    const seconds = receivedAt === null ? null : Math.max(0, Math.round((Date.now() - receivedAt) / 1000));
+    const status = seconds === null ? 'Awaiting snapshot' : fresh ? 'Current snapshot' : `Snapshot stale · ${seconds}s`;
+    setText('telemetryAge', status);
+    const sampled = state.structureMeshes.filter(mesh => mesh.visible && mesh.userData.hasTelemetry);
+    const clipped = sampled.filter(mesh => mesh.userData.meanRateHz >= state.rateCeilingHz).length;
+    setText('brainActivityStatus', `${status} · ${sampled.length} sampled regions${clipped ? ` · ${clipped} at scale limit` : ''}`);
+    document.getElementById('brainActivityLegend')?.classList.toggle('stale', !fresh);
+    updateSelectionTelemetry(state);
+    updateStructureHealthRows(state);
 }
 
 function resize(state) {
@@ -1252,7 +1417,7 @@ function meshesForStructureHemisphere(state, structureId, hemisphere) {
     }
     const matching = meshes.filter(mesh =>
         normalizeHemisphere(mesh.userData.structure.hemisphere) === normalizedHemisphere);
-    return matching.length > 0 ? matching : meshes;
+    return matching;
 }
 
 function dispatchActivityForMesh(activity, structureId, mesh) {

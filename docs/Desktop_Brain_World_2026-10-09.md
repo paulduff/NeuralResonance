@@ -1,5 +1,7 @@
 # First desktop brain–body–world run — 9 October 2026
 
+The completed baseline assessment is in [Desktop_Brain_World_Results_2026-10-09.md](Desktop_Brain_World_Results_2026-10-09.md). The command completed, but the measured run did not pass the continuous brain-frame freshness check.
+
 The next runtime experiment is DNNE plus the authoritative headless WorldSim hosted by the Blazor editor on this desktop. It establishes the actual machine capacity before moving nuclei to the cluster. The WPF simulators are mutually exclusive diagnostics; do not run them alongside the authoritative world.
 
 The authoritative editor starts WorldSim paused. DNNE can initialise and the editor can display the environment, but world time, body metabolism and environmental sensory sampling wait for the operator to press **Play / Resume**. `HeadlessWorldOptions.StartPaused` controls this initial state; the editor explicitly enables it. Repeated calls to the runtime's `Start` method do not resume a paused world. Automated standalone fixtures retain their existing running default unless they request paused startup.

@@ -23,7 +23,8 @@ public readonly record struct AvatarPhysicalContactExposure(
     double ImpulseNewtonSeconds,
     double ContactAreaSquareMillimeters,
     double ContinuousSeconds,
-    double SampleSeconds);
+    double SampleSeconds,
+    double ImpactImpulseNewtonSeconds);
 
 public readonly record struct AvatarPhysicalContactDamageAssessment(
     AvatarPhysiologyState State,
@@ -204,7 +205,8 @@ public static class AvatarWorldDynamics
             !double.IsFinite(exposure.ImpulseNewtonSeconds) || exposure.ImpulseNewtonSeconds < 0.0 ||
             !double.IsFinite(exposure.ContactAreaSquareMillimeters) || exposure.ContactAreaSquareMillimeters < 0.0 ||
             !double.IsFinite(exposure.ContinuousSeconds) || exposure.ContinuousSeconds < 0.0 ||
-            !double.IsFinite(exposure.SampleSeconds) || exposure.SampleSeconds < 0.0)
+            !double.IsFinite(exposure.SampleSeconds) || exposure.SampleSeconds < 0.0 ||
+            !double.IsFinite(exposure.ImpactImpulseNewtonSeconds) || exposure.ImpactImpulseNewtonSeconds < 0.0)
         {
             throw new ArgumentOutOfRangeException(nameof(exposure));
         }
@@ -213,7 +215,11 @@ public static class AvatarWorldDynamics
         var plantar =
             region.StartsWith("left_foot", StringComparison.Ordinal) ||
             region.StartsWith("right_foot", StringComparison.Ordinal);
-        var firstContactSample = exposure.ContinuousSeconds <= Math.Max(0.15, exposure.SampleSeconds * 2.5);
+        // Support force integrated over a sensory frame is not impact momentum.
+        // Count an initial collision once, rather than on every sample of its
+        // first 150 ms. Sustained contact still has its pressure consequences.
+        var firstContactSample = exposure.SampleSeconds > 0.0 &&
+            exposure.ContinuousSeconds <= exposure.SampleSeconds + 0.000001;
         var impactThreshold = region.Contains("head", StringComparison.Ordinal)
             ? 8.0
             : plantar
@@ -223,7 +229,7 @@ public static class AvatarWorldDynamics
                     ? 14.0
                     : 11.0;
         var impactExcess = firstContactSample
-            ? Math.Max(0.0, exposure.ImpulseNewtonSeconds - impactThreshold)
+            ? Math.Max(0.0, exposure.ImpactImpulseNewtonSeconds - impactThreshold)
             : 0.0;
         var impactDamage = Math.Min(
             0.025,

@@ -27,7 +27,8 @@ public readonly record struct AvatarPhysicsContact(
     float PenetrationMeters,
     float TangentialSpeedMetersPerSecond,
     float ContactAreaSquareMillimeters,
-    string InputSource);
+    string InputSource,
+    float ImpactImpulseNewtonSeconds);
 
 public sealed record AvatarPhysicsResolution(
     Vector3 RootPosition,
@@ -400,10 +401,17 @@ public sealed class WorldPhysicsScene : IDisposable
             var contactVelocity = acceptedLinearVelocity + Vector3.Cross(
                 acceptedAngularVelocity,
                 hitLocation - resolvedPose.Position);
-            var normalSpeed = MathF.Max(0f, -Vector3.Dot(contactVelocity, hit.Normal));
+            var proposedContactVelocity = hit.LinearVelocity + Vector3.Cross(
+                hit.AngularVelocity,
+                hitLocation - hit.ProposedPose.Position);
+            // The sweep removes incoming normal momentum. Muscle holding force
+            // contributes to contact load, but must not become impact injury.
+            var removedNormalSpeed = MathF.Max(
+                0f, -Vector3.Dot(proposedContactVelocity - contactVelocity, hit.Normal));
+            var impactImpulse = hit.Proposed.EffectiveMassKilograms * removedNormalSpeed;
             var tangentialVelocity = contactVelocity - (Vector3.Dot(contactVelocity, hit.Normal) * hit.Normal);
             var muscleForce = ResolveMuscleEffort(forceFrame.Musculoskeletal, hit.Proposed.Chain);
-            var impactForce = hit.Proposed.EffectiveMassKilograms * normalSpeed / dt;
+            var impactForce = impactImpulse / dt;
             var force = Math.Clamp(8f + impactForce + (muscleForce * 0.42f), 0f, 5_000f);
             var sector = ContactNormalSector(localNormal);
 
@@ -417,7 +425,8 @@ public sealed class WorldPhysicsScene : IDisposable
                 ContactSkinMeters * 0.20f,
                 tangentialVelocity.Length(),
                 hit.Proposed.ContactAreaSquareMillimeters,
-                $"avatar_world_{hit.Proposed.Region}_contact_{sector}"));
+                $"avatar_world_{hit.Proposed.Region}_contact_{sector}",
+                impactImpulse));
         }
 
         return contacts;
@@ -446,6 +455,7 @@ public sealed class WorldPhysicsScene : IDisposable
                     BodyNormal = normal,
                     ForceNewtons = samples.Max(static contact => contact.ForceNewtons),
                     ImpulseNewtonSeconds = samples.Max(static contact => contact.ImpulseNewtonSeconds),
+                    ImpactImpulseNewtonSeconds = samples.Max(static contact => contact.ImpactImpulseNewtonSeconds),
                     PenetrationMeters = samples.Max(static contact => contact.PenetrationMeters),
                     TangentialSpeedMetersPerSecond = samples.Max(
                         static contact => contact.TangentialSpeedMetersPerSecond),

@@ -18,6 +18,8 @@ public sealed class SolutionManifestTests
 
         var projects = Directory
             .EnumerateFiles(root.FullName, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.StartsWith(Path.Combine(root.FullName, "artifacts") +
+                Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
             .ToArray();

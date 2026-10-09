@@ -7,6 +7,55 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class HeadlessWorldRuntimeTests
 {
     [Fact]
+    public async Task HardLandingDamagesTissueButStationaryGroundSupportDoesNot()
+    {
+        await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
+            new Uri("http://127.0.0.1:1"), StartPaused: true, MotorTrainingMode: true));
+        // Prepare a physical drop without starting neural or wall-clock loops.
+        // Private state is used only to arrange an otherwise unreachable fall
+        // from the flat spawn point; production action authority is untouched.
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var type = typeof(HeadlessWorldRuntime);
+        var body = (AvatarArticulatedBody)type.GetField("articulatedBody", flags)!.GetValue(runtime)!;
+        body.Advance(0.025, 0.0, 0.0, 0.0, 0.0, 0.0, true, false);
+        var before = runtime.GetSnapshot().TissueIntegrityFraction;
+        void RefreshAndDamage()
+        {
+            type.GetMethod("RefreshBodyContactsCore", flags)!.Invoke(runtime, [null, 25.0]);
+            type.GetMethod("ApplyPhysicalContactDamageCore", flags)!.Invoke(runtime, [0.025]);
+        }
+        RefreshAndDamage();
+        Assert.Equal(before, runtime.GetSnapshot().TissueIntegrityFraction);
+
+        ((Dictionary<string, double>)type.GetField("contactDurationMilliseconds", flags)!
+            .GetValue(runtime)!).Clear();
+        var avatarY = (double)type.GetField("avatarY", flags)!.GetValue(runtime)!;
+        type.GetField("avatarY", flags)!.SetValue(runtime, avatarY + 0.01);
+        type.GetField("avatarVerticalVelocity", flags)!.SetValue(runtime, -8.0);
+        type.GetField("avatarGrounded", flags)!.SetValue(runtime, false);
+        body.Advance(0.025, 0.0, 0.0, 0.0, 0.0, 0.0, false, false);
+        type.GetMethod("ApplyVerticalPhysicsCore", flags)!.Invoke(runtime, [0.025]);
+        RefreshAndDamage();
+        Assert.True(runtime.GetSnapshot().AvatarGrounded);
+        Assert.Equal(before, runtime.GetSnapshot().TissueIntegrityFraction);
+        // Body feedback is one physics step behind the root's touchdown.
+        body.Advance(0.025, 0.0, 0.0, 0.0, 0.0, 0.0, true, false);
+        RefreshAndDamage();
+        var landed = runtime.GetSnapshot();
+        Assert.True(landed.AvatarGrounded);
+        Assert.True(landed.TissueIntegrityFraction < before);
+        RefreshAndDamage();
+        Assert.Equal(landed.TissueIntegrityFraction, runtime.GetSnapshot().TissueIntegrityFraction);
+
+        runtime.Reset();
+        body.Advance(0.025, 0.0, 0.0, 0.0, 0.0, 0.0, true, false);
+        var reset = runtime.GetSnapshot().TissueIntegrityFraction;
+        RefreshAndDamage();
+        Assert.Equal(reset, runtime.GetSnapshot().TissueIntegrityFraction);
+    }
+
+    [Fact]
     public void FallbackContactImpulseUsesOnlyTheCurrentBodyFrame()
     {
         var impulse = HeadlessWorldRuntime.CalculateFrameImpulseNewtonSeconds(

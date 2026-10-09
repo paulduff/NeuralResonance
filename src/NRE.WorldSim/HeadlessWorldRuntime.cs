@@ -17,6 +17,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private const double WorldMaximumForwardSpeed = 1.8;
     private const double WorldMaximumReverseSpeed = 0.65;
     private const double GravityMetersPerSecondSquared = 9.81;
+    private const double NominalAvatarMassKilograms = 720.0 / GravityMetersPerSecondSquared;
     private const double TerminalVelocityMetersPerSecond = 24.0;
     private const double AvatarFootClearance = 0.03;
     private const double HandTargetContactRadiusMeters = 0.24;
@@ -108,6 +109,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     private double avatarZ;
     private double avatarHeadingDegrees = 180.0;
     private double avatarVerticalVelocity;
+    private double landingImpactImpulseNewtonSeconds;
     private bool avatarGrounded = true;
     private double distanceTravelled;
     private AvatarPhysiologyState physiology;
@@ -1316,7 +1318,10 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         => first
             .Concat(second)
             .GroupBy(static contact => contact.InputSource, StringComparer.Ordinal)
-            .Select(static group => group.OrderByDescending(static contact => contact.ForceNewtons).First())
+            .Select(static group => group.OrderByDescending(static contact => contact.ForceNewtons).First() with
+            {
+                ImpactImpulseNewtonSeconds = group.Max(static contact => contact.ImpactImpulseNewtonSeconds)
+            })
             .ToList();
 
     private void ApplyVerticalPhysicsCore(double dt)
@@ -1348,6 +1353,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         }
 
         var impactSpeed = Math.Abs(avatarVerticalVelocity);
+        landingImpactImpulseNewtonSeconds = NominalAvatarMassKilograms * impactSpeed;
         avatarY = supportY;
         avatarVerticalVelocity = 0.0;
         avatarGrounded = true;
@@ -1371,7 +1377,9 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         var activeSources = new HashSet<string>(StringComparer.Ordinal);
         if (avatarGrounded)
         {
-            foreach (var contact in articulatedBody.CaptureGroundContacts())
+            var groundContacts = articulatedBody.CaptureGroundContacts();
+            var totalGroundLoad = groundContacts.Sum(static contact => contact.LoadNewtons);
+            foreach (var contact in groundContacts)
             {
                 AddGroundContact(
                     contact.Region,
@@ -1381,7 +1389,17 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     contact.LoadNewtons,
                     contact.AreaSquareMillimeters,
                     elapsedMilliseconds,
-                    activeSources);
+                    activeSources,
+                    totalGroundLoad > 0.0
+                        ? landingImpactImpulseNewtonSeconds * contact.LoadNewtons / totalGroundLoad
+                        : 0.0);
+            }
+            // On the touchdown tick the muscle plant still reflects the prior
+            // airborne state. Retain the landing momentum until its measured
+            // ground contacts become available, then consume it exactly once.
+            if (totalGroundLoad > 0.0)
+            {
+                landingImpactImpulseNewtonSeconds = 0.0;
             }
         }
 
@@ -1407,7 +1425,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     collision.TangentialSpeedMetersPerSecond,
                     collision.ContactAreaSquareMillimeters,
                     duration,
-                    collision.InputSource));
+                    collision.InputSource,
+                    collision.ImpactImpulseNewtonSeconds));
             }
         }
 
@@ -1425,7 +1444,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         double forceNewtons,
         double areaSquareMillimeters,
         double elapsedMilliseconds,
-        HashSet<string> activeSources)
+        HashSet<string> activeSources,
+        double impactImpulseNewtonSeconds)
     {
         if (forceNewtons < 0.5)
         {
@@ -1442,13 +1462,14 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             0.0,
             1.0,
             0.0,
-            forceNewtons,
-            forceNewtons * options.EffectiveBodyFrameInterval.TotalSeconds,
+            forceNewtons + impactImpulseNewtonSeconds / Math.Max(0.001, elapsedMilliseconds / 1_000.0),
+            (forceNewtons * options.EffectiveBodyFrameInterval.TotalSeconds) + impactImpulseNewtonSeconds,
             0.0012,
             Math.Abs(lastForwardSpeed),
             areaSquareMillimeters,
             duration,
-            source));
+            source,
+            impactImpulseNewtonSeconds));
     }
 
     private void ApplyPhysicalContactDamageCore(double elapsedSecondsForSample)
@@ -1463,7 +1484,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
                     contact.ImpulseNewtonSeconds,
                     contact.ContactAreaSquareMillimeters,
                     contact.DurationMilliseconds / 1_000.0,
-                    elapsedSecondsForSample));
+                    elapsedSecondsForSample,
+                    contact.ImpactImpulseNewtonSeconds));
             physiology = assessment.State;
             if (assessment.DamageFraction <= 0.0)
             {
@@ -2043,6 +2065,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         avatarZ = 6.0;
         avatarY = terrain.SurfaceAt(avatarX, avatarZ) + AvatarFootClearance;
         avatarVerticalVelocity = 0.0;
+        landingImpactImpulseNewtonSeconds = 0.0;
         avatarGrounded = true;
         avatarHeadingDegrees = 180.0;
         physiology = AvatarWorldDynamics.CreateRespawnState(PhysiologyOptions);
@@ -2118,6 +2141,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         avatarZ = 6.0;
         avatarY = terrain.SurfaceAt(avatarX, avatarZ) + AvatarFootClearance;
         avatarVerticalVelocity = 0.0;
+        landingImpactImpulseNewtonSeconds = 0.0;
         avatarGrounded = true;
         avatarHeadingDegrees = 180.0;
         physiology = AvatarWorldDynamics.CreateRespawnState(PhysiologyOptions);
@@ -2522,7 +2546,8 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         double TangentialSpeedMetersPerSecond,
         double ContactAreaSquareMillimeters,
         double DurationMilliseconds,
-        string InputSource);
+        string InputSource,
+        double ImpactImpulseNewtonSeconds);
 
     private sealed class Mulberry32(uint state)
     {

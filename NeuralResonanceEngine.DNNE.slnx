@@ -379,6 +379,9 @@
   <Folder Name="/Structures/FastigialNucleus/">
     <Project Path="Structures/FastigialNucleus/NeuralResonanceEngine.Structures.FastigialNucleus.csproj" />
   </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="tools/AvatarMechanicsProbe/AvatarMechanicsProbe.csproj" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj" />
   </Folder>

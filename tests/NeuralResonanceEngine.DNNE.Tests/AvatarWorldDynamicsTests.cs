@@ -83,7 +83,7 @@ public sealed class AvatarWorldDynamicsTests
         var supported = AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                region, 420.0, 18.0, 7_500.0, 600.0, 0.02));
+                region, 420.0, 18.0, 7_500.0, 600.0, 0.02, ImpactImpulseNewtonSeconds: 0.0));
 
         Assert.Equal(0.0, supported.DamageFraction);
         Assert.Equal(initial, supported.State);
@@ -98,7 +98,7 @@ public sealed class AvatarWorldDynamicsTests
         var struck = AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                "right_foot_heel_lateral", 2_400.0, 80.0, 1_500.0, 0.02, 0.02));
+                "right_foot_heel_lateral", 2_400.0, 80.0, 1_500.0, 0.02, 0.02, ImpactImpulseNewtonSeconds: 80.0));
 
         Assert.True(struck.ImpactEvent);
         Assert.True(struck.ImpactDamageFraction > 0.0);
@@ -113,7 +113,7 @@ public sealed class AvatarWorldDynamicsTests
         var struck = AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                "left_forearm", 2_400.0, 70.0, 1_100.0, 0.02, 0.02));
+                "left_forearm", 2_400.0, 70.0, 1_100.0, 0.02, 0.02, ImpactImpulseNewtonSeconds: 70.0));
 
         Assert.InRange(struck.ImpactDamageFraction, 0.005, 0.02);
         Assert.Equal(struck.ImpactDamageFraction, struck.DamageFraction, precision: 10);
@@ -128,11 +128,11 @@ public sealed class AvatarWorldDynamicsTests
         var early = AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                "right_hand", 300.0, 2.0, 1_200.0, 7.0, 0.02));
+                "right_hand", 300.0, 2.0, 1_200.0, 7.0, 0.02, ImpactImpulseNewtonSeconds: 0.0));
         var sustained = AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                "right_hand", 300.0, 2.0, 1_200.0, 35.0, 0.02));
+                "right_hand", 300.0, 2.0, 1_200.0, 35.0, 0.02, ImpactImpulseNewtonSeconds: 0.0));
 
         Assert.Equal(0.0, early.DamageFraction);
         Assert.InRange(sustained.SustainedPressureDamageFraction, 0.0, 0.00001);
@@ -148,7 +148,55 @@ public sealed class AvatarWorldDynamicsTests
         Assert.Throws<ArgumentOutOfRangeException>(() => AvatarWorldDynamics.ApplyPhysicalContact(
             initial,
             new AvatarPhysicalContactExposure(
-                "left_hand", double.NaN, 0.0, 1_000.0, 1.0, 0.02)));
+                "left_hand", double.NaN, 0.0, 1_000.0, 1.0, 0.02, ImpactImpulseNewtonSeconds: 0.0)));
+    }
+
+    [Theory]
+    [InlineData(0.02)]
+    [InlineData(0.05)]
+    [InlineData(0.10)]
+    public void NewlyPlantedSingleFootSupportIsNotAnImpact(double sensoryFrameSeconds)
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+        var exposure = new AvatarPhysicalContactExposure(
+            "right_foot", 720.0, 720.0 * sensoryFrameSeconds, 7_500.0,
+            0.033, 0.033, ImpactImpulseNewtonSeconds: 0.0);
+
+        var result = AvatarWorldDynamics.ApplyPhysicalContact(initial, exposure);
+
+        Assert.Equal(initial, result.State);
+        Assert.False(result.ImpactEvent);
+    }
+
+    [Theory]
+    [InlineData(0.02)]
+    [InlineData(0.05)]
+    [InlineData(0.10)]
+    public void InjuryUsesImpactMomentumAndCountsInitialContactOnlyOnce(double sampleSeconds)
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+        var exposure = new AvatarPhysicalContactExposure(
+            "left_forearm", 2_400.0, 2_400.0 * sampleSeconds, 1_100.0,
+            sampleSeconds, sampleSeconds, ImpactImpulseNewtonSeconds: 70.0);
+
+        var first = AvatarWorldDynamics.ApplyPhysicalContact(initial, exposure);
+        var continued = AvatarWorldDynamics.ApplyPhysicalContact(
+            first.State, exposure with { ContinuousSeconds = sampleSeconds * 2.0 });
+        var expected = Math.Pow((70.0 - 11.0) / 90.0, 1.20) * 0.012;
+
+        Assert.Equal(expected, first.ImpactDamageFraction, precision: 10);
+        Assert.Equal(first.State, continued.State);
+        Assert.False(continued.ImpactEvent);
+    }
+
+    [Fact]
+    public void InvalidImpactMomentumIsRejected()
+    {
+        var initial = new AvatarPhysiologyState(8_000_000.0, 1.0, 1.0);
+        Assert.Throws<ArgumentOutOfRangeException>(() => AvatarWorldDynamics.ApplyPhysicalContact(
+            initial, new AvatarPhysicalContactExposure(
+                "left_hand", 300.0, 15.0, 1_000.0, 0.05, 0.05,
+                ImpactImpulseNewtonSeconds: double.NaN)));
     }
 
     [Fact]

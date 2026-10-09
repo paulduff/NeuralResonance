@@ -374,6 +374,11 @@ public sealed class WorldPhysicsSceneTests
         Assert.NotEmpty(high.Contacts);
         Assert.True(high.Contacts.Max(contact => contact.ForceNewtons) >
                     low.Contacts.Max(contact => contact.ForceNewtons) + 300f);
+        // Identical incoming motion has identical impact momentum despite the
+        // greater holding force. Contact receptors still receive that force.
+        Assert.Equal(low.Contacts.Max(contact => contact.ImpactImpulseNewtonSeconds),
+            high.Contacts.Max(contact => contact.ImpactImpulseNewtonSeconds), 4);
+        Assert.True(low.Contacts.Max(contact => contact.ImpactImpulseNewtonSeconds) > 0f);
     }
 
     private static WorldPhysicsScene CreateWallScene(Vector3 center, Vector3 size) =>

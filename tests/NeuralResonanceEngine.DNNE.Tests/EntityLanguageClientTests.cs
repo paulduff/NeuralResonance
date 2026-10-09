@@ -38,10 +38,30 @@ public sealed class EntityLanguageClientTests
         Assert.Contains("\"checkpointPath\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"message\":\"verified DNNE context\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"tokens\":80", handler.RequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"computeBackend\":\"Auto\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"dyadGrounding\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.Contains("\"perceptPopulation\"", handler.RequestBody, StringComparison.Ordinal);
         Assert.DoesNotContain("\"sourceId\"", handler.RequestBody, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("\"evidence\"", handler.RequestBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Reports_Own_State_Conditioning_Without_Changing_Candidate_Text()
+    {
+        const string text = "The supplied report has high uncertainty.";
+        var handler = new StubHttpMessageHandler(_ => JsonResponse("""
+            {"response":"The supplied report has high uncertainty.","architecture":"Transformer","tokenizer":"Bpe",
+             "dyadStateConditioningApplied":true,"dyadStateFeatureSchema":"dyad.numeric-grounding-features.v1",
+             "architectureRevision":"entity-dyad-voice-v1"}
+            """));
+        var options = CreateOptions(true) with { ComputeBackend = "Cuda" };
+        using var httpClient = new HttpClient(handler) { BaseAddress = options.ApiBaseUri };
+        var result = await new EntityLanguageClient(httpClient, options).GenerateAsync(CreatePrompt(), CancellationToken.None);
+        Assert.True(result.IsAvailable);
+        Assert.Equal(text, result.CandidateText);
+        Assert.Contains("revision=entity-dyad-voice-v1", result.EntityVersion);
+        Assert.Contains("state=dyad.numeric-grounding-features.v1", result.EntityConfiguration);
+        Assert.Contains("\"computeBackend\":\"Cuda\"", handler.RequestBody);
     }
 
     [Fact]

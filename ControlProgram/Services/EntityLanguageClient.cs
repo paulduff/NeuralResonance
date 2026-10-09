@@ -25,6 +25,7 @@ internal sealed record EntityLanguageBridgeOptions(
     public string? DyadAdapterPath { get; init; }
 
     public float DyadAdapterStrength { get; init; } = 0.35f;
+    public string ComputeBackend { get; init; } = "Auto";
 
     public bool CanGenerate => Enabled && !string.IsNullOrWhiteSpace(CheckpointPath);
 
@@ -60,7 +61,8 @@ internal sealed record EntityLanguageBridgeOptions(
         {
             ApiKey = NormalizeOptional(configuration["NRE_ENTITY_API_KEY"]),
             DyadAdapterPath = NormalizeOptional(configuration["NRE_ENTITY_DYAD_ADAPTER_PATH"]),
-            DyadAdapterStrength = ReadFloat(configuration, "NRE_ENTITY_DYAD_ADAPTER_STRENGTH", 0.35f, 0f, 1f)
+            DyadAdapterStrength = ReadFloat(configuration, "NRE_ENTITY_DYAD_ADAPTER_STRENGTH", 0.35f, 0f, 1f),
+            ComputeBackend = ReadComputeBackend(configuration["NRE_ENTITY_COMPUTE_BACKEND"])
         };
     }
 
@@ -74,6 +76,9 @@ internal sealed record EntityLanguageBridgeOptions(
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string ReadComputeBackend(string? value)
+        => new[] { "Auto", "Cpu", "Cuda" }.FirstOrDefault(name => name.Equals(value?.Trim(), StringComparison.OrdinalIgnoreCase)) ?? "Auto";
 }
 
 internal sealed record EntityLanguageCandidateResult(
@@ -119,7 +124,8 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
                     KnowledgePath: _options.KnowledgePath,
                     DyadGrounding: ToApiGrounding(prompt.Grounding),
                     DyadAdapterPath: _options.DyadAdapterPath,
-                    DyadAdapterStrength: _options.DyadAdapterStrength))
+                    DyadAdapterStrength: _options.DyadAdapterStrength,
+                    ComputeBackend: _options.ComputeBackend))
             };
             if (!string.IsNullOrWhiteSpace(_options.ApiKey))
             {
@@ -148,10 +154,12 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
                 .ToArray();
             var checkpointName = Path.GetFileName(_options.CheckpointPath);
             var version = $"{checkpointName}; architecture={NormalizeValue(payload.Architecture, "unknown")}; tokenizer={NormalizeValue(payload.Tokenizer, "unknown")}";
+            if (!string.IsNullOrWhiteSpace(payload.ArchitectureRevision)) version += $"; revision={payload.ArchitectureRevision}";
             var adapterStatus = payload.DyadAdapterApplied == true
                 ? $"{NormalizeValue(payload.DyadAdapterProtocol, "unknown")}@{_options.DyadAdapterStrength:0.00}"
                 : "inactive";
-            var configuration = $"tokens={_options.Tokens};temperature={_options.Temperature:0.00};topK={_options.TopK};seed={_options.Seed};adapter={adapterStatus}";
+            var stateStatus = payload.DyadStateConditioningApplied == true ? NormalizeValue(payload.DyadStateFeatureSchema, "unknown") : "inactive";
+            var configuration = $"tokens={_options.Tokens};temperature={_options.Temperature:0.00};topK={_options.TopK};seed={_options.Seed};adapter={adapterStatus};state={stateStatus};backend={_options.ComputeBackend}";
             return new EntityLanguageCandidateResult(
                 true,
                 "Entity candidate generated through the hosted chat API.",
@@ -227,6 +235,7 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
         EntityChatDyadGrounding? DyadGrounding,
         string? DyadAdapterPath,
         float DyadAdapterStrength,
+        string ComputeBackend = "Auto",
         IReadOnlyList<EntityChatTurn>? History = null,
         int ShortMemoryCharacters = 0,
         string? MemoryPath = null,
@@ -241,7 +250,10 @@ internal sealed class EntityLanguageClient(HttpClient httpClient, EntityLanguage
         bool? DyadAdapterApplied,
         string? DyadAdapterProtocol,
         IReadOnlyList<EntityChatSource>? HistoricalSources,
-        IReadOnlyList<EntityChatSource>? KnowledgeSources);
+        IReadOnlyList<EntityChatSource>? KnowledgeSources,
+        bool? DyadStateConditioningApplied = null,
+        string? DyadStateFeatureSchema = null,
+        string? ArchitectureRevision = null);
 
     private sealed record EntityChatSource(string? SourceId, string? Title, string? StableUrl);
 

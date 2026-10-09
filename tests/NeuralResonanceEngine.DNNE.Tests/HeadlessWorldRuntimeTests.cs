@@ -261,6 +261,51 @@ public sealed class HeadlessWorldRuntimeTests
     }
 
     [Fact]
+    public async Task PausedStartupWaitsForExplicitResumeAndRepeatedStartDoesNotResume()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dnne-world-paused-start-tests", Guid.NewGuid().ToString("N"));
+        await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(
+            new Uri("http://127.0.0.1:1"),
+            SimulationInterval: TimeSpan.FromMilliseconds(10),
+            FramePollInterval: TimeSpan.FromSeconds(1),
+            BodyFrameInterval: TimeSpan.FromSeconds(1),
+            VisionFrameInterval: TimeSpan.FromSeconds(1),
+            AudioFrameInterval: TimeSpan.FromSeconds(1),
+            ReportDirectory: directory,
+            StartPaused: true));
+
+        var initial = runtime.GetSnapshot();
+        Assert.False(initial.Running);
+        runtime.Start();
+        runtime.Start();
+        await Task.Delay(70);
+        var paused = runtime.GetSnapshot();
+        Assert.True(runtime.IsStarted);
+        Assert.False(paused.Running);
+        Assert.Equal(0, paused.WorldTick);
+        Assert.Equal(0, paused.ElapsedSeconds);
+        Assert.Equal(initial.StoredEnergyJoules, paused.StoredEnergyJoules);
+        Assert.Equal(initial.HydrationFraction, paused.HydrationFraction);
+        Assert.Equal(0, paused.PhysicalBodyFramesAccepted);
+        Assert.Equal(0, paused.RetinalFramesAccepted);
+
+        runtime.Resume();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(2);
+        while (runtime.GetSnapshot().WorldTick == 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+        Assert.True(runtime.GetSnapshot().WorldTick > 0);
+
+        runtime.Pause();
+        var tick = runtime.GetSnapshot().WorldTick;
+        runtime.Start();
+        await Task.Delay(50);
+        Assert.False(runtime.GetSnapshot().Running);
+        Assert.Equal(tick, runtime.GetSnapshot().WorldTick);
+    }
+
+    [Fact]
     public async Task RuntimeOwnsWorldTimeAndSupportsPauseResumeReset()
     {
         await using var runtime = new HeadlessWorldRuntime(new HeadlessWorldOptions(

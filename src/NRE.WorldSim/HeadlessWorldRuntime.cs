@@ -203,6 +203,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         somaticClient = CreateHttpClient(TimeSpan.FromSeconds(5));
         audioClient = CreateHttpClient(TimeSpan.FromSeconds(9));
         ResetCore(options.Seed);
+        running = !options.StartPaused;
     }
 
     public bool IsStarted
@@ -267,7 +268,6 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
             ObjectDisposedException.ThrowIf(disposed, this);
             if (lifetime is not null)
             {
-                Resume();
                 return;
             }
 

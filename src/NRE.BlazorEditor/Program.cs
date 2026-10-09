@@ -35,7 +35,8 @@ builder.Services.AddSingleton(editorOptions);
 builder.Services.AddSingleton(new HeadlessWorldRuntime(new HeadlessWorldOptions(
     editorOptions.ControlProgramBaseUri,
     MotorTrainingMode: false,
-    DevelopmentStage: developmentStage)));
+    DevelopmentStage: developmentStage,
+    StartPaused: true)));
 builder.Services.AddHostedService<WorldRuntimeHostedService>();
 builder.Services.AddSingleton<WorldStateReader>();
 builder.Services.AddHttpClient("AvatarInquiry", client =>
@@ -215,7 +216,7 @@ editorApi.MapPost("/world/pause", (HeadlessWorldRuntime runtime) =>
 editorApi.MapPost("/world/reset", (HeadlessWorldRuntime runtime) =>
 {
     runtime.Reset();
-    return Results.Ok(new { accepted = true, running = true });
+    return Results.Ok(new { accepted = true, running = runtime.GetSnapshot().Running });
 });
 editorApi.MapPost("/admin/shutdown", async (
     HeadlessWorldRuntime runtime,

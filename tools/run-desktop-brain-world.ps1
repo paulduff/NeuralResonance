@@ -18,7 +18,7 @@ if ([string]::IsNullOrWhiteSpace($TrainingStatusPath)) {
 if ($WhatIf) {
     Write-Host 'Plan only: no processes, builds, status reads or runtime sampling.'
     Write-Host "Training completion guard: $TrainingStatusPath"
-    Write-Host "Then: qualify, start DNNE and the browser-hosted WorldSim, sample for $DurationSec seconds."
+    Write-Host "Then: qualify, start DNNE and the browser-hosted WorldSim, wait for operator Play, sample for $DurationSec seconds."
     Write-Host "Entity enabled: $([bool]$WithEntity); backups: $BackupRoot"
     return
 }
@@ -140,6 +140,18 @@ try {
 
     Write-Host 'World view: http://localhost:5090/editor' -ForegroundColor Cyan
     Write-Host 'Leave this window open. DNNE and WorldSim remain running when measurement finishes.'
+    $worldBeforeMeasurement = Invoke-RestMethod 'http://127.0.0.1:5090/editor/api/world-state' -TimeoutSec 12
+    if (-not $worldBeforeMeasurement.state.running) {
+        Write-Host 'World is paused. Press Play / Resume in the editor when ready; the measurement timer starts afterwards.' -ForegroundColor Yellow
+        while (-not $worldBeforeMeasurement.state.running) {
+            Start-Sleep -Seconds $SampleIntervalSec
+            $worldBeforeMeasurement = Invoke-RestMethod 'http://127.0.0.1:5090/editor/api/world-state' -TimeoutSec 12
+            if (-not $worldBeforeMeasurement.available -or -not $worldBeforeMeasurement.state.worldReady) {
+                throw 'WorldSim became unavailable while waiting for operator Resume.'
+            }
+        }
+    }
+    Save-ResultJson 'world-at-measurement-start.json' $worldBeforeMeasurement
     $started = [DateTime]::UtcNow
     $deadline = $started.AddSeconds($DurationSec)
     $lastResources = Get-ProcessResources
@@ -158,6 +170,10 @@ try {
                 BrainTick = [long]$health.tick; SnapshotTick = [long]$health.lastSnapshotTick
                 Services = [int]$health.serviceCount; NonOk = [int]$health.nonOkCount
                 WorldTick = [long]$world.state.worldTick; BrainConnected = [bool]$world.state.brainConnected
+                WorldRunning = [bool]$world.state.running
+                BrainFrameLatencyMs = [double]$world.state.brainFrameLatencyMilliseconds
+                BrainFrameSafetyPauses = [long]$world.state.brainFrameOverloadSafetyPauses
+                LastBrainFramePauseReason = [string]$world.state.lastBrainFrameOverloadReason
                 WorldAgeSec = [double]$world.ageSeconds; TickFailures = [long]$world.state.tickFailures
                 RetinalFrames = [long]$world.state.retinalFramesAccepted
                 BodyFrames = [long]$world.state.physicalBodyFramesAccepted
@@ -176,10 +192,12 @@ try {
             Save-ResultJson 'world-latest.json' $world
             $lastResources = $resources
             $lastResourceTime = [DateTime]::UtcNow
-            Write-Host ('{0,5:N0}s | brain {1} | services {2}/{3} OK | world {4} | retinal/body {5}/{6} | motor {7} | CPU {8:N1}% | RAM {9:N2} GiB' -f
+            $worldRunState = if ($sample.WorldRunning) { 'LIVE' } else { 'PAUSED' }
+            Write-Host ('{0,5:N0}s | brain {1} | services {2}/{3} OK | world {4} {10} | retinal/body {5}/{6} | motor {7} | CPU {8:N1}% | RAM {9:N2} GiB | distance {11:N2} m | frame {12:N0} ms' -f
                 $sample.ElapsedSec, $sample.BrainTick, ($sample.Services - $sample.NonOk), $sample.Services,
                 $sample.WorldTick, $sample.RetinalFrames, $sample.BodyFrames, $sample.MotorDispatch,
-                $sample.CpuPercentOfMachine, $sample.WorkingSetGiB)
+                $sample.CpuPercentOfMachine, $sample.WorkingSetGiB, $worldRunState,
+                $sample.DistanceTravelled, $sample.BrainFrameLatencyMs)
         }
         catch {
             $failure = [ordered]@{ Utc = $now.ToString('o'); Error = $_.Exception.Message }
@@ -199,8 +217,10 @@ try {
         BrainMotorOutputObserved = $last.MotorDispatch -gt $first.MotorDispatch
         WorldRemainedConnected = @($samples | Where-Object { -not $_.BrainConnected }).Count -eq 0
         ServicesHealthy = @($samples | Where-Object { $_.Services -le 0 -or $_.NonOk -ne 0 }).Count -eq 0
-        NoNewWorldTickFailures = $last.TickFailures -eq $first.TickFailures
-        NoNewBodyInputFailures = $last.BodyInputFailures -eq $first.BodyInputFailures
+        NoNewWorldTickFailures = $last.TickFailures -eq $worldBeforeMeasurement.state.tickFailures
+        NoNewBodyInputFailures = $last.BodyInputFailures -eq $worldBeforeMeasurement.state.bodyInputFailures
+        NoNewBrainFrameSafetyPauses = $last.BrainFrameSafetyPauses -eq $worldBeforeMeasurement.state.brainFrameOverloadSafetyPauses
+        WorldRunningAtCompletion = $last.WorldRunning
         NoSampleErrors = -not (Test-Path -LiteralPath (Join-Path $output 'sample-errors.jsonl'))
     }
     $passed = @($checks.Values | Where-Object { -not $_ }).Count -eq 0

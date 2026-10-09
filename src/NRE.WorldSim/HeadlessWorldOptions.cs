@@ -23,7 +23,8 @@ public sealed record HeadlessWorldOptions(
     WorldDevelopmentStage DevelopmentStage = WorldDevelopmentStage.Terrain,
     TimeSpan? RollingReportInterval = null,
     TimeSpan? BrainFrameOverloadThreshold = null,
-    int ConsecutiveBrainFrameOverloadLimit = 3)
+    int ConsecutiveBrainFrameOverloadLimit = 3,
+    bool StartPaused = false)
 {
     public TimeSpan EffectiveSimulationInterval => SimulationInterval ?? TimeSpan.FromMilliseconds(33);
     public TimeSpan EffectiveFramePollInterval => FramePollInterval ?? TimeSpan.FromMilliseconds(90);

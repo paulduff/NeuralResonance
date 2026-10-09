@@ -22,7 +22,12 @@ export function registerBrainShell(model) {
 }
 
 export async function loadBrainShell(opacity) {
-    const gltf = await new GLTFLoader().loadAsync('/data/models/brain-shell.glb');
+    const response = await fetch('/data/models/brain-shell.glb');
+    if (!response.ok) throw new Error(`Unable to load brain shell (${response.status}).`);
+    const bytes = await response.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const sha256 = [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
+    const gltf = await new GLTFLoader().parseAsync(bytes, '/data/models/');
     try {
         const model = registerBrainShell(gltf.scene);
         const shells = [];
@@ -32,14 +37,15 @@ export async function loadBrainShell(opacity) {
             sourceMaterials.add(object.material);
             object.material = new THREE.MeshPhysicalMaterial({
                 color: 0x9bb4bd, transparent: true, opacity, depthWrite: false,
-                roughness: 0.72, metalness: 0, side: THREE.FrontSide
+                roughness: 0.72, metalness: 0, side: THREE.DoubleSide,
+                forceSinglePass: true
             });
             object.renderOrder = 1;
             object.userData.isShell = true;
             shells.push(object);
         });
         sourceMaterials.forEach(material => material.dispose());
-        return { model, shells };
+        return { model, shells, sha256 };
     } catch (error) {
         disposeBrainObject(gltf.scene);
         throw error;

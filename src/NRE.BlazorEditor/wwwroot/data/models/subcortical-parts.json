@@ -227,6 +227,204 @@
       "files": [
         "Model_3004_corpus_callosum.vtk"
       ]
+    },
+    {
+      "instanceId": "M_CerebellarLobules",
+      "files": [
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ]
+    },
+    {
+      "instanceId": "M_CerebellarVermis",
+      "files": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk"
+      ]
+    },
+    {
+      "instanceId": "M_CerebellarGranule",
+      "files": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "populationEnvelope": true,
+      "envelopeScale": 0.92
+    },
+    {
+      "instanceId": "M_PurkinjeCellLayer",
+      "files": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "populationEnvelope": true,
+      "envelopeScale": 0.98
     }
   ],
   "sources": [
@@ -434,9 +632,525 @@
       "file": "Model_84_right_red_nucleus.vtk",
       "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_84_right_red_nucleus.vtk",
       "sha256": "7f9bff8fdec9b3962961b4c64ae115922b8e748e4e01cd66abadf39f228fda7e"
+    },
+    {
+      "file": "Model_2_white_matter_of_left_cerebral_hemisphere.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_2_white_matter_of_left_cerebral_hemisphere.vtk",
+      "sha256": "1cc5d1a001757d1cc136f30f6e3c3bd4f3bfe34cea71773714fcab5fed048ea3"
+    },
+    {
+      "file": "Model_300_left-I_II-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_300_left-I_II-v.vtk",
+      "sha256": "b72ef6388a920791bc66a98d72d3946949761bb7f34537d38b1096f434ca2e62"
+    },
+    {
+      "file": "Model_301_left-III-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_301_left-III-v.vtk",
+      "sha256": "aaeb91f0ad7c02c70855543ce9eab75023b7cbddffe79959bf02e4b8c1318b24"
+    },
+    {
+      "file": "Model_302_left-IV-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_302_left-IV-v.vtk",
+      "sha256": "ae933332ee8fea0439391cbe9b9b1911d458291ae9a5d38a8c7a62aa44b38c43"
+    },
+    {
+      "file": "Model_303_left-V-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_303_left-V-v.vtk",
+      "sha256": "2cfb1d5b728f1c118817b6e5380915011d2adc8b81e3fbc73ef54652a7359643"
+    },
+    {
+      "file": "Model_304_left-VI-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_304_left-VI-v.vtk",
+      "sha256": "6a26b09b694afac70b5deebbb4389d6b833322ae59b07afc07a2393570dd331b"
+    },
+    {
+      "file": "Model_307_left-VIIB-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_307_left-VIIB-v.vtk",
+      "sha256": "6e3688a3974ce56bfe611a4cb5f0171adb204440e5d3a03938097e672e1c6aee"
+    },
+    {
+      "file": "Model_308_left-VIIIA-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_308_left-VIIIA-v.vtk",
+      "sha256": "5686adaff5a32a2ed72ece96cccfe8f0fffd82d593bac4eabc3663e1afe0204a"
+    },
+    {
+      "file": "Model_309_left-VIIIB-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_309_left-VIIIB-v.vtk",
+      "sha256": "1c00bf817f3511be61f16c362da2f8840b3a9787661306096261a005a4d1533b"
+    },
+    {
+      "file": "Model_310_left-IX-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_310_left-IX-v.vtk",
+      "sha256": "c58f83ed6312ac0bbc9b9d359f13429792b38ac999c36b4a59d850f418c6b361"
+    },
+    {
+      "file": "Model_311_left-X-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_311_left-X-v.vtk",
+      "sha256": "f8a60c3bd230c7ced27bdc8d900b11c19e1fb6fa6b6c0f8c4e08c2aae4b8795d"
+    },
+    {
+      "file": "Model_312_left-III-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_312_left-III-m.vtk",
+      "sha256": "2419157e4f7ce5e2e8200a78b6e942071454a0b79713e22e244bd3a83759e2ce"
+    },
+    {
+      "file": "Model_313_left-IV-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_313_left-IV-m.vtk",
+      "sha256": "737103a26b16ed3c0078c6d90dedb12efb4677224091d7df8a80fb313a4ad55a"
+    },
+    {
+      "file": "Model_314_left-V-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_314_left-V-m.vtk",
+      "sha256": "81cc347649b972cdbd2d55575172eb81007881a2519bd8f201a060acf3954580"
+    },
+    {
+      "file": "Model_315_left-VI-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_315_left-VI-m.vtk",
+      "sha256": "0c7662a974bae3e3dce10ca7c86f8c263fd38fde17a7b6f9b3d9227bf5e6ff93"
+    },
+    {
+      "file": "Model_316_left-VIIA_crusI-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_316_left-VIIA_crusI-m.vtk",
+      "sha256": "e1619250e79d257cef08598ab2ae3b8fb031e917da3521e57159c6dd7ea4ea20"
+    },
+    {
+      "file": "Model_317_left-VIIA_crusII-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_317_left-VIIA_crusII-m.vtk",
+      "sha256": "6b45b557c93dbd29f68c7eea6427a9dc4966cead4bca4f0cf0bf247c62074899"
+    },
+    {
+      "file": "Model_318_left-VIIB-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_318_left-VIIB-m.vtk",
+      "sha256": "038982870deced04640bd77260af82bfa3032d933c84a2a4fa2a45c024aa9d61"
+    },
+    {
+      "file": "Model_319_left-VIIIA-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_319_left-VIIIA-m.vtk",
+      "sha256": "f99d5ea1a1334e71d88ca3e6ef288006b063e242598399af3b540a75ce8c8216"
+    },
+    {
+      "file": "Model_320_left-VIIIB-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_320_left-VIIIB-m.vtk",
+      "sha256": "ec33ef1cd6b84571d3773642cc5cc374d737e7d196ebf8f48346fc85c1988124"
+    },
+    {
+      "file": "Model_321_left-IX-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_321_left-IX-m.vtk",
+      "sha256": "350ef5c4f3c1bf0ebbe8447515354a9eee8327e7250b8a4a47ceee32ecdc3039"
+    },
+    {
+      "file": "Model_323_left-V-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_323_left-V-l.vtk",
+      "sha256": "79257903eccc54ec2295fc299a37032e96d0f59736b2f2a2f1ca23437bbf74c0"
+    },
+    {
+      "file": "Model_324_left-VI-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_324_left-VI-l.vtk",
+      "sha256": "1f1c487a80d4812c84143e8698acc6f8845e1c0a52e492bcbda73705e12cbf8d"
+    },
+    {
+      "file": "Model_327_left-VIIA_crusI-l1.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_327_left-VIIA_crusI-l1.vtk",
+      "sha256": "523f652aad42c166c3fd90f3f3d8b935a60d56e0c0907c825c41acd164aeceec"
+    },
+    {
+      "file": "Model_328_left-VIIA_crusII-l1.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_328_left-VIIA_crusII-l1.vtk",
+      "sha256": "24f2afbe67cebbbe507def29dcb5d7f53d396df32e0b8972c286d2efc923e31f"
+    },
+    {
+      "file": "Model_329_left-VIIB-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_329_left-VIIB-l.vtk",
+      "sha256": "04e21bbc9f5a29a5ae65a58960df8ffdf58574aa0f8946956b668e722639d9cb"
+    },
+    {
+      "file": "Model_330_left-VIIIA-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_330_left-VIIIA-l.vtk",
+      "sha256": "e0ce144c249e2977a7e41363d91c4887f7a8a438f880f60d0c80c27ff61cfd0a"
+    },
+    {
+      "file": "Model_331_left-VIIIB-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_331_left-VIIIB-l.vtk",
+      "sha256": "f23860173e9a3f739796860e24b7a90d3f326dc2f365c5d449d65ba01a8383e6"
+    },
+    {
+      "file": "Model_332_left-VIIA_crusI-l2.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_332_left-VIIA_crusI-l2.vtk",
+      "sha256": "f103d41bd3dccd49dd7fdf4f3f6cca8f8d2552e807866a14c3c5631650049a8c"
+    },
+    {
+      "file": "Model_333_left-VIIA_crusII-l2.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_333_left-VIIA_crusII-l2.vtk",
+      "sha256": "55a0fa1517cfc5145dcae89106938a7e360a3a622a4904a6ffd8cf23d3388693"
+    },
+    {
+      "file": "Model_334_right-I_II-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_334_right-I_II-v.vtk",
+      "sha256": "1f49d8c98240e0203f6939ccf15764e58062abd578e72fc1775dc8d16c6496d4"
+    },
+    {
+      "file": "Model_335_right-III-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_335_right-III-v.vtk",
+      "sha256": "1d3e91e923f10bfd65bff4391070fac039989768e68f904f0a83153ca9b55ff2"
+    },
+    {
+      "file": "Model_336_right-IV-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_336_right-IV-v.vtk",
+      "sha256": "e07b2b6767a669f518a57b18ab466fa43e562beffc6c2afa2192dc3331162926"
+    },
+    {
+      "file": "Model_337_right-V-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_337_right-V-v.vtk",
+      "sha256": "fe704969f8c399ca2a6228caace49a3ef8cbe0534e54d89d1e4de0e97dd67a56"
+    },
+    {
+      "file": "Model_338_right-VI-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_338_right-VI-v.vtk",
+      "sha256": "2944d578ef29f1603b3e4e4d24f166a6bdd27a62513a4ceab6e6d29844c7266f"
+    },
+    {
+      "file": "Model_341_right-VIIB-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_341_right-VIIB-v.vtk",
+      "sha256": "f73be8931da6a263dcbf8442a27e9dbfb0ab872667e99e826e1c5de5b0b616e4"
+    },
+    {
+      "file": "Model_342_right-VIIIA-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_342_right-VIIIA-v.vtk",
+      "sha256": "2efd62b457b10b31801625375b27c73f8936743769375f14be44d24301bfb80e"
+    },
+    {
+      "file": "Model_343_right-VIIIB-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_343_right-VIIIB-v.vtk",
+      "sha256": "27f2fd88f9d6b997680b091093532e50f8f4e77696046178691e2847e837e54e"
+    },
+    {
+      "file": "Model_344_right-IX-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_344_right-IX-v.vtk",
+      "sha256": "773c9d72b99cf3ba7b71caf6819b8494edd61251633f85ccb3d02f5fdbc97826"
+    },
+    {
+      "file": "Model_345_right-X-v.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_345_right-X-v.vtk",
+      "sha256": "6bddc4e99f3c0fae46ee4f6d1baa7c876dc25094274ea4458cceda5fad990d5e"
+    },
+    {
+      "file": "Model_346_right-III-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_346_right-III-m.vtk",
+      "sha256": "10e5bcb5b752559b0da6bfa730f8b6ee522efc6e3eff7bc27848631a599b743b"
+    },
+    {
+      "file": "Model_347_right-IV-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_347_right-IV-m.vtk",
+      "sha256": "23b462a2f5e4dfb35d47208006cd0e307968429b1934f1dc099784eb3b4aa29e"
+    },
+    {
+      "file": "Model_348_right-V-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_348_right-V-m.vtk",
+      "sha256": "d0a155e180a08e2e27323678c04baec6516c20b424c30a20fa6e6b0a80bb49a9"
+    },
+    {
+      "file": "Model_349_right-VI-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_349_right-VI-m.vtk",
+      "sha256": "7fc9e8a52a3609573709e2271b46fb03162c125ebc60aa87ae72aa09f977698f"
+    },
+    {
+      "file": "Model_350_right-VIIA_crusI-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_350_right-VIIA_crusI-m.vtk",
+      "sha256": "19ff08a4e31bc80a1b71f4b8ec3af06511b76efeb687d1875e201d0e54019289"
+    },
+    {
+      "file": "Model_351_right-VIIA_crusII-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_351_right-VIIA_crusII-m.vtk",
+      "sha256": "9a24626386f40774bf1eb2ba6aae58cbcd512e379e7ec93ef3cc1ef854c91258"
+    },
+    {
+      "file": "Model_352_right-VIIB-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_352_right-VIIB-m.vtk",
+      "sha256": "08982a90963ed1b4dcc762271c9eccf41ef23b950359d702f1772206d294d0f1"
+    },
+    {
+      "file": "Model_353_right-VIIIA-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_353_right-VIIIA-m.vtk",
+      "sha256": "4638efcc97e41c7ae658ff11f79d362f930c9358c85d7edd49be549993d4757a"
+    },
+    {
+      "file": "Model_354_right-VIIIB-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_354_right-VIIIB-m.vtk",
+      "sha256": "5fcbbff793fcc96e12680407dd49a64cdb468d1c2a3f0f63336f4b4af93ca29e"
+    },
+    {
+      "file": "Model_355_right-IX-m.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_355_right-IX-m.vtk",
+      "sha256": "f720462546f987c6f64a9b90a11e9ed3d377a6a90c84053396c02e7c9a67384a"
+    },
+    {
+      "file": "Model_357_right-V-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_357_right-V-l.vtk",
+      "sha256": "fa799f38b75b5f2dd7f85704824722585be355cfb57aaeb517d05b3a8e369280"
+    },
+    {
+      "file": "Model_358_right-VI-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_358_right-VI-l.vtk",
+      "sha256": "a02baa31d439679482a9cd6c4289bc66965adf23291916bdd712eb6bc663fb6c"
+    },
+    {
+      "file": "Model_361_right-VIIA_crusI-l1.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_361_right-VIIA_crusI-l1.vtk",
+      "sha256": "e91c3389e422f83f18471cebd4e10ffaf166c2c8f6395fc62da9647c6b7d49ea"
+    },
+    {
+      "file": "Model_362_right-VIIA_crusII-l1.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_362_right-VIIA_crusII-l1.vtk",
+      "sha256": "6e4122e79c1a7ef300839f9d0ca4b4fabd54701d338f545d7ca61f4f3b07e2df"
+    },
+    {
+      "file": "Model_363_right-VIIB-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_363_right-VIIB-l.vtk",
+      "sha256": "968ddfc006a73ca36dd78b4d1a82bdd9f7edd3482afde6881c6b37be713f7309"
+    },
+    {
+      "file": "Model_364_right-VIIIA-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_364_right-VIIIA-l.vtk",
+      "sha256": "ab5edcd575d2576f8bd327c17cf550399b64b7a8f84ca291bcc288c857852785"
+    },
+    {
+      "file": "Model_365_right-VIIIB-l.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_365_right-VIIIB-l.vtk",
+      "sha256": "8d8cc2c79acdcd3de9f1e18c0f7f2b04a07ce8fb1cc9d057aa947b9029ad925c"
+    },
+    {
+      "file": "Model_366_right-VIIA_crusI-l2.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_366_right-VIIA_crusI-l2.vtk",
+      "sha256": "136380434208a2873ed672ff7f8b81f5e766d51a85885ad20c4d0cb1e2d9fd2f"
+    },
+    {
+      "file": "Model_367_right-VIIA_crusII-l2.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_367_right-VIIA_crusII-l2.vtk",
+      "sha256": "651b759d0a84300eaca28fe68fbe232ca8981d3e4300f43da4f314371972eec5"
+    },
+    {
+      "file": "Model_41_white_matter_of_right_cerebral_hemisphere.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_41_white_matter_of_right_cerebral_hemisphere.vtk",
+      "sha256": "8be8133abe8d4e46b9b386983c146bc861c0ed16d1f6949688f23fe4de061ad2"
+    },
+    {
+      "file": "Model_46_white_matter_of_right_hemisphere_of_cerebellum.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_46_white_matter_of_right_hemisphere_of_cerebellum.vtk",
+      "sha256": "58dcee17a1f0002b73b24ca9c90c4d310ad78b853a07ad54066312a79c61beaf"
+    },
+    {
+      "file": "Model_7_white_matter_of_left_hemisphere_of_cerebellum.vtk",
+      "url": "https://raw.githubusercontent.com/mhalle/spl-brain-atlas/bec24db25aad5f7600e2df3becfb1f883e61ff56/slicer/models/Model_7_white_matter_of_left_hemisphere_of_cerebellum.vtk",
+      "sha256": "20ac63c0bc854e09eb0bd9e2d9c81daf07f47362f5c16390befb6c18b219c69f"
     }
   ],
-  "modifications": "Named anatomical shapes uniformly scaled and recentered to the DNNE display atlas; not a medical registration.",
+  "registrationReferences": {
+    "cerebrum": [
+      "Model_2_white_matter_of_left_cerebral_hemisphere.vtk",
+      "Model_41_white_matter_of_right_cerebral_hemisphere.vtk"
+    ],
+    "cerebellum": [
+      "Model_300_left-I_II-v.vtk",
+      "Model_301_left-III-v.vtk",
+      "Model_302_left-IV-v.vtk",
+      "Model_303_left-V-v.vtk",
+      "Model_304_left-VI-v.vtk",
+      "Model_307_left-VIIB-v.vtk",
+      "Model_308_left-VIIIA-v.vtk",
+      "Model_309_left-VIIIB-v.vtk",
+      "Model_310_left-IX-v.vtk",
+      "Model_311_left-X-v.vtk",
+      "Model_312_left-III-m.vtk",
+      "Model_313_left-IV-m.vtk",
+      "Model_314_left-V-m.vtk",
+      "Model_315_left-VI-m.vtk",
+      "Model_316_left-VIIA_crusI-m.vtk",
+      "Model_317_left-VIIA_crusII-m.vtk",
+      "Model_318_left-VIIB-m.vtk",
+      "Model_319_left-VIIIA-m.vtk",
+      "Model_320_left-VIIIB-m.vtk",
+      "Model_321_left-IX-m.vtk",
+      "Model_323_left-V-l.vtk",
+      "Model_324_left-VI-l.vtk",
+      "Model_327_left-VIIA_crusI-l1.vtk",
+      "Model_328_left-VIIA_crusII-l1.vtk",
+      "Model_329_left-VIIB-l.vtk",
+      "Model_330_left-VIIIA-l.vtk",
+      "Model_331_left-VIIIB-l.vtk",
+      "Model_332_left-VIIA_crusI-l2.vtk",
+      "Model_333_left-VIIA_crusII-l2.vtk",
+      "Model_334_right-I_II-v.vtk",
+      "Model_335_right-III-v.vtk",
+      "Model_336_right-IV-v.vtk",
+      "Model_337_right-V-v.vtk",
+      "Model_338_right-VI-v.vtk",
+      "Model_341_right-VIIB-v.vtk",
+      "Model_342_right-VIIIA-v.vtk",
+      "Model_343_right-VIIIB-v.vtk",
+      "Model_344_right-IX-v.vtk",
+      "Model_345_right-X-v.vtk",
+      "Model_346_right-III-m.vtk",
+      "Model_347_right-IV-m.vtk",
+      "Model_348_right-V-m.vtk",
+      "Model_349_right-VI-m.vtk",
+      "Model_350_right-VIIA_crusI-m.vtk",
+      "Model_351_right-VIIA_crusII-m.vtk",
+      "Model_352_right-VIIB-m.vtk",
+      "Model_353_right-VIIIA-m.vtk",
+      "Model_354_right-VIIIB-m.vtk",
+      "Model_355_right-IX-m.vtk",
+      "Model_357_right-V-l.vtk",
+      "Model_358_right-VI-l.vtk",
+      "Model_361_right-VIIA_crusI-l1.vtk",
+      "Model_362_right-VIIA_crusII-l1.vtk",
+      "Model_363_right-VIIB-l.vtk",
+      "Model_364_right-VIIIA-l.vtk",
+      "Model_365_right-VIIIB-l.vtk",
+      "Model_366_right-VIIA_crusI-l2.vtk",
+      "Model_367_right-VIIA_crusII-l2.vtk"
+    ]
+  },
+  "schemaVersion": 2,
+  "shellSha256": "59a79005863ee42f90d3b2aa01a3f2dedcd99f2397a17a605c3819088ae8997e",
+  "assemblies": {
+    "cerebrum": {
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "referenceFiles": [
+        "Model_2_white_matter_of_left_cerebral_hemisphere.vtk",
+        "Model_41_white_matter_of_right_cerebral_hemisphere.vtk"
+      ],
+      "nativeBounds": {
+        "min": [
+          -59.183502197265625,
+          -47.33522033691406,
+          -95.45921325683594
+        ],
+        "max": [
+          64.04933166503906,
+          62.562896728515625,
+          79.20488739013672
+        ]
+      },
+      "targetBounds": {
+        "min": [
+          -71,
+          -51.364659244140206,
+          -84
+        ],
+        "max": [
+          71,
+          52.99999999999999,
+          88
+        ]
+      }
+    },
+    "cerebellum": {
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "referenceFiles": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "nativeBounds": {
+        "min": [
+          -55.58042907714844,
+          -77.58451843261719,
+          -78.73728942871094
+        ],
+        "max": [
+          51.001792907714844,
+          -19.907379150390625,
+          -15.628143310546875
+        ]
+      },
+      "targetBounds": {
+        "min": [
+          -54.26947657732328,
+          -70.19524781462842,
+          -60.54450696799676
+        ],
+        "max": [
+          59.91649729971296,
+          -24.192656562009535,
+          0.24844794061809283
+        ]
+      }
+    }
+  },
+  "schematicCerebellum": {
+    "uniformScale": 0.575032390657736,
+    "translationMm": [
+      1.3456771172044566,
+      -26.159267338058992,
+      5.135957977069349
+    ]
+  },
+  "modifications": "Named anatomical segments fitted as two uniform assemblies to the selected shell. Native positions and size ratios retained within each assembly. Granule/Purkinje envelopes are schematic. Cross-assembly fit is illustrative.",
   "instances": [
     {
       "instanceId": "L_Striatum",
@@ -445,9 +1159,21 @@
         "Model_11_left_caudate_nucleus.vtk",
         "Model_12_left_putamen.vtk"
       ],
-      "sourceGeometry": "Composite anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.015645768645045,
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -17.57131004333496,
+        -2.2945876121520996,
+        12.652501106262207
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 11696
     },
     {
@@ -457,9 +1183,21 @@
         "Model_50_right_caudate_nucleus.vtk",
         "Model_51_right_putamen.vtk"
       ],
-      "sourceGeometry": "Composite anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.0189117900934477,
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        11.79661649465561,
+        -4.016513347625732,
+        16.51791477203369
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 11468
     },
     {
@@ -468,9 +1206,21 @@
       "sourceFiles": [
         "Model_26_left_nucleus_accumbens.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -12.492427587509155,
+        -10.09598970413208,
+        28.74356174468994
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7604018743148283,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1418
     },
     {
@@ -479,9 +1229,21 @@
       "sourceFiles": [
         "Model_58_right_nucleus_accumbens.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        6.3349898755550385,
+        -9.6058030128479,
+        31.499463081359863
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7651486124253792,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1410
     },
     {
@@ -490,9 +1252,21 @@
       "sourceFiles": [
         "Model_13_left_globus_pallidus_pars_externa.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -18.814069747924805,
+        -8.09389191865921,
+        12.095217823982239
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.8071215317068886,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2330
     },
     {
@@ -501,9 +1275,21 @@
       "sourceFiles": [
         "Model_52_right_globus_pallidus_pars_externa.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        14.174439191818237,
+        -7.865330755710602,
+        14.59907066822052
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7962451849784371,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2118
     },
     {
@@ -512,9 +1298,21 @@
       "sourceFiles": [
         "Model_25_left_globus_pallidus_pars_interna.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -17.104743003845215,
+        -9.236747145652771,
+        11.981139302253723
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.6599646721542141,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1580
     },
     {
@@ -523,9 +1321,21 @@
       "sourceFiles": [
         "Model_83_right_globus_pallidus_pars_interna.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        11.779342412948608,
+        -8.980526804924011,
+        14.518593430519104
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.6894677156346317,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1640
     },
     {
@@ -534,9 +1344,21 @@
       "sourceFiles": [
         "Model_391_left_subthalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -6.830929517745972,
+        -16.256703853607178,
+        9.218445777893066
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.9468997757348967,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 128
     },
     {
@@ -545,9 +1367,21 @@
       "sourceFiles": [
         "Model_390_right_subthalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        3.4667667746543884,
+        -16.316641330718994,
+        9.306145429611206
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 2.0121937124702702,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 128
     },
     {
@@ -556,9 +1390,21 @@
       "sourceFiles": [
         "Model_79_left_red_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -6.056423664093018,
+        -18.122360229492188,
+        5.203717589378357
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.1983820228635347,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 342
     },
     {
@@ -567,9 +1413,21 @@
       "sourceFiles": [
         "Model_84_right_red_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        2.174004852771759,
+        -18.097383975982666,
+        5.215988993644714
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.218507537622615,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 332
     },
     {
@@ -578,9 +1436,21 @@
       "sourceFiles": [
         "Model_371_left-Dentate-nucleus.vtk"
       ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        -8.563633978366852,
+        -46.22134208679199,
+        -27.29058265686035
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.6806232281276745,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2418
     },
     {
@@ -589,9 +1459,21 @@
       "sourceFiles": [
         "Model_375_right-Dentate-nucleus.vtk"
       ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        16.18210744857788,
+        -46.84979248046875,
+        -26.416802406311035
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.6610375719250314,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2370
     },
     {
@@ -600,9 +1482,21 @@
       "sourceFiles": [
         "Model_507_left_pulvinar.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -10.94281530380249,
+        -7.239851117134094,
+        -6.803045630455017
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.0135395681793182,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2588
     },
     {
@@ -611,9 +1505,21 @@
       "sourceFiles": [
         "Model_506_right_pulvinar.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        9.292429289780557,
+        -6.876238465309143,
+        -5.503401160240173
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.0684074714876988,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2330
     },
     {
@@ -622,9 +1528,21 @@
       "sourceFiles": [
         "Model_511_left_dorsomedial_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -4.867225170135498,
+        -5.443374752998352,
+        5.913027405738831
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.2090070725849351,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1304
     },
     {
@@ -633,9 +1551,21 @@
       "sourceFiles": [
         "Model_510_right_dorsomedial_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        1.9380650520324707,
+        -5.178566098213196,
+        6.126980423927307
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.2084180940818248,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1328
     },
     {
@@ -644,9 +1574,21 @@
       "sourceFiles": [
         "Model_525_left_ventral_posterolateral_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -15.443394184112549,
+        -11.00046968460083,
+        -4.309893488883972
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.8125661319086533,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1524
     },
     {
@@ -655,9 +1597,21 @@
       "sourceFiles": [
         "Model_524_right_ventral_posterolateral_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        11.36203408241272,
+        -10.844057083129883,
+        -3.485416293144226
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7653628067146612,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 1562
     },
     {
@@ -666,9 +1620,21 @@
       "sourceFiles": [
         "Model_523_left_ventral_posteromedial_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -10.351134538650513,
+        -12.343333721160889,
+        -2.8027089834213257
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.9997954702205321,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 512
     },
     {
@@ -677,9 +1643,21 @@
       "sourceFiles": [
         "Model_522_right_ventral_posteromedial_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        7.203081369400024,
+        -12.031988382339478,
+        -1.859988808631897
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.834559353945923,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 624
     },
     {
@@ -688,9 +1666,21 @@
       "sourceFiles": [
         "Model_509_left_anterior_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -5.813708186149597,
+        -1.9494420289993286,
+        12.561298370361328
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.8823314527797466,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 522
     },
     {
@@ -699,9 +1689,21 @@
       "sourceFiles": [
         "Model_508_right_anterior_thalamic_nucleus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        3.1066226959228516,
+        -1.738974690437317,
+        12.573826551437378
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7364562986321816,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 572
     },
     {
@@ -710,9 +1712,21 @@
       "sourceFiles": [
         "Model_505_left_lateral_geniculate_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -17.413567543029785,
+        -16.954695224761963,
+        -6.617101073265076
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.0716706791960993,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 516
     },
     {
@@ -721,9 +1735,21 @@
       "sourceFiles": [
         "Model_504_right_lateral_geniculate_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        14.017636775970459,
+        -17.216334342956543,
+        -6.18172299861908
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.0314209557418257,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 486
     },
     {
@@ -732,9 +1758,21 @@
       "sourceFiles": [
         "Model_503_left_medial_geniculate_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -12.16054630279541,
+        -16.779036045074463,
+        -6.580267310142517
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.1057819661044523,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 372
     },
     {
@@ -743,9 +1781,21 @@
       "sourceFiles": [
         "Model_502_right_medial_geniculate_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        8.808418035507202,
+        -16.676791667938232,
+        -6.6344650983810425
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.1023550449799417,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 374
     },
     {
@@ -754,9 +1804,21 @@
       "sourceFiles": [
         "Model_3021_left_superior_colliculus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -5.281490683555603,
+        -19.370686531066895,
+        -10.384521484375
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.9673824514140936,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 198
     },
     {
@@ -765,9 +1827,21 @@
       "sourceFiles": [
         "Model_3020_right_superior_colliculus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        2.251142702298239,
+        -19.37177848815918,
+        -10.485039710998535
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 2.022963897396329,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 186
     },
     {
@@ -776,9 +1850,21 @@
       "sourceFiles": [
         "Model_3023_left_inferior_colliculus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -5.605507016181946,
+        -25.037090301513672,
+        -12.769489288330078
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 2.1113644870241997,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 194
     },
     {
@@ -787,9 +1873,21 @@
       "sourceFiles": [
         "Model_3022_right_inferior_colliculus.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        19.35602118074894,
+        3.181241989135742,
+        -11.218070983886719
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.3535450873531226,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 192
     },
     {
@@ -798,9 +1896,21 @@
       "sourceFiles": [
         "Model_3003_left_mammillary_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -5.164562344551086,
+        -19.317660331726074,
+        13.403690338134766
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.3388526909975924,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 170
     },
     {
@@ -809,9 +1919,21 @@
       "sourceFiles": [
         "Model_3002_right_mammillary_body.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -1.2231527864933014,
+        -19.498573303222656,
+        13.819842338562012
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.2570514422417431,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 192
     },
     {
@@ -821,9 +1943,21 @@
         "Model_515_left_ventral_anterior_thalamic_nucleus.vtk",
         "Model_517_left_ventral_lateral_thalamic_nucleus.vtk"
       ],
-      "sourceGeometry": "Composite anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.3383104294166475,
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        -10.011460781097412,
+        -5.198125839233398,
+        9.206964135169983
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2712
     },
     {
@@ -833,9 +1967,21 @@
         "Model_514_right_ventral_anterior_thalamic_nucleus.vtk",
         "Model_516_right_ventral_lateral_thalamic_nucleus.vtk"
       ],
-      "sourceGeometry": "Composite anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 1.316096635651768,
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        6.5159816443920135,
+        -6.030852913856506,
+        9.669036030769348
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 2668
     },
     {
@@ -844,12 +1990,286 @@
       "sourceFiles": [
         "Model_3004_corpus_callosum.vtk"
       ],
+      "assembly": "cerebrum",
+      "uniformScale": 0.8736772664398296,
+      "translationMm": [
+        -2.1255822941833338,
+        -5.8343669640924976,
+        9.100517495519995
+      ],
+      "focusPointMm": [
+        2.2600011825561523,
+        1.7106809616088867,
+        9.55325698852539
+      ],
+      "populationEnvelope": false,
       "sourceGeometry": "Named anatomical mesh",
-      "registration": "RAS axes converted; uniform display scale; existing DNNE atlas centre",
-      "uniformScale": 0.7494907272779786,
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
       "triangles": 23364
+    },
+    {
+      "instanceId": "M_CerebellarLobules",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        2.8235092163085938,
+        -47.83827590942383,
+        -30.148030042648315
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
+      "triangles": 128604
+    },
+    {
+      "instanceId": "M_CerebellarVermis",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk"
+      ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        2.7822368144989014,
+        -40.8449068069458,
+        -27.73484516143799
+      ],
+      "populationEnvelope": false,
+      "sourceGeometry": "Composite named anatomical segments",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
+      "triangles": 21052
+    },
+    {
+      "instanceId": "M_CerebellarGranule",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        2.8235111236572266,
+        -47.19395065307617,
+        -30.148029565811157
+      ],
+      "populationEnvelope": true,
+      "sourceGeometry": "Illustrative population envelope; layer boundaries not segmented",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
+      "triangles": 149656
+    },
+    {
+      "instanceId": "M_PurkinjeCellLayer",
+      "sourceAtlas": "SPL/NAC Brain Atlas",
+      "sourceFiles": [
+        "Model_300_left-I_II-v.vtk",
+        "Model_301_left-III-v.vtk",
+        "Model_302_left-IV-v.vtk",
+        "Model_303_left-V-v.vtk",
+        "Model_304_left-VI-v.vtk",
+        "Model_307_left-VIIB-v.vtk",
+        "Model_308_left-VIIIA-v.vtk",
+        "Model_309_left-VIIIB-v.vtk",
+        "Model_310_left-IX-v.vtk",
+        "Model_311_left-X-v.vtk",
+        "Model_312_left-III-m.vtk",
+        "Model_313_left-IV-m.vtk",
+        "Model_314_left-V-m.vtk",
+        "Model_315_left-VI-m.vtk",
+        "Model_316_left-VIIA_crusI-m.vtk",
+        "Model_317_left-VIIA_crusII-m.vtk",
+        "Model_318_left-VIIB-m.vtk",
+        "Model_319_left-VIIIA-m.vtk",
+        "Model_320_left-VIIIB-m.vtk",
+        "Model_321_left-IX-m.vtk",
+        "Model_323_left-V-l.vtk",
+        "Model_324_left-VI-l.vtk",
+        "Model_327_left-VIIA_crusI-l1.vtk",
+        "Model_328_left-VIIA_crusII-l1.vtk",
+        "Model_329_left-VIIB-l.vtk",
+        "Model_330_left-VIIIA-l.vtk",
+        "Model_331_left-VIIIB-l.vtk",
+        "Model_332_left-VIIA_crusI-l2.vtk",
+        "Model_333_left-VIIA_crusII-l2.vtk",
+        "Model_334_right-I_II-v.vtk",
+        "Model_335_right-III-v.vtk",
+        "Model_336_right-IV-v.vtk",
+        "Model_337_right-V-v.vtk",
+        "Model_338_right-VI-v.vtk",
+        "Model_341_right-VIIB-v.vtk",
+        "Model_342_right-VIIIA-v.vtk",
+        "Model_343_right-VIIIB-v.vtk",
+        "Model_344_right-IX-v.vtk",
+        "Model_345_right-X-v.vtk",
+        "Model_346_right-III-m.vtk",
+        "Model_347_right-IV-m.vtk",
+        "Model_348_right-V-m.vtk",
+        "Model_349_right-VI-m.vtk",
+        "Model_350_right-VIIA_crusI-m.vtk",
+        "Model_351_right-VIIA_crusII-m.vtk",
+        "Model_352_right-VIIB-m.vtk",
+        "Model_353_right-VIIIA-m.vtk",
+        "Model_354_right-VIIIB-m.vtk",
+        "Model_355_right-IX-m.vtk",
+        "Model_357_right-V-l.vtk",
+        "Model_358_right-VI-l.vtk",
+        "Model_361_right-VIIA_crusI-l1.vtk",
+        "Model_362_right-VIIA_crusII-l1.vtk",
+        "Model_363_right-VIIB-l.vtk",
+        "Model_364_right-VIIIA-l.vtk",
+        "Model_365_right-VIIIB-l.vtk",
+        "Model_366_right-VIIA_crusI-l2.vtk",
+        "Model_367_right-VIIA_crusII-l2.vtk"
+      ],
+      "assembly": "cerebellum",
+      "uniformScale": 0.7736603110062866,
+      "translationMm": [
+        4.594664902609152,
+        -9.481146285987542,
+        6.355365506959178
+      ],
+      "focusPointMm": [
+        2.8235111236572266,
+        -47.193955421447754,
+        -30.14803194999695
+      ],
+      "populationEnvelope": true,
+      "sourceGeometry": "Illustrative population envelope; layer boundaries not segmented",
+      "registration": "Shared uniform assembly fit to the selected shell; native relative placement retained",
+      "triangles": 149656
     }
   ],
-  "displayBytes": 2052124,
-  "displaySha256": "7cf5f3c2c588801e3d8f499fb34c6c0ab600bd2c6f222e87c202e0a00fa447ab"
+  "displayBytes": 12850996,
+  "displaySha256": "f6317254dbcf899d4f24f724b29b6a260f3ed47af3aec39acf6348945a1951cf"
 }

@@ -663,6 +663,7 @@ button {
 .viewport-scale { text-align: right; line-height: 16px; max-width: 320px; pointer-events: none; }
 .viewport-scale a { color: #8eaaa8; pointer-events: auto; text-decoration: none; }
 .viewport-scale a:hover { text-decoration: underline; }
+.brain-workspace .viewport-scale { padding: 7px 10px; border-radius: 5px; background: rgba(14,18,20,.9); color: #a2b0ae; }
 
 .display-controls output {
     color: var(--text);

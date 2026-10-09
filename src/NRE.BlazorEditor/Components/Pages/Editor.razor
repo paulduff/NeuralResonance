@@ -86,9 +86,11 @@
             <small id="brainActivityStatus">Awaiting snapshot</small>
         </div>
         <div class="viewport-scale"><span id="brainModelStatus">Loading brain shell</span><br />
+            <span id="brainMapStatus">Loading cortical reference</span><br />
             <span id="brainDeepModelStatus">Loading anatomical nuclei</span><br />
             <a href="https://sketchfab.com/3d-models/human-brain-1-copy-1-315449e9517047edb65e3b462c259b91" target="_blank" rel="noopener noreferrer">Shell: mo99ghahremani · CC BY 4.0</a> ·
-            <a href="https://www.openanatomy.org/atlas-pages/atlas-spl-nac-brain.html" target="_blank" rel="noopener noreferrer">Parts: SPL/NAC</a><br />Atlas | mm | +Z anterior</div>
+            <a href="https://www.openanatomy.org/atlas-pages/atlas-spl-nac-brain.html" target="_blank" rel="noopener noreferrer">Parts: SPL/NAC</a><br />
+            <a id="brainGyralCredit" href="https://sketchfab.com/3d-models/detailed-labeled-surface-structures-d91080b5af91497b822728c08804f33c" target="_blank" rel="noopener noreferrer" hidden>Gyri: IU School of Medicine · CC BY-NC-SA 4.0</a><br />Atlas | mm | +Z anterior</div>
     </main>
 
     <aside class="inspector-panel workspace-panel brain-panel" data-workspace-panel="brain" aria-label="Inspector">
@@ -117,6 +119,7 @@
                 <span id="selectionActivity"></span>
             </div>
             <p id="selectionTelemetryScope" class="source-note">Awaiting snapshot</p>
+            <p id="selectionGyralReference" class="source-note" hidden></p>
             <section id="selectionLaminar" class="laminar-telemetry" aria-label="Cortical population activity" hidden>
                 <header>
                     <strong>Cortical populations</strong>
@@ -132,6 +135,9 @@
                 <output id="shellOpacityValue">12%</output>
             </label>
             <input id="shellOpacity" type="range" min="0" max="60" value="12" />
+            <label class="rate-scale-control" for="brainCortexColours">Cortex colours
+                <select id="brainCortexColours" disabled><option value="dnne">DNNE regions</option><option value="gyri">Reference gyri</option></select>
+            </label>
             <label class="toggle-control" for="isolateBrainSelection">
                 <input id="isolateBrainSelection" type="checkbox" />
                 <span>Isolate selected structure</span>
@@ -373,7 +379,7 @@
             return;
         }
 
-        brainModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/brain-editor.js?v=129");
+        brainModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/brain-editor.js?v=132");
         worldModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/world-editor.js?v=137");
         await brainModule.InvokeVoidAsync("mountEditor");
         await worldModule.InvokeVoidAsync("mountWorld");

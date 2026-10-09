@@ -8,10 +8,10 @@ import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 const viewPresets = {
     anterior: { position: [0, -3, 245], target: [0, -3, -4], up: [0, 1, 0] },
     posterior: { position: [0, -3, -245], target: [0, -3, -4], up: [0, 1, 0] },
-    left: { position: [-245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
-    right: { position: [245, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
-    superior: { position: [0, 245, -4], target: [0, -3, -4], up: [0, 0, 1] },
-    inferior: { position: [0, -245, -4], target: [0, -3, -4], up: [0, 0, 1] }
+    left: { position: [-310, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
+    right: { position: [310, -3, -4], target: [0, -3, -4], up: [0, 1, 0] },
+    superior: { position: [0, 310, -4], target: [0, -3, -4], up: [0, 0, 1] },
+    inferior: { position: [0, -310, -4], target: [0, -3, -4], up: [0, 0, 1] }
 };
 
 const corticalDimensions = {
@@ -149,6 +149,8 @@ function createEditor(host, atlas) {
         showPathways: true,
         shellOpacity: 0.12,
         rateCeilingHz: 200,
+        cortexColours: 'dnne',
+        hasCorticalMap: false,
         groupFilter: '',
         hemisphereFilter: '',
         isolateSelection: false,
@@ -183,8 +185,7 @@ function createEditor(host, atlas) {
 
     return {
         async start() {
-            void loadDisplayShell(state);
-            void loadDeepStructures(state);
+            void loadDisplayShell(state).then(() => loadDeepStructures(state));
             renderer.setAnimationLoop(() => {
                 if (!state.active) {
                     return;
@@ -222,13 +223,31 @@ async function loadDisplayShell(state) {
             disposeBrainObject(imported.model);
             return;
         }
+        let mapping = null, surface;
+        const corticalTerritories = state.structureMeshes.filter(mesh => mesh.userData.isCortical);
+        try {
+            const response = await fetch('/data/models/cortical-map.json', { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Cortical map HTTP ${response.status}.`);
+            mapping = await response.json();
+            if (mapping.shellSha256 !== imported.sha256) throw new Error('Cortical map belongs to a different shell.');
+            surface = buildCorticalSurfaceParcels(imported.model, corticalTerritories, mapping);
+        } catch (error) {
+            mapping = null;
+            surface = buildCorticalSurfaceParcels(imported.model, corticalTerritories);
+            if (!state.disposed) console.warn('Cortical mapping fallback:', error);
+        }
+        if (state.disposed) {
+            for (const parcel of surface.parcels.values()) parcel.geometry.dispose();
+            disposeBrainObject(imported.model);
+            return;
+        }
         // A control may have changed while the asset was loading.
         imported.shells.forEach(shell => { shell.material.opacity = state.shellOpacity; });
         state.corticalShells.forEach(shell => { shell.visible = false; });
         state.scaffold.visible = false;
         state.root.add(imported.model);
+        state.shellSha256 = imported.sha256;
         state.corticalShells = imported.shells;
-        const surface = buildCorticalSurfaceParcels(imported.model, state.structureMeshes.filter(mesh => mesh.userData.isCortical));
         for (const mesh of state.structureMeshes) {
             const parcel = surface.parcels.get(mesh.userData.structure.instanceId);
             if (!parcel) continue;
@@ -236,12 +255,22 @@ async function loadDisplayShell(state) {
             mesh.geometry = parcel.geometry;
             mesh.userData.focusPoint.copy(parcel.focusPoint);
             mesh.userData.isImportedCortex = true;
-            mesh.userData.geometrySource = 'Imported folded surface; approximate nearest-anchor DNNE territory.';
+            mesh.userData.corticalAnnotation = parcel.annotation;
+            mesh.userData.referenceGyri = [...parcel.gyrusCounts].sort((a,b) => b[1]-a[1]).map(([name]) => name);
+            mesh.userData.geometrySource = parcel.annotation ?
+                `Imported folded surface; ${parcel.annotation.method} illustrative DNNE subdivision.` :
+                'Imported folded surface; approximate nearest-anchor DNNE territory.';
         }
         surface.corticalShells.forEach(shell => { shell.visible = false; });
         state.surfaceCortex = surface.corticalShells;
+        state.hasCorticalMap = Boolean(mapping);
         applyDisplayMode(state);
         setText('brainModelStatus', `Folded cortex · ${surface.parcels.size}/70 approximate territories`);
+        const guided = mapping?.territories.filter(t => t.method === 'gyrus-guided').length ?? 0;
+        setText('brainMapStatus', mapping ? `${guided} gyrus-guided · mirrored reference template` : 'Atlas anchors · gyral reference unavailable');
+        const credit = document.getElementById('brainGyralCredit');
+        if (credit) credit.hidden = !mapping;
+        updateSelectionReference(state);
     } catch (error) {
         if (!state.disposed) {
             setText('brainModelStatus', 'Atlas shell · imported model unavailable');
@@ -251,13 +280,40 @@ async function loadDisplayShell(state) {
 }
 
 async function loadDeepStructures(state) {
+    if (state.disposed) return;
     let model = null;
     try {
-        model = (await new GLTFLoader().loadAsync('/data/models/subcortical-parts.glb')).scene;
+        const response = await fetch('/data/models/subcortical-parts.json', { cache:'no-store' });
+        if (!response.ok) throw new Error('Anatomical registration metadata unavailable.');
+        const registration = await response.json();
+        if (registration.schemaVersion !== 2 || registration.shellSha256 !== state.shellSha256) {
+            throw new Error('Anatomical assemblies belong to a different shell.');
+        }
+        const asset = await fetch(`/data/models/subcortical-parts.glb?v=${registration.displaySha256}`);
+        if (!asset.ok) throw new Error('Anatomical meshes unavailable.');
+        const bytes = await asset.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const hash = [...new Uint8Array(digest)].map(v => v.toString(16).padStart(2,'0')).join('');
+        if (hash !== registration.displaySha256) throw new Error('Anatomical asset hash mismatch.');
+        model = (await new GLTFLoader().parseAsync(bytes, '/data/models/')).scene;
         if (state.disposed) return;
-        let count = 0;
+        const candidates = [], ids = new Set();
         model.traverse(object => {
             if (!object.isMesh) return;
+            const id = object.userData.instanceId;
+            if (ids.has(id) || !state.meshesByInstance.has(normalizeId(id)) ||
+                !Array.isArray(object.userData.focusPointMm) || object.userData.focusPointMm.length !== 3 ||
+                !object.userData.focusPointMm.every(Number.isFinite)) throw new Error('Invalid anatomical instance.');
+            ids.add(id); candidates.push(object);
+        });
+        const schematic = registration.schematicCerebellum;
+        if (ids.size !== registration.instances.length || registration.instances.some(i=>!ids.has(i.instanceId)) ||
+            !(schematic?.uniformScale > 0) || !Number.isFinite(schematic.uniformScale) ||
+            !Array.isArray(schematic.translationMm) || schematic.translationMm.length !== 3 ||
+            !schematic.translationMm.every(Number.isFinite)) throw new Error('Invalid anatomical assembly registration.');
+        let count = 0;
+        const importedIds = new Set();
+        candidates.forEach(object => {
             const mesh = state.meshesByInstance.get(normalizeId(object.userData.instanceId ?? object.name));
             if (!mesh) return;
             // The sphere template remains shared by the schematic structures.
@@ -266,10 +322,26 @@ async function loadDeepStructures(state) {
             mesh.rotation.set(0, 0, 0);
             mesh.scale.set(1, 1, 1);
             mesh.userData.baseScale.set(1, 1, 1);
-            mesh.userData.geometrySource = `${object.userData.sourceGeometry} · SPL/NAC atlas; uniform display registration.`;
+            mesh.userData.focusPoint.fromArray(object.userData.focusPointMm);
+            mesh.userData.isPopulationEnvelope = object.userData.populationEnvelope;
+            mesh.userData.geometrySource = `${object.userData.sourceGeometry} · SPL/NAC atlas; shared ${object.userData.assembly} fit, approximate shell alignment.`;
+            mesh.material.forceSinglePass = true;
+            if (object.userData.assembly === 'cerebellum') mesh.userData.baseOpacity = object.userData.populationEnvelope ? 0.055 : 0.3;
+            importedIds.add(mesh.userData.structure.instanceId);
             count++;
         });
-        setText('brainDeepModelStatus', `${count} named anatomical meshes · other nuclei schematic`);
+        // Correct unsegmented cerebellar nuclei in the same display frame.
+        for (const mesh of state.structureMeshes) {
+            if (mesh.userData.structure.group !== 'Cerebellum' || importedIds.has(mesh.userData.structure.instanceId)) continue;
+            mesh.position.multiplyScalar(schematic.uniformScale).add(new THREE.Vector3(...schematic.translationMm));
+            mesh.userData.baseScale.multiplyScalar(schematic.uniformScale);
+            mesh.userData.focusPoint.copy(mesh.position);
+            mesh.userData.geometrySource = 'Schematic nucleus; cerebellar shell alignment corrected.';
+        }
+        // The anatomical assembly replaces the duplicate grey cerebellar shell.
+        state.corticalShells.filter(shell => shell.userData.anatomicalPart === 'cereb1').forEach(shell => { shell.visible = false; });
+        const envelopes = candidates.filter(object => object.userData.populationEnvelope).length;
+        setText('brainDeepModelStatus', `${count - envelopes} anatomical meshes · ${envelopes} population envelopes · other nuclei schematic`);
         if (state.selected) setText('selectionSource', `${state.selected.userData.structure.source}. ${state.selected.userData.geometrySource ?? 'Schematic atlas geometry.'}`);
     } catch (error) {
         if (!state.disposed) {
@@ -441,7 +513,8 @@ function createCorticalStructureMesh(structure) {
         roughness: 0.72,
         metalness: 0,
         clearcoat: 0.08,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        forceSinglePass: true
     });
     const hemisphereSign = structure.hemisphere === 'L' ? -1 : 1;
     const { geometry, focusPoint } = createCorticalTerritoryGeometry(structure, hemisphereSign, 34, 8);
@@ -875,6 +948,10 @@ function bindControls(state) {
     const clearHandler = () => clearSelection(state);
     clear?.addEventListener('click', clearHandler);
     state.cleanup.push(() => clear?.removeEventListener('click', clearHandler));
+    const colours = document.getElementById('brainCortexColours');
+    const coloursHandler = () => { state.cortexColours = colours.value; applyDisplayMode(state); };
+    colours?.addEventListener('change', coloursHandler);
+    state.cleanup.push(() => colours?.removeEventListener('change', coloursHandler));
 }
 
 function structureVisible(state, mesh) {
@@ -950,6 +1027,7 @@ function selectMesh(state, mesh) {
     document.getElementById('selectionPlasticity').textContent = structure.plasticity;
     document.getElementById('selectionSource').textContent = `${structure.source}. ${mesh.userData.geometrySource ?? 'Schematic atlas geometry.'}`;
     updateSelectionTelemetry(state);
+    updateSelectionReference(state);
     syncListSelection(state);
     applyDisplayMode(state);
 
@@ -985,13 +1063,32 @@ function applyView(state, name) {
 function applyDisplayMode(state) {
     const legend = document.getElementById('brainActivityLegend');
     if (legend) legend.hidden = state.mode !== 'activity';
+    const colours = document.getElementById('brainCortexColours');
+    if (colours) colours.disabled = state.mode !== 'anatomy' || !state.hasCorticalMap;
     for (const mesh of state.structureMeshes) {
         const level = firingRateLevel(mesh.userData.meanRateHz, state.rateCeilingHz);
         mesh.userData.activity = level ?? 0;
-        mesh.material.color.copy(state.mode === 'activity' ? activityColor(level) : mesh.userData.baseColor);
-        mesh.material.emissive.copy(mesh.material.color);
+        const gyralColours = state.mode === 'anatomy' && state.cortexColours === 'gyri' && mesh.geometry.hasAttribute('color');
+        if (mesh.material.vertexColors !== gyralColours) {
+            mesh.material.vertexColors = gyralColours;
+            mesh.material.needsUpdate = true;
+        }
+        mesh.material.color.copy(state.mode === 'activity' ? activityColor(level) : gyralColours ? new THREE.Color('white') : mesh.userData.baseColor);
+        mesh.material.emissive.copy(gyralColours ? new THREE.Color('#222b33') : mesh.material.color);
     }
     animateActivity(state);
+}
+
+function updateSelectionReference(state) {
+    const note = document.getElementById('selectionGyralReference');
+    if (!note) return;
+    const data = state.selected?.userData;
+    note.hidden = !data?.isCortical;
+    if (note.hidden) { note.textContent = ''; return; }
+    note.textContent = data.corticalAnnotation?.method === 'gyrus-guided' ?
+        `Reference: ${data.referenceGyri.join(', ')}. Shared hemisphere template; functional boundaries approximate.` :
+        data.corticalAnnotation?.method === 'atlas-guided' ?
+            'Atlas-guided region; the reference does not name the insula.' : 'Atlas-anchor partition; no gyral reference loaded.';
 }
 
 const activityPalette = ['#263951', '#3798d4', '#62d4ba', '#f7c65f', '#ff6d50'].map(color => new THREE.Color(color));
@@ -1238,7 +1335,11 @@ function animateActivity(state) {
         const dimmed = state.isolateSelection && state.selected && !selected;
         const opacity = dimmed ? 0.025 : selected ? 0.95 : hovered ? 0.7 :
             state.mode === 'activity' ? 0.12 + activity * 0.64 : mesh.userData.baseOpacity;
-        mesh.material.opacity = Math.min(1, opacity * (mesh.userData.isImportedCortex ? state.shellOpacity / 0.24 : 1));
+        // The shell slider stays translucent, including on selection/high activity.
+        mesh.material.opacity = mesh.userData.isImportedCortex ?
+            Math.min(0.72, opacity * (state.shellOpacity / 0.24)) :
+            mesh.userData.isPopulationEnvelope && !selected && !hovered ?
+                (state.mode === 'activity' ? 0.035 + activity * 0.09 : mesh.userData.baseOpacity) : opacity;
         mesh.material.emissiveIntensity = dimmed ? 0 : selected ? 0.45 :
             state.mode === 'activity' ? activity * 0.7 : 0.05;
         if (state.mode === 'activity') {

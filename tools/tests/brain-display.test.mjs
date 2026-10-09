@@ -1,11 +1,76 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import * as THREE from '../../src/NRE.BlazorEditor/wwwroot/vendor/three/three.module.min.js';
 import { GLTFLoader } from '../../src/NRE.BlazorEditor/wwwroot/vendor/three/addons/loaders/GLTFLoader.js';
 import { registerBrainShell, disposeBrainObject } from '../../src/NRE.BlazorEditor/wwwroot/js/brain-shell.js';
 import { firingRateLevel, observeSnapshot, snapshotIsFresh, recentDispatches } from '../../src/NRE.BlazorEditor/wwwroot/js/brain-activity.js';
-import { buildCorticalSurfaceParcels } from '../../src/NRE.BlazorEditor/wwwroot/js/brain-surface.js';
+import { buildCorticalSurfaceParcels, readCorticalSurface, validateCorticalMap } from '../../src/NRE.BlazorEditor/wwwroot/js/brain-surface.js';
+
+async function mappedCortexFixture() {
+    const assetRoot = new URL('../../src/NRE.BlazorEditor/wwwroot/data/', import.meta.url);
+    const atlas = JSON.parse((await readFile(new URL('brain-atlas.json', assetRoot), 'utf8')).replace(/^\uFEFF/, ''));
+    const bytes = await readFile(new URL('models/brain-shell.glb', assetRoot));
+    const mapping = JSON.parse(await readFile(new URL('models/cortical-map.json', assetRoot), 'utf8'));
+    const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    return { bytes, mapping, model:registerBrainShell(gltf.scene), anchors:atlas.structures.filter(s=>s.layout==='CorticalSheet')
+        .map(structure=>({userData:{structure,focusPoint:new THREE.Vector3(...structure.centerMm)}})) };
+}
+
+test('gyral annotations preserve all shell triangles and every DNNE cortical ID', async () => {
+    const { bytes, mapping, model, anchors } = await mappedCortexFixture();
+    assert.equal(mapping.shellSha256, createHash('sha256').update(bytes).digest('hex'));
+    const before = readCorticalSurface(model);
+    const result = buildCorticalSurfaceParcels(model, anchors, mapping);
+    assert.equal(result.parcels.size, 70);
+    assert.equal(mapping.territories.filter(t=>t.method==='gyrus-guided').length, 68);
+    assert.equal(mapping.territories.filter(t=>t.method==='atlas-guided').every(t=>t.structureId==='Insula'), true);
+    assert.equal([...result.parcels.values()].reduce((sum,p)=>sum+p.geometry.attributes.position.count/3,0), before.triangles.length);
+    assert.deepEqual(readCorticalSurface(model).triangles, before.triangles, 'annotation must not deform the shell');
+    for (const parcel of result.parcels.values()) {
+        assert.equal(parcel.geometry.attributes.position.count,parcel.geometry.attributes.color.count);
+        assert.ok([...parcel.geometry.attributes.color.array].every(v=>Number.isFinite(v)&&v>=0&&v<=1));
+        parcel.geometry.dispose();
+    }
+    disposeBrainObject(model);
+});
+
+test('motor strip precedes sensory strip and obeys the named gyral constraints on both sides', async () => {
+    const { mapping, model, anchors } = await mappedCortexFixture();
+    const { triangles } = readCorticalSurface(model);
+    const lookup = validateCorticalMap(mapping,triangles,anchors);
+    for (const side of ['L','R']) {
+        const motor=[], sensory=[];
+        for (const t of triangles.filter(t=>t.side===side)) {
+            const a=lookup.get(t.meshName), region=mapping.territories[a.regions[t.triangleIndex]];
+            if (region.structureId==='M1') motor.push(t.centroid[2]);
+            if (region.structureId==='S1') sensory.push(t.centroid[2]);
+            if (region.structureId==='M1') assert.ok(['precentral','paracentrallobule'].includes(mapping.gyri[a.gyri[t.triangleIndex]].key));
+            if (region.structureId==='S1') assert.ok(['postcentral','paracentrallobule'].includes(mapping.gyri[a.gyri[t.triangleIndex]].key));
+        }
+        assert.ok(motor.length>0&&sensory.length>0);
+        assert.ok(motor.reduce((a,b)=>a+b,0)/motor.length > sensory.reduce((a,b)=>a+b,0)/sensory.length, side);
+    }
+    disposeBrainObject(model);
+});
+
+test('invalid hemisphere, gyral constraints and extra assignments are rejected before geometry replacement', async () => {
+    const { mapping, model, anchors } = await mappedCortexFixture();
+    const { triangles } = readCorticalSurface(model);
+    const wrongSide=structuredClone(mapping);
+    wrongSide.territories[0].hemisphere='R';
+    assert.throws(()=>validateCorticalMap(wrongSide,triangles,anchors),/territory/);
+    const wrongGyrus=structuredClone(mapping);
+    const m1=wrongGyrus.territories.findIndex(t=>t.instanceId==='L_M1');
+    const mesh=wrongGyrus.meshAssignments.find(a=>a.regions.includes(m1));
+    mesh.gyri[mesh.regions.indexOf(m1)]=wrongGyrus.gyri.findIndex(g=>g.key==='cuneus');
+    assert.throws(()=>validateCorticalMap(wrongGyrus,triangles,anchors),/constraint/);
+    const overflow=structuredClone(mapping);
+    overflow.meshAssignments[0].regions.push(0);
+    assert.throws(()=>validateCorticalMap(overflow,triangles,anchors),/assignment/);
+    disposeBrainObject(model);
+});
 
 test('rate scale separates high rates and distinguishes missing samples from silence', () => {
     assert.equal(firingRateLevel(0), 0);
@@ -39,10 +104,14 @@ test('folded cortical partition preserves surface triangles and hemisphere ident
     disposeBrainObject(model);
 });
 
-test('named anatomical parts map uniquely and preserve centres and uniform scaling', async () => {
+test('anatomical parts retain shared assembly transforms and fit the selected shell', async () => {
     const atlas = JSON.parse((await readFile(new URL('../../src/NRE.BlazorEditor/wwwroot/data/brain-atlas.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''));
     const definitions = new Map(atlas.structures.map(structure => [structure.instanceId, structure]));
     const bytes = await readFile(new URL('../../src/NRE.BlazorEditor/wwwroot/data/models/subcortical-parts.glb', import.meta.url));
+    const report = JSON.parse(await readFile(new URL('../../src/NRE.BlazorEditor/wwwroot/data/models/subcortical-parts.json', import.meta.url), 'utf8'));
+    const shellBytes = await readFile(new URL('../../src/NRE.BlazorEditor/wwwroot/data/models/brain-shell.glb', import.meta.url));
+    assert.equal(report.shellSha256, createHash('sha256').update(shellBytes).digest('hex'));
+    assert.equal(report.displaySha256, createHash('sha256').update(bytes).digest('hex'));
     const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
     const ids = new Set();
     gltf.scene.traverse(mesh => {
@@ -54,15 +123,23 @@ test('named anatomical parts map uniquely and preserve centres and uniform scali
         assert.ok(structure, id);
         const bounds = new THREE.Box3().setFromObject(mesh);
         const center = bounds.getCenter(new THREE.Vector3());
-        structure.centerMm.forEach((expected, axis) => assert.ok(Math.abs(center.getComponent(axis) - expected) < 0.0001));
-        const size = bounds.getSize(new THREE.Vector3());
-        const expectedVolume = structure.dimensionsMm.reduce((a, b) => a * b, 1);
-        assert.ok(Math.abs(size.x * size.y * size.z / expectedVolume - 1) < 0.0001);
+        mesh.userData.focusPointMm.forEach((expected, axis) => assert.ok(Math.abs(center.getComponent(axis) - expected) < 0.0001));
+        const assembly=report.assemblies[mesh.userData.assembly];
+        assert.equal(mesh.userData.uniformScale, assembly.uniformScale, 'individual rescaling must not destroy size ratios');
+        assert.deepEqual(mesh.userData.translationMm, assembly.translationMm, 'individual recentering must not destroy native registration');
+        const target=new THREE.Box3(new THREE.Vector3(...assembly.targetBounds.min),new THREE.Vector3(...assembly.targetBounds.max));
+        assert.ok(target.expandByScalar(.0001).containsBox(bounds), `${id} escapes its shell envelope`);
+        if (mesh.userData.populationEnvelope) assert.ok(['M_CerebellarGranule','M_PurkinjeCellLayer'].includes(id));
         assert.ok(mesh.userData.uniformScale > 0);
         assert.ok([...mesh.geometry.attributes.normal.array].every(Number.isFinite));
     });
-    assert.equal(ids.size, 37);
+    assert.equal(ids.size, 41);
     assert.ok(ids.has('L_GPe') && ids.has('R_GPe') && ids.has('M_CorpusCallosum'));
+    assert.ok(ids.has('M_CerebellarLobules') && ids.has('M_CerebellarVermis'));
+    // The original cerebellar centre was about 31 mm too posterior and 11 mm too high.
+    const target=report.assemblies.cerebellum.targetBounds;
+    const correctedCenter=target.min.map((v,i)=>(v+target.max[i])/2);
+    assert.ok(Math.abs(correctedCenter[2]-definitions.get('M_CerebellarLobules').centerMm[2])>25);
     disposeBrainObject(gltf.scene);
 });
 

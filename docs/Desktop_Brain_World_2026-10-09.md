@@ -18,4 +18,6 @@ Artifacts are saved under `artifacts/desktop-brain-world-<unique run>/`, with ve
 
 DNNE and WorldSim remain running after measurement for observation. A startup failure leaves logs and `RUN_FAILED.json` for diagnosis. The existing stop tools remain available when observation is finished.
 
-Preparation verification consists of script parsing and a side-effect-free `-WhatIf`. Live qualification and performance measurements have not been run while the current training job is active.
+The launcher uses a one-off interactive Windows task so the window outlives the originating Codex tool call. It passes absolute Git and .NET locations and adds their directories only to the child window's PATH. A Windows PowerShell 5.1 check with a stripped system-only PATH verifies tool resolution without starting services. The initial attempt failed before DNNE startup because the task-service environment could not find Codex's bundled Git; the corrected launcher addresses that failure directly.
+
+Script parsing and side-effect-free `-WhatIf` checks are complete. Live qualification and performance measurement begin only after Entity training finishes; they run independently in the visible window.

@@ -79,7 +79,7 @@ unchanged, with regression fixtures covering both errors. Relative trunk tilt in
 all physical traces stayed below 0.000001 rad, verifying root tilt is not repeated.
 All run outputs and subsequent analyses are verified on D:.
 
-## Next isolated contribution comparison
+## Isolated contribution comparison
 
 Protocol version 2 runs eight thirty-second cases using full position recruitment
 and the existing hip abductor/adductor and ankle muscle pairs. Fore-aft feedback
@@ -103,7 +103,7 @@ transducer without projection: conserved plantar loads, 38 muscles, zero rejecte
 frames, relative trunk tilt below 0.000001 rad. Live neuronal delivery is still
 unassessed. Original traces and analyses remain backed up on D:.
 
-## Next isolated response measurement
+## Isolated response measurement
 
 `--response-qualify` measures small command effects before selecting another
 feedback sign or gain. Ten fresh free-root cases last four seconds each, with the
@@ -118,6 +118,33 @@ at 50 Hz. Those actuator forces exclude passive drive/constraint contributions.
 Compare each response with the repeated controls, including pre-pulse equality,
 before interpreting direction or selecting a correction. Anchored individual
 joint tests do not establish this supported whole-body response.
+
+Run `unity-balance-response-20261012-123549-b738d1` completed ten finite isolated
+cases. Both control traces and all pre-pulse physical states matched exactly.
+At 1.31 s, positive/negative mirrored hip pulses changed lateral COM-to-foot
+error by -0.0355/+0.0396 mm against the control. Corresponding ankle pulses changed
+it by -0.0458/+0.0840 mm. Actuator torques and individual hip responses confirmed
+that commands reach the physical plant. Effects are small and include the retained
+ankle feedback; these are not open-loop transfer functions or standing qualification.
+Every case stayed upright for the short four-second observation. All 2,000 body
+frames passed real offline validation/transduction without projection. Live delivery
+remains unassessed. Analysis and captured outputs are verified on D:.
+
+## Hip reference versus ankle correction
+
+Protocol 3 separates two changes previously coupled in the hip-share test:
+reducing ankle correction and moving the hip target with measured hip drift.
+The original `AvatarArticulatedBody` retains a signed hip target referenced to
+neutral, plus excursion-dependent stabilization tone. The current Unity decoder
+does not yet reproduce the complete canonical posture/tone coordination.
+Seven thirty-second isolated cases compare the ankle-only control, the previous
+25-percent split, relative versus neutral-referenced hip targets, and reduced
+versus full ankle correction. Additional neutral-referenced hip gains are 10 and
+50 percent, with full ankle correction. Muscle policy, gains, free-root mechanics
+and prescribed 8/14/22 s pushes remain fixed. A software plant test demonstrates
+that a neutral hip target retains restoring muscle torque at zero sway error;
+the previous measured-relative target releases that active posture reference.
+These diagnostic alternatives are not adopted as a live DNNE controller.
 
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,

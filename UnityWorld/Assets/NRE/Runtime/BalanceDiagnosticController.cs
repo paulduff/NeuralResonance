@@ -9,7 +9,8 @@ namespace Nre.UnityWorld
         public static MotorFrame Command(double positionGain, double velocityGain,
             double errorX, double errorZ, double velocityX, double velocityZ,
             double leftSagittal, double rightSagittal, double leftCoronal, double rightCoronal,
-            bool supportedUpright,double coronalHipShare=0,double leftHipCoronal=0,double rightHipCoronal=0,double coronalGainRatio=1)
+            bool supportedUpright,double coronalHipShare=0,double leftHipCoronal=0,double rightHipCoronal=0,double coronalGainRatio=1,
+            bool hipTargetsAbsolute=false,bool retainFullAnkleCorrection=false)
         {
             if(!Array.TrueForAll(new[]{positionGain,velocityGain,errorX,errorZ,velocityX,velocityZ,
                 leftSagittal,rightSagittal,leftCoronal,rightCoronal,coronalHipShare,leftHipCoronal,rightHipCoronal,coronalGainRatio},Finite)||
@@ -22,13 +23,16 @@ namespace Nre.UnityWorld
             result.leftAnkleSagittalDrive=SignedTarget(leftSagittal+sagittal,"leftAnkle");
             result.rightAnkleSagittalDrive=SignedTarget(rightSagittal+sagittal,"rightAnkle");
             // The bilateral coronal anchors are mirrored in the physical avatar.
-            result.leftAnkleCoronalDrive=SignedTarget(leftCoronal+coronal*(1-coronalHipShare),"leftAnkleRoll");
-            result.rightAnkleCoronalDrive=SignedTarget(rightCoronal-coronal*(1-coronalHipShare),"rightAnkleRoll");
+            double ankleShare=retainFullAnkleCorrection?1:1-coronalHipShare;
+            result.leftAnkleCoronalDrive=SignedTarget(leftCoronal+coronal*ankleShare,"leftAnkleRoll");
+            result.rightAnkleCoronalDrive=SignedTarget(rightCoronal-coronal*ankleShare,"rightAnkleRoll");
             // Existing Avatar hips have independent abductor/adductor muscles.
             // Compare their contribution explicitly rather than forcing ankle-only control.
             if(coronalHipShare>0){
-                result.leftHipCoronalDrive=SignedTarget(leftHipCoronal+coronal*coronalHipShare,"leftHipAbduction");
-                result.rightHipCoronalDrive=SignedTarget(rightHipCoronal-coronal*coronalHipShare,"rightHipAbduction");
+                // Avatar's standing hip target retains its neutral reference.
+                // Compare that with the previous target relative to measured drift.
+                result.leftHipCoronalDrive=SignedTarget((hipTargetsAbsolute?0:leftHipCoronal)+coronal*coronalHipShare,"leftHipAbduction");
+                result.rightHipCoronalDrive=SignedTarget((hipTargetsAbsolute?0:rightHipCoronal)-coronal*coronalHipShare,"rightHipAbduction");
             }
             return result;
         }

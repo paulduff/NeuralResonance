@@ -150,8 +150,9 @@ protocol uses `--balance-qualify` for eight thirty-second hip/ankle contribution
 cases. An explicit diagnostic feedback controller varies existing muscle
 targets from measured sway; it cannot connect to DNNE, anchor the root or write
 poses. Reports separate mechanical holding from neuronal/learned standing, which
-remain unassessed. Hip shares are 0/25/50/100 percent, with two lateral gain pairs
-and fixed fore-aft gains. Each case has small pushes at 8/14/22 s. Body encoding
+remain unassessed. Protocol 3 has seven cases that independently compare neutral
+versus measured-relative hip targets and full versus reduced ankle correction.
+Each case has small pushes at 8/14/22 s. Body encoding
 normalizes support-loss error with Avatar's 0.22 m scale and bounds hand receptor
 loads to 5,000 N; raw contact forces and support distances remain available.
 

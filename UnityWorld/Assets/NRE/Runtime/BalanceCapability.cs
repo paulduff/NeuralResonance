@@ -11,8 +11,8 @@ namespace Nre.UnityWorld
     {
         [Serializable] public sealed class Case
         {
-            public string recruitment;
-            public bool feedback,finite=true,standingHeld,settlingPassed;
+            public string name,recruitment;
+            public bool feedback,finite=true,standingHeld,settlingPassed,hipTargetsAbsolute,retainFullAnkleCorrection;
             public float positionGain,velocityGain,coronalHipShare,coronalGainRatio,maximumSettledLinearSpeed,maximumSettledJointSpeed;
             public string worstLimitJoint;public int worstLimitAxis;public double worstLimitTime;
             public float maximumLimitViolation;
@@ -22,7 +22,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=2;public float durationSeconds=30;
+            public int protocolVersion=3;public float durationSeconds=30;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
             public List<Case> cases=new List<Case>();
@@ -40,16 +40,19 @@ namespace Nre.UnityWorld
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=from share in new[]{0f,.25f,.5f,1f}
-                from ratio in new[]{.5f,1f} select (share,ratio);
-            foreach(var configuration in configurations)
+            var configurations=new[]{
+                Configuration("ankle-only",0),
+                Configuration("relative-hips-25-split-ankles",.25f),
+                Configuration("relative-hips-25-full-ankles",.25f,retainAnkles:true),
+                Configuration("absolute-hips-25-split-ankles",.25f,absolute:true),
+                Configuration("absolute-hips-25-full-ankles",.25f,absolute:true,retainAnkles:true),
+                Configuration("absolute-hips-10-full-ankles",.1f,absolute:true,retainAnkles:true),
+                Configuration("absolute-hips-50-full-ankles",.5f,absolute:true,retainAnkles:true)};
+            foreach(var result in configurations)
             {
-                string policy="full-position";var gains=new Vector2(12,2.4f);
-                var result=new Case{recruitment=policy,feedback=true,positionGain=gains.x,velocityGain=gains.y,
-                    coronalHipShare=configuration.share,coronalGainRatio=configuration.ratio};
+                string policy=result.recruitment;var gains=new Vector2(result.positionGain,result.velocityGain);
                 report.cases.Add(result);
-                string name=policy+"-lateral-p"+(gains.x*result.coronalGainRatio).ToString("0",System.Globalization.CultureInfo.InvariantCulture)+
-                    "-hip"+(result.coronalHipShare*100).ToString("0",System.Globalization.CultureInfo.InvariantCulture);
+                string name=result.name;
                 try
                 {
                     if(world.Connected||!world.IsolatedQualification)throw new InvalidOperationException("Balance fixture must be isolated.");
@@ -72,7 +75,8 @@ namespace Nre.UnityWorld
                             body.LeftLoad+body.RightLoad>.5f*body.totalMass*9.81f;
                         var command=result.feedback?BalanceDiagnosticController.Command(gains.x,gains.y,error.x,error.z,velocity.x,velocity.z,
                             body.Angle("left_foot"),body.Angle("right_foot"),body.Angle("left_foot",1),body.Angle("right_foot",1),supported,
-                            result.coronalHipShare,body.Angle("left_thigh",1),body.Angle("right_thigh",1),result.coronalGainRatio):new MotorFrame{standDrive=1};
+                            result.coronalHipShare,body.Angle("left_thigh",1),body.Angle("right_thigh",1),result.coronalGainRatio,
+                            result.hipTargetsAbsolute,result.retainFullAnkleCorrection):new MotorFrame{standDrive=1};
                         world.DiagnosticCommand=command;
                         // Prescribed external pushes test recovery; they never provide balancing assistance.
                         if(step==800||step==1400||step==2200){body.pelvis.AddForce((step==800?Vector3.forward:step==1400?Vector3.right:Vector3.left)*1.5f,ForceMode.Impulse);result.disturbancesApplied++;}
@@ -107,10 +111,14 @@ namespace Nre.UnityWorld
                 if(!string.IsNullOrEmpty(report.error))break;
             }
             report.isolated=!world.Connected&&world.bodyFramesAccepted==0&&world.retinalFramesAccepted==0&&world.motorPacketsReceived==0;
-            report.completed=string.IsNullOrEmpty(report.error)&&report.cases.Count==8;
+            report.completed=string.IsNullOrEmpty(report.error)&&report.cases.Count==configurations.Length;
             report.anyDiagnosticStandingHold=report.cases.Any(c=>c.standingHeld);
             File.WriteAllText(Path.Combine(world.outputDirectory,"balance-report.json"),JsonUtility.ToJson(report,true));
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
+
+        static Case Configuration(string name,float share,bool absolute=false,bool retainAnkles=false)=>new Case{
+            name=name,recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=1,
+            coronalHipShare=share,hipTargetsAbsolute=absolute,retainFullAnkleCorrection=retainAnkles};
     }
 }

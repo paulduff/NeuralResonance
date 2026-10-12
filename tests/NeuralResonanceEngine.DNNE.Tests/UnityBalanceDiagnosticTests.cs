@@ -86,4 +86,36 @@ public sealed class UnityBalanceDiagnosticTests
         Assert.Throws<ArgumentException>(()=>BalanceDiagnosticController.AddCoronalOffsets(command,.03,0,0,0));
         Assert.Equal(0,command.leftHipCoronalDrive);
     }
+
+    [Fact]
+    public void HipReferenceAndAnkleRecruitmentCanBeComparedIndependently()
+    {
+        var previous=BalanceDiagnosticController.Command(12,2.4,.01,0,0,0,0,0,0,0,true,.25,.1,-.1);
+        var revised=BalanceDiagnosticController.Command(12,2.4,.01,0,0,0,0,0,0,0,true,.25,.1,-.1,
+            hipTargetsAbsolute:true,retainFullAnkleCorrection:true);
+        Assert.Equal((.1+.03)/.78,previous.leftHipCoronalDrive,6);
+        Assert.Equal(.03/.78,revised.leftHipCoronalDrive,6);
+        Assert.Equal(.12*.75/.52,previous.leftAnkleCoronalDrive,6);
+        Assert.Equal(.12/.52,revised.leftAnkleCoronalDrive,6);
+        Assert.False(revised.IsAuthorized());
+    }
+
+    [Fact]
+    public void NeutralHipReferenceRetainsMuscleRestorationWhenSwayErrorIsZero()
+    {
+        double Torque(bool absolute)
+        {
+            var command=BalanceDiagnosticController.Command(12,2.4,0,0,0,0,0,0,0,0,true,.25,.1,-.1,
+                hipTargetsAbsolute:absolute,retainFullAnkleCorrection:true);
+            var plant=new MusclePlant{PreserveActiveCapacity=true,PreserveVelocityCapacity=false};
+            var spinal=new AvatarSpinalLocomotorState(0,0,0,0,0,0,0);
+            double Angle(string joint,int axis)=>axis==1&&joint=="left_thigh"?.1:
+                axis==1&&joint=="right_thigh"?-.1:MuscleProfiles.All.Single(p=>p.Joint==joint&&p.Axis==axis).Rest;
+            double torque=0;
+            for(int step=0;step<100;step++)torque=plant.Advance(command,spinal,Angle,(_,_)=>0,1,.01)
+                .Single(e=>e.Joint=="left_thigh").Second;
+            return torque;
+        }
+        Assert.True(Torque(true)<Torque(false)-1);
+    }
 }

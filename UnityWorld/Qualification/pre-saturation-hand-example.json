@@ -1,0 +1,429 @@
+{
+  "sequence": 911,
+  "timestampMs": 1791804133674,
+  "linearVelocityXMetersPerSecond": -0.07204832881689072,
+  "linearVelocityYMetersPerSecond": 1.4781421422958374,
+  "linearVelocityZMetersPerSecond": -0.38743871450424194,
+  "angularVelocityXRadiansPerSecond": 0.3461211621761322,
+  "angularVelocityYRadiansPerSecond": 0.8406234383583069,
+  "angularVelocityZRadiansPerSecond": -6.930883407592773,
+  "storedEnergyJoules": 5969390.5,
+  "tissueIntegrityFraction": 1.0,
+  "coreTemperatureCelsius": 37.0,
+  "bloodOxygenSaturationFraction": 0.9800000190734863,
+  "hydrationFraction": 0.7479957938194275,
+  "inputSource": "avatar_unity_body",
+  "motorTrainingMode": false,
+  "articulation": {
+    "leftFootPressure": {
+      "heelMedialLoadNewtons": 28.022092819213867,
+      "heelLateralLoadNewtons": 0.0,
+      "forefootMedialLoadNewtons": 28.022092819213867,
+      "forefootLateralLoadNewtons": 0.0
+    },
+    "rightFootPressure": {
+      "heelMedialLoadNewtons": 0.0,
+      "heelLateralLoadNewtons": 79.17799377441406,
+      "forefootMedialLoadNewtons": 0.0,
+      "forefootLateralLoadNewtons": 79.17799377441406
+    },
+    "leftHipAngleRadians": 0.009077907539904118,
+    "rightHipAngleRadians": 0.022577647119760513,
+    "leftKneeAngleRadians": 0.03791762888431549,
+    "rightKneeAngleRadians": 0.03289918601512909,
+    "leftAnkleAngleRadians": -0.08319275826215744,
+    "rightAnkleAngleRadians": -0.10432872921228409,
+    "leftFootLoadNewtons": 56.044185638427734,
+    "rightFootLoadNewtons": 158.35598754882812,
+    "leftShoulderAngleRadians": -0.10718180984258652,
+    "rightShoulderAngleRadians": 0.059840474277734756,
+    "leftElbowAngleRadians": 0.00784899853169918,
+    "rightElbowAngleRadians": -0.0008796690963208675,
+    "leftHandLoadNewtons": 0.0,
+    "rightHandLoadNewtons": 5995.67138671875,
+    "manipulatorExtensionFraction": 0.0,
+    "trunkPitchRadians": -8.401822526593605e-08,
+    "trunkRollRadians": -4.1668418049312095e-08,
+    "leftShoulderAbductionRadians": -0.17656981945037842,
+    "rightShoulderAbductionRadians": -0.19950947165489197,
+    "neckYawRadians": 0.016997655853629112,
+    "neckPitchRadians": -0.00041420504567213356,
+    "supportPlaneOffsetMeters": 0.0,
+    "leftHipAbductionRadians": -0.219234898686409,
+    "rightHipAbductionRadians": 0.02745806612074375,
+    "leftAnkleRollRadians": 0.031720034778118134,
+    "rightAnkleRollRadians": -0.08505214750766754,
+    "trunkYawRadians": -0.08612611889839172,
+    "musculoskeletal": {
+      "posture": "inclined",
+      "bodyHeightMeters": 0.4780479073524475,
+      "uprightFraction": 0.08432821929454803,
+      "supportFraction": 1.0,
+      "balanceError": 0.24438707530498505,
+      "muscles": [
+        {
+          "name": "Iliopsoas",
+          "side": "L",
+          "activation": 0.10346899926662445,
+          "forceNewtons": 148.02133178710938,
+          "lengthFraction": 0.9993007779121399,
+          "velocityPerSecond": -0.011409193277359009,
+          "fatigueFraction": 0.035283949226140976
+        },
+        {
+          "name": "GluteusMaximus",
+          "side": "L",
+          "activation": 0.08049147576093674,
+          "forceNewtons": 189.1546173095703,
+          "lengthFraction": 1.0006992816925049,
+          "velocityPerSecond": 0.011409193277359009,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "Iliopsoas",
+          "side": "R",
+          "activation": 0.10042856633663177,
+          "forceNewtons": 145.9542999267578,
+          "lengthFraction": 0.9982224106788635,
+          "velocityPerSecond": -0.09696073085069656,
+          "fatigueFraction": 0.02453625574707985
+        },
+        {
+          "name": "GluteusMaximus",
+          "side": "R",
+          "activation": 0.09311820566654205,
+          "forceNewtons": 218.8252410888672,
+          "lengthFraction": 1.0017775297164917,
+          "velocityPerSecond": 0.09696073085069656,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "GluteusMedius",
+          "side": "L",
+          "activation": 0.37851592898368835,
+          "forceNewtons": 618.373779296875,
+          "lengthFraction": 1.0351769924163818,
+          "velocityPerSecond": 1.507859230041504,
+          "fatigueFraction": 0.0024453415535390377
+        },
+        {
+          "name": "AdductorGroup",
+          "side": "L",
+          "activation": 0.1114993765950203,
+          "forceNewtons": 186.87179565429688,
+          "lengthFraction": 0.9648230671882629,
+          "velocityPerSecond": -1.507859230041504,
+          "fatigueFraction": 0.025813473388552666
+        },
+        {
+          "name": "GluteusMedius",
+          "side": "R",
+          "activation": 0.4122551679611206,
+          "forceNewtons": 542.6340942382812,
+          "lengthFraction": 1.0168821811676025,
+          "velocityPerSecond": -1.410768985748291,
+          "fatigueFraction": 0.0325743742287159
+        },
+        {
+          "name": "AdductorGroup",
+          "side": "R",
+          "activation": 0.14677530527114868,
+          "forceNewtons": 307.88519287109375,
+          "lengthFraction": 0.9831178188323975,
+          "velocityPerSecond": 1.410768985748291,
+          "fatigueFraction": 2.8829201255575754e-05
+        },
+        {
+          "name": "Hamstrings",
+          "side": "L",
+          "activation": 0.16607174277305603,
+          "forceNewtons": 283.75006103515625,
+          "lengthFraction": 1.0027512311935425,
+          "velocityPerSecond": 0.001391914440318942,
+          "fatigueFraction": 0.01081114076077938
+        },
+        {
+          "name": "Quadriceps",
+          "side": "L",
+          "activation": 0.06203639134764671,
+          "forceNewtons": 198.48329162597656,
+          "lengthFraction": 0.9972488284111023,
+          "velocityPerSecond": -0.001391914440318942,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "Hamstrings",
+          "side": "R",
+          "activation": 0.1774749606847763,
+          "forceNewtons": 304.84259033203125,
+          "lengthFraction": 1.0036669969558716,
+          "velocityPerSecond": 0.018726635724306107,
+          "fatigueFraction": 0.00841901171952486
+        },
+        {
+          "name": "Quadriceps",
+          "side": "R",
+          "activation": 0.11159307509660721,
+          "forceNewtons": 331.8445739746094,
+          "lengthFraction": 0.9963330030441284,
+          "velocityPerSecond": -0.018726635724306107,
+          "fatigueFraction": 0.03194199129939079
+        },
+        {
+          "name": "TibialisAnterior",
+          "side": "L",
+          "activation": 0.48829981684684753,
+          "forceNewtons": 337.7444763183594,
+          "lengthFraction": 1.0219755172729492,
+          "velocityPerSecond": -0.03147400543093681,
+          "fatigueFraction": 0.015874873846769333
+        },
+        {
+          "name": "GastrocnemiusSoleus",
+          "side": "L",
+          "activation": 0.1074608564376831,
+          "forceNewtons": 256.8979187011719,
+          "lengthFraction": 0.9780244827270508,
+          "velocityPerSecond": 0.03147400543093681,
+          "fatigueFraction": 0.08331454545259476
+        },
+        {
+          "name": "TibialisAnterior",
+          "side": "R",
+          "activation": 0.3305743932723999,
+          "forceNewtons": 231.49990844726562,
+          "lengthFraction": 1.0195538997650146,
+          "velocityPerSecond": 0.6736672520637512,
+          "fatigueFraction": 0.011901267804205418
+        },
+        {
+          "name": "GastrocnemiusSoleus",
+          "side": "R",
+          "activation": 0.24026897549629211,
+          "forceNewtons": 533.8862915039062,
+          "lengthFraction": 0.9804461002349854,
+          "velocityPerSecond": -0.6736672520637512,
+          "fatigueFraction": 0.08487797528505325
+        },
+        {
+          "name": "TibialisPosterior",
+          "side": "L",
+          "activation": 0.16648928821086884,
+          "forceNewtons": 132.4214630126953,
+          "lengthFraction": 1.001770257949829,
+          "velocityPerSecond": -0.13360217213630676,
+          "fatigueFraction": 0.1131882444024086
+        },
+        {
+          "name": "FibularisLongusBrevis",
+          "side": "L",
+          "activation": 0.09639383852481842,
+          "forceNewtons": 130.13018798828125,
+          "lengthFraction": 0.9982298016548157,
+          "velocityPerSecond": 0.13360217213630676,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "TibialisPosterior",
+          "side": "R",
+          "activation": 0.3162853419780731,
+          "forceNewtons": 325.07891845703125,
+          "lengthFraction": 1.00431227684021,
+          "velocityPerSecond": 5.495625019073486,
+          "fatigueFraction": 0.009634425863623619
+        },
+        {
+          "name": "FibularisLongusBrevis",
+          "side": "R",
+          "activation": 0.7372839450836182,
+          "forceNewtons": 344.98211669921875,
+          "lengthFraction": 0.99568772315979,
+          "velocityPerSecond": -5.495625019073486,
+          "fatigueFraction": 0.11226508766412735
+        },
+        {
+          "name": "AnteriorDeltoid",
+          "side": "L",
+          "activation": 0.0046109301038086414,
+          "forceNewtons": 4.839320659637451,
+          "lengthFraction": 1.0109943151474,
+          "velocityPerSecond": 0.028914693742990494,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "LatissimusDorsi",
+          "side": "L",
+          "activation": 0.013242666609585285,
+          "forceNewtons": 16.49812126159668,
+          "lengthFraction": 0.9890056252479553,
+          "velocityPerSecond": -0.028914693742990494,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "AnteriorDeltoid",
+          "side": "R",
+          "activation": 0.007458087522536516,
+          "forceNewtons": 7.830419063568115,
+          "lengthFraction": 0.995543360710144,
+          "velocityPerSecond": 0.051681119948625565,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "LatissimusDorsi",
+          "side": "R",
+          "activation": 0.02528224140405655,
+          "forceNewtons": 31.437175750732422,
+          "lengthFraction": 1.004456639289856,
+          "velocityPerSecond": -0.051681119948625565,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "MiddleDeltoid",
+          "side": "L",
+          "activation": 0.0605911985039711,
+          "forceNewtons": 69.62370300292969,
+          "lengthFraction": 1.0147958993911743,
+          "velocityPerSecond": 0.6028279662132263,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "PectoralisMajor",
+          "side": "L",
+          "activation": 0.008984632790088654,
+          "forceNewtons": 11.979414939880371,
+          "lengthFraction": 0.9852041006088257,
+          "velocityPerSecond": -0.6028279662132263,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "MiddleDeltoid",
+          "side": "R",
+          "activation": 0.12955529987812042,
+          "forceNewtons": 148.59149169921875,
+          "lengthFraction": 1.0266461372375488,
+          "velocityPerSecond": 0.3295310437679291,
+          "fatigueFraction": 2.474922985129524e-05
+        },
+        {
+          "name": "PectoralisMajor",
+          "side": "R",
+          "activation": 0.01010475680232048,
+          "forceNewtons": 13.839689254760742,
+          "lengthFraction": 0.973353922367096,
+          "velocityPerSecond": -0.3295310437679291,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "BicepsBrachii",
+          "side": "L",
+          "activation": 0.003201747080311179,
+          "forceNewtons": 2.4963748455047607,
+          "lengthFraction": 1.0039385557174683,
+          "velocityPerSecond": -0.0033837403170764446,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "TricepsBrachii",
+          "side": "L",
+          "activation": 0.0037903545890003443,
+          "forceNewtons": 3.979644775390625,
+          "lengthFraction": 0.9960614442825317,
+          "velocityPerSecond": 0.0033837403170764446,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "BicepsBrachii",
+          "side": "R",
+          "activation": 0.010643219575285912,
+          "forceNewtons": 8.20872974395752,
+          "lengthFraction": 1.0041942596435547,
+          "velocityPerSecond": -0.11136234551668167,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "TricepsBrachii",
+          "side": "R",
+          "activation": 0.00026171610807068646,
+          "forceNewtons": 0.274784117937088,
+          "lengthFraction": 0.9958057999610901,
+          "velocityPerSecond": 0.11136234551668167,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "LeftSpleniusCapitisRightSternocleidomastoid",
+          "side": "M",
+          "activation": 0.0027160050813108683,
+          "forceNewtons": 1.4666178226470947,
+          "lengthFraction": 0.997855544090271,
+          "velocityPerSecond": 0.004131926689296961,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "RightSpleniusCapitisLeftSternocleidomastoid",
+          "side": "M",
+          "activation": 0.0005981347057968378,
+          "forceNewtons": 0.32285383343696594,
+          "lengthFraction": 1.002144455909729,
+          "velocityPerSecond": -0.004131926689296961,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "SpleniusCapitisUpperTrapezius",
+          "side": "M",
+          "activation": 0.0025998291093856096,
+          "forceNewtons": 1.7678834199905396,
+          "lengthFraction": 1.0002532005310059,
+          "velocityPerSecond": 0.013638224452733994,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "LongusColliSternocleidomastoid",
+          "side": "M",
+          "activation": 0.0016050783451646566,
+          "forceNewtons": 0.9937911629676819,
+          "lengthFraction": 0.9997467994689941,
+          "velocityPerSecond": -0.013638224452733994,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "RightExternalObliqueLeftInternalOblique",
+          "side": "M",
+          "activation": 0.00965837575495243,
+          "forceNewtons": 11.379426956176758,
+          "lengthFraction": 1.0204002857208252,
+          "velocityPerSecond": 0.20400089025497437,
+          "fatigueFraction": 0.0
+        },
+        {
+          "name": "LeftExternalObliqueRightInternalOblique",
+          "side": "M",
+          "activation": 0.02119133621454239,
+          "forceNewtons": 24.45813751220703,
+          "lengthFraction": 0.9795997142791748,
+          "velocityPerSecond": -0.20400089025497437,
+          "fatigueFraction": 0.0
+        }
+      ],
+      "balance": {
+        "centerOfMassXMeters": 0.025303859263658524,
+        "centerOfMassYMeters": 0.2170073688030243,
+        "centerOfMassZMeters": -0.0048086559399962425,
+        "centerOfMassVelocityXMetersPerSecond": 1.6208091974258423,
+        "centerOfMassVelocityZMetersPerSecond": -0.29024893045425415,
+        "extrapolatedCenterOfMassXMeters": 0.266369104385376,
+        "extrapolatedCenterOfMassZMeters": -0.047977790236473083,
+        "centerOfPressureXMeters": -0.06151556968688965,
+        "centerOfPressureZMeters": 0.014447890222072601,
+        "supportAreaSquareMeters": 0.1453159749507904,
+        "supportMarginMeters": -0.24438707530498505,
+        "fallPitchRadians": 0.6015068888664246,
+        "fallRollRadians": -1.4862257242202759,
+        "fallPitchVelocityRadiansPerSecond": 0.3461211621761322,
+        "fallRollVelocityRadiansPerSecond": -6.930883407592773,
+        "rightingForceFraction": 0.0,
+        "dynamicStabilityAllowanceMeters": 0.0,
+        "phase": "fallen"
+      }
+    }
+  }
+}

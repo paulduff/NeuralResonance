@@ -7,6 +7,7 @@ public sealed class ArticulatedAvatar {
  public sealed class Link { public string name;public ArticulationBody body;public Transform bone;public Quaternion bindRotation;public ContactSensor sensor;public float torqueLimit;public int dofs;public JointCoordinates coordinates; }
  public readonly Dictionary<string,Link> links=new Dictionary<string,Link>();
  public readonly BodyPhysiology physiology=new BodyPhysiology();
+ public readonly MusclePlant muscles=new MusclePlant();public bool MusclesEnabled {get;private set;}
  public ArticulationBody pelvis;public GameObject visual;public float totalMass;public float initialPelvisHeight;
  public float LeftLoad=>Load("left_foot");public float RightLoad=>Load("right_foot");
  public static ArticulatedAvatar Create(GameObject prefab) {
@@ -76,6 +77,12 @@ public sealed class ArticulatedAvatar {
  // PhysX integrates spring/damper drives with the joint constraint solve.
  // Explicit -damping*velocity torque was unstable for low-inertia forearms.
  static ArticulationDrive Drive(float lower,float upper,float limit)=>new ArticulationDrive{lowerLimit=lower,upperLimit=upper,stiffness=8,damping=2.5f,forceLimit=limit,target=0};
+ public void EnableMuscles(bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true){MusclesEnabled=true;muscles.PreserveActiveCapacity=preserveActiveCapacity;muscles.PreserveVelocityCapacity=preserveVelocityCapacity;foreach(var p in MuscleProfiles.All){var link=links[p.Joint];var drive=JointDrive(link,p.Axis);
+  drive.stiffness=(float)p.Stiffness;drive.damping=(float)p.Damping;drive.target=(float)p.Rest*Mathf.Rad2Deg;
+  if(p.Axis==0)link.body.xDrive=drive;else if(link.coordinates.SecondPhysicalAxis==1)link.body.yDrive=drive;else link.body.zDrive=drive;
+ }}
+ public static ArticulationDrive JointDrive(Link link,int axis)=>axis==0?link.body.xDrive:link.coordinates.SecondPhysicalAxis==1?link.body.yDrive:link.body.zDrive;
+ public double BoundMuscleTarget(string name,int axis,double target){var drive=JointDrive(links[name],axis);return Math.Clamp(target,drive.lowerLimit*Mathf.Deg2Rad,drive.upperLimit*Mathf.Deg2Rad);}
  public float Angle(string name,int index=0){var link=links[name];var state=link.body.jointPosition;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
  public float Speed(string name,int index=0){var link=links[name];var state=link.body.jointVelocity;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
  public static ArticulationReducedSpace NativeState(Link link,float first,float second=0){
@@ -92,7 +99,7 @@ public sealed class ArticulatedAvatar {
  }}
  public void SynchronizeSkin(){foreach(var l in links.Values.OrderBy(l=>l.bone.GetComponentsInParent<Transform>().Length)){l.bone.position=l.body.transform.position;l.bone.rotation=l.body.transform.rotation*l.bindRotation;}}
  public void Torques(string name,float first,float second=0,float posturalStiffness=0){var l=links[name];int n=l.body.dofCount;if(n==0)return;
-  var drive=l.body.xDrive;drive.stiffness=8+Mathf.Clamp(posturalStiffness,0,150);l.body.xDrive=drive;
+  if(!MusclesEnabled){var drive=l.body.xDrive;drive.stiffness=8+Mathf.Clamp(posturalStiffness,0,150);l.body.xDrive=drive;}
   first=Mathf.Clamp(first,-l.torqueLimit,l.torqueLimit);second=Mathf.Clamp(second,-l.torqueLimit,l.torqueLimit);
   l.body.jointForce=NativeState(l,first,second);
  }

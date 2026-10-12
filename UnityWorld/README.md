@@ -104,11 +104,60 @@ was unchanged; maximum joint limit violation was 0.009744 rad. The captured
 reports and sensory frames are retained in `Qualification`. This establishes
 the tested mechanical baseline; standing/weight transfer under DNNE remains next.
 
+## Bounded DNNE standing observation
+
+```powershell
+.\tools\start-unity-standing-window.ps1 -Player 'C:\path\to\local\build\DNNE Unity World.exe' -DurationSec 30
+```
+
+This separate visible PowerShell window rechecks the mechanical body and DNNE
+health, saves coordinator/timing exports, then opens Unity paused and connects
+the exclusive world lease. After the ten-second drain, press **Play in Unity**.
+The trial advances 30 simulation seconds under ordinary fresh neuronal output,
+with no scripted balance/gait commands, then pauses/disconnects and keeps the final
+view open. Progress appears in PowerShell; JSONL traces and separate integration/
+standing outcomes are saved and backed up to D:. No agent monitoring is required.
+FINISHED means completed integration; the measured standing criterion is printed
+separately. Neither it nor API input acceptance proves learned standing or neuronal
+delivery. See the [observation protocol](../docs/Unity_Standing_Observation_2026-10-12.md).
+
 ## Current limits
+
+The opt-in `--muscles` candidate ports Avatar activation, antagonist force,
+force-length/velocity and fatigue for 19 supported axes and reports 38 named
+muscles from measured joint state. The four extra axial muscles still need
+physical spine pitch/roll axes. The direct-torque baseline remains the default.
+Run `tools/start-unity-qualification-window.ps1 -Assessment muscles -Player 'C:\path\to\build\DNNE Unity World.exe'`
+for an isolated raw/canonical-muscle/full-active-muscle comparison with zero/full
+fixed standing recruitment. The alternative preserves each agonist's active
+capacity while balancing resting tone; it is a diagnostic candidate, not the
+default. The first four-case comparison was finite and settled but held standing
+for only 1.07 s at best. Full active capacity subsequently held only 0.95 s and
+failed zero-command settling; that rule is not adopted. Captured muscle frames
+pass offline receptor validation.
+See the [candidate protocol](../docs/Unity_Muscle_Migration_2026-10-12.md).
+
+Always review the existing Avatar implementation before adding or replacing its
+features. The [migration audit](../docs/Unity_Avatar_Migration_Audit_2026-10-12.md)
+maps the preserved, partial and missing components. The sensor candidate separates
+relative trunk motion from whole-body tilt, restoring the intended input to the
+existing vestibular labyrinth; it also restores four measured plantar pressure
+fields and estimates pressure center over each contact manifold.
+
+The first `-Assessment balance` run tested twelve isolated mechanical cases and
+held supported upright posture for 9.23 s at best; none held at the end. The current
+protocol uses `--balance-qualify` for eight thirty-second hip/ankle contribution
+cases. An explicit diagnostic feedback controller varies existing muscle
+targets from measured sway; it cannot connect to DNNE, anchor the root or write
+poses. Reports separate mechanical holding from neuronal/learned standing, which
+remain unassessed. Hip shares are 0/25/50/100 percent, with two lateral gain pairs
+and fixed fore-aft gains. Each case has small pushes at 8/14/22 s. Body encoding
+normalizes support-loss error with Avatar's 0.22 m scale and bounds hand receptor
+loads to 5,000 N; raw contact forces and support distances remain available.
 
 This is a physical migration prototype, not the whole former ecology. It has a
 flat contact arena, not food, hydration interactions, predators or terrain tasks.
-Muscle forces are bounded joint torque approximations; fiber dynamics, fatigue
+The default plant uses bounded joint torque approximations; its fiber dynamics, fatigue
 and grip are not yet migrated. Energy, hydration and tissue now follow the
 canonical Avatar simulation, including metabolic stress, contact damage and
 capacity reduction. Initial reserves match its respawn state: 6 MJ energy,

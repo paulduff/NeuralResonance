@@ -121,7 +121,7 @@ namespace Nre.UnityWorld
             Physics.SyncTransforms();
         }
 
-        static float LimitViolation(ArticulatedAvatar body)
+        public static float LimitViolation(ArticulatedAvatar body)
         {
             float violation = 0;
             foreach (var link in body.links.Values)

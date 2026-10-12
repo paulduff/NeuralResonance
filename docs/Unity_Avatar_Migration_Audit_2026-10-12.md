@@ -251,6 +251,40 @@ Incomplete falling cases do not establish a low-effort standing solution. The
 PowerShell player allowance is twenty minutes for this larger isolated batch,
 and automatic wire validation/D: backup still follow process completion.
 
+Run `unity-balance-capability-20261012-134335-eff5b1` completed all 25 finite,
+isolated cases. None held final standing. The best offset (sagittal +0.04 rad,
+coronal -0.06 rad) extended standing to 17.41 s, versus the reproduced 10.51 s
+zero-offset control. Every case reached maximum activation one while standing.
+All 30,000 captured frames passed actual automatic validation/offline transduction.
+Outputs and analysis are verified on D:. Modest static posture tuning did not
+produce a sustainable stance, and no offset is adopted.
+
+## Force reserve under physical limb loading
+
+The original `AvatarMuscleJoint.Advance` integrates active torque and passive
+spring/damping torque; it has no explicit limb-gravity term. Unity applies gravity
+to every physical link. Matching those scalar muscle equations therefore does
+not establish that inherited force capacities are calibrated for the migrated
+physical loading. This is a model difference, not proof of a particular biological
+strength value or the sole cause of falling.
+
+Protocol 7 tests four 300-second cases: maximum isometric force scales 1/0.5/2/3,
+with normal fatigue and zero posture offsets. The nominal control runs first.
+Controller, moment arms, limb masses, passive drives, joint/torque limits and
+prescribed pushes remain fixed. Both antagonists' capacities scale together, so
+relative tone balance and activation/fatigue equations are retained. Actual fiber
+forces are captured from the scaled plant; requested versus applied torque maxima
+and clipped-axis counts expose the unchanged actuator limits. Force reserve is
+varied as a causal diagnostic, not adopted as a live body calibration.
+
+The maximum tested force is 3 times the original 3,200 N quadriceps capacity,
+within the existing 10,000 N body-frame range. Golgi encoding still normalizes at
+3,500 N, so larger forces can saturate that existing receptor channel; passing
+offline validation does not establish sensory calibration or live neuronal delivery.
+Live policy checks reject non-unit strength scales. Tests verify proportional
+force/torque changes for identical measured input, unchanged activation/length/
+velocity/fatigue, and rejection of invalid or overflowing capacities.
+
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results

@@ -160,9 +160,9 @@ public sealed class WorldController:MonoBehaviour {
  public IEnumerator ConnectForTrial()=>Connect();
  public IEnumerator DisconnectForTrial()=>Disconnect();
  public void PauseTrial(string reason){Running=false;Status=reason;}
- public void ResetDiagnosticBody(bool muscles,bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true){if(Connected||!DiagnosticMode||!IsolatedQualification)throw new InvalidOperationException("Body reset is an isolated fixture only.");
+ public void ResetDiagnosticBody(bool muscles,bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true,double diagnosticStrengthScale=1){if(Connected||!DiagnosticMode||!IsolatedQualification)throw new InvalidOperationException("Body reset is an isolated fixture only.");
   Running=false;Avatar.pelvis.gameObject.SetActive(false);Avatar.visual.SetActive(false);Destroy(Avatar.pelvis.gameObject);Destroy(Avatar.visual);
-  Avatar=ArticulatedAvatar.Create(avatarPrefab);if(muscles)Avatar.EnableMuscles(preserveActiveCapacity,preserveVelocityCapacity);spinal.Reset();
+  Avatar=ArticulatedAvatar.Create(avatarPrefab,diagnosticStrengthScale);if(muscles)Avatar.EnableMuscles(preserveActiveCapacity,preserveVelocityCapacity);spinal.Reset();
  }
  void OnApplicationQuit(){Trial?.OnClosing(this);WriteReport();}
  public void WriteReport(){File.WriteAllText(Path.Combine(outputDirectory,"session.json"),JsonUtility.ToJson(new Session{unity=Application.unityVersion,physicsSteps=physicsSteps,bodyFramesAccepted=bodyFramesAccepted,retinalFramesAccepted=retinalFramesAccepted,rejectedFrames=rejectedFrames,connected=Connected,paused=!Running,finite=Avatar.IsFinite(),massKg=Avatar.totalMass,status=Status},true));}

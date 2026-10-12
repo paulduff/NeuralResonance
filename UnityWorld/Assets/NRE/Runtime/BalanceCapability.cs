@@ -12,6 +12,8 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Case
         {
             public string name,recruitment;
+            public float diagnosticStrengthScale=1,maximumRequestedTorqueNewtonMeters,maximumAppliedTorqueNewtonMeters;
+            public long torqueClippedAxes;
             public MuscleFatiguePolicy fatiguePolicy;
             public bool feedback,finite=true,standingHeld,settlingPassed,hipTargetsAbsolute,retainFullAnkleCorrection,coronalAnkleTargetsAbsolute;
             public float positionGain,velocityGain,coronalHipShare,coronalGainRatio,coronalDerivativeGain,maximumSettledLinearSpeed,maximumSettledJointSpeed;
@@ -27,7 +29,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=6;public float durationSeconds=120,minimumFinalStandingSeconds=10;
+            public int protocolVersion=7;public float durationSeconds=300,minimumFinalStandingSeconds=10;
             public float postureRampStartSeconds=.5f,postureRampDurationSeconds=2;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
@@ -47,10 +49,7 @@ namespace Nre.UnityWorld
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=new List<Case>{Configuration(0,0)};
-            configurations.AddRange(from sagittal in new[]{-.08f,-.04f,0,.04f,.08f}
-                from coronal in new[]{-.12f,-.06f,0,.06f,.12f}
-                where sagittal!=0||coronal!=0 select Configuration(sagittal,coronal));
+            var configurations=new[]{1f,.5f,2f,3f}.Select(Configuration).ToList();
             int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
@@ -60,7 +59,7 @@ namespace Nre.UnityWorld
                 try
                 {
                     if(world.Connected||!world.IsolatedQualification)throw new InvalidOperationException("Balance fixture must be isolated.");
-                    world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position");
+                    world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position",result.diagnosticStrengthScale);
                     world.Avatar.muscles.DiagnosticFatiguePolicy=result.fatiguePolicy;
                     using(var trace=new StreamWriter(Path.Combine(world.outputDirectory,name+"-trace.jsonl")))
                     for(int step=0;step<steps;step++)
@@ -124,6 +123,9 @@ namespace Nre.UnityWorld
                         if(!result.finite)throw new InvalidOperationException("Non-finite balance fixture.");
                     }
                     result.settlingPassed=result.maximumSettledLinearSpeed<.15f&&result.maximumSettledJointSpeed<.75f;
+                    result.torqueClippedAxes=world.Avatar.torqueClippedAxes;
+                    result.maximumRequestedTorqueNewtonMeters=world.Avatar.maximumRequestedTorqueNewtonMeters;
+                    result.maximumAppliedTorqueNewtonMeters=world.Avatar.maximumAppliedTorqueNewtonMeters;
                     if(result.standingEffortSamples>0)result.meanSquaredActivationWhileStanding/=result.standingEffortSamples;
                     result.standingHeld=result.metrics.currentStandingSeconds>=report.minimumFinalStandingSeconds&&
                         result.metrics.maximumLimitViolation<.05&&result.settlingPassed&&result.finite;
@@ -140,10 +142,9 @@ namespace Nre.UnityWorld
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(float sagittal,float coronal)=>new Case{
-            name="hips-s"+sagittal.ToString("+0.00;-0.00;0.00",System.Globalization.CultureInfo.InvariantCulture)+
-                "-c"+coronal.ToString("+0.00;-0.00;0.00",System.Globalization.CultureInfo.InvariantCulture),
-            fatiguePolicy=MuscleFatiguePolicy.Normal,hipSagittalOffsetRadians=sagittal,hipCoronalOffsetRadians=coronal,
+        static Case Configuration(float strength)=>new Case{
+            name="strength-"+strength.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),diagnosticStrengthScale=strength,
+            fatiguePolicy=MuscleFatiguePolicy.Normal,hipSagittalOffsetRadians=0,hipCoronalOffsetRadians=0,
             recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
             coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
     }

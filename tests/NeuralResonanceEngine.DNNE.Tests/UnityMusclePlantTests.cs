@@ -188,6 +188,37 @@ public sealed class UnityMusclePlantTests
             var plant=new U.MusclePlant();configure(plant);
             Assert.Throws<InvalidOperationException>(plant.RequireLivePolicy);
         }
+        foreach(double strength in new[]{.5,2,3})Assert.Throws<InvalidOperationException>(new U.MusclePlant(strength).RequireLivePolicy);
+    }
+
+    [Fact]
+    public void DiagnosticStrengthScalesActualForcesAndTorquesWithoutChangingActivationOrFatigue()
+    {
+        var normal=new U.MusclePlant{PreserveActiveCapacity=true,PreserveVelocityCapacity=false};
+        var scaled=new U.MusclePlant(2){PreserveActiveCapacity=true,PreserveVelocityCapacity=false};
+        var command=new U.MotorFrame{standDrive=1,leftAnkleCoronalDrive=.5f,rightAnkleCoronalDrive=-.5f};
+        var spinal=new U.AvatarSpinalLocomotorState(0,0,0,0,0,0,0);
+        for(int step=0;step<300;step++){
+            double Angle(string joint,int axis)=>U.MuscleProfiles.All.Single(p=>p.Joint==joint&&p.Axis==axis).Rest+Math.Sin(step*.01)*.02;
+            var control=normal.Advance(command,spinal,Angle,(_,_)=>.02,1,.01).ToArray();
+            var stronger=scaled.Advance(command,spinal,Angle,(_,_)=>.02,1,.01).ToArray();
+            for(int i=0;i<control.Length;i++){
+                Assert.Equal(control[i].First*2,stronger[i].First);Assert.Equal(control[i].Second*2,stronger[i].Second);
+            }
+            var original=normal.Capture();var changed=scaled.Capture();
+            for(int i=0;i<original.Length;i++){
+                Assert.Equal(original[i].Activation,changed[i].Activation);Assert.Equal(original[i].FatigueFraction,changed[i].FatigueFraction);
+                Assert.Equal(original[i].LengthFraction,changed[i].LengthFraction);Assert.Equal(original[i].VelocityPerSecond,changed[i].VelocityPerSecond);
+                Assert.Equal(original[i].ForceNewtons*2,changed[i].ForceNewtons);
+            }
+        }
+    }
+
+    [Fact]
+    public void InvalidStrengthCannotCreateAMusclePlant()
+    {
+        foreach(double strength in new[]{0,-1,double.NaN,double.PositiveInfinity,1e308})
+            Assert.Throws<ArgumentException>(()=>new U.MusclePlant(strength));
     }
 
     static U.AvatarMuscleJoint Ankle()=>new(new U.AvatarMuscle("TibialisAnterior","L",720),

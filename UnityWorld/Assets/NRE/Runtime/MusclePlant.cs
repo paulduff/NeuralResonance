@@ -38,16 +38,27 @@ namespace Nre.UnityWorld
         public bool PreserveVelocityCapacity { get; internal set; } = true;
         public MuscleFatiguePolicy DiagnosticFatiguePolicy { get; internal set; }
         public double DiagnosticHipSagittalOffsetRadians { get; internal set; }
+        public double DiagnosticStrengthScale { get; }
+
+        public MusclePlant(double diagnosticStrengthScale=1)
+        {
+            if(!Finite(diagnosticStrengthScale)||diagnosticStrengthScale<=0||MuscleProfiles.All.Any(p=>
+                !Finite(p.FlexorForce*diagnosticStrengthScale)||!Finite(p.ExtensorForce*diagnosticStrengthScale)))
+                throw new ArgumentException("Invalid muscle strength scale.");
+            DiagnosticStrengthScale=diagnosticStrengthScale;
+            joints=MuscleProfiles.All.ToDictionary(p=>p,
+                p=>new AvatarMuscleJoint(new AvatarMuscle(p.Flexor,p.Side,p.FlexorForce*diagnosticStrengthScale),
+                    new AvatarMuscle(p.Extensor,p.Side,p.ExtensorForce*diagnosticStrengthScale),
+                    p.Minimum,p.Maximum,p.Rest,p.Inertia,p.MomentArm,p.Stiffness,p.Damping));
+        }
 
         public void RequireLivePolicy()
         {
             if(DiagnosticFatiguePolicy!=MuscleFatiguePolicy.Normal||DiagnosticHipSagittalOffsetRadians!=0||
-                PreserveActiveCapacity||!PreserveVelocityCapacity)
+                PreserveActiveCapacity||!PreserveVelocityCapacity||DiagnosticStrengthScale!=1)
                 throw new InvalidOperationException("Diagnostic muscle policies cannot enter live operation.");
         }
-        internal readonly Dictionary<MuscleProfile,AvatarMuscleJoint> joints = MuscleProfiles.All.ToDictionary(p=>p,
-            p=>new AvatarMuscleJoint(new AvatarMuscle(p.Flexor,p.Side,p.FlexorForce),
-                new AvatarMuscle(p.Extensor,p.Side,p.ExtensorForce),p.Minimum,p.Maximum,p.Rest,p.Inertia,p.MomentArm,p.Stiffness,p.Damping));
+        internal readonly Dictionary<MuscleProfile,AvatarMuscleJoint> joints;
         double capacity=1;
 
         // The neuronal command chooses targets/recruitment. Measured lengths and

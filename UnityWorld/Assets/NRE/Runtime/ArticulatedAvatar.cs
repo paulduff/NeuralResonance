@@ -7,12 +7,14 @@ public sealed class ArticulatedAvatar {
  public sealed class Link { public string name;public ArticulationBody body;public Transform bone;public Quaternion bindRotation;public ContactSensor sensor;public float torqueLimit;public int dofs;public JointCoordinates coordinates; }
  public readonly Dictionary<string,Link> links=new Dictionary<string,Link>();
  public readonly BodyPhysiology physiology=new BodyPhysiology();
- public readonly MusclePlant muscles=new MusclePlant();public bool MusclesEnabled {get;private set;}
+ public readonly MusclePlant muscles;public bool MusclesEnabled {get;private set;}
+ public long torqueClippedAxes;public float maximumRequestedTorqueNewtonMeters,maximumAppliedTorqueNewtonMeters;
+ ArticulatedAvatar(double diagnosticStrengthScale){muscles=new MusclePlant(diagnosticStrengthScale);}
  public ArticulationBody pelvis;public GameObject visual;public float totalMass;public float initialPelvisHeight;
  public float LeftLoad=>Load("left_foot");public float RightLoad=>Load("right_foot");
- public static ArticulatedAvatar Create(GameObject prefab) {
+ public static ArticulatedAvatar Create(GameObject prefab,double diagnosticStrengthScale=1) {
   if(prefab==null)throw new InvalidOperationException("Install the supplied humanoid model with tools/prepare-unity-avatar.ps1.");
-  var avatar=new ArticulatedAvatar();avatar.visual=UnityEngine.Object.Instantiate(prefab);avatar.visual.name="Avatar appearance (physics driven)";
+  var avatar=new ArticulatedAvatar(diagnosticStrengthScale);avatar.visual=UnityEngine.Object.Instantiate(prefab);avatar.visual.name="Avatar appearance (physics driven)";
   var animator=avatar.visual.GetComponent<Animator>();
   if(animator==null||animator.avatar==null||!animator.avatar.isHuman||!animator.avatar.isValid)throw new InvalidOperationException("The avatar needs a validated humanoid skeleton.");
   var renderers=avatar.visual.GetComponentsInChildren<SkinnedMeshRenderer>();var bounds=new Bounds();bool first=true;
@@ -100,7 +102,10 @@ public sealed class ArticulatedAvatar {
  public void SynchronizeSkin(){foreach(var l in links.Values.OrderBy(l=>l.bone.GetComponentsInParent<Transform>().Length)){l.bone.position=l.body.transform.position;l.bone.rotation=l.body.transform.rotation*l.bindRotation;}}
  public void Torques(string name,float first,float second=0,float posturalStiffness=0){var l=links[name];int n=l.body.dofCount;if(n==0)return;
   if(!MusclesEnabled){var drive=l.body.xDrive;drive.stiffness=8+Mathf.Clamp(posturalStiffness,0,150);l.body.xDrive=drive;}
+  maximumRequestedTorqueNewtonMeters=Mathf.Max(maximumRequestedTorqueNewtonMeters,Mathf.Max(Mathf.Abs(first),l.dofs>1?Mathf.Abs(second):0));
+  if(Mathf.Abs(first)>l.torqueLimit)torqueClippedAxes++;if(l.dofs>1&&Mathf.Abs(second)>l.torqueLimit)torqueClippedAxes++;
   first=Mathf.Clamp(first,-l.torqueLimit,l.torqueLimit);second=Mathf.Clamp(second,-l.torqueLimit,l.torqueLimit);
+  maximumAppliedTorqueNewtonMeters=Mathf.Max(maximumAppliedTorqueNewtonMeters,Mathf.Max(Mathf.Abs(first),l.dofs>1?Mathf.Abs(second):0));
   l.body.jointForce=NativeState(l,first,second);
  }
  public void ZeroActuation(){foreach(var l in links.Values)if(l.dofs>0)Torques(l.name,0);}

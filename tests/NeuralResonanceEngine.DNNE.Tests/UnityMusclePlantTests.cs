@@ -116,6 +116,49 @@ public sealed class UnityMusclePlantTests
         }
     }
 
+    [Fact]
+    public void DiagnosticFatigueAblationPreservesActivationLengthAndVelocity()
+    {
+        var normal=new U.AvatarMuscle("Test","L",1500);
+        var diagnostic=new U.AvatarMuscle("Test","L",1500);
+        for(int step=0;step<2000;step++){
+            normal.Advance(1,1,.01);diagnostic.Advance(1,1,.01,suppressDiagnosticFatigue:true);
+            Assert.Equal(normal.Activation,diagnostic.Activation,12);
+            Assert.Equal(normal.LengthFraction,diagnostic.LengthFraction);
+            Assert.Equal(normal.VelocityPerSecond,diagnostic.VelocityPerSecond);
+            Assert.Equal(0,diagnostic.FatigueFraction);
+        }
+        Assert.True(normal.FatigueFraction>.3);
+        Assert.Equal(1500*diagnostic.Activation,diagnostic.ForceNewtons,10);
+        Assert.True(diagnostic.ForceNewtons>normal.ForceNewtons*2);
+        for(int step=0;step<200;step++)diagnostic.Advance(0,1,.01,suppressDiagnosticFatigue:true);
+        Assert.Equal(0,diagnostic.ForceNewtons);
+    }
+
+    [Fact]
+    public void AnkleOnlyAblationRetainsFatigueAndForcesInOtherMuscles()
+    {
+        var normal=new U.MusclePlant{PreserveActiveCapacity=true};
+        var diagnostic=new U.MusclePlant{PreserveActiveCapacity=true,
+            DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticAnklesSuppressed};
+        var command=new U.MotorFrame{standDrive=1,leftDrive=.8f,leftAnkleCoronalDrive=1,rightAnkleCoronalDrive=-1};
+        var spinal=new U.AvatarSpinalLocomotorState(.8,.1,.8,.1,0,0,0);
+        double Angle(string joint,int axis)=>U.MuscleProfiles.All.Single(p=>p.Joint==joint&&p.Axis==axis).Rest;
+        for(int step=0;step<300;step++){
+            normal.Advance(command,spinal,Angle,(_,_)=>0,1,.01);
+            diagnostic.Advance(command,spinal,Angle,(_,_)=>0,1,.01);
+        }
+        var original=normal.Capture();var changed=diagnostic.Capture();
+        var ankleNames=new[]{"TibialisAnterior","GastrocnemiusSoleus","TibialisPosterior","FibularisLongusBrevis"};
+        Assert.All(changed.Where(m=>ankleNames.Contains(m.Name)),m=>Assert.Equal(0,m.FatigueFraction));
+        Assert.Contains(original,m=>ankleNames.Contains(m.Name)&&m.FatigueFraction>.01);
+        foreach(var muscle in changed.Where(m=>!ankleNames.Contains(m.Name))){
+            var control=original.Single(m=>m.Name==muscle.Name&&m.Side==muscle.Side);
+            Assert.Equal(control.FatigueFraction,muscle.FatigueFraction);Assert.Equal(control.ForceNewtons,muscle.ForceNewtons);
+        }
+        Assert.Contains(changed,m=>m.Name=="Iliopsoas"&&m.FatigueFraction>.01);
+    }
+
     static U.AvatarMuscleJoint Ankle()=>new(new U.AvatarMuscle("TibialisAnterior","L",720),
         new U.AvatarMuscle("GastrocnemiusSoleus","L",2900),-.78,.52,0,.55,.038,22,3.8);
 }

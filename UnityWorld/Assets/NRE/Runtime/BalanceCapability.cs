@@ -12,17 +12,19 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Case
         {
             public string name,recruitment;
+            public MuscleFatiguePolicy fatiguePolicy;
             public bool feedback,finite=true,standingHeld,settlingPassed,hipTargetsAbsolute,retainFullAnkleCorrection,coronalAnkleTargetsAbsolute;
             public float positionGain,velocityGain,coronalHipShare,coronalGainRatio,coronalDerivativeGain,maximumSettledLinearSpeed,maximumSettledJointSpeed;
             public string worstLimitJoint;public int worstLimitAxis;public double worstLimitTime;
             public float maximumLimitViolation;
+            public float maximumReportedFatigueFraction;
             public int disturbancesApplied;
             public StandingTrialMetrics metrics=new StandingTrialMetrics();
         }
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=4;public float durationSeconds=60,minimumFinalStandingSeconds=10;
+            public int protocolVersion=5;public float durationSeconds=120,minimumFinalStandingSeconds=10;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
             public List<Case> cases=new List<Case>();
@@ -40,10 +42,10 @@ namespace Nre.UnityWorld
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=(from absolute in new[]{false,true}
-                from position in new[]{6f,12f,24f,48f}
-                from derivative in new[]{2.4f,9.6f}
-                select Configuration(absolute,position,derivative)).ToArray();
+            var configurations=new[]{
+                Configuration("normal-fatigue",MuscleFatiguePolicy.Normal),
+                Configuration("ankle-fatigue-disabled",MuscleFatiguePolicy.DiagnosticAnklesSuppressed),
+                Configuration("all-fatigue-disabled",MuscleFatiguePolicy.DiagnosticAllSuppressed)};
             int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
@@ -54,6 +56,7 @@ namespace Nre.UnityWorld
                 {
                     if(world.Connected||!world.IsolatedQualification)throw new InvalidOperationException("Balance fixture must be isolated.");
                     world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position");
+                    world.Avatar.muscles.DiagnosticFatiguePolicy=result.fatiguePolicy;
                     using(var trace=new StreamWriter(Path.Combine(world.outputDirectory,name+"-trace.jsonl")))
                     for(int step=0;step<steps;step++)
                     {
@@ -81,6 +84,7 @@ namespace Nre.UnityWorld
                         world.Step();frame=BodyFrame.Capture(body,step+1);state=frame.articulation.musculoskeletal;
                         result.finite&=body.IsFinite()&&command.IsFinite()&&state.muscles.All(m=>
                             float.IsFinite(m.activation)&&float.IsFinite(m.forceNewtons)&&float.IsFinite(m.lengthFraction)&&float.IsFinite(m.velocityPerSecond)&&float.IsFinite(m.fatigueFraction));
+                        result.maximumReportedFatigueFraction=Mathf.Max(result.maximumReportedFatigueFraction,state.muscles.Max(m=>m.fatigueFraction));
                         foreach(var link in body.links.Values)for(int axis=0;axis<link.dofs;axis++){
                             var range=ArticulatedAvatar.JointDrive(link,axis);float angle=body.Angle(link.name,axis);
                             float violation=Mathf.Max(0,range.lowerLimit*Mathf.Deg2Rad-angle,angle-range.upperLimit*Mathf.Deg2Rad);
@@ -116,10 +120,8 @@ namespace Nre.UnityWorld
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(bool absolute,float position,float derivative)=>new Case{
-            name="ankles-"+(absolute?"neutral":"measured")+"-p"+position.ToString("0",System.Globalization.CultureInfo.InvariantCulture)+
-                "-d"+derivative.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),
-            recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=position/12,
-            coronalDerivativeGain=derivative,coronalHipShare=0,coronalAnkleTargetsAbsolute=absolute};
+        static Case Configuration(string name,MuscleFatiguePolicy policy)=>new Case{
+            name=name,fatiguePolicy=policy,recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
+            coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
     }
 }

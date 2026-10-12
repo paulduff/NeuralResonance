@@ -19,10 +19,20 @@ def generate(root):
     core=source[:source.index('public readonly record struct AvatarMechanicalOutput')]
     core=core.replace('using NeuralResonanceEngine.Shared.Contracts;', 'using System;')
     core=core.replace('namespace NRE.SimAvatar;', 'namespace Nre.UnityWorld {')
+    # Diagnostic-only ablation. The default/control still executes the complete
+    # inherited fatigue equation; live Unity stepping forbids this ablation.
+    signature='public void Advance(double excitation, double lengthFraction, double dt)'
+    fatigue_end='        if (target <= 0.0 && Activation < RelaxedActivationEpsilon)'
+    if core.count(signature)!=1 or core.count(fatigue_end)!=1:
+        raise ValueError('Unexpected canonical fatigue layout.')
+    core=core.replace(signature,'public void Advance(double excitation, double lengthFraction, double dt, bool suppressDiagnosticFatigue = false)')
+    core=core.replace(fatigue_end,'        if (suppressDiagnosticFatigue) FatigueFraction = 0.0;\n\n'+fatigue_end)
     begin=core.index('    public void Advance(double targetAngle')
     end=core.index('    public void Reconcile(', begin)
     old=core[begin:end]
     activation=old[old.index('        var boundedTarget'):old.index('        var activeTorque')]
+    if activation.count(', dt);')!=2: raise ValueError('Expected both antagonist advances.')
+    activation=activation.replace(', dt);', ', dt, suppressDiagnosticFatigue);')
     # Explicit comparison candidate: equal resting antagonist forces must not
     # automatically cap the stronger agonist's active recruitment. The original
     # equations remain the default/control until this candidate is qualified.
@@ -43,7 +53,8 @@ def generate(root):
     // Return active muscle torque; native implicit drives supply passive terms.
     public double AdvanceMeasured(double targetAngle, double descendingGain,
         double tone, double measuredAngle, double measuredVelocity, double dt,
-        bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true)
+        bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true,
+        bool suppressDiagnosticFatigue = false)
     {
         Angle = measuredAngle;
         AngularVelocity = measuredVelocity;

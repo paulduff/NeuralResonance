@@ -33,7 +33,7 @@ internal sealed class AvatarMuscle
     public double FatigueFraction { get; private set; }
     public double FatigueCapacityFraction => Math.Pow(1.0 - FatigueFraction, 2.2);
 
-    public void Advance(double excitation, double lengthFraction, double dt)
+    public void Advance(double excitation, double lengthFraction, double dt, bool suppressDiagnosticFatigue = false)
     {
         var target = Math.Clamp(excitation, 0.0, 1.0);
         var timeConstant = target > Activation ? ActivationRiseSeconds : ActivationFallSeconds;
@@ -56,6 +56,8 @@ internal sealed class AvatarMuscle
             ((1.0 - Activation) * RecoveryRatePerSecond * recoveryScale * dt),
             0.0,
             1.0);
+
+        if (suppressDiagnosticFatigue) FatigueFraction = 0.0;
 
         if (target <= 0.0 && Activation < RelaxedActivationEpsilon)
         {
@@ -148,7 +150,8 @@ internal sealed class AvatarMuscleJoint
     // Return active muscle torque; native implicit drives supply passive terms.
     public double AdvanceMeasured(double targetAngle, double descendingGain,
         double tone, double measuredAngle, double measuredVelocity, double dt,
-        bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true)
+        bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true,
+        bool suppressDiagnosticFatigue = false)
     {
         Angle = measuredAngle;
         AngularVelocity = measuredVelocity;
@@ -178,8 +181,8 @@ internal sealed class AvatarMuscleJoint
 
         var span = Math.Max(0.1, maximum - minimum);
         var normalized = (Angle - restAngle) / span;
-        Flexor.Advance(flexorExcitation, 1.0 - (normalized * 0.34), dt);
-        Extensor.Advance(extensorExcitation, 1.0 + (normalized * 0.34), dt);
+        Flexor.Advance(flexorExcitation, 1.0 - (normalized * 0.34), dt, suppressDiagnosticFatigue);
+        Extensor.Advance(extensorExcitation, 1.0 + (normalized * 0.34), dt, suppressDiagnosticFatigue);
 
         return (Flexor.ForceNewtons - Extensor.ForceNewtons) * momentArm;
     }

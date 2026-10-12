@@ -5,6 +5,8 @@ using System.Linq;
 
 namespace Nre.UnityWorld
 {
+    public enum MuscleFatiguePolicy { Normal, DiagnosticAnklesSuppressed, DiagnosticAllSuppressed }
+
     public sealed class MuscleProfile
     {
         public readonly string Variable, Joint, Flexor, Extensor, Side;
@@ -34,6 +36,7 @@ namespace Nre.UnityWorld
         // Opt-in isolated comparison policy. Canonical recruitment remains the default.
         public bool PreserveActiveCapacity { get; internal set; }
         public bool PreserveVelocityCapacity { get; internal set; } = true;
+        public MuscleFatiguePolicy DiagnosticFatiguePolicy { get; internal set; }
         internal readonly Dictionary<MuscleProfile,AvatarMuscleJoint> joints = MuscleProfiles.All.ToDictionary(p=>p,
             p=>new AvatarMuscleJoint(new AvatarMuscle(p.Flexor,p.Side,p.FlexorForce),
                 new AvatarMuscle(p.Extensor,p.Side,p.ExtensorForce),p.Minimum,p.Maximum,p.Rest,p.Inertia,p.MomentArm,p.Stiffness,p.Damping));
@@ -62,7 +65,9 @@ namespace Nre.UnityWorld
                 if(boundTarget!=null)target=boundTarget(p.Joint,p.Axis,target);
                 double measured=angle(p.Joint,p.Axis),speed=velocity(p.Joint,p.Axis);
                 if(!Finite(measured)||!Finite(speed))throw new ArgumentException("Invalid measured muscle state.");
-                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity)*capacity;
+                bool suppressFatigue=DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAllSuppressed||
+                    (DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAnklesSuppressed&&p.Joint.EndsWith("foot"));
+                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity,suppressFatigue)*capacity;
                 output.TryGetValue(p.Joint,out var effort);
                 output[p.Joint]=p.Axis==0?(torque,effort.second):(effort.first,torque);
             }

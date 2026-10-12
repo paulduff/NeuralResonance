@@ -174,6 +174,41 @@ and offline receptors. This requires the already-installed .NET 10 SDK. Reports
 remain separate from live neuronal delivery, and are included in the D: run backup.
 The command-response analyser is tracked in `tools/analyse-unity-response.py`.
 
+Run `unity-balance-capability-20261012-125543-0f0299` completed all sixteen finite,
+isolated cases. None maintained final standing. The best measured-target case at
+lateral gains 48/2.4 held 10.51 s; the neutral-target counterpart held 10.50 s.
+The 12/2.4 measured-target control reproduced 9.23 s. Higher gains gave diminishing
+improvement, and increased damping did not establish a hold. All 9,600 captured
+frames passed the automatic actual validator/offline transducer, with conserved
+plantar loads, 38 muscles and no projected corrections. This is mechanical fixture
+evidence; neuronal control, learning and live sensory delivery remain unassessed.
+
+In the best trace, both lateral ankle commands saturate. Left TibialisPosterior
+activation reaches one; its measured force declines from roughly 788 N at 8 s to
+707 N at 10 s as inherited fatigue rises from 0.122 to 0.162. Length and velocity
+also affect force, so this association does not establish fatigue as the sole cause.
+Further gain tuning is not the next diagnostic step.
+
+## Isolated muscle-fatigue ablation
+
+Protocol 5 uses three otherwise-matched 120-second cases: normal muscle fatigue,
+fatigue disabled in ankle muscles only, and fatigue disabled in all muscles.
+The best tested feedback, full-position recruitment, nominal forces/moment arms,
+passive drives, joint limits, gravity, contacts, physiology and 8/14/22 s pushes
+are fixed. Energy/hydration/contact damage still evolve. The ablation changes only
+the muscle fatigue fraction before computing force; activation, length/velocity
+laws and resting-force recruitment are unchanged. Actual captured muscle force
+and fatigue reflect each diagnostic policy. A whole-body comparison distinguishes
+ankle fatigue from a wider plant limitation.
+
+The generated Unity port keeps the inherited fatigue equation as its default;
+canonical Avatar source/rates are unchanged. A live Unity step explicitly rejects
+any non-normal diagnostic fatigue policy. These cases cannot connect to DNNE, and
+no ablation is exposed as a live command-line option. Software checks verify
+canonical default equivalence, unchanged activation/length/velocity, zero force
+after relaxation, and preservation of other muscles under ankle-only suppression.
+Disabling fatigue is a causal test, not an adopted treatment or biological claim.
+
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results

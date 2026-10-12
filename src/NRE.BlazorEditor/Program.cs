@@ -208,7 +208,8 @@ editorApi.MapGet("/world-state", (WorldStateReader reader, CancellationToken can
     reader.ReadAsync(cancellationToken));
 editorApi.MapPost("/world/resume", (HeadlessWorldRuntime runtime) =>
 {
-    runtime.Resume();
+    try { runtime.Resume(); }
+    catch (InvalidOperationException error) { return Results.Conflict(new { accepted = false, error = error.Message }); }
     return Results.Ok(new { accepted = true, running = true });
 });
 editorApi.MapPost("/world/pause", (HeadlessWorldRuntime runtime) =>
@@ -218,9 +219,20 @@ editorApi.MapPost("/world/pause", (HeadlessWorldRuntime runtime) =>
 });
 editorApi.MapPost("/world/reset", (HeadlessWorldRuntime runtime) =>
 {
-    runtime.Reset();
+    try { runtime.Reset(); }
+    catch (InvalidOperationException error) { return Results.Conflict(new { accepted = false, error = error.Message }); }
     return Results.Ok(new { accepted = true, running = runtime.GetSnapshot().Running });
 });
+editorApi.MapPost("/world/unity/acquire", (UnityWorldLeaseRequest request, HeadlessWorldRuntime runtime) =>
+{
+    var token = runtime.AcquireExternalWorld(request.Owner ?? "");
+    return token is null ? Results.Conflict(new { accepted = false }) :
+        Results.Ok(new { accepted = true, token, leaseSeconds = 10, drainSeconds = 10 });
+});
+editorApi.MapPost("/world/unity/heartbeat", (UnityWorldLeaseRequest request, HeadlessWorldRuntime runtime) =>
+    runtime.RenewExternalWorld(request.Token ?? "") ? Results.Ok(new { accepted = true }) : Results.Conflict(new { accepted = false }));
+editorApi.MapPost("/world/unity/release", (UnityWorldLeaseRequest request, HeadlessWorldRuntime runtime) =>
+    runtime.ReleaseExternalWorld(request.Token ?? "") ? Results.Ok(new { accepted = true }) : Results.Conflict(new { accepted = false }));
 editorApi.MapPost("/admin/shutdown", async (
     HeadlessWorldRuntime runtime,
     IHostApplicationLifetime lifetime) =>

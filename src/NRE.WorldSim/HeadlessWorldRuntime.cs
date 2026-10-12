@@ -66,6 +66,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         ShelteredSleepRecoveryRate: 0.010);
 
     private readonly object gate = new();
+    private readonly ExternalWorldLease externalWorldLease = new();
     private readonly object lifecycleGate = new();
     private readonly HeadlessWorldOptions options;
     private readonly HttpClient frameClient;
@@ -290,6 +291,7 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
     {
         lock (gate)
         {
+            if (externalWorldLease.IsHeld) throw new InvalidOperationException("Unity owns the physical world; pause/disconnect it before resuming WorldSim.");
             running = true;
             consecutiveSlowBrainFrames = 0;
         }
@@ -311,10 +313,34 @@ public sealed class HeadlessWorldRuntime : IAsyncDisposable
         PersistRunReport("reset");
         lock (gate)
         {
+            if (externalWorldLease.IsHeld) throw new InvalidOperationException("Unity owns the physical world; disconnect it before resetting WorldSim.");
             ResetCore(seed ?? terrain.Seed);
             avatarService.PostResetMotor();
             return GetSnapshot();
         }
+    }
+
+    public string? AcquireExternalWorld(string owner)
+    {
+        string? token;
+        lock (gate)
+        {
+            if (!externalWorldLease.TryAcquire(owner, out token)) return null;
+            running = false;
+            lastForwardSpeed = lastTurnRateDegrees = 0;
+        }
+        PersistRunReport("unity-handoff");
+        return token;
+    }
+
+    public bool RenewExternalWorld(string token)
+    {
+        lock (gate) return externalWorldLease.Renew(token);
+    }
+
+    public bool ReleaseExternalWorld(string token)
+    {
+        lock (gate) return externalWorldLease.Release(token);
     }
 
     public WorldSimulationSnapshot GetSnapshot()

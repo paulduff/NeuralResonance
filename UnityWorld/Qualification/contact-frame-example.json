@@ -1,0 +1,17 @@
+{
+    "sequence": 1,
+    "timestampMs": 1791792898792,
+    "bodyPositionX": -0.19694505631923676,
+    "bodyPositionY": 0.6872023344039917,
+    "bodyPositionZ": -0.3296225070953369,
+    "surfaceNormalX": 0.909079372882843,
+    "surfaceNormalY": -0.22138383984565736,
+    "surfaceNormalZ": 0.35293644666671755,
+    "forceNewtons": 218.05381774902345,
+    "impulseNewtonSeconds": 2.1805381774902345,
+    "penetrationMillimeters": 1.1518932580947877,
+    "tangentialSpeedMetersPerSecond": 0.0003869730280712247,
+    "contactAreaSquareMillimeters": 8000.0,
+    "durationMilliseconds": 9190.115234375,
+    "inputSource": "avatar_unity_left_foot_contact"
+}

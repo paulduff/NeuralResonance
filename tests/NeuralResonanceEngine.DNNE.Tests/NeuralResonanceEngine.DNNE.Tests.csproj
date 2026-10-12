@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\SpinalCircuit.cs" Link="UnitySpinalCircuit.cs" />
   </ItemGroup>
 
   <ItemGroup>

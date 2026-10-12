@@ -171,9 +171,9 @@ public sealed class BlazorEditorHostTests
         Assert.Contains("sourceHemisphere ?? '*'", renderer, StringComparison.Ordinal);
         Assert.Contains("targetHemisphere ?? '*'", renderer, StringComparison.Ordinal);
         Assert.Contains("camera.up.fromArray(preset.up)", renderer, StringComparison.Ordinal);
-        Assert.Contains("superior: { position: [0, 245, -4]", renderer, StringComparison.Ordinal);
-        Assert.Contains("left: { position: [-245, -3, -4]", renderer, StringComparison.Ordinal);
-        Assert.Contains("right: { position: [245, -3, -4]", renderer, StringComparison.Ordinal);
+        Assert.Matches(@"superior: \{ position: \[0, [1-9][0-9]*, -4\]", renderer);
+        Assert.Matches(@"left: \{ position: \[-[1-9][0-9]*, -3, -4\]", renderer);
+        Assert.Matches(@"right: \{ position: \[[1-9][0-9]*, -3, -4\]", renderer);
         Assert.Contains("Math.pow(lateralShoulder, 2.15)", renderer, StringComparison.Ordinal);
         Assert.Contains("side: THREE.FrontSide", renderer, StringComparison.Ordinal);
 

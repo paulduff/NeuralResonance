@@ -1,0 +1,21 @@
+{
+  "title": "Rigged T-Pose Human Male w 50 Face Blendshapes",
+  "author": "Mike Alger",
+  "source": "https://sketchfab.com/3d-models/rigged-t-pose-human-male-w-50-face-blendshapes-cc7e4596bcd145208a6992c757854c07",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "originalZipSha256": "bddfb82d2a316088cd3c2626f25fb8e3f60869382d1c63e31e1cef156901fa04",
+  "files": [
+    {
+      "file": "MikeAlger.fbx",
+      "sha256": "639263d67cc7327451ea439e8da5b582bd9a57d26dcebda86162ac831a01e969",
+      "bytes": 30211264
+    },
+    {
+      "file": "MikeAlger_Texture.jpeg",
+      "sha256": "9a2dcf5de90a35259a3f2551429d84f431efede9185bf5a2bb41283a2ad01217",
+      "bytes": 877231
+    }
+  ],
+  "modifications": "Uniform height calibration and physics-driven bone presentation; source rig and blendshapes retained."
+}

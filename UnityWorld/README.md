@@ -1,0 +1,112 @@
+# Unity world physical prototype
+
+This is the first Unity physical plant for DNNE. It uses Unity 6000.3.19f1,
+a dynamic 15-link, approximately 73.4 kg humanoid and native articulation joints.
+Gravity, joint constraints and floor contacts participate in one PhysX solve.
+The world starts paused. Its Play button advances physics; it does not start a
+walking animation or promise learned standing/walking.
+
+DNNE remains the brain and action authority. Avatar supplies the body and
+peripheral spinal machinery. Unity supplies the environment and physical solver.
+Dyad and Entity remain the interaction route. CIV is independent.
+
+## Build and run
+
+Unity 6000.3.19f1 with Windows Mono build support must be installed. The operator's
+`rigged-t-pose-human-male-w-50-face-blendshapes.zip` is expected beside this repo.
+The FBX and texture remain local, excluded from Git. Their exact hashes and
+attribution are in `Assets/Avatar/provenance.json`.
+
+```powershell
+.\tools\prepare-unity-avatar.ps1
+.\tools\build-unity-world.ps1 -Output C:\path\to\local\build
+& 'C:\path\to\local\build\DNNE Unity World.exe'
+```
+
+Open this directory as a Unity project to inspect/edit the scene. The saved scene
+is `Assets/Scenes/QualificationWorld.unity`. Runtime code constructs the physical
+body from the validated humanoid skeleton. The Animator is disabled, and skin
+bones follow the measured physical links. No Animator or navigation agent moves
+the physical root. Initial placement and offline test-fixture reset are explicit
+exceptions, not production locomotion.
+
+## DNNE connection
+
+The default mode is an isolated mechanics preview. **Connect DNNE** acquires an
+exclusive physical-world lease through the Blazor editor on localhost:5090.
+That pauses legacy WorldSim and blocks its Resume/Reset while the lease is held.
+A 10-second drain allows already-running sensory requests to finish. Unity renews
+the lease every two seconds. It pauses if the last acknowledgment is over seven
+seconds old or motor ticks stop advancing for 1.25 seconds. Lease expiration or
+Disconnect leaves legacy WorldSim paused until the operator explicitly resumes it.
+The updated Blazor editor must be running for this handoff to work.
+
+Only fresh `/api/v1/neuronal-motor` output, with active neuronal authority and
+sufficient output confidence, supplies active joint torques. Goals, action labels
+and semantic directives are not read. The existing four-population peripheral
+spinal circuit is ported mechanically from `NRE.SimAvatar`; a cross-implementation
+trace test checks agreement through recruitment, loading and stopping.
+Run `python tools/prepare-unity-spinal.py --check` from the repository root to
+check the generated port; omit `--check` to regenerate after canonical changes.
+
+Physics advances at 100 Hz. Joint angles, contact impulses and velocities are
+physical measurements. Body frames and somatic contacts use existing ControlProgram
+receptor APIs. Two physical eye cameras send 64 x 40 RGB24 retinal frames with the
+correct top-row ordering. Accepted counters acknowledge API acceptance, not actual
+neuronal delivery or comprehension. Paused worlds do not emit sensory frames.
+Trunk pitch/roll encode principal gravity inclination within the existing wire
+range. Balance retains full fallen orientation. COM, pressure and support geometry
+use a gravity-aligned horizontal frame; body/contact receptors retain anatomical
+coordinates. Captured fall/contact examples in `Qualification` are tested against
+the actual DNNE input validators without injecting test measurements into the brain.
+
+## Qualification
+
+```powershell
+.\tools\start-unity-qualification-window.ps1 -Player 'C:\path\to\local\build\DNNE Unity World.exe'
+```
+
+The independent visible PowerShell window performs isolated gravity, contact,
+settling, joint response/limits and authority-gate checks. It writes the report,
+example wire frames, logs and completion status into a new artifact directory,
+and verifies their D: backups. It neither connects to DNNE nor trains it.
+`FINISHED` means these mechanical criteria passed; `walkingAssessed` remains false.
+No agent needs to watch the run. Report a completion/failure when further review
+is wanted.
+
+The first prototype passed basic gravity, contact and elbow checks but the
+operator observed shaking. Finite coordinates and floor containment did not
+exclude oscillation. Passive spring/damper feedback now runs inside Unity's
+joint solver, rather than explicit velocity-opposition torque. A 10 ms step and
+final-two-second joint/linear-speed checks qualify passive settling. Build v3
+passed on 12 October: maximum settled linear speed 0.00316 m/s, joint speed
+0.01211 rad/s and minimum collider height -1.15 mm. The operator also confirmed
+that the visible fall looked normal. This validates this passive fixture, not all
+poses, active control or learned locomotion.
+
+## Current limits
+
+This is a physical migration prototype, not the whole former ecology. It has a
+flat contact arena, not food, hydration interactions, predators or terrain tasks.
+Muscle forces are bounded joint torque approximations; fiber dynamics, fatigue,
+grip and tissue damage are not yet migrated. Body physiology is a fixed fresh-body
+reference, labelled in the UI. Contact areas are coarse collider estimates.
+Center of pressure estimates distribute solver impulse over the contact manifold.
+Adjacent/body self-collisions are currently disabled pending collider calibration.
+No gait animation, fixed production root, kinematic movement or host balancing
+policy substitutes for neuronal control. Calibration fixtures may anchor the root
+only during their explicitly isolated actuator tests.
+
+Before a DNNE motor-learning run, qualify passive settling and actuator response,
+then calibrate masses/limits/friction, migrate physiological consequences, verify
+sensor reception and assess standing/weight transfer under fresh neuronal output.
+Do not use a completed mechanical test as evidence of learned walking.
+
+## Model credit
+
+**Rigged T-Pose Human Male w 50 Face Blendshapes**, by Mike Alger.
+[Source](https://sketchfab.com/3d-models/rigged-t-pose-human-male-w-50-face-blendshapes-cc7e4596bcd145208a6992c757854c07),
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The source credits scanning to Doob and optimization/rigging to High Fidelity.
+Changes: uniform height calibration, relaxed initial shoulder pose, disabled
+animation and a physics-driven presentation. Original rig and blendshapes remain.

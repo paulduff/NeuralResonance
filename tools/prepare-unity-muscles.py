@@ -27,19 +27,26 @@ def generate(root):
         raise ValueError('Unexpected canonical fatigue layout.')
     core=core.replace(signature,'''public MotorUnitPool DiagnosticMotorUnits { get; } = new MotorUnitPool();
     public double DiagnosticRequestedActivation { get; private set; }
+    public double DiagnosticExcitation { get; private set; }
+    public static MotorUnitActivationTiming DiagnosticCanonicalTiming =>
+        new MotorUnitActivationTiming(ActivationRiseSeconds, ActivationFallSeconds, RelaxedActivationEpsilon);
 
     public void Advance(double excitation, double lengthFraction, double dt,
-        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)''')
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null,
+        bool useDiagnosticCanonicalTiming = false)''')
     activation_update='        Activation += (target - Activation) * alpha;'
     core=core.replace('var timeConstant = target > Activation ?',
         'var recruitmentState = diagnosticPoolParameters.HasValue ? DiagnosticRequestedActivation : Activation;\n        var timeConstant = target > recruitmentState ?')
     if core.count(activation_update)!=1: raise ValueError('Unexpected activation update.')
     core=core.replace(activation_update,'''        if (diagnosticPoolParameters.HasValue)
         {
+            DiagnosticExcitation = target;
             DiagnosticRequestedActivation += (target - DiagnosticRequestedActivation) * alpha;
             if (target <= 0 && DiagnosticRequestedActivation < RelaxedActivationEpsilon)
                 DiagnosticRequestedActivation = 0;
-            DiagnosticMotorUnits.Advance(DiagnosticRequestedActivation, dt, diagnosticPoolParameters.Value);
+            if (useDiagnosticCanonicalTiming)
+                DiagnosticMotorUnits.AdvanceWithActivationTiming(target, dt, diagnosticPoolParameters.Value, DiagnosticCanonicalTiming);
+            else DiagnosticMotorUnits.Advance(DiagnosticRequestedActivation, dt, diagnosticPoolParameters.Value);
             Activation = DiagnosticMotorUnits.ActiveFraction;
         }
         else Activation += (target - Activation) * alpha;''')
@@ -51,13 +58,13 @@ def generate(root):
         'var fatigueCapacity = diagnosticPoolParameters.HasValue ? 1.0 : FatigueCapacityFraction;')
     reset='        previousLength = 1.0;\n        Activation = 0.0;'
     if core.count(reset)!=1: raise ValueError('Unexpected muscle reset.')
-    core=core.replace(reset,'        DiagnosticMotorUnits.Reset();\n        DiagnosticRequestedActivation = 0;\n'+reset)
+    core=core.replace(reset,'        DiagnosticMotorUnits.Reset();\n        DiagnosticRequestedActivation = 0;\n        DiagnosticExcitation = 0;\n'+reset)
     begin=core.index('    public void Advance(double targetAngle')
     end=core.index('    public void Reconcile(', begin)
     old=core[begin:end]
     activation=old[old.index('        var boundedTarget'):old.index('        var activeTorque')]
     if activation.count(', dt);')!=2: raise ValueError('Expected both antagonist advances.')
-    activation=activation.replace(', dt);', ', dt, suppressDiagnosticFatigue, diagnosticPoolParameters);')
+    activation=activation.replace(', dt);', ', dt, suppressDiagnosticFatigue, diagnosticPoolParameters, useDiagnosticCanonicalTiming);')
     # Explicit comparison candidate: equal resting antagonist forces must not
     # automatically cap the stronger agonist's active recruitment. The original
     # equations remain the default/control until this candidate is qualified.
@@ -79,7 +86,8 @@ def generate(root):
     public double AdvanceMeasured(double targetAngle, double descendingGain,
         double tone, double measuredAngle, double measuredVelocity, double dt,
         bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true,
-        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null,
+        bool useDiagnosticCanonicalTiming = false)
     {
         Angle = measuredAngle;
         AngularVelocity = measuredVelocity;

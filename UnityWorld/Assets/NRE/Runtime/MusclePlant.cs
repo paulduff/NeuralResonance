@@ -6,7 +6,8 @@ using System.Linq;
 namespace Nre.UnityWorld
 {
     public enum MuscleFatiguePolicy { Normal, DiagnosticAnklesSuppressed, DiagnosticAllSuppressed,
-        DiagnosticMotorUnitPoolsInheritedRates, DiagnosticMotorUnitPoolsPublishedRates, DiagnosticMotorUnitPoolsNoFatigue }
+        DiagnosticMotorUnitPoolsInheritedRates, DiagnosticMotorUnitPoolsPublishedRates, DiagnosticMotorUnitPoolsNoFatigue,
+        DiagnosticCanonicalTimingPoolsPublishedRates, DiagnosticCanonicalTimingPoolsNoFatigue }
 
     public sealed class MuscleProfile
     {
@@ -89,7 +90,7 @@ namespace Nre.UnityWorld
                 bool suppressFatigue=DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAllSuppressed||
                     (DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAnklesSuppressed&&p.Joint.EndsWith("foot"));
                 var poolRates=DiagnosticPoolRates(p.Joint);
-                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity,suppressFatigue,poolRates)*capacity;
+                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity,suppressFatigue,poolRates,DiagnosticCanonicalPoolTiming)*capacity;
                 output.TryGetValue(p.Joint,out var effort);
                 output[p.Joint]=p.Axis==0?(torque,effort.second):(effort.first,torque);
             }
@@ -101,14 +102,19 @@ namespace Nre.UnityWorld
 
         internal MotorUnitFatigueParameters? DiagnosticPoolRates(string joint)
         {
-            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue)
+            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue||
+                DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsNoFatigue)
                 return new MotorUnitFatigueParameters(0,0);
             if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates)
                 return new MotorUnitFatigueParameters(.020,.032);
-            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates)
+            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates||
+                DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates)
                 return MotorUnitFatigueParameters.PublishedForJoint(joint);
             return null;
         }
+        internal bool DiagnosticCanonicalPoolTiming=>
+            DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates||
+            DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsNoFatigue;
         public MusclePoolState[] CaptureDiagnosticPools()=>DiagnosticPoolRates("left_foot").HasValue?
             joints.Values.SelectMany(j=>new[]{j.Flexor,j.Extensor}).Select(m=>new MusclePoolState(m)).ToArray():
             Array.Empty<MusclePoolState>();

@@ -186,6 +186,8 @@ public sealed class UnityMusclePlantTests
             p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates,
             p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates,
             p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsNoFatigue,
             p=>p.DiagnosticHipSagittalOffsetRadians=.08,
             p=>p.PreserveActiveCapacity=true,p=>p.PreserveVelocityCapacity=false}){
             var plant=new U.MusclePlant();configure(plant);

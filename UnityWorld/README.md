@@ -151,13 +151,18 @@ targets from measured sway; it cannot connect to DNNE, anchor the root or write
 poses. Reports separate mechanical holding from neuronal/learned standing, which
 remain unassessed. Protocol 7 found that half/nominal/double/triple strength held
 standing for 1.28/10.51/34.19/53.96 seconds; none survived 300 seconds.
-Protocol 8 compares six 300-second cases: the inherited scalar fatigue model at
-nominal/triple strength, three motor-unit pools with inherited F/R constants at
-nominal strength, and pools with published joint/general rates at nominal/triple
-strength, plus a nominal zero-fatigue pool control to isolate recruitment timing.
-The published-rate candidate uses 3CC-r resting/active/fatigued units and enhanced
-recovery only at zero requested load. Fatigue stays enabled in five cases; the
-sixth is explicitly an ablation, which is not adopted. Actual active units determine
+Protocol 8's pool models failed early even in the zero-fatigue control (1.80 s),
+exposing a recruitment-timing mismatch: a second 10/s recruitment filter followed
+Avatar's inherited activation filter. Legacy controls repeated exactly.
+Protocol 9 compares six 300-second cases: legacy fatigue at nominal/triple strength;
+legacy and adapted-pool fatigue-free nominal controls; and adapted pools with
+published joint/general fatigue/recovery rates at nominal/triple strength.
+The adaptation uses raw excitation with Avatar's 0.045/0.090 s activation timing
+once. It retains resting/active/fatigued transfer and zero-load recovery but changes
+the published recruitment controller, so it is explicitly an adapted model that
+requires qualification. Four cases keep fatigue; two are diagnostic ablations.
+The undepleted pool control matches original activation and muscle force exactly.
+Actual active units determine
 force, without applying a second scalar fatigue penalty. Joint-level isometric
 fits and the general hip/neck fallback need dynamic-body/receptor calibration;
 the inherited-rate pool case is an uncalibrated structural comparison.

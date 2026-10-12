@@ -28,6 +28,19 @@ namespace Nre.UnityWorld
         static bool Finite(double value)=>!double.IsNaN(value)&&!double.IsInfinity(value);
     }
 
+    public readonly struct MotorUnitActivationTiming
+    {
+        public readonly double RiseSeconds,FallSeconds,RelaxedEpsilon;
+        public MotorUnitActivationTiming(double riseSeconds,double fallSeconds,double relaxedEpsilon)
+        {
+            if(!Finite(riseSeconds)||!Finite(fallSeconds)||!Finite(relaxedEpsilon)||
+                riseSeconds<=0||fallSeconds<=0||relaxedEpsilon<0||relaxedEpsilon>=1)
+                throw new ArgumentException("Invalid motor-unit activation timing.");
+            RiseSeconds=riseSeconds;FallSeconds=fallSeconds;RelaxedEpsilon=relaxedEpsilon;
+        }
+        static bool Finite(double value)=>!double.IsNaN(value)&&!double.IsInfinity(value);
+    }
+
     public sealed class MotorUnitPool
     {
         public const double RecruitmentRate=10, DeactivationRate=10;
@@ -39,6 +52,20 @@ namespace Nre.UnityWorld
         // Conservative simultaneous transfers, substepped for positivity. A unit
         // can occupy exactly one pool; no force floor or second fatigue penalty.
         public void Advance(double targetLoad, double dt, MotorUnitFatigueParameters rates)
+            =>AdvanceCore(targetLoad,dt,rates,null);
+
+        // Adaptation: raw excitation enters the inherited activation filter once.
+        // It uses the same pool fatigue/recovery flows, but not the published 10/s
+        // recruitment controller. This timing adaptation requires qualification.
+        public void AdvanceWithActivationTiming(double excitation,double dt,
+            MotorUnitFatigueParameters rates,MotorUnitActivationTiming timing)
+        {
+            // Validate even a default-initialized value struct before mutation.
+            var validated=new MotorUnitActivationTiming(timing.RiseSeconds,timing.FallSeconds,timing.RelaxedEpsilon);
+            AdvanceCore(excitation,dt,rates,validated);
+        }
+
+        void AdvanceCore(double targetLoad,double dt,MotorUnitFatigueParameters rates,MotorUnitActivationTiming? timing)
         {
             if(!Finite(targetLoad)||targetLoad<0||targetLoad>1||!Finite(dt)||dt<=0||dt>1)
                 throw new ArgumentException("Invalid motor-unit input or timestep.");
@@ -48,8 +75,29 @@ namespace Nre.UnityWorld
                 throw new ArgumentException("Motor-unit rates exceed the integration budget.");
             int steps=(int)Math.Ceiling(dt/maximumStep);
             double h=dt/steps;
+            if(timing.HasValue&&rates.FatigueRate==0&&rates.RecoveryRate==0){
+                if(FatiguedFraction==0){
+                    // Exact inherited filter in the undepleted control. Derive
+                    // its complementary resting pool to avoid reserve roundoff
+                    // clipping the final few bits near full recruitment.
+                    double tau=targetLoad>ActiveFraction?timing.Value.RiseSeconds:timing.Value.FallSeconds;
+                    ActiveFraction+=(targetLoad-ActiveFraction)*(1-Math.Exp(-dt/tau));
+                    RestingFraction=1-ActiveFraction;
+                }else RecruitWithActivationTiming(targetLoad,dt,timing.Value);
+            }else
             for(int step=0;step<steps;step++)
             {
+                if(timing.HasValue){
+                    // Simultaneous fatigue/recovery first, then exact exponential
+                    // recruitment bounded by the remaining resting reserve.
+                    double fatigueTransfer=rates.FatigueRate*ActiveFraction*h;
+                    double recoveryTransfer=recovery*FatiguedFraction*h;
+                    RestingFraction+=recoveryTransfer;
+                    ActiveFraction-=fatigueTransfer;
+                    FatiguedFraction+=fatigueTransfer-recoveryTransfer;
+                    RecruitWithActivationTiming(targetLoad,h,timing.Value);
+                    continue;
+                }
                 double control=ActiveFraction<targetLoad?
                     RecruitmentRate*Math.Min(targetLoad-ActiveFraction,RestingFraction):
                     DeactivationRate*(targetLoad-ActiveFraction);
@@ -60,6 +108,16 @@ namespace Nre.UnityWorld
                 ActiveFraction+=recruit-fatigue;
                 FatiguedFraction+=fatigue-recovered;
             }
+            if(timing.HasValue&&targetLoad==0&&ActiveFraction<timing.Value.RelaxedEpsilon){
+                RestingFraction+=ActiveFraction;ActiveFraction=0;
+            }
+        }
+        void RecruitWithActivationTiming(double target,double dt,MotorUnitActivationTiming timing)
+        {
+            double tau=target>ActiveFraction?timing.RiseSeconds:timing.FallSeconds;
+            double transfer=(target-ActiveFraction)*(1-Math.Exp(-dt/tau));
+            if(transfer>0)transfer=Math.Min(transfer,RestingFraction);
+            RestingFraction-=transfer;ActiveFraction+=transfer;
         }
         public void Reset(){RestingFraction=1;ActiveFraction=0;FatiguedFraction=0;}
         static bool Finite(double value)=>!double.IsNaN(value)&&!double.IsInfinity(value);
@@ -68,10 +126,11 @@ namespace Nre.UnityWorld
     [Serializable] public sealed class MusclePoolState
     {
         public string name,side;
-        public float requestedActivation,restingFraction,activeFraction,fatiguedFraction;
+        public float excitation,requestedActivation,restingFraction,activeFraction,fatiguedFraction;
         internal MusclePoolState(AvatarMuscle muscle)
         {
             name=muscle.Name;side=muscle.Side;
+            excitation=(float)muscle.DiagnosticExcitation;
             requestedActivation=(float)muscle.DiagnosticRequestedActivation;
             restingFraction=(float)muscle.DiagnosticMotorUnits.RestingFraction;
             activeFraction=(float)muscle.DiagnosticMotorUnits.ActiveFraction;

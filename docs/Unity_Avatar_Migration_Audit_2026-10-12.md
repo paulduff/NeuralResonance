@@ -358,3 +358,60 @@ activation mismatch, duplicate identities, missing fibers, and absent/empty
 expected pool captures. The actual completed 12,000 strength-run frames also pass
 the extended validator. Physical results for the new six cases are pending;
 software verification alone does not qualify standing or this fatigue model.
+
+Run `unity-balance-capability-20261012-144514-173e62` completed all six finite,
+isolated, settled cases; none held standing at the end. Legacy nominal/triple
+controls reproduced 10.51/53.96 s and their recorded mechanics exactly. The
+nominal no-fatigue pool held only 1.80 s, inherited-rate pools 1.81 s, published
+nominal pools 1.80 s, and published triple-strength pools 0.60 s. Published
+nominal fatigue was below 0.007 while standing. All 18,000 actual body frames
+and 12,000 pool captures passed validation; maximum pool conservation error was
+4.47e-8. The pool equations are finite/conservative, but this implementation's
+activation timing is unsuitable for the unchanged balance fixture. Early failure
+of its zero-fatigue control prevents attributing that failure to fatigue.
+No pool policy is adopted. Results and original traces are preserved on D:.
+
+## Preserve original activation timing within pool recruitment
+
+Reviewed original Avatar muscle activation/relaxation constants, zero-force tests,
+measured joint recruitment and muscle receptor paths again. Protocol 8 applied
+the 0.045/0.090 s filter and then another 10/s pool recruitment controller. The
+new isolated adaptation sends raw excitation into one exponential recruitment
+step with the original rise/fall constants. Recruitment is bounded by the resting
+reserve. Fatigue/recovery transfers remain simultaneous and conservative, followed
+by bounded exponential recruitment in <=0.001 s substeps. Zero-load relaxation
+uses Avatar's original 0.0001 threshold, returning released units to the resting
+pool. Raw excitation and the counterfactual unbounded filtered demand are both
+captured alongside actual active/fatigued/resting units.
+
+With F=R=0 and no depleted units, recruitment uses the original filter exactly,
+and resting units are its analytic complement. Tests require bit-for-bit matching
+of scalar activation/force over changing excitation/length, and identical measured
+torques/forces across the 38-muscle plant. Fatigue-enabled tests cover conservation,
+zero-recovery exhaustion, true-zero relaxation/recovery and convergence against
+a finer numerical step. This removes the additional delay; it does not establish
+biological calibration or successful physical standing.
+
+This is an adaptation of pool fatigue/recovery, not an unchanged published 3CC-r
+model: recruitment rates follow Avatar's original constants, and the transfer
+integrator changes accordingly. Published F/R and rest multipliers remain
+provisional for this dynamic per-fiber use; no human endurance calibration follows
+from the published fits. Default Avatar/Unity behavior and the prior diagnostic
+3CC implementations are preserved. Live policy checks reject both new adaptations.
+
+Protocol 9 tests six 300-second cases: legacy nominal/triple fatigue; nominal
+legacy and adapted-pool fatigue-free controls; and adapted pools with published
+fatigue/recovery at nominal/triple strength. Feedback, posture, masses, passive
+drives, joint/torque limits, gravity and pushes remain fixed. The two ablations
+check that the original and new timing can both support the same physical task;
+they are not adopted as live physiology. Qualification and actual sensor/pool
+validation still follow automatically in the independent PowerShell window.
+
+The timing checkpoint passes 131 focused tests; the undepleted control matches
+the original scalar activation/force bit for bit and all 38-muscle plant forces/
+joint torques exactly. The Unity build has zero warnings/errors and passes all
+40 native-coordinate probe samples. Nine synthetic offline-validator fixtures
+cover valid pools and rejection of broken conservation, mismatched activation,
+duplicate/missing identities, absent/empty expected captures, and missing/out-of-
+range expected raw excitation. All 18,000 prior actual body frames still validate
+with the extended checks. The new physical comparison remains pending.

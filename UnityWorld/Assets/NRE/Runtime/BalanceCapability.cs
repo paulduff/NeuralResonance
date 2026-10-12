@@ -11,7 +11,8 @@ namespace Nre.UnityWorld
     {
         [Serializable] public sealed class Case
         {
-            public string name,recruitment,fatigueModel;
+            public string name,recruitment,fatigueModel,poolTargetInput;
+            public bool canonicalActivationTiming;
             public FatigueRates[] motorUnitRates=Array.Empty<FatigueRates>();
             public float diagnosticStrengthScale=1,maximumRequestedTorqueNewtonMeters,maximumAppliedTorqueNewtonMeters;
             public long torqueClippedAxes;
@@ -30,7 +31,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=8;public float durationSeconds=300,minimumFinalStandingSeconds=10;
+            public int protocolVersion=9;public float durationSeconds=300,minimumFinalStandingSeconds=10;
             public float postureRampStartSeconds=.5f,postureRampDurationSeconds=2;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
@@ -51,8 +52,12 @@ namespace Nre.UnityWorld
         {
             public string joint;public double fatigueRatePerSecond,recoveryRatePerSecond,restMultiplier;
             public double recruitmentRatePerSecond=MotorUnitPool.RecruitmentRate,deactivationRatePerSecond=MotorUnitPool.DeactivationRate;
-            public FatigueRates(string joint,MotorUnitFatigueParameters p){this.joint=joint;
-                fatigueRatePerSecond=p.FatigueRate;recoveryRatePerSecond=p.RecoveryRate;restMultiplier=p.RestMultiplier;}
+            public double activationRiseSeconds,activationFallSeconds;
+            public FatigueRates(string joint,MotorUnitFatigueParameters p,bool canonicalTiming){this.joint=joint;
+                fatigueRatePerSecond=p.FatigueRate;recoveryRatePerSecond=p.RecoveryRate;restMultiplier=p.RestMultiplier;
+                if(canonicalTiming){var timing=AvatarMuscle.DiagnosticCanonicalTiming;
+                    activationRiseSeconds=timing.RiseSeconds;activationFallSeconds=timing.FallSeconds;
+                    recruitmentRatePerSecond=1/timing.RiseSeconds;deactivationRatePerSecond=1/timing.FallSeconds;}}
         }
 
         public static IEnumerator Run(WorldController world)
@@ -62,10 +67,10 @@ namespace Nre.UnityWorld
             var configurations=new[]{
                 Configuration(1,MuscleFatiguePolicy.Normal),
                 Configuration(3,MuscleFatiguePolicy.Normal),
-                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue),
-                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates),
-                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates),
-                Configuration(3,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates)}.ToList();
+                Configuration(1,MuscleFatiguePolicy.DiagnosticAllSuppressed),
+                Configuration(1,MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsNoFatigue),
+                Configuration(1,MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates),
+                Configuration(3,MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates)}.ToList();
             int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
@@ -78,7 +83,7 @@ namespace Nre.UnityWorld
                     world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position",result.diagnosticStrengthScale);
                     world.Avatar.muscles.DiagnosticFatiguePolicy=result.fatiguePolicy;
                     result.motorUnitRates=MuscleProfiles.All.Where(p=>world.Avatar.muscles.DiagnosticPoolRates(p.Joint).HasValue)
-                        .GroupBy(p=>p.Joint).Select(g=>new FatigueRates(g.Key,world.Avatar.muscles.DiagnosticPoolRates(g.Key).Value)).ToArray();
+                        .GroupBy(p=>p.Joint).Select(g=>new FatigueRates(g.Key,world.Avatar.muscles.DiagnosticPoolRates(g.Key).Value,result.canonicalActivationTiming)).ToArray();
                     using(var trace=new StreamWriter(Path.Combine(world.outputDirectory,name+"-trace.jsonl")))
                     for(int step=0;step<steps;step++)
                     {
@@ -161,13 +166,23 @@ namespace Nre.UnityWorld
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(float strength,MuscleFatiguePolicy fatigue)=>new Case{
-            name=(fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue?"pools-no-fatigue":fatigue==MuscleFatiguePolicy.Normal?"legacy":fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates?
-                "pools-inherited-rates":"pools-published-rates")+"-strength-"+strength.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),
-            fatigueModel=fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue?"3CC recruitment timing control, F=R=0 (ablation only)":fatigue==MuscleFatiguePolicy.Normal?"inherited scalar":fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates?
-                "3CC with uncalibrated inherited F/R constants":"3CC-r with published joint/general fits (provisional dynamic-fiber mapping)",
-            diagnosticStrengthScale=strength,fatiguePolicy=fatigue,hipSagittalOffsetRadians=0,hipCoronalOffsetRadians=0,
-            recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
-            coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
+        static Case Configuration(float strength,MuscleFatiguePolicy fatigue)
+        {
+            string label,model;bool canonicalTiming=false;
+            switch(fatigue){
+                case MuscleFatiguePolicy.Normal:label="legacy";model="inherited scalar";break;
+                case MuscleFatiguePolicy.DiagnosticAllSuppressed:label="legacy-no-fatigue";model="original activation timing, fatigue ablation only";break;
+                case MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsNoFatigue:
+                    label="pools-canonical-timing-no-fatigue";model="pool recruitment with original activation timing, F=R=0 control";canonicalTiming=true;break;
+                case MuscleFatiguePolicy.DiagnosticCanonicalTimingPoolsPublishedRates:
+                    label="pools-canonical-timing-published-rates";model="pool fatigue/recovery with original activation timing (adapted 3CC-r, provisional fits)";canonicalTiming=true;break;
+                default:throw new ArgumentException("Unsupported protocol 9 muscle policy.");
+            }
+            return new Case{name=label+"-strength-"+strength.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),
+                fatigueModel=model,canonicalActivationTiming=canonicalTiming,poolTargetInput=canonicalTiming?"raw excitation; one activation filter":"no pools",
+                diagnosticStrengthScale=strength,fatiguePolicy=fatigue,hipSagittalOffsetRadians=0,hipCoronalOffsetRadians=0,
+                recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
+                coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
+        }
     }
 }

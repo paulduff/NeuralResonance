@@ -183,6 +183,9 @@ public sealed class UnityMusclePlantTests
         foreach(var configure in new Action<U.MusclePlant>[]{
             p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticAnklesSuppressed,
             p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticAllSuppressed,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue,
             p=>p.DiagnosticHipSagittalOffsetRadians=.08,
             p=>p.PreserveActiveCapacity=true,p=>p.PreserveVelocityCapacity=false}){
             var plant=new U.MusclePlant();configure(plant);

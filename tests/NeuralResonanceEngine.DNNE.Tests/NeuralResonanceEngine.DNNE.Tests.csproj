@@ -24,6 +24,7 @@
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\JointCoordinates.cs" Link="UnityJointCoordinates.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\StandingTrialMetrics.cs" Link="UnityStandingTrialMetrics.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MuscleCore.cs" Link="UnityMuscleCore.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorUnitPool.cs" Link="UnityMotorUnitPool.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MusclePlant.cs" Link="UnityMusclePlant.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\BalanceDiagnosticController.cs" Link="UnityBalanceDiagnosticController.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\BodySensorMath.cs" Link="UnityBodySensorMath.cs" />

@@ -289,3 +289,72 @@ The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results
 must be reviewed before adopting a recruitment change.
+
+Run `unity-balance-capability-20261012-141256-dd75f1` completed four finite,
+isolated, settled cases. Half/nominal/double/triple force capacities held standing
+for 1.28/10.51/34.19/53.96 s respectively; none held at the end. The nominal
+control reproduced exactly. Triple strength clipped 16 requested actuator axes;
+the other cases clipped none. All 12,000 body frames passed actual offline
+validation/transduction without projection. More force delays failure but does
+not produce sustainable standing. No strength scale is adopted.
+
+## Motor-unit fatigue candidate
+
+Reviewed original `AvatarMuscle.Advance`, its fatigue/relaxation tests, the measured
+port, and the original physical muscle spindle/Golgi and group III/IV fatigue
+receptor paths. Above activation 0.10 the inherited scalar fatigue derivative is
+`0.020*a - 0.032*0.04*(1-a)`, positive throughout that range. Constant activation
+above the threshold therefore drives scalar fatigue to one and reduces force
+by `(1-fatigue)^2.2`. It has no partial-load steady state in that range. The
+fatigue-free diagnostic held 120 s, while greater capacity and modest posture
+changes only delayed failure. This motivates a structural muscle comparison;
+it does not establish that balance control or physical calibration is correct.
+
+The isolated candidate uses the resting/active/fatigued three-compartment
+controller (3CC) and zero-load rest recovery extension (3CC-r):
+`dMR=-C+R*MF`, `dMA=C-F*MA`, `dMF=F*MA-R*MF`.
+Recruitment/deactivation rate is 10/s; recruitment cannot use more than the
+resting reserve. Rest multiplier applies only when filtered target load is zero.
+Conservative simultaneous transfers use substeps <=0.001 s and preserve the
+total pool. Actual MA sets force; MF is reported as unavailable fatigued units.
+The old scalar `(1-fatigue)^2.2` penalty is not also applied. Original force-length,
+velocity, measured pose, target/reflex and 0.045/0.090 s demand filter are retained;
+3CC adds its own recruitment controller. This extra recruitment lag is an explicit
+model difference, not a hidden mechanical assistance. No root or joint pose is set.
+
+Primary sources:
+- [Frey-Law et al. 2012, equations and Table 1](https://pmc.ncbi.nlm.nih.gov/articles/PMC3397684/).
+- [Looft et al. 2018, 3CC-r rest recovery and parameter table](https://pmc.ncbi.nlm.nih.gov/articles/PMC6092960/).
+- [Rakshit et al. 2022, explicit bounded controller equations](https://par.nsf.gov/servlets/purl/10379517).
+
+Protocol 8 tests six 300-second cases with the same feedback, pushes, gravity,
+joint limits, torques and zero posture offsets: legacy nominal/triple controls;
+nominal 3CC using original F=.020/R=.032 constants with rest multiplier one;
+nominal/triple 3CC-r using published F/R fits, rest multiplier 15; and nominal
+3CC with F=R=0 as an explicit recruitment-timing ablation. The latter distinguishes
+fatigue effects from the candidate's extra activation delay; suppression is not adopted. The
+inherited-rate pool case changes how recovery/recruitment are interpreted and
+is explicitly uncalibrated. Published ankle/knee/shoulder/elbow/trunk rates map
+to foot/shin/arm/forearm/chest; hip and neck use the general fit. These are
+joint-level sustained-isometric fits, provisionally assigned to individual
+dynamic fibers. The rest multiplier for trunk/general regions is also provisional.
+No human endurance or dynamic-body calibration is claimed by using those fits.
+
+Fatigue stays enabled in the five model/strength cases. Pool traces expose requested activation,
+resting, active and fatigued fractions alongside the 38 actual muscle signals.
+Offline validation checks unique identities, bounds, conservation and agreement
+with body activation/fatigue. Those semantics differ from the old scalar distress
+index: existing fatigue-pain/interoceptor thresholds need calibration before any
+live adoption, just as high-force Golgi saturation does. Live stepping rejects
+all three pool policies; original Avatar/default Unity fatigue remains unchanged.
+Software tests cover pool bounds/conservation, low-demand analytical equilibrium,
+zero-recovery exhaustion, rest-only recovery, force without double penalty,
+reset, timestep convergence, actual 38-fiber capture and live rejection.
+
+The checkpoint passes 125 focused Unity/Avatar/body-receptor tests. Unity build
+has zero warnings/errors and all 40 native-coordinate probe samples pass. Seven
+synthetic validator fixtures accept valid matching pools and reject broken sums,
+activation mismatch, duplicate identities, missing fibers, and absent/empty
+expected pool captures. The actual completed 12,000 strength-run frames also pass
+the extended validator. Physical results for the new six cases are pending;
+software verification alone does not qualify standing or this fatigue model.

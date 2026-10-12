@@ -33,12 +33,25 @@ internal sealed class AvatarMuscle
     public double FatigueFraction { get; private set; }
     public double FatigueCapacityFraction => Math.Pow(1.0 - FatigueFraction, 2.2);
 
-    public void Advance(double excitation, double lengthFraction, double dt, bool suppressDiagnosticFatigue = false)
+    public MotorUnitPool DiagnosticMotorUnits { get; } = new MotorUnitPool();
+    public double DiagnosticRequestedActivation { get; private set; }
+
+    public void Advance(double excitation, double lengthFraction, double dt,
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)
     {
         var target = Math.Clamp(excitation, 0.0, 1.0);
-        var timeConstant = target > Activation ? ActivationRiseSeconds : ActivationFallSeconds;
+        var recruitmentState = diagnosticPoolParameters.HasValue ? DiagnosticRequestedActivation : Activation;
+        var timeConstant = target > recruitmentState ? ActivationRiseSeconds : ActivationFallSeconds;
         var alpha = 1.0 - Math.Exp(-dt / timeConstant);
-        Activation += (target - Activation) * alpha;
+        if (diagnosticPoolParameters.HasValue)
+        {
+            DiagnosticRequestedActivation += (target - DiagnosticRequestedActivation) * alpha;
+            if (target <= 0 && DiagnosticRequestedActivation < RelaxedActivationEpsilon)
+                DiagnosticRequestedActivation = 0;
+            DiagnosticMotorUnits.Advance(DiagnosticRequestedActivation, dt, diagnosticPoolParameters.Value);
+            Activation = DiagnosticMotorUnits.ActiveFraction;
+        }
+        else Activation += (target - Activation) * alpha;
 
         LengthFraction = Math.Clamp(lengthFraction, 0.55, 1.45);
         VelocityPerSecond = (LengthFraction - previousLength) / Math.Max(0.001, dt);
@@ -57,9 +70,10 @@ internal sealed class AvatarMuscle
             0.0,
             1.0);
 
-        if (suppressDiagnosticFatigue) FatigueFraction = 0.0;
+        if (diagnosticPoolParameters.HasValue) FatigueFraction = DiagnosticMotorUnits.FatiguedFraction;
+        else if (suppressDiagnosticFatigue) FatigueFraction = 0.0;
 
-        if (target <= 0.0 && Activation < RelaxedActivationEpsilon)
+        if (!diagnosticPoolParameters.HasValue && target <= 0.0 && Activation < RelaxedActivationEpsilon)
         {
             Activation = 0.0;
         }
@@ -70,7 +84,7 @@ internal sealed class AvatarMuscle
         // Exhaustion is a property of the muscle plant. A maximally fatigued
         // muscle cannot preserve a hidden reserve of holding force; removing
         // excitation also remains a true zero-force, recovering state.
-        var fatigueCapacity = FatigueCapacityFraction;
+        var fatigueCapacity = diagnosticPoolParameters.HasValue ? 1.0 : FatigueCapacityFraction;
         ForceNewtons = MaximumIsometricForceNewtons * Activation *
             (0.35 + (forceLength * 0.65)) * shorteningPenalty * fatigueCapacity;
         if (Activation <= 0.0 || fatigueCapacity < 0.0001)
@@ -98,6 +112,8 @@ internal sealed class AvatarMuscle
 
     public void Reset()
     {
+        DiagnosticMotorUnits.Reset();
+        DiagnosticRequestedActivation = 0;
         previousLength = 1.0;
         Activation = 0.0;
         ForceNewtons = 0.0;
@@ -151,7 +167,7 @@ internal sealed class AvatarMuscleJoint
     public double AdvanceMeasured(double targetAngle, double descendingGain,
         double tone, double measuredAngle, double measuredVelocity, double dt,
         bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true,
-        bool suppressDiagnosticFatigue = false)
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)
     {
         Angle = measuredAngle;
         AngularVelocity = measuredVelocity;
@@ -181,8 +197,8 @@ internal sealed class AvatarMuscleJoint
 
         var span = Math.Max(0.1, maximum - minimum);
         var normalized = (Angle - restAngle) / span;
-        Flexor.Advance(flexorExcitation, 1.0 - (normalized * 0.34), dt, suppressDiagnosticFatigue);
-        Extensor.Advance(extensorExcitation, 1.0 + (normalized * 0.34), dt, suppressDiagnosticFatigue);
+        Flexor.Advance(flexorExcitation, 1.0 - (normalized * 0.34), dt, suppressDiagnosticFatigue, diagnosticPoolParameters);
+        Extensor.Advance(extensorExcitation, 1.0 + (normalized * 0.34), dt, suppressDiagnosticFatigue, diagnosticPoolParameters);
 
         return (Flexor.ForceNewtons - Extensor.ForceNewtons) * momentArm;
     }

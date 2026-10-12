@@ -5,8 +5,18 @@ var directory=Path.GetFullPath(args[0]);
 bool projectSensorFix=args.Contains("--project-sensor-fix");
 var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
 int count=0,invalid=0,pressureMismatch=0,missingMuscles=0;
+int motorUnitSamples=0,invalidMotorUnitStates=0;
+double maximumMotorUnitConservationError=0;
 float maximumRelativeTrunk=0;
 var errors=new List<string>();
+var expectedPoolTraces=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+string reportPath=Path.Combine(directory,"balance-report.json");
+if(File.Exists(reportPath)){
+    using var report=JsonDocument.Parse(File.ReadAllText(reportPath));
+    foreach(var c in report.RootElement.GetProperty("cases").EnumerateArray())
+        if(c.TryGetProperty("fatiguePolicy",out var policy)&&policy.GetInt32() is 3 or 4 or 5)
+            expectedPoolTraces.Add(c.GetProperty("name").GetString()+"-trace.jsonl");
+}
 foreach(var path in Directory.EnumerateFiles(directory,"*-trace.jsonl")) {
     var transducer=new PhysicalBodyTransducerRuntime();
     foreach(string line in File.ReadLines(path)) {
@@ -20,6 +30,27 @@ foreach(var path in Directory.EnumerateFiles(directory,"*-trace.jsonl")) {
             invalid++;errors.Add(Path.GetFileName(path)+" at "+request.Sequence+": "+error);continue;
         }
         var a=descriptor!.Articulation;
+        bool hasPools=document.RootElement.TryGetProperty("motorUnitPools",out var pools)&&pools.ValueKind==JsonValueKind.Array;
+        if(expectedPoolTraces.Contains(Path.GetFileName(path))&&(!hasPools||pools.GetArrayLength()==0)){
+            invalidMotorUnitStates++;errors.Add(Path.GetFileName(path)+" at "+request.Sequence+": missing motor-unit pools");
+        }
+        if(hasPools&&pools.GetArrayLength()>0){
+            motorUnitSamples++;
+            if(pools.GetArrayLength()!=38)invalidMotorUnitStates++;
+            var seenPools=new HashSet<(string,string)>();
+            foreach(var pool in pools.EnumerateArray()){
+                string name=pool.GetProperty("name").GetString()!,side=pool.GetProperty("side").GetString()!;
+                double resting=pool.GetProperty("restingFraction").GetDouble(),active=pool.GetProperty("activeFraction").GetDouble(),
+                    fatigued=pool.GetProperty("fatiguedFraction").GetDouble(),requested=pool.GetProperty("requestedActivation").GetDouble();
+                double conservation=Math.Abs(resting+active+fatigued-1);
+                maximumMotorUnitConservationError=Math.Max(maximumMotorUnitConservationError,conservation);
+                var fiber=a.Musculoskeletal!.Muscles.SingleOrDefault(m=>m.Name==name&&m.Side==side);
+                if(!seenPools.Add((name,side))||fiber is null||conservation>1e-6||
+                    new[]{resting,active,fatigued,requested}.Any(v=>!double.IsFinite(v)||v<0||v>1)||
+                    Math.Abs(fiber.Activation-active)>1e-6||Math.Abs(fiber.FatigueFraction-fatigued)>1e-6)
+                    invalidMotorUnitStates++;
+            }
+        }
         maximumRelativeTrunk=Math.Max(maximumRelativeTrunk,Math.Max(Math.Abs(a.TrunkPitchRadians),Math.Abs(a.TrunkRollRadians)));
         if(a.Musculoskeletal!.Muscles.Count!=38)missingMuscles++;
         foreach(var foot in new[]{(a.LeftFootPressure,a.LeftFootLoadNewtons),(a.RightFootPressure,a.RightFootLoadNewtons)}) {
@@ -31,8 +62,9 @@ foreach(var path in Directory.EnumerateFiles(directory,"*-trace.jsonl")) {
         transducer.Transduce(descriptor,count,request.TimestampMs);
     }
 }
-var result=new {samples=count,invalid,pressureMismatch,missingMuscles,maximumRelativeTrunk,errors,sensorFixProjected=projectSensorFix,liveDeliveryAssessed=false};
+var result=new {samples=count,invalid,pressureMismatch,missingMuscles,maximumRelativeTrunk,
+    motorUnitSamples,invalidMotorUnitStates,maximumMotorUnitConservationError,errors,sensorFixProjected=projectSensorFix,liveDeliveryAssessed=false};
 string output=JsonSerializer.Serialize(result,new JsonSerializerOptions{WriteIndented=true});
 File.WriteAllText(Path.Combine(directory,projectSensorFix?"offline-body-projection-validation.json":"offline-body-validation.json"),output);
 Console.WriteLine(output);
-return invalid==0&&pressureMismatch==0&&missingMuscles==0&&count>0?0:1;
+return invalid==0&&pressureMismatch==0&&missingMuscles==0&&invalidMotorUnitStates==0&&count>0?0:1;

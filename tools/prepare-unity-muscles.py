@@ -25,14 +25,39 @@ def generate(root):
     fatigue_end='        if (target <= 0.0 && Activation < RelaxedActivationEpsilon)'
     if core.count(signature)!=1 or core.count(fatigue_end)!=1:
         raise ValueError('Unexpected canonical fatigue layout.')
-    core=core.replace(signature,'public void Advance(double excitation, double lengthFraction, double dt, bool suppressDiagnosticFatigue = false)')
-    core=core.replace(fatigue_end,'        if (suppressDiagnosticFatigue) FatigueFraction = 0.0;\n\n'+fatigue_end)
+    core=core.replace(signature,'''public MotorUnitPool DiagnosticMotorUnits { get; } = new MotorUnitPool();
+    public double DiagnosticRequestedActivation { get; private set; }
+
+    public void Advance(double excitation, double lengthFraction, double dt,
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)''')
+    activation_update='        Activation += (target - Activation) * alpha;'
+    core=core.replace('var timeConstant = target > Activation ?',
+        'var recruitmentState = diagnosticPoolParameters.HasValue ? DiagnosticRequestedActivation : Activation;\n        var timeConstant = target > recruitmentState ?')
+    if core.count(activation_update)!=1: raise ValueError('Unexpected activation update.')
+    core=core.replace(activation_update,'''        if (diagnosticPoolParameters.HasValue)
+        {
+            DiagnosticRequestedActivation += (target - DiagnosticRequestedActivation) * alpha;
+            if (target <= 0 && DiagnosticRequestedActivation < RelaxedActivationEpsilon)
+                DiagnosticRequestedActivation = 0;
+            DiagnosticMotorUnits.Advance(DiagnosticRequestedActivation, dt, diagnosticPoolParameters.Value);
+            Activation = DiagnosticMotorUnits.ActiveFraction;
+        }
+        else Activation += (target - Activation) * alpha;''')
+    core=core.replace(fatigue_end,'''        if (diagnosticPoolParameters.HasValue) FatigueFraction = DiagnosticMotorUnits.FatiguedFraction;
+        else if (suppressDiagnosticFatigue) FatigueFraction = 0.0;
+
+'''+fatigue_end.replace('target <= 0.0 &&', '!diagnosticPoolParameters.HasValue && target <= 0.0 &&'))
+    core=core.replace('var fatigueCapacity = FatigueCapacityFraction;',
+        'var fatigueCapacity = diagnosticPoolParameters.HasValue ? 1.0 : FatigueCapacityFraction;')
+    reset='        previousLength = 1.0;\n        Activation = 0.0;'
+    if core.count(reset)!=1: raise ValueError('Unexpected muscle reset.')
+    core=core.replace(reset,'        DiagnosticMotorUnits.Reset();\n        DiagnosticRequestedActivation = 0;\n'+reset)
     begin=core.index('    public void Advance(double targetAngle')
     end=core.index('    public void Reconcile(', begin)
     old=core[begin:end]
     activation=old[old.index('        var boundedTarget'):old.index('        var activeTorque')]
     if activation.count(', dt);')!=2: raise ValueError('Expected both antagonist advances.')
-    activation=activation.replace(', dt);', ', dt, suppressDiagnosticFatigue);')
+    activation=activation.replace(', dt);', ', dt, suppressDiagnosticFatigue, diagnosticPoolParameters);')
     # Explicit comparison candidate: equal resting antagonist forces must not
     # automatically cap the stronger agonist's active recruitment. The original
     # equations remain the default/control until this candidate is qualified.
@@ -54,7 +79,7 @@ def generate(root):
     public double AdvanceMeasured(double targetAngle, double descendingGain,
         double tone, double measuredAngle, double measuredVelocity, double dt,
         bool preserveActiveCapacity = false, bool preserveVelocityCapacity = true,
-        bool suppressDiagnosticFatigue = false)
+        bool suppressDiagnosticFatigue = false, MotorUnitFatigueParameters? diagnosticPoolParameters = null)
     {
         Angle = measuredAngle;
         AngularVelocity = measuredVelocity;

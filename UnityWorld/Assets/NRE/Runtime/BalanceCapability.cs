@@ -11,7 +11,8 @@ namespace Nre.UnityWorld
     {
         [Serializable] public sealed class Case
         {
-            public string name,recruitment;
+            public string name,recruitment,fatigueModel;
+            public FatigueRates[] motorUnitRates=Array.Empty<FatigueRates>();
             public float diagnosticStrengthScale=1,maximumRequestedTorqueNewtonMeters,maximumAppliedTorqueNewtonMeters;
             public long torqueClippedAxes;
             public MuscleFatiguePolicy fatiguePolicy;
@@ -29,7 +30,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=7;public float durationSeconds=300,minimumFinalStandingSeconds=10;
+            public int protocolVersion=8;public float durationSeconds=300,minimumFinalStandingSeconds=10;
             public float postureRampStartSeconds=.5f,postureRampDurationSeconds=2;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
@@ -43,13 +44,28 @@ namespace Nre.UnityWorld
             public MotorFrame command;
             public float diagnosticHipSagittalOffsetRadians,diagnosticHipCoronalOffsetRadians;
             public BodyFrame body;
+            public MusclePoolState[] motorUnitPools;
+        }
+
+        [Serializable] public sealed class FatigueRates
+        {
+            public string joint;public double fatigueRatePerSecond,recoveryRatePerSecond,restMultiplier;
+            public double recruitmentRatePerSecond=MotorUnitPool.RecruitmentRate,deactivationRatePerSecond=MotorUnitPool.DeactivationRate;
+            public FatigueRates(string joint,MotorUnitFatigueParameters p){this.joint=joint;
+                fatigueRatePerSecond=p.FatigueRate;recoveryRatePerSecond=p.RecoveryRate;restMultiplier=p.RestMultiplier;}
         }
 
         public static IEnumerator Run(WorldController world)
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=new[]{1f,.5f,2f,3f}.Select(Configuration).ToList();
+            var configurations=new[]{
+                Configuration(1,MuscleFatiguePolicy.Normal),
+                Configuration(3,MuscleFatiguePolicy.Normal),
+                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue),
+                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates),
+                Configuration(1,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates),
+                Configuration(3,MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates)}.ToList();
             int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
@@ -61,6 +77,8 @@ namespace Nre.UnityWorld
                     if(world.Connected||!world.IsolatedQualification)throw new InvalidOperationException("Balance fixture must be isolated.");
                     world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position",result.diagnosticStrengthScale);
                     world.Avatar.muscles.DiagnosticFatiguePolicy=result.fatiguePolicy;
+                    result.motorUnitRates=MuscleProfiles.All.Where(p=>world.Avatar.muscles.DiagnosticPoolRates(p.Joint).HasValue)
+                        .GroupBy(p=>p.Joint).Select(g=>new FatigueRates(g.Key,world.Avatar.muscles.DiagnosticPoolRates(g.Key).Value)).ToArray();
                     using(var trace=new StreamWriter(Path.Combine(world.outputDirectory,name+"-trace.jsonl")))
                     for(int step=0;step<steps;step++)
                     {
@@ -118,7 +136,8 @@ namespace Nre.UnityWorld
                         if(step%10==0)trace.WriteLine(JsonUtility.ToJson(new Trace{seconds=(step+1)*WorldController.StepSeconds,
                             preStepErrorX=error.x,preStepErrorZ=error.z,preStepVelocityX=velocity.x,preStepVelocityZ=velocity.z,centerOfMass=com,supportCenter=supportCenter,
                             diagnosticHipSagittalOffsetRadians=(float)body.muscles.DiagnosticHipSagittalOffsetRadians,
-                            diagnosticHipCoronalOffsetRadians=result.hipCoronalOffsetRadians*postureBlend,command=command,body=frame}));
+                            diagnosticHipCoronalOffsetRadians=result.hipCoronalOffsetRadians*postureBlend,command=command,body=frame,
+                            motorUnitPools=body.muscles.CaptureDiagnosticPools()}));
                         if(step==steps-1)File.WriteAllText(Path.Combine(world.outputDirectory,name+"-body-frame.json"),JsonUtility.ToJson(frame,true));
                         if(!result.finite)throw new InvalidOperationException("Non-finite balance fixture.");
                     }
@@ -142,9 +161,12 @@ namespace Nre.UnityWorld
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(float strength)=>new Case{
-            name="strength-"+strength.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),diagnosticStrengthScale=strength,
-            fatiguePolicy=MuscleFatiguePolicy.Normal,hipSagittalOffsetRadians=0,hipCoronalOffsetRadians=0,
+        static Case Configuration(float strength,MuscleFatiguePolicy fatigue)=>new Case{
+            name=(fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue?"pools-no-fatigue":fatigue==MuscleFatiguePolicy.Normal?"legacy":fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates?
+                "pools-inherited-rates":"pools-published-rates")+"-strength-"+strength.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),
+            fatigueModel=fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue?"3CC recruitment timing control, F=R=0 (ablation only)":fatigue==MuscleFatiguePolicy.Normal?"inherited scalar":fatigue==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates?
+                "3CC with uncalibrated inherited F/R constants":"3CC-r with published joint/general fits (provisional dynamic-fiber mapping)",
+            diagnosticStrengthScale=strength,fatiguePolicy=fatigue,hipSagittalOffsetRadians=0,hipCoronalOffsetRadians=0,
             recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
             coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
     }

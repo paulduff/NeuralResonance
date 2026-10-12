@@ -5,7 +5,8 @@ using System.Linq;
 
 namespace Nre.UnityWorld
 {
-    public enum MuscleFatiguePolicy { Normal, DiagnosticAnklesSuppressed, DiagnosticAllSuppressed }
+    public enum MuscleFatiguePolicy { Normal, DiagnosticAnklesSuppressed, DiagnosticAllSuppressed,
+        DiagnosticMotorUnitPoolsInheritedRates, DiagnosticMotorUnitPoolsPublishedRates, DiagnosticMotorUnitPoolsNoFatigue }
 
     public sealed class MuscleProfile
     {
@@ -87,7 +88,8 @@ namespace Nre.UnityWorld
                 if(!Finite(measured)||!Finite(speed))throw new ArgumentException("Invalid measured muscle state.");
                 bool suppressFatigue=DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAllSuppressed||
                     (DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticAnklesSuppressed&&p.Joint.EndsWith("foot"));
-                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity,suppressFatigue)*capacity;
+                var poolRates=DiagnosticPoolRates(p.Joint);
+                double torque=pair.Value.AdvanceMeasured(target,gain,tone,measured,speed,dt,PreserveActiveCapacity,PreserveVelocityCapacity,suppressFatigue,poolRates)*capacity;
                 output.TryGetValue(p.Joint,out var effort);
                 output[p.Joint]=p.Axis==0?(torque,effort.second):(effort.first,torque);
             }
@@ -96,6 +98,20 @@ namespace Nre.UnityWorld
 
         public MuscleMeasurement[] Capture() => joints.Values.SelectMany(j=>new[]{j.Flexor,j.Extensor})
             .Select(m=>new MuscleMeasurement(m.Capture(),capacity)).ToArray();
+
+        internal MotorUnitFatigueParameters? DiagnosticPoolRates(string joint)
+        {
+            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsNoFatigue)
+                return new MotorUnitFatigueParameters(0,0);
+            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsInheritedRates)
+                return new MotorUnitFatigueParameters(.020,.032);
+            if(DiagnosticFatiguePolicy==MuscleFatiguePolicy.DiagnosticMotorUnitPoolsPublishedRates)
+                return MotorUnitFatigueParameters.PublishedForJoint(joint);
+            return null;
+        }
+        public MusclePoolState[] CaptureDiagnosticPools()=>DiagnosticPoolRates("left_foot").HasValue?
+            joints.Values.SelectMany(j=>new[]{j.Flexor,j.Extensor}).Select(m=>new MusclePoolState(m)).ToArray():
+            Array.Empty<MusclePoolState>();
 
         static double Drive(MuscleProfile profile, MotorFrame c, AvatarSpinalLocomotorState s)
         {

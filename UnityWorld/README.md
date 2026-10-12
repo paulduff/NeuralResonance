@@ -145,13 +145,25 @@ existing vestibular labyrinth; it also restores four measured plantar pressure
 fields and estimates pressure center over each contact manifold.
 
 The first `-Assessment balance` run tested twelve isolated mechanical cases and
-held supported upright posture for 9.23 s at best; none held at the end. The current
-protocol uses `--balance-qualify` for eight thirty-second hip/ankle contribution
-cases. An explicit diagnostic feedback controller varies existing muscle
+held supported upright posture for 9.23 s at best; none held at the end.
+`--balance-qualify` uses an explicit diagnostic feedback controller to vary muscle
 targets from measured sway; it cannot connect to DNNE, anchor the root or write
 poses. Reports separate mechanical holding from neuronal/learned standing, which
-remain unassessed. Protocol 7 compares nominal, half, double and triple isometric
-muscle force capacities with normal fatigue, each for 300 seconds. Limb masses,
+remain unassessed. Protocol 7 found that half/nominal/double/triple strength held
+standing for 1.28/10.51/34.19/53.96 seconds; none survived 300 seconds.
+Protocol 8 compares six 300-second cases: the inherited scalar fatigue model at
+nominal/triple strength, three motor-unit pools with inherited F/R constants at
+nominal strength, and pools with published joint/general rates at nominal/triple
+strength, plus a nominal zero-fatigue pool control to isolate recruitment timing.
+The published-rate candidate uses 3CC-r resting/active/fatigued units and enhanced
+recovery only at zero requested load. Fatigue stays enabled in five cases; the
+sixth is explicitly an ablation, which is not adopted. Actual active units determine
+force, without applying a second scalar fatigue penalty. Joint-level isometric
+fits and the general hip/neck fallback need dynamic-body/receptor calibration;
+the inherited-rate pool case is an uncalibrated structural comparison.
+Traces record all three pools and filtered requested activation, and the offline
+validator checks conservation and agreement with the actual muscle body frame.
+Limb masses,
 moment arms, passive drives, joint/torque limits and feedback remain fixed.
 Actual fiber force, effort, fatigue and actuator clipping are recorded. A diagnostic hold
 requires ten continuous final standing seconds, finite settled mechanics and joint

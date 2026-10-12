@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
+param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[switch]$Muscles,[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 if(-not $InWindow){
@@ -6,6 +6,7 @@ if(-not $InWindow){
  $taskName='DNNE-Unity-Standing-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-Player',$Player,'-DurationSec',[string]$DurationSec,'-BackupRoot',$BackupRoot)
+ if($Muscles){$arguments+='-Muscles'}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $action=New-ScheduledTaskAction -Execute $shell -Argument $quoted -WorkingDirectory $repo
  $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
@@ -34,6 +35,10 @@ try {
  Start-Transcript -Path (Join-Path $output 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE / Unity standing observation'
  Write-Host ('Results: '+$output) -ForegroundColor Cyan
+ $configuration=[ordered]@{Player=$Player;PlayerSha256=(Get-FileHash -LiteralPath $Player -Algorithm SHA256).Hash;DurationSeconds=$DurationSec;MusclesEnabled=[bool]$Muscles;Plant=$(if($Muscles){'canonical Avatar measured muscles'}else{'simplified joint torque baseline'});PhysicalMuscles=$(if($Muscles){38}else{0});StrengthScale=1;PoolFatigueEnabled=$false;ScriptedBalanceController=$false;StartsPaused=$true;RecoverySupportedSecondsRequired=10;StopOnFall=$false}
+ $assembly=Join-Path (Split-Path -Parent $Player) 'DNNE Unity World_Data\Managed\Assembly-CSharp.dll'
+ if(Test-Path -LiteralPath $assembly){$configuration['PlayerAssemblySha256']=(Get-FileHash -LiteralPath $assembly -Algorithm SHA256).Hash}
+ $configuration | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'trial-configuration.json') -Encoding UTF8
  Write-Host '1. Recheck the isolated physical plant.'
  $mechanics=Join-Path $output 'mechanics';New-Item -ItemType Directory -Path $mechanics | Out-Null
  $arguments=@('-batchmode','-nographics','--qualify','--output',$mechanics,'-logFile',(Join-Path $mechanics 'physics.log'))
@@ -53,15 +58,18 @@ try {
  # and resumes the coordinator itself; no restart/import/reset is requested.
  Save-BrainRead 'coordinator-before.json' '/api/v1/admin/network/export'
  $preBackup=Join-Path $BackupRoot $run;New-Item -ItemType Directory -Path $preBackup -Force | Out-Null
- foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json')){
+ foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json','trial-configuration.json')){
   $source=Join-Path $output $name;$target=Join-Path $preBackup $name;Copy-Item -LiteralPath $source -Destination $target
   if((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash){throw ('Pre-trial backup mismatch: '+$name)}
  }
  Write-Host '2. Unity will open paused and acquire the exclusive world connection.' -ForegroundColor Cyan
  Write-Host 'After the ten-second handoff drain, press Play in UNITY to start the trial.' -ForegroundColor Yellow
  Write-Host ('The trial measures '+$DurationSec+' simulation seconds. It supplies no scripted balance/gait command.')
+ Write-Host 'A fall does not end the trial. Recovery requires ten continuous seconds of supported standing with fresh neural leg actuation.'
+ if($Muscles){Write-Host 'Body plant: 38 original Avatar muscles, canonical recruitment/fatigue, nominal capacity. DNNE is action authority.' -ForegroundColor Cyan}
  Write-Host 'The final Unity view stays open, paused and disconnected. Quality is assessed separately.'
  $arguments=@('--standing-trial',[string]$DurationSec,'--output',$output,'-logFile',(Join-Path $output 'standing.log'))
+ if($Muscles){$arguments+='--muscles'}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $observationProcess=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Normal -PassThru
  $timer=[Diagnostics.Stopwatch]::StartNew();$lastPrintedSeconds=-1
@@ -72,7 +80,7 @@ try {
   if(Test-Path -LiteralPath $progressPath){
    try {$progress=Read-Progress $progressPath
     if($progress.simulationSeconds -ge $lastPrintedSeconds+5){
-     Write-Host ('sim={0:N1}/{1}s standing={2:N1}s longest={3:N1}s leg-actuation-steps={4} body={5} generated-body-spikes={6} retina={7}' -f $progress.simulationSeconds,$DurationSec,$progress.standingSeconds,$progress.longestStandingSeconds,$progress.stepsWithLegActuation,$progress.bodyFramesAccepted,$progress.bodySpikesGenerated,$progress.retinalFramesAccepted)
+     Write-Host ('sim={0:N1}/{1}s standing={2:N1}s longest={3:N1}s leg-actuation-steps={4} body={5} generated-body-spikes={6} retina={7} falls={8} recoveries={9}' -f $progress.simulationSeconds,$DurationSec,$progress.standingSeconds,$progress.longestStandingSeconds,$progress.stepsWithLegActuation,$progress.bodyFramesAccepted,$progress.bodySpikesGenerated,$progress.retinalFramesAccepted,$progress.fallEvents,$progress.recoveries)
      $lastPrintedSeconds=$progress.simulationSeconds
     }
    } catch {Write-Verbose ('Progress read will retry: '+$_.Exception.Message)}
@@ -80,6 +88,18 @@ try {
   Start-Sleep -Seconds 1
  }
  $report=Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+ if($Muscles){
+  # Verify the player actually captured the requested physical muscle plant.
+  # This check does not establish neuronal delivery or successful balance.
+  $samples=0;$invalidMuscleFrames=0
+  foreach($line in [IO.File]::ReadLines((Join-Path $output 'standing-trace.jsonl'))){
+   $trace=$line | ConvertFrom-Json;$frames=@($trace.body.articulation.musculoskeletal.muscles)
+   $identities=@($frames | ForEach-Object {$_.side+':'+$_.name} | Select-Object -Unique)
+   $samples++;if($frames.Count -ne 38 -or $identities.Count -ne 38){$invalidMuscleFrames++}
+  }
+  [ordered]@{Samples=$samples;InvalidMuscleFrames=$invalidMuscleFrames;ExpectedMuscles=38;LiveDeliveryAssessed=$false} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'muscle-capture-check.json') -Encoding UTF8
+  if($samples -eq 0 -or $invalidMuscleFrames -ne 0){throw 'Live observation did not capture all 38 physical muscles.'}
+ }
  $report | Format-List;$report.metrics | Format-List
  Save-BrainRead 'motor-after.json' '/api/v1/neuronal-motor'
  Save-BrainRead 'sensorimotor-after.json' '/api/v1/sensorimotor-timing'
@@ -89,6 +109,9 @@ try {
  $exitCode=0
  if($report.standingCriterionMet){Write-Host 'The measured standing criterion was met. Learned standing was not assessed.' -ForegroundColor Green}
  else {Write-Host 'The run completed; the standing criterion was NOT met. Inspect the saved trace.' -ForegroundColor Yellow}
+ if($report.metrics.fallEvents -eq 0){Write-Host 'No fall observed; recovery was not tested.' -ForegroundColor Yellow}
+ elseif($report.recoveryCriterionMet){Write-Host 'Recovery criterion met: supported standing regained after a fall and held at completion, with neural actuation observed. Learned recovery was not assessed.' -ForegroundColor Green}
+ else {Write-Host 'Recovery criterion NOT met. Inspect post-fall commands and body feedback.' -ForegroundColor Yellow}
 } catch {
  $_ | Out-String | Set-Content -LiteralPath (Join-Path $output 'failure.txt')
  Write-Host $_.Exception.Message -ForegroundColor Red

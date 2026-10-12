@@ -69,4 +69,35 @@ and its final view stays visible. The script saves reports, traces, coordinator
 exports, mechanical prerequisite files, logs and SHA-verified D: backups. It
 prints FINISHED for completed integration regardless of standing quality, which
 is printed separately. The user reports completion; no live agent monitoring is
-needed. The candidate remains uncommitted until the saved runtime result is reviewed.
+needed. The original runtime result was reviewed before committing its checkpoint.
+
+## Canonical muscle and recovery observation
+
+The later `-Muscles` launcher switch explicitly chooses the measured physical
+plant with 38 original Avatar muscles; omission retains the earlier simplified
+joint-torque baseline. Recruitment, activation/fatigue and strength remain canonical
+and nominal. Successful isolated triple-capacity pool diagnostics do not enter
+this live baseline. `trial-configuration.json` records the selected mode, player
+and assembly SHA-256 hashes, duration and recovery bounds and is verified on D:
+before connection. The final muscle capture check requires 38 unique identities
+in every saved body trace sample.
+
+The next observation lasts 60 simulation seconds and continues after falling.
+Recovery is measured at 100 Hz, independently from the original whole-run standing
+criterion. A fall is upright fraction below 0.3 or pelvis height below 40% of its
+initial height. Recovery requires ten continuous seconds meeting all per-sample
+standing support/height/upright/local-limit bounds, at least two distinct authorized
+motor ticks and observed neural leg actuation during that supported interval.
+Earlier neural action cannot qualify passive support after a fall. First fall and
+first completed recovery times, fall/recovery counts and post-fall actuation/ticks
+are saved. The final recovery criterion also requires a valid supported neural
+standing interval at completion. Historical limit strikes do not invalidate later
+local recovery, while non-finite physics invalidates the result. No observed fall
+means recovery was not tested. Nothing in these measurements commands the body.
+
+This is a bounded DNNE/body integration and recovery observation. It does not
+promise learned recovery: the original Unity migration still omits four axial
+muscles and crouch/sit/lie decoder transitions. Reports retain the distinction
+between observed behavior, API admission and verified neuronal sensory delivery.
+The Unity view starts paused, waits for operator Play and stays open paused after
+completion. No brain restart/reset/import or live agent monitoring is requested.

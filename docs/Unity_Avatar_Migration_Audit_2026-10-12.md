@@ -414,4 +414,58 @@ joint torques exactly. The Unity build has zero warnings/errors and passes all
 cover valid pools and rejection of broken conservation, mismatched activation,
 duplicate/missing identities, absent/empty expected captures, and missing/out-of-
 range expected raw excitation. All 18,000 prior actual body frames still validate
-with the extended checks. The new physical comparison remains pending.
+with the extended checks. The completed comparison is recorded below.
+
+Run `unity-balance-capability-20261012-151946-44770e` completed all six finite,
+isolated, settled cases. The inherited nominal/triple controls reproduced their
+recorded mechanics and 10.51/53.96 s standing intervals exactly. The two nominal
+fatigue-free controls held 299.94 s and matched all 3,000 corresponding physical
+trace samples exactly, excluding capture sequence/timestamp and pool-only fields.
+This confirms that the single activation filter removes the earlier timing defect
+under this fixture. Fatigue-enabled adapted pools held 63.89 s at nominal capacity
+and 299.45 continuous final seconds at triple capacity; the latter met the isolated
+standing criterion and clipped 16 actuator axes during the full run. Maximum
+standing fatigue was 0.5031. Its bounded active/resting/fatigued states remained
+finite throughout five minutes. No asymptotic endurance calibration is implied.
+
+All 18,000 captured body frames and 9,000 pool captures passed actual offline
+validation/transduction without projection; maximum pool conservation error was
+4.47e-8. Original traces, report, validation and subsequent analysis are SHA-verified
+on D:. This establishes a mechanically useful isolated candidate, not DNNE balance,
+learned behavior or calibrated physiology. No pool policy, recruitment change or
+strength scale is admitted to live operation.
+
+## Return to the actual DNNE loop and observe recovery
+
+The next visible observation uses `--muscles`: the original nominal-capacity,
+canonical-recruitment/fatigue plant, exposing 38 physical muscles on 19 axes.
+Reviewed original `AvatarMuscle`, its relaxation/fatigue tests, canonical measured
+port tests, and spindle/Golgi body transduction before selecting this baseline.
+It is not full decoder parity: four axial muscles and crouch/sit/lie transitions
+remain missing as listed above. A failed get-up cannot by itself diagnose DNNE.
+The successful triple-capacity pool fixture remains an isolated candidate.
+
+The operator requires recovery after a fall. The live 60-second observation keeps
+running after falling, retaining DNNE authority and natural physical/sensory traffic.
+It introduces no get-up script, root lift, animation, teleport or episode reset.
+New 100 Hz measurements record first fall/recovery times, threshold-entry counts,
+post-fall neural actuation and supported recovery. Ten uninterrupted seconds meeting
+the existing support/height/upright/local-limit bounds, with two distinct authorized
+motor ticks and actual leg actuation within that supported interval, constitute an
+observed recovery. Earlier standing commands cannot qualify a passive rebound.
+The final recovery criterion also requires supported standing at completion.
+This is an observation with neural influence, not proof of causal or learned recovery.
+Historical limit excursions can fail the separate whole-run standing criterion
+without hiding a subsequent locally valid recovery. No observed fall leaves
+recovery untested. Non-finite physics invalidates both recovery results.
+
+The launcher preserves its simpler torque baseline unless `-Muscles` is explicitly
+selected. It passes that switch into the detached window/player, records body mode,
+player/assembly hashes and recovery criteria before the trial, and verifies 38
+unique actual muscle captures afterward. Fresh lease/motor readiness and operator
+Play are still required. Brain state is preserved; independent PowerShell saves
+reports and verified D: backups without live agent monitoring. Recovery-specific
+tests cover passive/stale support, interrupted holds, repeated falls, historical
+limit excursions and non-finite invalidation. Runtime recovery remains unassessed
+until the operator completes this observation. The checkpoint passes 135 focused
+tests; the Unity player builds with zero warnings/errors.

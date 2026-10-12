@@ -95,6 +95,7 @@ namespace Nre.UnityWorld
             var progress = new Progress { simulationSeconds = metrics.simulationSeconds, durationSeconds = duration,
                 standingSeconds = metrics.standingSeconds, longestStandingSeconds = metrics.longestStandingSeconds,
                 stepsWithLegActuation = metrics.stepsWithLegActuation, bodyFramesAccepted = world.bodyFramesAccepted,
+                fallEvents = metrics.fallEvents, recoveries = metrics.recoveries,
                 bodySpikesGenerated = world.bodySpikesGenerated, retinalFramesAccepted = world.retinalFramesAccepted };
             string destination = Path.Combine(world.outputDirectory, "standing-progress.json");
             AtomicJson(destination, JsonUtility.ToJson(progress));
@@ -136,6 +137,8 @@ namespace Nre.UnityWorld
                 report.freshMotorObserved && report.retinalFramesAccepted > 0 && report.disconnectedAtCompletion &&
                 report.worldLeaseReleaseAccepted && report.pausedAtCompletion;
             report.standingCriterionMet = report.integrationChecksPassed && metrics.StandingCriterionMet;
+            report.recoveryObserved = report.integrationChecksPassed && metrics.RecoveryObserved;
+            report.recoveryCriterionMet = report.integrationChecksPassed && metrics.RecoveryCriterionMet;
             report.weightTransferObserved = metrics.WeightTransferObserved;
             AtomicJson(Path.Combine(world.outputDirectory, "standing-report.json"), JsonUtility.ToJson(report, true));
             saved = true;
@@ -150,11 +153,12 @@ namespace Nre.UnityWorld
         }
         [Serializable] sealed class Progress {
             public double simulationSeconds, durationSeconds, standingSeconds, longestStandingSeconds;
-            public long stepsWithLegActuation, bodyFramesAccepted, bodySpikesGenerated, retinalFramesAccepted;
+            public long stepsWithLegActuation, bodyFramesAccepted, bodySpikesGenerated, retinalFramesAccepted, fallEvents, recoveries;
         }
         [Serializable] public sealed class Report {
             public string unity, error; public StandingTrialMetrics metrics;
             public bool completed, operatorStarted, finite, integrationChecksPassed, standingCriterionMet, weightTransferObserved;
+            public bool recoveryObserved, recoveryCriterionMet;
             public bool bodyFeedbackObserved, freshMotorObserved, disconnectedAtCompletion, worldLeaseReleaseAccepted, pausedAtCompletion;
             // API admission/generated spikes do not prove deferred neuronal delivery or learning.
             public bool sensoryDeliveryVerified = false, learnedStandingAssessed = false, walkingAssessed = false;

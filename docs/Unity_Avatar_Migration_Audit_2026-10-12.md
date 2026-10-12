@@ -209,6 +209,48 @@ canonical default equivalence, unchanged activation/length/velocity, zero force
 after relaxation, and preservation of other muscles under ankle-only suppression.
 Disabling fatigue is a causal test, not an adopted treatment or biological claim.
 
+Run `unity-balance-capability-20261012-131529-2df26d` completed all three cases
+finitely and in isolation. Normal fatigue reproduced 10.51 s. Suppressing ankle
+fatigue extended supported standing to 57.93 s before falling. Suppressing all
+muscle fatigue held standing throughout the 120 s trial (119.94 s after initial
+floor contact), including all three pushes; maximum limit excursion was 0.000171
+rad and settling passed. All 3,600 captured frames passed automatic actual
+validation/offline transduction. Outputs and analysis are verified on D:.
+
+This establishes a causal fatigue contribution in the tested command/plant
+configuration. It does not prove the existing fatigue rates are biologically wrong.
+In the ankle-only ablation, left Quadriceps fatigue rose from 0.044 at 10 s to
+0.634 at 57 s; left knee flexion increased from 0.187 to 0.530 rad and quadriceps
+force fell from 1,113 to 346 N. The all-muscle ablation still used full left lateral
+ankle activation near the end. The body can express a standing correction, but
+this operating posture demands substantial sustained effort. Suppression is not
+adopted; neuronal/learned standing and live sensory delivery remain unassessed.
+
+## Posture alignment with normal fatigue
+
+Protocol 6 tests 25 combinations of small sagittal hip base offsets
+(-0.08/-0.04/0/0.04/0.08 rad) and mirrored coronal hip targets
+(-0.12/-0.06/0/0.06/0.12 rad). All use normal fatigue, fixed feedback/force
+capacities/joint limits, 120 s duration and the same three pushes. The zero-offset
+baseline runs first. Targets ramp smoothly from 0.5 to 2.5 s and are released if
+support is lost; poses and roots are never written during a case.
+
+`AvatarArticulatedBody.ResolvePosture` already separates a hip posture base from
+gait; its standing reference is hip=0/knee=0.06/ankle=0. The diagnostic sagittal
+offset uses that existing mechanism in the measured muscle plant without creating
+a locomotor command. Coronal offsets use existing signed hip channels. Applied
+offsets are recorded explicitly in each trace. All remain isolated, and the shared
+plant's live-policy check rejects posture offsets, fatigue ablations and the
+noncanonical recruitment alternatives. Ordinary Avatar source/rates are unchanged.
+
+Reports measure mean squared activation across 38 muscles during supported
+standing, peak activation and peak fatigue during those same observations. These
+are effort proxies, not calibrated metabolic energy. Stability is assessed first;
+effort among surviving stances can then guide the next mechanical improvement.
+Incomplete falling cases do not establish a low-effort standing solution. The
+PowerShell player allowance is twenty minutes for this larger isolated batch,
+and automatic wire validation/D: backup still follow process completion.
+
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results

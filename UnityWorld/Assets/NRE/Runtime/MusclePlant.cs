@@ -37,6 +37,14 @@ namespace Nre.UnityWorld
         public bool PreserveActiveCapacity { get; internal set; }
         public bool PreserveVelocityCapacity { get; internal set; } = true;
         public MuscleFatiguePolicy DiagnosticFatiguePolicy { get; internal set; }
+        public double DiagnosticHipSagittalOffsetRadians { get; internal set; }
+
+        public void RequireLivePolicy()
+        {
+            if(DiagnosticFatiguePolicy!=MuscleFatiguePolicy.Normal||DiagnosticHipSagittalOffsetRadians!=0||
+                PreserveActiveCapacity||!PreserveVelocityCapacity)
+                throw new InvalidOperationException("Diagnostic muscle policies cannot enter live operation.");
+        }
         internal readonly Dictionary<MuscleProfile,AvatarMuscleJoint> joints = MuscleProfiles.All.ToDictionary(p=>p,
             p=>new AvatarMuscleJoint(new AvatarMuscle(p.Flexor,p.Side,p.FlexorForce),
                 new AvatarMuscle(p.Extensor,p.Side,p.ExtensorForce),p.Minimum,p.Maximum,p.Rest,p.Inertia,p.MomentArm,p.Stiffness,p.Damping));
@@ -49,7 +57,8 @@ namespace Nre.UnityWorld
             Func<string,int,double> angle, Func<string,int,double> velocity, double motorCapacity, double dt,
             Func<string,int,double,double>? boundTarget=null)
         {
-            if(!command.IsFinite() || !Finite(motorCapacity) || !Finite(dt) || dt<=0)throw new ArgumentException("Invalid muscle inputs.");
+            if(!command.IsFinite() || !Finite(motorCapacity) || !Finite(dt) || dt<=0||
+                !Finite(DiagnosticHipSagittalOffsetRadians))throw new ArgumentException("Invalid muscle inputs.");
             capacity=Math.Clamp(motorCapacity,0,1);
             var output=new Dictionary<string,(double first,double second)>();
             foreach(var pair in joints)
@@ -59,7 +68,7 @@ namespace Nre.UnityWorld
                 double gain=Math.Clamp(Math.Abs(drive)+(leg?command.standDrive:0),0,1);
                 double tone=leg?Math.Max(0,command.standDrive)*.1:0;
                 double target=drive==0?p.Rest:drive>0?drive*p.Maximum:-drive*p.Minimum;
-                if(p.Variable=="leftHip"||p.Variable=="rightHip")target=drive*(drive>=0?
+                if(p.Variable=="leftHip"||p.Variable=="rightHip")target=DiagnosticHipSagittalOffsetRadians+drive*(drive>=0?
                     MuscleWorkingRanges.WalkingHipFlexionRadians:MuscleWorkingRanges.WalkingHipExtensionRadians);
                 if(p.Variable=="leftKnee"||p.Variable=="rightKnee")target=p.Rest+drive*MuscleWorkingRanges.WalkingKneeFlexionRadians;
                 if(boundTarget!=null)target=boundTarget(p.Joint,p.Axis,target);

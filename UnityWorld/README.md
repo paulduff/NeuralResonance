@@ -150,13 +150,16 @@ protocol uses `--balance-qualify` for eight thirty-second hip/ankle contribution
 cases. An explicit diagnostic feedback controller varies existing muscle
 targets from measured sway; it cannot connect to DNNE, anchor the root or write
 poses. Reports separate mechanical holding from neuronal/learned standing, which
-remain unassessed. Protocol 5 compares three 120-second fatigue conditions: normal,
-ankle-only suppression and whole-muscle suppression. Feedback, nominal muscle
-forces, passive drives, mechanics and other physiology remain fixed. A diagnostic hold
+remain unassessed. Protocol 6 compares 25 small sagittal/coronal hip posture offsets
+with normal fatigue, each for 120 seconds. Targets ramp through existing muscles;
+standing duration, effort proxies and fatigue are recorded. Feedback, nominal muscle
+forces, passive drives and mechanics remain fixed. A diagnostic hold
 requires ten continuous final standing seconds, finite settled mechanics and joint
 limit excursions below 0.05 rad. Each case has small pushes at 8/14/22 s. The inherited
-fatigue equation remains the default, and live steps reject fatigue suppression.
-This ablation is an isolated causal test. Body encoding
+fatigue equation remains the default, and live steps reject diagnostic posture,
+fatigue and recruitment overrides. The prior fatigue ablation held 120 seconds
+only when all muscle fatigue was suppressed; suppression is not adopted.
+Body encoding
 normalizes support-loss error with Avatar's 0.22 m scale and bounds hand receptor
 loads to 5,000 N; raw contact forces and support distances remain available.
 

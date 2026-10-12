@@ -30,11 +30,12 @@ try {
  Write-Host ('Results: '+$output)
  $arguments=@('-batchmode','-nographics','--qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'))
  if($Assessment -eq 'muscles'){$arguments=@('-batchmode','-nographics','--muscle-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host 'Comparing raw torque, canonical muscles and full active capacity; free-root gravity, zero/full standing recruitment.' -ForegroundColor Cyan}
- if($Assessment -eq 'balance'){$arguments=@('-batchmode','-nographics','--balance-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '3 isolated cases: normal fatigue, fatigue disabled only in ankles, fatigue disabled in all muscles; 120 seconds each.' -ForegroundColor Cyan;Write-Host 'Only diagnostic muscle fatigue differs. Controller gains, force capacities, joint limits and pushes stay fixed; no DNNE connection or learning.'}
+ if($Assessment -eq 'balance'){$arguments=@('-batchmode','-nographics','--balance-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '25 isolated posture cases: normal fatigue, small sagittal/coronal hip target offsets; 120 seconds each.' -ForegroundColor Cyan;Write-Host 'Targets ramp smoothly through existing muscles. No gait or pose writes, no DNNE connection or learning. Muscle effort while standing is recorded.'}
  if($Assessment -eq 'response'){$arguments=@('-batchmode','-nographics','--response-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '10 isolated response cases: 4 seconds each, small 0.03-radian hip or ankle target pulses from 1 to 1.5 seconds.' -ForegroundColor Cyan;Write-Host 'Repeated controls, positive/negative bilateral and individual hip pulses. Free root; no external push, DNNE connection or learning.'}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $process=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Hidden -PassThru
- if(-not $process.WaitForExit(600000)){$process.Kill();throw 'Isolated Unity assessment exceeded ten minutes; its own player was stopped.'}
+ $maximumWaitMilliseconds=if($Assessment -eq 'balance'){1200000}else{600000}
+ if(-not $process.WaitForExit($maximumWaitMilliseconds)){$process.Kill();throw 'Isolated Unity assessment exceeded its bounded time allowance; its own player was stopped.'}
  $reportName=if($Assessment -eq 'muscles'){'muscle-report.json'}elseif($Assessment -eq 'balance'){'balance-report.json'}elseif($Assessment -eq 'response'){'response-report.json'}else{'qualification.json'}
  $report=Get-Content -LiteralPath (Join-Path $output $reportName) -Raw | ConvertFrom-Json
  $report | Format-List
@@ -48,7 +49,7 @@ try {
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Response comparison failed to complete finitely in isolation.'}
   Write-Host 'Response traces saved at 50 Hz. These short pulses assess command effects; standing, neuronal control and learning are not qualified.' -ForegroundColor Yellow
  }elseif($Assessment -eq 'balance'){
-  $report.cases | Select-Object name,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},@{Name='FinalStandingSec';Expression={[Math]::Round($_.metrics.currentStandingSeconds,2)}},standingHeld,settlingPassed,maximumReportedFatigueFraction,@{Name='MaxLimitRad';Expression={$_.metrics.maximumLimitViolation}} | Format-Table -AutoSize
+  $report.cases | Select-Object name,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},@{Name='FinalStandingSec';Expression={[Math]::Round($_.metrics.currentStandingSeconds,2)}},standingHeld,@{Name='MeanActivationSquared';Expression={[Math]::Round($_.meanSquaredActivationWhileStanding,4)}},maximumFatigueWhileStanding | Format-Table -AutoSize
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Balance capability comparison failed to complete finitely in isolation.'}
   Write-Host ('Any diagnostic standing hold: '+$report.anyDiagnosticStandingHold) -ForegroundColor Yellow
   Write-Host 'Diagnostic feedback is an explicit test fixture. DNNE control and learned standing were not assessed.' -ForegroundColor Yellow

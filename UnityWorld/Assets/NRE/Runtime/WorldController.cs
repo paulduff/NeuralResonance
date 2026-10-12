@@ -61,7 +61,7 @@ public sealed class WorldController:MonoBehaviour {
  }
  public void Step(){
   if(DiagnosticMode&&!IsolatedQualification)throw new InvalidOperationException("Diagnostic commands cannot enter live operation.");
-  if(!IsolatedQualification&&Avatar.muscles.DiagnosticFatiguePolicy!=MuscleFatiguePolicy.Normal)throw new InvalidOperationException("Diagnostic fatigue suppression cannot enter live operation.");
+  if(!IsolatedQualification)Avatar.muscles.RequireLivePolicy();
   MotorFrame command=DiagnosticMode?DiagnosticCommand:Connected&&motor.IsAuthorized()?motor:new MotorFrame();
   command=command??new MotorFrame();
   LastAppliedCommand=command;LegActuationApplied=false;

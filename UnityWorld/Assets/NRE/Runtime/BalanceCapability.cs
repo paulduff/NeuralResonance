@@ -18,13 +18,17 @@ namespace Nre.UnityWorld
             public string worstLimitJoint;public int worstLimitAxis;public double worstLimitTime;
             public float maximumLimitViolation;
             public float maximumReportedFatigueFraction;
+            public float hipSagittalOffsetRadians,hipCoronalOffsetRadians,maximumActivationWhileStanding,maximumFatigueWhileStanding;
+            public double meanSquaredActivationWhileStanding;
+            public int standingEffortSamples;
             public int disturbancesApplied;
             public StandingTrialMetrics metrics=new StandingTrialMetrics();
         }
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=5;public float durationSeconds=120,minimumFinalStandingSeconds=10;
+            public int protocolVersion=6;public float durationSeconds=120,minimumFinalStandingSeconds=10;
+            public float postureRampStartSeconds=.5f,postureRampDurationSeconds=2;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
             public List<Case> cases=new List<Case>();
@@ -35,6 +39,7 @@ namespace Nre.UnityWorld
             public float preStepErrorX,preStepErrorZ,preStepVelocityX,preStepVelocityZ;
             public Vector3 centerOfMass,supportCenter;
             public MotorFrame command;
+            public float diagnosticHipSagittalOffsetRadians,diagnosticHipCoronalOffsetRadians;
             public BodyFrame body;
         }
 
@@ -42,10 +47,10 @@ namespace Nre.UnityWorld
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=new[]{
-                Configuration("normal-fatigue",MuscleFatiguePolicy.Normal),
-                Configuration("ankle-fatigue-disabled",MuscleFatiguePolicy.DiagnosticAnklesSuppressed),
-                Configuration("all-fatigue-disabled",MuscleFatiguePolicy.DiagnosticAllSuppressed)};
+            var configurations=new List<Case>{Configuration(0,0)};
+            configurations.AddRange(from sagittal in new[]{-.08f,-.04f,0,.04f,.08f}
+                from coronal in new[]{-.12f,-.06f,0,.06f,.12f}
+                where sagittal!=0||coronal!=0 select Configuration(sagittal,coronal));
             int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
@@ -78,6 +83,11 @@ namespace Nre.UnityWorld
                             result.coronalHipShare,body.Angle("left_thigh",1),body.Angle("right_thigh",1),result.coronalGainRatio,
                             result.hipTargetsAbsolute,result.retainFullAnkleCorrection,result.coronalAnkleTargetsAbsolute,
                             result.coronalDerivativeGain):new MotorFrame{standDrive=1};
+                        float postureBlend=supported?Mathf.SmoothStep(0,1,Mathf.Clamp01(
+                            (step*WorldController.StepSeconds-report.postureRampStartSeconds)/report.postureRampDurationSeconds)):0;
+                        body.muscles.DiagnosticHipSagittalOffsetRadians=result.hipSagittalOffsetRadians*postureBlend;
+                        BalanceDiagnosticController.AddCoronalOffsets(command,result.hipCoronalOffsetRadians*postureBlend,
+                            -result.hipCoronalOffsetRadians*postureBlend,0,0);
                         world.DiagnosticCommand=command;
                         // Prescribed external pushes test recovery; they never provide balancing assistance.
                         if(step==800||step==1400||step==2200){body.pelvis.AddForce((step==800?Vector3.forward:step==1400?Vector3.right:Vector3.left)*1.5f,ForceMode.Impulse);result.disturbancesApplied++;}
@@ -90,21 +100,31 @@ namespace Nre.UnityWorld
                             float violation=Mathf.Max(0,range.lowerLimit*Mathf.Deg2Rad-angle,angle-range.upperLimit*Mathf.Deg2Rad);
                             if(violation>result.maximumLimitViolation){result.maximumLimitViolation=violation;result.worstLimitJoint=link.name;result.worstLimitAxis=axis;result.worstLimitTime=(step+1)*WorldController.StepSeconds;}
                         }
+                        double previousStanding=result.metrics.standingSeconds;
                         result.metrics.Observe(WorldController.StepSeconds,new StandingObservation{
                             finite=result.finite,uprightFraction=state.uprightFraction,pelvisHeight=body.pelvis.transform.position.y,
                             initialPelvisHeight=body.initialPelvisHeight,leftFootLoad=body.LeftLoad,rightFootLoad=body.RightLoad,
                             bodyWeight=body.totalMass*9.81,otherSupportLoad=body.links.Values.Where(l=>!l.name.EndsWith("foot")&&l.sensor.supportPoints.Count>0).Sum(l=>l.sensor.force),
                             supportMargin=state.balance.supportMarginMeters,limitViolation=ActuatorQualification.LimitViolation(body)});
+                        if(result.metrics.standingSeconds>previousStanding){
+                            result.meanSquaredActivationWhileStanding+=state.muscles.Average(m=>(double)m.activation*m.activation);
+                            result.maximumActivationWhileStanding=Mathf.Max(result.maximumActivationWhileStanding,state.muscles.Max(m=>m.activation));
+                            result.maximumFatigueWhileStanding=Mathf.Max(result.maximumFatigueWhileStanding,state.muscles.Max(m=>m.fatigueFraction));
+                            result.standingEffortSamples++;
+                        }
                         if(step>=steps-200)foreach(var l in body.links.Values){
                             result.maximumSettledLinearSpeed=Mathf.Max(result.maximumSettledLinearSpeed,l.body.linearVelocity.magnitude);
                             for(int axis=0;axis<l.body.dofCount;axis++)result.maximumSettledJointSpeed=Mathf.Max(result.maximumSettledJointSpeed,Mathf.Abs(l.body.jointVelocity[axis]));
                         }
                         if(step%10==0)trace.WriteLine(JsonUtility.ToJson(new Trace{seconds=(step+1)*WorldController.StepSeconds,
-                            preStepErrorX=error.x,preStepErrorZ=error.z,preStepVelocityX=velocity.x,preStepVelocityZ=velocity.z,centerOfMass=com,supportCenter=supportCenter,command=command,body=frame}));
+                            preStepErrorX=error.x,preStepErrorZ=error.z,preStepVelocityX=velocity.x,preStepVelocityZ=velocity.z,centerOfMass=com,supportCenter=supportCenter,
+                            diagnosticHipSagittalOffsetRadians=(float)body.muscles.DiagnosticHipSagittalOffsetRadians,
+                            diagnosticHipCoronalOffsetRadians=result.hipCoronalOffsetRadians*postureBlend,command=command,body=frame}));
                         if(step==steps-1)File.WriteAllText(Path.Combine(world.outputDirectory,name+"-body-frame.json"),JsonUtility.ToJson(frame,true));
                         if(!result.finite)throw new InvalidOperationException("Non-finite balance fixture.");
                     }
                     result.settlingPassed=result.maximumSettledLinearSpeed<.15f&&result.maximumSettledJointSpeed<.75f;
+                    if(result.standingEffortSamples>0)result.meanSquaredActivationWhileStanding/=result.standingEffortSamples;
                     result.standingHeld=result.metrics.currentStandingSeconds>=report.minimumFinalStandingSeconds&&
                         result.metrics.maximumLimitViolation<.05&&result.settlingPassed&&result.finite;
                 }
@@ -114,14 +134,17 @@ namespace Nre.UnityWorld
                 if(!string.IsNullOrEmpty(report.error))break;
             }
             report.isolated=!world.Connected&&world.bodyFramesAccepted==0&&world.retinalFramesAccepted==0&&world.motorPacketsReceived==0;
-            report.completed=string.IsNullOrEmpty(report.error)&&report.cases.Count==configurations.Length;
+            report.completed=string.IsNullOrEmpty(report.error)&&report.cases.Count==configurations.Count;
             report.anyDiagnosticStandingHold=report.cases.Any(c=>c.standingHeld);
             File.WriteAllText(Path.Combine(world.outputDirectory,"balance-report.json"),JsonUtility.ToJson(report,true));
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(string name,MuscleFatiguePolicy policy)=>new Case{
-            name=name,fatiguePolicy=policy,recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
+        static Case Configuration(float sagittal,float coronal)=>new Case{
+            name="hips-s"+sagittal.ToString("+0.00;-0.00;0.00",System.Globalization.CultureInfo.InvariantCulture)+
+                "-c"+coronal.ToString("+0.00;-0.00;0.00",System.Globalization.CultureInfo.InvariantCulture),
+            fatiguePolicy=MuscleFatiguePolicy.Normal,hipSagittalOffsetRadians=sagittal,hipCoronalOffsetRadians=coronal,
+            recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=4,
             coronalDerivativeGain=2.4f,coronalHipShare=0,coronalAnkleTargetsAbsolute=false};
     }
 }

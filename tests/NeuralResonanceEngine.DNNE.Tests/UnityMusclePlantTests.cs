@@ -159,6 +159,37 @@ public sealed class UnityMusclePlantTests
         Assert.Contains(changed,m=>m.Name=="Iliopsoas"&&m.FatigueFraction>.01);
     }
 
+    [Fact]
+    public void StaticDiagnosticHipTargetsRecruitMusclesWithoutCreatingAGaitOrWritingPose()
+    {
+        var normal=new U.MusclePlant();var diagnostic=new U.MusclePlant{DiagnosticHipSagittalOffsetRadians=.08};
+        var command=new U.MotorFrame{standDrive=1};var spinal=new U.AvatarSpinalLocomotorState(0,0,0,0,0,0,0);
+        double Angle(string joint,int axis)=>U.MuscleProfiles.All.Single(p=>p.Joint==joint&&p.Axis==axis).Rest;
+        var original=normal.Advance(command,spinal,Angle,(_,_)=>0,1,.01).ToDictionary(e=>e.Joint);
+        var changed=diagnostic.Advance(command,spinal,Angle,(_,_)=>0,1,.01).ToDictionary(e=>e.Joint);
+        Assert.True(changed["left_thigh"].First>original["left_thigh"].First);
+        Assert.True(changed["right_thigh"].First>original["right_thigh"].First);
+        foreach(string joint in original.Keys){
+            Assert.Equal(original[joint].Second,changed[joint].Second);
+            if(!joint.EndsWith("thigh"))Assert.Equal(original[joint].First,changed[joint].First);
+        }
+        Assert.Equal(0,command.leftDrive);Assert.Equal(0,command.rightDrive);Assert.False(command.IsAuthorized());
+    }
+
+    [Fact]
+    public void LivePolicyRejectsEveryDiagnosticMuscleOverride()
+    {
+        new U.MusclePlant().RequireLivePolicy();
+        foreach(var configure in new Action<U.MusclePlant>[]{
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticAnklesSuppressed,
+            p=>p.DiagnosticFatiguePolicy=U.MuscleFatiguePolicy.DiagnosticAllSuppressed,
+            p=>p.DiagnosticHipSagittalOffsetRadians=.08,
+            p=>p.PreserveActiveCapacity=true,p=>p.PreserveVelocityCapacity=false}){
+            var plant=new U.MusclePlant();configure(plant);
+            Assert.Throws<InvalidOperationException>(plant.RequireLivePolicy);
+        }
+    }
+
     static U.AvatarMuscleJoint Ankle()=>new(new U.AvatarMuscle("TibialisAnterior","L",720),
         new U.AvatarMuscle("GastrocnemiusSoleus","L",2900),-.78,.52,0,.55,.038,22,3.8);
 }

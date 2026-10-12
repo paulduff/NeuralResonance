@@ -95,6 +95,38 @@ public sealed class UnitySensoryWireTests
         Assert.Same(physicalBalance,encoded.Articulation!.Musculoskeletal!.Balance);
     }
 
+    [Fact]
+    public void ActualFloorSupportedFallKeepsItsBalanceErrorWithoutInventingRecoveryTeaching()
+    {
+        var measured=Read<PhysicalBodyFrameRequest>("live-fallen-zero-error-example.json");
+        var a=measured.Articulation!;
+        var muscles=a.Musculoskeletal!;
+        var balance=muscles.Balance!;
+        Assert.Equal("fallen",balance.Phase);
+        Assert.True(muscles.UprightFraction<.3f);
+        Assert.True(balance.SupportMarginMeters>0);
+        Assert.Equal(0,muscles.BalanceError);
+        Assert.True(PhysicalBodyFrameDescriptor.TryCreate(measured,out var oldDescriptor,out var oldError),oldError);
+
+        var corrected=measured with {Articulation=a with {Musculoskeletal=muscles with {
+            BalanceError=Nre.UnityWorld.BodySensorMath.PhysicalBalanceError(
+                balance.SupportMarginMeters,balance.FallPitchRadians,balance.FallRollRadians,balance.Phase)}}};
+        Assert.Equal(1,corrected.Articulation!.Musculoskeletal!.BalanceError);
+        Assert.Same(balance,corrected.Articulation.Musculoskeletal.Balance);
+        Assert.Same(muscles.Muscles,corrected.Articulation.Musculoskeletal.Muscles);
+        Assert.True(PhysicalBodyFrameDescriptor.TryCreate(corrected,out var fixedDescriptor,out var fixedError),fixedError);
+
+        // Both frames describe a fallen body. A changing floor support hull must
+        // not turn its balance-error channel into a positive recovery delta.
+        var previous=fixedDescriptor! with {Sequence=measured.Sequence-1,TimestampMs=measured.TimestampMs-100};
+        var legacy=new PhysicalBodyTransducerRuntime();
+        legacy.Transduce(previous,1,previous.TimestampMs);
+        Assert.Equal(1,legacy.Transduce(oldDescriptor!,2,measured.TimestampMs).BalanceImprovement);
+        var repaired=new PhysicalBodyTransducerRuntime();
+        repaired.Transduce(previous,1,previous.TimestampMs);
+        Assert.Equal(0,repaired.Transduce(fixedDescriptor!,2,measured.TimestampMs).BalanceImprovement);
+    }
+
     private static T Read<T>(string filename)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

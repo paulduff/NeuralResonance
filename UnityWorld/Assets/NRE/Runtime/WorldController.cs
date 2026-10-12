@@ -123,7 +123,11 @@ public sealed class WorldController:MonoBehaviour {
   using(var request=UnityWebRequest.Get(brain+"/api/v1/neuronal-motor")){request.timeout=2;yield return request.SendWebRequest();if(request.result!=UnityWebRequest.Result.Success)continue;
    string json=request.downloadHandler.text;if(!json.Contains("\"minimumOutputConfidence\""))continue;
    var envelope=JsonUtility.FromJson<MotorEnvelope>(json);if(envelope?.runtime==null||!envelope.runtime.IsFinite())continue;
-   if(envelope.runtime.tick>lastMotorTick){motor=envelope.runtime;lastMotorTick=motor.tick;lastMotorAt=Time.realtimeSinceStartup;motorPacketsReceived++;}
+   if(envelope.runtime.tick>lastMotorTick){motor=envelope.runtime;lastMotorTick=motor.tick;lastMotorAt=Time.realtimeSinceStartup;motorPacketsReceived++;
+    // Retain full recovery-latch/action diagnostics discarded by the command projection.
+    if(Trial!=null)File.AppendAllText(Path.Combine(outputDirectory,"motor-telemetry.jsonl"),JsonUtility.ToJson(
+     new MotorTelemetry{physicsStep=physicsSteps,realtimeSeconds=Time.realtimeSinceStartup,running=Running,responseJson=json})+"\n");
+   }
   }
  }}
  bool CanSend()=>Running&&Connected&&Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f;
@@ -171,5 +175,6 @@ public sealed class WorldController:MonoBehaviour {
  [Serializable] class LeaseReply{public bool accepted;public string token;public int leaseSeconds,drainSeconds;}
  [Serializable] class AcceptedReply{public bool accepted;public long generatedSpikes;}
  [Serializable] class MotorEnvelope{public MotorFrame runtime;}
+ [Serializable] class MotorTelemetry{public long physicsStep;public float realtimeSeconds;public bool running;public string responseJson;}
 }
 }

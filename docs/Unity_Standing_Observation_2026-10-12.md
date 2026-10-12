@@ -101,3 +101,21 @@ muscles and crouch/sit/lie decoder transitions. Reports retain the distinction
 between observed behavior, API admission and verified neuronal sensory delivery.
 The Unity view starts paused, waits for operator Play and stays open paused after
 completion. No brain restart/reset/import or live agent monitoring is requested.
+
+## Balance feedback and saved motor evidence
+
+The first canonical-muscle live run fell at 1.50 seconds and did not recover.
+Its margin-only balance encoding returned zero for most fallen samples supported
+by the floor. The repaired encoding uses Avatar's original phase/tilt/margin
+function: fallen remains error one regardless of a positive contact support
+margin. Raw physical fields are retained; the simpler Unity phase classifier has
+no instability timer or control allowance. The unchanged 60-second observation
+retests this feedback with the existing brain state and muscle plant.
+
+`motor-telemetry.jsonl` saves full advancing valid responses from the existing
+motor polling loop. Each record contains `physicsStep`, `realtimeSeconds`,
+`running` and `responseJson`; deserialize that last string to inspect DNNE's
+evidence, posture channels and recovery latch. Paused pre-trial responses may
+appear, so use `running` and physics step to select the active observation.
+No extra polling or agent monitoring is required. Motor evidence and API acceptance
+still do not prove causal recovery or complete sensory delivery.

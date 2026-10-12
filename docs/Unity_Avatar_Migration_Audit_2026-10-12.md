@@ -11,6 +11,7 @@ Unity provides a dynamic physical solver; it does not replace DNNE's authority.
 | `AvatarArticulatedBody.cs` 42 muscles and posture coordination | Four axial muscles need physical spine pitch/roll. Initial decoder omits crouch/sit/lie, canonical standing/gait ankle coordination, some basal recruitment and arm/neck coordination. It is not the complete Avatar controller. |
 | `AvatarSpinalLocomotorCircuit.cs` | Generated circuit matches canonical load/stop traces; actual Unity foot loads feed it. Full gait/posture decoder parity remains pending. |
 | `AvatarBalanceDynamics.cs`, `AvatarColliderRig.cs` mass, support and contact mechanics | Replaced pose/support integration with PhysX masses, free-root gravity and solver contacts. Root anchoring/pose resets exist only in isolated calibration fixtures. COM, COM velocity, support hull and margin are measured. |
+| `AvatarBalanceDynamics.ResolveBalanceError` | Generated canonical margin/tilt/phase encoding now preserves a fallen error of one even inside a floor-contact support hull. Unity still has its simpler phase classifier; instability time and control allowance are zero. This is not full balance-dynamics parity. |
 | Four plantar pressure fields in `AvatarArticulatedBody.CaptureFrame()` | Previously omitted from Unity. Candidate now classifies real floor contacts into heel/forefoot and medial/lateral fields, conserving measured foot load. Aggregate impulse is distributed uniformly; this is an estimate, not per-point impulse measurement. |
 | Mass-to-pressure directional proprioception in `PhysicalBodyTransducerRuntime` | Existing DNNE path retained. Candidate corrects Unity pressure center from first contact to the load-weighted mean of contact manifolds. Support geometry stays outside the vestibular nerve. |
 | `VestibularLabyrinthTransducer`, documented in Entry 147 | Existing bilateral canals, cupula/adaptation and otolith organ retained in ControlProgram. Unity supplies physical body motion, relative trunk motion and neck angles. End-to-end delivery/motor correction is not yet qualified. |
@@ -469,3 +470,51 @@ tests cover passive/stale support, interrupted holds, repeated falls, historical
 limit excursions and non-finite invalidation. Runtime recovery remains unassessed
 until the operator completes this observation. The checkpoint passes 135 focused
 tests; the Unity player builds with zero warnings/errors.
+
+## Completed live recovery observation and balance-feedback repair
+
+Run `unity-standing-20261012-154017-30be00` completed 60.01 simulation seconds
+with finite physics and passed its integration checks. It fell at 1.50 seconds,
+held standing for 0.92 seconds in total, and never recovered. DNNE continued
+actuating the actual leg muscles for 5,487 physics steps after falling, with 436
+distinct authorized motor ticks. Four hundred body frames were accepted and
+generated 46,326 receptor spikes; no body/contact frames were rejected. These
+are admission/transduction results, not proof of delivered neuronal traffic.
+
+The saved 286 physical samples expose an adapter error: 275 of 278 fallen samples
+have `balanceError=0`, although their root remains fallen. The whole-body floor
+contact hull can contain the COM; a positive support margin alone does not mean
+upright balance. The final motor snapshot also reports zero population balance
+error and zero descending righting drive. Endpoint snapshots do not establish
+the entire latch history. Maximum captured muscle fatigue before the first fall
+was only 0.01593, so initial exhaustion does not explain that early fall.
+
+Reviewed original Avatar balance dynamics, articulated-body recovery tests,
+physical body transduction, vestibular input, neuronal motor control and righting
+tests before this repair. `prepare-unity-balance-sensor.py` extracts the original
+phase enum, constants and `ResolveBalanceError` function into `BalanceErrorCore.cs`.
+Unity now encodes its measured support margin, root pitch/roll and physical phase
+through that function. The existing simpler classifier remains; its absent
+instability timer and control allowance are explicitly zero. Support geometry,
+joint state, muscle force/fatigue/recruitment and DNNE state remain unchanged.
+No host posture choice or recovery motion is introduced.
+
+All 299 focused Unity/Avatar/receptor/motor tests pass, including 40 original
+articulated-body tests. The generated function exactly matches the original over
+648 combinations of phase, margin, allowance, time and tilt. A regression using
+the actual floor-supported fallen frame preserves its raw geometry and 38 muscle
+measurements, sets balance error to one, and prevents a false positive
+`BalanceImprovement` delta while still fallen. All 286 original frames pass
+offline validation/transduction; a separate explicit encoding projection makes
+all 278 fallen samples report error one and remains valid. Original captures are
+unchanged. This projection does not assess live delivery or physical recovery.
+
+The new player builds with zero warnings/errors and passes all 40 native boundary
+probe samples. The next observation repeats the nominal canonical 38-muscle,
+60-second trial with corrected feedback. It records each advancing valid motor
+API response, including full evidence, action channels and righting-latch fields,
+in `motor-telemetry.jsonl` using the existing polling cadence. This gives a saved
+motor history without live agent monitoring or additional HTTP requests.
+Recovery after this repair is pending. Missing axial muscles/posture transitions,
+descending righting generation and end-to-end sensory delivery remain open;
+this one defect is not asserted to be the sole cause of failure.

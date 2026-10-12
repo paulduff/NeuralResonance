@@ -63,4 +63,43 @@ public sealed class UnityBodySensorTests
         Assert.Equal(5000,BodySensorMath.HandReceptorLoad(impact));
         Assert.Equal(5995.6714f,impact);
     }
+
+    [Fact]
+    public void BalanceEncodingMatchesOriginalAvatarAcrossAllPhasesAndErrorComponents()
+    {
+        var original=typeof(NRE.SimAvatar.AvatarBalanceDynamics).GetMethod("ResolveBalanceError",
+            System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Static)!;
+        foreach(var phase in Enum.GetValues<NRE.SimAvatar.AvatarBalancePhase>())
+        foreach(double margin in new[]{-.25,0,.1})
+        foreach(double allowance in new[]{0,.04})
+        foreach(double time in new[]{0,.1,.3})
+        foreach(double tilt in new[]{0,.075,.8,1.6})
+        {
+            double expected=(double)original.Invoke(null,new object[]{margin,allowance,time,tilt,phase})!;
+            double actual=AvatarBalanceSensor.ResolveBalanceError(margin,allowance,time,tilt,(AvatarBalancePhase)(int)phase);
+            Assert.Equal(expected,actual);
+        }
+    }
+
+    [Theory]
+    [InlineData("fallen",0,1)]
+    [InlineData("falling",0,.68)]
+    [InlineData("unstable",0,.45)]
+    [InlineData("airborne",0,.25)]
+    [InlineData("righting",0,.4)]
+    [InlineData("broad_support",0,0)]
+    [InlineData("stable",0,0)]
+    [InlineData("stable",1.4,1)]
+    public void ContactSupportCannotErasePhysicalPhaseOrTiltError(string phase,float tilt,float expected)
+    {
+        Assert.Equal(expected,BodySensorMath.PhysicalBalanceError(.1f,tilt,0,phase),6);
+    }
+
+    [Fact]
+    public void BalanceEncodingRejectsUnknownPhaseAndNonfinitePhysics()
+    {
+        Assert.Throws<ArgumentException>(()=>BodySensorMath.PhysicalBalanceError(.1f,0,0,"not-a-phase"));
+        Assert.Throws<ArgumentException>(()=>BodySensorMath.PhysicalBalanceError(float.NaN,0,0,"stable"));
+        Assert.Throws<ArgumentException>(()=>BodySensorMath.PhysicalBalanceError(0,float.PositiveInfinity,0,"fallen"));
+    }
 }

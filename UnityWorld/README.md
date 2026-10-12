@@ -67,6 +67,11 @@ range. Balance retains full fallen orientation. COM, pressure and support geomet
 use a gravity-aligned horizontal frame; body/contact receptors retain anatomical
 coordinates. Captured fall/contact examples in `Qualification` are tested against
 the actual DNNE input validators without injecting test measurements into the brain.
+Balance error uses the generated original Avatar margin/tilt/phase calculation;
+lying inside a floor-contact support hull cannot erase a fallen error. Unity's
+simpler phase classifier still omits instability time and control allowance.
+Run `python tools/prepare-unity-balance-sensor.py --check` from the repository root
+to verify the generated encoding; omit `--check` after canonical changes.
 
 ## Qualification
 

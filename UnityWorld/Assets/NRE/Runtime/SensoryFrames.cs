@@ -6,12 +6,13 @@ namespace Nre.UnityWorld {
 [Serializable] public sealed class BodyFrame {
  public long sequence,timestampMs;
  public float linearVelocityXMetersPerSecond,linearVelocityYMetersPerSecond,linearVelocityZMetersPerSecond,angularVelocityXRadiansPerSecond,angularVelocityYRadiansPerSecond,angularVelocityZRadiansPerSecond;
- // A fresh mechanics body starts from a fixed reference physiology. Ecology,
- // tissue damage and metabolic calibration are deliberately not claimed here.
+ // Energy, hydration and tissue are advanced by the canonical Avatar rules.
+ // Temperature and oxygen remain reference values until those plants migrate.
  public float storedEnergyJoules=8000000,tissueIntegrityFraction=1,coreTemperatureCelsius=37,bloodOxygenSaturationFraction=.98f,hydrationFraction=1;
  public string inputSource="avatar_unity_body";public bool motorTrainingMode=false;public ArticulationFrame articulation;
  public static BodyFrame Capture(ArticulatedAvatar a,long sequence){var v=a.BodyVector(a.pelvis.linearVelocity);var w=a.BodyVector(a.pelvis.angularVelocity);
   var result=new BodyFrame{sequence=sequence,timestampMs=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),linearVelocityXMetersPerSecond=v.x,linearVelocityYMetersPerSecond=v.y,linearVelocityZMetersPerSecond=v.z,angularVelocityXRadiansPerSecond=w.x,angularVelocityYRadiansPerSecond=w.y,angularVelocityZRadiansPerSecond=w.z};
+  var physiology=a.physiology.State;result.storedEnergyJoules=(float)physiology.StoredEnergyJoules;result.hydrationFraction=(float)physiology.HydrationFraction;result.tissueIntegrityFraction=(float)physiology.TissueIntegrityFraction;
   result.articulation=new ArticulationFrame{
    leftHipAngleRadians=a.Angle("left_thigh"),rightHipAngleRadians=a.Angle("right_thigh"),leftKneeAngleRadians=a.Angle("left_shin"),rightKneeAngleRadians=a.Angle("right_shin"),leftAnkleAngleRadians=a.Angle("left_foot"),rightAnkleAngleRadians=a.Angle("right_foot"),leftFootLoadNewtons=a.LeftLoad,rightFootLoadNewtons=a.RightLoad,
    leftShoulderAngleRadians=a.Angle("left_arm"),rightShoulderAngleRadians=a.Angle("right_arm"),leftElbowAngleRadians=a.Angle("left_forearm"),rightElbowAngleRadians=a.Angle("right_forearm"),leftHandLoadNewtons=a.links["left_hand"].sensor.force,rightHandLoadNewtons=a.links["right_hand"].sensor.force,

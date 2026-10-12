@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -24,14 +25,14 @@ public static class PhysicsQualification {
    report.floorContactPeakNewtons=peakContact;
    report.minimumColliderHeight=body.links.Values.SelectMany(l=>l.body.GetComponentsInChildren<Collider>()).Distinct().Min(c=>c.bounds.min.y);
    report.finite=body.IsFinite();
+   report.storedEnergyJoules=body.physiology.State.StoredEnergyJoules;report.hydrationFraction=body.physiology.State.HydrationFraction;report.tissueIntegrityFraction=body.physiology.State.TissueIntegrityFraction;report.contactDamageFraction=body.physiology.ContactDamage;
    File.WriteAllText(Path.Combine(world.outputDirectory,"body-frame-example.json"),JsonUtility.ToJson(BodyFrame.Capture(body,1),true));
    File.WriteAllText(Path.Combine(world.outputDirectory,"contact-frame-example.json"),JsonUtility.ToJson(ContactFrame.Capture(body,body.links["left_foot"],1),true));
    // The actuator fixture is anchored and airborne. It is a calibration test,
    // never the production standing mechanism or a gait controller.
    body.pelvis.immovable=true;body.pelvis.TeleportRoot(new Vector3(0,2.5f,0),Quaternion.identity);
-   foreach(var link in body.links.Values){link.body.useGravity=false;int dofs=link.body.dofCount;
-    if(dofs==1){link.body.jointPosition=new ArticulationReducedSpace(0);link.body.jointVelocity=new ArticulationReducedSpace(0);}
-    if(dofs==2){link.body.jointPosition=new ArticulationReducedSpace(0,0);link.body.jointVelocity=new ArticulationReducedSpace(0,0);}
+   foreach(var link in body.links.Values){link.body.useGravity=false;
+    body.SetCalibrationPose(link,0);
    }
    world.DiagnosticCommand=new MotorFrame{leftElbowDrive=.8f};
    for(int i=0;i<120;i++)world.Step();
@@ -40,15 +41,34 @@ public static class PhysicsQualification {
    report.authorityGatePassed=!new MotorFrame{active=true,confidence=.4f,minimumOutputConfidence=.45f}.IsAuthorized()&&new MotorFrame{active=true,confidence=.8f,minimumOutputConfidence=.45f}.IsAuthorized()&&!new MotorFrame{active=true,confidence=float.NaN,minimumOutputConfidence=.45f}.IsAuthorized();
    report.isolated=world.bodyFramesAccepted==0&&world.retinalFramesAccepted==0&&!world.Connected;
    report.settlingPassed=report.maximumSettledLinearSpeed<.15f&&report.maximumSettledJointSpeed<.75f;
-   report.qualified=report.finite&&report.isolated&&report.authorityGatePassed&&report.gravityDisplacementMeters>.01f&&report.floorContactPeakNewtons>50&&report.minimumColliderHeight>-.03f&&report.elbowResponseRadians>.15f&&report.elbowWithinLimits&&report.settlingPassed;
-   report.completed=true;
+   // Run after passive measurements, with the avatar already anchored and
+   // gravity disabled, so this separate rig cannot advance the fall fixture.
+   report.nativeCoordinates=NativeCoordinateProbe.Run();
+   report.nativeCoordinatesPassed=report.nativeCoordinates.passed;
+   File.WriteAllText(Path.Combine(world.outputDirectory,"native-coordinate-probe.json"),JsonUtility.ToJson(report.nativeCoordinates,true));
+   if(!report.nativeCoordinatesPassed)throw new InvalidOperationException("Native coordinate boundary probe failed.");
   }catch(Exception error){report.error=error.ToString();report.completed=false;report.qualified=false;}
+  // Enumerators cannot yield inside try/catch. Advance the isolated fixture
+  // explicitly so failures still produce a report and a non-zero player exit.
+  if(string.IsNullOrEmpty(report.error)){
+   var calibration=ActuatorQualification.Run(world,report.actuators);
+   bool more=true;while(more){
+    try{more=calibration.MoveNext();}catch(Exception error){report.error=error.ToString();more=false;}
+    if(more)yield return calibration.Current;
+   }
+  }
+  report.actuatorsPassed=report.actuators.Count==19&&report.actuators.All(a=>a.passed);
+  report.completed=string.IsNullOrEmpty(report.error);
+  report.qualified=report.completed&&report.nativeCoordinatesPassed&&report.finite&&report.isolated&&report.authorityGatePassed&&report.gravityDisplacementMeters>.01f&&report.floorContactPeakNewtons>50&&report.minimumColliderHeight>-.03f&&report.elbowResponseRadians>.15f&&report.elbowWithinLimits&&report.settlingPassed&&report.actuatorsPassed;
   File.WriteAllText(Path.Combine(world.outputDirectory,"qualification.json"),JsonUtility.ToJson(report,true));
   world.WriteReport();Debug.Log("Unity mechanical qualification: "+JsonUtility.ToJson(report));
   Application.Quit(report.qualified?0:1);
  }
  [Serializable] public sealed class Report {
-  public string unity,error;public bool completed,qualified,finite,isolated,authorityGatePassed,elbowWithinLimits,settlingPassed,walkingAssessed=false;
+  public string unity,error;public bool completed,qualified,nativeCoordinatesPassed,finite,isolated,authorityGatePassed,elbowWithinLimits,settlingPassed,actuatorsPassed,walkingAssessed=false;
+  public NativeCoordinateProbe.Report nativeCoordinates;
+  public double storedEnergyJoules,hydrationFraction,tissueIntegrityFraction,contactDamageFraction;
+  public List<ActuatorQualification.AxisResult> actuators=new List<ActuatorQualification.AxisResult>();
   public int links;public float massKg,stepSeconds,gravityDisplacementMeters,floorContactPeakNewtons,minimumColliderHeight,elbowResponseRadians,maximumSettledLinearSpeed,maximumSettledJointSpeed;
  }
 }

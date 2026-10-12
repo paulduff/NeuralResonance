@@ -74,3 +74,9 @@ wire boundaries, independent PowerShell qualification and limitations. Native
 floor/contact/joint qualification is required before claiming a stable body.
 Ecology, physiological consequences, muscle/fatigue calibration, grip, complete
 standing/stepping and editor integration remain subsequent migration work.
+
+The subsequent [expanded actuator qualification](Unity_Actuator_Qualification_2026-10-12.md)
+passed all 19 bidirectional axes and 40 independent native-boundary samples in
+`unity-qualification-20261012-091859-6cb04a`. It also migrated canonical energy,
+hydration and tissue consequences and corrected independent leg recruitment.
+Standing, weight transfer, fatigue, grip and the wider ecology remain outstanding.

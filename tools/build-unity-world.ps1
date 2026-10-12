@@ -10,7 +10,10 @@ try {
  [Environment]::SetEnvironmentVariable('NRE_UNITY_OUTPUT',$Output,'Process')
  $args=@('-batchmode','-nographics','-projectPath',(Join-Path $repo 'UnityWorld'),'-executeMethod','Nre.UnityWorld.Editor.WorldBuild.BuildWindows','-quit','-logFile',(Join-Path $Output 'build.log'))
  $quoted=($args|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
- $process=Start-Process -FilePath $UnityExecutable -ArgumentList $quoted -WindowStyle Hidden -PassThru -Wait
+ $process=Start-Process -FilePath $UnityExecutable -ArgumentList $quoted -WindowStyle Hidden -PassThru
+ # Unity may leave a licensing helper running. Wait for the editor itself,
+ # rather than Start-Process -Wait's entire descendant process tree.
+ $process.WaitForExit()
  if($process.ExitCode -ne 0){throw ('Unity build failed; inspect '+(Join-Path $Output 'build.log'))}
  $result=Get-Content -LiteralPath (Join-Path $Output 'build-result.json') -Raw | ConvertFrom-Json
  if($result.result -ne 'Succeeded' -or $result.errors -ne 0){throw 'Unity did not confirm build success.'}

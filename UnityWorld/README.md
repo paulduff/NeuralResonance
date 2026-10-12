@@ -48,6 +48,14 @@ spinal circuit is ported mechanically from `NRE.SimAvatar`; a cross-implementati
 trace test checks agreement through recruitment, loading and stopping.
 Run `python tools/prepare-unity-spinal.py --check` from the repository root to
 check the generated port; omit `--check` to regenerate after canonical changes.
+Left/right recruitment retains independent direction and strength; opposing
+commands are not averaged into a shared hip direction.
+The two-axis joints expose three native slots in Unity 6000.3.19f1, but pack their
+movable coordinates into slots 0 and 1. The head's physical axes are X/Y, the
+limbs' X/Z; slot 2 is not a Z-axis command. Torque, position, velocity and fixture
+reset use the same packed mapping, with the unused slot zero. An independent
+two-link boundary probe checks these slots against physical quaternion rotations
+and named Y/Z drives at build time and during qualification.
 
 Physics advances at 100 Hz. Joint angles, contact impulses and velocities are
 physical measurements. Body frames and somatic contacts use existing ControlProgram
@@ -67,7 +75,13 @@ the actual DNNE input validators without injecting test measurements into the br
 ```
 
 The independent visible PowerShell window performs isolated gravity, contact,
-settling, joint response/limits and authority-gate checks. It writes the report,
+settling, joint response/limits and authority-gate checks. The expanded candidate
+also pulses all 19 movable axes in both directions. Each anchored, airborne,
+gravity-disabled fixture begins at the midpoint of each configured joint range;
+it requires signed movement over 0.01 rad in both reduced coordinates and measured
+joint-frame rotation, and limit violation below 0.05 rad. The separate native
+boundary probe must pass all 40 force, position, velocity and drive samples.
+These fixture resets/poses never run in production. It writes the report,
 example wire frames, logs and completion status into a new artifact directory,
 and verifies their D: backups. It neither connects to DNNE nor trains it.
 `FINISHED` means these mechanical criteria passed; `walkingAssessed` remains false.
@@ -84,13 +98,30 @@ passed on 12 October: maximum settled linear speed 0.00316 m/s, joint speed
 that the visible fall looked normal. This validates this passive fixture, not all
 poses, active control or learned locomotion.
 
+Expanded qualification `unity-qualification-20261012-091859-6cb04a` also passed
+all 19 axes in both directions and all 40 native boundary samples. Passive settling
+was unchanged; maximum joint limit violation was 0.009744 rad. The captured
+reports and sensory frames are retained in `Qualification`. This establishes
+the tested mechanical baseline; standing/weight transfer under DNNE remains next.
+
 ## Current limits
 
 This is a physical migration prototype, not the whole former ecology. It has a
 flat contact arena, not food, hydration interactions, predators or terrain tasks.
-Muscle forces are bounded joint torque approximations; fiber dynamics, fatigue,
-grip and tissue damage are not yet migrated. Body physiology is a fixed fresh-body
-reference, labelled in the UI. Contact areas are coarse collider estimates.
+Muscle forces are bounded joint torque approximations; fiber dynamics, fatigue
+and grip are not yet migrated. Energy, hydration and tissue now follow the
+canonical Avatar simulation, including metabolic stress, contact damage and
+capacity reduction. Initial reserves match its respawn state: 6 MJ energy,
+hydration 0.75 and intact tissue. Pausing freezes physiology with physical time.
+Temperature and oxygen remain reference values. No food, water or shelter is
+present in this arena, and biological calibration of the inherited rates remains
+outstanding. Contact areas are coarse collider estimates.
+Impact momentum is estimated only on contact onset with pre-solve approach speed
+over 0.2 m/s, after removing one whole-body gravity impulse from the solver impulse.
+This conservative estimate distinguishes static support from an impact; complex
+manifolds, moving surfaces and repeated impacts still require physical calibration.
+Run `python tools/prepare-unity-physiology.py --check` to verify the generated
+equations and inherited world settings. Omit `--check` to regenerate.
 Center of pressure estimates distribute solver impulse over the contact manifold.
 Adjacent/body self-collisions are currently disabled pending collider calibration.
 No gait animation, fixed production root, kinematic movement or host balancing

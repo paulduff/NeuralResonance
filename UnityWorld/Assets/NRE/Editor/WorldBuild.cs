@@ -47,6 +47,7 @@ public static class WorldBuild {
  }
  static Material SaveMaterial(Material material,string path){var old=AssetDatabase.LoadAssetAtPath<Material>(path);if(old!=null){EditorUtility.CopySerialized(material,old);UnityEngine.Object.DestroyImmediate(material);}else AssetDatabase.CreateAsset(material,path);return old!=null?old:material;}
  public static void BuildWindows() {
+  CoordinateBoundaryCheck.Run();
   Prepare();
   var output=Environment.GetEnvironmentVariable("NRE_UNITY_OUTPUT");if(string.IsNullOrEmpty(output))throw new Exception("NRE_UNITY_OUTPUT must name the local build directory.");
   output=Path.GetFullPath(output);Directory.CreateDirectory(output);

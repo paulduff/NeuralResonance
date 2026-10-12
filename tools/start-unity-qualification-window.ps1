@@ -27,9 +27,11 @@ try {
  Write-Host ('Results: '+$output)
  $arguments=@('-batchmode','-nographics','--qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'))
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
- $process=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Hidden -PassThru -Wait
+ $process=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Hidden -PassThru
+ $process.WaitForExit()
  $report=Get-Content -LiteralPath (Join-Path $output 'qualification.json') -Raw | ConvertFrom-Json
  $report | Format-List
+ if($report.actuators){$report.actuators | Format-Table joint,axis,positiveDisplacement,negativeDisplacement,maximumLimitViolation,passed -AutoSize}
  if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.qualified){throw 'The physical checks did not qualify. Inspect saved results.'}
  $exitCode=0
  Write-Host 'ALL MECHANICAL CHECKS COMPLETE. Walking was not assessed.' -ForegroundColor Green

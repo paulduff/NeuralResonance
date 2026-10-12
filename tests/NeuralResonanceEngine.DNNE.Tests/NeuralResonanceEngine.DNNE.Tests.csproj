@@ -17,6 +17,11 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\SpinalCircuit.cs" Link="UnitySpinalCircuit.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\AvatarPhysiology.cs" Link="UnityAvatarPhysiology.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\BodyPhysiology.cs" Link="UnityBodyPhysiology.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorFrame.cs" Link="UnityMotorFrame.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorActuation.cs" Link="UnityMotorActuation.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\JointCoordinates.cs" Link="UnityJointCoordinates.cs" />
   </ItemGroup>
 
   <ItemGroup>

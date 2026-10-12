@@ -4,12 +4,13 @@ using System.Linq;
 using UnityEngine;
 namespace Nre.UnityWorld {
 public sealed class ArticulatedAvatar {
- public sealed class Link { public string name;public ArticulationBody body;public Transform bone;public Quaternion bindRotation;public ContactSensor sensor;public float torqueLimit;public int dofs; }
+ public sealed class Link { public string name;public ArticulationBody body;public Transform bone;public Quaternion bindRotation;public ContactSensor sensor;public float torqueLimit;public int dofs;public JointCoordinates coordinates; }
  public readonly Dictionary<string,Link> links=new Dictionary<string,Link>();
+ public readonly BodyPhysiology physiology=new BodyPhysiology();
  public ArticulationBody pelvis;public GameObject visual;public float totalMass;public float initialPelvisHeight;
  public float LeftLoad=>Load("left_foot");public float RightLoad=>Load("right_foot");
  public static ArticulatedAvatar Create(GameObject prefab) {
-  if(prefab==null)throw new InvalidOperationException("Install the supplied humanoid model with tools/prepare-unity-avatar.py.");
+  if(prefab==null)throw new InvalidOperationException("Install the supplied humanoid model with tools/prepare-unity-avatar.ps1.");
   var avatar=new ArticulatedAvatar();avatar.visual=UnityEngine.Object.Instantiate(prefab);avatar.visual.name="Avatar appearance (physics driven)";
   var animator=avatar.visual.GetComponent<Animator>();
   if(animator==null||animator.avatar==null||!animator.avatar.isHuman||!animator.avatar.isValid)throw new InvalidOperationException("The avatar needs a validated humanoid skeleton.");
@@ -57,7 +58,7 @@ public sealed class ArticulatedAvatar {
    body.swingZLock=dofs==2&&name!="head"?ArticulationDofLock.LimitedMotion:ArticulationDofLock.LockedMotion;
    if(dofs>0){body.xDrive=Drive(min,max,torque);if(name=="head")body.yDrive=Drive(min2,max2,torque);else if(dofs==2)body.zDrive=Drive(min2,max2,torque);}
   }
-  var node=new Link{name=name,body=body,bone=bone,bindRotation=bone.rotation,torqueLimit=torque,dofs=dofs};
+  var node=new Link{name=name,body=body,bone=bone,bindRotation=bone.rotation,torqueLimit=torque,dofs=dofs,coordinates=new JointCoordinates(dofs,name=="head")};
   var shape=new GameObject("Collision surface");shape.transform.SetParent(obj.transform,false);
   if(name=="pelvis"||name.EndsWith("foot")||name.EndsWith("hand")){
    var box=shape.AddComponent<BoxCollider>();box.size=name=="pelvis"?new Vector3(.28f,.20f,.20f):name.EndsWith("foot")?new Vector3(.11f,.08f,.25f):new Vector3(.085f,.12f,.05f);
@@ -75,29 +76,49 @@ public sealed class ArticulatedAvatar {
  // PhysX integrates spring/damper drives with the joint constraint solve.
  // Explicit -damping*velocity torque was unstable for low-inertia forearms.
  static ArticulationDrive Drive(float lower,float upper,float limit)=>new ArticulationDrive{lowerLimit=lower,upperLimit=upper,stiffness=8,damping=2.5f,forceLimit=limit,target=0};
- public float Angle(string name,int index=0){var state=links[name].body.jointPosition;return state.dofCount>index?state[index]:0;}
- public float Speed(string name,int index=0){var state=links[name].body.jointVelocity;return state.dofCount>index?state[index]:0;}
+ public float Angle(string name,int index=0){var link=links[name];var state=link.body.jointPosition;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
+ public float Speed(string name,int index=0){var link=links[name];var state=link.body.jointVelocity;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
+ public static ArticulationReducedSpace NativeState(Link link,float first,float second=0){
+  link.coordinates.ValidateNativeCount(link.body.dofCount);var values=link.coordinates.Pack(first,second);
+  return values.Length==1?new ArticulationReducedSpace(values[0]):values.Length==3?new ArticulationReducedSpace(values[0],values[1],values[2]):new ArticulationReducedSpace();
+ }
+ public void SetCalibrationPose(Link link,float first,float second=0){if(link.dofs==0)return;
+  link.body.jointPosition=NativeState(link,first,second);link.body.jointVelocity=NativeState(link,0);link.body.jointForce=NativeState(link,0);
+ }
  float Load(string name)=>links[name].sensor.force;
  public void BeginStep(){foreach(var l in links.Values)l.sensor.BeginStep();}
+ public void AdvancePhysiology(float dt){physiology.Advance(dt);foreach(var link in links.Values){var c=link.sensor;if(c.force<=0)continue;
+  physiology.Contact(link.name=="chest"?"torso":link.name,c.force,c.impulse,link.name.EndsWith("foot")?8000:2000,c.duration,dt,c.impactImpulse);
+ }}
  public void SynchronizeSkin(){foreach(var l in links.Values.OrderBy(l=>l.bone.GetComponentsInParent<Transform>().Length)){l.bone.position=l.body.transform.position;l.bone.rotation=l.body.transform.rotation*l.bindRotation;}}
  public void Torques(string name,float first,float second=0,float posturalStiffness=0){var l=links[name];int n=l.body.dofCount;if(n==0)return;
   var drive=l.body.xDrive;drive.stiffness=8+Mathf.Clamp(posturalStiffness,0,150);l.body.xDrive=drive;
   first=Mathf.Clamp(first,-l.torqueLimit,l.torqueLimit);second=Mathf.Clamp(second,-l.torqueLimit,l.torqueLimit);
-  l.body.jointForce=n==1?new ArticulationReducedSpace(first):new ArticulationReducedSpace(first,second);
+  l.body.jointForce=NativeState(l,first,second);
  }
  public void ZeroActuation(){foreach(var l in links.Values)if(l.dofs>0)Torques(l.name,0);}
  public Vector3 BodyPoint(Vector3 world){var p=Quaternion.Inverse(pelvis.transform.rotation)*(world-pelvis.transform.position);p.y+=initialPelvisHeight;return p;}
  public Vector3 BodyVector(Vector3 world)=>Quaternion.Inverse(pelvis.transform.rotation)*world;
  public Vector3 CenterOfMass(){Vector3 total=Vector3.zero;foreach(var l in links.Values)total+=l.body.worldCenterOfMass*l.body.mass;return total/totalMass;}
- public bool IsFinite(){foreach(var l in links.Values){var p=l.body.transform.position;if(float.IsNaN(p.x)||float.IsInfinity(p.x)||float.IsNaN(p.y)||float.IsInfinity(p.y)||float.IsNaN(p.z)||float.IsInfinity(p.z))return false;}return true;}
+ public bool IsFinite(){foreach(var l in links.Values){var b=l.body;var p=b.transform.position;var q=b.transform.rotation;var v=b.linearVelocity;var w=b.angularVelocity;
+  if(!new[]{p.x,p.y,p.z,q.x,q.y,q.z,q.w,v.x,v.y,v.z,w.x,w.y,w.z}.All(Finite))return false;
+  for(int i=0;i<b.dofCount;i++)if(!Finite(b.jointPosition[i])||!Finite(b.jointVelocity[i]))return false;
+ }return true;}
+ static bool Finite(float x)=>!float.IsNaN(x)&&!float.IsInfinity(x);
 }
 public sealed class ContactSensor:MonoBehaviour {
- public ArticulatedAvatar avatar;public string region;public float force,impulse,penetration,slip,duration;public Vector3 point,normal;public readonly List<Vector3> supportPoints=new List<Vector3>();
- bool wasTouching;public void BeginStep(){wasTouching=force>0;force=impulse=penetration=slip=0;supportPoints.Clear();}
- void OnCollisionEnter(Collision c)=>Measure(c);void OnCollisionStay(Collision c)=>Measure(c);
- void Measure(Collision c){if(c.contactCount==0)return;var contact=c.GetContact(0);float dt=WorldController.StepSeconds;for(int i=0;i<c.contactCount;i++){var cp=c.GetContact(i);if(cp.normal.y>.5f)supportPoints.Add(cp.point);}
+ public ArticulatedAvatar avatar;public string region;public float force,impulse,impactImpulse,penetration,slip,duration;public Vector3 point,normal;public readonly List<Vector3> supportPoints=new List<Vector3>();
+ bool wasTouching,measured;Vector3 incomingVelocity,incomingAngular,center;
+ public void BeginStep(){wasTouching=force>0;measured=false;force=impulse=impactImpulse=penetration=slip=0;supportPoints.Clear();
+  var body=avatar.links[region].body;incomingVelocity=body.linearVelocity;incomingAngular=body.angularVelocity;center=body.worldCenterOfMass;
+ }
+ void OnCollisionEnter(Collision c)=>Measure(c,true);void OnCollisionStay(Collision c)=>Measure(c,false);
+ void Measure(Collision c,bool onset){if(c.contactCount==0)return;var contact=c.GetContact(0);float dt=WorldController.StepSeconds;for(int i=0;i<c.contactCount;i++){var cp=c.GetContact(i);if(cp.normal.y>.5f)supportPoints.Add(cp.point);}
+  var surfaceVelocity=c.rigidbody!=null?c.rigidbody.GetPointVelocity(contact.point):Vector3.zero;
+  var approach=Mathf.Max(0,-Vector3.Dot(incomingVelocity+Vector3.Cross(incomingAngular,contact.point-center)-surfaceVelocity,contact.normal));
+  impactImpulse+=(float)BodyPhysiology.EstimateImpact(onset&&!wasTouching,approach,c.impulse.magnitude,avatar.totalMass,dt);
   force+=c.impulse.magnitude/dt;impulse+=c.impulse.magnitude;point=contact.point;normal=contact.normal;penetration=Mathf.Max(penetration,-contact.separation*1000);
-  slip=Vector3.ProjectOnPlane(c.relativeVelocity,contact.normal).magnitude;duration=wasTouching?duration+dt:dt;
+  slip=Vector3.ProjectOnPlane(c.relativeVelocity,contact.normal).magnitude;if(!measured){duration=wasTouching?duration+dt:dt;measured=true;}
  }
 }
 }

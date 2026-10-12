@@ -11,6 +11,9 @@ public sealed class UnitySensoryWireTests
         var request = Read<PhysicalBodyFrameRequest>("body-frame-example.json");
         Assert.True(PhysicalBodyFrameDescriptor.TryCreate(request, out var descriptor, out var error), error);
         Assert.NotNull(descriptor);
+        Assert.InRange(request.StoredEnergyJoules, 5966399f, 5966401f);
+        Assert.InRange(request.HydrationFraction, .7477f, .7479f);
+        Assert.InRange(request.TissueIntegrityFraction, .9999f, 1f);
         var articulation = descriptor.Articulation;
         Assert.InRange(articulation.TrunkPitchRadians, -2f, 2f);
         Assert.InRange(articulation.TrunkRollRadians, -2f, 2f);

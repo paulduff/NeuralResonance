@@ -1,0 +1,1495 @@
+{
+    "unity": "6000.3.19f1",
+    "error": "",
+    "completed": true,
+    "qualified": true,
+    "nativeCoordinatesPassed": true,
+    "finite": true,
+    "isolated": true,
+    "authorityGatePassed": true,
+    "elbowWithinLimits": true,
+    "settlingPassed": true,
+    "actuatorsPassed": true,
+    "walkingAssessed": false,
+    "nativeCoordinates": {
+        "unity": "6000.3.19f1",
+        "passed": true,
+        "samples": [
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.7853981256484985,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    1.3969836398786129e-9,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.25,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.7853981852531433,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.7853981256484985,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    -1.3969836398786129e-9,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    -0.25,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.7853981852531433,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.7853982448577881,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.000008791686013864819,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.25,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.7853981852531433,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.7853982448577881,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.000008791686013864819,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    -0.25,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": -0.7853981852531433,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.25
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "force",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    -0.25
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.20000004768371583,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.20000019669532777,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.20000004768371583,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.20000019669532777,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.20000004768371583,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.20000019669532777,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.20000004768371583,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": -0.20000019669532777,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    -0.0006693453178741038
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "position",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0006693453178741038
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0019965104293078186,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.1996510922908783,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0019965101964771749,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.0019965104293078186,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    -0.1996510922908783,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.0019965101964771749,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0020000003278255464,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.2000000774860382,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0020000000949949028,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.0020000003278255464,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.2000000774860382,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": -0.0020000000949949028,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "velocity",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "drive",
+                "slot": -1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.18254220485687257,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.18241934478282929,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.18254247307777406,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XY",
+                "operation": "drive",
+                "slot": -1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.18254220485687257,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.18241934478282929,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": -0.18254247307777406,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.7853981256484985,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    1.3969836398786129e-9,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.25,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.7853981852531433,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.7853981256484985,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    -1.3969836398786129e-9,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    -0.25,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.7853981852531433,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.7853981852531433,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.000005982815764582483,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.25,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.7853981852531433
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.7853981852531433,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.000005982815764582483,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    -0.25,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": -0.7853981852531433
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.25
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "force",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    -0.25
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.20000004768371583,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.20000019669532777,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.20000004768371583,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.20000019669532777,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.20000004768371583,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.20000019669532777
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.20000004768371583,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": -0.20000019669532777
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    -0.0006693898467347026
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "position",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0006693898467347026
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 0,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0019965104293078186,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.1996510922908783,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0019965101964771749,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 0,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    -0.0019965104293078186,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    -0.1996510922908783,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": -0.0019965101964771749,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.001996454782783985,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.199645534157753,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0019964545499533417
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.001996454782783985,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.199645534157753,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": -0.0019964545499533417
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 2,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "velocity",
+                "slot": 2,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "drive",
+                "slot": -1,
+                "direction": 1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    0.18292202055454255,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    0.18161903321743012,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.18292197585105897
+                }
+            },
+            {
+                "axes": "XZ",
+                "operation": "drive",
+                "slot": -1,
+                "direction": -1,
+                "nativeCount": 3,
+                "position": [
+                    0.0,
+                    -0.18292202055454255,
+                    0.0
+                ],
+                "velocity": [
+                    0.0,
+                    -0.18161903321743012,
+                    0.0
+                ],
+                "force": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotationRadians": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": -0.18292197585105897
+                }
+            }
+        ]
+    },
+    "storedEnergyJoules": 5966400.0007510189,
+    "hydrationFraction": 0.7478000000491196,
+    "tissueIntegrityFraction": 0.9999989083464543,
+    "contactDamageFraction": 0.00000109165354591108,
+    "actuators": [
+        {
+            "joint": "chest",
+            "nativeLocks": "LimitedMotion/LockedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 1,
+            "unusedCoordinate": -1,
+            "lowerRadians": -0.6108652353286743,
+            "upperRadians": 0.6108652353286743,
+            "pulseNewtonMeters": 31.5,
+            "positiveDisplacement": 0.6108653545379639,
+            "negativeDisplacement": -0.6108652353286743,
+            "positiveRotationRadians": 0.6108654141426086,
+            "negativeRotationRadians": -0.6108653545379639,
+            "maximumLimitViolation": 6.146728992462158e-8,
+            "maximumUnusedCoordinate": 0.000071011483669281,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "head",
+            "nativeLocks": "LimitedMotion/LimitedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.7853981852531433,
+            "upperRadians": 0.9599310755729675,
+            "pulseNewtonMeters": 5.25,
+            "positiveDisplacement": 0.21942543983459474,
+            "negativeDisplacement": -0.21942594647407533,
+            "positiveRotationRadians": 0.219425231218338,
+            "negativeRotationRadians": -0.21942569315433503,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 9.685754776000977e-8,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "head",
+            "nativeLocks": "LimitedMotion/LimitedMotion/LockedMotion",
+            "axis": 1,
+            "physicalAxis": 1,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -1.3089969158172608,
+            "upperRadians": 1.3089969158172608,
+            "pulseNewtonMeters": 5.25,
+            "positiveDisplacement": 0.33590957522392275,
+            "negativeDisplacement": -0.33592891693115237,
+            "positiveRotationRadians": 0.33548426628112795,
+            "negativeRotationRadians": -0.3355034291744232,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 1.1175870895385742e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_arm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.6981316804885864,
+            "upperRadians": 2.6179938316345217,
+            "pulseNewtonMeters": 21.0,
+            "positiveDisplacement": 1.0899913311004639,
+            "negativeDisplacement": -1.157373070716858,
+            "positiveRotationRadians": 0.8658167123794556,
+            "negativeRotationRadians": -0.8923408389091492,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 1.6391277313232423e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_arm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.1745329201221466,
+            "upperRadians": 2.4434609413146974,
+            "pulseNewtonMeters": 21.0,
+            "positiveDisplacement": 1.0698573589324952,
+            "negativeDisplacement": -1.079002022743225,
+            "positiveRotationRadians": 0.9054896235466003,
+            "negativeRotationRadians": -0.8873533606529236,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 0.0000012665987014770508,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_foot",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.7853981852531433,
+            "upperRadians": 0.5235987901687622,
+            "pulseNewtonMeters": 35.0,
+            "positiveDisplacement": 0.6544983386993408,
+            "negativeDisplacement": -0.6544970870018005,
+            "positiveRotationRadians": 0.6526299715042114,
+            "negativeRotationRadians": -0.6526429057121277,
+            "maximumLimitViolation": 0.0000941343605518341,
+            "maximumUnusedCoordinate": 0.000007458488198608393,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_foot",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.2617993950843811,
+            "upperRadians": 0.5235987901687622,
+            "pulseNewtonMeters": 35.0,
+            "positiveDisplacement": 0.3926931917667389,
+            "negativeDisplacement": -0.37662315368652346,
+            "positiveRotationRadians": 0.39157208800315859,
+            "negativeRotationRadians": -0.3755265176296234,
+            "maximumLimitViolation": 0.009371932595968247,
+            "maximumUnusedCoordinate": 0.001628544763661921,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_forearm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 1,
+            "unusedCoordinate": -1,
+            "lowerRadians": 0.0,
+            "upperRadians": 2.6179938316345217,
+            "pulseNewtonMeters": 14.0,
+            "positiveDisplacement": 0.5972243547439575,
+            "negativeDisplacement": -0.5710110664367676,
+            "positiveRotationRadians": 0.5972239375114441,
+            "negativeRotationRadians": -0.5710110664367676,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 7.525086402893066e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_shin",
+            "nativeLocks": "LimitedMotion/LockedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 1,
+            "unusedCoordinate": -1,
+            "lowerRadians": 0.0,
+            "upperRadians": 2.4434609413146974,
+            "pulseNewtonMeters": 63.0,
+            "positiveDisplacement": 1.2217307090759278,
+            "negativeDisplacement": -1.2217304706573487,
+            "positiveRotationRadians": 1.2217305898666382,
+            "negativeRotationRadians": -1.2217305898666382,
+            "maximumLimitViolation": 2.4586915969848635e-7,
+            "maximumUnusedCoordinate": 0.00008115122909657657,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_thigh",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.3490658402442932,
+            "upperRadians": 2.094395160675049,
+            "pulseNewtonMeters": 52.5,
+            "positiveDisplacement": 0.8958680629730225,
+            "negativeDisplacement": -0.8636378645896912,
+            "positiveRotationRadians": 0.8916677236557007,
+            "negativeRotationRadians": -0.8591856360435486,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 0.00004321000233176164,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "left_thigh",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.45378559827804568,
+            "upperRadians": 0.7853981852531433,
+            "pulseNewtonMeters": 52.5,
+            "positiveDisplacement": 0.6201804876327515,
+            "negativeDisplacement": -0.619645357131958,
+            "positiveRotationRadians": 0.5455061197280884,
+            "negativeRotationRadians": -0.5445461869239807,
+            "maximumLimitViolation": 0.005005804821848869,
+            "maximumUnusedCoordinate": 0.0004891666467301548,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_arm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.6981316804885864,
+            "upperRadians": 2.6179938316345217,
+            "pulseNewtonMeters": 21.0,
+            "positiveDisplacement": 1.1027913093566895,
+            "negativeDisplacement": -1.1686345338821412,
+            "positiveRotationRadians": 0.8763154149055481,
+            "negativeRotationRadians": -0.9009988307952881,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 4.544854164123535e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_arm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.1745329201221466,
+            "upperRadians": 2.4434609413146974,
+            "pulseNewtonMeters": 21.0,
+            "positiveDisplacement": 1.0816730260849,
+            "negativeDisplacement": -1.089224100112915,
+            "positiveRotationRadians": 0.9158257842063904,
+            "negativeRotationRadians": -0.8961299061775208,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 7.487833499908447e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_foot",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.7853981852531433,
+            "upperRadians": 0.5235987901687622,
+            "pulseNewtonMeters": 35.0,
+            "positiveDisplacement": 0.6544983983039856,
+            "negativeDisplacement": -0.6544970870018005,
+            "positiveRotationRadians": 0.6526299715042114,
+            "negativeRotationRadians": -0.6526424884796143,
+            "maximumLimitViolation": 0.0000954456627368927,
+            "maximumUnusedCoordinate": 0.000007355794878094457,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_foot",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.2617993950843811,
+            "upperRadians": 0.5235987901687622,
+            "pulseNewtonMeters": 35.0,
+            "positiveDisplacement": 0.3926851749420166,
+            "negativeDisplacement": -0.3785880208015442,
+            "positiveRotationRadians": 0.39156588912010195,
+            "negativeRotationRadians": -0.3774845600128174,
+            "maximumLimitViolation": 0.009743597358465195,
+            "maximumUnusedCoordinate": 0.0017288265516981483,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_forearm",
+            "nativeLocks": "LimitedMotion/LockedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 1,
+            "unusedCoordinate": -1,
+            "lowerRadians": 0.0,
+            "upperRadians": 2.6179938316345217,
+            "pulseNewtonMeters": 14.0,
+            "positiveDisplacement": 0.6023050546646118,
+            "negativeDisplacement": -0.5756744146347046,
+            "positiveRotationRadians": 0.6023050546646118,
+            "negativeRotationRadians": -0.5756744146347046,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 8.046627044677734e-7,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_shin",
+            "nativeLocks": "LimitedMotion/LockedMotion/LockedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 1,
+            "unusedCoordinate": -1,
+            "lowerRadians": 0.0,
+            "upperRadians": 2.4434609413146974,
+            "pulseNewtonMeters": 63.0,
+            "positiveDisplacement": 1.2217307090759278,
+            "negativeDisplacement": -1.2217302322387696,
+            "positiveRotationRadians": 1.221730351448059,
+            "negativeRotationRadians": -1.2217304706573487,
+            "maximumLimitViolation": 2.4586915969848635e-7,
+            "maximumUnusedCoordinate": 0.00008551009523216635,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_thigh",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 0,
+            "physicalAxis": 0,
+            "nativeCoordinate": 0,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.3490658402442932,
+            "upperRadians": 2.094395160675049,
+            "pulseNewtonMeters": 52.5,
+            "positiveDisplacement": 0.8910666704177856,
+            "negativeDisplacement": -0.8592187762260437,
+            "positiveRotationRadians": 0.8868865966796875,
+            "negativeRotationRadians": -0.8547896146774292,
+            "maximumLimitViolation": 0.0,
+            "maximumUnusedCoordinate": 0.00004166594226262532,
+            "finite": true,
+            "passed": true
+        },
+        {
+            "joint": "right_thigh",
+            "nativeLocks": "LimitedMotion/LockedMotion/LimitedMotion",
+            "axis": 1,
+            "physicalAxis": 2,
+            "nativeCoordinate": 1,
+            "nativeCount": 3,
+            "unusedCoordinate": 2,
+            "lowerRadians": -0.45378559827804568,
+            "upperRadians": 0.7853981852531433,
+            "pulseNewtonMeters": 52.5,
+            "positiveDisplacement": 0.6203818321228027,
+            "negativeDisplacement": -0.6197329163551331,
+            "positiveRotationRadians": 0.5457516312599182,
+            "negativeRotationRadians": -0.5448158383369446,
+            "maximumLimitViolation": 0.0018020551651716233,
+            "maximumUnusedCoordinate": 0.00043942537740804255,
+            "finite": true,
+            "passed": true
+        }
+    ],
+    "links": 15,
+    "massKg": 73.39999389648438,
+    "stepSeconds": 0.009999999776482582,
+    "gravityDisplacementMeters": 0.6391900777816773,
+    "floorContactPeakNewtons": 6099.4501953125,
+    "minimumColliderHeight": -0.0011519640684127808,
+    "elbowResponseRadians": 1.5143928527832032,
+    "maximumSettledLinearSpeed": 0.0031607316341251137,
+    "maximumSettledJointSpeed": 0.012108140625059605
+}

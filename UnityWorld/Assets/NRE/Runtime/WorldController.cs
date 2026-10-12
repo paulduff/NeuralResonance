@@ -47,19 +47,10 @@ public sealed class WorldController:MonoBehaviour {
   command=command??new MotorFrame();
   float descending=(Mathf.Abs(command.leftDrive)+Mathf.Abs(command.rightDrive))*.5f;
   var population=spinal.Advance(StepSeconds,descending,Mathf.Clamp01(Avatar.LeftLoad/(Avatar.totalMass*9.81f)),Mathf.Clamp01(Avatar.RightLoad/(Avatar.totalMass*9.81f)));
-  float sign=Math.Sign(command.leftDrive+command.rightDrive);float stand=command.standDrive;
-  void Leg(string side,float cycle,float swing,float coronal,float ankle,float roll){
-   Avatar.Torques(side+"_thigh",cycle*70*sign*descending,coronal*70,stand*80);
-   Avatar.Torques(side+"_shin",swing*35*descending,posturalStiffness:stand*120);
-   Avatar.Torques(side+"_foot",ankle*65+cycle*10*descending,roll*35);
-  }
-  Leg("left",(float)population.LeftCycle,(float)population.LeftFlexorRecruitment,command.leftHipCoronalDrive,command.leftAnkleSagittalDrive,command.leftAnkleCoronalDrive);
-  Leg("right",(float)population.RightCycle,(float)population.RightFlexorRecruitment,command.rightHipCoronalDrive,command.rightAnkleSagittalDrive,command.rightAnkleCoronalDrive);
-  Avatar.Torques("left_arm",command.leftShoulderSagittalDrive*40,command.leftShoulderCoronalDrive*40);
-  Avatar.Torques("right_arm",command.rightShoulderSagittalDrive*40,command.rightShoulderCoronalDrive*40);
-  Avatar.Torques("left_forearm",command.leftElbowDrive*25);Avatar.Torques("right_forearm",command.rightElbowDrive*25);
-  Avatar.Torques("chest",command.trunkYawDrive*50);Avatar.Torques("head",command.headPitchDrive*8,command.headYawDrive*8);
+  foreach(var effort in MotorActuation.Build(command,population,Avatar.physiology.MotorCapacity))
+   Avatar.Torques(effort.Joint,effort.First,effort.Second,effort.Stiffness);
   Avatar.BeginStep();Physics.Simulate(StepSeconds);physicsSteps++;
+  Avatar.AdvancePhysiology(StepSeconds);
   if(!Avatar.IsFinite()){Running=false;Status="Paused · non-finite physical state";}
  }
  void OnGUI(){
@@ -75,7 +66,8 @@ public sealed class WorldController:MonoBehaviour {
   if(GUI.Button(new Rect(432,75,110,30),"Side view"))PositionCamera(new Vector3(4.3f,1.4f,.2f));
   GUI.Label(new Rect(32,114,525,24),$"Step {physicsSteps}  |  Feet: {Avatar.LeftLoad:F0} N / {Avatar.RightLoad:F0} N  |  {Avatar.totalMass:F1} kg");
   GUI.Label(new Rect(32,140,525,24),$"Body accepted: {bodyFramesAccepted}  |  Retina accepted: {retinalFramesAccepted}  |  Rejected: {rejectedFrames}");
-  GUI.Box(new Rect(16,Screen.height-80,800,65),"DNNE = brain · Avatar = body/nervous system · Unity = environment\nMechanics prototype: simplified muscle torques, fixed physiology reference, no learned walking claim.\nAvatar: Mike Alger · CC BY 4.0 (source and license in the project credits)");
+  var state=Avatar.physiology.State;
+  GUI.Box(new Rect(16,Screen.height-100,800,85),$"DNNE = brain · Avatar = body/nervous system · Unity = environment\nEnergy: {state.StoredEnergyJoules/1000000:F3} MJ · Hydration: {state.HydrationFraction:P1} · Tissue: {state.TissueIntegrityFraction:P2}\nSimulation physiology; simplified muscle torques; standing/walking unqualified.\nAvatar: Mike Alger · CC BY 4.0 (source and license in the project credits)");
  }
  void PositionCamera(Vector3 p){view.transform.position=p;view.transform.LookAt(previewTarget);}
  IEnumerator Connect(){
@@ -142,11 +134,5 @@ public sealed class WorldController:MonoBehaviour {
  [Serializable] class LeaseReply{public bool accepted;public string token;public int leaseSeconds,drainSeconds;}
  [Serializable] class AcceptedReply{public bool accepted;}
  [Serializable] class MotorEnvelope{public MotorFrame runtime;}
-}
-[Serializable] public sealed class MotorFrame {
- public bool active;public long tick,sequence;public float confidence,minimumOutputConfidence;
- public float leftDrive,rightDrive,leftHipCoronalDrive,rightHipCoronalDrive,leftAnkleSagittalDrive,rightAnkleSagittalDrive,leftAnkleCoronalDrive,rightAnkleCoronalDrive,leftShoulderSagittalDrive,rightShoulderSagittalDrive,leftShoulderCoronalDrive,rightShoulderCoronalDrive,leftElbowDrive,rightElbowDrive,headYawDrive,headPitchDrive,trunkYawDrive,standDrive;
- public bool IsAuthorized()=>active&&IsFinite()&&minimumOutputConfidence>0&&confidence>=minimumOutputConfidence;
- public bool IsFinite()=>new[]{confidence,minimumOutputConfidence,leftDrive,rightDrive,leftHipCoronalDrive,rightHipCoronalDrive,leftAnkleSagittalDrive,rightAnkleSagittalDrive,leftAnkleCoronalDrive,rightAnkleCoronalDrive,leftShoulderSagittalDrive,rightShoulderSagittalDrive,leftShoulderCoronalDrive,rightShoulderCoronalDrive,leftElbowDrive,rightElbowDrive,headYawDrive,headPitchDrive,trunkYawDrive,standDrive}.All(v=>!float.IsNaN(v)&&!float.IsInfinity(v)&&Mathf.Abs(v)<=1);
 }
 }

@@ -1,0 +1,1086 @@
+{
+    "unity": "6000.3.19f1",
+    "passed": true,
+    "samples": [
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.7853981256484985,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                1.3969836398786129e-9,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.25,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.7853981852531433,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.7853981256484985,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                -1.3969836398786129e-9,
+                0.0,
+                0.0
+            ],
+            "force": [
+                -0.25,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.7853981852531433,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.7853982448577881,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.000008791686013864819,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.25,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.7853981852531433,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.7853982448577881,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.000008791686013864819,
+                0.0
+            ],
+            "force": [
+                0.0,
+                -0.25,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": -0.7853981852531433,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                -5.684341886080802e-14
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.25
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "force",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                5.684341886080802e-14
+            ],
+            "force": [
+                0.0,
+                0.0,
+                -0.25
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.20000004768371583,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.20000019669532777,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.20000004768371583,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.20000019669532777,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.20000004768371583,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.20000019669532777,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.20000004768371583,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": -0.20000019669532777,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                -0.0006693453178741038
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                -0.00004386901491670869
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "position",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0006693453178741038
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.00004386901491670869
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0019965104293078186,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.1996510922908783,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0019965101964771749,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.0019965104293078186,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                -0.1996510922908783,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.0019965101964771749,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0020000003278255464,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.2000000774860382,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0020000000949949028,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.0020000003278255464,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.2000000774860382,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": -0.0020000000949949028,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "velocity",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "drive",
+            "slot": -1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.18254217505455018,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.1824195832014084,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.18254242837429048,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XY",
+            "operation": "drive",
+            "slot": -1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.18254217505455018,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.1824195832014084,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": -0.18254242837429048,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.7853981256484985,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                1.3969836398786129e-9,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.25,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.7853981852531433,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.7853981256484985,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                -1.3969836398786129e-9,
+                0.0,
+                0.0
+            ],
+            "force": [
+                -0.25,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.7853981852531433,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.7853981852531433,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.000005982815764582483,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.25,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.7853981852531433
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.7853981852531433,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.000005982815764582483,
+                0.0
+            ],
+            "force": [
+                0.0,
+                -0.25,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.7853981852531433
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.25
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "force",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                -0.25
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.20000004768371583,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.20000019669532777,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.20000004768371583,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.20000019669532777,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.20000004768371583,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.20000019669532777
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.20000004768371583,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.20000019669532777
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                -0.0006693898467347026
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                -0.00003051758176297881
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "position",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0006693898467347026
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.00003051758176297881
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 0,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0019965104293078186,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.1996510922908783,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0019965101964771749,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 0,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                -0.0019965104293078186,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                -0.1996510922908783,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": -0.0019965101964771749,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.001996454782783985,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.199645534157753,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0019964545499533417
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.001996454782783985,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.199645534157753,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.0019964545499533417
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 2,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "velocity",
+            "slot": 2,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "drive",
+            "slot": -1,
+            "direction": 1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                0.18292202055454255,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                0.18161903321743012,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.18292197585105897
+            }
+        },
+        {
+            "axes": "XZ",
+            "operation": "drive",
+            "slot": -1,
+            "direction": -1,
+            "nativeCount": 3,
+            "position": [
+                0.0,
+                -0.18292202055454255,
+                0.0
+            ],
+            "velocity": [
+                0.0,
+                -0.18161903321743012,
+                0.0
+            ],
+            "force": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotationRadians": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": -0.18292197585105897
+            }
+        }
+    ]
+}

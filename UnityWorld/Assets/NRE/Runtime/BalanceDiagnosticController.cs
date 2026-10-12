@@ -10,22 +10,25 @@ namespace Nre.UnityWorld
             double errorX, double errorZ, double velocityX, double velocityZ,
             double leftSagittal, double rightSagittal, double leftCoronal, double rightCoronal,
             bool supportedUpright,double coronalHipShare=0,double leftHipCoronal=0,double rightHipCoronal=0,double coronalGainRatio=1,
-            bool hipTargetsAbsolute=false,bool retainFullAnkleCorrection=false)
+            bool hipTargetsAbsolute=false,bool retainFullAnkleCorrection=false,
+            bool coronalAnkleTargetsAbsolute=false,double? coronalDerivativeGain=null)
         {
             if(!Array.TrueForAll(new[]{positionGain,velocityGain,errorX,errorZ,velocityX,velocityZ,
-                leftSagittal,rightSagittal,leftCoronal,rightCoronal,coronalHipShare,leftHipCoronal,rightHipCoronal,coronalGainRatio},Finite)||
-                positionGain<0||velocityGain<0||coronalHipShare<0||coronalHipShare>1||coronalGainRatio<0)
+                leftSagittal,rightSagittal,leftCoronal,rightCoronal,coronalHipShare,leftHipCoronal,rightHipCoronal,coronalGainRatio,
+                coronalDerivativeGain??0},Finite)||
+                positionGain<0||velocityGain<0||coronalHipShare<0||coronalHipShare>1||coronalGainRatio<0||coronalDerivativeGain<0)
                 throw new ArgumentException("Invalid diagnostic balance measurements/gains.");
             var result=new MotorFrame{standDrive=1};
             if(!supportedUpright)return result;
             double sagittal=-positionGain*errorZ-velocityGain*velocityZ;
             double coronal=coronalGainRatio*(positionGain*errorX+velocityGain*velocityX);
+            if(coronalDerivativeGain.HasValue)coronal=coronalGainRatio*positionGain*errorX+coronalDerivativeGain.Value*velocityX;
             result.leftAnkleSagittalDrive=SignedTarget(leftSagittal+sagittal,"leftAnkle");
             result.rightAnkleSagittalDrive=SignedTarget(rightSagittal+sagittal,"rightAnkle");
             // The bilateral coronal anchors are mirrored in the physical avatar.
             double ankleShare=retainFullAnkleCorrection?1:1-coronalHipShare;
-            result.leftAnkleCoronalDrive=SignedTarget(leftCoronal+coronal*ankleShare,"leftAnkleRoll");
-            result.rightAnkleCoronalDrive=SignedTarget(rightCoronal-coronal*ankleShare,"rightAnkleRoll");
+            result.leftAnkleCoronalDrive=SignedTarget((coronalAnkleTargetsAbsolute?0:leftCoronal)+coronal*ankleShare,"leftAnkleRoll");
+            result.rightAnkleCoronalDrive=SignedTarget((coronalAnkleTargetsAbsolute?0:rightCoronal)-coronal*ankleShare,"rightAnkleRoll");
             // Existing Avatar hips have independent abductor/adductor muscles.
             // Compare their contribution explicitly rather than forcing ankle-only control.
             if(coronalHipShare>0){

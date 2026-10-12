@@ -12,8 +12,8 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Case
         {
             public string name,recruitment;
-            public bool feedback,finite=true,standingHeld,settlingPassed,hipTargetsAbsolute,retainFullAnkleCorrection;
-            public float positionGain,velocityGain,coronalHipShare,coronalGainRatio,maximumSettledLinearSpeed,maximumSettledJointSpeed;
+            public bool feedback,finite=true,standingHeld,settlingPassed,hipTargetsAbsolute,retainFullAnkleCorrection,coronalAnkleTargetsAbsolute;
+            public float positionGain,velocityGain,coronalHipShare,coronalGainRatio,coronalDerivativeGain,maximumSettledLinearSpeed,maximumSettledJointSpeed;
             public string worstLimitJoint;public int worstLimitAxis;public double worstLimitTime;
             public float maximumLimitViolation;
             public int disturbancesApplied;
@@ -22,7 +22,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Report
         {
             public string unity,error="";
-            public int protocolVersion=3;public float durationSeconds=30;
+            public int protocolVersion=4;public float durationSeconds=60,minimumFinalStandingSeconds=10;
             public bool completed,finite=true,isolated,anyDiagnosticStandingHold;
             public bool neuronalControlAssessed=false,learnedStandingAssessed=false,walkingAssessed=false;
             public List<Case> cases=new List<Case>();
@@ -40,14 +40,11 @@ namespace Nre.UnityWorld
         {
             yield return null;
             var report=new Report{unity=Application.unityVersion};
-            var configurations=new[]{
-                Configuration("ankle-only",0),
-                Configuration("relative-hips-25-split-ankles",.25f),
-                Configuration("relative-hips-25-full-ankles",.25f,retainAnkles:true),
-                Configuration("absolute-hips-25-split-ankles",.25f,absolute:true),
-                Configuration("absolute-hips-25-full-ankles",.25f,absolute:true,retainAnkles:true),
-                Configuration("absolute-hips-10-full-ankles",.1f,absolute:true,retainAnkles:true),
-                Configuration("absolute-hips-50-full-ankles",.5f,absolute:true,retainAnkles:true)};
+            var configurations=(from absolute in new[]{false,true}
+                from position in new[]{6f,12f,24f,48f}
+                from derivative in new[]{2.4f,9.6f}
+                select Configuration(absolute,position,derivative)).ToArray();
+            int steps=Mathf.RoundToInt(report.durationSeconds/WorldController.StepSeconds);
             foreach(var result in configurations)
             {
                 string policy=result.recruitment;var gains=new Vector2(result.positionGain,result.velocityGain);
@@ -58,7 +55,7 @@ namespace Nre.UnityWorld
                     if(world.Connected||!world.IsolatedQualification)throw new InvalidOperationException("Balance fixture must be isolated.");
                     world.DiagnosticMode=true;world.ResetDiagnosticBody(true,policy!="canonical",policy!="full-position");
                     using(var trace=new StreamWriter(Path.Combine(world.outputDirectory,name+"-trace.jsonl")))
-                    for(int step=0;step<3000;step++)
+                    for(int step=0;step<steps;step++)
                     {
                         var body=world.Avatar;
                         var frame=BodyFrame.Capture(body,step);var state=frame.articulation.musculoskeletal;
@@ -76,7 +73,8 @@ namespace Nre.UnityWorld
                         var command=result.feedback?BalanceDiagnosticController.Command(gains.x,gains.y,error.x,error.z,velocity.x,velocity.z,
                             body.Angle("left_foot"),body.Angle("right_foot"),body.Angle("left_foot",1),body.Angle("right_foot",1),supported,
                             result.coronalHipShare,body.Angle("left_thigh",1),body.Angle("right_thigh",1),result.coronalGainRatio,
-                            result.hipTargetsAbsolute,result.retainFullAnkleCorrection):new MotorFrame{standDrive=1};
+                            result.hipTargetsAbsolute,result.retainFullAnkleCorrection,result.coronalAnkleTargetsAbsolute,
+                            result.coronalDerivativeGain):new MotorFrame{standDrive=1};
                         world.DiagnosticCommand=command;
                         // Prescribed external pushes test recovery; they never provide balancing assistance.
                         if(step==800||step==1400||step==2200){body.pelvis.AddForce((step==800?Vector3.forward:step==1400?Vector3.right:Vector3.left)*1.5f,ForceMode.Impulse);result.disturbancesApplied++;}
@@ -93,17 +91,18 @@ namespace Nre.UnityWorld
                             initialPelvisHeight=body.initialPelvisHeight,leftFootLoad=body.LeftLoad,rightFootLoad=body.RightLoad,
                             bodyWeight=body.totalMass*9.81,otherSupportLoad=body.links.Values.Where(l=>!l.name.EndsWith("foot")&&l.sensor.supportPoints.Count>0).Sum(l=>l.sensor.force),
                             supportMargin=state.balance.supportMarginMeters,limitViolation=ActuatorQualification.LimitViolation(body)});
-                        if(step>=2800)foreach(var l in body.links.Values){
+                        if(step>=steps-200)foreach(var l in body.links.Values){
                             result.maximumSettledLinearSpeed=Mathf.Max(result.maximumSettledLinearSpeed,l.body.linearVelocity.magnitude);
                             for(int axis=0;axis<l.body.dofCount;axis++)result.maximumSettledJointSpeed=Mathf.Max(result.maximumSettledJointSpeed,Mathf.Abs(l.body.jointVelocity[axis]));
                         }
                         if(step%10==0)trace.WriteLine(JsonUtility.ToJson(new Trace{seconds=(step+1)*WorldController.StepSeconds,
                             preStepErrorX=error.x,preStepErrorZ=error.z,preStepVelocityX=velocity.x,preStepVelocityZ=velocity.z,centerOfMass=com,supportCenter=supportCenter,command=command,body=frame}));
-                        if(step==2999)File.WriteAllText(Path.Combine(world.outputDirectory,name+"-body-frame.json"),JsonUtility.ToJson(frame,true));
+                        if(step==steps-1)File.WriteAllText(Path.Combine(world.outputDirectory,name+"-body-frame.json"),JsonUtility.ToJson(frame,true));
                         if(!result.finite)throw new InvalidOperationException("Non-finite balance fixture.");
                     }
-                    result.standingHeld=result.metrics.currentStandingSeconds>=5&&result.metrics.maximumLimitViolation<.05;
                     result.settlingPassed=result.maximumSettledLinearSpeed<.15f&&result.maximumSettledJointSpeed<.75f;
+                    result.standingHeld=result.metrics.currentStandingSeconds>=report.minimumFinalStandingSeconds&&
+                        result.metrics.maximumLimitViolation<.05&&result.settlingPassed&&result.finite;
                 }
                 catch(Exception error){report.error=error.ToString();report.finite=false;}
                 Debug.Log("BALANCE CAPABILITY: "+JsonUtility.ToJson(result));
@@ -117,8 +116,10 @@ namespace Nre.UnityWorld
             world.WriteReport();Application.Quit(report.completed&&report.finite&&report.isolated?0:1);
         }
 
-        static Case Configuration(string name,float share,bool absolute=false,bool retainAnkles=false)=>new Case{
-            name=name,recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=1,
-            coronalHipShare=share,hipTargetsAbsolute=absolute,retainFullAnkleCorrection=retainAnkles};
+        static Case Configuration(bool absolute,float position,float derivative)=>new Case{
+            name="ankles-"+(absolute?"neutral":"measured")+"-p"+position.ToString("0",System.Globalization.CultureInfo.InvariantCulture)+
+                "-d"+derivative.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture),
+            recruitment="full-position",feedback=true,positionGain=12,velocityGain=2.4f,coronalGainRatio=position/12,
+            coronalDerivativeGain=derivative,coronalHipShare=0,coronalAnkleTargetsAbsolute=absolute};
     }
 }

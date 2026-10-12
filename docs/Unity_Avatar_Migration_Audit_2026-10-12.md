@@ -146,6 +146,34 @@ that a neutral hip target retains restoring muscle torque at zero sway error;
 the previous measured-relative target releases that active posture reference.
 These diagnostic alternatives are not adopted as a live DNNE controller.
 
+Run `unity-balance-capability-20261012-124422-fbc4f7` completed all seven cases
+finitely and in isolation; every case settled after falling, and none held final
+standing. The ankle-only control again held 9.23 s. At 25-percent hip gain,
+neutral-referenced targets improved 4.67/4.94 s (reduced/full ankle correction)
+to 6.36/6.47 s, but did not beat ankle-only control. Neutral hip gains of 10 and
+50 percent held 8.46 and 1.19 s. Hip assistance is not adopted. All 2,100 fresh
+body frames passed the actual validator and offline transducer without projection,
+with conserved plantar loads and 38 muscles. Outputs and analyses are verified on D:.
+
+## Ankle reference, correction strength and damping
+
+Protocol 4 compares sixteen ankle-only cases, each sixty seconds: coronal targets
+referenced to measured pose or neutral, position gains 6/12/24/48, and velocity
+gains 2.4/9.6. The original Avatar's coronal ankle target is a signed neutral-based
+target; this fixture compares that reference while keeping the current muscle
+policy and fore-aft feedback fixed at 12/2.4. Hip commands remain neutral. Existing
+joint limits, physical force capacities, gravity, contacts and the 8/14/22 s pushes
+are unchanged. A reported diagnostic hold requires ten continuous final seconds
+of supported upright posture, less than 0.05 rad maximum limit excursion and a
+finite, settled body. Even a successful case remains an isolated command pattern,
+not neuronal or learned standing.
+
+The PowerShell window now checks all captured frames automatically with the
+tracked `tools/UnityBodyValidation` console, using the actual internal validator
+and offline receptors. This requires the already-installed .NET 10 SDK. Reports
+remain separate from live neuronal delivery, and are included in the D: run backup.
+The command-response analyser is tracked in `tools/analyse-unity-response.py`.
+
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results

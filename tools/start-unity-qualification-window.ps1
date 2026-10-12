@@ -30,7 +30,7 @@ try {
  Write-Host ('Results: '+$output)
  $arguments=@('-batchmode','-nographics','--qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'))
  if($Assessment -eq 'muscles'){$arguments=@('-batchmode','-nographics','--muscle-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host 'Comparing raw torque, canonical muscles and full active capacity; free-root gravity, zero/full standing recruitment.' -ForegroundColor Cyan}
- if($Assessment -eq 'balance'){$arguments=@('-batchmode','-nographics','--balance-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '7 isolated cases: compare neutral/measured hip targets and full/reduced ankle correction, 30 seconds each.' -ForegroundColor Cyan;Write-Host 'Small prescribed pushes at 8/14/22 seconds. Test feedback commands muscles only; no root anchoring or pose resets during a case.'}
+ if($Assessment -eq 'balance'){$arguments=@('-batchmode','-nographics','--balance-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '16 isolated ankle-only cases: neutral/measured coronal targets, four position gains and two damping gains; 60 seconds each.' -ForegroundColor Cyan;Write-Host 'Small prescribed pushes at 8/14/22 seconds. Test feedback commands muscles only; no root anchoring or pose resets during a case.'}
  if($Assessment -eq 'response'){$arguments=@('-batchmode','-nographics','--response-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '10 isolated response cases: 4 seconds each, small 0.03-radian hip or ankle target pulses from 1 to 1.5 seconds.' -ForegroundColor Cyan;Write-Host 'Repeated controls, positive/negative bilateral and individual hip pulses. Free root; no external push, DNNE connection or learning.'}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $process=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Hidden -PassThru
@@ -48,11 +48,18 @@ try {
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Response comparison failed to complete finitely in isolation.'}
   Write-Host 'Response traces saved at 50 Hz. These short pulses assess command effects; standing, neuronal control and learning are not qualified.' -ForegroundColor Yellow
  }elseif($Assessment -eq 'balance'){
-  $report.cases | Select-Object name,coronalHipShare,hipTargetsAbsolute,retainFullAnkleCorrection,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},standingHeld,settlingPassed,@{Name='MaxLimitRad';Expression={$_.metrics.maximumLimitViolation}} | Format-Table -AutoSize
+  $report.cases | Select-Object name,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},@{Name='FinalStandingSec';Expression={[Math]::Round($_.metrics.currentStandingSeconds,2)}},standingHeld,settlingPassed,@{Name='MaxLimitRad';Expression={$_.metrics.maximumLimitViolation}} | Format-Table -AutoSize
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Balance capability comparison failed to complete finitely in isolation.'}
   Write-Host ('Any diagnostic standing hold: '+$report.anyDiagnosticStandingHold) -ForegroundColor Yellow
   Write-Host 'Diagnostic feedback is an explicit test fixture. DNNE control and learned standing were not assessed.' -ForegroundColor Yellow
  }elseif($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.qualified){throw 'The physical checks did not qualify. Inspect saved results.'}
+ if($Assessment -in @('balance','response')){
+  Write-Host 'Checking captured body frames with the actual validator and offline receptors; no live neuronal delivery is claimed.' -ForegroundColor Cyan
+  $dotnetTool=Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'
+  if(-not(Test-Path -LiteralPath $dotnetTool)){throw 'The offline body validator requires the installed .NET 10 SDK.'}
+  & $dotnetTool run --project (Join-Path $repo 'tools\UnityBodyValidation\ValidateBody.csproj') -c Release --artifacts-path (Join-Path $repo 'artifacts\unity-body-validation-build') -- $output
+  if($LASTEXITCODE -ne 0){throw 'Captured body validation failed. Inspect offline-body-validation.json and saved output.'}
+ }
  $exitCode=0
  Write-Host 'ALL ASSESSMENT STAGES COMPLETE. Walking was not assessed.' -ForegroundColor Green
 } catch {

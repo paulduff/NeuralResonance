@@ -118,4 +118,25 @@ public sealed class UnityBalanceDiagnosticTests
         }
         Assert.True(Torque(true)<Torque(false)-1);
     }
+
+    [Fact]
+    public void CoronalAnkleReferenceAndDampingDoNotChangeSagittalControlOrRecruitHips()
+    {
+        var previous=BalanceDiagnosticController.Command(12,2.4,.01,.01,.01,.01,.1,.1,-.1,.1,true);
+        var revised=BalanceDiagnosticController.Command(12,2.4,.01,.01,.01,.01,.1,.1,-.1,.1,true,
+            coronalAnkleTargetsAbsolute:true,coronalDerivativeGain:9.6);
+        Assert.Equal((.12+.096)/.52,revised.leftAnkleCoronalDrive,6);
+        Assert.Equal(-(.12+.096)/.26,revised.rightAnkleCoronalDrive,6);
+        Assert.Equal(previous.leftAnkleSagittalDrive,revised.leftAnkleSagittalDrive);
+        Assert.Equal(0,revised.leftHipCoronalDrive);Assert.Equal(0,revised.rightHipCoronalDrive);
+        Assert.False(revised.IsAuthorized());
+    }
+
+    [Fact]
+    public void InvalidExplicitCoronalDampingIsRejected()
+    {
+        foreach(double gain in new[]{-.1,double.NaN,double.PositiveInfinity})
+            Assert.Throws<ArgumentException>(()=>BalanceDiagnosticController.Command(12,2.4,0,0,0,0,0,0,0,0,true,
+                coronalDerivativeGain:gain));
+    }
 }

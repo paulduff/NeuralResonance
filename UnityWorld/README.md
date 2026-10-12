@@ -150,9 +150,11 @@ protocol uses `--balance-qualify` for eight thirty-second hip/ankle contribution
 cases. An explicit diagnostic feedback controller varies existing muscle
 targets from measured sway; it cannot connect to DNNE, anchor the root or write
 poses. Reports separate mechanical holding from neuronal/learned standing, which
-remain unassessed. Protocol 3 has seven cases that independently compare neutral
-versus measured-relative hip targets and full versus reduced ankle correction.
-Each case has small pushes at 8/14/22 s. Body encoding
+remain unassessed. Protocol 4 has sixteen sixty-second ankle-only cases that compare
+neutral versus measured coronal targets, position gains 6/12/24/48 and damping gains
+2.4/9.6. Fore-aft feedback and the muscle policy remain fixed. A diagnostic hold
+requires ten continuous final standing seconds, finite settled mechanics and joint
+limit excursions below 0.05 rad. Each case has small pushes at 8/14/22 s. Body encoding
 normalizes support-loss error with Avatar's 0.22 m scale and bounds hand receptor
 loads to 5,000 N; raw contact forces and support distances remain available.
 
@@ -161,6 +163,9 @@ For command-response identification, use the qualification launcher with
 0.03-rad hip and ankle target pulses with repeated controls. Traces record free-body
 COM motion, contacts, muscle state and actuator torques at 50 Hz. This measures
 the effect of existing Avatar commands; it does not qualify standing or learning.
+Balance/response windows run the tracked offline body validator automatically
+with the installed .NET 10 SDK and save its report before verifying the D: backup.
+Offline receptor validation does not establish live neuronal delivery.
 
 This is a physical migration prototype, not the whole former ecology. It has a
 flat contact arena, not food, hydration interactions, predators or terrain tasks.

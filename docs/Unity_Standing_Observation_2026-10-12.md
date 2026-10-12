@@ -119,3 +119,59 @@ evidence, posture channels and recovery latch. Paused pre-trial responses may
 appear, so use `running` and physics step to select the active observation.
 No extra polling or agent monitoring is required. Motor evidence and API acceptance
 still do not prove causal recovery or complete sensory delivery.
+
+## Completed corrected-feedback observation
+
+Run `unity-standing-20261012-160513-8ed073` completed 60.01 simulation seconds
+with finite physics and passed integration checks. It fell at 1.41 seconds,
+accumulated 0.77 seconds of standing, and did not recover. All 279 captured fallen
+samples now report physical balance error one. All 286 saved body frames passed
+offline validation/transduction without projection or missing muscle identities.
+After falling, neural leg actuation continued for 5,277 physics steps, using 404
+distinct authorized motor ticks. Correct encoding alone did not restore recovery.
+
+The saved motor journal contains 455 advancing responses marked `running=true`.
+None reports an active righting latch. Rounded afferent righting drive reached
+0.804, but descending drive reached only 0.030, below the 0.040 trigger floor.
+The logged population balance-error estimate remained 0.000. That estimate is
+computed from mean vestibular, vermis and spinal firing; it is a different
+quantity from Avatar's measured physical balance error. These observations
+identify weak descending righting output, without proving its cause.
+
+The post-trial transport snapshot reports limits of six source spikes per service
+and 160 total per tick, with 4,641 budget drops among 4,719 drained spikes on that
+single tick. Fanout means dispatched counts cannot be subtracted as source counts.
+The bounded routing trace covers ticks 6,994,398–6,994,459; the active motor journal
+covers 6,992,869–6,994,354. They do not overlap. Low-index routes in that export
+are evidence about the post-trial window, not the actual falling interval.
+Code inspection confirms that FIFO prefix selection favors low-index neurons
+under saturation. Whether those omissions caused this fall remains unverified.
+`tools/analyse-unity-recovery.py` records these ranges and evidence limitations
+in `trace-analysis.json`, preserving the original captures.
+
+## Prepared higher transport allowance
+
+The operator requested a higher allowance for this desktop, then explicitly
+requested code preparation without another run. The optional launcher argument
+`-BrainProfile headless` selects the existing profile with 24 source spikes per
+service and 1,536 total per tick. The Unity player still opens visibly and paused;
+the profile name refers to DNNE runtime settings. Omitting the argument preserves
+the current profile. No default application settings are changed.
+
+When this future window runs, it records the original profile and automatic policy,
+temporarily disables automatic profile selection, and applies the requested
+profile with `RestartSimulation=false`. It saves the acknowledged settings and
+restores the original automatic-policy enabled flag in `finally`, including caught
+failures. Forced window termination cannot guarantee that restoration. The selected
+performance profile itself remains applied. This profile also changes concurrency,
+timeouts and snapshot cadence, so the comparison is not a transport-only ablation.
+
+`transport-telemetry.jsonl` samples before/after the trial and approximately every
+five simulation seconds from the existing independent PowerShell progress loop.
+It records configured caps and effective caps, backpressure, queue errors and
+delivery latency from coordinator diagnostics. Counters describe a single tick,
+not cumulative trial totals; profile and state reads are adjacent, not atomic.
+Admission still does not prove end-to-end sensory delivery. No live agent
+monitoring is required. No new trial or profile change was made on 12 October
+after this preparation. DNNE and the editor were gracefully shut down at the
+operator's request; the checkpoint and final persisted synapses were verified on D:.

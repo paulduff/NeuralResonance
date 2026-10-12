@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[switch]$Muscles,[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
+param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[switch]$Muscles,[ValidateSet('','stable','normal','fast','headless')][string]$BrainProfile='',[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 if(-not $InWindow){
@@ -7,6 +7,7 @@ if(-not $InWindow){
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-Player',$Player,'-DurationSec',[string]$DurationSec,'-BackupRoot',$BackupRoot)
  if($Muscles){$arguments+='-Muscles'}
+ if($BrainProfile){$arguments+=@('-BrainProfile',$BrainProfile)}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $action=New-ScheduledTaskAction -Execute $shell -Argument $quoted -WorkingDirectory $repo
  $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
@@ -18,11 +19,19 @@ if(-not $InWindow){
 }
 $run='unity-standing-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[Guid]::NewGuid().ToString('N').Substring(0,6)
 $output=Join-Path $repo ('artifacts\'+$run);New-Item -ItemType Directory -Path $output | Out-Null
-$exitCode=1;$transcribing=$false;$observationProcess=$null
+$exitCode=1;$transcribing=$false;$observationProcess=$null;$restoreAutoProfileEnabled=$false
 $headers=@{}
 if(-not [string]::IsNullOrWhiteSpace($env:NRE_CONTROL_SHARED_SECRET)){$headers['X-NRE-Control-Auth']=$env:NRE_CONTROL_SHARED_SECRET}
 function Save-BrainRead([string]$Name,[string]$Path){
  Invoke-WebRequest -UseBasicParsing -Uri ('http://127.0.0.1:5080'+$Path) -Headers $headers -TimeoutSec 60 -OutFile (Join-Path $output $Name) | Out-Null
+}
+function Save-TransportRead([double]$SimulationSeconds,[string]$Phase){
+ $state=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/state' -Headers $headers -TimeoutSec 10
+ # Diagnostics expose effective transport caps; the configured profile has its
+ # own endpoint. These adjacent reads are not an atomic coordinator snapshot.
+ $profile=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/admin/perf-profile' -Headers $headers -TimeoutSec 10
+ $sample=[ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');SimulationSeconds=$SimulationSeconds;Phase=$Phase;Tick=$state.tick;PerformanceProfileName=$profile.profileName;ConfiguredPerServiceLimit=$profile.maxSpikeDispatchPerServicePerTick;ConfiguredTotalLimit=$profile.maxSpikeDispatchTotalPerTick;TransportStats=$state.transportStats;CountersAreSingleTickSnapshots=$true;ProfileReadIsAdjacent=$true}
+ $sample | ConvertTo-Json -Depth 8 -Compress | Add-Content -LiteralPath (Join-Path $output 'transport-telemetry.jsonl') -Encoding UTF8
 }
 function Read-Progress([string]$Path){
  # Permit the player to atomically replace the progress file while it is read.
@@ -35,7 +44,7 @@ try {
  Start-Transcript -Path (Join-Path $output 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE / Unity standing observation'
  Write-Host ('Results: '+$output) -ForegroundColor Cyan
- $configuration=[ordered]@{Player=$Player;PlayerSha256=(Get-FileHash -LiteralPath $Player -Algorithm SHA256).Hash;DurationSeconds=$DurationSec;MusclesEnabled=[bool]$Muscles;Plant=$(if($Muscles){'canonical Avatar measured muscles'}else{'simplified joint torque baseline'});PhysicalMuscles=$(if($Muscles){38}else{0});StrengthScale=1;PoolFatigueEnabled=$false;ScriptedBalanceController=$false;StartsPaused=$true;RecoverySupportedSecondsRequired=10;StopOnFall=$false}
+ $configuration=[ordered]@{Player=$Player;PlayerSha256=(Get-FileHash -LiteralPath $Player -Algorithm SHA256).Hash;DurationSeconds=$DurationSec;MusclesEnabled=[bool]$Muscles;Plant=$(if($Muscles){'canonical Avatar measured muscles'}else{'simplified joint torque baseline'});PhysicalMuscles=$(if($Muscles){38}else{0});StrengthScale=1;PoolFatigueEnabled=$false;ScriptedBalanceController=$false;StartsPaused=$true;RecoverySupportedSecondsRequired=10;StopOnFall=$false;RequestedBrainProfile=$BrainProfile;ProfileChangeRequestsRestart=$false;AutomaticProfilePinnedDuringTrial=[bool]$BrainProfile}
  $assembly=Join-Path (Split-Path -Parent $Player) 'DNNE Unity World_Data\Managed\Assembly-CSharp.dll'
  if(Test-Path -LiteralPath $assembly){$configuration['PlayerAssemblySha256']=(Get-FileHash -LiteralPath $assembly -Algorithm SHA256).Hash}
  $configuration | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'trial-configuration.json') -Encoding UTF8
@@ -51,6 +60,24 @@ try {
  $health=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/startup-health?maxNonOkDetails=8' -Headers $headers -TimeoutSec 10
  $health | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath (Join-Path $output 'brain-health-before.json') -Encoding UTF8
  if($health.serviceCount -le 0 -or $health.nonOkCount -ne 0 -or $health.telemetryStale){throw 'DNNE service health is not ready for this trial.'}
+ Save-BrainRead 'performance-profile-before.json' '/api/v1/admin/perf-profile'
+ Save-BrainRead 'auto-profile-before.json' '/api/v1/admin/auto-profile'
+ if($BrainProfile){
+  $previousAuto=Get-Content -LiteralPath (Join-Path $output 'auto-profile-before.json') -Raw | ConvertFrom-Json
+  if($previousAuto.enabled){
+   # Pin only this controlled trial. The original automatic policy is restored
+   # in finally without restarting the coordinator or any neuronal service.
+   $restoreAutoProfileEnabled=$true
+   $pin=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/admin/auto-profile' -Method Post -ContentType 'application/json' -Body (@{Enabled=$false}|ConvertTo-Json) -Headers $headers -TimeoutSec 10
+   if(-not $pin.applied -or $pin.settings.enabled){throw 'Automatic profile pin was not acknowledged.'}
+   $pin | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'auto-profile-pin.json') -Encoding UTF8
+  }
+  $change=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/admin/perf-profile' -Method Post -ContentType 'application/json' -Body (@{Profile=$BrainProfile;RestartSimulation=$false}|ConvertTo-Json) -Headers $headers -TimeoutSec 10
+  $change | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'performance-profile-change.json') -Encoding UTF8
+  if(-not $change.applied -or $change.settings.profileName -ne $BrainProfile){throw 'Requested live performance profile was not acknowledged.'}
+  Write-Host ('DNNE live profile {0}: {1} source spikes per service, {2} total per tick; no restart requested.' -f $BrainProfile,$change.settings.maxSpikeDispatchPerServicePerTick,$change.settings.maxSpikeDispatchTotalPerTick) -ForegroundColor Cyan
+ }
+ Save-BrainRead 'performance-profile-before-trial.json' '/api/v1/admin/perf-profile'
  Save-BrainRead 'motor-before.json' '/api/v1/neuronal-motor'
  Save-BrainRead 'sensorimotor-before.json' '/api/v1/sensorimotor-timing'
  # This export contains coordinator/connectome/telemetry state. It is not a
@@ -58,10 +85,12 @@ try {
  # and resumes the coordinator itself; no restart/import/reset is requested.
  Save-BrainRead 'coordinator-before.json' '/api/v1/admin/network/export'
  $preBackup=Join-Path $BackupRoot $run;New-Item -ItemType Directory -Path $preBackup -Force | Out-Null
- foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json','trial-configuration.json')){
+ foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json','trial-configuration.json','performance-profile-before.json','performance-profile-before-trial.json','auto-profile-before.json','performance-profile-change.json','auto-profile-pin.json')){
+  if(-not(Test-Path -LiteralPath (Join-Path $output $name))){continue}
   $source=Join-Path $output $name;$target=Join-Path $preBackup $name;Copy-Item -LiteralPath $source -Destination $target
   if((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash){throw ('Pre-trial backup mismatch: '+$name)}
  }
+ Save-TransportRead 0 'before-trial'
  Write-Host '2. Unity will open paused and acquire the exclusive world connection.' -ForegroundColor Cyan
  Write-Host 'After the ten-second handoff drain, press Play in UNITY to start the trial.' -ForegroundColor Yellow
  Write-Host ('The trial measures '+$DurationSec+' simulation seconds. It supplies no scripted balance/gait command.')
@@ -82,6 +111,7 @@ try {
     if($progress.simulationSeconds -ge $lastPrintedSeconds+5){
      Write-Host ('sim={0:N1}/{1}s standing={2:N1}s longest={3:N1}s leg-actuation-steps={4} body={5} generated-body-spikes={6} retina={7} falls={8} recoveries={9}' -f $progress.simulationSeconds,$DurationSec,$progress.standingSeconds,$progress.longestStandingSeconds,$progress.stepsWithLegActuation,$progress.bodyFramesAccepted,$progress.bodySpikesGenerated,$progress.retinalFramesAccepted,$progress.fallEvents,$progress.recoveries)
      $lastPrintedSeconds=$progress.simulationSeconds
+     try {Save-TransportRead $progress.simulationSeconds 'trial'} catch {Write-Host ('Transport sample unavailable: '+$_.Exception.Message) -ForegroundColor Yellow}
     }
    } catch {Write-Verbose ('Progress read will retry: '+$_.Exception.Message)}
   }
@@ -105,6 +135,8 @@ try {
  Save-BrainRead 'sensorimotor-after.json' '/api/v1/sensorimotor-timing'
  Save-BrainRead 'health-after.json' '/api/v1/startup-health?maxNonOkDetails=8'
  Save-BrainRead 'coordinator-after.json' '/api/v1/admin/network/export'
+ Save-BrainRead 'performance-profile-after-trial.json' '/api/v1/admin/perf-profile'
+ Save-TransportRead $report.metrics.simulationSeconds 'after-trial'
  if(-not $report.integrationChecksPassed){throw 'Observation ended without completing the motor/sensory integration checks.'}
  $exitCode=0
  if($report.standingCriterionMet){Write-Host 'The measured standing criterion was met. Learned standing was not assessed.' -ForegroundColor Green}
@@ -119,6 +151,14 @@ try {
  # Successful runs keep its paused final view available to the operator.
  if($observationProcess -and -not $observationProcess.HasExited -and -not(Test-Path -LiteralPath (Join-Path $output 'standing-report.json'))){$observationProcess.Kill();$observationProcess.WaitForExit()}
 } finally {
+ if($restoreAutoProfileEnabled){
+  try {
+   $restored=Invoke-RestMethod -Uri 'http://127.0.0.1:5080/api/v1/admin/auto-profile' -Method Post -ContentType 'application/json' -Body (@{Enabled=$true}|ConvertTo-Json) -Headers $headers -TimeoutSec 10
+   if(-not $restored.applied -or -not $restored.settings.enabled){throw 'Automatic profile restoration was not acknowledged.'}
+   $restored | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $output 'auto-profile-restored.json') -Encoding UTF8
+   Write-Host 'Original automatic profile policy restored; no brain restart.' -ForegroundColor Cyan
+  } catch {$exitCode=1;$_|Out-String|Set-Content -LiteralPath (Join-Path $output 'profile-restoration-failure.txt');Write-Host ('Profile restoration failed: '+$_.Exception.Message) -ForegroundColor Red}
+ }
  $status=[ordered]@{Status=$(if($exitCode -eq 0){'FINISHED'}else{'FAILED'});ExitCode=$exitCode;CompletedUtc=[DateTime]::UtcNow.ToString('o');Output=$output}
  $status | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'window-status.json')
  if($transcribing){Stop-Transcript | Out-Null}

@@ -518,3 +518,31 @@ motor history without live agent monitoring or additional HTTP requests.
 Recovery after this repair is pending. Missing axial muscles/posture transitions,
 descending righting generation and end-to-end sensory delivery remain open;
 this one defect is not asserted to be the sole cause of failure.
+
+## Corrected live result and prepared transport comparison
+
+Run `unity-standing-20261012-160513-8ed073` passed integration and finite-physics
+checks, but fell at 1.41 seconds without recovery. All 279 fallen trace samples
+now encode error one. All 286 actual body frames validate/transduce without any
+projection or missing canonical muscle identity. The feedback repair is confirmed;
+the four missing axial muscles and omitted posture transitions remain unresolved.
+
+The active saved motor journal has no righting latch in 455 advancing responses.
+Rounded afferent drive peaks at 0.804 and descending drive at 0.030, below the
+0.040 floor. Its zero population balance-error estimate is distinct from the
+physical measurement, not proof that the corrected body signal was lost.
+The post-trial transport cap is six spikes per service/160 total per tick.
+FIFO prefix selection is biased under saturation, but the bounded exported routing
+window does not overlap active trial ticks. This finding does not establish the
+cause of the weak descending output or prove end-to-end delivery.
+
+An optional `-BrainProfile headless` launcher setting prepares the operator's
+higher-budget comparison: 24 per service/1,536 total per tick, applied without
+restart and with automatic profile selection temporarily pinned. It also changes
+concurrency/timing settings. Saved periodic transport diagnostics will expose actual
+effective limits and latency; the separate observation protocol documents sampling
+scope and restoration. No muscle, receptor, decoder or brain source changed here.
+The operator asked to finish coding without running, then to shut services down.
+No new experiment/profile mutation occurred. Graceful shutdown saved coordinator
+state and persisted synapses, SHA-verified on D:. Those files are not a complete
+checkpoint of every neuron's transient membrane state.

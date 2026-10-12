@@ -90,6 +90,35 @@ within a case, and no controller can connect to DNNE. It records joint/time
 attribution for limit violations and saves corrected body frames for review.
 This diagnostic distribution is not proposed as a live host controller.
 
+The completed protocol 2 run `unity-balance-capability-20261012-121048-8ee25f`
+was finite, isolated and settled in all eight cases, with no final standing hold.
+Ankle-only control repeated 9.23 s exactly. At lateral gains 12/2.4, hip shares
+25/50/100 percent reduced the longest interval to 4.67/0.72/0.19 s. Lower lateral
+gains did not establish a hold either. This particular hip distribution is not
+adopted. Joint-limit excursions occurred during loss of support; the report records
+their joint, axis and time. The result does not prove hips cannot assist balance.
+
+All 2,400 fresh captured frames passed the actual validator and offline body
+transducer without projection: conserved plantar loads, 38 muscles, zero rejected
+frames, relative trunk tilt below 0.000001 rad. Live neuronal delivery is still
+unassessed. Original traces and analyses remain backed up on D:.
+
+## Next isolated response measurement
+
+`--response-qualify` measures small command effects before selecting another
+feedback sign or gain. Ten fresh free-root cases last four seconds each, with the
+same full-position muscle policy and ankle feedback as the 9.23 s control.
+Controls bracket eight 0.03-rad target pulses: positive/negative bilateral hips,
+bilateral ankles, left hip alone and right hip alone. Pulses last 0.5 s from 1 s;
+there are no external pushes. Bilateral pulses use the mirrored coordinates from
+`AvatarColliderRig.AddLeg`; signed drives convert radians through each original
+muscle profile's asymmetric range. The fixture records COM, support center,
+velocity, commands, measured joint state, muscles, contacts and actuator torque
+at 50 Hz. Those actuator forces exclude passive drive/constraint contributions.
+Compare each response with the repeated controls, including pre-pulse equality,
+before interpreting direction or selecting a correction. Anchored individual
+joint tests do not establish this supported whole-body response.
+
 The software checkpoint retains canonical recruitment and opt-in muscle mode;
 all noncanonical recruitment/distribution is isolated diagnostic work. Standing,
 walking and live neuronal balance remain unqualified. The next physical results

@@ -48,3 +48,10 @@ Original forces and support distances are preserved. Across all 2,400 saved samp
 the original encoding rejected eighteen; projecting the two encoding functions
 accepts every sample. This does not replace fresh physical qualification or prove
 live neuronal delivery. Detailed reports and original traces are backed up on D:.
+
+The subsequent run `unity-balance-capability-20261012-121048-8ee25f` contains
+fresh player captures with those fixes applied. All 2,400 frames passed the real
+validator and offline transducer without projection, with conserved plantar loads,
+38 muscles and relative trunk tilt below 0.000001 rad. All eight cases were finite
+and settled, but none maintained standing. Its original traces and validation
+report are verified on D:. Fresh wire compatibility does not prove live delivery.

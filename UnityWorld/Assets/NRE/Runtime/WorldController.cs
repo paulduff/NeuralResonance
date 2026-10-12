@@ -33,8 +33,8 @@ public sealed class WorldController:MonoBehaviour {
  Texture2D retinalTexture;RenderTexture leftRetina,rightRetina;
  public MotorFrame DiagnosticCommand;public bool DiagnosticMode;
  void Awake(){
-  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Mechanical qualification, muscle comparisons and live observation are separate modes.");
-  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify"}.Any(flag=>Argument(flag)!=null);
+  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
+  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify"}.Any(flag=>Argument(flag)!=null);
   Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-9.81f,0);Time.fixedDeltaTime=StepSeconds;
   Avatar=ArticulatedAvatar.Create(avatarPrefab);view=Camera.main;previewTarget=new Vector3(0,.85f,0);
   if(Argument("--muscles")!=null)Avatar.EnableMuscles();
@@ -46,6 +46,7 @@ public sealed class WorldController:MonoBehaviour {
   if(Argument("--standing-trial")!=null){Trial=new StandingTrial(Argument("--standing-trial"));StartCoroutine(Trial.Run(this));}
   if(Argument("--muscle-qualify")!=null)StartCoroutine(MuscleQualification.Run(this));
   if(Argument("--balance-qualify")!=null)StartCoroutine(BalanceCapability.Run(this));
+  if(Argument("--response-qualify")!=null)StartCoroutine(BalanceResponseQualification.Run(this));
  }
  void CreateEye(bool left){var eye=new GameObject(left?"Left physical eye":"Right physical eye");eye.transform.SetParent(Avatar.links["head"].body.transform,false);eye.transform.localPosition=new Vector3(left?-.032f:.032f,.12f,.115f);
   var camera=eye.AddComponent<Camera>();camera.fieldOfView=85;camera.nearClipPlane=.03f;camera.farClipPlane=40;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.23f,.31f,.38f);camera.enabled=false;

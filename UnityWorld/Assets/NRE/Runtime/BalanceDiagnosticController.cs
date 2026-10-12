@@ -33,6 +33,25 @@ namespace Nre.UnityWorld
             return result;
         }
 
+        public static void AddCoronalOffsets(MotorFrame command,double leftHip,double rightHip,double leftAnkle,double rightAnkle)
+        {
+            if(command==null||command.active||!command.IsFinite()||
+                !Array.TrueForAll(new[]{leftHip,rightHip,leftAnkle,rightAnkle},Finite))
+                throw new ArgumentException("Coronal pulses require an inactive diagnostic frame and finite offsets.");
+            command.leftHipCoronalDrive=Offset(command.leftHipCoronalDrive,leftHip,"leftHipAbduction");
+            command.rightHipCoronalDrive=Offset(command.rightHipCoronalDrive,rightHip,"rightHipAbduction");
+            command.leftAnkleCoronalDrive=Offset(command.leftAnkleCoronalDrive,leftAnkle,"leftAnkleRoll");
+            command.rightAnkleCoronalDrive=Offset(command.rightAnkleCoronalDrive,rightAnkle,"rightAnkleRoll");
+        }
+
+        static float Offset(float drive,double offset,string variable)
+        {
+            var profile=Array.Find(MuscleProfiles.All,p=>p.Variable==variable)??
+                throw new InvalidOperationException("Diagnostic muscle profile is missing: "+variable);
+            double radians=drive*(drive>=0?profile.Maximum:-profile.Minimum);
+            return SignedTarget(radians+offset,variable);
+        }
+
         static float SignedTarget(double radians,string variable)
         {
             var profile=Array.Find(MuscleProfiles.All,p=>p.Variable==variable)??

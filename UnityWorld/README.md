@@ -155,6 +155,12 @@ and fixed fore-aft gains. Each case has small pushes at 8/14/22 s. Body encoding
 normalizes support-loss error with Avatar's 0.22 m scale and bounds hand receptor
 loads to 5,000 N; raw contact forces and support distances remain available.
 
+For command-response identification, use the qualification launcher with
+`-Assessment response`. Ten isolated four-second cases bracket positive/negative
+0.03-rad hip and ankle target pulses with repeated controls. Traces record free-body
+COM motion, contacts, muscle state and actuator torques at 50 Hz. This measures
+the effect of existing Avatar commands; it does not qualify standing or learning.
+
 This is a physical migration prototype, not the whole former ecology. It has a
 flat contact arena, not food, hydration interactions, predators or terrain tasks.
 The default plant uses bounded joint torque approximations; its fiber dynamics, fatigue

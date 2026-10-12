@@ -62,4 +62,28 @@ public sealed class UnityBalanceDiagnosticTests
     {
         Assert.Throws<ArgumentException>(()=>BalanceDiagnosticController.Command(12,2.4,0,0,0,0,0,0,0,0,true,share));
     }
+
+    [Fact]
+    public void PulseOffsetsUseRadiansAcrossAsymmetricRangesAndPreserveSagittalControl()
+    {
+        var command=BalanceDiagnosticController.Command(12,2.4,0,0,0,0,.1,.1,0,0,true);
+        float sagittal=command.leftAnkleSagittalDrive;
+        BalanceDiagnosticController.AddCoronalOffsets(command,.03,-.03,.03,-.03);
+        Assert.Equal(.03/.78,command.leftHipCoronalDrive,6);
+        Assert.Equal(-.03/.45,command.rightHipCoronalDrive,6);
+        Assert.Equal(.03/.52,command.leftAnkleCoronalDrive,6);
+        Assert.Equal(-.03/.26,command.rightAnkleCoronalDrive,6);
+        BalanceDiagnosticController.AddCoronalOffsets(command,-.03,.03,-.03,.03);
+        Assert.InRange(Math.Abs(command.leftHipCoronalDrive)+Math.Abs(command.rightHipCoronalDrive)+
+            Math.Abs(command.leftAnkleCoronalDrive)+Math.Abs(command.rightAnkleCoronalDrive),0,1e-6);
+        Assert.Equal(sagittal,command.leftAnkleSagittalDrive);Assert.False(command.IsAuthorized());
+    }
+
+    [Fact]
+    public void DiagnosticPulseRejectsAnActiveFrameBeforeMutation()
+    {
+        var command=new MotorFrame{active=true};
+        Assert.Throws<ArgumentException>(()=>BalanceDiagnosticController.AddCoronalOffsets(command,.03,0,0,0));
+        Assert.Equal(0,command.leftHipCoronalDrive);
+    }
 }

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Player,[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[ValidateSet('mechanics','muscles','balance')][string]$Assessment='mechanics',[switch]$InWindow,[string]$LaunchTaskName)
+param([Parameter(Mandatory=$true)][string]$Player,[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[ValidateSet('mechanics','muscles','balance','response')][string]$Assessment='mechanics',[switch]$InWindow,[string]$LaunchTaskName)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 if(-not $InWindow){
@@ -18,6 +18,7 @@ if(-not $InWindow){
 $run='unity-qualification-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[Guid]::NewGuid().ToString('N').Substring(0,6)
 if($Assessment -eq 'muscles'){$run=$run.Replace('unity-qualification-','unity-muscle-comparison-')}
 if($Assessment -eq 'balance'){$run=$run.Replace('unity-qualification-','unity-balance-capability-')}
+if($Assessment -eq 'response'){$run=$run.Replace('unity-qualification-','unity-balance-response-')}
 $output=Join-Path $repo ('artifacts\'+$run);New-Item -ItemType Directory -Path $output | Out-Null
 $exitCode=1
 $transcribing=$false
@@ -30,10 +31,11 @@ try {
  $arguments=@('-batchmode','-nographics','--qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'))
  if($Assessment -eq 'muscles'){$arguments=@('-batchmode','-nographics','--muscle-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host 'Comparing raw torque, canonical muscles and full active capacity; free-root gravity, zero/full standing recruitment.' -ForegroundColor Cyan}
  if($Assessment -eq 'balance'){$arguments=@('-batchmode','-nographics','--balance-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '8 isolated cases: lateral correction shared across existing hip and ankle muscles, 30 seconds each.' -ForegroundColor Cyan;Write-Host 'Small prescribed pushes at 8/14/22 seconds. Test feedback commands muscles only; no root anchoring or pose resets during a case.'}
+ if($Assessment -eq 'response'){$arguments=@('-batchmode','-nographics','--response-qualify','--output',$output,'-logFile',(Join-Path $output 'physics.log'));Write-Host '10 isolated response cases: 4 seconds each, small 0.03-radian hip or ankle target pulses from 1 to 1.5 seconds.' -ForegroundColor Cyan;Write-Host 'Repeated controls, positive/negative bilateral and individual hip pulses. Free root; no external push, DNNE connection or learning.'}
  $quoted=($arguments|ForEach-Object{'"'+$_.Replace('"','\"')+'"'}) -join ' '
  $process=Start-Process -FilePath $Player -ArgumentList $quoted -WindowStyle Hidden -PassThru
  if(-not $process.WaitForExit(600000)){$process.Kill();throw 'Isolated Unity assessment exceeded ten minutes; its own player was stopped.'}
- $reportName=if($Assessment -eq 'muscles'){'muscle-report.json'}elseif($Assessment -eq 'balance'){'balance-report.json'}else{'qualification.json'}
+ $reportName=if($Assessment -eq 'muscles'){'muscle-report.json'}elseif($Assessment -eq 'balance'){'balance-report.json'}elseif($Assessment -eq 'response'){'response-report.json'}else{'qualification.json'}
  $report=Get-Content -LiteralPath (Join-Path $output $reportName) -Raw | ConvertFrom-Json
  $report | Format-List
  if($report.actuators){$report.actuators | Format-Table joint,axis,positiveDisplacement,negativeDisplacement,maximumLimitViolation,passed -AutoSize}
@@ -41,6 +43,10 @@ try {
   $report.cases | Select-Object musclesEnabled,preserveActiveCapacity,fixedStandDrive,reportedMuscles,standingHeld,maximumLimitViolation,worstLimitJoint,worstLimitAxis,peakActivation,peakForceNewtons | Format-Table -AutoSize
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Muscle comparison failed to complete finitely in isolation.'}
   Write-Host 'Comparison complete. Fixed-recruitment standing and learned standing are different outcomes.' -ForegroundColor Yellow
+ }elseif($Assessment -eq 'response'){
+  $report.cases | Select-Object name,leftHipOffset,rightHipOffset,leftAnkleOffset,rightAnkleOffset,finite,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},maximumLimitViolation | Format-Table -AutoSize
+  if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Response comparison failed to complete finitely in isolation.'}
+  Write-Host 'Response traces saved at 50 Hz. These short pulses assess command effects; standing, neuronal control and learning are not qualified.' -ForegroundColor Yellow
  }elseif($Assessment -eq 'balance'){
   $report.cases | Select-Object recruitment,coronalHipShare,coronalGainRatio,@{Name='LongestStandingSec';Expression={[Math]::Round($_.metrics.longestStandingSeconds,2)}},standingHeld,settlingPassed,@{Name='MaxLimitRad';Expression={$_.metrics.maximumLimitViolation}} | Format-Table -AutoSize
   if($process.ExitCode -ne 0 -or -not $report.completed -or -not $report.finite -or -not $report.isolated){throw 'Balance capability comparison failed to complete finitely in isolation.'}

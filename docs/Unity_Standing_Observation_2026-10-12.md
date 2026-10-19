@@ -302,3 +302,53 @@ readout. No gate bypass, new live trial or body change was made during this revi
 The four missing axial muscles and omitted posture transitions remain separate
 limits on any claim of full get-up capability. Analyses and the completed run are
 verified on D:; neuronal authority and the existing body safeguards remain intact.
+
+## Isolated sensory-to-postural circuit study
+
+`tools/PosturalCircuitProbe` investigates the closed error gate without changing
+the running brain or attempting another physical trial. It instantiates the
+original proprioceptive afferents, vestibular afferents, vestibular nuclei,
+cerebellar vermis, fastigial nucleus, reticular formation and spinal motor region
+in both hemispheres: fourteen in-process engines. Neuronal models, plasticity
+rules and feedback-delay windows are checked against their structure-host sources.
+Routing uses the existing coordinator's route selection, rewriting, hemisphere
+selection and cerebellar efference-copy functions. The actual population decoder
+and motor decoder remain unchanged; there is no forced error value or gate bypass.
+
+The inputs are the first captured stable and fallen body vectors from the completed
+19 October run. Holding those vectors and deliberately stepping between them is a
+controlled sensory experiment, not a replay of the physical trajectory or newly
+observed recovery. Each case runs six biological seconds with 1 ms neuronal ticks
+and physical receptor updates every 140 ms, approximately the completed run's mean
+admission cadence. This is a regularized input cadence, not its recorded irregular
+wall-clock schedule. The three-stage sequence uses two seconds each of stable,
+fallen and returned-stable input. Every case starts with newly initialized membrane
+state, so no claim of an exact saved-brain continuation is made.
+
+Twenty cases cross saved versus fresh synapses, source limits of 24 versus no
+source limit within the subcircuit, and five inputs: stable hold, fallen hold,
+stable/fallen/stable steps, fallen with afferents muted, and fallen with left-only
+afferent input. Saved synapses come from the verified pre-comparison shutdown
+backup on D:. Each case gets its own copied or initially empty directory. Schema,
+instance identity, initial hashes and actual loaded inbound/outbound counts are
+checked. Normal plasticity can operate inside each independent copy; weights are
+not frozen during a case. Source snapshots and physical captures are hashed again
+after every case. No service startup, HTTP request or live-state directory is used.
+
+Per-instance traces record mean activity, incoming/outgoing spikes and feedback
+queues; per-sample traces record physical error, decoded population error, bilateral
+afferent/descending drive and latch state. Summaries retain budget losses, tagged
+relays and queue admission losses, preventing unrestricted source transport from
+being mistaken for unrestricted end-to-end delivery. The whole-brain scheduler,
+outside nuclei, background-noise injection and the global source budget are not
+replicated. Cortical/basal-ganglia authority is incomplete in this subcircuit, and
+full motor authority and physical recovery are explicitly unassessed. Conclusions
+must be limited to this circuit and its input controls.
+
+The probe builds into isolated artifacts with zero warnings/errors. Six short
+preflight cases cover both weight states and transition/muted/one-sided inputs;
+all complete with finite values, exact saved-state loading and protected inputs
+unchanged. The independent `start-postural-replay-window.ps1` checks those preflight
+results and binary/source hashes before launching the full study in visible
+PowerShell. It saves results and verified D: backups, printing completion separately
+from neural discrimination or recovery quality. No live agent monitoring is used.

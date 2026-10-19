@@ -601,3 +601,23 @@ sensory-to-neural balance-error representation using isolated stable/fallen repl
 and negative controls. No host-selected recovery, gate bypass or unqualified
 physical get-up sequence was added. Missing axial muscles and posture transitions
 remain open, and the current run's result is not learned standing or recovery.
+
+## Isolated postural-signal replay
+
+The next study uses captured stable/fallen physical vectors and the existing body
+transducer with fourteen isolated engines from the seven-region bilateral postural
+circuit. Reviewed original Avatar balance, physical body and labyrinth transduction,
+righting topology, motor/righting tests and actual structure-host profiles before
+preparation. Models, routes and decoders are reused; no Avatar mechanics, muscle
+plant, sensory encoding, neuronal authority or live recovery gate is altered.
+
+Twenty cases compare saved/fresh starting synapses and 24/unrestricted source spikes
+across stable, fallen, phase-step, muted and left-only sensory controls. The saved
+state is copied from the verified D: shutdown snapshot into a separate directory
+for every case, with actual loaded counts and protected input hashes checked.
+Membranes are initialized afresh and normal plasticity remains possible in each
+copy. Regularized sensory timing, excluded brain regions/noise/global scheduler
+and incomplete cortical authority limit conclusions to the isolated circuit.
+There is no live DNNE connection or physical recovery assessment. Six short
+preflight cases pass with finite outputs, correct controls and unchanged source
+files. The full diagnostic runs independently in PowerShell with verified backups.

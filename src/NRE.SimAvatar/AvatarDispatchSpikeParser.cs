@@ -34,7 +34,9 @@ public static class AvatarDispatchSpikeParser
 
             var sourceHemisphere = AvatarJson.NormalizeHemisphere(AvatarJson.GetString(item, "sourceHemisphere", "source_hemisphere"));
             var sourceNeuronId = AvatarJson.GetString(item, "sourceNeuronId", "source_neuron_id");
-            entries.Add(new AvatarDispatchSpike(sourceStructure, sourceHemisphere, wallClockMs, sourceNeuronId));
+            entries.Add(new AvatarDispatchSpike(sourceStructure, sourceHemisphere, wallClockMs, sourceNeuronId,
+                AvatarJson.GetString(item, "sourceInstanceKey"), AvatarJson.GetString(item, "projectionId"),
+                AvatarJson.TryGetProperty(item, "isSyntheticBackground", out var synthetic) && synthetic.ValueKind == JsonValueKind.True));
         }
 
         return entries;

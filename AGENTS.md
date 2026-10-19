@@ -9,6 +9,10 @@ pathway-shared weight, a sender-only postsynaptic proxy, service health or visib
 movement as evidence of biologically equivalent Hebbian learning. Use mechanistic
 tests and explicitly state unvalidated approximations. The current foundation
 review is `docs/DNNE_Learning_And_Structure_Review_2026-10-19.md`.
+Its implemented contact/event repair and remaining acceptance work are recorded in
+`docs/DNNE_Biological_Foundation_Repair_2026-10-19.md`. Schema-4 saves are learned-state
+warm starts, not exact brain continuation. Preserve incompatible legacy saves;
+use explicit isolated state for fresh experiments, never a silent schema upgrade.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

@@ -25,4 +25,9 @@ public sealed class SpikeMessage
     // neuron fires from recent fall-sensitive synaptic input and is propagated
     // through declared righting-reflex projections.
     [ProtoMember(14)] public bool IsRightingCircuitSpike { get; set; }
+    // A tract is not a synaptic contact. The receiver derives the contact from
+    // this projection, the global source cell and its actual local target cell.
+    [ProtoMember(15)] public string SourceInstanceKey { get; set; } = string.Empty;
+    [ProtoMember(16)] public Guid ProjectionId { get; set; }
+    [ProtoMember(17)] public bool IsSyntheticBackground { get; set; }
 }

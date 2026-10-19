@@ -47,7 +47,7 @@ internal sealed class IntracellularMicrotubuleState
 		_enabled = enabled;
 		_experimentalQuantumTermsEnabled = experimentalQuantumTermsEnabled;
 		_mode = mode;
-		_cellBias = ((Math.Abs(HashCode.Combine(neuronIndex, 0x4D544255)) % 1000) / 1000.0 - 0.5) * 0.02;
+		_cellBias = (((uint)StableNeuralIdentity.Combine(neuronIndex, 0x4D544255) % 1000) / 1000.0 - 0.5) * 0.02;
 		Stability = Math.Clamp(BaselineStability + _cellBias, 0.0, 1.0);
 		SpineInvasionEligibility = BaselineSpineEligibility;
 		TransportSupport = BaselineTransportSupport;

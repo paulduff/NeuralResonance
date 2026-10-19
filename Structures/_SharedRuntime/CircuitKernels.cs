@@ -368,7 +368,7 @@ internal static class TopographicMap
 		{
 			return Math.Max(0, targetIndex);
 		}
-		return PositiveMod(HashCode.Combine(sourceNeuronId ?? string.Empty, targetNeuronId ?? string.Empty, synapseId, (int)source, (int)target), CanonicalWidth * CanonicalHeight);
+		return PositiveMod(StableNeuralIdentity.Combine(sourceNeuronId ?? string.Empty, targetNeuronId ?? string.Empty, synapseId, (int)source, (int)target), CanonicalWidth * CanonicalHeight);
 	}
 
 	public static int ProjectLinear(int sourceIndex, int targetCount, StructureId source, StructureId target, int salt)
@@ -435,7 +435,7 @@ internal static class TopographicMap
 		}
 		// Golden-ratio stride gives neuromodulatory projections broad coverage without random churn.
 		int stride = Math.Max(1, (int)(targetCount * 0.61803398875));
-		return PositiveMod(sourceIndex * stride + HashCode.Combine((int)source, (int)target, salt), targetCount);
+		return PositiveMod(sourceIndex * stride + StableNeuralIdentity.Combine((int)source, (int)target, salt), targetCount);
 	}
 
 	private static (int X, int Y) ToGrid(int index, int width, int height)
@@ -471,7 +471,7 @@ internal static class TopographicMap
 
 	private static int SmallJitter(int sourceIndex, StructureId source, StructureId target, int salt)
 	{
-		return PositiveMod(HashCode.Combine(sourceIndex, (int)source, (int)target, salt), 3) - 1;
+		return PositiveMod(StableNeuralIdentity.Combine(sourceIndex, (int)source, (int)target, salt), 3) - 1;
 	}
 
 	private static int PositiveMod(int value, int modulo)
@@ -1161,7 +1161,7 @@ internal sealed class SomatosensoryAssociationCircuitKernel : CircuitKernelBase
 	{
 		int laneCount = 4;
 		int laneSpan = Math.Max(1, targetCount / laneCount);
-		int local = PositiveMod(sourceIndex + HashCode.Combine(sourceIndex, salt), laneSpan);
+		int local = PositiveMod(sourceIndex + StableNeuralIdentity.Combine(sourceIndex, salt), laneSpan);
 		return Math.Clamp(lane * laneSpan + local, 0, Math.Max(0, targetCount - 1));
 	}
 
@@ -1469,7 +1469,7 @@ internal sealed class HomuncularSensorimotorCircuitKernel : CircuitKernelBase
 		=> Math.Max(1, (int)MathF.Round(canonicalSpan / 384f * Math.Max(1, targetCount)));
 
 	private static int SmallSalt(int sourceIndex, int salt)
-		=> PositiveMod(HashCode.Combine(sourceIndex, salt), 7);
+		=> PositiveMod(StableNeuralIdentity.Combine(sourceIndex, salt), 7);
 
 	private enum BodyZone
 	{
@@ -1623,7 +1623,7 @@ internal sealed class PosteriorParietalBodySchemaCircuitKernel : CircuitKernelBa
 	}
 
 	private static int SmallSalt(int sourceIndex, int salt)
-		=> PositiveMod(HashCode.Combine(sourceIndex, salt, 131), 11);
+		=> PositiveMod(StableNeuralIdentity.Combine(sourceIndex, salt, 131), 11);
 
 	private enum BodyZone
 	{

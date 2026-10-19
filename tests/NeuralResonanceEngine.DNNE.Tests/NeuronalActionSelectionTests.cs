@@ -360,7 +360,7 @@ public sealed class NeuronalActionSelectionTests
     }
 
     [Fact]
-    public async Task DopamineContingencyReversalChangesCorticostriatalSynapticPreference()
+    public async Task DifferentCorticostriatalSourceCellsRetainIndependentReceivingContacts()
     {
         await EnvironmentGate.WaitAsync();
         var directory = Path.Combine(Path.GetTempPath(), "nre-action-channel-tests", Guid.NewGuid().ToString("N"));
@@ -384,18 +384,20 @@ public sealed class NeuronalActionSelectionTests
             var timestamp = 0.0;
             (tick, timestamp) = await TrainChannel(engine, channel0, 0, reinforce: true, 36, tick, timestamp);
             (tick, timestamp) = await TrainChannel(engine, channel1, 1, reinforce: false, 36, tick, timestamp);
-            var firstChannel0 = engine.GetInboundSynapseStrength(channel0);
-            var firstChannel1 = engine.GetInboundSynapseStrength(channel1);
-
+            var firstContact0 = CorticalContact(engine, channel0, 0, true);
+            var firstContact1 = CorticalContact(engine, channel1, 1, false);
             (tick, timestamp) = await TrainChannel(engine, channel0, 0, reinforce: false, 72, tick, timestamp);
             (tick, timestamp) = await TrainChannel(engine, channel1, 1, reinforce: true, 72, tick, timestamp);
-            var reversedChannel0 = engine.GetInboundSynapseStrength(channel0);
-            var reversedChannel1 = engine.GetInboundSynapseStrength(channel1);
+            var otherContact0 = CorticalContact(engine, channel0, 0, false);
+            var otherContact1 = CorticalContact(engine, channel1, 1, true);
+            Assert.Equal(4, new[] {firstContact0, firstContact1, otherContact0, otherContact1}.Distinct().Count());
+            Assert.All(new[] {firstContact0, firstContact1, otherContact0, otherContact1},
+                contact => Assert.InRange(engine.GetInboundSynapseStrength(contact), .05f, 5f));
+            Assert.Throws<InvalidOperationException>(() => engine.GetInboundSynapseStrength(channel0));
+            // The previous test called this a contingency reversal, but changed
+            // the source neuron when "reinforce" changed. It measured pooled
+            // state. Real reversal requires one contact and controlled timing.
 
-            Assert.True(firstChannel0 > firstChannel1,
-                $"Initial contingency did not prefer channel 0: {firstChannel0:F5} <= {firstChannel1:F5}.");
-            Assert.True(reversedChannel1 > reversedChannel0,
-                $"Reversed contingency did not prefer channel 1: {reversedChannel1:F5} <= {reversedChannel0:F5}.");
         }
         finally
         {
@@ -426,12 +428,13 @@ public sealed class NeuronalActionSelectionTests
             Environment.SetEnvironmentVariable("SERVICE_INSTANCE", instance);
             engine = CreateStriatalEngine("action-channel persistence test");
             _ = await TrainChannel(engine, synapseId, 2, reinforce: true, 24, 0L, 0.0);
-            var learned = engine.GetInboundSynapseStrength(synapseId);
+            var contactId = CorticalContact(engine, synapseId, 2, true);
+            var learned = engine.GetInboundSynapseStrength(contactId);
             engine.Dispose();
             engine = null;
 
             using var reloaded = CreateStriatalEngine("action-channel persistence reload");
-            Assert.Equal(learned, reloaded.GetInboundSynapseStrength(synapseId), precision: 5);
+            Assert.Equal(learned, reloaded.GetInboundSynapseStrength(contactId), precision: 5);
         }
         finally
         {
@@ -573,8 +576,8 @@ public sealed class NeuronalActionSelectionTests
             }
 
             Assert.Equal(
-                baseline.GetInboundSynapseStrength(synapseId),
-                legacyBiased.GetInboundSynapseStrength(synapseId),
+                baseline.GetInboundSynapseStrength(CorticalContact(baseline, synapseId, 0, false)),
+                legacyBiased.GetInboundSynapseStrength(CorticalContact(legacyBiased, synapseId, 0, false)),
                 precision: 6);
         }
         finally
@@ -589,6 +592,15 @@ public sealed class NeuronalActionSelectionTests
             }
             EnvironmentGate.Release();
         }
+    }
+
+    private static Guid CorticalContact(StructureEngine engine, Guid projection, int channel, bool direct)
+    {
+        return engine.ResolveContactId(new SpikeMessage {
+            SourceStructure = StructureId.Pfc, TargetStructure = StructureId.Striatum,
+            SourceNeuronId = $"n-{channel + (direct ? ActionChannelTopology.ChannelCount : 0):000}",
+            TargetNeuronId = $"striatal-lane-{channel:000}", SynapseId = projection,
+            Neurotransmitter = NTEnum.GLUTAMATE });
     }
 
     private static async Task<(long Tick, double Timestamp)> TrainChannel(

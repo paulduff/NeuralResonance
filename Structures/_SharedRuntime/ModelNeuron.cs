@@ -298,7 +298,7 @@ internal sealed class ModelNeuron
 			-3.0,
 			3.0);
 
-		_phase += 0.011 + (double)Index * 3E-05;
+		_phase = (_phase + (0.011 + (double)Index * 3E-05) * dtMs) % (Math.PI * 2.0);
 		if (_phase > Math.PI * 2.0)
 		{
 			_phase -= Math.PI * 2.0;
@@ -378,8 +378,12 @@ internal sealed class ModelNeuron
 		_pacemakerExcitatoryDrive = 0.0;
 		_pacemakerInhibitoryDrive = 0.0;
 		StabilizeDynamicState();
-		ActivityTrace = (float)(0.84 * (double)ActivityTrace + (IsActive ? 0.16 : 0.0));
-		FiringRateHz = (float)(0.72 * (double)FiringRateHz + (IsActive ? (1000.0 / Math.Max(dtMs, 1.0) * 0.28) : 0.0));
+		// Physical-time exponential spike-density estimates. Impulses have fixed
+		// area; their size does not grow when the integration step is widened.
+		const double activityTauMs = 20.0;
+		const double rateTauMs = 100.0;
+		ActivityTrace = (float)(ActivityTrace * Math.Exp(-dtMs / activityTauMs) + (IsActive ? 1.0 / activityTauMs : 0.0));
+		FiringRateHz = (float)(FiringRateHz * Math.Exp(-dtMs / rateTauMs) + (IsActive ? 1000.0 / rateTauMs : 0.0));
 		AdvanceHomeostaticPlasticity(dtMs);
 		AdvanceMetabolicState(dtMs, neuromod, excitatorySynCurrent, inhibitorySynCurrent);
 		_microtubules.Advance(dtMs, neuromod, excitatorySynCurrent, netSynCurrent, ActivityTrace, IsActive);

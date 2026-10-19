@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
-public sealed class StructureEngine : IStructureHost, IDisposable
+public sealed partial class StructureEngine : IStructureHost, IDisposable
 {
 	internal Action<InboundSynapticObservation>? InboundIntegrationObserver { get; set; }
 
@@ -173,17 +173,44 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	public StructureEngine(StructureProfile profile)
 	{
 		_profile = profile;
+		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
 		_kernel = CircuitKernelFactory.For(profile.StructureId);
 		_neurons = (from i in Enumerable.Range(0, _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
 		_rightingInputTrace = new float[_neurons.Length];
+		_incomingByTarget = Enumerable.Range(0, _neurons.Length).Select(_ => new List<SynapseState>()).ToArray();
+		_cellPostTrace = new float[_neurons.Length];
+		_cellPostTimestamp = new double[_neurons.Length];
 		_withdrawalInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
-		_synapseStore = new SynapsePersistenceStore(profile.StructureId);
-		_synapseStore.Load(_inboundSynapses, _outboundSynapses);
-		_synapseStore.EnsureInitialized(_inboundSynapses, _outboundSynapses);
+		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, profile.StructureId,
+			profile.NeuronModel, profile.PlasticityRule, System.Text.Json.JsonSerializer.Serialize(_circuit)).ToString("N");
+		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
+		try
+		{
+			_synapseStore.Load(_inboundSynapses, _outboundSynapses);
+			foreach (var contact in _inboundSynapses.Values)
+			{
+				if (contact.LastTargetNeuronIndex < 0 || contact.LastTargetNeuronIndex >= _neurons.Length)
+					throw new InvalidOperationException("Saved contact has an invalid target cell.");
+				var identity = StableNeuralIdentity.Contact(new SpikeMessage
+				{
+					ProjectionId = contact.ProjectionId, SourceInstanceKey = contact.SourceInstanceKey,
+					SourceStructure = contact.SourceStructure, SourceNeuronId = contact.SourceNeuronId,
+					TargetStructure = profile.StructureId, Neurotransmitter = contact.Neurotransmitter,
+					IsFeedback = contact.IsFeedback, IsSyntheticBackground = contact.IsSyntheticBackground
+				}, _instanceKey, contact.LastTargetNeuronIndex);
+				if (identity != contact.SynapseId)
+					throw new InvalidOperationException("Saved contact identity does not match its connected cells; existing file is preserved.");
+				contact.PrepareWarmStart();
+				_incomingByTarget[contact.LastTargetNeuronIndex].Add(contact);
+			}
+			foreach (var state in _outboundSynapses.Values) state.PrepareWarmStart();
+			_synapseStore.EnsureInitialized(_inboundSynapses, _outboundSynapses);
+		}
+		catch { _synapseStore.Dispose(); throw; }
 		RebuildSynapticMemoryAggregates();
 		// Capture the handlers as fields so they can be unsubscribed in Dispose.
 		// Without this, recreating an engine in-process (tests, hot reload) would
@@ -305,7 +332,12 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				throw new StructureTickSequenceException(_profile.StructureId, tickSignal.Tick, _lastProcessedTick);
 			}
 
+			if (!double.IsFinite(tickSignal.TimestampMs) || tickSignal.TimestampMs < 0 ||
+				(double.IsFinite(_lastBiologicalTimestampMs) && tickSignal.TimestampMs <= _lastBiologicalTimestampMs))
+				throw new InvalidOperationException("Biological time must advance with each tick.");
 			var elapsedMilliseconds = NormalizeElapsedMilliseconds(tickSignal.TickDurationMs);
+			InitializeLearningClock(Math.Max(0, tickSignal.TimestampMs - elapsedMilliseconds));
+			_lastBiologicalTimestampMs = tickSignal.TimestampMs;
 			var integrationStepCount = Math.Max(
 				1,
 				(int)Math.Ceiling(elapsedMilliseconds / MaximumIntegrationSubstepMilliseconds));
@@ -414,6 +446,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
 				}
 				var fired = modelNeuron.Step(integrationStepMilliseconds);
+				AdvanceContactModulation(modelNeuron, substepTimestampMs, integrationStepMilliseconds);
+				if (fired) LearnPostsynaptic(modelNeuron, substepTimestampMs);
 				if (activeDuringInterval is not null && (fired || modelNeuron.IsActive))
 				{
 					activeDuringInterval[i] = true;
@@ -611,7 +645,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			var neuronalAttentionWorkspace = BuildNeuronalAttentionWorkspaceDiagnostics();
 			var neuronalSleepConsolidation = BuildNeuronalSleepConsolidationDiagnostics();
 			var corticalLaminar = BuildCorticalLaminarDiagnostics();
-			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation, corticalLaminar);
+			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation, corticalLaminar, BuildSynapticLearningDiagnostics(tickSignal.TimestampMs));
 			_lastProcessedTick = tickSignal.Tick;
 			return ValueTask.FromResult(result);
 		}
@@ -735,64 +769,49 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 		foreach (SpikeEnvelope envelope in due)
 		{
-			SpikeMessage message = envelope.Message;
-			ModelNeuron modelNeuron = SelectInboundNeuron(message);
-			SynapseState synapse = GetOrCreateInboundSynapse(message);
-			SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
-			effectiveMessage = ApplyRightingRelayEfficacy(effectiveMessage);
-			effectiveMessage = ApplyWithdrawalRecurrentInhibition(effectiveMessage, modelNeuron.Index);
-			effectiveMessage = ApplyWithdrawalRelayEfficacy(effectiveMessage);
-			if (RightingReflexTopology.IsEvokedRightingInput(effectiveMessage))
+			var message = envelope.Message;
+			var primary = SelectInboundNeuron(message);
+			IntegrateContact(envelope, primary, tickSignal, integrationStepMilliseconds);
+			if (!ActionChannelTopology.UsesConvergentStriatalArbor(message)) continue;
+			for (var offset = 1; offset <= 2; offset++)
 			{
-				_rightingInputTrace[modelNeuron.Index] = Math.Max(
-					_rightingInputTrace[modelNeuron.Index],
-					Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f));
+				var target = ActionChannelTopology.StriatalArborTarget(primary.Index, _neurons.Length, offset);
+				if (target != primary.Index) IntegrateContact(envelope, _neurons[target], tickSignal, integrationStepMilliseconds);
 			}
-			if (WithdrawalReflexTopology.IsEvokedWithdrawalInput(effectiveMessage))
-			{
-				var afferentDrive = Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f);
-				_withdrawalInputTrace[modelNeuron.Index] = Math.Max(
-					_withdrawalInputTrace[modelNeuron.Index],
-					afferentDrive);
-				if (WithdrawalReflexTopology.TryResolveSourceRoute(effectiveMessage, out var route))
-				{
-					ObserveWithdrawalSource(route, afferentDrive);
-				}
-			}
-			IntegrateInboundArbor(effectiveMessage, modelNeuron, integrationStepMilliseconds);
-			InboundIntegrationObserver?.Invoke(new InboundSynapticObservation(
-				envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
-				modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,
-				synapse.VesicleQuanta, effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
-			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, envelope.DeliverAtTimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
 		}
 	}
 
-	private void IntegrateInboundArbor(
-		SpikeMessage message,
-		ModelNeuron primary,
-		double tickDurationMs)
+	private void IntegrateContact(SpikeEnvelope envelope, ModelNeuron modelNeuron, TickSignal tickSignal, double integrationStepMilliseconds)
 	{
-		primary.Integrate(message, tickDurationMs);
-		if (!ActionChannelTopology.UsesConvergentStriatalArbor(message))
+		var message = envelope.Message;
+			SynapseState synapse = GetOrCreateInboundSynapse(message, modelNeuron.Index, tickSignal.TimestampMs);
+		SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
+		effectiveMessage = ApplyRightingRelayEfficacy(effectiveMessage);
+		effectiveMessage = ApplyWithdrawalRecurrentInhibition(effectiveMessage, modelNeuron.Index);
+		effectiveMessage = ApplyWithdrawalRelayEfficacy(effectiveMessage);
+		if (RightingReflexTopology.IsEvokedRightingInput(effectiveMessage))
 		{
-			return;
+			_rightingInputTrace[modelNeuron.Index] = Math.Max(
+				_rightingInputTrace[modelNeuron.Index],
+				Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f));
 		}
-
-		// A cortical or thalamic axon branches across a small population of MSNs in
-		// the same action lane and receptor class. This supplies anatomical
-		// convergence without creating a host-side preference or motor command.
-		for (var offset = 1; offset <= 2; offset++)
+		if (WithdrawalReflexTopology.IsEvokedWithdrawalInput(effectiveMessage))
 		{
-			var targetIndex = ActionChannelTopology.StriatalArborTarget(
-				primary.Index,
-				_neurons.Length,
-				offset);
-			if (targetIndex != primary.Index)
+			var afferentDrive = Math.Clamp(effectiveMessage.VesicleQuanta / 5f, 0f, 1f);
+			_withdrawalInputTrace[modelNeuron.Index] = Math.Max(
+				_withdrawalInputTrace[modelNeuron.Index],
+				afferentDrive);
+			if (WithdrawalReflexTopology.TryResolveSourceRoute(effectiveMessage, out var route))
 			{
-				_neurons[targetIndex].Integrate(message, tickDurationMs);
+				ObserveWithdrawalSource(route, afferentDrive);
 			}
 		}
+		modelNeuron.Integrate(effectiveMessage, integrationStepMilliseconds);
+		InboundIntegrationObserver?.Invoke(new InboundSynapticObservation(
+			envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
+			modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,
+			synapse.VesicleQuanta, effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
+		LearnPresynaptic(message, synapse, modelNeuron, tickSignal.TimestampMs);
 	}
 
 	private ModelNeuron SelectInboundNeuron(SpikeMessage message)
@@ -1046,16 +1065,6 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			neurotransmitter,
 			isFeedback: true,
 			targetNeuronId);
-		var delta = ComputeOutboundPlasticityDelta(
-			synapse,
-			source.ActivityTrace,
-			source.LocalNeuromodState,
-			source.LocalRewardSignal,
-			tickSignal.TimestampMs);
-		delta = PlasticityRules.ApplyCadenceInvariantBudget(synapse, delta, tickSignal.TimestampMs);
-		synapse.VesicleQuanta = PlasticityRules.ClampQuanta(synapse.VesicleQuanta + delta);
-		synapse.Stabilize();
-		PersistSynapses(tickSignal.TimestampMs);
 
 		var localSpike = new SpikeMessage
 		{
@@ -1066,6 +1075,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SourceNeuronId = source.Id,
 			TargetNeuronId = targetNeuronId,
 			SynapseId = synapse.SynapseId,
+			SourceInstanceKey = _instanceKey,
+			ProjectionId = synapse.SynapseId,
 			Neurotransmitter = neurotransmitter,
 			VesicleQuanta = Math.Clamp(
 				synapse.VesicleQuanta * CorticalLaminarTopology.LocalProjectionGain(sourcePopulation),
@@ -1096,28 +1107,6 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		}
 	}
 
-	private SynapseState GetOrCreateInboundSynapse(SpikeMessage message)
-	{
-		if (!_inboundSynapses.TryGetValue(message.SynapseId, out SynapseState value))
-		{
-			// Presynaptic release strength arrives in the message. The receiving
-			// synapse begins at a neutral local weight so a caller cannot install a
-			// learned memory merely by choosing a large vesicle payload.
-			value = new SynapseState(message.SynapseId, message.Neurotransmitter, 1f, 1f);
-			if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) &&
-				message.Neurotransmitter == NTEnum.GLUTAMATE)
-			{
-				// Hippocampal and consolidation circuits retain a larger one-time
-				// formation reserve for burst-tagged one-shot encoding. It is still
-				// bounded by the common plasticity bucket and is not replenished by
-				// host call volume.
-				value.PlasticityBudgetQuanta = PlasticityRules.PlasticityBurstCapacityQuanta;
-			}
-			_inboundSynapses[message.SynapseId] = value;
-		}
-		return value;
-	}
-
 	private static SpikeMessage ApplyLearnedInboundStrength(SpikeMessage message, SynapseState synapse)
 	{
 		synapse.Stabilize();
@@ -1136,6 +1125,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SourceNeuronId = message.SourceNeuronId,
 			TargetNeuronId = message.TargetNeuronId,
 			SynapseId = message.SynapseId,
+			SourceInstanceKey = message.SourceInstanceKey,
+			ProjectionId = message.ProjectionId,
+			IsSyntheticBackground = message.IsSyntheticBackground,
 			Neurotransmitter = message.Neurotransmitter,
 			VesicleQuanta = effectiveQuanta,
 			ReuptakeRate = message.ReuptakeRate,
@@ -1163,6 +1155,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SourceNeuronId = message.SourceNeuronId,
 			TargetNeuronId = message.TargetNeuronId,
 			SynapseId = message.SynapseId,
+			SourceInstanceKey = message.SourceInstanceKey,
+			ProjectionId = message.ProjectionId,
+			IsSyntheticBackground = message.IsSyntheticBackground,
 			Neurotransmitter = message.Neurotransmitter,
 			VesicleQuanta = effectiveQuanta,
 			ReuptakeRate = message.ReuptakeRate,
@@ -1207,6 +1202,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SourceNeuronId = message.SourceNeuronId,
 			TargetNeuronId = message.TargetNeuronId,
 			SynapseId = message.SynapseId,
+			SourceInstanceKey = message.SourceInstanceKey,
+			ProjectionId = message.ProjectionId,
+			IsSyntheticBackground = message.IsSyntheticBackground,
 			Neurotransmitter = message.Neurotransmitter,
 			VesicleQuanta = effectiveQuanta,
 			ReuptakeRate = message.ReuptakeRate,
@@ -1234,6 +1232,9 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			SourceNeuronId = message.SourceNeuronId,
 			TargetNeuronId = message.TargetNeuronId,
 			SynapseId = message.SynapseId,
+			SourceInstanceKey = message.SourceInstanceKey,
+			ProjectionId = message.ProjectionId,
+			IsSyntheticBackground = message.IsSyntheticBackground,
 			Neurotransmitter = message.Neurotransmitter,
 			VesicleQuanta = effectiveQuanta,
 			ReuptakeRate = message.ReuptakeRate,
@@ -1248,216 +1249,18 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 	{
 		float presynaptic = PlasticityRules.ClampQuanta(presynapticQuanta);
 		float postsynaptic = PlasticityRules.ClampQuanta(learnedPostsynapticQuanta);
-		return Math.Clamp(MathF.Sqrt(presynaptic * postsynaptic), 0.05f, 5f);
+		return Math.Clamp(presynaptic * postsynaptic, 0.05f, 5f);
 	}
 
 	internal float GetInboundSynapseStrength(Guid synapseId)
 	{
 		lock (_stateGate)
 		{
-			return _inboundSynapses.TryGetValue(synapseId, out SynapseState? synapse)
-				? synapse.VesicleQuanta
-				: 0f;
+			if (_inboundSynapses.TryGetValue(synapseId, out var synapse)) return synapse.VesicleQuanta;
+			var contacts = _inboundSynapses.Values.Where(value => value.ProjectionId == synapseId).Take(2).ToArray();
+			if (contacts.Length > 1) throw new InvalidOperationException("Projection has multiple contacts; request an actual contact ID.");
+			return contacts.Length == 1 ? contacts[0].VesicleQuanta : 0f;
 		}
-	}
-
-	private void ApplyPlasticity(SpikeMessage message, SynapseState value, int targetNeuronIndex, float postsynActivity, float microtubulePlasticitySupport, float microtubuleTracePersistenceSupport, double timestampMs, NeuromodState neuromod, float localTeachingSignal)
-	{
-		var memoryCircuit = SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId);
-		var memoryBearingSynapse = memoryCircuit && value.Neurotransmitter == NTEnum.GLUTAMATE;
-		var previousTargetNeuronIndex = value.LastTargetNeuronIndex;
-		var previousContribution = memoryBearingSynapse ? ComputeSynapticMemoryContribution(value) : default;
-		var previouslySupported = memoryBearingSynapse && value.UpdateCount > 0 && previousTargetNeuronIndex >= 0;
-		double num = Math.Max(0.0, timestampMs - value.LastUpdateTimestampMs);
-		float traceDelta = UpdateTraceState(value, num, 1f, postsynActivity, message.Neurotransmitter, microtubuleTracePersistenceSupport);
-		if (IsCorticostriatalActionInput(message))
-		{
-			traceDelta = UpdateCorticostriatalEligibility(value, postsynActivity);
-		}
-		value.ThetaM = PlasticityRules.UpdateBcmTheta(value.ThetaM, postsynActivity, num);
-		value.LastUpdateTimestampMs = timestampMs;
-		value.LastTargetNeuronIndex = targetNeuronIndex;
-		value.UpdateCount = value.UpdateCount < int.MaxValue ? value.UpdateCount + 1 : int.MaxValue;
-		ApplySynapticMemoryTeaching(
-			message,
-			value,
-			postsynActivity,
-			neuromod,
-			localTeachingSignal);
-		bool climbingCoincident = _profile.StructureId == StructureId.PurkinjeCellLayer && (message.SourceStructure == StructureId.InferiorOlive || message.SpikeType == SpikeTypeEnum.COMPLEX);
-		float delta = ComputeInboundPlasticityDelta(value, traceDelta, postsynActivity, microtubulePlasticitySupport, neuromod, localTeachingSignal, climbingCoincident);
-		if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && localTeachingSignal > 0.05f)
-		{
-			// Positive prediction error must be able to reacquire an association
-			// after extinction has made its eligibility and tag traces negative.
-			// Otherwise tag-capture-only structures remain trapped at the floor.
-			var reacquisitionDrive = Math.Clamp(localTeachingSignal, 0f, 1f) *
-				(0.010f + Math.Clamp(postsynActivity, 0f, 1f) * 0.018f);
-			delta += reacquisitionDrive;
-		}
-		else if (SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) && localTeachingSignal < -0.05f)
-		{
-			var extinctionDrive = Math.Clamp(-localTeachingSignal, 0f, 1f) *
-				(0.008f + Math.Clamp(postsynActivity, 0f, 1f) * 0.025f);
-			delta -= extinctionDrive;
-		}
-		delta = PlasticityRules.ApplyCadenceInvariantBudget(
-			value,
-			delta,
-			timestampMs,
-			memoryCircuit ? 1f : PlasticityRules.RestoredSpikeDensityLearningScale);
-		value.VesicleQuanta = PlasticityRules.ClampQuanta(value.VesicleQuanta + delta);
-		value.Stabilize();
-		if (memoryBearingSynapse)
-		{
-			UpdateSynapticMemoryAggregate(
-				previousTargetNeuronIndex,
-				previousContribution,
-				previouslySupported,
-				value.LastTargetNeuronIndex,
-				ComputeSynapticMemoryContribution(value));
-		}
-		ObserveActionChannelLearning(message, value, targetNeuronIndex);
-		PersistSynapses(timestampMs);
-	}
-
-	private void ApplySynapticMemoryTeaching(
-		SpikeMessage message,
-		SynapseState synapse,
-		float postsynActivity,
-		NeuromodState neuromod,
-		float localTeachingSignal)
-	{
-		if (!SynapticMemoryTopology.IsMemoryCircuitStructure(_profile.StructureId) ||
-			message.Neurotransmitter != NTEnum.GLUTAMATE)
-		{
-			return;
-		}
-
-		var burstGain = message.SpikeType is SpikeTypeEnum.BURST or SpikeTypeEnum.COMPLEX ? 1f : 0.45f;
-		var coactivity = Math.Clamp((postsynActivity * 0.70f) + (burstGain * 0.30f), 0f, 1f);
-		var encodingGate = Math.Clamp(
-			0.15f +
-			(neuromod.AcetylcholineLevel * 0.45f) +
-			(neuromod.NorepinephrineLevel * 0.25f) +
-			(Math.Max(0f, localTeachingSignal) * 0.15f),
-			0f,
-			1f);
-		if (localTeachingSignal < -0.05f)
-		{
-			var extinction = coactivity * Math.Clamp(-localTeachingSignal, 0f, 1f);
-			synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace - (extinction * 0.12f), -1f, 1f);
-			synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace - (extinction * 0.08f), -1f, 1f);
-			return;
-		}
-
-		var encoding = coactivity * encodingGate;
-		var eligibility = localTeachingSignal > 0.05f
-			? Math.Max(0f, synapse.EligibilityTrace)
-			: synapse.EligibilityTrace;
-		var tag = localTeachingSignal > 0.05f
-			? Math.Max(0f, synapse.SynapticTagTrace)
-			: synapse.SynapticTagTrace;
-		synapse.EligibilityTrace = Math.Clamp(eligibility + (encoding * 0.10f), -1f, 1f);
-		synapse.SynapticTagTrace = Math.Clamp(tag + (encoding * 0.07f), -1f, 1f);
-	}
-
-	private void ObserveActionChannelLearning(SpikeMessage message, SynapseState synapse, int targetNeuronIndex)
-	{
-		if (!IsCorticostriatalActionInput(message))
-		{
-			return;
-		}
-
-		var channel = ActionChannelTopology.ChannelForNeuron(targetNeuronIndex, _profile.StructureId);
-		const float alpha = 0.08f;
-		if (!_actionChannelLearningObserved[channel])
-		{
-			_actionChannelEligibility[channel] = synapse.EligibilityTrace;
-			_actionChannelSynapticStrength[channel] = synapse.VesicleQuanta;
-			_actionChannelLearningObserved[channel] = true;
-			return;
-		}
-
-		_actionChannelEligibility[channel] += (synapse.EligibilityTrace - _actionChannelEligibility[channel]) * alpha;
-		_actionChannelSynapticStrength[channel] += (synapse.VesicleQuanta - _actionChannelSynapticStrength[channel]) * alpha;
-	}
-
-	private bool IsCorticostriatalActionInput(SpikeMessage message)
-		=> _profile.StructureId == StructureId.Striatum &&
-			message.Neurotransmitter == NTEnum.GLUTAMATE &&
-			ActionChannelTopology.IsProposalStructure(message.SourceStructure);
-
-	private static float UpdateCorticostriatalEligibility(SynapseState synapse, float postsynActivity)
-	{
-		var coactivity = 0.008f + (Math.Clamp(postsynActivity, 0f, 1f) * 0.022f);
-		synapse.EligibilityTrace = Math.Clamp(Math.Max(0f, synapse.EligibilityTrace) + coactivity, 0f, 1f);
-		synapse.SynapticTagTrace = Math.Clamp(Math.Max(0f, synapse.SynapticTagTrace) + coactivity * 0.5f, 0f, 1f);
-		return coactivity;
-	}
-
-	private static float UpdateTraceState(SynapseState synapse, double dtMs, float preImpulse, float postActivity, NTEnum neurotransmitter, float microtubuleTracePersistenceSupport)
-	{
-		synapse.PreTrace = PlasticityRules.DecayTrace(synapse.PreTrace, dtMs, 20f);
-		synapse.PostTrace = PlasticityRules.DecayTrace(synapse.PostTrace, dtMs, 35f);
-		float traceSupport = float.IsFinite(microtubuleTracePersistenceSupport)
-			? Math.Clamp(microtubuleTracePersistenceSupport, 0.97f, 1.03f)
-			: 1f;
-		synapse.EligibilityTrace = PlasticityRules.DecayTrace(synapse.EligibilityTrace, dtMs, 900f * traceSupport);
-		synapse.SynapticTagTrace = PlasticityRules.DecayTrace(synapse.SynapticTagTrace, dtMs, 8000f * traceSupport);
-		float boundedPost = Math.Clamp(postActivity, 0f, 1f);
-		bool inhibitory = neurotransmitter == NTEnum.GABA;
-		float traceDelta = PlasticityRules.TracePairStdp(synapse.PreTrace, synapse.PostTrace, preImpulse, boundedPost, inhibitory);
-		synapse.PreTrace = Math.Clamp(synapse.PreTrace + preImpulse, 0f, 8f);
-		synapse.PostTrace = Math.Clamp(synapse.PostTrace + boundedPost, 0f, 8f);
-		synapse.EligibilityTrace = Math.Clamp(synapse.EligibilityTrace + traceDelta, -1f, 1f);
-		synapse.SynapticTagTrace = Math.Clamp(synapse.SynapticTagTrace + traceDelta, -1f, 1f);
-		return traceDelta;
-	}
-
-	private float ComputeInboundPlasticityDelta(SynapseState synapse, float traceDelta, float postsynActivity, float microtubulePlasticitySupport, NeuromodState neuromod, float localTeachingSignal, bool climbingCoincident)
-	{
-		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, localTeachingSignal, microtubulePlasticitySupport);
-		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
-		float vesicleQuanta = synapse.VesicleQuanta;
-		var delta = _profile.PlasticityRule switch
-		{
-			"BCM" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta) * 0.35f,
-			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, localTeachingSignal) * 0.35f + traceConsolidation * 0.05f,
-			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
-			"CerebellarLTD" => PlasticityRules.CerebellarLtdCoincidence(vesicleQuanta, climbingCoincident, postsynActivity),
-			"MossyFiberLTP" => PlasticityRules.MossyFiberLtp(vesicleQuanta) * 0.35f + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
-			"SynapticTaggingCapture" => tagCapture,
-			"STDP+SynapticTaggingCapture" => PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta) + tagCapture,
-			"DopamineHomeostasis" => traceConsolidation * 0.5f + PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace * 0.5f, neuromod.DopamineLevel, localTeachingSignal * 0.5f) * 0.25f,
-			"HomeostaticGain" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM),
-			"BCM+STDP" => PlasticityRules.BcmWithSlidingThreshold(postsynActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
-			_ => PlasticityRules.LocalTraceDelta(traceDelta, vesicleQuanta),
-		};
-		return float.IsFinite(delta) ? delta : 0f;
-	}
-
-	private float ComputeOutboundPlasticityDelta(SynapseState synapse, float sourceActivity, NeuromodState neuromod, float localTeachingSignal, double timestampMs)
-	{
-		double num = Math.Max(0.0, timestampMs - synapse.LastUpdateTimestampMs);
-		float traceDelta = UpdateTraceState(synapse, num, 1f, sourceActivity * 0.35f, synapse.Neurotransmitter, 1f);
-		synapse.ThetaM = PlasticityRules.UpdateBcmTheta(synapse.ThetaM, sourceActivity, num);
-		synapse.LastUpdateTimestampMs = timestampMs;
-		synapse.UpdateCount = synapse.UpdateCount < int.MaxValue ? synapse.UpdateCount + 1 : int.MaxValue;
-		float microtubulePlasticitySupport = Math.Clamp(0.98f + sourceActivity * 0.04f, 0.98f, 1.02f);
-		float traceConsolidation = PlasticityRules.NeuromodulatedTraceDelta(synapse.EligibilityTrace, synapse.VesicleQuanta, neuromod.DopamineLevel, neuromod.AcetylcholineLevel, neuromod.NorepinephrineLevel, localTeachingSignal, microtubulePlasticitySupport);
-		float tagCapture = PlasticityRules.SynapticTagCapture(synapse.SynapticTagTrace, synapse.VesicleQuanta, neuromod.AcetylcholineLevel, neuromod.DopamineLevel, microtubulePlasticitySupport);
-		var delta = _profile.PlasticityRule switch
-		{
-			"DopamineModulatedSTDP" => PlasticityRules.DopamineThreeFactor(synapse.EligibilityTrace, neuromod.DopamineLevel, localTeachingSignal) * 0.35f + traceConsolidation * 0.05f,
-			"DopamineModulatedSTDP+SynapticTaggingCapture" => traceConsolidation + tagCapture,
-			"BCM" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta) * 0.35f,
-			"BCM+STDP" => PlasticityRules.BcmWithSlidingThreshold(sourceActivity, synapse.ThetaM) + PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta),
-			"SynapticTaggingCapture" => tagCapture,
-			"STDP+SynapticTaggingCapture" => PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta) + tagCapture,
-			_ => PlasticityRules.LocalTraceDelta(traceDelta, synapse.VesicleQuanta),
-		};
-		return float.IsFinite(delta) ? delta : 0f;
 	}
 
 	private SynapseState GetOrCreateOutboundSynapse(ModelNeuron source, StructureId target, NTEnum neurotransmitter, bool isFeedback, string targetNeuronId)
@@ -1480,8 +1283,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			return loaded;
 		}
 
-		float baselineQuanta = Math.Clamp(1f + source.ActivityTrace * 0.5f, 0.05f, 5f);
-		SynapseState synapseState = new SynapseState(Guid.NewGuid(), neurotransmitter, baselineQuanta);
+		float baselineQuanta = 1f;
+		SynapseState synapseState = new SynapseState(StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, _instanceKey, key), neurotransmitter, baselineQuanta);
 		_outboundSynapses[key] = synapseState;
 		_outboundSynapseLookup[lookupKey] = synapseState;
 		return synapseState;
@@ -1500,11 +1303,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			: _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
 		string targetNeuronId = $"auto-{target}-{num:000}";
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
-		float outboundDelta = ComputeOutboundPlasticityDelta(synapseState, source.ActivityTrace, source.LocalNeuromodState, source.LocalRewardSignal, tickSignal.TimestampMs);
-		outboundDelta = PlasticityRules.ApplyCadenceInvariantBudget(synapseState, outboundDelta, tickSignal.TimestampMs);
-		synapseState.VesicleQuanta = PlasticityRules.ClampQuanta(synapseState.VesicleQuanta + outboundDelta);
-		synapseState.Stabilize();
-		PersistSynapses(tickSignal.TimestampMs);
+
 		SpikeMessage spikeMessage = new SpikeMessage();
 		spikeMessage.MessageId = Guid.NewGuid();
 		spikeMessage.TimestampMs = tickSignal.TimestampMs;
@@ -1513,6 +1312,8 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		spikeMessage.SourceNeuronId = source.Id;
 		spikeMessage.TargetNeuronId = targetNeuronId;
 		spikeMessage.SynapseId = synapseState.SynapseId;
+		spikeMessage.SourceInstanceKey = _instanceKey;
+		spikeMessage.ProjectionId = synapseState.SynapseId;
 		spikeMessage.Neurotransmitter = neurotransmitter;
 		spikeMessage.VesicleQuanta = Math.Max(0.05f, synapseState.VesicleQuanta);
 		SpikeMessage spikeMessage2 = spikeMessage;
@@ -4501,7 +4302,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 		{
 			adjustment += 2;
 		}
-		int jitter = (int)((uint)HashCode.Combine(message.MessageId, message.SourceNeuronId ?? string.Empty, message.TargetNeuronId ?? string.Empty, 101) % 3u) - 1;
+		int jitter = (int)((uint)StableNeuralIdentity.Combine(message.ProjectionId == Guid.Empty ? message.SynapseId : message.ProjectionId, message.SourceNeuronId ?? string.Empty, message.TargetNeuronId ?? string.Empty, 101) % 3u) - 1;
 		return Math.Clamp(adjustment + jitter, -3, Math.Max(3, tractDelayWindow.MaxMs));
 	}
 
@@ -4576,7 +4377,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 
 	private static int StableNeuronIndex(string neuronId, Guid synapseId, int salt)
 	{
-		return (int)((uint)HashCode.Combine(neuronId ?? string.Empty, synapseId, salt) % 1024u);
+		return (int)((uint)StableNeuralIdentity.Combine(neuronId ?? string.Empty, synapseId, salt) % 1024u);
 	}
 
 	private static bool TryParseNeuronIndex(string neuronId, out int value)
@@ -4604,7 +4405,7 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 			return num;
 		}
 		int num3 = num2 - num + 1;
-		int value = HashCode.Combine(message.MessageId, (int)message.SourceStructure, (int)message.TargetStructure, message.SourceNeuronId ?? string.Empty, message.TargetNeuronId ?? string.Empty, salt);
+		int value = StableNeuralIdentity.Combine(message.ProjectionId == Guid.Empty ? message.SynapseId : message.ProjectionId, (int)message.SourceStructure, (int)message.TargetStructure, message.SourceNeuronId ?? string.Empty, message.TargetNeuronId ?? string.Empty, salt);
 		return num + (int)((uint)value % (uint)num3);
 	}
 

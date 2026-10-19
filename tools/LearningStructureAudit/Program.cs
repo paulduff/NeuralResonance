@@ -13,7 +13,7 @@ internal static class LearningAudit
     static readonly BindingFlags HiddenStatic = BindingFlags.Static | BindingFlags.NonPublic;
     static readonly MethodInfo Rewrite = typeof(TickCoordinator).GetMethod("RewriteSpikeForRoute", HiddenStatic)!;
     static readonly MethodInfo Project = typeof(StructureEngine).GetMethod("ResolveInboundNeuronIndex", HiddenInstance)!;
-    static readonly MethodInfo OutboundDelta = typeof(StructureEngine).GetMethod("ComputeOutboundPlasticityDelta", HiddenInstance)!;
+    static readonly MethodInfo BuildOutbound = typeof(StructureEngine).GetMethod("BuildOutboundSpike", HiddenInstance)!;
     static readonly FieldInfo Inbound = typeof(StructureEngine).GetField("_inboundSynapses", HiddenInstance)!;
     static readonly FieldInfo Neurons = typeof(StructureEngine).GetField("_neurons", HiddenInstance)!;
 
@@ -47,7 +47,7 @@ internal static class LearningAudit
         var oldInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
         try
         {
-            var sourcePaths = new[] { "ControlProgram/Program.cs", "ControlProgram/NeuronalMotorControl.cs", "Protocol/SpikeMessage.cs", "Structures/_SharedRuntime/StructureEngine.cs", "Structures/_SharedRuntime/ModelNeuron.cs", "Structures/_SharedRuntime/PlasticityRules.cs", "Structures/_SharedRuntime/SynapseState.cs", "Structures/_SharedRuntime/SynapsePersistenceStore.cs", "Structures/_SharedRuntime/CircuitKernels.cs", "Structures/_SharedRuntime/StructureCircuitProfile.cs", "Structures/_SharedRuntime/IntrinsicCircuitDriveTopology.cs" };
+            var sourcePaths = new[] { "ControlProgram/Program.cs", "ControlProgram/NeuronalMotorControl.cs", "Protocol/SpikeMessage.cs", "Protocol/StableNeuralIdentity.cs", "Structures/_SharedRuntime/ContactPlasticity.cs", "Structures/_SharedRuntime/StructureSynapticLearning.cs", "Structures/_SharedRuntime/StructureEngine.cs", "Structures/_SharedRuntime/ModelNeuron.cs", "Structures/_SharedRuntime/PlasticityRules.cs", "Structures/_SharedRuntime/SynapseState.cs", "Structures/_SharedRuntime/SynapsePersistenceStore.cs", "Structures/_SharedRuntime/CircuitKernels.cs", "Structures/_SharedRuntime/StructureCircuitProfile.cs", "Structures/_SharedRuntime/IntrinsicCircuitDriveTopology.cs" };
             var hashes = sourcePaths.ToDictionary(path => path, path => Hash(Path.Combine(repo, path)));
             Save(output, "inventory", Inventory(repo));
             Save(output, "connection-identity", await Identity(output));
@@ -88,7 +88,9 @@ internal static class LearningAudit
             NeuronsPerInstance = StructureCircuitProfile.For(item.Id).NeuronCount,
             CircuitKernel = CircuitKernelFactory.For(item.Id).GetType().Name,
             CorticalLaminar = CorticalLaminarTopology.IsCorticalStructure(item.Id), Registered = registry.Contains(item.Id),
-            InboundLtdCanReceiveClimbingCoincidence = item.Rule != "CerebellarLTD" || item.Id == StructureId.PurkinjeCellLayer
+            ClimbingTeachingScope = item.Rule == "CerebellarLTD"
+                ? "Coactive granule contacts on the receiving cell; anatomical calibration pending"
+                : "Not a CerebellarLTD profile"
         }).ToArray();
         return new { EnumStructures = Enum.GetValues<StructureId>().Length, RegistryStructures = registry.Count,
             HostProfiles = rows.Length, MissingHosts = registry.Except(profiles.Select(item => item.Id)),
@@ -124,7 +126,7 @@ internal static class LearningAudit
         var target = (int)Project.Invoke(engine, [message])!;
         await engine.EnqueueSpikeAsync(message);
         for (var tick = 1; tick <= 20; tick++) await engine.ProcessStepAsync(Tick(tick), 0);
-        var state = States(engine)[message.SynapseId]; var before = Snapshot(state);
+        var state = States(engine)[engine.ResolveContactId(message)]; var before = Snapshot(state);
         var cell = ((ModelNeuron[])Neurons.GetValue(engine)!)[target];
         // Explicit diagnostic drive onto this cell, after the presynaptic input.
         // No second inbound-synapse event is allowed to obscure the post-event path.
@@ -157,20 +159,26 @@ internal static class LearningAudit
         var target = (int)Project.Invoke(engine, [dopamine])!;
         // Seed a diagnostic eligibility trace as the controlled residue of an
         // earlier pre/post pairing, then deliver only the later modulator.
-        var eligible = new SynapseState(Guid.Parse("afbc4444-4444-4444-8444-444444444444"), NTEnum.GLUTAMATE, 1, 1)
-        { EligibilityTrace = .8f, SynapticTagTrace = .8f, LastTargetNeuronIndex = target, UpdateCount = 1 };
-        States(engine)[eligible.SynapseId] = eligible;
+        var glutamate = Enumerable.Range(0, 4096).Select(index =>
+        {
+            var message = Spike(index); message.SourceStructure = StructureId.Pfc; message.TargetStructure = StructureId.Striatum;
+            return message;
+        }).First(message => (int)Project.Invoke(engine, [message])! == target);
+        await engine.EnqueueSpikeAsync(glutamate);
+        for (var tick = 1; tick <= 40; tick++) await engine.ProcessStepAsync(Tick(tick), 0);
+        var eligible = States(engine)[engine.ResolveContactId(glutamate)];
+        eligible.EligibilityTrace = .8f; eligible.SynapticTagTrace = .8f;
         var before = Snapshot(eligible);
         for (var pulse = 0; pulse < 10; pulse++)
         {
             var message = Spike(0); message.SourceStructure = dopamine.SourceStructure; message.TargetStructure = dopamine.TargetStructure;
             message.SourceNeuronId = dopamine.SourceNeuronId; message.SynapseId = dopamine.SynapseId;
-            message.Neurotransmitter = dopamine.Neurotransmitter; message.VesicleQuanta = 5;
+            message.Neurotransmitter = dopamine.Neurotransmitter; message.VesicleQuanta = 5; message.TimestampMs = 41;
             await engine.EnqueueSpikeAsync(message);
         }
         var cell = ((ModelNeuron[])Neurons.GetValue(engine)!)[target];
         var peakDopamine = 0f; var peakTeaching = 0f;
-        for (var tick = 1; tick <= 40; tick++)
+        for (var tick = 41; tick <= 80; tick++)
         {
             await engine.ProcessStepAsync(Tick(tick), 0);
             peakDopamine = Math.Max(peakDopamine, cell.LocalNeuromodState.DopamineLevel); peakTeaching = Math.Max(peakTeaching, cell.LocalRewardSignal);
@@ -186,21 +194,31 @@ internal static class LearningAudit
     static object Outbound(string output)
     {
         using var engine = Engine(output, "outbound");
+        var source = ((ModelNeuron[])Neurons.GetValue(engine)!)[0];
+        typeof(ModelNeuron).GetProperty("ActivityTrace")!.SetValue(source, .16f);
+        SpikeMessage Emit(int time) => (SpikeMessage)BuildOutbound.Invoke(engine,
+            [source, Tick(time), StructureId.ReticularFormation, NTEnum.GLUTAMATE, false])!;
+        Emit(1);
+        var releases = (Dictionary<string, SynapseState>)typeof(StructureEngine)
+            .GetField("_outboundSynapses", HiddenInstance)!.GetValue(engine)!;
+        var synapse = releases.Values.Single();
         var rows = new List<object>();
         foreach (var interval in new[] { 5, 10, 20, 50, 100, 250 })
         {
-            var synapse = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1.08f, 1.08f);
+            synapse.VesicleQuanta = synapse.BaselineVesicleQuanta = 1.08f;
+            var minimumRelease = float.MaxValue; var maximumRelease = float.MinValue;
             for (var time = interval; time <= 120_000; time += interval)
             {
-                var raw = (float)OutboundDelta.Invoke(engine, [synapse, .16f, new NeuromodState(), 0f, (double)time])!;
-                var change = PlasticityRules.ApplyCadenceInvariantBudget(synapse, raw, time);
-                synapse.VesicleQuanta = PlasticityRules.ClampQuanta(synapse.VesicleQuanta + change);
+                var message = Emit(time);
+                minimumRelease = Math.Min(minimumRelease, message.VesicleQuanta);
+                maximumRelease = Math.Max(maximumRelease, message.VesicleQuanta);
             }
             rows.Add(new { IntervalMilliseconds = interval, ConstantSenderActivity = .16f, ActualReceiverActivitySupplied = false,
-                InitialWeight = 1.08f, FinalWeight = synapse.VesicleQuanta, synapse.TotalAbsolutePlasticityChange });
+                InitialWeight = 1.08f, FinalWeight = synapse.VesicleQuanta, MinimumRelease = minimumRelease,
+                MaximumRelease = maximumRelease, synapse.TotalAbsolutePlasticityChange });
         }
         return new { DurationBiologicalMilliseconds = 120_000, Cases = rows,
-            Observation = "The actual sender rule updates despite receiving no target-cell activity argument. Its post activity proxy is sender activity times 0.35." };
+            Observation = "Calls the production outbound-spike builder with imposed sender activity and seeded release strength; no receiving spikes or brain services. Long-term receiving learning must not be invented at the sender." };
     }
 
     static object Cadence()
@@ -229,7 +247,7 @@ internal static class LearningAudit
                 MeanActivityTraceInSecond = activitySum / 1000, MeanFiringRateHzInSecond = rateSum / 1000 });
         }
         return new { DiagnosticVoltageImposition = true, DurationBiologicalMilliseconds = 2000, MeasuredAfterWarmupMilliseconds = 1000, Cases = rows,
-            Observation = "Identical imposed spike times; existing fixed per-step smoothing produces different physical-time traces." };
+            Observation = "Identical imposed spike times; compare physical-time traces and distinguish sampled means from values at identical times." };
     }
 
     static object ClockBudget()
@@ -237,8 +255,12 @@ internal static class LearningAudit
         var resumed = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1) { PlasticityBudgetQuanta = 0, LastPlasticityBudgetTimestampMs = 7_000_000 };
         var restarted = PlasticityRules.ApplyCadenceInvariantBudget(resumed, .05f, 1000);
         var continuous = PlasticityRules.ApplyCadenceInvariantBudget(resumed, .05f, 7_001_000);
+        resumed.PlasticityBudgetQuanta = 0;
+        resumed.PrepareWarmStart();
+        var warmAtStart = PlasticityRules.ApplyCadenceInvariantBudget(resumed, .05f, 1);
+        var warmAfterOneSecond = PlasticityRules.ApplyCadenceInvariantBudget(resumed, .05f, 1001);
         return new { SavedBudgetTimestampMilliseconds = 7_000_000, RestartedClockTimestamp = 1000, AppliedWithRestartedClock = restarted,
-            AppliedWithContinuingClock = continuous, RequiresClockContinuationOrDefinedRebase = true,
+            AppliedWithContinuingClock = continuous, WarmStartInitialChange = warmAtStart, WarmStartChangeAfterOneSecond = warmAfterOneSecond, RequiresClockContinuationOrDefinedRebase = true,
             Scope = "Conditional budget behavior; does not establish that a live resume actually used a reset coordinator clock." };
     }
 }

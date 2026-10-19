@@ -61,7 +61,19 @@ public sealed record TickAck(
     SynapticMemoryDiagnostics? SynapticMemoryDiagnostics = null,
     NeuronalAttentionWorkspaceDiagnostics? NeuronalAttentionWorkspaceDiagnostics = null,
     NeuronalSleepConsolidationDiagnostics? NeuronalSleepConsolidationDiagnostics = null,
-    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null);
+    CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null,
+    SynapticLearningDiagnostics? SynapticLearningDiagnostics = null);
+
+public sealed record SynapticContactSample(
+    Guid ContactId, Guid ProjectionId, string SourceInstance, string SourceCell,
+    string TargetInstance, int TargetCell, float Strength, float Eligibility,
+    int LearningEvents, bool SyntheticBackground);
+
+public sealed record SynapticLearningDiagnostics(
+    string TopologyVersion, string CheckpointScope, string ModelStatus,
+    int NeuronCount, int ContactCount, long PresynapticEvents, long PostsynapticEvents,
+    IReadOnlyList<SynapticContactSample> Contacts,
+    double ContactSampleTimestampMs = 0);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,
@@ -577,7 +589,8 @@ public sealed record StructureSnapshot(
     double AgeMilliseconds = 0,
     int SourceInstanceCount = 0,
     double ObservedCadenceTicks = 0,
-    bool Fresh = false);
+    bool Fresh = false,
+    SynapticLearningDiagnostics? SynapticLearningDiagnostics = null);
 
 public sealed record ActivePathway(
     StructureId Source,

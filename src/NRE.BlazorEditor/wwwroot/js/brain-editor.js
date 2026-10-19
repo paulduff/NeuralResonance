@@ -1171,6 +1171,8 @@ function applyFrame(state, frame) {
         mesh.userData.hasTelemetry = false;
         mesh.userData.spikeOut = 0;
         mesh.userData.laminarDiagnostics = null;
+        mesh.userData.learningDiagnostics = null;
+        mesh.userData.learningSourceFresh = false;
     }
 
     if (Array.isArray(structureStates)) {
@@ -1194,6 +1196,8 @@ function applyFrame(state, frame) {
                 mesh.userData.meanRateHz = meanRate;
                 mesh.userData.spikeOut = spikeOut;
                 mesh.userData.laminarDiagnostics = laminarDiagnostics;
+                mesh.userData.learningDiagnostics = value(structureState, "synapticLearningDiagnostics") ?? null;
+                mesh.userData.learningSourceFresh = value(structureState, 'fresh') !== false;
             }
         }
     }
@@ -1285,6 +1289,28 @@ function updateSelectionTelemetry(state) {
     document.getElementById('selectionActivity').style.width =
         `${fresh ? Math.round(data.activity * 100) : 0}%`;
     updateLaminarTelemetry(state.selected.userData.laminarDiagnostics);
+    updateLearningTelemetry(data.learningDiagnostics, fresh && data.learningSourceFresh);
+}
+
+export function updateLearningTelemetry(diagnostics, fresh) {
+    setText('selectionLearningStatus', diagnostics
+        ? `${value(diagnostics, 'modelStatus')}. ${fresh ? 'Current snapshot.' : 'Last snapshot; stale.'}`
+        : 'Contact learning telemetry unavailable from this runtime.');
+    setText('selectionContactCount', diagnostics
+        ? `${integerValue(diagnostics, 'neuronCount').toLocaleString()} / ${integerValue(diagnostics, 'contactCount').toLocaleString()}` : 'Unavailable');
+    setText('selectionLearningEvents', diagnostics
+        ? `${integerValue(diagnostics, 'presynapticEvents').toLocaleString()} / ${integerValue(diagnostics, 'postsynapticEvents').toLocaleString()}` : 'Unavailable');
+    setText('selectionCheckpointScope', value(diagnostics, 'checkpointScope') ?? 'Unavailable');
+    const container = document.getElementById('selectionContacts');
+    if (!container) return;
+    container.replaceChildren();
+    for (const contact of value(diagnostics, 'contacts') ?? []) {
+        const row = document.createElement('p');
+        row.className = 'source-note';
+        row.textContent = `${value(contact, 'sourceInstance') || 'Unspecified source'}:${value(contact, 'sourceCell')} → ${value(contact, 'targetInstance')}:n-${integerValue(contact, 'targetCell')} · strength ${numberValue(contact, 'strength').toFixed(4)}${value(contact, 'syntheticBackground') ? ' · synthetic background' : ''}`;
+        row.title = `Contact ${value(contact, 'contactId')}; projection ${value(contact, 'projectionId')}; sampled at ${numberValue(diagnostics, 'contactSampleTimestampMs').toFixed(1)} ms`;
+        container.appendChild(row);
+    }
 }
 
 function updateLaminarTelemetry(diagnostics) {

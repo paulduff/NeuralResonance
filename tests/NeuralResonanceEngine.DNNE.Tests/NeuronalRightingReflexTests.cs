@@ -54,7 +54,7 @@ public sealed class NeuronalRightingReflexTests
                         Assert.InRange(item.EffectiveQuanta, .05f, 5f);
                     });
                     Assert.Equal(1f, observations[0].PostsynapticQuanta);
-                    Assert.Equal(MathF.Sqrt(2), observations[0].EffectiveQuanta, precision: 5);
+                    Assert.Equal(2f, observations[0].EffectiveQuanta, precision: 5);
                 }
                 return result;
             }

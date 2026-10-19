@@ -9,11 +9,11 @@ public sealed class InboundPlasticityApplicationTests
     private static readonly SemaphoreSlim EnvironmentGate = new(1, 1);
 
     [Theory]
-    [InlineData(1f, 4f, 2f)]
-    [InlineData(4f, 1f, 2f)]
-    [InlineData(0.05f, 5f, 0.5f)]
+    [InlineData(1f, 4f, 4f)]
+    [InlineData(4f, 1f, 4f)]
+    [InlineData(0.05f, 5f, 0.25f)]
     [InlineData(5f, 5f, 5f)]
-    public void EffectiveStrengthCombinesPreAndPostsynapticContributions(
+    public void EffectiveStrengthIsReleaseTimesReceivingGain(
         float presynaptic,
         float postsynaptic,
         float expected)

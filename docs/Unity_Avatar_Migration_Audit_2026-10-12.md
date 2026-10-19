@@ -701,3 +701,32 @@ receptor and labyrinth implementations were reviewed again and remain intact.
 No body, Unity mechanics, live brain or neuronal authority was altered by this
 audit. New executable probes create isolated diagnostic state only; 197 existing
 focused contracts pass but do not establish the missing biological mechanisms.
+
+## Contact-learning repair, Avatar provenance and editor — 19 October
+
+The [foundation repair](DNNE_Biological_Foundation_Repair_2026-10-19.md) replaces
+tract-pooled receiving learning with distinct source/target contacts, actual pre/
+post spike events, stable projection mapping and biological-time traces. Locally
+arriving teaching can act on eligible contacts. Learned-state reload is explicitly
+warm initialization, not full brain continuation; incompatible legacy saves fail
+without being overwritten. Fresh isolated state is recommended for the next
+controlled experiment, preserving all earlier saves.
+
+Reviewed the original Avatar nervous system, dispatch parser, physical receptors,
+musculature and vestibular/labyrinth balance tests. Receptor messages preserve
+stable fibre IDs and now include source-instance/projection metadata. Avatar's
+dispatch parser retains that identity and synthetic-background provenance. The
+nervous system excludes synthetic coordinator injections from direct motor/effector
+interpretation; downstream real neuronal firing still follows the existing path.
+Muscle, balance, body and Unity mechanics are retained. No diagnostic controller,
+scalar balance command or substitute authority was introduced.
+
+The editor now exposes contact-learning counts, receiving strengths/owners and
+saved-state scope, with missing/stale telemetry and calibration status explicit.
+An isolated browser fixture verified the inspector, not the running brain. The
+394-test regression includes Avatar balance, labyrinth/receptors, motor/righting,
+wire contracts and editor learning aggregation; nine display checks also pass.
+Two independent mechanism captures confirm deterministic sampled wiring and the
+repaired event paths. No live service was restarted or world trial run. Full
+physiological calibration, balance discrimination, standing and recovery remain
+unqualified; code/test success must not be described as learned physical recovery.

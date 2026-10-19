@@ -10,7 +10,7 @@ using NeuralResonanceEngine.Protocol;
 
 internal sealed class SynapsePersistenceStore : IDisposable
 {
-	internal const int CurrentSchemaVersion = 3;
+	internal const int CurrentSchemaVersion = 4;
 	private const double DefaultSaveEveryMs = 300000.0;
 	private const double DefaultSaveEveryBiologicalMs = 30000.0;
 	private const int DefaultSensoryInboundSynapseLimit = 65_536;
@@ -24,13 +24,14 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly StructureId _structureId;
 	private readonly string _instanceKey;
 	private readonly string _path;
+	private readonly string _modelFingerprint;
 	private readonly double _saveEveryMs;
 	private readonly double _saveEveryBiologicalMs;
 	private readonly int _maxInboundSynapseCount;
 	private int _pendingMutations;
 	private long _lastSaveTimestamp;
 	private double _lastSaveBiologicalTimestampMs = double.NaN;
-	private long _totalPrunedInboundSynapses;
+	private long _totalPrunedInboundSynapses = 0;
 	private long _snapshotBuildCount;
 
 	// Off-lock async writer. Snapshot construction happens on the tick-loop thread
@@ -48,9 +49,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly Task _writerTask;
 	private int _disposed;
 
-	public SynapsePersistenceStore(StructureId structureId)
+	public SynapsePersistenceStore(StructureId structureId, string modelFingerprint = "contact-events-v1")
 	{
 		_structureId = structureId;
+		_modelFingerprint = modelFingerprint;
 		_instanceKey = ResolveInstanceKey(structureId);
 		_path = ResolvePath(_instanceKey);
 		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 5000.0, 900_000.0);
@@ -76,44 +78,39 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			string json = File.ReadAllText(_path);
 			SynapseStoreSnapshot? snapshot = JsonSerializer.Deserialize<SynapseStoreSnapshot>(json, JsonOptions);
 			if (snapshot == null || snapshot.StructureId != _structureId ||
-				(!string.IsNullOrWhiteSpace(snapshot.InstanceKey) && !string.Equals(snapshot.InstanceKey, _instanceKey, StringComparison.OrdinalIgnoreCase)))
+				!string.Equals(snapshot.InstanceKey, _instanceKey, StringComparison.Ordinal))
 			{
-				return;
+				throw new InvalidOperationException("Saved neural identity does not match this structure/instance. Existing file is preserved.");
 			}
-			if (snapshot.SchemaVersion != CurrentSchemaVersion)
+			if (snapshot.SchemaVersion != CurrentSchemaVersion || snapshot.ModelFingerprint != _modelFingerprint)
 			{
-				Console.Error.WriteLine(
-					$"[{_structureId}] Synapse state generation {snapshot.SchemaVersion} ignored; generation {CurrentSchemaVersion} is required.");
-				return;
+				throw new InvalidOperationException($"[{_structureId}] Incompatible neural state (schema {snapshot.SchemaVersion}). Use an explicit migration or a new isolated state directory; existing file is preserved.");
 			}
 
+			if (snapshot.Inbound is null || snapshot.Outbound is null)
+				throw new InvalidOperationException("Saved neural state has a missing contact collection; existing file is preserved.");
 			foreach (SynapseStoreEntry entry in snapshot.Inbound)
 			{
-				if (entry.SynapseId == Guid.Empty)
-				{
-					continue;
-				}
-
-				inboundSynapses[entry.SynapseId] = entry.ToSynapseState();
+				if (entry is null || entry.SynapseId == Guid.Empty ||
+					!inboundSynapses.TryAdd(entry.SynapseId, entry.ToSynapseState()))
+					throw new InvalidOperationException("Saved neural state has an invalid or duplicate receiving contact; existing file is preserved.");
 			}
 
 			foreach (SynapseStoreEntry entry in snapshot.Outbound)
 			{
-				if (string.IsNullOrWhiteSpace(entry.Key) || entry.SynapseId == Guid.Empty)
-				{
-					continue;
-				}
-
-				outboundSynapses[entry.Key] = entry.ToSynapseState();
+				if (entry is null || string.IsNullOrWhiteSpace(entry.Key) || entry.SynapseId == Guid.Empty ||
+					!outboundSynapses.TryAdd(entry.Key, entry.ToSynapseState()))
+					throw new InvalidOperationException("Saved neural state has an invalid or duplicate release site; existing file is preserved.");
 			}
 
-			_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
+			if (inboundSynapses.Count > _maxInboundSynapseCount)
+				throw new InvalidOperationException("Saved contact count exceeds configured capacity; refusing implicit pruning.");
 
 			_lastSaveTimestamp = Stopwatch.GetTimestamp();
 		}
 		catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is JsonException)
 		{
-			Console.Error.WriteLine($"[{_structureId}] Synapse state load skipped: {ex.Message}");
+			throw new InvalidOperationException($"[{_structureId}] Cannot safely load neural state; existing file is preserved.", ex);
 		}
 	}
 
@@ -209,10 +206,13 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		Dictionary<string, SynapseState> outboundSynapses)
 	{
 		Interlocked.Increment(ref _snapshotBuildCount);
-		_totalPrunedInboundSynapses += PruneInboundSynapses(inboundSynapses, _maxInboundSynapseCount);
+		if (inboundSynapses.Count > _maxInboundSynapseCount)
+				throw new InvalidOperationException("Saved contact count exceeds configured capacity; refusing implicit pruning.");
 		return new SynapseStoreSnapshot
 		{
 			SchemaVersion = CurrentSchemaVersion,
+			ModelFingerprint = _modelFingerprint,
+			CheckpointScope = "learned-weights-warm-start; no membrane or queued-event continuation",
 			StructureId = _structureId,
 			InstanceKey = _instanceKey,
 			SavedAtUtc = DateTimeOffset.UtcNow,
@@ -374,7 +374,7 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		return entries;
 	}
 
-	private static string ResolveInstanceKey(StructureId structureId)
+	internal static string ResolveInstanceKey(StructureId structureId)
 	{
 		string? configured = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
 		if (!string.IsNullOrWhiteSpace(configured))
@@ -454,6 +454,9 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	{
 		public int SchemaVersion { get; set; }
 
+		public string ModelFingerprint { get; set; } = string.Empty;
+		public string CheckpointScope { get; set; } = string.Empty;
+
 		public StructureId StructureId { get; set; }
 
 		public string InstanceKey { get; set; } = string.Empty;
@@ -472,6 +475,13 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		public Guid SynapseId { get; set; }
 
 		public NTEnum Neurotransmitter { get; set; }
+
+		public Guid ProjectionId { get; set; } = Guid.Empty;
+		public StructureId SourceStructure { get; set; } = default;
+		public string SourceInstanceKey { get; set; } = string.Empty;
+		public string SourceNeuronId { get; set; } = string.Empty;
+		public bool IsFeedback { get; set; } = false;
+		public bool IsSyntheticBackground { get; set; } = false;
 
 		public float VesicleQuanta { get; set; }
 
@@ -507,6 +517,13 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				Key = key,
 				SynapseId = synapse.SynapseId,
 				Neurotransmitter = synapse.Neurotransmitter,
+				ProjectionId = synapse.ProjectionId,
+				SourceStructure = synapse.SourceStructure,
+				SourceInstanceKey = synapse.SourceInstanceKey,
+				SourceNeuronId = synapse.SourceNeuronId,
+				IsFeedback = synapse.IsFeedback,
+				IsSyntheticBackground = synapse.IsSyntheticBackground,
+
 				VesicleQuanta = synapse.VesicleQuanta,
 				BaselineVesicleQuanta = synapse.BaselineVesicleQuanta,
 				PreTrace = synapse.PreTrace,
@@ -532,6 +549,12 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				PlasticityRules.ClampQuanta(VesicleQuanta),
 				PlasticityRules.ClampQuanta(baseline))
 			{
+				ProjectionId = ProjectionId,
+				SourceStructure = SourceStructure,
+				SourceInstanceKey = SourceInstanceKey,
+				SourceNeuronId = SourceNeuronId,
+				IsFeedback = IsFeedback,
+				IsSyntheticBackground = IsSyntheticBackground,
 				PreTrace = PreTrace,
 				PostTrace = PostTrace,
 				ThetaM = ThetaM,

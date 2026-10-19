@@ -3017,7 +3017,10 @@ internal sealed class SimulationState
                 targetHemisphere,
                 targetNeuronId,
                 spike.Neurotransmitter,
-                targetInstanceKey));
+                targetInstanceKey,
+                spike.SourceInstanceKey,
+                spike.ProjectionId,
+                spike.IsSyntheticBackground));
         }
 
         if (traces.Count == 0)
@@ -6348,6 +6351,7 @@ internal sealed class TickCoordinator(
 
                         processedByService++;
                         var spike = spikes[i];
+                        spike.SourceInstanceKey = stepResult.Instance.InstanceKey;
                         if (!state.ConnectivityMap.TryGetValue(spike.SourceStructure, out var candidates) || candidates.Count == 0)
                         {
                             Interlocked.Increment(ref routeDroppedNoConnectivityCount);
@@ -6545,7 +6549,8 @@ internal sealed class TickCoordinator(
                     ack.NeuronalSleepConsolidationDiagnostics,
                     ack.CorticalLaminarDiagnostics,
                     SourceTick: tickSignal.Tick,
-                    SourceTimestampMs: tickSignal.TimestampMs);
+                    SourceTimestampMs: tickSignal.TimestampMs,
+                    SynapticLearningDiagnostics: ack.SynapticLearningDiagnostics);
             });
 
             var processedSnapshots = await Task.WhenAll(postProcessing);
@@ -7912,6 +7917,9 @@ internal sealed class TickCoordinator(
             SourceNeuronId = baseSpike.SourceNeuronId,
             TargetNeuronId = baseSpike.TargetNeuronId,
             SynapseId = baseSpike.SynapseId,
+            SourceInstanceKey = baseSpike.SourceInstanceKey,
+            ProjectionId = baseSpike.ProjectionId,
+            IsSyntheticBackground = baseSpike.IsSyntheticBackground,
             Neurotransmitter = baseSpike.Neurotransmitter,
             VesicleQuanta = Math.Clamp(baseSpike.VesicleQuanta * 0.86f, 0.05f, 16.0f),
             ReuptakeRate = Math.Clamp(baseSpike.ReuptakeRate * 1.04f, 0.5f, 120f),
@@ -7932,7 +7940,10 @@ internal sealed class TickCoordinator(
             TargetStructure = route.Target,
             SourceNeuronId = string.IsNullOrWhiteSpace(spike.SourceNeuronId) ? "src-auto" : spike.SourceNeuronId,
             TargetNeuronId = string.IsNullOrWhiteSpace(spike.TargetNeuronId) ? $"auto-{route.Target}" : spike.TargetNeuronId,
-            SynapseId = route.SynapseId,
+            SynapseId = spike.SynapseId,
+            ProjectionId = route.SynapseId,
+            SourceInstanceKey = spike.SourceInstanceKey,
+            IsSyntheticBackground = spike.IsSyntheticBackground,
             Neurotransmitter = route.Neurotransmitter,
             VesicleQuanta = Math.Max(0.05f, spike.VesicleQuanta),
             ReuptakeRate = Math.Max(0.5f, spike.ReuptakeRate),
@@ -8329,7 +8340,8 @@ internal sealed class TickCoordinator(
                 AgeMilliseconds: ageMilliseconds,
                 SourceInstanceCount: members.Count,
                 ObservedCadenceTicks: observedCadenceTicks,
-                Fresh: sourceTick > 0 && ageTicks <= freshnessBoundTicks));
+                Fresh: sourceTick > 0 && ageTicks <= freshnessBoundTicks,
+                SynapticLearningDiagnostics: CombineSynapticLearningDiagnostics(members)));
         }
 
         // Cross-structure displays are enriched independently, but action-selection
@@ -8451,10 +8463,27 @@ internal sealed class TickCoordinator(
                 snapshot.SynapticMemoryDiagnostics,
                 snapshot.NeuronalAttentionWorkspaceDiagnostics,
                 snapshot.NeuronalSleepConsolidationDiagnostics,
-                snapshot.CorticalLaminarDiagnostics));
+                snapshot.CorticalLaminarDiagnostics,
+                SynapticLearningDiagnostics: snapshot.SynapticLearningDiagnostics));
         }
 
         return merged;
+    }
+
+    private static SynapticLearningDiagnostics? CombineSynapticLearningDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
+    {
+        var values = members.Select(member => member.SynapticLearningDiagnostics).Where(value => value != null).Cast<SynapticLearningDiagnostics>().ToArray();
+        // Missing members must stay visible; an older host cannot inherit a
+        // positive status from a newer host in the same aggregate.
+        if (values.Length != members.Count || values.Length == 0) return null;
+        return new SynapticLearningDiagnostics(
+            values.Select(value => value.TopologyVersion).Distinct().Count() == 1 ? values[0].TopologyVersion : "Mixed topology versions",
+            values.Select(value => value.CheckpointScope).Distinct().Count() == 1 ? values[0].CheckpointScope : "Mixed checkpoint scopes",
+            "Reduced model; physiological calibration pending",
+            values.Sum(value => value.NeuronCount), values.Sum(value => value.ContactCount),
+            values.Sum(value => value.PresynapticEvents), values.Sum(value => value.PostsynapticEvents),
+            values.SelectMany(value => value.Contacts).Take(16).ToArray(),
+            values.Min(value => value.ContactSampleTimestampMs));
     }
 
     private static MicrotubuleDiagnostics? AverageMicrotubuleDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)
@@ -11787,8 +11816,11 @@ internal sealed class TickCoordinator(
             SourceStructure = sourceInstance.StructureId,
             TargetStructure = route.Target,
             SourceNeuronId = $"spont-{sourceInstance.Hemisphere}-{sourceInstance.StructureId}-{NextInt(0, 4096):0000}",
+            SourceInstanceKey = sourceInstance.InstanceKey,
             TargetNeuronId = $"auto-{route.Target}-{NextInt(0, 256):000}",
             SynapseId = route.SynapseId,
+            ProjectionId = route.SynapseId,
+            IsSyntheticBackground = true,
             Neurotransmitter = route.Neurotransmitter,
             VesicleQuanta = Math.Max(0.05f, vesicleQuanta),
             ReuptakeRate = GetReuptakeRateForNt(route.Neurotransmitter),
@@ -12947,7 +12979,10 @@ internal sealed record DispatchedSpikeTrace(
     string TargetHemisphere,
     string TargetNeuronId,
     NTEnum Neurotransmitter,
-    string TargetInstanceKey);
+    string TargetInstanceKey,
+    string SourceInstanceKey = "",
+    Guid ProjectionId = default,
+    bool IsSyntheticBackground = false);
 
 
 internal sealed record EmbodiedAttentionSpotlightRuntime(
@@ -13314,7 +13349,8 @@ internal sealed record InstanceStructureSnapshot(
     CorticalLaminarDiagnostics? CorticalLaminarDiagnostics = null,
     long SourceTick = 0,
     double SourceTimestampMs = 0,
-    long CadenceTicks = 0);
+    long CadenceTicks = 0,
+    SynapticLearningDiagnostics? SynapticLearningDiagnostics = null);
 
 internal sealed class AdminInputRestartGate
 {

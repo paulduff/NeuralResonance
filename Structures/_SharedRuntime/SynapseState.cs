@@ -15,6 +15,22 @@ internal sealed class SynapseState(
 
 	public float BaselineVesicleQuanta { get; set; } = baselineVesicleQuanta ?? vesicleQuanta;
 
+	public Guid ProjectionId { get; set; }
+	public StructureId SourceStructure { get; set; }
+	public string SourceInstanceKey { get; set; } = string.Empty;
+	public string SourceNeuronId { get; set; } = string.Empty;
+	public bool IsFeedback { get; set; }
+	public bool IsSyntheticBackground { get; set; }
+
+	// Warm initialization preserves learned efficacy and remaining plasticity
+	// capacity. It deliberately does not pretend to resume membrane/trace state.
+	public void PrepareWarmStart()
+	{
+		PreTrace = PostTrace = EligibilityTrace = SynapticTagTrace = 0f;
+		LastUpdateTimestampMs = 0;
+		LastPlasticityBudgetTimestampMs = -1;
+	}
+
 	public float PreTrace { get; set; }
 
 	public float PostTrace { get; set; }

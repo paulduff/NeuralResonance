@@ -7,6 +7,24 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 public sealed class AvatarNervousSystemTests
 {
     [Fact]
+    public void GlobalCellIdentitySurvivesParsingAndSyntheticTrafficCannotDriveBody()
+    {
+        var frame = JsonSerializer.SerializeToElement(new { dispatchSpikes = new[] {
+            new {wallClockUnixMs=101L, sourceStructure=StructureId.M1, sourceHemisphere="L",
+                sourceNeuronId="population:l:excitatory:1:0", sourceInstanceKey="L_M1",
+                projectionId="7d27a5e6-6e47-4cf2-8b34-672f9bf99609", isSyntheticBackground=true}
+        }});
+        var dispatches = AvatarDispatchSpikeParser.ParseDispatchSpikes(frame, 0, out var cursor);
+        Assert.Equal(101, cursor);
+        Assert.Equal("L_M1", dispatches[0].SourceInstanceKey);
+        Assert.Equal("7d27a5e6-6e47-4cf2-8b34-672f9bf99609", dispatches[0].ProjectionId);
+        var signal = CreateNervousSystem().InterpretBrainSignals(dispatches);
+        Assert.Equal(0, signal.MotorEvents);
+        Assert.Equal(0, signal.LeftMotorDrive);
+        Assert.Equal(0, signal.RightMotorDrive);
+    }
+
+    [Fact]
     public void NumericProtocolStructureIdProducesMotorDrive()
     {
         var frame = JsonSerializer.SerializeToElement(new

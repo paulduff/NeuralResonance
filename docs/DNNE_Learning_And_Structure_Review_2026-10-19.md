@@ -1,5 +1,10 @@
 # DNNE learning and structure review — 19 October 2026
 
+Subsequent implementation: [contact-learning foundation repair](DNNE_Biological_Foundation_Repair_2026-10-19.md).
+The findings below describe the reviewed base and remain as the original evidence.
+The follow-up records corrections, Avatar/editor updates, verification and remaining
+physiological/behavioural qualification work; no live brain was reset by that repair.
+
 The current DNNE does not meet the requested standard of biologically equivalent
 synaptic learning. It contains real spiking cells, receptor currents and persistent
 plasticity state, but several causal mechanisms connecting these parts are wrong

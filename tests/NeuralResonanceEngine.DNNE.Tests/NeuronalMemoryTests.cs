@@ -69,56 +69,24 @@ public sealed class NeuronalMemoryTests
     }
 
     [Fact]
-    public async Task RapheAversiveTeachingExtinguishesAndVtaTeachingRelearns()
+    public void TagCaptureRequiresActualPairingAndCannotInventAversiveMemory()
     {
-        await WithIsolatedSynapsesAsync(async () =>
+        var eligible = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f);
+        var unpaired = new SynapseState(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f);
+        ContactPlasticity.Spike(eligible, "SynapticTaggingCapture", true, 10, 0);
+        ContactPlasticity.Spike(eligible, "SynapticTaggingCapture", false, 20, 0);
+        // The old fixture assigned an extinction/reacquisition delta from the
+        // sign of a scalar receptor summary, even without causal pairing.
+        // Receptor context may gate a real tag; it must not manufacture one.
+        var modulation = new NeuromodState { AcetylcholineLevel=1, DopamineLevel=1, SerotoninLevel=1 };
+        for (var time=21; time<=1000; time++)
         {
-            using var engine = CreateEngine(StructureId.CA1, "SynapticTaggingCapture");
-            var synapseId = Guid.NewGuid();
-            var tick = 0L;
-            var timestamp = 0.0;
-            TickAck latest = null!;
-            for (var repetition = 0; repetition < 10; repetition++)
-            {
-                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, 0.85f);
-                tick = result.Tick;
-                timestamp = result.Timestamp;
-                latest = result.Ack;
-            }
-            var learnedStrength = engine.GetInboundSynapseStrength(synapseId);
-            (tick, timestamp) = await AdvanceIdleAsync(engine, tick, timestamp, 240);
-            for (var repetition = 0; repetition < 16; repetition++)
-            {
-                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, -1f);
-                tick = result.Tick;
-                timestamp = result.Timestamp;
-                latest = result.Ack;
-            }
-            var extinguishedStrength = engine.GetInboundSynapseStrength(synapseId);
-            var extinctionActivity = latest.SynapticMemoryDiagnostics!.Ensembles
-                .OrderByDescending(static item => item.Extinction)
-                .First();
-            (tick, timestamp) = await AdvanceIdleAsync(engine, tick, timestamp, 320);
-            for (var repetition = 0; repetition < 24; repetition++)
-            {
-                var result = await StimulateAsync(engine, StructureId.CA1, synapseId, 76, 8, tick, timestamp, 1f);
-                tick = result.Tick;
-                timestamp = result.Timestamp;
-                latest = result.Ack;
-            }
-            var relearnedStrength = engine.GetInboundSynapseStrength(synapseId);
-            var relearnedActivity = latest.SynapticMemoryDiagnostics!.Ensembles
-                .OrderByDescending(static item => item.SynapticTag)
-                .First();
-			Assert.True(float.IsFinite(learnedStrength));
-			Assert.True(float.IsFinite(extinguishedStrength));
-			Assert.True(float.IsFinite(relearnedStrength));
-            Assert.True(extinguishedStrength < learnedStrength,
-                $"learned={learnedStrength:F6}, extinguished={extinguishedStrength:F6}, relearned={relearnedStrength:F6}, extinction={extinctionActivity.Extinction:F6}");
-            Assert.True(extinctionActivity.Extinction > 0f);
-            Assert.True(relearnedStrength > extinguishedStrength,
-                $"learned={learnedStrength:F6}, extinguished={extinguishedStrength:F6}, relearned={relearnedStrength:F6}, tag={relearnedActivity.SynapticTag:F6}, eligibility={relearnedActivity.EligibilityTrace:F6}");
-        });
+            ContactPlasticity.Modulate(eligible, "SynapticTaggingCapture", time, 1, modulation, -1, 0);
+            ContactPlasticity.Modulate(unpaired, "SynapticTaggingCapture", time, 1, modulation, -1, 0);
+        }
+        Assert.True(eligible.VesicleQuanta > 1);
+        Assert.Equal(1f, unpaired.VesicleQuanta);
+        Assert.Equal(0f, unpaired.SynapticTagTrace);
     }
 
     private static async Task<(long Tick, double Timestamp)> AdvanceIdleAsync(

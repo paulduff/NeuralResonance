@@ -138,6 +138,11 @@ public sealed class AvatarNervousSystem
     {
         ArgumentNullException.ThrowIfNull(dispatches);
 
+        // Coordinator background injections are diagnostic input, not native
+        // motor-neuron discharge. Retain the existing neuronal authority path.
+        if (dispatches.Any(spike => spike.IsSyntheticBackground))
+            dispatches = dispatches.Where(spike => !spike.IsSyntheticBackground).ToArray();
+
         var left = LeftMotorDrive;
         var right = RightMotorDrive;
         var motorSummary = AvatarKinematics.IntegrateMotorSpikes(dispatches, ref left, ref right, _options.Kinematics);

@@ -1065,6 +1065,8 @@ internal sealed class PhysicalBodyTransducerRuntime
                 SourceNeuronId = $"{hemisphere}:{receptor}",
                 TargetNeuronId = $"{hemisphere}:primary_afferent:{receptor}:fiber_{fiber}",
                 SynapseId = CreateStableSynapseId(structure, hemisphere, receptor, fiber),
+                ProjectionId = CreateStableSynapseId(structure, hemisphere, receptor, fiber),
+                SourceInstanceKey = $"avatar:{hemisphere}:{structure}",
                 Neurotransmitter = NTEnum.GLUTAMATE,
                 VesicleQuanta = Math.Clamp(0.20f + (activation * 4.7f), 0.05f, 6f),
                 ReuptakeRate = Math.Clamp(6.4f - (activation * 3.2f), 1.8f, 8f),

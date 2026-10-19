@@ -42,13 +42,15 @@ internal static partial class Probe
 
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 4) throw new ArgumentException("Arguments: new-output-directory completed-run shutdown-backup repository [--smoke]");
+        if (args.Length < 4) throw new ArgumentException("Arguments: new-output-directory completed-run shutdown-backup repository [--smoke] [--transfer --fresh-only]");
         var output = Path.GetFullPath(args[0]);
         var run = Path.GetFullPath(args[1]);
         var backup = Path.GetFullPath(args[2]);
         var repo = Path.GetFullPath(args[3]);
         var smoke = args.Contains("--smoke");
         var transfer = args.Contains("--transfer");
+        var freshOnly = args.Contains("--fresh-only");
+        if (freshOnly && !transfer) throw new ArgumentException("Fresh-only qualification requires the transfer controls.");
         var localState = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NeuralResonanceEngine");
         if (Directory.Exists(output) || Under(output, run) || Under(output, backup) || Under(output, localState))
             throw new InvalidOperationException("Use a new isolated output directory outside all input and live-state folders.");
@@ -98,11 +100,13 @@ internal static partial class Probe
             var plans = transfer ? TransferPlans(smoke) : smoke ? new[] { "stable-fallen-stable", "fallen-silent", "fallen-left-only" } :
                 new[] { "stable-hold", "fallen-hold", "stable-fallen-stable", "fallen-silent", "fallen-left-only" };
             var limits = transfer ? new[] { int.MaxValue } : smoke ? new[] { 24 } : new[] { 24, int.MaxValue };
-            var weightVariants = transfer ? new[] { "saved", "fresh", "saved-afferent-baseline", "saved-nucleus-baseline", "saved-both-baseline" } : new[] { "saved", "fresh" };
+            var weightVariants = freshOnly ? new[] { "fresh" } : transfer ? new[] { "saved", "fresh", "saved-afferent-baseline", "saved-nucleus-baseline", "saved-both-baseline" } : new[] { "saved", "fresh" };
             if (transfer) ValidateTransferInputs(stable, frames);
             Save(Path.Combine(output, "protocol.json"), new
             {
                 Study = transfer ? "vestibular-transfer" : "held-postural-replay",
+                FreshOnly = freshOnly, ContactIdentityVersion = StableNeuralIdentity.TopologyVersion,
+                PersistenceSchema = SynapsePersistenceStore.CurrentSchemaVersion,
                 Smoke = smoke, NeuralTickMilliseconds = 1, SensoryIntervalMilliseconds = smoke ? 20 : 140,
                 CaseMilliseconds = transfer ? (smoke ? 600 : 8000) : (smoke ? 200 : 6000), Cases = plans, WeightVariants = weightVariants,
                 SourceSpikeLimits = limits.Select(limit => limit == int.MaxValue ? "unrestricted-in-subcircuit" : limit.ToString()),
@@ -110,7 +114,8 @@ internal static partial class Probe
                 Inputs = new { StableSequence = stable.Sequence, FallenSequence = fallen.Sequence, SourceRun = run },
                 ProtectedInputs = protectedFiles, SourceSynapseBackup = backup,
                 Scope = "Fourteen in-process engines: seven regions in both hemispheres; synchronous 1 ms biological clock and next-tick delivery using actual coordinator routing helpers. " +
-                    (transfer ? "Synthetic receptor controls and resampled captured trajectory with selective connection-strength interventions in copies. " : "Held captured frames and deliberate phase steps. ") +
+                    (freshOnly ? "Fresh cells and contacts in every case; no old weights loaded and no baseline intervention. Synthetic receptor controls and resampled captured trajectory. " :
+                        transfer ? "Synthetic receptor controls and resampled captured trajectory with selective connection-strength interventions in copies. " : "Held captured frames and deliberate phase steps. ") +
                     "Not a replica of the whole-brain wall-clock scheduler or a physical recovery experiment.",
                 FullPhysicalTrajectoryReplayed = false, ExternalBrainRegionsIncluded = false,
                 BackgroundNoiseInjectionIncluded = false, WholeBrainSchedulerReplicated = false,
@@ -122,10 +127,10 @@ internal static partial class Probe
                 PrimaryUpdates = "140 ms full study; 20 ms time-compressed preflight",
                 Controls = "Synthetic balanced stationary upright, smooth pitch tilt and return, support displacement and return, neck yaw and return, muted and left-only tilt. Captured trajectory resampled from original timestamps over its first eight seconds.",
                 SyntheticInputsAreReceptorFixtures = true, PhysicalDynamicsReplicated = false,
-                BaselineInterventions = "Only existing vestibular-afferent outbound and/or vestibular-nucleus inbound VesicleQuanta restored to their stored BaselineVesicleQuanta inside each copy. No trace reset or new synapse imposed; ordinary plasticity remains active.",
+                BaselineInterventions = freshOnly ? "None; every case starts with empty receiving/release state and newly initialized membranes." : "Only existing vestibular-afferent outbound and/or vestibular-nucleus inbound VesicleQuanta restored to their stored BaselineVesicleQuanta inside each copy. No trace reset or new synapse imposed; ordinary plasticity remains active.",
                 ExactIntegrationObserver = "Scheduled and processed times, source, target cell, raw/learned/effective strengths after actual receptor integration and before plasticity. Complete per-path aggregates, first 100 events per nucleus per phase retained individually.",
                 ElectricalSampling = "Every neural millisecond for aggregate soma/current peaks and spikes; most depolarized, strongest-current and most depolarized stand-lane cell every 10 ms.",
-                TimingControl = "Probe-only message IDs are derived from the same event identity across cases, so equivalent deliveries share jitter within this process. Production HashCode timing and cell-bias salts are process-specific; this is not portable bitwise reproducibility across runs or hosts.",
+                TimingControl = "Stable production contact/projection/delay mapping and probe event IDs include source instance and projection. This study does not establish whole-brain or cross-host bitwise reproducibility.",
                 ControlInterval = "Full study: quiet 0-2 seconds, stimulus 2-6, quiet 6-8; smooth half-cosine tilt/support ramps of 0.5 seconds. Preflight time-compresses this schedule.",
                 LiveBrainAccessed = false, GateChanged = false
             });
@@ -210,6 +215,7 @@ internal static partial class Probe
             long sequence = 0, primaryQueued = 0, rightPrimaryQueued = 0, primaryRighting = 0, sourceDrops = 0, routed = 0, queueRejected = 0, taggedRelays = 0;
             var phaseStats = new Dictionary<string, PhaseStats>();
             var previous = NeuronalMotorRuntime.Default;
+            SynapticLearningDiagnostics[] lastLearning = [];
             using var trace = new StreamWriter(Path.Combine(directory, "neural-trace.jsonl"));
             using var recorder = transfer ? new TransferRecorder(directory, nodes) : null;
             using var inputTrace = transfer ? new StreamWriter(Path.Combine(directory, "receptor-fixtures.jsonl")) : null;
@@ -243,6 +249,8 @@ internal static partial class Probe
                 foreach (var node in nodes) processed.Add((node.Instance, await node.Engine.ProcessStepAsync(signal, 0)));
                 recorder?.AfterStep();
                 var snapshots = processed.Select(item => Snapshot(item.Instance, item.Step.Ack)).ToArray();
+                lastLearning = processed.Select(item => item.Step.Ack.SynapticLearningDiagnostics
+                    ?? throw new InvalidOperationException("The corrected runtime must supply contact learning telemetry.")).ToArray();
                 var batches = nodes.ToDictionary(node => node.Instance.InstanceKey, _ => new List<SpikeMessage>());
                 foreach (var item in processed)
                 {
@@ -280,13 +288,28 @@ internal static partial class Probe
                     trace.WriteLine(JsonSerializer.Serialize(new { Tick = tick, Phase = phase, PhysicalBalanceError = template.Articulation!.Musculoskeletal!.BalanceError,
                         PopulationError = posture.BalanceError, Afferent = afferent, Descending = descending, BilateralDrive = drive,
                         Latch = previous.RightingLatchActive, PartialCircuitMotorCoverage = previous.MotorCircuitCoverage,
-                        Regions = snapshots.Select(snapshot => new { Instance = snapshot.Instance.InstanceKey, snapshot.MeanFiringRateHz, snapshot.SpikeInCount, snapshot.SpikeOutCount, snapshot.FeedbackQueueDepth }) }, Compact));
+                        Regions = snapshots.Select(snapshot => new { Instance = snapshot.Instance.InstanceKey, snapshot.MeanFiringRateHz, snapshot.SpikeInCount, snapshot.SpikeOutCount, snapshot.FeedbackQueueDepth,
+                            snapshot.SynapticLearningDiagnostics!.ContactCount, snapshot.SynapticLearningDiagnostics.PresynapticEvents,
+                            snapshot.SynapticLearningDiagnostics.PostsynapticEvents }) }, Compact));
                 }
                 if (tick % 1000 == 0) Console.WriteLine($"  {label}: {tick}/{duration} neural ms, input={primaryQueued}, routed={routed}, rejected={queueRejected}");
             }
             if ((plan is "fallen-silent" or "muted-tilt") && primaryQueued != 0 || (plan is "fallen-left-only" or "left-only-tilt") && rightPrimaryQueued != 0)
                 throw new InvalidOperationException("Input control did not hold in " + label);
             recorder?.Complete();
+            var learned = nodes.Select(node =>
+            {
+                var contacts = ((Dictionary<Guid, SynapseState>)InboundField.GetValue(node.Engine)!).Values.ToArray();
+                if (contacts.Any(contact => !float.IsFinite(contact.VesicleQuanta) || !float.IsFinite(contact.EligibilityTrace)))
+                    throw new InvalidOperationException("Non-finite contact learning state.");
+                return new { Instance = node.Instance.InstanceKey, Contacts = contacts.Length,
+                    ChangedContacts = contacts.Count(contact => contact.TotalAbsolutePlasticityChange > 0),
+                    AbsoluteLearningChange = contacts.Sum(contact => contact.TotalAbsolutePlasticityChange),
+                    MinimumStrength = contacts.Length == 0 ? 1 : contacts.Min(contact => contact.VesicleQuanta),
+                    MaximumStrength = contacts.Length == 0 ? 1 : contacts.Max(contact => contact.VesicleQuanta) };
+            }).ToArray();
+            Save(Path.Combine(directory, "learning-summary.json"), new { FreshState = weights == "fresh", Instances = learned,
+                Telemetry = lastLearning, BiologicalEquivalenceQualified = false, PhysicalRecoveryAssessed = false });
             var result = new { Case = label, Weights = weights, Plan = plan, SourceLimit = limit == int.MaxValue ? "unrestricted-in-subcircuit" : limit.ToString(),
                 PrimaryQueued = primaryQueued, RightPrimaryQueued = rightPrimaryQueued, PrimaryFallSensitiveMessages = primaryRighting,
                 SourceBudgetDrops = sourceDrops, RoutedMessages = routed, TaggedRelays = taggedRelays, QueueRejected = queueRejected,
@@ -300,7 +323,8 @@ internal static partial class Probe
     static InstanceStructureSnapshot Snapshot(ServiceInstance instance, TickAck ack) => new(instance, ack.StructureId, ack.ActiveNeuronCount,
         ack.MeanFiringRateHz, ack.DominantRhythm, [], ack.LocalNeuromod, ack.SpikeInCount, ack.SpikeOutCount, ack.FeedbackQueueDepth,
         VestibuloReticularDiagnostics: ack.VestibuloReticularDiagnostics, ActionSelectionDiagnostics: ack.ActionSelectionDiagnostics,
-        CerebellarDiagnostics: ack.CerebellarDiagnostics, SourceTick: ack.Tick);
+        CerebellarDiagnostics: ack.CerebellarDiagnostics, SourceTick: ack.Tick,
+        SynapticLearningDiagnostics: ack.SynapticLearningDiagnostics);
 
     sealed class PhaseStats
     {

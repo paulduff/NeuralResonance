@@ -23,6 +23,10 @@ def main():
     study = args.study.resolve()
     protocol, report = read(study / 'protocol.json'), read(study / 'results.json')
     require(protocol['study'] == 'vestibular-transfer' and report['completed'], 'A completed transfer study is required')
+    fresh_only = protocol.get('freshOnly', False)
+    if fresh_only:
+        require(protocol['weightVariants'] == ['fresh'] and protocol['persistenceSchema'] == 4,
+                'Fresh qualification must use only schema-4 fresh state')
     expected = {f'{weights}-all-{plan}' for weights in protocol['weightVariants'] for plan in protocol['cases']}
     require(len(report['results']) == report['caseCount'] == len(expected) and
             {case['case'] for case in report['results']} == expected, 'Incomplete case matrix')
@@ -36,6 +40,14 @@ def main():
         initial = read(folder / 'initial-state.json')
         require(len(initial) == 14 and all(item['expectedInbound'] == item['loadedInbound'] and
                 item['expectedOutbound'] == item['loadedOutbound'] for item in initial), 'Saved-state preflight failed')
+        if fresh_only:
+            require(all(not item['copiedSavedState'] and item['loadedInbound'] == item['loadedOutbound'] == 0
+                        and item['initialSha256'] is None for item in initial), 'Fresh case inherited old weights')
+            learning = read(folder / 'learning-summary.json')
+            require(learning['freshState'] and len(learning['instances']) == len(learning['telemetry']) == 14,
+                    'Incomplete fresh learning observations')
+            require(all(item['topologyVersion'] == protocol['contactIdentityVersion'] for item in learning['telemetry']),
+                    'Mixed learning topology versions')
         require(case['sourceBudgetDrops'] == case['queueRejected'] == 0, 'Transfer was not uncapped and fully admitted')
         rows = [json.loads(line) for line in (folder / 'neural-trace.jsonl').read_text().splitlines()]
         require([row['tick'] for row in rows] == list(range(10, duration + 1, 10)), 'Incomplete neural trace')
@@ -95,7 +107,9 @@ def main():
                        'controlsHeld': True, 'interventionsLimitedToDeclaredCopies': True},
         'scope': 'Observed model currents, somatic voltages and signal transfer in an isolated circuit; no physical recovery assessment.',
         'portableBitwiseReproducibility': False,
-        'timingCaution': 'Message IDs align equivalent events within the process; production HashCode salts differ across processes. Cross-host quality comparisons require replication.',
+        'timingCaution': ('Stable production connection/delay identities; cross-host numerical equivalence still requires replication.'
+                         if protocol.get('contactIdentityVersion') else 'Legacy runtime used process-specific HashCode salts; cross-host comparisons require replication.'),
+        'freshOnly': fresh_only,
         'analysisSourceSha256': sha256(Path(__file__).read_bytes()).hexdigest(),
         'samplingCaution': 'Electrical output spike counts cover every 1 ms step. Population error and latch occupancy are sampled every 10 ms; an entry between samples can be missed.',
         'liveBrainAccessed': False, 'physicalRecoveryAssessed': False, 'comparison': comparison, 'results': cases,

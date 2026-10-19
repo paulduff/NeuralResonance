@@ -155,3 +155,13 @@ world to assess feedback, balance and recovery. The world supplies essential
 sensorimotor experience; it cannot repair incorrect learning ownership or prove
 that an uncalibrated neuronal model is equivalent to a biological brain. Long
 experiments remain detached visible PowerShell runs without live monitoring.
+
+The next baseline is prepared through `tools/PosturalCircuitProbe` with
+`--transfer --fresh-only` and `tools/start-fresh-postural-window.ps1`. Every case
+starts with new cells and zero loaded connections. Four short preflight cases
+gate eight full controls (eight biological seconds each). The run retains contact
+learning summaries as well as electrical and signal-accounting observations.
+It uses fourteen isolated instances, not a reset of the running whole brain.
+The PowerShell window performs both stages, preserves/verifies the old saves,
+backs up its results and remains open for the operator. No result is claimed at
+preparation time.

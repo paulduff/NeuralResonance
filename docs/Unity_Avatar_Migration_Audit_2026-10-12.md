@@ -730,3 +730,24 @@ Two independent mechanism captures confirm deterministic sampled wiring and the
 repaired event paths. No live service was restarted or world trial run. Full
 physiological calibration, balance discrimination, standing and recovery remain
 unqualified; code/test success must not be described as learned physical recovery.
+
+## Fresh-state controlled comparison prepared — 19 October
+
+At Paul's request the next run uses `PosturalCircuitProbe --transfer --fresh-only`.
+Each case creates fourteen new DNNE instances for the seven bilateral posture/
+vestibular pathways, with zero loaded incoming/outgoing connections. The old
+verified shutdown backup is hashed for preservation only; none of its weights
+is imported. The original Avatar physical transducer/labyrinth fixtures and the
+eight stationary, motion, tilt, support, captured-trajectory and input controls
+are retained. Per-case learning summaries accompany membrane/spike and delivery
+accounting. This is the first corrected baseline, not a whole-brain/world trial
+or evidence of learned recovery.
+
+`start-fresh-postural-window.ps1` runs a four-case short preflight, validates it,
+then runs the eight full controls and validates their saved accounting. Binaries,
+source/profile/configuration inputs, analyser and scripts are packaged and hashed.
+Old backup hashes are checked before/after stages; new results receive a verified
+D: backup on completion or failure. It opens a separate visible PowerShell window
+with `-NoExit` and no agent monitoring. Completion and neural quality are reported
+separately. No live brain state, Avatar mechanics, editor service or world is reset
+by this isolated comparison.

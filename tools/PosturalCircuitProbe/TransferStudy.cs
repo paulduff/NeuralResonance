@@ -14,7 +14,7 @@ internal static partial class Probe
 
     static void CanonicalizeProbeMessage(SpikeMessage message, string sourceInstance)
     {
-        var identity = FormattableString.Invariant($"{sourceInstance}|{message.TimestampMs:R}|{message.SourceStructure}|{message.TargetStructure}|{message.SourceNeuronId}|{message.TargetNeuronId}|{message.SynapseId}|{message.Neurotransmitter}|{message.IsFeedback}");
+        var identity = FormattableString.Invariant($"{sourceInstance}|{message.SourceInstanceKey}|{message.TimestampMs:R}|{message.SourceStructure}|{message.TargetStructure}|{message.SourceNeuronId}|{message.TargetNeuronId}|{message.SynapseId}|{message.ProjectionId}|{message.Neurotransmitter}|{message.IsFeedback}|{message.IsSyntheticBackground}");
         message.MessageId = new Guid(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(identity)).AsSpan(0, 16));
     }
 

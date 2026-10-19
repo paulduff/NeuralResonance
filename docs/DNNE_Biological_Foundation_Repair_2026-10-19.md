@@ -165,3 +165,12 @@ It uses fourteen isolated instances, not a reset of the running whole brain.
 The PowerShell window performs both stages, preserves/verifies the old saves,
 backs up its results and remains open for the operator. No result is claimed at
 preparation time.
+
+The completed fresh comparison is reviewed in
+[DNNE_Fresh_Postural_Results_2026-10-19.md](DNNE_Fresh_Postural_Results_2026-10-19.md).
+Fresh contact plasticity and transmission are present, but the existing decoder's
+subtraction of population rates rectifies all saved balance-error samples to zero.
+Tilt information reaches the sampled spinal/reflex path. Cerebellar teaching
+cannot be qualified by this reduced circuit because its granule/olive inputs are
+absent. A separate cell-response and integration-step diagnostic is prepared to
+measure the underlying response before changing cell models or balance decoding.

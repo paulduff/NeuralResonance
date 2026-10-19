@@ -751,3 +751,22 @@ D: backup on completion or failure. It opens a separate visible PowerShell windo
 with `-NoExit` and no agent monitoring. Completion and neural quality are reported
 separately. No live brain state, Avatar mechanics, editor service or world is reset
 by this isolated comparison.
+
+## Fresh comparison reviewed; cell calibration prepared — 19 October
+
+The four preflight/eight full cases completed. The local/D: 715-file capture,
+437 packaged files and 244 protected old files verify. See
+[fresh postural results](DNNE_Fresh_Postural_Results_2026-10-19.md). The fresh circuit
+transmits disturbance information into its sampled spinal/reflex path, but the
+current population-rate subtraction yields zero decoded balance error throughout
+the saved trace. The reduced circuit also omits cerebellar teaching inputs, so
+unchanged vermis contacts do not diagnose a failure of that rule in a complete
+brain. Neither posture nor physical recovery is qualified.
+
+Revisited Avatar's original balance implementation and neuronal motor bridge;
+body mechanics, receptor/labyrinth paths, authority and paused-start world
+behaviour remain intact. The next isolated tool uses production cell kernels with
+declared imposed receptor events, pacemaker controls and matched physical clocks
+at two integration steps. It tests no Avatar functions and substitutes no body
+controller. The visible PowerShell launcher preserves old saves and backs up new
+results. Editor and live services are not redeployed by this diagnostic work.

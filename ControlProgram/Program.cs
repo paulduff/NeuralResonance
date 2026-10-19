@@ -1444,10 +1444,11 @@ internal sealed record RuntimePerformanceProfileSettings(
     int SnapshotEveryNTicks,
     bool UseDirectStepFastPath)
 {
-    public const string SupportedProfileList = "stable, diagnostic, normal, fast, headless";
+    public const string SupportedProfileList = "stable, embodied, diagnostic, normal, fast, headless";
 
     public static bool IsSupported(string profile) =>
         profile.Equals("stable", StringComparison.OrdinalIgnoreCase) ||
+        profile.Equals("embodied", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("diagnostic", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("normal", StringComparison.OrdinalIgnoreCase) ||
         profile.Equals("fast", StringComparison.OrdinalIgnoreCase) ||
@@ -1495,6 +1496,19 @@ internal sealed record RuntimePerformanceProfileSettings(
 
     public static RuntimePerformanceProfileSettings ForProfile(string profile)
     {
+        if (profile.Equals("embodied", StringComparison.OrdinalIgnoreCase))
+        {
+            // RPC concurrency also determines the scheduler's participant budget.
+            // Raise source-spike capacity without expanding that work or slowing
+            // the established snapshot cadence used by the live body connection.
+            return ForProfile("stable") with
+            {
+                ProfileName = "embodied",
+                MaxSpikeDispatchPerServicePerTick = 24,
+                MaxSpikeDispatchTotalPerTick = 1536
+            };
+        }
+
         if (profile.Equals("stable", StringComparison.OrdinalIgnoreCase) ||
             profile.Equals("local", StringComparison.OrdinalIgnoreCase))
         {

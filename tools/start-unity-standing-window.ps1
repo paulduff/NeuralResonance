@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[switch]$Muscles,[ValidateSet('','stable','normal','fast','headless')][string]$BrainProfile='',[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
+param([Parameter(Mandatory=$true)][string]$Player,[ValidateRange(10,120)][int]$DurationSec=30,[switch]$Muscles,[ValidateSet('','stable','embodied','normal','fast','headless')][string]$BrainProfile='',[string]$BackupRoot='D:\DNNE-desktop-runs\UnityWorld',[switch]$InWindow,[string]$LaunchTaskName)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 if(-not $InWindow){
@@ -118,6 +118,7 @@ try {
   Start-Sleep -Seconds 1
  }
  $report=Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
+ if(-not $report.completed){throw ('Observation did not complete: '+$report.error)}
  if($Muscles){
   # Verify the player actually captured the requested physical muscle plant.
   # This check does not establish neuronal delivery or successful balance.

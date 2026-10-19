@@ -123,6 +123,7 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
 
     [Theory]
     [InlineData("stable", 12, true)]
+    [InlineData("embodied", 12, true)]
     [InlineData("diagnostic", 2, true)]
     [InlineData("normal", 6, true)]
     [InlineData("fast", 12, true)]
@@ -150,6 +151,25 @@ public sealed class RuntimeDiagnosticsAndProfilesTests
         var settings = RuntimePerformanceProfileSettings.FromConfiguration(configuration);
 
         Assert.Equal("fast", settings.ProfileName);
+    }
+
+    [Fact]
+    public void Embodied_Profile_Raises_Only_Spike_Capacity_From_Stable()
+    {
+        var stable = RuntimePerformanceProfileSettings.ForProfile("stable");
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["PerformanceProfile"] = "embodied" })
+            .Build();
+        var embodied = RuntimePerformanceProfileSettings.FromConfiguration(configuration);
+
+        Assert.Equal(24, embodied.MaxSpikeDispatchPerServicePerTick);
+        Assert.Equal(1536, embodied.MaxSpikeDispatchTotalPerTick);
+        Assert.Equal(stable, embodied with
+        {
+            ProfileName = stable.ProfileName,
+            MaxSpikeDispatchPerServicePerTick = stable.MaxSpikeDispatchPerServicePerTick,
+            MaxSpikeDispatchTotalPerTick = stable.MaxSpikeDispatchTotalPerTick
+        });
     }
 
     [Fact]

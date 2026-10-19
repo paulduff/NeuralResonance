@@ -99,6 +99,39 @@ public sealed class SensorimotorTickSchedulerTests
         Assert.Equal(2, selected.GeneralLaneSelected);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EmbodiedSpikeCapacityPreservesStableTickParticipants(bool startupWarmup)
+    {
+        var services = Enumerable.Range(0, 68)
+            .Select(index => Instance(StructureId.ProprioceptiveAfferents, $"fast-{index}"))
+            .Concat(Enumerable.Range(0, 170)
+                .Select(index => Instance(StructureId.CA1, $"general-{index}")))
+            .ToArray();
+        var stable = RuntimePerformanceProfileSettings.ForProfile("stable");
+        var embodied = RuntimePerformanceProfileSettings.ForProfile("embodied");
+        var stableFastCursor = 0;
+        var stableGeneralCursor = 0;
+        var embodiedFastCursor = 0;
+        var embodiedGeneralCursor = 0;
+
+        var baseline = SensorimotorTickScheduler.Select(services,
+            ref stableFastCursor, ref stableGeneralCursor,
+            stable.MaxTickRequestConcurrency, adaptivePressure: 0.0, startupWarmup: startupWarmup);
+        var comparison = SensorimotorTickScheduler.Select(services,
+            ref embodiedFastCursor, ref embodiedGeneralCursor,
+            embodied.MaxTickRequestConcurrency, adaptivePressure: 0.0, startupWarmup: startupWarmup);
+
+        Assert.Equal(startupWarmup ? 20 : 30, comparison.Participants.Count);
+        Assert.Equal(baseline.Participants.Select(service => service.InstanceKey),
+            comparison.Participants.Select(service => service.InstanceKey));
+        Assert.Equal(baseline.FastLaneSelected, comparison.FastLaneSelected);
+        Assert.Equal(baseline.GeneralLaneSelected, comparison.GeneralLaneSelected);
+        Assert.True(embodied.MaxSpikeDispatchPerServicePerTick > stable.MaxSpikeDispatchPerServicePerTick);
+        Assert.True(embodied.MaxSpikeDispatchTotalPerTick > stable.MaxSpikeDispatchTotalPerTick);
+    }
+
     [Fact]
     public void CadenceTrackerReportsPerInstancePhysicalIntervalsAndAge()
     {

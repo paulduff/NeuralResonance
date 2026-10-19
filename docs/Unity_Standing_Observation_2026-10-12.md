@@ -151,6 +151,10 @@ in `trace-analysis.json`, preserving the original captures.
 
 ## Prepared higher transport allowance
 
+This records the 12 October preparation. The 19 October startup attempt below
+showed that `headless` is unsuitable for this live-body comparison. Use the new
+`-BrainProfile embodied` setting for the higher spike allowance with stable timing.
+
 The operator requested a higher allowance for this desktop, then explicitly
 requested code preparation without another run. The optional launcher argument
 `-BrainProfile headless` selects the existing profile with 24 source spikes per
@@ -175,3 +179,42 @@ Admission still does not prove end-to-end sensory delivery. No live agent
 monitoring is required. No new trial or profile change was made on 12 October
 after this preparation. DNNE and the editor were gracefully shut down at the
 operator's request; the checkpoint and final persisted synapses were verified on D:.
+
+## 19 October restart and transport-profile correction
+
+Before restart, all 239 local persisted synapse files matched the verified shutdown
+backup. The previous Unity player and managed assembly hashes also matched. DNNE
+started with 119 healthy service types and the editor paused. The initial attempt,
+`unity-standing-20261019-064354-e2e4a3`, passed all 19 mechanical axes and 40 native
+samples, but stopped before operator Play: zero physics steps and body frames.
+Its report states that motor telemetry or lease readiness was not established.
+This is a commissioning failure, not a standing/recovery result or evidence that
+muscles were absent. The launcher now surfaces that report error before checking
+muscle captures from an incomplete observation.
+
+The prepared `headless` profile changes more than spike capacity. Its RPC
+concurrency of 72 also controls the tick scheduler's participant budget: up to
+144 instances during warmup and 216 afterward at zero pressure, versus stable's
+20/30. A saved post-failure sample has 144 active instances, a 2.05-second tick,
+2.04-second median and 4.16-second 95th percentile. Unity's existing motor-freshness
+limit is 1.25 seconds; the journal contains sparse advancing motor packets while
+paused. The broader scheduling change makes this an unsuitable way to isolate
+the intended transport comparison. The saved timing is not a proof that spike
+capacity alone caused the delay.
+
+The new explicit `embodied` profile derives from `stable`, changing only its name
+and source-spike limits to 24 per service and 1,536 total per tick. RPC concurrency
+remains 10, dispatch concurrency 32, snapshot cadence 12 ticks, and all timeouts,
+query cadence and direct-step settings remain stable's values. The default profile
+is unchanged. Existing live switching uses `RestartSimulation=false`; automatic
+profile selection is temporarily pinned by the observation window as before.
+No body, neural decoder, sensory encoding or freshness threshold is changed.
+
+All 53 focused profile, actual scheduler and standing-measurement tests pass.
+Regression coverage checks the complete non-spike settings and actual selected
+instances during both warmup and normal operation. Current synapses and coordinator
+state were gracefully saved and SHA-verified on D: before restarting the rebuilt
+coordinator. The earlier shutdown backup remains intact. Transient neuron state
+is not fully checkpointed; this is a fresh process startup using persisted synapses.
+The next 60-second comparison uses the same Unity body, starts paused, and runs
+in an independent visible PowerShell window. Recovery quality remains unassessed.

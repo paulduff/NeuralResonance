@@ -546,3 +546,22 @@ The operator asked to finish coding without running, then to shut services down.
 No new experiment/profile mutation occurred. Graceful shutdown saved coordinator
 state and persisted synapses, SHA-verified on D:. Those files are not a complete
 checkpoint of every neuron's transient membrane state.
+
+## 19 October commissioning correction
+
+Restart verified all 239 synapse files against the shutdown backup and reused the
+same Unity executable/assembly. The first `headless` attempt passed mechanical
+qualification but never started the physical trial: zero physics steps/body frames,
+with a motor/lease readiness error. The later "38 muscles" message was a launcher
+validation ordering error, now replaced by the actual incomplete-run reason.
+
+The broad performance preset also raises per-tick participant work: RPC concurrency
+72 permits 144 warmup or 216 normal instances at zero pressure. Saved timing shows
+a 2.05-second tick and delayed motor updates, incompatible with the unchanged
+1.25-second body freshness gate. A new opt-in `embodied` profile retains every
+stable scheduling/timing setting and raises only the spike limits to 24/1,536.
+Actual scheduler regression tests preserve stable's 20/30 selected instances;
+all 53 focused profile/scheduler/standing tests pass. This does not establish a
+causal recovery benefit. Body, muscle, receptor, decoder and gate behavior are
+unchanged, and full axial/posture parity remains unresolved. The current brain
+was gracefully saved and backed up on D: before the coordinator rebuild/restart.

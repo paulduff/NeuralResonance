@@ -421,3 +421,73 @@ alone cannot certify that a fall was corrected. Existing synthetic decoder and
 topology contract tests do not qualify this integrated discrimination task.
 No live weights, Avatar mechanics, authority gate or running service changed
 during this result review.
+
+## Vestibular transfer comparison preparation — 19 October
+
+The transfer mode of `tools/PosturalCircuitProbe` tests a concrete lead from the
+saved state: many vestibular-afferent outbound weights are at the 0.05 floor,
+and the saved vestibular nuclei also have weak excitatory receiving weights.
+These facts do not establish which stage explains silence. Forty cases compare
+intact saved, fresh, and three selectively altered copies: restore vestibular
+afferent outbound strength to its stored baseline, restore vestibular nucleus
+inbound strength, or restore both. Only existing `VesicleQuanta` values change
+at case initialization. Synapse identities, learning traces, routes and ordinary
+plasticity remain in place. Restoring baseline strength is an isolated causal
+probe, not a learned recovery or an authorized change to live synapses.
+
+Eight input protocols cover broad stationary support (0.16 square metres), normal
+stationary support (0.08 square metres), smooth pitch tilt/return, support
+displacement/return, neck yaw/return, the first eight seconds of captured motion,
+muted tilt, and left-only tilt. The normal support width intentionally retains
+the current transducer's tonic support-narrowing signal. It must not be confused
+with a fall or omitted to make a negative control easier. Synthetic fixtures
+retain the captured muscle identities but set them to stationary neutral
+measurements; they are receptor experiments, not simulated mechanical trajectories.
+The trajectory case resamples existing frames at the controlled receptor cadence
+and preserves their original sequence/timestamp alongside the case clock.
+
+Each full case runs eight neural seconds: two quiet, four of stimulus, two quiet
+again, with 0.5-second half-cosine tilt/support ramps. Neck yaw makes two bounded
+cycles during the stimulus. Full receptor cadence is 140 ms; neural steps are
+1 ms with no source or global cap inside the isolated circuit. Outside nuclei,
+background injection and the live scheduler remain excluded. Synthetic input
+preflight verifies descriptor validity and that broad quiet/yaw controls have no
+primary fall-sensitive events, while tilt, support displacement and normal-width
+tonic controls do. Muted/one-sided admission checks remain explicit.
+
+A disabled-by-default internal observer in `StructureEngine` exports value-only
+observations immediately after actual receptor integration and before plasticity:
+source, target cell, scheduled/processed times and presynaptic, learned and
+effective strengths. The probe installs it only on the two isolated vestibular
+nuclei. Complete counts/strength statistics are retained by phase, nucleus,
+source, transmitter and righting tag; the first 100 events per nucleus/phase also
+record immediate receptor currents. Electrical aggregates measure soma/current
+peaks and spikes every neural millisecond. Ten-millisecond detail records the
+most depolarized cell, highest-current cell and most depolarized stand-lane cell,
+including AIS voltage, AMPA/NMDA/GABA model currents, adaptation and refractory
+state. These are model electrical quantities, not calibrated physiological units.
+The previously calculated net current is updated during the following membrane
+step; immediate event records also retain the directly updated receptor currents.
+
+Accounting requires integrated plus pending signals to equal actual ingress.
+The analyser verifies that electrical spike counts match emitted spikes and that
+sampling and the declared intervention matrix are complete. Final step snapshots
+precede final route enqueue, so their ingress count can be below the final admitted
+total; those final arrivals are still pending. Event-derived message IDs align
+equivalent jitter events within the process and distinguish source hemispheres,
+receptors, fibres and tracts. Production `HashCode` salts still differ across
+processes, including cell biases: cross-host comparisons require repeated runs,
+not claims of bitwise reproducibility from one case.
+
+The observer transparency regression compares identical timed inputs with and
+without observation; a first draft caught differing random message IDs and was
+corrected to use identical input identities. The corrected regression and all
+121 focused motor/righting/Avatar balance/labyrinth checks pass. The final probe
+build has zero warnings/errors. Twenty time-compressed preflight cases complete
+with finite responses, exact initial state loading, unchanged protected inputs,
+closed signal accounting and electrical/emitted spike agreement. Short preflight
+is a wiring check, not neural quality qualification. `analyse-vestibular-transfer.py`
+saves those checks and the measured comparisons without accessing live services.
+The launcher verifies binary/source hashes and starts the full study independently
+in visible PowerShell, with D: backup on completion and no live agent monitoring.
+Builds use isolated artifact paths; no running service binary was replaced.

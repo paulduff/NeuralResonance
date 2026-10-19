@@ -9,6 +9,8 @@ using NeuralResonanceEngine.Shared.Contracts;
 
 public sealed class StructureEngine : IStructureHost, IDisposable
 {
+	internal Action<InboundSynapticObservation>? InboundIntegrationObserver { get; set; }
+
 	private const double MaximumIntegrationSubstepMilliseconds = 4.0;
 	private const double MaximumCatchUpMilliseconds = 100.0;
 
@@ -758,6 +760,10 @@ public sealed class StructureEngine : IStructureHost, IDisposable
 				}
 			}
 			IntegrateInboundArbor(effectiveMessage, modelNeuron, integrationStepMilliseconds);
+			InboundIntegrationObserver?.Invoke(new InboundSynapticObservation(
+				envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
+				modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,
+				synapse.VesicleQuanta, effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
 			ApplyPlasticity(message, synapse, modelNeuron.Index, modelNeuron.ActivityTrace, modelNeuron.MicrotubulePlasticitySupport * modelNeuron.CalciumPlasticitySupport, modelNeuron.MicrotubuleTracePersistenceSupport, envelope.DeliverAtTimestampMs, modelNeuron.LocalNeuromodState, modelNeuron.LocalRewardSignal);
 		}
 	}

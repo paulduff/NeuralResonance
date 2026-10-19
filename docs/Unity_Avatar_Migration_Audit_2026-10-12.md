@@ -641,3 +641,25 @@ See the standing-observation document for measured counts and scope. This is an
 analysis finding, not a replacement of original Avatar balance/labyrinth mechanics
 or a physical recovery result. No live body, neural authority, safeguards or weights
 were changed; missing axial muscles and posture transitions remain open.
+
+## Vestibular signal-transfer instrumentation — 19 October
+
+Reviewed the existing Avatar balance implementation, physical receptor and
+labyrinth paths, righting topology and their tests before extending diagnostics.
+The new transfer comparison uses those original mechanisms. Forty isolated cases
+cross eight stationary/motion/tilt/support/trajectory/input-control protocols with
+intact saved, fresh and three selective baseline-strength interventions. Both
+broad and normal support widths are included, retaining the latter's existing
+tonic narrowing signal. Synthetic fixtures are explicitly sensory controls, not
+Avatar-generated dynamics or recovery commands.
+
+An internal observer, unused by live hosts, records the strength actually applied
+at integration before plasticity. The probe logs vestibular nucleus currents,
+voltages and spikes, checks integrated/pending/admitted accounting and distinguishes
+initial/stimulus/returned quiet stages. Existing body mechanics, receptor encoding,
+neuronal models and motor authority are preserved. No gate or live weight changes
+are introduced. The observer transparency check and 121 focused tests pass; twenty
+short preflight cases verify instrumentation and input/state isolation. The full
+comparison runs in independent visible PowerShell with verified D: backups. Cross-
+host statistics will require replication because production timing/cell-bias hash
+salts differ across processes. Physical standing/get-up remains unassessed here.

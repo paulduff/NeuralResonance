@@ -8,6 +8,67 @@ public sealed class NeuronalRightingReflexTests
 {
     private static readonly SemaphoreSlim EnvironmentGate = new(1, 1);
 
+    [Fact]
+    public async Task IntegrationObserverRecordsActualDeliveryWithoutChangingNeuronalResponse()
+    {
+        await EnvironmentGate.WaitAsync();
+        var root = Path.Combine(Path.GetTempPath(), "nre-integration-observer", Guid.NewGuid().ToString("N"));
+        var priorDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+        var priorInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+        try
+        {
+            async Task<List<(float Rate, int Input, int Output)>> Run(bool observe)
+            {
+                Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", Path.Combine(root, observe ? "observed" : "plain"));
+                Environment.SetEnvironmentVariable("SERVICE_INSTANCE", "L_VestibularNuclei");
+                using var engine = new StructureEngine(new StructureProfile(StructureId.VestibularNuclei,
+                    "LIF", "STDP", "delivery observer transparency", new DelayWindow(1, 5)));
+                var observations = new List<InboundSynapticObservation>();
+                Assert.Null(engine.InboundIntegrationObserver);
+                if (observe) engine.InboundIntegrationObserver = observations.Add;
+                var result = new List<(float, int, int)>();
+                for (var tick = 1; tick <= 400; tick++)
+                {
+                    if (tick % 20 == 1)
+                    {
+                        var message = Relay(StructureId.VestibularAfferents, StructureId.VestibularNuclei, RightingSourceIndex(0));
+                        message.MessageId = Guid.Parse($"afbc0222-2222-4222-8222-{tick:x12}");
+                        message.SynapseId = Guid.Parse("afbc0111-1111-4111-8111-111111111111");
+                        message.TimestampMs = tick;
+                        await engine.EnqueueSpikeAsync(message);
+                    }
+                    var step = await engine.ProcessStepAsync(new TickSignal(tick, tick, 1,
+                        new NeuromodState(), new Dictionary<BrainRhythm, double>(), 0), 0);
+                    result.Add((step.Ack.MeanFiringRateHz, step.Ack.SpikeInCount, step.Ack.SpikeOutCount));
+                }
+                if (observe)
+                {
+                    Assert.Equal(20, observations.Count);
+                    Assert.Equal(result[^1].Item2, observations.Count);
+                    Assert.All(observations, item =>
+                    {
+                        Assert.True(item.ProcessingTimestampMs >= item.ScheduledDeliveryTimestampMs);
+                        Assert.InRange(item.ProcessingTimestampMs - item.ScheduledDeliveryTimestampMs, 0, 1);
+                        Assert.Equal(StructureId.VestibularAfferents, item.Source);
+                        Assert.Equal(2f, item.PresynapticQuanta);
+                        Assert.InRange(item.EffectiveQuanta, .05f, 5f);
+                    });
+                    Assert.Equal(1f, observations[0].PostsynapticQuanta);
+                    Assert.Equal(MathF.Sqrt(2), observations[0].EffectiveQuanta, precision: 5);
+                }
+                return result;
+            }
+            Assert.Equal(await Run(false), await Run(true));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", priorDirectory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE", priorInstance);
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            EnvironmentGate.Release();
+        }
+    }
+
     [Theory]
     [InlineData(StructureId.ProprioceptiveAfferents)]
     [InlineData(StructureId.VestibularAfferents)]

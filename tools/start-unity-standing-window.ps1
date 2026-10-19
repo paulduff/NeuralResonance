@@ -78,6 +78,16 @@ try {
   Write-Host ('DNNE live profile {0}: {1} source spikes per service, {2} total per tick; no restart requested.' -f $BrainProfile,$change.settings.maxSpikeDispatchPerServicePerTick,$change.settings.maxSpikeDispatchTotalPerTick) -ForegroundColor Cyan
  }
  Save-BrainRead 'performance-profile-before-trial.json' '/api/v1/admin/perf-profile'
+ # Process liveness at tick two is not motor readiness. Allow the coordinator's
+ # cold-start warmup, then require sustained fresh advancing telemetry.
+ $startupSettings=Get-Content -LiteralPath (Join-Path $repo 'ControlProgram\appsettings.json') -Raw | ConvertFrom-Json
+ $warmupTicks=80
+ if($null -ne $startupSettings.StartupWarmupTicks){$warmupTicks=[int]$startupSettings.StartupWarmupTicks}
+ $environmentWarmup=[Environment]::GetEnvironmentVariable('StartupWarmupTicks','Process')
+ $parsedWarmup=0
+ if([int]::TryParse($environmentWarmup,[ref]$parsedWarmup)){$warmupTicks=$parsedWarmup}
+ $minimumMotorTick=[Math]::Max(1,[Math]::Min(20000,$warmupTicks))+1
+ & (Join-Path $PSScriptRoot 'wait-dnne-motor-ready.ps1') -OutputPath (Join-Path $output 'motor-readiness.json') -MinimumBrainTick $minimumMotorTick -TimeoutSec 600
  Save-BrainRead 'motor-before.json' '/api/v1/neuronal-motor'
  Save-BrainRead 'sensorimotor-before.json' '/api/v1/sensorimotor-timing'
  # This export contains coordinator/connectome/telemetry state. It is not a
@@ -85,7 +95,7 @@ try {
  # and resumes the coordinator itself; no restart/import/reset is requested.
  Save-BrainRead 'coordinator-before.json' '/api/v1/admin/network/export'
  $preBackup=Join-Path $BackupRoot $run;New-Item -ItemType Directory -Path $preBackup -Force | Out-Null
- foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json','trial-configuration.json','performance-profile-before.json','performance-profile-before-trial.json','auto-profile-before.json','performance-profile-change.json','auto-profile-pin.json')){
+ foreach($name in @('motor-before.json','sensorimotor-before.json','coordinator-before.json','brain-health-before.json','trial-configuration.json','performance-profile-before.json','performance-profile-before-trial.json','auto-profile-before.json','performance-profile-change.json','auto-profile-pin.json','motor-readiness.json')){
   if(-not(Test-Path -LiteralPath (Join-Path $output $name))){continue}
   $source=Join-Path $output $name;$target=Join-Path $preBackup $name;Copy-Item -LiteralPath $source -Destination $target
   if((Get-FileHash -LiteralPath $source).Hash -ne (Get-FileHash -LiteralPath $target).Hash){throw ('Pre-trial backup mismatch: '+$name)}

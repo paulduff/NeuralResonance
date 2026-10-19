@@ -218,3 +218,34 @@ coordinator. The earlier shutdown backup remains intact. Transient neuron state
 is not fully checkpointed; this is a fresh process startup using persisted synapses.
 The next 60-second comparison uses the same Unity body, starts paused, and runs
 in an independent visible PowerShell window. Recovery quality remains unassessed.
+
+## Cold-start motor readiness
+
+The first `embodied` startup guard also refused to open Unity. Its 62 valid HTTP
+responses spanned only ticks 2–16 in 60 seconds, with no qualifying fresh sequence.
+The coordinator's configured warmup lasts through tick 80. The guard had started
+timing immediately after service liveness passed at tick two and expired during
+that warmup. Extending the body freshness limit would not address this distinction.
+
+The same running brain subsequently reached tick 7,808 with 30 active instances,
+24/1,536 effective source-spike caps, a 30.32 ms tick, 33.88 ms median and 57.98 ms
+95th percentile in its retained timing window. Four sampled motor requests took
+11–50 ms. These are later startup observations, not whole-trial timings or proof
+of recovery. They show that a fresh process must be allowed to warm up before
+judging sustained motor cadence. No further brain restart is needed for this retry.
+
+`tools/wait-dnne-motor-ready.ps1` now gates every observation before connection.
+It allows up to ten minutes, waits beyond the configured warmup tick (81 by
+default), then requires ten advancing motor intervals with both request duration
+and inter-advance gaps at most one second. Repeated cached ticks do not count.
+Errors, stale gaps, slow requests and tick rollback reset the sequence. The body
+retains its existing 1.25-second freshness limit. `motor-readiness.json` records
+the threshold, actual samples and elapsed time; the independent PowerShell window
+prints warmup progress. A timeout still prevents Unity from opening and restores
+the original automatic profile policy through the launcher's existing `finally`.
+
+Six offline readiness regression scenarios pass under Windows PowerShell 5.1.
+They cover warmup followed by fresh ticks, cached ticks, a stale gap, a slow
+request, tick rollback and slow cold-start ticks. The original failed startup
+captures and brain backups remain unchanged. Only the launcher/guard changes
+in this correction; neuronal, body and transport code are unchanged.

@@ -565,3 +565,13 @@ all 53 focused profile/scheduler/standing tests pass. This does not establish a
 causal recovery benefit. Body, muscle, receptor, decoder and gate behavior are
 unchanged, and full axial/posture parity remains unresolved. The current brain
 was gracefully saved and backed up on D: before the coordinator rebuild/restart.
+
+The initial `embodied` guard expired during cold start: all 62 requests succeeded,
+but motor ticks advanced only from 2 to 16 before the 60-second limit, below the
+configured 80-tick warmup. Later, the same running brain recorded a 30.32 ms tick
+and 11–50 ms motor HTTP samples with the higher caps still effective. The launcher
+now waits through warmup, then requires ten fresh advancing motor intervals within
+a bounded ten-minute readiness stage. Cached ticks and stale/slow responses cannot
+qualify, and the body's 1.25-second guard is unchanged. Six offline readiness
+regression scenarios pass. This is a startup sequencing correction; it does not
+claim any standing/recovery result or change original Avatar behavior.

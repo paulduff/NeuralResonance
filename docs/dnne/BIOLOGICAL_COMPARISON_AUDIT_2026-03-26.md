@@ -1,5 +1,12 @@
 # DNNE Biological Comparison Audit
 
+**Current correction, 19 October 2026:** the mechanism review at
+[`DNNE_Learning_And_Structure_Review_2026-10-19.md`](../DNNE_Learning_And_Structure_Review_2026-10-19.md)
+supersedes this document's learning/identity assurances and old inventory.
+Routed receiving state is pooled by tract, post-event and delayed-teaching updates
+are incomplete, and target mapping is not stable across process starts. Presence
+of the mechanisms listed below is not evidence of biological learning equivalence.
+
 Original audit: 2026-03-26
 
 Re-audited: 2026-08-08

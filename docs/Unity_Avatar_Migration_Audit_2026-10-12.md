@@ -687,3 +687,17 @@ authority remain intact. No physical mechanism, live state or service changed in
 this review. Full details, exact spike counts and sampling limits are recorded
 in the standing-observation document; the completed capture and analyses are
 preserved on D:.
+
+## Biological learning foundation review — 19 October
+
+Paul reaffirmed that biological neuronal/synaptic mechanisms are DNNE's purpose.
+The expanded source/mechanism review is
+`docs/DNNE_Learning_And_Structure_Review_2026-10-19.md`. It covers all 119 host
+profiles and finds failures in receiving-contact identity, cross-process mapping,
+actual post-spike and delayed-teaching updates, biological-time activity traces
+and checkpoint clock continuity. These require foundational correction before
+another physical recovery trial can qualify learning. The original Avatar balance,
+receptor and labyrinth implementations were reviewed again and remain intact.
+No body, Unity mechanics, live brain or neuronal authority was altered by this
+audit. New executable probes create isolated diagnostic state only; 197 existing
+focused contracts pass but do not establish the missing biological mechanisms.

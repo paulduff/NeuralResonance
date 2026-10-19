@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+DNNE's biological mechanisms are a correctness requirement, not a naming or
+presentation theme. Learning must be implemented at individual synaptic contacts
+using the actual connected neurons' activity, biological timing, appropriate
+cell/circuit-specific plasticity and locally arriving modulation. Preserve stable
+cell/connection identity across processes and checkpoints. Do not describe a
+pathway-shared weight, a sender-only postsynaptic proxy, service health or visible
+movement as evidence of biologically equivalent Hebbian learning. Use mechanistic
+tests and explicitly state unvalidated approximations. The current foundation
+review is `docs/DNNE_Learning_And_Structure_Review_2026-10-19.md`.
+
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.
 The operator explicitly requires this: **always check Avatar; substantial work

@@ -352,3 +352,72 @@ unchanged. The independent `start-postural-replay-window.ps1` checks those prefl
 results and binary/source hashes before launching the full study in visible
 PowerShell. It saves results and verified D: backups, printing completion separately
 from neural discrimination or recovery quality. No live agent monitoring is used.
+
+## Completed postural replay — 19 October
+
+`postural-replay-20261019-082543-c12aa7` completed all twenty cases on revision
+`a97396c`, with finite outputs, exact initial synapse counts, unchanged protected
+inputs and zero queue rejections. `tools/analyse-postural-replay.py` checks all
+12,000 recorded samples, recomposes the production population-error formula from
+the component rates, and separates the initial and returned stable phases. Maximum
+recomposition difference is below 0.0000003. Its output is
+`postural-analysis.json` in the run directory; the completed run and review are
+preserved with verified D: copies. Full motor authority and recovery were not tested.
+
+| Starting synapses / source cap | Stable hold: error >= 0.4 / latch samples | Fallen hold: error >= 0.4 / latch samples |
+| --- | ---: | ---: |
+| Saved / 24 | 0 / 0 | 0 / 0 |
+| Saved / unrestricted within circuit | 0 / 0 | 0 / 0 |
+| Fresh / 24 | 0 / 0 | 0 / 0 |
+| Fresh / unrestricted within circuit | 5 / 16 | 5 / 10 |
+
+Each hold has 600 samples at 10 ms intervals. Latch occupancy includes its release
+delay and is not the count of error-threshold crossings. Every saved-synapse case
+has exactly zero population error throughout. Both vestibular nuclei emit zero
+spikes in all ten saved cases. They do receive messages: for example, the saved
+unrestricted fallen case admits 3,388 left and 3,503 right nucleus inputs, but neither
+fires. Admission is not a measurement of membrane current or effective synaptic
+strength; this identifies an input/output failure in this isolated regime, not
+its cellular cause or whole-brain silence. Outside inputs, noise and membrane
+continuation are absent here.
+
+The vermis has identical sampled rate and cumulative output traces across all
+twenty cases: each hemisphere emits 74,624 spikes in six seconds. Its existing
+cell-autonomous pacemaker is active even with the primary afferents muted. In the
+saved cases there is no incoming vermis traffic from the silent vestibular nuclei.
+This does not establish a numerical fault in the HH model. It does demonstrate
+why treating aggregate vermis activity as evidence of successful compensation is
+unjustified in this test. With vestibular rate zero, the current subtraction
+`max(0, vestibular - 0.55*vermis - 0.25*spinal)` necessarily returns zero.
+
+Unrestricted fresh synapses do not provide a useful remedy. The muted control
+crosses the error threshold in seven samples; the one-sided control crosses it in
+three, with no latch in either. In the fresh unrestricted transition case, the
+initial stable segment has seven threshold crossings and twenty latch samples,
+the fallen segment has one of each, and the returned stable segment has no new
+crossing and one remaining latch sample. This is not reliable posture discrimination.
+All capped cases lose 128,896 source spikes; all unrestricted cases lose none.
+Removing that source limit still fails the saved-synapse discrimination task.
+Transport can matter, but it is not a sufficient correction here.
+
+The stable negative control also needs refinement. Captured frame 22 has physical
+error zero and positive support margin 0.1003 m, but pitch velocity -0.412 rad/s,
+body pitch -0.0686 rad and neck pitch 0.1177 rad. Holding those positions and
+nonzero velocities is not a stationary physical trajectory. The fallen frame 148
+is also moving. The labels are captured Avatar phase classifications, not proof
+that all balance-sensitive receptor activity should be absent in the stable case.
+Strong primary activity in both phases is therefore not grounds for deleting the
+population-error gate.
+
+The next implementation target is sensory response and posture-error coding,
+rather than another training-budget or source-cap increase. First measure the
+vestibular input-to-membrane-to-spike response with copied saved and fresh synapses,
+including conductance/current and effective-strength diagnostics. Use stationary
+upright, sustained tilt/support loss, ordinary head motion, return-to-upright,
+muted and one-sided controls, in addition to captured trajectories. Establish a
+sensor-evoked neural representation that distinguishes these cases before changing
+the error readout or authorizing a new physical trial. Tonic population activity
+alone cannot certify that a fall was corrected. Existing synthetic decoder and
+topology contract tests do not qualify this integrated discrimination task.
+No live weights, Avatar mechanics, authority gate or running service changed
+during this result review.

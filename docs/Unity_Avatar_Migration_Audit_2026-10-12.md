@@ -621,3 +621,23 @@ and incomplete cortical authority limit conclusions to the isolated circuit.
 There is no live DNNE connection or physical recovery assessment. Six short
 preflight cases pass with finite outputs, correct controls and unchanged source
 files. The full diagnostic runs independently in PowerShell with verified backups.
+
+## Postural replay result — 19 October
+
+All twenty cases in `postural-replay-20261019-082543-c12aa7` completed with finite
+outputs, unchanged source captures/synapses and zero queue rejections. A reproducible
+analysis checks all 12,000 samples and separates initial/returned stable phases.
+The ten saved-synapse cases have zero decoded error throughout; both vestibular
+nuclei receive traffic but emit zero spikes, even without the source cap. Identical
+vermis output across all cases includes its existing intrinsic pacemaker activity;
+that activity cannot by itself certify sensory compensation. Fresh unrestricted
+cases produce error excursions during stable and muted input as well as fallen
+input, so neither resetting synapses nor removing transport caps qualifies a fix.
+
+The held captured stable frame contains motion and is not a quiet standing control.
+The next target is isolated sensory input/membrane/spike transfer and neural posture
+discrimination with stationary, motion, tilt/support-loss and bilateral controls.
+See the standing-observation document for measured counts and scope. This is an
+analysis finding, not a replacement of original Avatar balance/labyrinth mechanics
+or a physical recovery result. No live body, neural authority, safeguards or weights
+were changed; missing axial muscles and posture transitions remain open.

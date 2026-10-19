@@ -575,3 +575,29 @@ a bounded ten-minute readiness stage. Cached ticks and stale/slow responses cann
 qualify, and the body's 1.25-second guard is unchanged. Six offline readiness
 regression scenarios pass. This is a startup sequencing correction; it does not
 claim any standing/recovery result or change original Avatar behavior.
+
+## Higher-transport live result
+
+The warm-brain run `unity-standing-20261019-071224-50cdeb` completed 60.01 seconds
+with integration checks passed, then ended paused/disconnected with lease release.
+It fell at 1.44 seconds and did not recover. All 286 captured physical frames
+validate/transduce unchanged; all 279 fallen samples retain error one. The actual
+38-muscle plant continued neural leg actuation for 5,381 steps after falling.
+
+All 11 in-trial transport samples retained the 24/1,536 caps and 30 selected
+instances. Sampled tick times were 22.44–51.05 ms, with zero sampled dispatch errors
+or queue spike drops; source-budget losses still occur and full delivery remains
+unverified. Descending righting activity now reaches a rounded 0.391, but the
+latch remains inactive and population balance error is 0.000 in all 461 active
+journal responses. In 410 post-fall responses, combined bilateral drive clearly
+exceeds its entry floor while the population-error gate is closed. This localizes
+an immediate decoder condition; it does not prove that removing it would restore
+recovery or establish the cause of the low estimate. Post-trial aggregate rates
+and the bounded routing trace are outside the active window.
+
+The 113 existing motor/righting/original balance tests pass, including stable
+tonic-drive release and neural authority controls. The next diagnostic target is
+sensory-to-neural balance-error representation using isolated stable/fallen replay
+and negative controls. No host-selected recovery, gate bypass or unqualified
+physical get-up sequence was added. Missing axial muscles and posture transitions
+remain open, and the current run's result is not learned standing or recovery.

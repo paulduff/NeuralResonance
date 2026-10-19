@@ -249,3 +249,56 @@ They cover warmup followed by fresh ticks, cached ticks, a stale gap, a slow
 request, tick rollback and slow cold-start ticks. The original failed startup
 captures and brain backups remain unchanged. Only the launcher/guard changes
 in this correction; neuronal, body and transport code are unchanged.
+
+## Completed higher-capacity comparison
+
+Run `unity-standing-20261019-071224-50cdeb` finished successfully with finite
+physics, operator Play, fresh motor observations and passed integration checks.
+It ran for 60.01 simulation seconds, fell at 1.44 seconds, accumulated 0.86 seconds
+of supported standing and did not recover. After falling there were 5,381 leg
+actuation steps using 415 distinct authorized motor ticks. The world ended paused,
+disconnected and with its lease released. This did not qualify standing or recovery.
+
+The corrected readiness guard passed ten advancing intervals in 1.52 seconds on
+the existing warm brain. All 11 sparse in-trial transport samples report the
+`embodied` profile, 24 per-service and 1,536 total effective caps, and 30 selected
+instances. Sampled tick duration ranges from 22.44 to 51.05 ms (median 36.64 ms),
+with no sampled dispatch errors or queue spike drops. Source-budget drops still
+occur. These are individual sampled ticks, not cumulative delivery totals or
+proof of complete sensory delivery. The body admitted 426 frames, generating
+54,835 receptor spikes; 691 retinal frames were admitted, with no body/contact
+rejections. All 286 saved physical frames validate/transduce without projection,
+pressure mismatch or missing muscle identities. All 279 fallen samples encode
+physical balance error one. Initial muscle fatigue remained below 0.00081.
+
+The motor journal contains 461 advancing responses while running. The maximum
+rounded afferent righting drive is 0.795; descending drive reaches 0.391 and is
+at least 0.040 in 412 responses. This contrasts with the earlier run's 0.030 peak,
+but a single comparison across a process restart is not proof of causation.
+The emergency latch is never active and population balance error is 0.000 in all
+461 responses. In 410 post-fall responses, the bilateral combined righting drive
+is at least 0.041, conservatively above the 0.040 floor despite log rounding.
+The separate population-error requirement of 0.400 is therefore a verified closed
+entry condition in those samples. This does not demonstrate that changing it
+would achieve physical recovery.
+
+The estimator computes `max(0, vestibular - 0.55*vermis - 0.25*spinalTone)` from
+mean population firing. The post-trial snapshot has approximately 1.69, 74.57 and
+126.08 Hz respectively, which produces zero. That snapshot is after the active
+trial; its bounded routing window (ticks 18,459–18,475) does not overlap active
+motor ticks (16,745–18,367). It cannot establish the active-window component rates
+or receptor-to-target delivery. The active journal itself establishes the zero
+error and closed latch. `analyse-unity-recovery.py` now records both the gate
+evidence and sampled transport ranges alongside those scope limitations.
+
+All 113 existing motor/righting/original Avatar balance tests pass. In particular,
+stable balance must release a latch despite tonic postural drive, and unintegrated
+local vestibular activity must not acquire authority. Simply deleting the error
+condition would bypass those requirements. The next diagnostic should replay
+actual stable and fallen physical inputs through an isolated copy of the sensory
+and postural neural circuit, with ordinary head-motion, tonic-drive and unilateral
+controls. It should trace how posture error is represented before changing the
+readout. No gate bypass, new live trial or body change was made during this review.
+The four missing axial muscles and omitted posture transitions remain separate
+limits on any claim of full get-up capability. Analyses and the completed run are
+verified on D:; neuronal authority and the existing body safeguards remain intact.

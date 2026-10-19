@@ -663,3 +663,27 @@ short preflight cases verify instrumentation and input/state isolation. The full
 comparison runs in independent visible PowerShell with verified D: backups. Cross-
 host statistics will require replication because production timing/cell-bias hash
 salts differ across processes. Physical standing/get-up remains unassessed here.
+
+## Vestibular transfer result and learning identity — 19 October
+
+All forty cases in `vestibular-transfer-20261019-090746-d3e7f0` completed with
+finite values, unchanged protected inputs, zero source/queue losses and closed
+integration accounting. Saved connections remain silent; sender-only baseline
+restoration does not change that. Restoring receiver strengths gives modest
+activity, and restoring both gives more, including twenty-six total nucleus spikes
+in the tilt case versus eighteen in stationary support. The response remains
+brief and does not qualify balance discrimination or recovery. Fresh normal-width
+quiet support produces sampled latch activity, while fresh muted input retains
+substantial internally driven firing. A reset or unconditional gate change is
+not supported by these controls.
+
+The route rewrite assigns one synapse ID per tract, and the receiving engine keys
+both weights and learning traces by that ID despite selecting different target
+neurons. Captures show the same weak vestibular receiving state serving several
+cells. The next isolated comparison should separate connection learning identities
+and define legacy-state handling, then audit actual target-cell learning and the
+balance readout. The original Avatar balance/labyrinth/body contracts and neural
+authority remain intact. No physical mechanism, live state or service changed in
+this review. Full details, exact spike counts and sampling limits are recorded
+in the standing-observation document; the completed capture and analyses are
+preserved on D:.

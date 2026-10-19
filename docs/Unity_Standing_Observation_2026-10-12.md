@@ -491,3 +491,79 @@ saves those checks and the measured comparisons without accessing live services.
 The launcher verifies binary/source hashes and starts the full study independently
 in visible PowerShell, with D: backup on completion and no live agent monitoring.
 Builds use isolated artifact paths; no running service binary was replaced.
+
+## Completed vestibular transfer comparison — 19 October
+
+`vestibular-transfer-20261019-090746-d3e7f0` finished all forty cases on `3da0bf2`.
+The complete matrix validates: 32,000 neural samples, 640,000 nucleus/millisecond
+electrical observations, 664,771 integrated nucleus inputs and 1,057 inputs still
+pending at case boundaries, accounting for all 665,828 admissions. Source budget
+losses and queue rejections are zero. Protected source captures and D: synapse
+files are unchanged. This remains an isolated signal-transfer study, not a whole-
+brain scheduler test, a saved membrane continuation or physical recovery result.
+
+The table counts actual output spikes from both vestibular nuclei over each full
+eight-second case, not just the stimulus segment:
+
+| Input | Saved | Sender baseline only | Receiver baseline only | Both baselines | Fresh |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Broad quiet support | 0 | 0 | 6 | 18 | 1,974 |
+| Normal quiet support | 0 | 0 | 6 | 18 | 1,974 |
+| Tilt and return | 0 | 0 | 7 | 26 | 1,979 |
+| Support displacement and return | 0 | 0 | 7 | 19 | 1,973 |
+| Head motion and return | 0 | 0 | 5 | 18 | 1,966 |
+| Captured motion | 0 | 0 | 10 | 24 | 1,970 |
+| Muted tilt | 0 | 0 | 0 | 0 | 1,909 |
+| Left-only tilt | 0 | 0 | 0 | 19 | 1,945 |
+
+The receiving weights matter. Restoring sender strength alone leaves every nucleus
+silent; restoring receiver strength allows some spikes; restoring both allows
+more. In the left nucleus during tilt, ordinary vestibular input has mean
+presynaptic/receiving/effective strengths 0.2604/0.2093/0.1792 in the intact copy,
+versus 1.0808/1.0000/1.0396 when both are restored. Tagged righting input is already
+strong at the sender in the intact copy: 1.0806 before the weak 0.2093 receiving
+weight yields effective strength 0.4756. Restoring both raises this to 1.0395.
+Thus a blanket explanation that all fall signals have weak source release is
+incorrect. Restoring ordinary tone also contributes to the observed summation.
+Left stimulus peak soma voltage rises from -57.43 to -49.10 model mV and output
+from zero to fourteen spikes with both baselines restored; the right nucleus
+adds four stimulus spikes. There are eight further spikes during initial quiet
+and none during returned quiet in this case. Restored receiving strength is a
+contributor to responsiveness, not a qualified balance solution.
+
+The population readout still does not reliably distinguish posture. With both
+baselines restored, peak sampled error is 0.606 for tilt but 0.866 for ordinary
+head motion. Head motion never recruits the latch because it lacks primary
+righting evidence; this guard remains useful. Tilt has one sampled latch response,
+not sustained correction. Fresh connections produce 1,909 nucleus spikes with
+primary afferents muted, showing substantial internally driven activity. Fresh
+normal-width stationary support produces twenty-eight sampled latch responses,
+despite its stationary fixture. Resetting the circuit is therefore not a remedy.
+Latch/error are sampled every 10 ms; crossings between samples can be missed.
+For example, restored-both support displacement has one latch sample with a
+sampled error peak below 0.4. This is not evidence that the entry gate was bypassed.
+
+Code and persisted-state inspection identify a specific learning-identity issue.
+`TickCoordinator.RewriteSpikeForRoute` assigns `route.SynapseId` to every rewritten
+message on a tract. `StructureEngine.GetOrCreateInboundSynapse` keys its receiving
+weight and all learning traces only by that ID. Target-cell selection happens
+separately, so different neurons on the tract share that same learning state.
+The left vestibular nucleus still has just three stored incoming entries after
+the intact tilt case. Its single vestibular-afferent entry remains 0.20932482,
+while retained integration samples from that source reach cells 0, 1, 7, 25 and
+92. The corresponding source path and strength can therefore not represent
+independent learned connections to those cells. This pooling is confirmed by the
+implementation and captures; its share of the standing failure has not yet been
+isolated experimentally.
+
+The next change should preserve original captures/checkpoints and test distinct
+receiving connection identities on copies, with a defined treatment of legacy
+pooled weights. Learning must use the target cell's actual activity and keep its
+traces separate. The sender's learning rule also warrants audit: it currently
+uses its own activity times 0.35 as a postsynaptic proxy. That is a code finding,
+not proof of why historical weights became weak. After connection/learning
+ownership is verified, require sustained tilt/support discrimination and quiet,
+motion, muted and unilateral controls before changing the balance readout or
+running another physical trial. No strength reset, gate bypass or live neural
+change was applied during this review. The analyser now retains per-protocol
+weight comparisons and separate per-phase spike counts for cluster baselines.

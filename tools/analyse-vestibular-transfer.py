@@ -74,11 +74,20 @@ def main():
             'case': case['case'], 'weights': case['weights'], 'plan': case['plan'],
             'primaryQueued': case['primaryQueued'], 'primaryFallSensitiveMessages': case['primaryFallSensitiveMessages'],
             'accounting': transfer['accounting'], 'transmission': transfer['paths'], 'electrical': transfer['electrical'],
+            'vestibularNucleiOutputSpikes': sum(value['spikes'] for value in transfer['electrical'].values()),
             'interventions': {item['instanceKey']: item['intervention'] for item in initial if item['instanceKey'] in allowed},
             'phases': {phase: {'samples': len(values), 'peakPopulationError': max(row['populationError'] for row in values),
                               'errorAtLeastEntryThresholdSamples': sum(row['populationError'] >= .4 for row in values),
-                              'latchSamples': sum(row['latch'] for row in values)} for phase, values in stages.items()},
+                              'latchSamples': sum(row['latch'] for row in values),
+                              'vestibularNucleiOutputSpikes': sum(value['spikes'] for key, value in transfer['electrical'].items() if key.split('|')[0] == phase),
+                              'meanBilateralDrive': sum(row['bilateralDrive'] for row in values) / len(values),
+                              'peakBilateralDrive': max(row['bilateralDrive'] for row in values)} for phase, values in stages.items()},
         })
+    comparison = {plan: {case['weights']: {
+        'vestibularNucleiOutputSpikes': case['vestibularNucleiOutputSpikes'],
+        'peakPopulationError': max(phase['peakPopulationError'] for phase in case['phases'].values()),
+        'sampledLatchOccupancy': sum(phase['latchSamples'] for phase in case['phases'].values()),
+    } for case in cases if case['plan'] == plan} for plan in protocol['cases']}
     result = {
         'completed': True, 'caseCount': len(cases), 'smoke': protocol['smoke'],
         'validation': {'protectedInputsUnchanged': True, 'initialCountsVerified': True, 'integrationAccountingCloses': True,
@@ -88,10 +97,11 @@ def main():
         'portableBitwiseReproducibility': False,
         'timingCaution': 'Message IDs align equivalent events within the process; production HashCode salts differ across processes. Cross-host quality comparisons require replication.',
         'analysisSourceSha256': sha256(Path(__file__).read_bytes()).hexdigest(),
-        'liveBrainAccessed': False, 'physicalRecoveryAssessed': False, 'results': cases,
+        'samplingCaution': 'Electrical output spike counts cover every 1 ms step. Population error and latch occupancy are sampled every 10 ms; an entry between samples can be missed.',
+        'liveBrainAccessed': False, 'physicalRecoveryAssessed': False, 'comparison': comparison, 'results': cases,
     }
     (study / 'transfer-analysis.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-    print(json.dumps({key: value for key, value in result.items() if key != 'results'}, indent=2))
+    print(json.dumps({key: value for key, value in result.items() if key not in ['results', 'comparison']}, indent=2))
 
 
 if __name__ == '__main__':

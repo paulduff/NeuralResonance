@@ -822,3 +822,20 @@ labyrinth/receptor paths, neuronal authority and paused world startup are retain
 the editor's existing model/calibration status is unchanged. No live service is
 redeployed. Its visible PowerShell window runs independently and preserves earlier
 saves and results with a verified D: backup.
+
+## Support-state diagnosis — 30 October
+
+The 48-condition isolated run verifies and identifies reserve/fatigue feedback
+as a cause of quiet-cell collapse; potassium-only removal is insufficient.
+Supported cells still fail to resume within the observed post-inhibition window.
+The short bare-membrane check supports an additional operating-regime/recovery
+limitation. See [support-state diagnosis](DNNE_Support_State_Diagnosis_2026-10-30.md).
+
+Revisited AvatarWorldDynamics and the physical transducer: body energy and oxygen
+already exist, with corresponding visceral receptor traffic. The local neuronal
+reserve equation has no explicit substrate-delivery contract. Future energy work
+must preserve these Avatar functions and distinguish sensory information from
+material supply. No Avatar code, editor service, motor authority or live world is
+altered here. The existing calibration status remains applicable; no diagnostic
+clamp or restart pulse is promoted into production. New long runs await a concrete
+candidate mechanism; this review and the short reference capture are backed up.

@@ -24,6 +24,10 @@ is isolated and does not qualify whole-brain balance or physical recovery.
 Its completed results are in `docs/DNNE_Connected_Circuit_Results_2026-10-30.md`.
 Reserve/fatigue and potassium clamps in the subsequent cell probe are artificial
 diagnostic interventions only; they are not approved replacements for biology.
+Their completed causal findings and energy/recovery repair requirements are in
+`docs/DNNE_Support_State_Diagnosis_2026-10-30.md`. Native quiet firing collapses;
+held energy restores sustained activity but does not establish recovery after
+inhibition. Do not promote the diagnostic clamps or pulse into live control.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

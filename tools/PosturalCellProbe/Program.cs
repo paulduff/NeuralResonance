@@ -19,6 +19,7 @@ internal static class PosturalCellProbe
 
     static int Main(string[] args)
     {
+        if (args.Contains("--support-controls")) return CellSupportProbe.Run(args);
         if (args.Length < 1 || args.Skip(1).Any(arg => arg is not ("--smoke" or "--convergence")))
             throw new ArgumentException("Arguments: new-output-directory [--smoke] [--convergence]");
         var output = Path.GetFullPath(args[0]);

@@ -21,6 +21,9 @@ The completed comparison and biological pacemaker clock correction are recorded
 in `docs/DNNE_Cell_Comparison_And_Circuit_Return_2026-10-30.md`; the clock version
 also participates in the save fingerprint. The next 14/20-instance comparison
 is isolated and does not qualify whole-brain balance or physical recovery.
+Its completed results are in `docs/DNNE_Connected_Circuit_Results_2026-10-30.md`.
+Reserve/fatigue and potassium clamps in the subsequent cell probe are artificial
+diagnostic interventions only; they are not approved replacements for biology.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

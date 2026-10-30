@@ -806,3 +806,19 @@ one-millisecond cadence and existing gates. The editor's learning status include
 the clock version through its existing telemetry field; stale-state handling is
 unchanged. All 1,009 regression checks pass. Old saves/captures remain protected;
 the independent PowerShell run backs up results and receives no live monitoring.
+
+## Connected circuit results and support-state controls — 30 October
+
+The 14/20-instance comparison completed with verified captures/backups. All saved
+balance-error/latch readings remain zero; parallel-fibre contacts change even
+under muted input, and multiple populations deplete the model's energy reserve.
+See [connected circuit results](DNNE_Connected_Circuit_Results_2026-10-30.md).
+Physical balance is not qualified by message delivery or contact changes.
+
+The next experiment uses fresh disconnected cells and artificial support-state
+controls to distinguish energy/fatigue feedback from potassium accumulation.
+It modifies no production model or Avatar function. Original body mechanics,
+labyrinth/receptor paths, neuronal authority and paused world startup are retained;
+the editor's existing model/calibration status is unchanged. No live service is
+redeployed. Its visible PowerShell window runs independently and preserves earlier
+saves and results with a verified D: backup.

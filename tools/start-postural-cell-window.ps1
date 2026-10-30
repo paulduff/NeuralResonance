@@ -65,11 +65,13 @@ function Invoke-ProbeStage([string]$name,[switch]$Smoke,[switch]$Baseline){
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null
  $transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE postural cells - response and numerical calibration'
+ $Host.UI.RawUI.WindowTitle=if($configuration.PSObject.Properties.Name -contains 'WindowTitle'){$configuration.WindowTitle}else{'DNNE postural cells - response and numerical calibration'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Fresh isolated cells for each condition. Old saves are protected and never loaded.'
- Write-Host 'Three production cell profiles; excitation, inhibition, pacemaker and integration-step controls.'
+ if($configuration.PSObject.Properties.Name -contains 'StudyDescription'){
+  Write-Host $configuration.StudyDescription
+ }else{Write-Host 'Three production cell profiles; excitation, inhibition, pacemaker and integration-step controls.'}
  Write-Host ('Short preflight, then '+$configuration.CaseCount+' conditions. This tests cell response; no whole brain, contact learning or body dynamics.')
  Assert-FileHashes $configuration.PackageFiles
  Assert-FileHashes $configuration.ProtectedBackupFiles

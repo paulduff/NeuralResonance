@@ -5,6 +5,9 @@ public readonly record struct AvatarPhysiologyState(
     double HydrationFraction,
     double TissueIntegrityFraction);
 
+public readonly record struct AvatarNeuralSubstrates(
+    double GlucoseAvailability, double OxygenAvailability, double PerfusionAvailability);
+
 public enum AvatarVitalState
 {
     Viable = 0,
@@ -73,6 +76,18 @@ public readonly record struct AvatarPhysiologyOptions(
 
 public static class AvatarWorldDynamics
 {
+    // Explicit reduced body boundary. Glucose/perfusion are availability proxies;
+    // Avatar does not yet have blood glucose, pressure or regional vascular plants.
+    // Stored energy is NOT an intracellular ATP concentration or an ATP refill.
+    public static AvatarNeuralSubstrates EstimateNeuralSubstrates(AvatarPhysiologyState state, double oxygenSaturation)
+    {
+        ValidateState(state);
+        if (!double.IsFinite(oxygenSaturation) || oxygenSaturation < 0 || oxygenSaturation > 1)
+            throw new ArgumentOutOfRangeException(nameof(oxygenSaturation));
+        return new AvatarNeuralSubstrates(Math.Clamp(state.StoredEnergyJoules / 400000.0, 0, 1),
+            Math.Clamp(oxygenSaturation / .98, 0, 1),
+            Math.Clamp(state.HydrationFraction / .5, 0, 1) * state.TissueIntegrityFraction);
+    }
     private const double TissueDeathThreshold = 0.000001;
     private const double TissueIncapacitationThreshold = 0.08;
     private const double EnergyIncapacitationThresholdJoules = 0.5;

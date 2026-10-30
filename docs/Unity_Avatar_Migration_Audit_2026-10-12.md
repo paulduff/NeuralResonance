@@ -839,3 +839,21 @@ material supply. No Avatar code, editor service, motor authority or live world i
 altered here. The existing calibration status remains applicable; no diagnostic
 clamp or restart pulse is promoted into production. New long runs await a concrete
 candidate mechanism; this review and the short reference capture are backed up.
+
+## Explicit neural substrate boundary — 30 October
+
+Revisited AvatarWorldDynamics, AvatarControlApi, physical-frame validation and
+visceral transduction before this change. Existing muscles, labyrinth, body energy,
+hydration, tissue and sensory messages are preserved. Avatar now supplies explicit
+reduced glucose/oxygen/perfusion availability beside receptor inputs; these are
+proxies, not a migrated circulatory/blood-glucose plant. Generated Unity physiology
+uses the same canonical equations and BodyFrame serializes the separate payload.
+The coordinator stamps receipt, distinguishes missing/stale supply and forwards it
+through TickSignal. The editor adds reserve/source/unmet-demand telemetry.
+
+See [energy and recovery candidate](DNNE_Energy_And_Recovery_Repair_2026-10-30.md)
+for assumptions, checks and the isolated comparison. No live player/editor/brain
+is redeployed in this task. Worlds retain paused startup. A future connected run
+must establish fresh body supply before prolonged neuronal operation; missing fuel
+is not silently converted into a healthy reference bath. Neuronal authority and
+contact learning are unchanged. Earlier saves and experiment packages are protected.

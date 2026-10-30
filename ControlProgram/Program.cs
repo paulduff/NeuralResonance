@@ -840,6 +840,7 @@ app.MapPost("/api/v1/admin/input/body-frame", (
         .Select(static group => group.First())
         .ToList();
     var transduction = transducer.Transduce(descriptor, state.Tick, state.SimulationClockMs);
+    state.ObserveNeuralSupply(request.NeuralSubstrates);
     state.ObserveEmbodiedCurriculum(transduction);
     teachingTelemetry.Observe(state.Tick, transduction);
     var generatedForTargets = liveTargets.Sum(instance =>
@@ -1776,6 +1777,7 @@ internal sealed class SimulationState
     private int _curriculumStageIndex;
     private long _curriculumLastStageTransitionTick;
     private long _latestPhysicalBodyReceivedMonotonicMs = -1;
+    private NeuralSupplyBoundary _neuralSupply = new();
 
     public double SimulationClockMs { get; private set; }
     public double TickDurationMs { get; private set; } = 1.0;
@@ -1859,8 +1861,14 @@ internal sealed class SimulationState
                 new Dictionary<BrainRhythm, double>(OscillationPhases),
                 0f,
                 homeostaticSleepDrive,
-                metabolicWakeReserve);
+                metabolicWakeReserve,
+                _neuralSupply.Resolve(SimulationClockMs, Environment.TickCount64));
         }
+    }
+
+    public void ObserveNeuralSupply(NeuralSubstrateSupply? supply)
+    {
+        lock (_gate) _neuralSupply.Observe(supply, SimulationClockMs, Environment.TickCount64);
     }
 
     public DyadLanguageCandidateResponse ReviewDyadLanguageCandidate(DyadLanguageCandidateProposal proposal)
@@ -2851,6 +2859,7 @@ internal sealed class SimulationState
             SensorimotorTiming = SensorimotorTimingRuntime.Default;
             _actionAuthorityTelemetry.Reset();
             _latestPhysicalBodyReceivedMonotonicMs = -1;
+            _neuralSupply = new NeuralSupplyBoundary();
             TransportStats = TransportRuntimeStats.Empty;
             ServiceTelemetry.Clear();
             _dispatchLifetimeOut.Clear();
@@ -8483,7 +8492,20 @@ internal sealed class TickCoordinator(
             values.Sum(value => value.NeuronCount), values.Sum(value => value.ContactCount),
             values.Sum(value => value.PresynapticEvents), values.Sum(value => value.PostsynapticEvents),
             values.SelectMany(value => value.Contacts).Take(16).ToArray(),
-            values.Min(value => value.ContactSampleTimestampMs));
+            values.Min(value => value.ContactSampleTimestampMs),
+            CombineNeuralEnergy(values));
+    }
+
+    private static NeuralEnergyDiagnostics? CombineNeuralEnergy(SynapticLearningDiagnostics[] values)
+    {
+        if (values.Any(v => v.Energy is null)) return null;
+        var energy = values.Select(v => v.Energy!).ToArray();
+        int cells = energy.Sum(e => e.CellCount);
+        if (cells <= 0) return null;
+        return new NeuralEnergyDiagnostics(string.Join("; ", energy.Select(e => e.SupplySource).Distinct()), cells,
+            energy.Sum(e => e.MeanReserve * e.CellCount) / cells, energy.Min(e => e.MinimumReserve),
+            energy.Sum(e => e.Produced), energy.Sum(e => e.Consumed), energy.Sum(e => e.Unmet),
+            energy.Sum(e => e.Overflow), energy.Max(e => e.MaximumBalanceError));
     }
 
     private static MicrotubuleDiagnostics? AverageMicrotubuleDiagnostics(IReadOnlyList<InstanceStructureSnapshot> members)

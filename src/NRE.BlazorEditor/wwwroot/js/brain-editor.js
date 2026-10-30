@@ -1293,8 +1293,12 @@ function updateSelectionTelemetry(state) {
 }
 
 export function updateLearningTelemetry(diagnostics, fresh) {
+    const energy = value(diagnostics, 'energy');
+    const energyStatus = energy
+        ? ` Cell energy ${numberValue(energy, 'meanReserve').toFixed(3)} mean / ${numberValue(energy, 'minimumReserve').toFixed(3)} minimum; ${value(energy, 'supplySource')}; unmet demand ${numberValue(energy, 'unmet').toFixed(4)}. Normalized reserve; calibration pending.`
+        : ' Cell energy telemetry unavailable.';
     setText('selectionLearningStatus', diagnostics
-        ? `${value(diagnostics, 'modelStatus')}. ${fresh ? 'Current snapshot.' : 'Last snapshot; stale.'}`
+        ? `${value(diagnostics, 'modelStatus')}. ${fresh ? 'Current snapshot.' : 'Last snapshot; stale.'}${energyStatus}`
         : 'Contact learning telemetry unavailable from this runtime.');
     setText('selectionContactCount', diagnostics
         ? `${integerValue(diagnostics, 'neuronCount').toLocaleString()} / ${integerValue(diagnostics, 'contactCount').toLocaleString()}` : 'Unavailable');

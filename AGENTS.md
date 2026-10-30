@@ -28,6 +28,13 @@ Their completed causal findings and energy/recovery repair requirements are in
 `docs/DNNE_Support_State_Diagnosis_2026-10-30.md`. Native quiet firing collapses;
 held energy restores sustained activity but does not establish recovery after
 inhibition. Do not promote the diagnostic clamps or pulse into live control.
+The substrate-limited energy and channel recovery candidate is documented in
+`docs/DNNE_Energy_And_Recovery_Repair_2026-10-30.md`. Dynamics v3 invalidates older
+model fingerprints without modifying their saves. Normalized energy, reduced
+Avatar supply proxies and hybrid membrane parameters remain uncalibrated.
+Missing/stale live body supply must remain visible; isolated probes use an explicit
+reference bath. Channel ablations are diagnostic only. Do not confuse successful
+accounting or recovered firing with a calibrated olive or physical balance.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

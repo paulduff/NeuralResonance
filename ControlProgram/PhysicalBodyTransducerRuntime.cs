@@ -42,6 +42,11 @@ internal sealed record PhysicalBodyFrameDescriptor(
         }
 
         var articulation = request.Articulation ?? PhysicalArticulationFrame.Neutral;
+        if (request.NeuralSubstrates is { IsValid: false })
+        {
+            error = "Invalid neural substrate availability.";
+            return false;
+        }
         articulation = SaturateMuscleVelocityDerivatives(articulation, out var saturatedMuscleVelocityCount);
         (string Name, float Value)[] values =
         [

@@ -24,7 +24,8 @@ public sealed record TickSignal(
     IReadOnlyDictionary<BrainRhythm, double> PhaseContext,
     float RewardPredictionError,
     float HomeostaticSleepDrive = 0f,
-    float MetabolicWakeReserve = 1f);
+    float MetabolicWakeReserve = 1f,
+    NeuralSubstrateSupply? NeuralSubstrates = null);
 
 public sealed record TickAck(
     StructureId StructureId,
@@ -73,7 +74,8 @@ public sealed record SynapticLearningDiagnostics(
     string TopologyVersion, string CheckpointScope, string ModelStatus,
     int NeuronCount, int ContactCount, long PresynapticEvents, long PostsynapticEvents,
     IReadOnlyList<SynapticContactSample> Contacts,
-    double ContactSampleTimestampMs = 0);
+    double ContactSampleTimestampMs = 0,
+    NeuralEnergyDiagnostics? Energy = null);
 
 public sealed record MicrotubuleDiagnostics(
     string Mode,

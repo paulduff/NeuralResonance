@@ -1,9 +1,10 @@
 using System;
 using NeuralResonanceEngine.Protocol;
+using NeuralResonanceEngine.Shared.Contracts;
 
 internal sealed class ModelNeuron
 {
-	public const string DynamicsVersion = "physical-time-hh-gates-v2";
+	public const string DynamicsVersion = "substrate-energy-hcn-v3";
 	private readonly HodgkinHuxleyMembrane? _hh;
 	private readonly NeuronModelKind _modelKind;
 
@@ -79,9 +80,18 @@ internal sealed class ModelNeuron
 
 	private double _homeostaticInhibitoryBias;
 
-	private double _metabolicReserve = 1.0;
+	private readonly NeuralEnergyBudget _energy = new();
+	private NeuralSubstrateSupply _substrates = NeuralSubstrateSupply.ReferenceBath;
+	public NeuralEnergyBudget Energy => _energy;
+	public string SupplySource => _substrates.Source;
+	public void SetSubstrateSupply(NeuralSubstrateSupply supply)
+	{
+		if (!supply.IsValid) throw new ArgumentException("Invalid neural substrates", nameof(supply));
+		_substrates = supply;
+	}
+	private double _metabolicReserve => _energy.Reserve;
 
-	private double _metabolicFatigueTrace;
+
 
 	private double _astrocyteGlutamateLoad;
 
@@ -166,7 +176,7 @@ internal sealed class ModelNeuron
 		_receptors = ReceptorProfile.For(circuitProfile, index);
 		_modelKind = ParseModel(neuronModel);
 		_v = _subtype.RestingPotential;
-		_hh = _modelKind == NeuronModelKind.Hh ? new HodgkinHuxleyMembrane(_v) : null;
+		_hh = _modelKind == NeuronModelKind.Hh ? new HodgkinHuxleyMembrane(_v, HcnChannelProfile.For(circuitProfile.StructureId), SlowInwardChannelProfile.For(circuitProfile.StructureId)) : null;
 		_aisVoltage = _subtype.RestingPotential;
 		_basalDendriteVoltage = _subtype.RestingPotential - 3.0;
 		_apicalDendriteVoltage = _subtype.RestingPotential - 3.0;
@@ -268,7 +278,7 @@ internal sealed class ModelNeuron
 		var inhibitoryGain = (1.0 + 0.75 * (double)neuromod.SerotoninLevel + 0.4 * (double)neuromod.AcetylcholineLevel) * _circuitProfile.InhibitoryScale * _subtype.InhibitorySensitivity;
 		excitabilityGain *= 1.0 + _homeostaticExcitabilityBias;
 		inhibitoryGain *= 1.0 + _homeostaticInhibitoryBias;
-		excitabilityGain *= 0.76 + _metabolicReserve * 0.24;
+
 		var receptorExcitability = 1.0 + Math.Clamp(
 			_dopamineD1Current * 0.035
 			+ _nicotinicCurrent * 0.045
@@ -324,9 +334,9 @@ internal sealed class ModelNeuron
 		}
 		// The reference HH membrane uses microamp/cm^2 with Cm=1. The former
 		// 2000-unit drive saturated the AIS shortcut and concealed receptor input.
-		// 10 is an explicit provisional normalized-drive conversion, NOT a measured
+		// 12 is an explicit provisional normalized-drive conversion, NOT a measured
 		// cerebellar conductance or a claim of physiological calibration.
-		var pacemakerCurrentScale = _modelKind == NeuronModelKind.Hh ? 10.0 : 30.0;
+		var pacemakerCurrentScale = _modelKind == NeuronModelKind.Hh ? 12.0 : 30.0;
 		var intrinsicMembraneCurrent =
 			(_pacemakerExcitatoryDrive * pacemakerCurrentScale) -
 			(_pacemakerInhibitoryDrive * 24.0 * inhibitoryGain);
@@ -340,7 +350,9 @@ internal sealed class ModelNeuron
 				neuromod,
 				ref netSynCurrent);
 		}
-		netSynCurrent -= _metabolicFatigueTrace * 1.8;
+		// HH uses an actual K conductance inside its coupled solver. Reduced LIF/
+		// Izh cells use the corresponding outward-current approximation.
+		if (_hh is null) netSynCurrent -= _energy.PotassiumConductance * (_v + 77);
 		netSynCurrent -= _astrocytePotassiumLoad * 0.22;
 		_lastNetSynapticCurrent = netSynCurrent;
 		excitabilityGain *= _microtubules.IntegrationGain;
@@ -365,7 +377,8 @@ internal sealed class ModelNeuron
 				(_ampaCurrent + _metabotropicGlutamateCurrent * .35) / 65 * excitabilityGain,
 				_nmdaCurrent / 65 * excitabilityGain,
 				_gabaACurrent * 1.05 / 15 * inhibitoryGain * excitabilityGain,
-				_gabaBCurrent * .85 / 30 * inhibitoryGain * excitabilityGain);
+				_gabaBCurrent * .85 / 30 * inhibitoryGain * excitabilityGain,
+				_energy.PotassiumConductance);
 			_v = _hh.Voltage;
 			if (IsActive) RegisterSpike(_v, dopamineGate, resetMembrane: false);
 			break;
@@ -486,15 +499,11 @@ internal sealed class ModelNeuron
 
 	private void AdvanceMetabolicState(double dtMs, NeuromodState neuromod, double excitatorySynCurrent, double inhibitorySynCurrent)
 	{
-		var synapticLoad = Math.Clamp((excitatorySynCurrent + inhibitorySynCurrent) * dtMs * 0.000002, 0.0, 0.0015);
-		var spikeCost = IsActive ? 0.0028 : 0.0;
-		var plasticityCost = Math.Clamp((_calciumTrace + _dendriticPlateauTrace) * dtMs * 0.000012, 0.0, 0.0012);
-		var restOpportunity = Math.Clamp(1.0 - (double)ActivityTrace * 6.0, 0.0, 1.0);
-		var recoveryDrive = (0.55 + 0.55 * (double)neuromod.SerotoninLevel + 0.25 * (1.0 - (double)neuromod.NorepinephrineLevel) + _astrocyteLactateSupport * 0.35) * (0.35 + restOpportunity * 0.65);
-		var recovery = dtMs / 90000.0 * recoveryDrive;
-		_metabolicReserve = Math.Clamp(_metabolicReserve + recovery - spikeCost - synapticLoad - plasticityCost, 0.2, 1.0);
-		var fatigueDecay = Math.Exp(0.0 - dtMs / 8000.0);
-		_metabolicFatigueTrace = Math.Clamp(_metabolicFatigueTrace * fatigueDecay + (1.0 - _metabolicReserve) * (1.0 - fatigueDecay), 0.0, 1.0);
+		// Absolute ionic load: opposite currents must not cancel their energy cost.
+		var synapticLoad = (Math.Abs(excitatorySynCurrent) + Math.Abs(inhibitorySynCurrent) + (_hh?.AdditionalIonicLoad ?? 0)) * dtMs * .000002;
+		var spikeCost = IsActive ? .0028 : 0;
+		var plasticityCost = (_calciumTrace + _dendriticPlateauTrace) * dtMs * .000012;
+		_energy.Advance(dtMs, spikeCost + synapticLoad + plasticityCost, _substrates);
 	}
 
 	private void AdvanceGlialSupport(double dtMs)
@@ -766,8 +775,6 @@ internal sealed class ModelNeuron
 		_homeostaticActivityTrace = FiniteClamp(_homeostaticActivityTrace, 0.0, 1.0, 0.0);
 		_homeostaticExcitabilityBias = FiniteClamp(_homeostaticExcitabilityBias, -0.18, 0.22, 0.0);
 		_homeostaticInhibitoryBias = FiniteClamp(_homeostaticInhibitoryBias, -0.15, 0.2, 0.0);
-		_metabolicReserve = FiniteClamp(_metabolicReserve, 0.2, 1.0, 1.0);
-		_metabolicFatigueTrace = FiniteClamp(_metabolicFatigueTrace, 0.0, 1.0, 0.0);
 		_astrocyteGlutamateLoad = FiniteClamp(_astrocyteGlutamateLoad, 0.0, 1.0, 0.0);
 		_astrocytePotassiumLoad = FiniteClamp(_astrocytePotassiumLoad, 0.0, 1.0, 0.0);
 		_astrocyteLactateSupport = FiniteClamp(_astrocyteLactateSupport, 0.0, 1.0, 0.0);

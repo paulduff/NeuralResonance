@@ -101,6 +101,13 @@ public static class AvatarControlApi
         ArgumentNullException.ThrowIfNull(uri);
         ArgumentNullException.ThrowIfNull(frame);
 
+        if (frame.NeuralSubstrates is null)
+        {
+            var supply = AvatarWorldDynamics.EstimateNeuralSubstrates(new AvatarPhysiologyState(
+                frame.StoredEnergyJoules, frame.HydrationFraction, frame.TissueIntegrityFraction), frame.BloodOxygenSaturationFraction);
+            frame = frame with { NeuralSubstrates = new NeuralSubstrateSupply(supply.GlucoseAvailability,
+                supply.OxygenAvailability, supply.PerfusionAvailability, "avatar-reduced-availability-v1") };
+        }
         using var response = await client.PostAsJsonAsync(uri, frame, cancellationToken);
         var payload = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)

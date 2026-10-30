@@ -428,6 +428,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				for (int i = 0; i < _neurons.Length; i++)
 				{
 				ModelNeuron modelNeuron = _neurons[i];
+				modelNeuron.SetSubstrateSupply(tickSignal.NeuralSubstrates ?? NeuralSubstrateSupply.Missing);
 				IntrinsicCircuitDriveTopology.Resolve(
 					_profile.StructureId,
 					modelNeuron.Index,

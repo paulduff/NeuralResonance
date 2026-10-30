@@ -62,7 +62,8 @@ public sealed record PhysicalBodyFrameRequest(
     float HydrationFraction,
     string? InputSource,
     PhysicalArticulationFrame? Articulation = null,
-    bool MotorTrainingMode = false);
+    bool MotorTrainingMode = false,
+    NeuralSubstrateSupply? NeuralSubstrates = null);
 
 /// <summary>
 /// Direct physical measurements from the simulated musculoskeletal body. These

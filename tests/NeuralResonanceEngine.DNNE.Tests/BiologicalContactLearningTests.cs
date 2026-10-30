@@ -9,6 +9,22 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 [Collection(EnvironmentVariableTestCollection.Name)]
 public sealed class BiologicalContactLearningTests
 {
+    [Fact]
+    public async Task StructureReceivesExplicitFuelAndReportsMissingSupplyWithoutRefill()
+    {
+        using var fixture = new IsolatedEngine();
+        var first = await fixture.Engine.ProcessTickAsync(Tick(1) with { NeuralSubstrates = NeuralSubstrateSupply.ReferenceBath });
+        var energy = Assert.IsType<NeuralEnergyDiagnostics>(first.SynapticLearningDiagnostics!.Energy);
+        Assert.Equal("isolated-reference-bath", energy.SupplySource);
+        Assert.True(energy.Produced > 0);
+        var second = await fixture.Engine.ProcessTickAsync(Tick(2));
+        var missing = second.SynapticLearningDiagnostics!.Energy!;
+        Assert.Equal("missing-supply", missing.SupplySource);
+        Assert.Equal(energy.Produced, missing.Produced);
+        Assert.True(missing.Consumed > energy.Consumed);
+        Assert.True(missing.MaximumBalanceError < 1e-9);
+    }
+
     static SynapseState Contact() => new(Guid.NewGuid(), NTEnum.GLUTAMATE, 1f);
 
     [Fact]
@@ -243,6 +259,7 @@ public sealed class BiologicalContactLearningTests
     [InlineData("empty-id")] [InlineData("duplicate")] [InlineData("wrong-source")] [InlineData("null-contacts")]
     [InlineData("old-cell-dynamics")]
     [InlineData("old-circuit-clock")]
+    [InlineData("old-support-model")]
     public async Task MalformedContactStateIsRejectedWithoutDiscardingOrRewritingIt(string corruption)
     {
         using var fixture = new IsolatedEngine();
@@ -262,6 +279,10 @@ public sealed class BiologicalContactLearningTests
             JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
         if (corruption == "old-circuit-clock") document["ModelFingerprint"] = StableNeuralIdentity.Create(
             StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion, StructureId.VestibularNuclei, "LIF", "STDP",
+            JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
+        if (corruption == "old-support-model") document["ModelFingerprint"] = StableNeuralIdentity.Create(
+            StableNeuralIdentity.TopologyVersion, "physical-time-hh-gates-v2", IntrinsicCircuitDriveTopology.ClockVersion,
+            StructureId.VestibularNuclei, "LIF", "STDP",
             JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
         var corrupted = document.ToJsonString();
         File.WriteAllText(path, corrupted);

@@ -1,5 +1,5 @@
 // Generated from AvatarWorldDynamics.cs and HeadlessWorldRuntime.cs; do not edit.
-// Equations SHA256 (UTF-8, LF): 9a6c5cecba668b69e04c2d22f9efc9d106ffc94b52d5e3028052f0e9bfaa26c0
+// Equations SHA256 (UTF-8, LF): 4f33fb12102782799e95cfe311fe4352471fd6ff54535adb5e43e5c24bbc3327
 using System;
 namespace Nre.UnityWorld {
 
@@ -9,6 +9,14 @@ public readonly struct AvatarPhysiologyState
     public double HydrationFraction { get; }
     public double TissueIntegrityFraction { get; }
     public AvatarPhysiologyState(double StoredEnergyJoules, double HydrationFraction, double TissueIntegrityFraction) { this.StoredEnergyJoules = StoredEnergyJoules; this.HydrationFraction = HydrationFraction; this.TissueIntegrityFraction = TissueIntegrityFraction; }
+}
+
+public readonly struct AvatarNeuralSubstrates
+{
+    public double GlucoseAvailability { get; }
+    public double OxygenAvailability { get; }
+    public double PerfusionAvailability { get; }
+    public AvatarNeuralSubstrates(double GlucoseAvailability, double OxygenAvailability, double PerfusionAvailability) { this.GlucoseAvailability = GlucoseAvailability; this.OxygenAvailability = OxygenAvailability; this.PerfusionAvailability = PerfusionAvailability; }
 }
 
 public enum AvatarVitalState
@@ -90,6 +98,18 @@ public readonly struct AvatarPhysiologyOptions
 
 public static class AvatarWorldDynamics
 {
+    // Explicit reduced body boundary. Glucose/perfusion are availability proxies;
+    // Avatar does not yet have blood glucose, pressure or regional vascular plants.
+    // Stored energy is NOT an intracellular ATP concentration or an ATP refill.
+    public static AvatarNeuralSubstrates EstimateNeuralSubstrates(AvatarPhysiologyState state, double oxygenSaturation)
+    {
+        ValidateState(state);
+        if (!(!double.IsNaN(oxygenSaturation) && !double.IsInfinity(oxygenSaturation)) || oxygenSaturation < 0 || oxygenSaturation > 1)
+            throw new ArgumentOutOfRangeException(nameof(oxygenSaturation));
+        return new AvatarNeuralSubstrates(Math.Clamp(state.StoredEnergyJoules / 400000.0, 0, 1),
+            Math.Clamp(oxygenSaturation / .98, 0, 1),
+            Math.Clamp(state.HydrationFraction / .5, 0, 1) * state.TissueIntegrityFraction);
+    }
     private const double TissueDeathThreshold = 0.000001;
     private const double TissueIncapacitationThreshold = 0.08;
     private const double EnergyIncapacitationThresholdJoules = 0.5;

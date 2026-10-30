@@ -32,9 +32,14 @@ public sealed partial class StructureEngine
         }
         return new(StableNeuralIdentity.TopologyVersion, "Learned weights; warm initialization",
             $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}); physiological calibration pending" +
-                (_profile.NeuronModel == "HH" ? "; HH reference membrane, not a calibrated cerebellar cell" : ""),
+                (_profile.NeuronModel == "HH" ? "; HH with population channel reductions, not a calibrated cerebellar cell" : ""),
             _neurons.Length, _inboundSynapses.Count,
-            _presynapticLearningEvents, _postsynapticLearningEvents, _contactSamples, _contactSampleTimestampMs);
+            _presynapticLearningEvents, _postsynapticLearningEvents, _contactSamples, _contactSampleTimestampMs,
+            new NeuralEnergyDiagnostics(_neurons[0].SupplySource, _neurons.Length,
+                _neurons.Average(c => c.Energy.Reserve), _neurons.Min(c => c.Energy.Reserve),
+                _neurons.Sum(c => c.Energy.Produced), _neurons.Sum(c => c.Energy.Consumed),
+                _neurons.Sum(c => c.Energy.Unmet), _neurons.Sum(c => c.Energy.Overflow),
+                _neurons.Max(c => Math.Abs(c.Energy.BalanceError))));
     }
 
     internal Guid ResolveContactId(SpikeMessage message, int targetCell = -1) =>

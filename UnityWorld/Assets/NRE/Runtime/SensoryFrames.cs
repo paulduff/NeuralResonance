@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 namespace Nre.UnityWorld {
+[Serializable] public sealed class NeuralSupplyFrame {
+ public double glucoseAvailability,oxygenAvailability,perfusionAvailability;
+ public string source="avatar-reduced-availability-v1";
+}
 [Serializable] public sealed class BodyFrame {
+ public NeuralSupplyFrame neuralSubstrates;
  public long sequence,timestampMs;
  public float linearVelocityXMetersPerSecond,linearVelocityYMetersPerSecond,linearVelocityZMetersPerSecond,angularVelocityXRadiansPerSecond,angularVelocityYRadiansPerSecond,angularVelocityZRadiansPerSecond;
  // Energy, hydration and tissue are advanced by the canonical Avatar rules.
@@ -13,6 +18,8 @@ namespace Nre.UnityWorld {
  public static BodyFrame Capture(ArticulatedAvatar a,long sequence){var v=a.BodyVector(a.pelvis.linearVelocity);var w=a.BodyVector(a.pelvis.angularVelocity);
   var result=new BodyFrame{sequence=sequence,timestampMs=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),linearVelocityXMetersPerSecond=v.x,linearVelocityYMetersPerSecond=v.y,linearVelocityZMetersPerSecond=v.z,angularVelocityXRadiansPerSecond=w.x,angularVelocityYRadiansPerSecond=w.y,angularVelocityZRadiansPerSecond=w.z};
   var physiology=a.physiology.State;result.storedEnergyJoules=(float)physiology.StoredEnergyJoules;result.hydrationFraction=(float)physiology.HydrationFraction;result.tissueIntegrityFraction=(float)physiology.TissueIntegrityFraction;
+  var fuel=AvatarWorldDynamics.EstimateNeuralSubstrates(physiology,result.bloodOxygenSaturationFraction);
+  result.neuralSubstrates=new NeuralSupplyFrame{glucoseAvailability=fuel.GlucoseAvailability,oxygenAvailability=fuel.OxygenAvailability,perfusionAvailability=fuel.PerfusionAvailability};
   result.articulation=new ArticulationFrame{
    leftHipAngleRadians=a.Angle("left_thigh"),rightHipAngleRadians=a.Angle("right_thigh"),leftKneeAngleRadians=a.Angle("left_shin"),rightKneeAngleRadians=a.Angle("right_shin"),leftAnkleAngleRadians=a.Angle("left_foot"),rightAnkleAngleRadians=a.Angle("right_foot"),leftFootLoadNewtons=a.LeftLoad,rightFootLoadNewtons=a.RightLoad,
    leftShoulderAngleRadians=a.Angle("left_arm"),rightShoulderAngleRadians=a.Angle("right_arm"),leftElbowAngleRadians=a.Angle("left_forearm"),rightElbowAngleRadians=a.Angle("right_forearm"),leftHandLoadNewtons=BodySensorMath.HandReceptorLoad(a.links["left_hand"].sensor.force),rightHandLoadNewtons=BodySensorMath.HandReceptorLoad(a.links["right_hand"].sensor.force),

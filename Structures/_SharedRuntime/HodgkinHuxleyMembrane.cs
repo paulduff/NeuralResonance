@@ -8,12 +8,24 @@ internal sealed class HodgkinHuxleyMembrane
     public double M { get; private set; }
     public double H { get; private set; }
     public double N { get; private set; }
+    public double Q { get; private set; }
+    private readonly HcnChannelProfile _hcn;
+    private readonly SlowInwardChannelProfile _slow;
+    public double P { get; private set; }
+    public double L { get; private set; }
+    public double AdditionalIonicLoad => Math.Abs(_hcn.Conductance * Q * (Voltage - _hcn.Reversal)) +
+        Math.Abs(_slow.Conductance * P * P * P * L * (Voltage - _slow.Reversal));
     public const double MaximumStepMilliseconds = 0.025;
 
-    public HodgkinHuxleyMembrane(double voltage = -65)
+    public HodgkinHuxleyMembrane(double voltage = -65, HcnChannelProfile hcn = default, SlowInwardChannelProfile slow = default)
     {
         if (!double.IsFinite(voltage)) throw new ArgumentOutOfRangeException(nameof(voltage));
         Voltage = voltage;
+        _hcn = hcn;
+        _slow = slow;
+        P = slow.Activation(voltage).Equilibrium;
+        L = slow.Inactivation(voltage).Equilibrium;
+        Q = hcn.Equilibrium(voltage);
         var rates = Rates(voltage);
         M = rates.Am / (rates.Am + rates.Bm);
         H = rates.Ah / (rates.Ah + rates.Bh);
@@ -38,27 +50,34 @@ internal sealed class HodgkinHuxleyMembrane
         M = Gate(M, r.Am, r.Bm, dt);
         H = Gate(H, r.Ah, r.Bh, dt);
         N = Gate(N, r.An, r.Bn, dt);
+        Q = _hcn.Equilibrium(voltage) + (Q - _hcn.Equilibrium(voltage)) * Math.Exp(-dt / _hcn.TimeConstant(voltage));
+        var activation = _slow.Activation(voltage); var inactivation = _slow.Inactivation(voltage);
+        P = activation.Equilibrium + (P - activation.Equilibrium) * Math.Exp(-dt / activation.Tau);
+        L = inactivation.Equilibrium + (L - inactivation.Equilibrium) * Math.Exp(-dt / inactivation.Tau);
     }
 
     public bool Advance(double dt, double currentDensity, double excitatoryConductance = 0,
-        double nmdaConductance = 0, double gabaAConductance = 0, double gabaBConductance = 0)
+        double nmdaConductance = 0, double gabaAConductance = 0, double gabaBConductance = 0,
+        double metabolicPotassiumConductance = 0)
     {
         if (!double.IsFinite(dt) || dt <= 0 || !double.IsFinite(currentDensity))
             throw new ArgumentOutOfRangeException(nameof(dt), "Finite positive time and finite current required.");
-        var input = new Input(currentDensity, excitatoryConductance, nmdaConductance, gabaAConductance, gabaBConductance);
+        var input = new Input(currentDensity, excitatoryConductance, nmdaConductance, gabaAConductance, gabaBConductance, metabolicPotassiumConductance);
         if (!ValidConductance(excitatoryConductance) || !ValidConductance(nmdaConductance) ||
-            !ValidConductance(gabaAConductance) || !ValidConductance(gabaBConductance))
+            !ValidConductance(gabaAConductance) || !ValidConductance(gabaBConductance) || !ValidConductance(metabolicPotassiumConductance))
             throw new ArgumentOutOfRangeException(nameof(excitatoryConductance));
         double remaining = dt;
         bool crossed = false;
         while (remaining > 1e-12)
         {
             double before = Voltage;
-            var state = new MembraneState(Voltage, M, H, N);
+            var state = new MembraneState(Voltage, M, H, N, Q, P, L);
             var a = Slope(state, input);
             var rates = Rates(Voltage);
             double fastest = Math.Max(Math.Max(rates.Am+rates.Bm, rates.Ah+rates.Bh), rates.An+rates.Bn);
             fastest = Math.Max(fastest, 120*M*M*M*H + 36*N*N*N*N + .3 + excitatoryConductance + nmdaConductance + gabaAConductance + gabaBConductance);
+            fastest = Math.Max(fastest + metabolicPotassiumConductance + _hcn.Conductance + _slow.Conductance,
+                Math.Max(1 / _hcn.TimeConstant(Voltage), 1 / _slow.Activation(Voltage).Tau));
             // Bound stiffness and voltage change without clipping a spike or
             // resetting an invalid state. Strong conductance input needs smaller steps.
             double step = Math.Min(remaining, Math.Min(MaximumStepMilliseconds,
@@ -72,7 +91,10 @@ internal sealed class HodgkinHuxleyMembrane
             M += step / 6 * (a.M + 2 * b.M + 2 * c.M + d.M);
             H += step / 6 * (a.H + 2 * b.H + 2 * c.H + d.H);
             N += step / 6 * (a.N + 2 * b.N + 2 * c.N + d.N);
-            if (!double.IsFinite(Voltage) || !double.IsFinite(M) || !double.IsFinite(H) || !double.IsFinite(N))
+            Q += step / 6 * (a.Q + 2 * b.Q + 2 * c.Q + d.Q);
+            P += step / 6 * (a.P + 2 * b.P + 2 * c.P + d.P);
+            L += step / 6 * (a.L + 2 * b.L + 2 * c.L + d.L);
+            if (!double.IsFinite(Voltage) || !double.IsFinite(M) || !double.IsFinite(H) || !double.IsFinite(N) || !double.IsFinite(Q) || !double.IsFinite(P) || !double.IsFinite(L))
                 throw new InvalidOperationException("Non-finite HH membrane; no silent voltage reset.");
             crossed |= before < 0 && Voltage >= 0;
             remaining -= step;
@@ -82,21 +104,26 @@ internal sealed class HodgkinHuxleyMembrane
         return crossed;
     }
 
-    readonly record struct MembraneState(double V, double M, double H, double N)
+    readonly record struct MembraneState(double V, double M, double H, double N, double Q, double P, double L)
     {
         public MembraneState Offset(MembraneState slope, double time) =>
-            new(V + time * slope.V, M + time * slope.M, H + time * slope.H, N + time * slope.N);
+            new(V + time * slope.V, M + time * slope.M, H + time * slope.H, N + time * slope.N, Q + time * slope.Q, P + time * slope.P, L + time * slope.L);
     }
-    readonly record struct Input(double Current, double Excitatory, double Nmda, double GabaA, double GabaB);
+    readonly record struct Input(double Current, double Excitatory, double Nmda, double GabaA, double GabaB, double MetabolicK);
     static bool ValidConductance(double g) => double.IsFinite(g) && g >= 0;
-    static MembraneState Slope(MembraneState s, Input input)
+    MembraneState Slope(MembraneState s, Input input)
     {
         var r = Rates(s.V);
+        var activation = _slow.Activation(s.V); var inactivation = _slow.Inactivation(s.V);
         double nmdaRelief = 1 / (1 + .28 * Math.Exp(-.062 * s.V));
         double synaptic = -(input.Excitatory + input.Nmda * nmdaRelief) * s.V
             - input.GabaA * (s.V + 80) - input.GabaB * (s.V + 95);
         return new(input.Current + synaptic - 120 * s.M * s.M * s.M * s.H * (s.V - 50)
-                           - 36 * s.N * s.N * s.N * s.N * (s.V + 77) - .3 * (s.V + 54.387),
-            r.Am * (1 - s.M) - r.Bm * s.M, r.Ah * (1 - s.H) - r.Bh * s.H, r.An * (1 - s.N) - r.Bn * s.N);
+                           - (36 * s.N * s.N * s.N * s.N + input.MetabolicK) * (s.V + 77) - .3 * (s.V + 54.387)
+                           - _hcn.Conductance * s.Q * (s.V - _hcn.Reversal)
+                           - _slow.Conductance * s.P * s.P * s.P * s.L * (s.V - _slow.Reversal),
+            r.Am * (1 - s.M) - r.Bm * s.M, r.Ah * (1 - s.H) - r.Bh * s.H, r.An * (1 - s.N) - r.Bn * s.N,
+            (_hcn.Equilibrium(s.V) - s.Q) / _hcn.TimeConstant(s.V),
+            (activation.Equilibrium - s.P) / activation.Tau, (inactivation.Equilibrium - s.L) / inactivation.Tau);
     }
 }

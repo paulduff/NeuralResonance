@@ -381,6 +381,10 @@
   </Folder>
   <Folder Name="/Tools/">
     <Project Path="tools/AvatarMechanicsProbe/AvatarMechanicsProbe.csproj" />
+    <Project Path="tools/LearningStructureAudit/LearningStructureAudit.csproj" />
+    <Project Path="tools/PosturalCellProbe/PosturalCellProbe.csproj" />
+    <Project Path="tools/PosturalCircuitProbe/PosturalCircuitProbe.csproj" />
+    <Project Path="tools/UnityBodyValidation/ValidateBody.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj" />

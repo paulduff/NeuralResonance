@@ -13,6 +13,10 @@ Its implemented contact/event repair and remaining acceptance work are recorded 
 `docs/DNNE_Biological_Foundation_Repair_2026-10-19.md`. Schema-4 saves are learned-state
 warm starts, not exact brain continuation. Preserve incompatible legacy saves;
 use explicit isolated state for fresh experiments, never a silent schema upgrade.
+The subsequent cell/timing repair is documented in
+`docs/DNNE_Cell_Dynamics_Repair_2026-10-30.md`. Its dynamics version changes the
+model fingerprint; preserve earlier schema-4 saves too. HH is now a reference
+dynamic-gate membrane, not a physiologically calibrated human cerebellar cell.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

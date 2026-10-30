@@ -107,7 +107,8 @@ internal sealed class IntracellularMicrotubuleState
 			_recentExcitatoryDrive = Math.Clamp(_recentExcitatoryDrive - quanta * 0.012, 0.0, 1.0);
 		}
 
-		AdvanceRecentDrive(dtMs);
+		// Input is an event, not elapsed time. Decay only in Advance, once per
+		// biological interval; otherwise event count also accelerates the clock.
 	}
 
 	public void Advance(double dtMs, NeuromodState neuromod, double excitatoryCurrent, double netDrive, float activityTrace, bool spiked)
@@ -118,7 +119,7 @@ internal sealed class IntracellularMicrotubuleState
 		}
 
 		StabilizeState();
-		double dtScale = FiniteClamp(dtMs / 20.0, 0.05, 4.0, 0.5);
+		double dtScale = double.IsFinite(dtMs) ? Math.Max(0.0, dtMs) / 20.0 : 0.0;
 		double acetylcholine = FiniteClamp(neuromod.AcetylcholineLevel, 0.0, 1.0, 0.0);
 		double dopamine = FiniteClamp(neuromod.DopamineLevel, 0.0, 1.0, 0.0);
 		double norepinephrine = FiniteClamp(neuromod.NorepinephrineLevel, 0.0, 1.0, 0.0);
@@ -131,16 +132,17 @@ internal sealed class IntracellularMicrotubuleState
 			+ _recentExcitatoryDrive * 0.30
 			+ boundedExcitation * 0.18
 			+ activity * 0.20
-			+ acetylcholine * 0.08
-			+ (spiked ? 0.06 : 0.0);
-		SpineInvasionEligibility = Approach(SpineInvasionEligibility, Math.Clamp(invasionTarget, 0.0, 1.0), 0.065 * dtScale);
+			+ acetylcholine * 0.08;
+		SpineInvasionEligibility = Approach(SpineInvasionEligibility, Math.Clamp(invasionTarget, 0.0, 1.0), 1.0 - Math.Exp(-0.065 * dtScale));
+		// Fixed contribution per actual spike, independent of integration cadence.
+		if (spiked) SpineInvasionEligibility = Math.Clamp(SpineInvasionEligibility + 0.06 * (1.0 - Math.Exp(-0.065 / 20.0)), 0.0, 1.0);
 
 		double transportTarget = BaselineTransportSupport
 			+ SpineInvasionEligibility * 0.18
 			+ dopamine * 0.08
 			+ acetylcholine * 0.06
 			- serotonin * 0.05;
-		TransportSupport = Approach(TransportSupport, Math.Clamp(transportTarget, 0.0, 1.0), 0.018 * dtScale);
+		TransportSupport = Approach(TransportSupport, Math.Clamp(transportTarget, 0.0, 1.0), 1.0 - Math.Exp(-0.018 * dtScale));
 
 		double stressPenalty = norepinephrine > 0.74 ? (norepinephrine - 0.74) * 0.10 : 0.0;
 		double stabilityTarget = BaselineStability
@@ -161,7 +163,7 @@ internal sealed class IntracellularMicrotubuleState
 			OpticalCollectiveBias = 0.0;
 		}
 
-		Stability = Approach(Stability, Math.Clamp(stabilityTarget, 0.0, 1.0), 0.012 * dtScale);
+		Stability = Approach(Stability, Math.Clamp(stabilityTarget, 0.0, 1.0), 1.0 - Math.Exp(-0.012 * dtScale));
 		AdvanceRecentDrive(dtMs);
 		StabilizeState();
 	}

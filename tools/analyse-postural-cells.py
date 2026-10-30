@@ -27,7 +27,7 @@ def main():
     indexed = {keys(c): c for c in cases}
     expected = {(p["id"], pacemaker, dt, stimulus["name"]) for p in protocol["profiles"]
                 for pacemaker in (True,False) for dt in protocol["integrationStepsMilliseconds"] for stimulus in protocol["inputs"]}
-    require(len(cases) == len(indexed) == protocol["caseCount"] == 72 and set(indexed) == expected, "Case matrix mismatch")
+    require(len(cases) == len(indexed) == protocol["caseCount"] == len(expected) and set(indexed) == expected, "Case matrix mismatch")
     inputs = {r["name"]: r for r in protocol["inputs"]}
     output = []
     for case in cases:
@@ -66,6 +66,8 @@ def main():
     for case in output:
         other = by_key[(case["structure"],case["pacemaker"],.25,case["input"])]
         case["stimulusRateDifferenceFromQuarterMillisecondHz"] = case["meanRateHz"]["stimulus"]-other["meanRateHz"]["stimulus"]
+        finest = by_key[(case["structure"],case["pacemaker"],min(protocol["integrationStepsMilliseconds"]),case["input"])]
+        case["stimulusRateDifferenceFromFinestStepHz"] = case["meanRateHz"]["stimulus"]-finest["meanRateHz"]["stimulus"]
     report = {"completed": True, "caseCount":len(cases), "smoke":protocol["smoke"],
         "accountingValidated":True, "freshBaselinesMatched":True, "results":output,
         "interpretation":"Paired model response and numerical sensitivity, not physiological validation. Intrinsic cell tonic drive remains on in the no-pacemaker control. No learned contacts or network behaviour are assessed.",

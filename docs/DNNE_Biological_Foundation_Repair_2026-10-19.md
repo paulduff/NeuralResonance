@@ -174,3 +174,13 @@ Tilt information reaches the sampled spinal/reflex path. Cerebellar teaching
 cannot be qualified by this reduced circuit because its granule/olive inputs are
 absent. A separate cell-response and integration-step diagnostic is prepared to
 measure the underlying response before changing cell models or balance decoding.
+
+### Subsequent cell repair — 30 October
+
+[The cell-response review and repair](DNNE_Cell_Dynamics_Repair_2026-10-30.md)
+supersedes the earlier HH implementation description. It corrects elapsed-time
+defects and replaces the instantaneous-gate/reset shortcut with a dynamic-gate
+reference membrane. Cell-specific physiology remains unqualified. The dynamics
+version is included in checkpoint compatibility and editor status; earlier
+schema-4 saves are protected from silent reuse. A frozen-baseline / four-step
+candidate comparison is prepared after 1,007 regression tests pass.

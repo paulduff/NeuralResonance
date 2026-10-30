@@ -19,12 +19,14 @@ internal static class PosturalCellProbe
 
     static int Main(string[] args)
     {
-        if (args.Length is < 1 or > 2 || args.Length == 2 && args[1] != "--smoke")
-            throw new ArgumentException("Arguments: new-output-directory [--smoke]");
+        if (args.Length < 1 || args.Skip(1).Any(arg => arg is not ("--smoke" or "--convergence")))
+            throw new ArgumentException("Arguments: new-output-directory [--smoke] [--convergence]");
         var output = Path.GetFullPath(args[0]);
         if (Directory.Exists(output)) throw new InvalidOperationException("Use a new output directory.");
         Directory.CreateDirectory(output);
         bool smoke = args.Contains("--smoke");
+        double[] timeSteps = args.Contains("--convergence") ? [1, .5, .25, .125] : [1, .25];
+        int caseCount = Profiles.Length * 2 * timeSteps.Length * Inputs.Length;
         int durationMs = smoke ? 200 : 8000, count = smoke ? 4 : 32;
         string? oldMicrotubules = Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE");
         // Match the default classical cell mode explicitly; no experimental quantum terms.
@@ -34,7 +36,9 @@ internal static class PosturalCellProbe
             Save(output, "protocol.json", new
             {
                 Study = "postural-cell-response", Smoke = smoke, DurationMilliseconds = durationMs,
-                SampledCellsPerCondition = count, CaseCount = 72, IntegrationStepsMilliseconds = new[] { 1.0, .25 },
+                SampledCellsPerCondition = count, CaseCount = caseCount, IntegrationStepsMilliseconds = timeSteps,
+                ModelDynamicsVersion = ModelNeuron.DynamicsVersion,
+                HhScope = "Dynamic gates with bounded adaptive RK4; classical 6.3 C reference. Normalized drive and receptor conductance conversions are provisional, not cerebellar physiology.",
                 Profiles = Profiles.Select(p => new { p.Id, p.Model }), Inputs = Inputs.Select(p => new
                     { p.Name, p.GlutamatePeriodMs, p.GabaPeriodMs, p.Quanta }),
                 Phases = "First quarter no external input; middle half scheduled receptor events; final quarter no external input.",
@@ -49,7 +53,7 @@ internal static class PosturalCellProbe
             var results = new List<object>();
             foreach (var profile in Profiles)
             foreach (var pacemaker in new[] { true, false })
-            foreach (var dt in new[] { 1.0, .25 })
+            foreach (var dt in timeSteps)
             foreach (var input in Inputs)
             {
                 var circuit = StructureCircuitProfile.For(profile.Id);
@@ -85,13 +89,13 @@ internal static class PosturalCellProbe
                         states[phase][i].Add(cell, dt, start + dt);
                     }
                 }
-                var name = $"{profile.Id}-{(pacemaker ? "pacemaker" : "no-pacemaker")}-{(dt == 1 ? "1ms" : "025ms")}-{input.Name}";
+                var name = $"{profile.Id}-{(pacemaker ? "pacemaker" : "no-pacemaker")}-{dt.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture).Replace(".", "")}ms-{input.Name}";
                 var result = new { Case = name, Structure = profile.Id, profile.Model, Pacemaker = pacemaker,
                     StepMilliseconds = dt, Input = input.Name, DurationMilliseconds = durationMs,
                     GlutamateEvents = glutamateEvents, GabaEvents = gabaEvents, Phases = states };
                 Save(output, name + ".json", result);
                 results.Add(new { Case = name, Structure = profile.Id, Pacemaker = pacemaker, StepMilliseconds = dt, Input = input.Name });
-                Console.WriteLine($"{results.Count}/72 complete: {name}");
+                Console.WriteLine($"{results.Count}/{caseCount} complete: {name}");
             }
             Save(output, "results.json", new { Completed = true, Cases = results, LiveBrainAccessed = false,
                 BiologicalEquivalenceQualified = false, PhysicalRecoveryAssessed = false });

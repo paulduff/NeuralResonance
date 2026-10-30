@@ -770,3 +770,20 @@ declared imposed receptor events, pacemaker controls and matched physical clocks
 at two integration steps. It tests no Avatar functions and substitutes no body
 controller. The visible PowerShell launcher preserves old saves and backs up new
 results. Editor and live services are not redeployed by this diagnostic work.
+
+## Cell response/timing repair — 30 October
+
+The completed 72-condition cell study and D: copy verify. See
+[cell dynamics repair](DNNE_Cell_Dynamics_Repair_2026-10-30.md). Revisited Avatar's
+original balance and neuronal motor bridge; retained mechanics, receptors,
+authority and paused-start behaviour. The repair affects DNNE cell timing and HH
+membrane generation, not Avatar actuation. The existing editor learning inspector
+receives the dynamics version and reference-model/calibration status. No live
+service was redeployed and no physical recovery is asserted.
+
+All 1,007 regression checks pass, including Avatar/editor/authority contracts and
+the new cell/old-save checks. The independent PowerShell comparison repeats the
+frozen old executable on the current runtime, then tests the candidate at four
+integration steps. The membrane, provisional conductances and pacemaker scale
+still require physiological calibration. Old saves remain intact; the changed
+model fingerprint requires explicit fresh state.

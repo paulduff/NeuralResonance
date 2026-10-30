@@ -36,20 +36,26 @@ function Assert-FileHashes($entries){
   }
  }
 }
-function Invoke-ProbeStage([string]$name,[switch]$Smoke){
+function Invoke-ProbeStage([string]$name,[switch]$Smoke,[switch]$Baseline){
  $output=Join-Path $package $name
  if(Test-Path -LiteralPath $output){throw ('Refusing to reuse neural state: '+$output)}
  Assert-FileHashes $configuration.PackageFiles
  $arguments=@($configuration.ProbeAssembly,$output)
+ $analyser=Join-Path $package 'analysis.py'
+ $expected=$configuration.CaseCount
+ if($Baseline){
+  $arguments=@($configuration.BaselineProbeAssembly,$output)
+  $analyser=Join-Path $package 'baseline-analysis.py'
+  $expected=72
+ }elseif($configuration.PSObject.Properties.Name -contains 'ProbeArguments'){$arguments+=@($configuration.ProbeArguments)}
  if($Smoke){$arguments+='--smoke'}
  Write-Host ('========== '+$name.ToUpperInvariant()+' ==========') -ForegroundColor Cyan
  & $configuration.DotnetExecutable @arguments
  if($LASTEXITCODE -ne 0){throw ($name+' failed; inspect '+(Join-Path $output 'FAILED.json'))}
- & $configuration.PythonExecutable (Join-Path $package 'analysis.py') $output
+ & $configuration.PythonExecutable $analyser $output
  if($LASTEXITCODE -ne 0){throw ($name+' accounting/state validation failed.')}
  $report=Get-Content -LiteralPath (Join-Path $output 'results.json') -Raw | ConvertFrom-Json
  $analysis=Get-Content -LiteralPath (Join-Path $output 'cell-analysis.json') -Raw | ConvertFrom-Json
- $expected=72
  if(-not $report.completed -or $report.cases.Count -ne $expected -or -not $analysis.accountingValidated -or -not $analysis.completed){
   throw ($name+' did not complete the required fresh-state matrix.')
  }
@@ -64,11 +70,19 @@ try {
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Fresh isolated cells for each condition. Old saves are protected and never loaded.'
  Write-Host 'Three production cell profiles; excitation, inhibition, pacemaker and integration-step controls.'
- Write-Host 'Short preflight, then 72 conditions. This tests cell response; no whole brain, contact learning or body dynamics.'
+ Write-Host ('Short preflight, then '+$configuration.CaseCount+' conditions. This tests cell response; no whole brain, contact learning or body dynamics.')
  Assert-FileHashes $configuration.PackageFiles
  Assert-FileHashes $configuration.ProtectedBackupFiles
  Invoke-ProbeStage -name 'preflight' -Smoke
+ if($configuration.PSObject.Properties.Name -contains 'BaselineProbeAssembly'){
+  Write-Host 'Repeating the frozen previous model on this runtime for a matched comparison.'
+  Invoke-ProbeStage -name 'baseline' -Baseline
+ }
  Invoke-ProbeStage -name 'study'
+ if($configuration.PSObject.Properties.Name -contains 'BaselineProbeAssembly'){
+  & $configuration.PythonExecutable (Join-Path $package 'compare.py') $package
+  if($LASTEXITCODE -ne 0){throw 'Paired comparison validation failed.'}
+ }
  $status.Status='FINISHED';$status.ExitCode=0
  Write-Host 'All cases and accounting checks completed. Orion will assess cell responses and numerical sensitivity from the saved results.' -ForegroundColor Green
 }catch{

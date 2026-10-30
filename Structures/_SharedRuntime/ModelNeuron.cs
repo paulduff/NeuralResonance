@@ -3,6 +3,8 @@ using NeuralResonanceEngine.Protocol;
 
 internal sealed class ModelNeuron
 {
+	public const string DynamicsVersion = "physical-time-hh-gates-v2";
+	private readonly HodgkinHuxleyMembrane? _hh;
 	private readonly NeuronModelKind _modelKind;
 
 	private readonly StructureCircuitProfile _circuitProfile;
@@ -164,6 +166,7 @@ internal sealed class ModelNeuron
 		_receptors = ReceptorProfile.For(circuitProfile, index);
 		_modelKind = ParseModel(neuronModel);
 		_v = _subtype.RestingPotential;
+		_hh = _modelKind == NeuronModelKind.Hh ? new HodgkinHuxleyMembrane(_v) : null;
 		_aisVoltage = _subtype.RestingPotential;
 		_basalDendriteVoltage = _subtype.RestingPotential - 3.0;
 		_apicalDendriteVoltage = _subtype.RestingPotential - 3.0;
@@ -253,6 +256,8 @@ internal sealed class ModelNeuron
 	public bool Step(double dtMs)
 	{
 		dtMs = double.IsFinite(dtMs) && dtMs > 0.0 ? Math.Min(dtMs, 100.0) : 1.0;
+		if (_hh is not null && dtMs > 1.0)
+			throw new ArgumentOutOfRangeException(nameof(dtMs), "HH spike events require at most 1 ms outer intervals; StructureEngine substeps its host ticks.");
 		StabilizeDynamicState();
 		AdvanceSynapticKinetics(dtMs);
 		UpdateLocalNeuromodulation();
@@ -310,10 +315,18 @@ internal sealed class ModelNeuron
 		var nmdaVoltageRelief = 1.0 / (1.0 + 0.28 * Math.Exp(-0.062 * _v));
 		var excitatorySynCurrent = _ampaCurrent + (_nmdaCurrent * nmdaVoltageRelief) + _metabotropicGlutamateCurrent * 0.35;
 		var inhibitorySynCurrent = (_gabaACurrent * 1.05) + (_gabaBCurrent * 0.85);
-		// HH currents use conductance-density units while the compact LIF/Izhikevich
-		// models use membrane-current units. Convert the normalized cell-autonomous
-		// drive into the corresponding model scale before membrane integration.
-		var pacemakerCurrentScale = _modelKind == NeuronModelKind.Hh ? 2_000.0 : 30.0;
+		if (_hh is not null)
+		{
+			// Explicit provisional conductance conversion: preserve the old receptor
+			// amplitudes at -65 mV, then respect reversal potentials as V changes.
+			excitatorySynCurrent *= -_v / 65.0;
+			inhibitorySynCurrent = _gabaACurrent * 1.05 * (_v + 80) / 15.0 + _gabaBCurrent * .85 * (_v + 95) / 30.0;
+		}
+		// The reference HH membrane uses microamp/cm^2 with Cm=1. The former
+		// 2000-unit drive saturated the AIS shortcut and concealed receptor input.
+		// 10 is an explicit provisional normalized-drive conversion, NOT a measured
+		// cerebellar conductance or a claim of physiological calibration.
+		var pacemakerCurrentScale = _modelKind == NeuronModelKind.Hh ? 10.0 : 30.0;
 		var intrinsicMembraneCurrent =
 			(_pacemakerExcitatoryDrive * pacemakerCurrentScale) -
 			(_pacemakerInhibitoryDrive * 24.0 * inhibitoryGain);
@@ -347,19 +360,14 @@ internal sealed class ModelNeuron
 			break;
 		case NeuronModelKind.Hh:
 		{
-			double x = 1.0 / (1.0 + Math.Exp((0.0 - (_v + 40.0)) / 10.0));
-			double num4 = 1.0 / (1.0 + Math.Exp((_v + 62.0) / 10.0));
-			double x2 = 1.0 / (1.0 + Math.Exp((0.0 - (_v + 53.0)) / 16.0));
-			double num5 = 120.0 * Math.Pow(x, 3.0) * num4 * (_v - 50.0);
-			double num6 = 36.0 * Math.Pow(x2, 4.0) * (_v + 77.0);
-			double num7 = 0.3 * (_v + 54.387);
-			_v += dtMs * ((netSynCurrent + tonicDrive) * excitabilityGain - num5 - num6 - num7) / 100.0;
-			var hhThreshold = 30.0 + thresholdOffset + _subtype.ThresholdOffset;
-			IsActive = canSpike && (_aisVoltage >= hhThreshold || _v >= hhThreshold);
-			if (IsActive)
-			{
-				RegisterSpike(_subtype.RestingPotential + 7.0, dopamineGate);
-			}
+			var otherCurrent = netSynCurrent - (excitatorySynCurrent - inhibitorySynCurrent * inhibitoryGain) + tonicDrive;
+			IsActive = _hh!.Advance(dtMs, otherCurrent * excitabilityGain,
+				(_ampaCurrent + _metabotropicGlutamateCurrent * .35) / 65 * excitabilityGain,
+				_nmdaCurrent / 65 * excitabilityGain,
+				_gabaACurrent * 1.05 / 15 * inhibitoryGain * excitabilityGain,
+				_gabaBCurrent * .85 / 30 * inhibitoryGain * excitabilityGain);
+			_v = _hh.Voltage;
+			if (IsActive) RegisterSpike(_v, dopamineGate, resetMembrane: false);
 			break;
 		}
 		default:
@@ -496,21 +504,23 @@ internal sealed class ModelNeuron
 		var lactateDecay = Math.Exp(0.0 - dtMs / 30000.0);
 		var excitatoryLoad = Math.Clamp((_ampaCurrent + _nmdaCurrent + _metabotropicGlutamateCurrent) * dtMs * 0.000006, 0.0, 0.035);
 		_astrocyteGlutamateLoad = Math.Clamp(_astrocyteGlutamateLoad * glutamateLoadDecay + excitatoryLoad, 0.0, 1.0);
-		_astrocytePotassiumLoad = Math.Clamp(_astrocytePotassiumLoad * potassiumLoadDecay + (IsActive ? 0.025 : 0.0) + (double)ActivityTrace * 0.001, 0.0, 1.0);
+		_astrocytePotassiumLoad = Math.Clamp(_astrocytePotassiumLoad * potassiumLoadDecay + (IsActive ? 0.025 : 0.0) + (double)ActivityTrace * 0.001 * dtMs, 0.0, 1.0);
 		var restOpportunity = Math.Clamp(1.0 - (double)ActivityTrace * 5.0, 0.0, 1.0);
 		_astrocyteLactateSupport = Math.Clamp(_astrocyteLactateSupport * lactateDecay + restOpportunity * (1.0 - lactateDecay), 0.0, 1.0);
 		var cleanup = Math.Clamp(_astrocyteGlutamateLoad * 0.012, 0.0, 0.11);
-		_ampaCurrent *= 1.0 - cleanup;
-		_nmdaCurrent *= 1.0 - cleanup * 0.55;
-		_metabotropicGlutamateCurrent *= 1.0 - cleanup * 0.35;
+		// Fractions were calibrated per millisecond, not per Step invocation.
+		_ampaCurrent *= Math.Pow(1.0 - cleanup, dtMs);
+		_nmdaCurrent *= Math.Pow(1.0 - cleanup * 0.55, dtMs);
+		_metabotropicGlutamateCurrent *= Math.Pow(1.0 - cleanup * 0.35, dtMs);
 	}
 
 	private void AdvanceCompartmentalBiology(double dtMs, NeuromodState neuromod, double nmdaVoltageRelief, double excitatorySynCurrent, double inhibitorySynCurrent, double tonicDrive, double phasicDrive, double inhibitoryGain, double excitabilityGain, ref double netSynCurrent, out double thresholdOffset)
 	{
 		var dendriticRest = _subtype.RestingPotential - 3.0;
 		var dendriticLeak = Math.Exp(0.0 - dtMs / _subtype.DendriticTimeConstantMs);
-		_basalDendriteVoltage = dendriticRest + (_basalDendriteVoltage - dendriticRest) * dendriticLeak + Math.Clamp(excitatorySynCurrent * 0.018 - inhibitorySynCurrent * inhibitoryGain * 0.012, -1.2, 1.8);
-		_apicalDendriteVoltage = dendriticRest + (_apicalDendriteVoltage - dendriticRest) * dendriticLeak + Math.Clamp((_nmdaCurrent * nmdaVoltageRelief + _metabotropicGlutamateCurrent * 0.22) * 0.02 + phasicDrive * 0.04 - inhibitorySynCurrent * 0.008, -1.0, 1.6);
+		var dendriticInputTime = _subtype.DendriticTimeConstantMs * (1.0 - dendriticLeak);
+		_basalDendriteVoltage = dendriticRest + (_basalDendriteVoltage - dendriticRest) * dendriticLeak + Math.Clamp(excitatorySynCurrent * 0.018 - inhibitorySynCurrent * inhibitoryGain * 0.012, -1.2, 1.8) * dendriticInputTime;
+		_apicalDendriteVoltage = dendriticRest + (_apicalDendriteVoltage - dendriticRest) * dendriticLeak + Math.Clamp((_nmdaCurrent * nmdaVoltageRelief + _metabotropicGlutamateCurrent * 0.22) * 0.02 + phasicDrive * 0.04 - inhibitorySynCurrent * 0.008, -1.0, 1.6) * dendriticInputTime;
 		_basalDendriteVoltage = Math.Clamp(_basalDendriteVoltage, -85.0, -35.0);
 		_apicalDendriteVoltage = Math.Clamp(_apicalDendriteVoltage, -85.0, -35.0);
 
@@ -528,11 +538,11 @@ internal sealed class ModelNeuron
 		{
 			_plateauRecoveryMs = 28.0;
 		}
-		_dendriticPlateauTrace = Math.Clamp(_dendriticPlateauTrace * Math.Exp(0.0 - dtMs / 125.0) + plateauEntry + plateauDrive * 0.006, 0.0, 1.0);
+		_dendriticPlateauTrace = Math.Clamp(_dendriticPlateauTrace * Math.Exp(0.0 - dtMs / 125.0) + plateauEntry + plateauDrive * 0.006 * dtMs, 0.0, 1.0);
 		var dendriticDrive = Math.Clamp(Math.Max(0.0, _basalDendriteVoltage - (_subtype.RestingPotential + 0.5)) * 0.1 + Math.Max(0.0, _apicalDendriteVoltage - (_subtype.RestingPotential + 0.5)) * 0.08 + _dendriticPlateauTrace * 3.0 * _subtype.PlateauGain, 0.0, 5.8);
 
 		_adaptationCurrent *= Math.Exp(0.0 - dtMs / _subtype.AdaptationDecayMs);
-		_calciumTrace = Math.Clamp(_calciumTrace * Math.Exp(0.0 - dtMs / 260.0) + (Math.Clamp((_nmdaCurrent * nmdaVoltageRelief + _metabotropicGlutamateCurrent * 0.12) / 2000.0, 0.0, 0.012) + _dendriticPlateauTrace * 0.004) * _subtype.CalciumGain, 0.0, 1.0);
+		_calciumTrace = Math.Clamp(_calciumTrace * Math.Exp(0.0 - dtMs / 260.0) + (Math.Clamp((_nmdaCurrent * nmdaVoltageRelief + _metabotropicGlutamateCurrent * 0.12) / 2000.0, 0.0, 0.012) + _dendriticPlateauTrace * 0.004) * _subtype.CalciumGain * dtMs, 0.0, 1.0);
 		_refractoryMs = Math.Max(0.0, _refractoryMs - dtMs);
 		_relativeRefractoryScale *= Math.Exp(0.0 - dtMs / 25.0);
 
@@ -543,13 +553,18 @@ internal sealed class ModelNeuron
 		thresholdOffset = _relativeRefractoryScale * 4.0 + _adaptationCurrent * 0.3 + Math.Clamp(_serotonin5Ht1Current * 0.1 + _dopamineD2Current * 0.07 - _nicotinicCurrent * 0.08 - _adrenergicBetaCurrent * 0.08, -1.2, 1.4);
 	}
 
-	private void RegisterSpike(double resetVoltage, double dopamineGate)
+	private void RegisterSpike(double resetVoltage, double dopamineGate, bool resetMembrane = true)
 	{
-		_v = resetVoltage;
-		_aisVoltage = Math.Min(_aisVoltage, resetVoltage + 3.0);
-		_refractoryMs = _modelKind == NeuronModelKind.Hh ? Math.Max(2.2, _subtype.RefractoryMs) : _subtype.RefractoryMs;
+		if (resetMembrane)
+		{
+			_v = resetVoltage;
+			_aisVoltage = Math.Min(_aisVoltage, resetVoltage + 3.0);
+			_refractoryMs = _subtype.RefractoryMs;
+		}
 		_relativeRefractoryScale = Math.Min(1.0, _relativeRefractoryScale + 0.55);
-		_adaptationCurrent = Math.Min(12.0, _adaptationCurrent + (_modelKind == NeuronModelKind.Hh ? 1.6 : 2.2) * _subtype.AdaptationIncrementScale * dopamineGate);
+		// The reference HH gates supply their own spike recovery. Adding the
+		// generic reset-model adaptation current here changes that reference model.
+		if (resetMembrane) _adaptationCurrent = Math.Min(12.0, _adaptationCurrent + 2.2 * _subtype.AdaptationIncrementScale * dopamineGate);
 		_calciumTrace = Math.Clamp(_calciumTrace + 0.055 * _subtype.CalciumGain, 0.0, 1.0);
 	}
 
@@ -721,7 +736,7 @@ internal sealed class ModelNeuron
 
 	private void StabilizeDynamicState()
 	{
-		_v = FiniteClamp(_v, -120.0, 80.0, _subtype.RestingPotential);
+		if (_hh is null) _v = FiniteClamp(_v, -120.0, 80.0, _subtype.RestingPotential);
 		_u = FiniteClamp(_u, -120.0, 120.0, 0.2 * _v);
 		_phase = double.IsFinite(_phase) ? _phase : (double)Index * 0.017;
 		_ampaCurrent = FiniteClamp(_ampaCurrent, 0.0, 10000.0, 0.0);

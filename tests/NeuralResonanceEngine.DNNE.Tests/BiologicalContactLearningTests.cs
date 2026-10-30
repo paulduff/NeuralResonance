@@ -241,6 +241,7 @@ public sealed class BiologicalContactLearningTests
 
     [Theory]
     [InlineData("empty-id")] [InlineData("duplicate")] [InlineData("wrong-source")] [InlineData("null-contacts")]
+    [InlineData("old-cell-dynamics")]
     public async Task MalformedContactStateIsRejectedWithoutDiscardingOrRewritingIt(string corruption)
     {
         using var fixture = new IsolatedEngine();
@@ -255,6 +256,9 @@ public sealed class BiologicalContactLearningTests
         if (corruption == "duplicate") contacts.Add(contacts[0]!.DeepClone());
         if (corruption == "wrong-source") contacts[0]!["SourceNeuronId"] = "n-999";
         if (corruption == "null-contacts") document["Inbound"] = null;
+        if (corruption == "old-cell-dynamics") document["ModelFingerprint"] = StableNeuralIdentity.Create(
+            StableNeuralIdentity.TopologyVersion, StructureId.VestibularNuclei, "LIF", "STDP",
+            JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
         var corrupted = document.ToJsonString();
         File.WriteAllText(path, corrupted);
         Assert.Throws<InvalidOperationException>(() => fixture.Create());

@@ -185,7 +185,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		_withdrawalInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
-		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, profile.StructureId,
+		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion, profile.StructureId,
 			profile.NeuronModel, profile.PlasticityRule, System.Text.Json.JsonSerializer.Serialize(_circuit)).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try

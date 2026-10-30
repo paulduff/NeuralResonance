@@ -36,11 +36,12 @@ function Assert-FileHashes($entries){
   }
  }
 }
-function Invoke-ProbeStage([string]$name,[switch]$Smoke){
+function Invoke-ProbeStage([string]$name,[switch]$Smoke,[string[]]$ExtraArguments=@()){
  $output=Join-Path $package $name
  if(Test-Path -LiteralPath $output){throw ('Refusing to reuse neural state: '+$output)}
  Assert-FileHashes $configuration.PackageFiles
  $arguments=@($configuration.ProbeAssembly,$output,$configuration.SourceRun,$configuration.SynapseBackup,$configuration.ProbeRepository,'--transfer','--fresh-only')
+ $arguments+=@($ExtraArguments)
  if($Smoke){$arguments+='--smoke'}
  Write-Host ('========== '+$name.ToUpperInvariant()+' ==========') -ForegroundColor Cyan
  & $configuration.DotnetExecutable @arguments
@@ -63,12 +64,20 @@ try {
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Fresh cells and connections for each case. Old saves are protected and never loaded.'
- Write-Host 'Fourteen isolated DNNE instances: seven bilateral balance/posture regions. Original Avatar receptor paths.'
- Write-Host 'Short preflight, then eight controls. This tests sensory transfer and learning; it does not test physical recovery.'
+ Write-Host 'Isolated DNNE balance/posture regions with original Avatar receptor paths. The saved protocol lists the exact circuit.'
+ Write-Host 'Short preflight, then eight controls per configured circuit. This tests sensory transfer and learning; it does not test physical recovery.'
  Assert-FileHashes $configuration.PackageFiles
  Assert-FileHashes $configuration.ProtectedBackupFiles
- Invoke-ProbeStage -name 'preflight' -Smoke
- Invoke-ProbeStage -name 'study'
+ if($configuration.PSObject.Properties.Name -contains 'Stages'){
+  foreach($stage in $configuration.Stages){Invoke-ProbeStage -name $stage.Name -Smoke:([bool]$stage.Smoke) -ExtraArguments @($stage.Arguments)}
+ }else{
+  Invoke-ProbeStage -name 'preflight' -Smoke
+  Invoke-ProbeStage -name 'study'
+ }
+ if($configuration.PSObject.Properties.Name -contains 'ComparisonScript'){
+  & $configuration.PythonExecutable $configuration.ComparisonScript $package
+  if($LASTEXITCODE -ne 0){throw 'Paired circuit analysis failed.'}
+ }
  $status.Status='FINISHED';$status.ExitCode=0
  Write-Host 'All cases and accounting checks completed. Orion will assess neural discrimination from the saved results.' -ForegroundColor Green
 }catch{

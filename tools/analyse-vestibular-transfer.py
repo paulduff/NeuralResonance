@@ -34,29 +34,35 @@ def main():
         require(sha256(Path(filename).read_bytes()).hexdigest().upper() == digest.upper(), 'Protected input changed: ' + filename)
     cases = []
     duration = protocol['caseMilliseconds']
+    expected_instances = {side + '_' + region['id'] for region in protocol['regions'] for side in ['L','R']}
+    step_ms = protocol['neuralTickMilliseconds']
     for case in report['results']:
         folder = study / case['case']
         transfer = read(folder / 'transfer-summary.json')
         initial = read(folder / 'initial-state.json')
-        require(len(initial) == 14 and all(item['expectedInbound'] == item['loadedInbound'] and
+        require({item['instanceKey'] for item in initial} == expected_instances and all(item['expectedInbound'] == item['loadedInbound'] and
                 item['expectedOutbound'] == item['loadedOutbound'] for item in initial), 'Saved-state preflight failed')
         if fresh_only:
             require(all(not item['copiedSavedState'] and item['loadedInbound'] == item['loadedOutbound'] == 0
                         and item['initialSha256'] is None for item in initial), 'Fresh case inherited old weights')
             learning = read(folder / 'learning-summary.json')
-            require(learning['freshState'] and len(learning['instances']) == len(learning['telemetry']) == 14,
+            require(learning['freshState'] and len(learning['instances']) == len(learning['telemetry']) == len(expected_instances),
                     'Incomplete fresh learning observations')
             require(all(item['topologyVersion'] == protocol['contactIdentityVersion'] for item in learning['telemetry']),
                     'Mixed learning topology versions')
         require(case['sourceBudgetDrops'] == case['queueRejected'] == 0, 'Transfer was not uncapped and fully admitted')
-        rows = [json.loads(line) for line in (folder / 'neural-trace.jsonl').read_text().splitlines()]
+        rows = [json.loads(line) for line in (folder / 'neural-trace.jsonl').read_text(encoding='utf-8-sig').splitlines()]
         require([row['tick'] for row in rows] == list(range(10, duration + 1, 10)), 'Incomplete neural trace')
+        if protocol.get('observeAllInstances'):
+            require({item['instance'] for item in transfer['accounting']} == expected_instances, 'Missing electrical/accounting observer')
         for item in transfer['accounting']:
             require(item['integrated'] + item['pending'] == item['admitted'], 'Delivery accounting does not close')
             observed = sum(value['count'] for key, value in transfer['paths'].items() if key.split('|')[1] == item['instance'])
             require(observed == item['integrated'], 'Path counts differ from observed integration')
             samples = [value for key, value in transfer['electrical'].items() if key.split('|')[1] == item['instance']]
-            require(sum(value['millisecondSamples'] for value in samples) == duration, 'Incomplete electrical sampling')
+            require(sum(value.get('elapsedMilliseconds',value.get('millisecondSamples',0)) for value in samples) == duration, 'Incomplete electrical sampling')
+            if samples and 'integrationSamples' in samples[0]:
+                require(sum(value['integrationSamples'] for value in samples) * step_ms == duration, 'Integration-step accounting differs')
             region = next(region for region in rows[-1]['regions'] if region['instance'] == item['instance'])
             require(sum(value['spikes'] for value in samples) == region['spikeOutCount'], 'Electrical and emitted-spike counts differ')
             # Step acknowledgments precede that tick's route enqueue. Those last
@@ -86,12 +92,12 @@ def main():
             'case': case['case'], 'weights': case['weights'], 'plan': case['plan'],
             'primaryQueued': case['primaryQueued'], 'primaryFallSensitiveMessages': case['primaryFallSensitiveMessages'],
             'accounting': transfer['accounting'], 'transmission': transfer['paths'], 'electrical': transfer['electrical'],
-            'vestibularNucleiOutputSpikes': sum(value['spikes'] for value in transfer['electrical'].values()),
+            'vestibularNucleiOutputSpikes': sum(value['spikes'] for key,value in transfer['electrical'].items() if key.split('|')[1].endswith('_VestibularNuclei')),
             'interventions': {item['instanceKey']: item['intervention'] for item in initial if item['instanceKey'] in allowed},
             'phases': {phase: {'samples': len(values), 'peakPopulationError': max(row['populationError'] for row in values),
                               'errorAtLeastEntryThresholdSamples': sum(row['populationError'] >= .4 for row in values),
                               'latchSamples': sum(row['latch'] for row in values),
-                              'vestibularNucleiOutputSpikes': sum(value['spikes'] for key, value in transfer['electrical'].items() if key.split('|')[0] == phase),
+                              'vestibularNucleiOutputSpikes': sum(value['spikes'] for key, value in transfer['electrical'].items() if key.split('|')[0] == phase and key.split('|')[1].endswith('_VestibularNuclei')),
                               'meanBilateralDrive': sum(row['bilateralDrive'] for row in values) / len(values),
                               'peakBilateralDrive': max(row['bilateralDrive'] for row in values)} for phase, values in stages.items()},
         })
@@ -103,15 +109,17 @@ def main():
     result = {
         'completed': True, 'caseCount': len(cases), 'smoke': protocol['smoke'],
         'validation': {'protectedInputsUnchanged': True, 'initialCountsVerified': True, 'integrationAccountingCloses': True,
-                       'oneMillisecondElectricalSamplingComplete': True, 'electricalAndEmittedSpikesAgree': True,
+                       'electricalSamplingComplete': True, 'electricalAndEmittedSpikesAgree': True,
                        'controlsHeld': True, 'interventionsLimitedToDeclaredCopies': True},
         'scope': 'Observed model currents, somatic voltages and signal transfer in an isolated circuit; no physical recovery assessment.',
         'portableBitwiseReproducibility': False,
         'timingCaution': ('Stable production connection/delay identities; cross-host numerical equivalence still requires replication.'
                          if protocol.get('contactIdentityVersion') else 'Legacy runtime used process-specific HashCode salts; cross-host comparisons require replication.'),
         'freshOnly': fresh_only,
+        'neuralTickMilliseconds': step_ms, 'instanceCount': len(expected_instances),
+        'expandedCerebellarLoop': protocol.get('expandedCerebellarLoop',False),
         'analysisSourceSha256': sha256(Path(__file__).read_bytes()).hexdigest(),
-        'samplingCaution': 'Electrical output spike counts cover every 1 ms step. Population error and latch occupancy are sampled every 10 ms; an entry between samples can be missed.',
+        'samplingCaution': 'Electrical output spike counts cover every integration step. Population error and latch occupancy are sampled every 10 ms; an entry between samples can be missed.',
         'liveBrainAccessed': False, 'physicalRecoveryAssessed': False, 'comparison': comparison, 'results': cases,
     }
     (study / 'transfer-analysis.json').write_text(json.dumps(result, indent=2, allow_nan=False) + '\n', encoding='utf-8')

@@ -9,7 +9,7 @@ internal static partial class Probe
     static readonly FieldInfo NeuronsField = typeof(StructureEngine).GetField("_neurons", BindingFlags.Instance | BindingFlags.NonPublic)!;
     static readonly FieldInfo InboundField = typeof(StructureEngine).GetField("_inboundSynapses", BindingFlags.Instance | BindingFlags.NonPublic)!;
     static readonly FieldInfo OutboundField = typeof(StructureEngine).GetField("_outboundSynapses", BindingFlags.Instance | BindingFlags.NonPublic)!;
-    static readonly string[] ElectricalFields = ["_aisVoltage", "_ampaCurrent", "_nmdaCurrent", "_gabaACurrent", "_gabaBCurrent", "_adaptationCurrent", "_refractoryMs"];
+    static readonly string[] ElectricalFields = ["_aisVoltage", "_ampaCurrent", "_nmdaCurrent", "_gabaACurrent", "_gabaBCurrent", "_adaptationCurrent", "_refractoryMs", "_metabolicReserve", "_metabolicFatigueTrace"];
     static readonly FieldInfo[] ElectricalAccessors = ElectricalFields.Select(name => typeof(ModelNeuron).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!).ToArray();
 
     static void CanonicalizeProbeMessage(SpikeMessage message, string sourceInstance)
@@ -44,10 +44,10 @@ internal static partial class Probe
             ChangedEntries = changed, AfterInbound = Summary(inbound.Values), AfterOutbound = Summary(outbound.Values), TracesReset = false };
     }
 
-    static string TransferPhase(string plan, int tick, int duration) => plan.StartsWith("quiet-") ? plan :
+    static string TransferPhase(string plan, double tick, int duration) => plan.StartsWith("quiet-") ? plan :
         plan == "captured-trajectory" ? "captured-trajectory" : tick <= duration / 4 ? "initial-quiet" : tick <= duration * 3 / 4 ? "stimulus" : "returned-quiet";
 
-    static PhysicalBodyFrameRequest TransferInput(string plan, int tick, int duration, PhysicalBodyFrameRequest stable, PhysicalBodyFrameRequest[] frames)
+    static PhysicalBodyFrameRequest TransferInput(string plan, double tick, int duration, PhysicalBodyFrameRequest stable, PhysicalBodyFrameRequest[] frames)
     {
         var seconds = tick * 8.0 / duration;
         var clockScale = 8000.0 / duration;
@@ -129,12 +129,14 @@ internal static partial class Probe
         readonly Dictionary<string, TransmissionStats> paths = [];
         readonly Dictionary<string, ElectricalStats> electrical = [];
         readonly Dictionary<string, int> eventSamples = [];
-        int tick;
+        double tick;
+        readonly double stepMs;
         string phase = "initial";
-        public TransferRecorder(string directory, List<(ServiceInstance Instance, StructureEngine Engine)> nodes)
+        public TransferRecorder(string directory, List<(ServiceInstance Instance, StructureEngine Engine)> nodes, double stepMs, bool observeAll)
         {
             this.directory = directory;
-            nuclei = nodes.Where(node => node.Instance.StructureId == StructureId.VestibularNuclei)
+            this.stepMs = stepMs;
+            nuclei = nodes.Where(node => observeAll || node.Instance.StructureId == StructureId.VestibularNuclei)
                 .Select(node => (node.Instance, node.Engine, (ModelNeuron[])NeuronsField.GetValue(node.Engine)!)).ToArray();
             inboundTrace = new(Path.Combine(directory, "inbound-integration.jsonl"));
             electricalTrace = new(Path.Combine(directory, "electrical-trace.jsonl"));
@@ -153,23 +155,24 @@ internal static partial class Probe
                 }
             };
         }
-        public void BeginTick(int tick, string phase) { this.tick = tick; this.phase = phase; }
+        public void BeginTick(double tick, string phase) { this.tick = tick; this.phase = phase; }
         public void AfterStep()
         {
             foreach (var node in nuclei)
             {
                 var key = phase + "|" + node.Instance.InstanceKey;
                 if (!electrical.TryGetValue(key, out var stats)) electrical[key] = stats = new();
-                var highest = node.Cells.MaxBy(cell => cell.MembranePotentialMillivolts)!;
-                var strongest = node.Cells.MaxBy(cell => cell.NetSynapticCurrent)!;
-                stats.Add(node.Cells, highest, strongest);
+                var (highest, strongest, fired) = stats.Add(node.Cells, stepMs);
                 if (tick % 10 == 0)
                 {
-                    var righting = node.Cells.Where(cell => ActionChannelTopology.ChannelForNeuron(cell.Index, StructureId.VestibularNuclei) == RightingReflexTopology.StandChannel)
-                        .MaxBy(cell => cell.MembranePotentialMillivolts)!;
+                    var righting = node.Cells.Where(cell => ActionChannelTopology.ChannelForNeuron(cell.Index, node.Instance.StructureId) == RightingReflexTopology.StandChannel)
+                        .MaxBy(cell => cell.MembranePotentialMillivolts);
+                    var reserves = node.Cells.Select(cell => Convert.ToDouble(ElectricalAccessors[7].GetValue(cell))).ToArray();
+                    var fatigue = node.Cells.Select(cell => Convert.ToDouble(ElectricalAccessors[8].GetValue(cell))).ToArray();
                     electricalTrace.WriteLine(System.Text.Json.JsonSerializer.Serialize(new { Tick = tick, Phase = phase, Instance = node.Instance.InstanceKey,
-                        MostDepolarized = Cell(highest), HighestNetCurrent = Cell(strongest), MostDepolarizedStandLane = Cell(righting),
-                        FiredCellCount = node.Cells.Count(cell => cell.IsActive) }, Compact));
+                        MostDepolarized = Cell(highest), HighestNetCurrent = Cell(strongest), MostDepolarizedStandLane = righting is null ? null : Cell(righting),
+                        FiredCellCount = fired, MeanMetabolicReserve = reserves.Average(), MinimumMetabolicReserve = reserves.Min(),
+                        MeanMetabolicFatigue = fatigue.Average(), CellsAtReserveFloor = reserves.Count(value => value <= .200001) }, Compact));
                 }
             }
         }
@@ -192,7 +195,7 @@ internal static partial class Probe
                 return new { Instance = node.Instance.InstanceKey, Admitted = admitted, Pending = pending, Integrated = integrated };
             }).ToArray();
             Save(Path.Combine(directory, "transfer-summary.json"), new { Paths = paths, Electrical = electrical, Accounting = accounting,
-                ElectricalAggregateSampleMilliseconds = 1, IndividualEventLimitPerNucleusPerPhase = 100, IndividualElectricalIntervalMilliseconds = 10,
+                ElectricalAggregateSampleMilliseconds = stepMs, IndividualEventLimitPerNucleusPerPhase = 100, IndividualElectricalIntervalMilliseconds = 10,
                 CompleteIntegrationCounts = paths.Values.Sum(stats => stats.Count), LiveBrainAccessed = false });
         }
         public void Dispose()
@@ -224,15 +227,24 @@ internal static partial class Probe
 
     sealed class ElectricalStats
     {
-        public long MillisecondSamples { get; private set; }
+        public long IntegrationSamples { get; private set; }
+        public double ElapsedMilliseconds { get; private set; }
         public long Spikes { get; private set; }
         public float PeakSomaMillivolts { get; private set; } = -1000;
         public float PeakNetSynapticCurrent { get; private set; } = float.MinValue;
-        public void Add(ModelNeuron[] cells, ModelNeuron highest, ModelNeuron strongest)
+        public (ModelNeuron Highest, ModelNeuron Strongest, int Fired) Add(ModelNeuron[] cells, double stepMs)
         {
-            MillisecondSamples++; Spikes += cells.Count(cell => cell.IsActive);
+            var highest = cells[0]; var strongest = cells[0]; int fired = 0;
+            foreach (var cell in cells)
+            {
+                if (cell.IsActive) fired++;
+                if (cell.MembranePotentialMillivolts > highest.MembranePotentialMillivolts) highest = cell;
+                if (cell.NetSynapticCurrent > strongest.NetSynapticCurrent) strongest = cell;
+            }
+            IntegrationSamples++; ElapsedMilliseconds += stepMs; Spikes += fired;
             PeakSomaMillivolts = Math.Max(PeakSomaMillivolts, highest.MembranePotentialMillivolts);
             PeakNetSynapticCurrent = Math.Max(PeakNetSynapticCurrent, strongest.NetSynapticCurrent);
+            return (highest, strongest, fired);
         }
     }
 }

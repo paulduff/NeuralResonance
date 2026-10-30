@@ -31,7 +31,7 @@ public sealed partial class StructureEngine
             _contactSampleTimestampMs = timestampMs;
         }
         return new(StableNeuralIdentity.TopologyVersion, "Learned weights; warm initialization",
-            $"Reduced model ({ModelNeuron.DynamicsVersion}); physiological calibration pending" +
+            $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}); physiological calibration pending" +
                 (_profile.NeuronModel == "HH" ? "; HH reference membrane, not a calibrated cerebellar cell" : ""),
             _neurons.Length, _inboundSynapses.Count,
             _presynapticLearningEvents, _postsynapticLearningEvents, _contactSamples, _contactSampleTimestampMs);

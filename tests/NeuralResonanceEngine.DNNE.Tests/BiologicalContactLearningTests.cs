@@ -242,6 +242,7 @@ public sealed class BiologicalContactLearningTests
     [Theory]
     [InlineData("empty-id")] [InlineData("duplicate")] [InlineData("wrong-source")] [InlineData("null-contacts")]
     [InlineData("old-cell-dynamics")]
+    [InlineData("old-circuit-clock")]
     public async Task MalformedContactStateIsRejectedWithoutDiscardingOrRewritingIt(string corruption)
     {
         using var fixture = new IsolatedEngine();
@@ -258,6 +259,9 @@ public sealed class BiologicalContactLearningTests
         if (corruption == "null-contacts") document["Inbound"] = null;
         if (corruption == "old-cell-dynamics") document["ModelFingerprint"] = StableNeuralIdentity.Create(
             StableNeuralIdentity.TopologyVersion, StructureId.VestibularNuclei, "LIF", "STDP",
+            JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
+        if (corruption == "old-circuit-clock") document["ModelFingerprint"] = StableNeuralIdentity.Create(
+            StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion, StructureId.VestibularNuclei, "LIF", "STDP",
             JsonSerializer.Serialize(StructureCircuitProfile.For(StructureId.VestibularNuclei))).ToString("N");
         var corrupted = document.ToJsonString();
         File.WriteAllText(path, corrupted);

@@ -185,7 +185,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		_withdrawalInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
-		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion, profile.StructureId,
+		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion,
+			IntrinsicCircuitDriveTopology.ClockVersion, profile.StructureId,
 			profile.NeuronModel, profile.PlasticityRule, System.Text.Json.JsonSerializer.Serialize(_circuit)).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try
@@ -430,7 +431,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				IntrinsicCircuitDriveTopology.Resolve(
 					_profile.StructureId,
 					modelNeuron.Index,
-					tickSignal.Tick,
+					// A packet/host sequence number is not biological time. Hold this
+					// reduced pacemaker on a 1 ms physical grid, even with finer steps.
+					(long)Math.Ceiling(substepTimestampMs),
 					out var circuitExcitation,
 					out var circuitInhibition);
 				modelNeuron.IntegratePacemakerDrive(circuitExcitation, circuitInhibition);

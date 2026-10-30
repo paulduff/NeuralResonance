@@ -2,6 +2,7 @@ using NeuralResonanceEngine.Protocol;
 
 internal static class IntrinsicCircuitDriveTopology
 {
+	public const string ClockVersion = "biological-pacemaker-clock-v1";
 	public static void Resolve(
 		StructureId structure,
 		int neuronIndex,

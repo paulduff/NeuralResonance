@@ -1,11 +1,44 @@
 using System.Reflection;
 using NeuralResonanceEngine.Protocol;
+using NeuralResonanceEngine.Shared.Contracts;
 
 namespace NeuralResonanceEngine.DNNE.Tests;
 
 [Collection(EnvironmentVariableTestCollection.Name)]
 public sealed class CellDynamicsTests
 {
+    [Fact]
+    public async Task CircuitPacemakerDependsOnBiologicalTimeNotPacketSequence()
+    {
+        var oldDir=Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+        var oldInstance=Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+        var directory=Path.Combine(Path.GetTempPath(),"nre-clock-test",Guid.NewGuid().ToString("N"));
+        try
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",directory);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE","clock-a");
+            var profile=new StructureProfile(StructureId.CerebellarGranule,"LIF","MossyFiberLTP","isolated clock check",new DelayWindow(0,0));
+            using var a=new StructureEngine(profile);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE","clock-b");
+            using var b=new StructureEngine(profile);
+            for(int step=1;step<=400;step++)
+            {
+                var signal=new TickSignal(step,step*.25,.25,new NeuromodState(),new Dictionary<BrainRhythm,double>(),0);
+                var first=await a.ProcessStepAsync(signal,0);
+                var second=await b.ProcessStepAsync(signal with {Tick=step+10000},0);
+                Assert.Equal(first.Ack.SpikeOutCount,second.Ack.SpikeOutCount);
+                Assert.Equal(first.Ack.MeanFiringRateHz,second.Ack.MeanFiringRateHz);
+            }
+            Assert.Equal(BiologicalContactLearningTests.Cells(a).Select(c=>c.MembranePotentialMillivolts),
+                BiologicalContactLearningTests.Cells(b).Select(c=>c.MembranePotentialMillivolts));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldDir);
+            Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldInstance);
+        }
+    }
+
     [Fact]
     public void ReferenceHhRestAndRateSingularitiesAreFinite()
     {

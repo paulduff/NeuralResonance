@@ -23,6 +23,12 @@ internal static partial class Probe
         (StructureId.SpinalCordMotor, "SpinalCordMotor", "Izhikevich", "STDP", 1, 4),
         (StructureId.FastigialNucleus, "FastigialNucleus", "Izhikevich", "STDP", 3, 9)
     ];
+    static readonly (StructureId Id, string Folder, string Model, string Plasticity, int Min, int Max)[] CerebellarProfiles =
+    [
+        (StructureId.CerebellarGranule, "Cerebellum.GranuleCellLayer", "LIF", "MossyFiberLTP", 0, 0),
+        (StructureId.PurkinjeCellLayer, "Cerebellum.PurkinjeCellLayer", "HH", "CerebellarLTD", 10, 15),
+        (StructureId.InferiorOlive, "InferiorOlive", "HH", "STDP", 10, 15)
+    ];
     static readonly MethodInfo Rewriter = Private("RewriteSpikeForRoute");
     static readonly MethodInfo Efference = Private("BuildCerebellarEfferenceCopySpike");
     static readonly MethodInfo TargetResolver = Private("ResolveTargetInstances");
@@ -42,7 +48,7 @@ internal static partial class Probe
 
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 4) throw new ArgumentException("Arguments: new-output-directory completed-run shutdown-backup repository [--smoke] [--transfer --fresh-only]");
+        if (args.Length < 4) throw new ArgumentException("Arguments: new-output-directory completed-run shutdown-backup repository [--smoke] [--transfer --fresh-only] [--quarter-ms] [--observe-all] [--cerebellar-loop]");
         var output = Path.GetFullPath(args[0]);
         var run = Path.GetFullPath(args[1]);
         var backup = Path.GetFullPath(args[2]);
@@ -50,7 +56,13 @@ internal static partial class Probe
         var smoke = args.Contains("--smoke");
         var transfer = args.Contains("--transfer");
         var freshOnly = args.Contains("--fresh-only");
+        var expanded = args.Contains("--cerebellar-loop");
+        double stepMs = args.Contains("--quarter-ms") ? .25 : 1;
+        var observeAll = args.Contains("--observe-all") || expanded;
+        var profiles = expanded ? Profiles.Concat(CerebellarProfiles).ToArray() : Profiles;
         if (freshOnly && !transfer) throw new ArgumentException("Fresh-only qualification requires the transfer controls.");
+        if ((expanded || stepMs != 1 || observeAll) && (!freshOnly || !transfer))
+            throw new ArgumentException("Expanded/finer observation requires explicit fresh transfer controls.");
         var localState = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NeuralResonanceEngine");
         if (Directory.Exists(output) || Under(output, run) || Under(output, backup) || Under(output, localState))
             throw new InvalidOperationException("Use a new isolated output directory outside all input and live-state folders.");
@@ -58,9 +70,11 @@ internal static partial class Probe
         var protectedFiles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var oldDirectory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
         var oldInstance = Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
+        var oldMicrotubules = Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE");
         try
         {
-            foreach (var p in Profiles)
+            if (freshOnly) Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE", "classical");
+            foreach (var p in profiles)
             {
                 var source = File.ReadAllText(Path.Combine(repo, "Structures", p.Folder, "Program.cs"));
                 var pattern = $"StructureId\\.{p.Id}\\s*,\\s*\"{p.Model}\"\\s*,\\s*\"{p.Plasticity}\"[\\s\\S]*new DelayWindow\\({p.Min},\\s*{p.Max}\\)";
@@ -73,7 +87,7 @@ internal static partial class Probe
             using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(backup, "backup-manifest.json")));
             var hashes = manifest.RootElement.GetProperty("Files").EnumerateArray().ToDictionary(
                 row => row.GetProperty("Path").GetString()!, row => row.GetProperty("Sha256").GetString()!, StringComparer.OrdinalIgnoreCase);
-            foreach (var p in Profiles)
+            foreach (var p in profiles)
             foreach (var side in new[] { "L", "R" })
             {
                 var relative = Path.Combine("synapses-action38-hand-v1", $"{side}_{p.Id}.synapses.json");
@@ -93,7 +107,7 @@ internal static partial class Probe
             using var coordinator = JsonDocument.Parse(File.ReadAllText(coordinatorPath));
             var connectivity = coordinator.RootElement.GetProperty("connectivityMap").EnumerateObject().ToDictionary(
                 row => Enum.Parse<StructureId>(row.Name, ignoreCase: true), row => row.Value.Deserialize<List<SynapticConnection>>(Json)!);
-            var selected = Profiles.Select(p => p.Id).ToHashSet();
+            var selected = profiles.Select(p => p.Id).ToHashSet();
             var routes = connectivity.Where(pair => selected.Contains(pair.Key)).ToDictionary(pair => pair.Key,
                 pair => (IReadOnlyList<SynapticConnection>)pair.Value.Where(route => selected.Contains(route.Target)).ToArray());
             var settings = NeuronalMotorControlSettings.FromConfiguration(new ConfigurationBuilder().AddJsonFile(Path.Combine(repo, "ControlProgram", "appsettings.json")).Build());
@@ -107,13 +121,17 @@ internal static partial class Probe
                 Study = transfer ? "vestibular-transfer" : "held-postural-replay",
                 FreshOnly = freshOnly, ContactIdentityVersion = StableNeuralIdentity.TopologyVersion,
                 PersistenceSchema = SynapsePersistenceStore.CurrentSchemaVersion,
-                Smoke = smoke, NeuralTickMilliseconds = 1, SensoryIntervalMilliseconds = smoke ? 20 : 140,
+                Smoke = smoke, NeuralTickMilliseconds = stepMs, SensoryIntervalMilliseconds = smoke ? 20 : 140,
+                ExpandedCerebellarLoop = expanded, ObserveAllInstances = observeAll,
+                ModelDynamicsVersion = ModelNeuron.DynamicsVersion, PacemakerClockVersion = IntrinsicCircuitDriveTopology.ClockVersion,
+                Microtubules = IntracellularMicrotubuleState.NormalizeMode(Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE")),
+                Routes = routes,
                 CaseMilliseconds = transfer ? (smoke ? 600 : 8000) : (smoke ? 200 : 6000), Cases = plans, WeightVariants = weightVariants,
                 SourceSpikeLimits = limits.Select(limit => limit == int.MaxValue ? "unrestricted-in-subcircuit" : limit.ToString()),
-                Regions = Profiles.Select(p => new { p.Id, p.Folder, p.Model, p.Plasticity, p.Min, p.Max }),
+                Regions = profiles.Select(p => new { p.Id, p.Folder, p.Model, p.Plasticity, p.Min, p.Max }),
                 Inputs = new { StableSequence = stable.Sequence, FallenSequence = fallen.Sequence, SourceRun = run },
                 ProtectedInputs = protectedFiles, SourceSynapseBackup = backup,
-                Scope = "Fourteen in-process engines: seven regions in both hemispheres; synchronous 1 ms biological clock and next-tick delivery using actual coordinator routing helpers. " +
+                Scope = $"{profiles.Length * 2} in-process engines: {profiles.Length} bilateral regions; synchronous {stepMs} ms neural steps and next-step delivery using actual coordinator routing helpers. " +
                     (freshOnly ? "Fresh cells and contacts in every case; no old weights loaded and no baseline intervention. Synthetic receptor controls and resampled captured trajectory. " :
                         transfer ? "Synthetic receptor controls and resampled captured trajectory with selective connection-strength interventions in copies. " : "Held captured frames and deliberate phase steps. ") +
                     "Not a replica of the whole-brain wall-clock scheduler or a physical recovery experiment.",
@@ -129,7 +147,7 @@ internal static partial class Probe
                 SyntheticInputsAreReceptorFixtures = true, PhysicalDynamicsReplicated = false,
                 BaselineInterventions = freshOnly ? "None; every case starts with empty receiving/release state and newly initialized membranes." : "Only existing vestibular-afferent outbound and/or vestibular-nucleus inbound VesicleQuanta restored to their stored BaselineVesicleQuanta inside each copy. No trace reset or new synapse imposed; ordinary plasticity remains active.",
                 ExactIntegrationObserver = "Scheduled and processed times, source, target cell, raw/learned/effective strengths after actual receptor integration and before plasticity. Complete per-path aggregates, first 100 events per nucleus per phase retained individually.",
-                ElectricalSampling = "Every neural millisecond for aggregate soma/current peaks and spikes; most depolarized, strongest-current and most depolarized stand-lane cell every 10 ms.",
+                ElectricalSampling = "Every integration step for soma/current peaks and spikes; selected cells and energy/fatigue ranges every 10 biological ms. Decoder evaluated every 1 ms, independent of integration step.",
                 TimingControl = "Stable production contact/projection/delay mapping and probe event IDs include source instance and projection. This study does not establish whole-brain or cross-host bitwise reproducibility.",
                 ControlInterval = "Full study: quiet 0-2 seconds, stimulus 2-6, quiet 6-8; smooth half-cosine tilt/support ramps of 0.5 seconds. Preflight time-compresses this schedule.",
                 LiveBrainAccessed = false, GateChanged = false
@@ -141,7 +159,7 @@ internal static partial class Probe
             {
                 var label = $"{weights}-{(limit == int.MaxValue ? "all" : limit)}-{plan}";
                 Console.WriteLine("CASE " + label);
-                summaries.Add(await RunCase(output, backup, label, weights, limit, plan, smoke, stable, fallen, routes, settings, transfer, frames));
+                summaries.Add(await RunCase(output, backup, label, weights, limit, plan, smoke, stable, fallen, routes, settings, transfer, frames, profiles, stepMs, observeAll));
                 foreach (var file in protectedFiles)
                     if (Hash(file.Key) != file.Value) throw new InvalidOperationException("Protected input changed: " + file.Key);
                 Save(Path.Combine(output, "progress.json"), new { CompletedCases = summaries.Count, TotalCases = weightVariants.Length * limits.Length * plans.Length, LastCase = label });
@@ -162,13 +180,15 @@ internal static partial class Probe
         {
             Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", oldDirectory);
             Environment.SetEnvironmentVariable("SERVICE_INSTANCE", oldInstance);
+            Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE", oldMicrotubules);
         }
     }
 
     static async Task<object> RunCase(string output, string backup, string label, string weights, int limit, string plan, bool smoke,
         PhysicalBodyFrameRequest stable, PhysicalBodyFrameRequest fallen,
         IReadOnlyDictionary<StructureId, IReadOnlyList<SynapticConnection>> routes, NeuronalMotorControlSettings settings,
-        bool transfer, PhysicalBodyFrameRequest[] frames)
+        bool transfer, PhysicalBodyFrameRequest[] frames,
+        (StructureId Id, string Folder, string Model, string Plasticity, int Min, int Max)[] profiles, double stepMs, bool observeAll)
     {
         var directory = Path.Combine(output, label);
         var stateDirectory = Path.Combine(directory, "isolated-synapses");
@@ -178,7 +198,7 @@ internal static partial class Probe
         var initial = new List<object>();
         try
         {
-            foreach (var p in Profiles)
+            foreach (var p in profiles)
             foreach (var side in new[] { "L", "R" })
             {
                 var key = $"{side}_{p.Id}";
@@ -217,15 +237,17 @@ internal static partial class Probe
             var previous = NeuronalMotorRuntime.Default;
             SynapticLearningDiagnostics[] lastLearning = [];
             using var trace = new StreamWriter(Path.Combine(directory, "neural-trace.jsonl"));
-            using var recorder = transfer ? new TransferRecorder(directory, nodes) : null;
+            using var recorder = transfer ? new TransferRecorder(directory, nodes, stepMs, observeAll) : null;
             using var inputTrace = transfer ? new StreamWriter(Path.Combine(directory, "receptor-fixtures.jsonl")) : null;
-            for (var tick = 1; tick <= duration; tick++)
+            for (var step = 1; step <= duration / stepMs; step++)
             {
+                double timeMs = step * stepMs;
+                int tick = (int)Math.Ceiling(timeMs);
                 bool stablePhase = plan == "stable-hold" || plan == "stable-fallen-stable" && (tick <= duration / 3 || tick > duration * 2 / 3);
-                var phase = transfer ? TransferPhase(plan, tick, duration) : stablePhase ? "captured-stable" : "captured-fallen";
-                var template = transfer ? TransferInput(plan, tick, duration, stable, frames) : stablePhase ? stable : fallen;
-                recorder?.BeginTick(tick, phase);
-                if ((tick - 1) % interval == 0)
+                var phase = transfer ? TransferPhase(plan, timeMs, duration) : stablePhase ? "captured-stable" : "captured-fallen";
+                var template = transfer ? TransferInput(plan, timeMs, duration, stable, frames) : stablePhase ? stable : fallen;
+                recorder?.BeginTick(timeMs, phase);
+                if (timeMs >= 1 && (timeMs - 1) % interval == 0)
                 {
                     var request = template with { Sequence = ++sequence, TimestampMs = tick, MotorTrainingMode = false };
                     if (!PhysicalBodyFrameDescriptor.TryCreate(request, out var descriptor, out var error)) throw new InvalidOperationException(error);
@@ -244,7 +266,7 @@ internal static partial class Probe
                     inputTrace?.WriteLine(JsonSerializer.Serialize(new { Tick = tick, Phase = phase, SourceSequence = template.Sequence, SourceTimestampMs = template.TimestampMs, Body = request,
                         LeftVestibular = input.For(StructureId.VestibularAfferents, "L"), RightVestibular = input.For(StructureId.VestibularAfferents, "R") }, Compact));
                 }
-                var signal = new TickSignal(tick, tick, 1.0, new NeuromodState(), new Dictionary<BrainRhythm, double>(), 0f);
+                var signal = new TickSignal(step, timeMs, stepMs, new NeuromodState(), new Dictionary<BrainRhythm, double>(), 0f);
                 var processed = new List<(ServiceInstance Instance, StructureStepResult Step)>();
                 foreach (var node in nodes) processed.Add((node.Instance, await node.Engine.ProcessStepAsync(signal, 0)));
                 recorder?.AfterStep();
@@ -275,10 +297,11 @@ internal static partial class Probe
                 foreach (var batch in batches.Where(pair => pair.Value.Count > 0))
                     queueRejected += batch.Value.Count - await engines[batch.Key].EnqueueSpikeBatchAsync(batch.Value);
                 var posture = VestibuloReticularPopulationDecoder.Decode(snapshots)!;
-                previous = NeuronalMotorPopulationDecoder.Decode(tick, snapshots, new NeuronalMotorControlSnapshot(settings), previous, tick);
+                if (timeMs % 1 == 0)
+                    previous = NeuronalMotorPopulationDecoder.Decode(tick, snapshots, new NeuronalMotorControlSnapshot(settings), previous, tick);
                 if (snapshots.Any(snapshot => !float.IsFinite(snapshot.MeanFiringRateHz)) || !float.IsFinite(posture.BalanceError))
                     throw new InvalidOperationException("Non-finite circuit response in " + label);
-                if (tick % 10 == 0)
+                if (timeMs % 10 == 0)
                 {
                     var reflex = ReflexDecoder.Invoke(null, [snapshots])!;
                     double Read(string name) => Convert.ToDouble(reflex.GetType().GetProperty(name)!.GetValue(reflex));
@@ -292,7 +315,7 @@ internal static partial class Probe
                             snapshot.SynapticLearningDiagnostics!.ContactCount, snapshot.SynapticLearningDiagnostics.PresynapticEvents,
                             snapshot.SynapticLearningDiagnostics.PostsynapticEvents }) }, Compact));
                 }
-                if (tick % 1000 == 0) Console.WriteLine($"  {label}: {tick}/{duration} neural ms, input={primaryQueued}, routed={routed}, rejected={queueRejected}");
+                if (timeMs % 1000 == 0) Console.WriteLine($"  {label}: {tick}/{duration} neural ms, input={primaryQueued}, routed={routed}, rejected={queueRejected}");
             }
             if ((plan is "fallen-silent" or "muted-tilt") && primaryQueued != 0 || (plan is "fallen-left-only" or "left-only-tilt") && rightPrimaryQueued != 0)
                 throw new InvalidOperationException("Input control did not hold in " + label);
@@ -306,7 +329,11 @@ internal static partial class Probe
                     ChangedContacts = contacts.Count(contact => contact.TotalAbsolutePlasticityChange > 0),
                     AbsoluteLearningChange = contacts.Sum(contact => contact.TotalAbsolutePlasticityChange),
                     MinimumStrength = contacts.Length == 0 ? 1 : contacts.Min(contact => contact.VesicleQuanta),
-                    MaximumStrength = contacts.Length == 0 ? 1 : contacts.Max(contact => contact.VesicleQuanta) };
+                    MaximumStrength = contacts.Length == 0 ? 1 : contacts.Max(contact => contact.VesicleQuanta),
+                    Sources = contacts.GroupBy(c => c.SourceStructure).Select(g => new { Source = g.Key, Contacts = g.Count(),
+                        Targets = g.Select(c => c.LastTargetNeuronIndex).Distinct().Count(),
+                        ChangedContacts = g.Count(c => c.TotalAbsolutePlasticityChange > 0),
+                        AbsoluteLearningChange = g.Sum(c => c.TotalAbsolutePlasticityChange) }) };
             }).ToArray();
             Save(Path.Combine(directory, "learning-summary.json"), new { FreshState = weights == "fresh", Instances = learned,
                 Telemetry = lastLearning, BiologicalEquivalenceQualified = false, PhysicalRecoveryAssessed = false });

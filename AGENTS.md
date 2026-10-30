@@ -17,6 +17,10 @@ The subsequent cell/timing repair is documented in
 `docs/DNNE_Cell_Dynamics_Repair_2026-10-30.md`. Its dynamics version changes the
 model fingerprint; preserve earlier schema-4 saves too. HH is now a reference
 dynamic-gate membrane, not a physiologically calibrated human cerebellar cell.
+The completed comparison and biological pacemaker clock correction are recorded
+in `docs/DNNE_Cell_Comparison_And_Circuit_Return_2026-10-30.md`; the clock version
+also participates in the save fingerprint. The next 14/20-instance comparison
+is isolated and does not qualify whole-brain balance or physical recovery.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

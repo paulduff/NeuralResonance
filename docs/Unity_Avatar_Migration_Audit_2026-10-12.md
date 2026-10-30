@@ -787,3 +787,22 @@ frozen old executable on the current runtime, then tests the candidate at four
 integration steps. The membrane, provisional conductances and pacemaker scale
 still require physiological calibration. Old saves remain intact; the changed
 model fingerprint requires explicit fresh state.
+
+## Cell comparison accepted for further diagnosis — 30 October
+
+The frozen old executable reproduces its previous 72 conditions exactly. The
+corrected 144 conditions show input-sensitive HH spikes and substantially closer
+fine-step agreement, alongside an unresolved decline in no-input firing. See
+[comparison and circuit return](DNNE_Cell_Comparison_And_Circuit_Return_2026-10-30.md).
+These are model observations, not validated human cell physiology.
+
+Revisited original Avatar balance and the neuronal motor bridge. The next isolated
+comparison retains Avatar's receptor/labyrinth paths, comparing the previous 14
+instances against 20 including granule, Purkinje and inferior-olive populations.
+Both arms use fresh state and the corrected biological pacemaker clock at 0.25 ms.
+All selected regions receive delivery/electrical/energy observations. No actuation
+substitute, body change or live deployment is introduced. The decoder retains its
+one-millisecond cadence and existing gates. The editor's learning status includes
+the clock version through its existing telemetry field; stale-state handling is
+unchanged. All 1,009 regression checks pass. Old saves/captures remain protected;
+the independent PowerShell run backs up results and receives no live monitoring.

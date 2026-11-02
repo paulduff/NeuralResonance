@@ -80,6 +80,17 @@ Purkinje model or assume it is better because it contains calcium. The isolated
 all real olive axonal events, fresh state, and no live monitoring. Old Purkinje
 saves have incompatible fingerprints and must stay preserved. Other nuclei's
 learning and the unresolved connected decoder issue are not repaired by this change.
+The completed 128-condition review is recorded in
+`docs/DNNE_Purkinje_Calcium_Results_2026-11-02.md`. The candidate's stored-weight
+effect depends on calcium entry and gains contact contrast from internal release,
+but is tiny and includes dormant-contact depression. Retaining only the maximum
+historical calcium dose can obscure later teaching; simply waiting longer or
+increasing a learning multiplier is not a demonstrated repair. The connected
+host also has outer-step sensitivity upstream of learning. Next establish event
+and voltage/calcium convergence, then calibrate local dose-to-LTD and repeated
+teaching. The agreed sequence is Purkinje learning, fastigial/vestibular integration,
+reliable balance readout, then Avatar recovery; this result does not yet qualify
+advancing to learned fastigial/postural control. Preserve all completed evidence.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

@@ -19,6 +19,7 @@ internal static class PosturalCellProbe
 
     static int Main(string[] args)
     {
+        if (args.Contains("--split-numerics")) return SplitNumericsProbe.Run(args).GetAwaiter().GetResult();
         if (args.Contains("--support-controls")) throw new InvalidOperationException("Legacy artificial support clamps require the frozen v2 binary; they are not supported by the new energy model.");
         if (args.Contains("--energy-recovery")) throw new InvalidOperationException("The v3 energy comparison requires its preserved frozen binary; olive dynamics have changed.");
         if (args.Contains("--olive-calibration")) return OliveCalibrationProbe.Run(args);

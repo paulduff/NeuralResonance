@@ -109,6 +109,16 @@ packet invariance, short regressions or similar learning totals. Next isolate
 olive numerical accuracy against an independent error-controlled reference and
 test Purkinje refinement with one fixed recorded olive train. Distinguish solver
 error from nonlinear trajectory sensitivity before fitting biological parameters.
+The source/reference and fixed-input replay rig is documented in
+`docs/DNNE_Split_Numerical_Qualification_2026-11-02.md`. It leaves production
+runtime and biological parameters unchanged. Its 80-condition study separates
+source coupling/membrane refinement, an independent Python/DOP853 reference,
+initial-state sensitivity and Purkinje replay of exact saved olive events.
+The independent reference omits metabolic feedback: compare it directly only
+with matched energy-omitted production controls, never as a validation of the
+energy-enabled brain. Reference tolerances and diagnostic perturbations need
+their own review. Preserved spike identity/timing and complete accounting are
+necessary checks, not physiological or long-trajectory convergence claims.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

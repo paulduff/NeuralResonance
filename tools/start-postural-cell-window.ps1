@@ -15,7 +15,9 @@ if(-not $InWindow){
  $quoted=($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' '
  $action=New-ScheduledTaskAction -Execute $shell -Argument $quoted -WorkingDirectory $configuration.Repository
  $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
- $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::FromHours(12)) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+ $executionHours=if($configuration.PSObject.Properties.Name -contains 'ExecutionHours'){[double]$configuration.ExecutionHours}else{12}
+ if($executionHours -le 0 -or $executionHours -gt 72){throw 'ExecutionHours must be in (0,72].'}
+ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::FromHours($executionHours)) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
  Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
  [ordered]@{TaskName=$taskName;RequestedUtc=[DateTime]::UtcNow.ToString('o');Package=$package;NoLiveMonitoring=$true} |
   ConvertTo-Json | Set-Content -LiteralPath (Join-Path $package 'launch.json') -Encoding UTF8
@@ -59,24 +61,29 @@ function Invoke-ProbeStage([string]$name,[switch]$Smoke,[switch]$Baseline){
  if(Test-Path -LiteralPath $output){throw ('Refusing to reuse neural state: '+$output)}
  Assert-FileHashes $configuration.PackageFiles
  $arguments=@($configuration.ProbeAssembly,$output)
+ $nativeExecutable=$configuration.DotnetExecutable
  $analyser=Join-Path $package 'analysis.py'
  $expected=$configuration.CaseCount
  if($Baseline){
   $arguments=@($configuration.BaselineProbeAssembly,$output)
   $analyser=Join-Path $package 'baseline-analysis.py'
   $expected=72
+ }elseif($configuration.PSObject.Properties.Name -contains 'DriverScript'){
+  $nativeExecutable=$configuration.PythonExecutable
+  $arguments=@('-B',$configuration.DriverScript,$output)+@($configuration.DriverArguments)
  }elseif($configuration.PSObject.Properties.Name -contains 'ProbeArguments'){$arguments+=@($configuration.ProbeArguments)}
  if($Smoke){$arguments+='--smoke'}
  Write-Host ('========== '+$name.ToUpperInvariant()+' ==========') -ForegroundColor Cyan
- $probeExit=Invoke-LoggedNative $configuration.DotnetExecutable $arguments (Join-Path $package ($name+'-console.log'))
+ $probeExit=Invoke-LoggedNative $nativeExecutable $arguments (Join-Path $package ($name+'-console.log'))
  if($probeExit -ne 0){throw ($name+' failed with exit '+$probeExit+'; inspect '+(Join-Path $output 'FAILED.json'))}
- $analysisExit=Invoke-LoggedNative $configuration.PythonExecutable @($analyser,$output) (Join-Path $package ($name+'-analysis-console.log'))
+ $analysisExit=Invoke-LoggedNative $configuration.PythonExecutable @('-B',$analyser,$output) (Join-Path $package ($name+'-analysis-console.log'))
  if($analysisExit -ne 0){throw ($name+' accounting/state validation failed with exit '+$analysisExit+'.')}
  $report=Get-Content -LiteralPath (Join-Path $output 'results.json') -Raw | ConvertFrom-Json
  $analysis=Get-Content -LiteralPath (Join-Path $output 'cell-analysis.json') -Raw | ConvertFrom-Json
  if(-not $report.completed -or $report.cases.Count -ne $expected -or -not $analysis.accountingValidated -or -not $analysis.completed){
   throw ($name+' did not complete the required fresh-state matrix.')
  }
+ Assert-FileHashes $configuration.PackageFiles
  Assert-FileHashes $configuration.ProtectedBackupFiles
 }
 

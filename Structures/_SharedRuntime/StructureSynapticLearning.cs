@@ -32,7 +32,9 @@ public sealed partial class StructureEngine
         }
         return new(StableNeuralIdentity.TopologyVersion, "Learned weights; warm initialization",
             $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}); physiological calibration pending" +
-                (_profile.NeuronModel == "HH" ? "; HH with population channel reductions, not a calibrated cerebellar cell" : ""),
+                (_profile.NeuronModel == "HH" ? (_profile.StructureId == StructureId.InferiorOlive
+                    ? "; olivary three-compartment reference, isolated-cell calibration pending; no gap junctions"
+                    : "; HH with population channel reductions, not a calibrated cerebellar cell") : ""),
             _neurons.Length, _inboundSynapses.Count,
             _presynapticLearningEvents, _postsynapticLearningEvents, _contactSamples, _contactSampleTimestampMs,
             new NeuralEnergyDiagnostics(_neurons[0].SupplySource, _neurons.Length,

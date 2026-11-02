@@ -341,7 +341,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			_lastBiologicalTimestampMs = tickSignal.TimestampMs;
 			var integrationStepCount = Math.Max(
 				1,
-				(int)Math.Ceiling(elapsedMilliseconds / MaximumIntegrationSubstepMilliseconds));
+				(int)Math.Ceiling(elapsedMilliseconds / Math.Min(MaximumIntegrationSubstepMilliseconds, _neurons[0].MaximumIntegrationStepMs)));
 			var integrationStepMilliseconds = elapsedMilliseconds / integrationStepCount;
 			DecayRightingTraces(tickSignal.TimestampMs, elapsedMilliseconds);
 			DecayWithdrawalTraces(tickSignal.TimestampMs, elapsedMilliseconds);

@@ -4,8 +4,12 @@ using NeuralResonanceEngine.Shared.Contracts;
 
 internal sealed class ModelNeuron
 {
-	public const string DynamicsVersion = "substrate-energy-hcn-v3";
+	public const string DynamicsVersion = "substrate-energy-olivary-v4";
 	private readonly HodgkinHuxleyMembrane? _hh;
+	private readonly OlivaryMembrane? _olive;
+	private readonly OlivarySynapticContacts? _oliveSynapses;
+	internal OlivaryMembrane? Olive => _olive;
+	internal double MaximumIntegrationStepMs => _hh is not null || _olive is not null ? 1 : 100;
 	private readonly NeuronModelKind _modelKind;
 
 	private readonly StructureCircuitProfile _circuitProfile;
@@ -159,7 +163,7 @@ internal sealed class ModelNeuron
 
 	public float LocalRewardSignal => _localRewardSignal;
 
-	public ModelNeuron(int index, string neuronModel, StructureCircuitProfile circuitProfile)
+	public ModelNeuron(int index, string neuronModel, StructureCircuitProfile circuitProfile, OlivaryParameters? oliveParameters = null)
 	{
 		Index = index;
 		Id = $"n-{index:000}";
@@ -176,7 +180,13 @@ internal sealed class ModelNeuron
 		_receptors = ReceptorProfile.For(circuitProfile, index);
 		_modelKind = ParseModel(neuronModel);
 		_v = _subtype.RestingPotential;
-		_hh = _modelKind == NeuronModelKind.Hh ? new HodgkinHuxleyMembrane(_v, HcnChannelProfile.For(circuitProfile.StructureId), SlowInwardChannelProfile.For(circuitProfile.StructureId)) : null;
+		if (_modelKind == NeuronModelKind.Hh && circuitProfile.StructureId == StructureId.InferiorOlive)
+		{
+			_olive = new OlivaryMembrane(oliveParameters);
+			_oliveSynapses = new OlivarySynapticContacts();
+			_v = _olive.SomaVoltage;
+		}
+		_hh = _modelKind == NeuronModelKind.Hh && _olive is null ? new HodgkinHuxleyMembrane(_v, HcnChannelProfile.For(circuitProfile.StructureId), SlowInwardChannelProfile.For(circuitProfile.StructureId)) : null;
 		_aisVoltage = _subtype.RestingPotential;
 		_basalDendriteVoltage = _subtype.RestingPotential - 3.0;
 		_apicalDendriteVoltage = _subtype.RestingPotential - 3.0;
@@ -189,6 +199,13 @@ internal sealed class ModelNeuron
 			? Math.Clamp(spike.VesicleQuanta, 0.01f, 5f)
 			: 0.01f;
 		var feedbackScale = spike.IsFeedback ? _circuitProfile.FeedbackAttenuation : 1.0;
+		if (_oliveSynapses is not null && spike.Neurotransmitter is NTEnum.GLUTAMATE or NTEnum.GABA)
+		{
+			// Contact weights arrive as quanta. No generic receptor gain or voltage kick.
+			_oliveSynapses.Release(spike, quanta);
+			_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
+			return;
+		}
 		switch (spike.Neurotransmitter)
 		{
 		case NTEnum.GLUTAMATE:
@@ -238,6 +255,7 @@ internal sealed class ModelNeuron
 
 	public void IntegrateIntrinsicDrive(float excitatory, float inhibitory)
 	{
+		if (_olive is not null) return; // intrinsic activity comes from membrane channels
 		if (excitatory > 0f)
 		{
 			_ampaCurrent += Math.Clamp(excitatory, 0f, 1f) * 2.2;
@@ -253,6 +271,7 @@ internal sealed class ModelNeuron
 
 	public void IntegratePacemakerDrive(float excitatory, float inhibitory)
 	{
+		if (_olive is not null) return;
 		_pacemakerExcitatoryDrive = Math.Clamp(
 			_pacemakerExcitatoryDrive + Math.Max(0f, excitatory),
 			0.0,
@@ -266,11 +285,12 @@ internal sealed class ModelNeuron
 	public bool Step(double dtMs)
 	{
 		dtMs = double.IsFinite(dtMs) && dtMs > 0.0 ? Math.Min(dtMs, 100.0) : 1.0;
-		if (_hh is not null && dtMs > 1.0)
+		if ((_hh is not null || _olive is not null) && dtMs > 1.0)
 			throw new ArgumentOutOfRangeException(nameof(dtMs), "HH spike events require at most 1 ms outer intervals; StructureEngine substeps its host ticks.");
 		StabilizeDynamicState();
 		AdvanceSynapticKinetics(dtMs);
 		UpdateLocalNeuromodulation();
+		if (_olive is not null) return StepOlive(dtMs);
 		AdvanceGlialSupport(dtMs);
 		var neuromod = _localNeuromodState;
 		var excitabilityGain = (1.0 + 0.16 * (double)neuromod.NorepinephrineLevel + 0.1 * (double)neuromod.AcetylcholineLevel) * _circuitProfile.ExcitabilityScale;
@@ -408,6 +428,22 @@ internal sealed class ModelNeuron
 		AdvanceHomeostaticPlasticity(dtMs);
 		AdvanceMetabolicState(dtMs, neuromod, excitatorySynCurrent, inhibitorySynCurrent);
 		_microtubules.Advance(dtMs, neuromod, excitatorySynCurrent, netSynCurrent, ActivityTrace, IsActive);
+		return IsActive;
+	}
+
+	private bool StepOlive(double dtMs)
+	{
+		// Synapses, membrane and energy evolve together below the host time step.
+		// Generic tonic/AIS/homeostatic drives are bypassed.
+		var result=OlivaryIntegration.Advance(dtMs,_olive!,_oliveSynapses!,_energy,_substrates);
+		IsActive=result.Fired;
+		_v = _olive!.SomaVoltage;
+		_aisVoltage = _olive.AxonVoltage;
+		_basalDendriteVoltage = _apicalDendriteVoltage = _olive.DendriteVoltage;
+		_lastNetSynapticCurrent = result.MeanSynapticCurrent;
+		ActivityTrace = (float)(ActivityTrace*Math.Exp(-dtMs/20)+(IsActive?1.0/20:0));
+		FiringRateHz = (float)(FiringRateHz*Math.Exp(-dtMs/100)+(IsActive?10:0));
+		_microtubules.Advance(dtMs,_localNeuromodState,Math.Max(0,_lastNetSynapticCurrent),_lastNetSynapticCurrent,ActivityTrace,IsActive);
 		return IsActive;
 	}
 
@@ -745,7 +781,7 @@ internal sealed class ModelNeuron
 
 	private void StabilizeDynamicState()
 	{
-		if (_hh is null) _v = FiniteClamp(_v, -120.0, 80.0, _subtype.RestingPotential);
+		if (_hh is null && _olive is null) _v = FiniteClamp(_v, -120.0, 80.0, _subtype.RestingPotential);
 		_u = FiniteClamp(_u, -120.0, 120.0, 0.2 * _v);
 		_phase = double.IsFinite(_phase) ? _phase : (double)Index * 0.017;
 		_ampaCurrent = FiniteClamp(_ampaCurrent, 0.0, 10000.0, 0.0);

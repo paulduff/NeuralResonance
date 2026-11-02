@@ -8,7 +8,8 @@ public sealed class ClosedNeuronalLoopTests
 {
     [Theory]
     [InlineData(StructureId.PurkinjeCellLayer, "HH")]
-    [InlineData(StructureId.InferiorOlive, "HH")]
+    // The isolated olive can oscillate subthreshold; its evoked response has
+    // separate tests. Mandatory tonic spiking would reinstate the old defect.
     [InlineData(StructureId.CerebellarGranule, "LIF")]
     [InlineData(StructureId.CerebellarVermis, "HH")]
     [InlineData(StructureId.CerebellarLobules, "LIF")]

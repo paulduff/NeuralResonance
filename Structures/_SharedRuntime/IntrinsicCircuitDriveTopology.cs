@@ -21,7 +21,7 @@ internal static class IntrinsicCircuitDriveTopology
 			StructureId.GPi or StructureId.Snr => 0.70f + (oscillation * 0.15f),
 			StructureId.GPe => 0.64f + (oscillation * 0.14f),
 			StructureId.Snc or StructureId.Vta => 0.20f + (oscillation * 0.08f),
-			StructureId.InferiorOlive => 0.72f + (oscillation * 0.24f),
+			// Olive oscillations arise from its three-compartment channels.
 			StructureId.CerebellarVermis => 0.78f + (oscillation * 0.18f),
 			StructureId.CerebellarLobules => 0.52f + (oscillation * 0.16f),
 			StructureId.CerebellarGranule => 0.28f + (sparseLane * 0.52f),

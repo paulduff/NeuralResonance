@@ -41,6 +41,14 @@ recover, but recovery survives removal of both added channel mechanisms at the
 higher drive; the lower drive still loses Purkinje recovery. Do not attribute
 success to HCN alone. The fast tonic olive remains uncalibrated; establish its
 cell-specific physiology before interpreting connected LTD or physical recovery.
+The v4 olive candidate is documented in
+`docs/DNNE_Olivary_Calibration_2026-11-02.md`. It uses a three-compartment reference
+with endogenous oscillations, per-contact receptor conductance and explicit
+somatic/axonal spike accounting. Do not reinstate a tonic sine-wave drive or demand
+spontaneous spiking from every isolated olive cell. Evoked responsiveness, slow
+oscillations, timing, inhibition and supply recovery must be assessed separately.
+Reference conductances and input-density conversion are not fitted human anatomy;
+gap junctions and connected teaching remain unqualified. Preserve v3 saves too.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

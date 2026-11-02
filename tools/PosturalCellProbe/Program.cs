@@ -23,7 +23,8 @@ internal static class PosturalCellProbe
         if (args.Contains("--energy-recovery")) throw new InvalidOperationException("The v3 energy comparison requires its preserved frozen binary; olive dynamics have changed.");
         if (args.Contains("--olive-calibration")) return OliveCalibrationProbe.Run(args);
         if (args.Contains("--olive-response")) return OliveResponseProbe.Run(args);
-        if (args.Contains("--olive-purkinje")) return OlivePurkinjeProbe.Run(args).GetAwaiter().GetResult();
+        if (args.Contains("--olive-purkinje")) throw new InvalidOperationException("The original calcium comparison requires its frozen binary; connected timing has changed. Use --connected-timing for the new protocol.");
+        if (args.Contains("--connected-timing")) return OlivePurkinjeProbe.Run(args).GetAwaiter().GetResult();
         if (args.Contains("--reference-recovery")) return ReferenceRecoveryProbe.Run(args);
         if (args.Length < 1 || args.Skip(1).Any(arg => arg is not ("--smoke" or "--convergence")))
             throw new ArgumentException("Arguments: new-output-directory [--smoke] [--convergence]");

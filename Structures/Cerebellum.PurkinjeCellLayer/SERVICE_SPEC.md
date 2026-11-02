@@ -6,5 +6,6 @@ Biological candidate: local mGluR/IP3, voltage-dependent calcium entry, finite i
 - Inbound queue split: feed-forward queue for default hierarchy and feedback queue for is_feedback=true messages.
 - Neuron model: HH
 - Plasticity: PurkinjeCalciumLTD
-- Save fingerprint: includes the calcium and climbing-compartment versions. Older saves are preserved and rejected, never silently migrated. New saves are learned-weight warm starts; chemistry is reinitialized.
+- Save fingerprint: includes the calcium, climbing-compartment and event-aligned integration versions. Older saves are preserved and rejected, never silently migrated. New saves are learned-weight warm starts; chemistry is reinitialized.
+- Timing: releases apply at their delivery boundary; the coupled engine step is at most 0.125 ms. Calcium follows a linear reconstruction of receiving voltage across each interval. Numerical refinement remains under qualification; see `docs/DNNE_Connected_Timing_Repair_2026-11-02.md`.
 - Feedback delay window: 10-15 ms (when this structure participates in feedback pathways).

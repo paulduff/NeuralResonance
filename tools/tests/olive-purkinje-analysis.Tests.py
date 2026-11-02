@@ -13,23 +13,30 @@ spec=importlib.util.spec_from_file_location("analysis",Path(__file__).resolve().
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 source=Path(sys.argv[1]);read=lambda p:json.loads(p.read_text(encoding="utf-8-sig"))
 assert read(source/"protocol.json")["quick"]
+timing=read(source/"protocol.json")["study"]=="connected-timing"
 before={str(p.relative_to(source)):sha256(p.read_bytes()).hexdigest() for p in source.rglob("*") if p.is_file()}
 with contextlib.redirect_stdout(io.StringIO()):module.analyse(source,write_report=False)
 assert before=={str(p.relative_to(source)):sha256(p.read_bytes()).hexdigest() for p in source.rglob("*") if p.is_file()}
 print("Valid short capture accepted; read-only audit leaves all evidence unchanged")
-for change in ("missing-axon","wrong-owner","early-arrival","direct-candidate-decrement","energy","calcium-mass","schedule","supply","nan"):
+changes=["missing-axon","wrong-owner","early-arrival","direct-candidate-decrement","energy","calcium-mass","schedule","supply","nan"]
+if timing:changes += ["late-arrival","missing-resolution","packet-spike-drift"]
+for change in changes:
     with tempfile.TemporaryDirectory(prefix="nre-calcium-validator-") as directory:
         root=Path(directory)/"capture";shutil.copytree(source,root)
-        case=root/"calcium-paired100-0-0.125"
-        if change in ("missing-axon","wrong-owner","early-arrival","direct-candidate-decrement"):
+        case=root/("calcium-paired100-0-0.125"+("-h0.125" if timing else ""))
+        if change in ("missing-axon","wrong-owner","early-arrival","direct-candidate-decrement","late-arrival","packet-spike-drift"):
             path=case/"events.jsonl";events=[json.loads(s) for s in path.read_text().splitlines()]
             if change=="missing-axon":events.remove(next(e for e in events if e["kind"]=="climbing"))
             if change=="wrong-owner":next(e for e in events if e["kind"]=="climbing")["value"]["message"]["sourceInstanceKey"]="unrelated"
             if change=="early-arrival":next(e for e in events if e["kind"]=="learning")["value"]["processedMs"]-=20
             if change=="direct-candidate-decrement":next(e for e in events if e["kind"]=="learning")["value"]["after"][0]["weight"]-=.01
+            if change=="late-arrival":next(e for e in events if e["kind"]=="learning")["value"]["processedMs"]+=.01
+            if change=="packet-spike-drift":next(e for e in events if e["kind"]=="purkinje-spike")["value"]["timestampMs"]+=.03125
             path.write_text('\n'.join(json.dumps(e) for e in events)+'\n')
         elif change=="schedule":
             path=case/"design.json";data=read(path);data["probeTimes"].pop();path.write_text(json.dumps(data))
+        elif change=="missing-resolution":
+            path=root/"results.json";data=read(path);data["cases"].pop();path.write_text(json.dumps(data))
         else:
             path=case/("contacts.csv" if change=="calcium-mass" else "cells.csv")
             lines=path.read_text().splitlines();columns=lines[0].split(',');row=lines[20].split(',')

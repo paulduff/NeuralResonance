@@ -12,7 +12,7 @@ internal sealed class ModelNeuron
 	internal OlivaryMembrane? Olive => _olive;
 	internal double BasalDendriteVoltageMv => _basalDendriteVoltage;
 	internal double LearningDendriteVoltageMv => _purkinjeClimbing?.VoltageMv ?? _basalDendriteVoltage;
-	internal double MaximumIntegrationStepMs => _hh is not null || _olive is not null ? 1 : 100;
+	internal double MaximumIntegrationStepMs => _olive is not null || _purkinjeClimbing is not null ? .125 : _hh is not null ? 1 : 100;
 	private readonly NeuronModelKind _modelKind;
 
 	private readonly StructureCircuitProfile _circuitProfile;

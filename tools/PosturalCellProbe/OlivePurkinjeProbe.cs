@@ -27,30 +27,35 @@ internal static class OlivePurkinjeProbe
 
     public static async Task<int> Run(string[] args)
     {
-        if(args.Length<1||args.Skip(1).Any(a=>a is not("--olive-purkinje" or "--smoke" or "--quick"))||args.Contains("--quick")&&!args.Contains("--smoke"))
+        if(args.Length<1||args.Skip(1).Any(a=>a is not("--olive-purkinje" or "--connected-timing" or "--smoke" or "--quick"))||args.Contains("--quick")&&!args.Contains("--smoke"))
             throw new ArgumentException("new-output --olive-purkinje [--smoke [--quick]]");
         string root=Path.GetFullPath(args[0]);
         if(Directory.Exists(root))throw new InvalidOperationException("Use a new isolated output directory.");
         Directory.CreateDirectory(root);
-        bool smoke=args.Contains("--smoke"),quick=args.Contains("--quick");
-        int duration=smoke?4000:240000;int[] offsets=quick?[0]:[0,60];double[] steps=[1,.125];
+        bool smoke=args.Contains("--smoke"),quick=args.Contains("--quick"),timing=args.Contains("--connected-timing");
+        int duration=smoke?4000:timing?60000:240000;int[] offsets=quick?[0]:[0,60];double[] steps=[1,.125];
+        string[] variants=timing?["calcium","no-entry"]:Variants;
+        string[] plans=timing?["paired100","paired20","disconnected","inhibition","glucose"]:Plans;
+        double[] resolutions=timing?[.125,.0625,.03125]:[.125];
+        int caseCount=variants.Length*plans.Length*offsets.Length*steps.Length*resolutions.Length;
         var cases=new List<object>();
         string? oldState=Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR"),oldInstance=Environment.GetEnvironmentVariable("SERVICE_INSTANCE"),oldMode=Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE");
         try
         {
             Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE","classical");
-            Save(Path.Combine(root,"protocol.json"),new{study="olive-purkinje-calcium",smoke,quick,durationMs=duration,
-                variants=Variants,plans=Plans,offsets,steps,caseCount=Variants.Length*Plans.Length*offsets.Length*steps.Length,
+            Save(Path.Combine(root,"protocol.json"),new{study=timing?"connected-timing":"olive-purkinje-calcium",smoke,quick,durationMs=duration,
+                variants,plans,offsets,steps,resolutions,caseCount,integrationVersion=StructureEngine.IntegrationVersion,
+                timingScope=timing?"Independent host packet periods 1/0.125 ms and solver ceilings 0.125/0.0625/0.03125 ms. All fixture emissions shifted by 0.03125 ms to exercise arrival boundaries. Same biological constants and preserved calcium induction approximation. Numerical qualification only; no physiological qualification.":null,
                 calciumVersion=PurkinjeCalciumPlasticity.Version,climbingCompartmentVersion=PurkinjeClimbingCompartment.Version,dynamics=ModelNeuron.DynamicsVersion,samplePeriodMs=20,
                 scope="One olive and two Purkinje production cells in fresh diagnostic StructureEngines. Production mapping, delays, ingress and axonal output. Fixture PF bursts, not a granule population. No dropped/merged olive events; disconnected control records undelivered events. Same new climbing conductance compartment in all variants; existing HH soma and generic dendritic model remain uncalibrated. Not whole-brain balance or a fitted calcium/complex-spike model.",
                 calciumScope="Voltage-driven P-type channel reporter, local mGluR/IP3 and finite-store calcium, slow calcium-dependent LTD. No direct CF weight decrement, no generic plasticity budget in candidate LTD, no LTP. Channel density/buffering, receptor mapping, store parameters and consolidation reduction provisional.",
-                controls="Legacy coincidence rule; calcium candidate; diagnostic P-channel entry or internal-store release block. PF leads olive stimulus by 100/20/500ms or follows by100ms. Actual arrival delays retained. Quiet olive, disconnected, 10-30s inhibition/fuel interruption. Four-minute observation includes 180s after last probes.",
+                controls=timing?"Calcium candidate and diagnostic P-channel entry block. PF leads olive stimulus by 100/20ms, disconnected, inhibition and glucose withdrawal. Actual arrivals retained. Sixty-second full conditions, challenges at 10-30s; four-second technical preflight.":"Legacy coincidence rule; calcium candidate; diagnostic P-channel entry or internal-store release block. PF leads olive stimulus by 100/20/500ms or follows by100ms. Actual arrival delays retained. Quiet olive, disconnected, 10-30s inhibition/fuel interruption. Four-minute observation includes 180s after last probes.",
                 freshOnly=true,liveBrainAccessed=false,physicalRecoveryAssessed=false,physiologicallyQualified=false});
-            foreach(string variant in Variants)foreach(string plan in Plans)foreach(int offset in offsets)foreach(double dt in steps)
+            foreach(string variant in variants)foreach(string plan in plans)foreach(int offset in offsets)foreach(double dt in steps)foreach(double resolution in resolutions)
             {
-                string key=$"{variant}-{plan}-{offset}-{dt.ToString(CultureInfo.InvariantCulture)}";
-                Console.WriteLine($"CASE {cases.Count+1}/{Variants.Length*Plans.Length*offsets.Length*steps.Length}: {key}");
-                var result=await Case(root,key,variant,plan,offset,dt,duration,smoke);cases.Add(result);
+                string key=$"{variant}-{plan}-{offset}-{dt.ToString(CultureInfo.InvariantCulture)}"+(timing?$"-h{resolution.ToString(CultureInfo.InvariantCulture)}":"");
+                Console.WriteLine($"CASE {cases.Count+1}/{caseCount}: {key}");
+                var result=await Case(root,key,variant,plan,offset,dt,duration,smoke,timing,resolution);cases.Add(result);
                 Save(Path.Combine(root,"progress.json"),new{completedCases=cases.Count,lastCase=key});
             }
             Save(Path.Combine(root,"results.json"),new{completed=true,physiologicallyQualified=false,cases});return 0;
@@ -59,17 +64,17 @@ internal static class OlivePurkinjeProbe
         finally{Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldState);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldInstance);Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE",oldMode);}
     }
 
-    static StructureEngine Engine(string directory,StructureId id,string key,string rule,int count)
+    static StructureEngine Engine(string directory,StructureId id,string key,string rule,int count,double resolution)
     {
         Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",directory);
         Environment.SetEnvironmentVariable("SERVICE_INSTANCE",key);
-        return new(new(id,"HH",rule,"Isolated calcium comparison",new DelayWindow(10,15)),count);
+        return new(new(id,"HH",rule,"Isolated calcium comparison",new DelayWindow(10,15)),count,resolution);
     }
-    static async Task<object> Case(string root,string key,string variant,string plan,int offset,double dt,int duration,bool smoke)
+    static async Task<object> Case(string root,string key,string variant,string plan,int offset,double dt,int duration,bool smoke,bool timing,double resolution)
     {
         string dir=Path.Combine(root,key);Directory.CreateDirectory(dir);
-        using var olive=Engine(Path.Combine(dir,"olive-state"),StructureId.InferiorOlive,"isolated-olive","STDP",1);
-        using var purkinje=Engine(Path.Combine(dir,"purkinje-state"),StructureId.PurkinjeCellLayer,"isolated-purkinje",variant=="legacy"?"CerebellarLTD":PurkinjeCalciumPlasticity.Rule,2);
+        using var olive=Engine(Path.Combine(dir,"olive-state"),StructureId.InferiorOlive,"isolated-olive","STDP",1,resolution);
+        using var purkinje=Engine(Path.Combine(dir,"purkinje-state"),StructureId.PurkinjeCellLayer,"isolated-purkinje",variant=="legacy"?"CerebellarLTD":PurkinjeCalciumPlasticity.Rule,2,resolution);
         purkinje.DiagnosticBlockPurkinjeCalciumEntry=variant=="no-entry";purkinje.DiagnosticBlockPurkinjeStoreRelease=variant=="no-release";
         var cells=Cells(olive).Concat(Cells(purkinje)).ToArray();var membrane=cells[0].Olive!;
         using var events=new StreamWriter(Path.Combine(dir,"events.jsonl"));
@@ -109,10 +114,11 @@ internal static class OlivePurkinjeProbe
         }
         if(plan=="inhibition")for(int t=start;t<end;t+=10)for(int i=0;i<4;i++)
             scheduled.Add(("olive-inhibition",Fixture("olive-inhibition-"+i,StructureId.FastigialNucleus,StructureId.InferiorOlive,0,t,true,NTEnum.GABA)));
+        if(timing)foreach(var input in scheduled)input.Message.TimestampMs+=.03125;
         scheduled=scheduled.OrderBy(x=>x.Message.TimestampMs).ThenBy(x=>x.Role,StringComparer.Ordinal).ToList();
         if(scheduled.Any(x=>x.Message.TimestampMs<0||x.Message.TimestampMs+100>=duration))throw new InvalidOperationException("Incomplete schedule.");
         var contactRoles=fixtures.ToDictionary(f=>purkinje.ResolveContactId(f.Value),f=>f.Key);
-        Save(Path.Combine(dir,"design.json"),new{key,variant,plan,offset,dt,duration,probeTimes,pfShift,challengeStart=start,challengeEnd=end,taughtCell,
+        Save(Path.Combine(dir,"design.json"),new{key,variant,plan,offset,dt,duration,resolution,fixtureTimeShiftMs=timing?.03125:0,probeTimes,pfShift,challengeStart=start,challengeEnd=end,taughtCell,
             contacts=fixtures.Select(f=>new{role=f.Key,contactId=purkinje.ResolveContactId(f.Value),target=Target(purkinje,f.Value),fixture=f.Value}),
             inputs=scheduled.Select(x=>new{x.Role,x.Message,delayMs=Delay(x.Message.TargetStructure==StructureId.InferiorOlive?olive:purkinje,x.Message)})});
         int next=0,outgoing=0,delivered=0,pcSpikes=0;long soma=0,axon=0;double maxEnergyError=0;
@@ -157,7 +163,7 @@ internal static class OlivePurkinjeProbe
             }
         }
         if(next!=scheduled.Count||pending.Count!=0)throw new InvalidOperationException("Undelivered scheduled events at end.");
-        var result=new{key,variant,plan,offset,dt,duration,inputs=next,oliveSoma=soma,oliveAxon=axon,outgoing,delivered,pcSpikes,maxEnergyError,
+        var result=new{key,variant,plan,offset,dt,duration,resolution,inputs=next,oliveSoma=soma,oliveAxon=axon,outgoing,delivered,pcSpikes,maxEnergyError,
             contacts=Contacts(purkinje).Values.Select(c=>new{state=ContactLearningSnapshot.From(c),role=contactRoles.GetValueOrDefault(c.SynapseId,"climbing"),peakCalcium=c.PurkinjeCalcium?.PeakCalciumUm??0,massError=c.PurkinjeCalcium?.MaximumMassError??0}).ToArray()};
         Save(Path.Combine(dir,"summary.json"),result);return result;
     }

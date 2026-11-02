@@ -91,6 +91,15 @@ and voltage/calcium convergence, then calibrate local dose-to-LTD and repeated
 teaching. The agreed sequence is Purkinje learning, fastigial/vestibular integration,
 reliable balance readout, then Avatar recovery; this result does not yet qualify
 advancing to learned fastigial/postural control. Preserve all completed evidence.
+The subsequent timing repair is documented in
+`docs/DNNE_Connected_Timing_Repair_2026-11-02.md`. Arrival boundaries no longer
+act backward over elapsed intervals; calcium uses start/end voltage. Integration
+version `event-aligned-calcium-v1` invalidates older StructureEngine fingerprints,
+without modifying their saves. The isolated 120-condition numerical study varies
+host packet cadence independently of solver resolution, retaining fractional
+arrival times and all olive events. Exact packet invariance is not a convergence
+proof. Review successive refinements before fitting learning strength or replacing
+the maximum-history induction approximation. Physiology and balance remain open.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

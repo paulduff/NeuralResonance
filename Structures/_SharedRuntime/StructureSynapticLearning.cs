@@ -34,7 +34,7 @@ public sealed partial class StructureEngine
             _contactSampleTimestampMs = timestampMs;
         }
         return new(StableNeuralIdentity.TopologyVersion, "Learned weights; warm initialization",
-            $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}); physiological calibration pending" +
+            $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}; {IntegrationVersion}); physiological calibration pending" +
                 (_profile.NeuronModel == "HH" ? (_profile.StructureId == StructureId.InferiorOlive
                     ? "; olivary three-compartment reference, isolated-cell calibration pending; no gap junctions"
                     : "; HH with population channel reductions, not a calibrated cerebellar cell") : "") +
@@ -133,7 +133,7 @@ public sealed partial class StructureEngine
         if (_incomingByTarget[cell.Index].Count > 0) PersistSynapses(timestampMs);
     }
 
-    private void AdvanceContactModulation(ModelNeuron cell, double timestampMs, double elapsedMs)
+    private void AdvanceContactModulation(ModelNeuron cell, double timestampMs, double elapsedMs, double previousDendriteVoltage)
     {
         if (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule)
         {
@@ -141,7 +141,7 @@ public sealed partial class StructureEngine
             {
                 if(contact.PurkinjeCalcium is not { } chemistry) continue;
                 var previous=ComputeSynapticMemoryContribution(contact);var supported=contact.UpdateCount>0;
-                double delta=chemistry.Advance(elapsedMs,cell.LearningDendriteVoltageMv);
+                double delta=chemistry.Advance(elapsedMs,previousDendriteVoltage,cell.LearningDendriteVoltageMv);
                 contact.VesicleQuanta=(float)chemistry.Weight;
                 contact.TotalAbsolutePlasticityChange+=Math.Abs(delta);
                 UpdateContactDiagnostics(contact,previous,supported);

@@ -14,6 +14,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 
 	private const double MaximumIntegrationSubstepMilliseconds = 4.0;
 	private const double MaximumCatchUpMilliseconds = 100.0;
+	internal const string IntegrationVersion = "event-aligned-calcium-v1";
+	private readonly double _maximumIntegrationStepMs;
 
 	private readonly StructureProfile _profile;
 
@@ -175,7 +177,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 
 	// Internal, fresh-state diagnostic population only. Service hosts cannot select
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
-	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount)
+	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
@@ -193,6 +195,10 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		_kernel = CircuitKernelFactory.For(profile.StructureId);
 		_neurons = (from i in Enumerable.Range(0, isolatedNeuronCount ?? _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
+		if (diagnosticIntegrationStepMs is { } diagnosticStep &&
+			(isolatedNeuronCount is null || !double.IsFinite(diagnosticStep) || diagnosticStep <= 0 || diagnosticStep > .125))
+			throw new ArgumentOutOfRangeException(nameof(diagnosticIntegrationStepMs), "Refinement is restricted to fresh isolated populations and at most 0.125 ms.");
+		_maximumIntegrationStepMs = diagnosticIntegrationStepMs ?? Math.Min(MaximumIntegrationSubstepMilliseconds, _neurons[0].MaximumIntegrationStepMs);
 		_rightingInputTrace = new float[_neurons.Length];
 		_incomingByTarget = Enumerable.Range(0, _neurons.Length).Select(_ => new List<SynapseState>()).ToArray();
 		_cellPostTrace = new float[_neurons.Length];
@@ -201,14 +207,14 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		_feedbackDelayWindow = profile.FeedbackDelay;
 		_recentMessageIdCapacity = Math.Clamp(Math.Max(4096, profile.MaxInboundQueueDepth * 4), 4096, 262_144);
 		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion,
-			IntrinsicCircuitDriveTopology.ClockVersion, profile.StructureId,
+			IntrinsicCircuitDriveTopology.ClockVersion, IntegrationVersion, profile.StructureId,
 			profile.NeuronModel, profile.PlasticityRule, System.Text.Json.JsonSerializer.Serialize(_circuit)).ToString("N");
 		if (profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule)
 			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeCalciumPlasticity.Version).ToString("N");
 		if (profile.StructureId == StructureId.PurkinjeCellLayer)
 			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeClimbingCompartment.Version).ToString("N");
 		if (isolatedNeuronCount is { } diagnosticCount)
-			fingerprint = StableNeuralIdentity.Create("isolated-population-v1", fingerprint, diagnosticCount).ToString("N");
+			fingerprint = StableNeuralIdentity.Create("isolated-population-v2", fingerprint, diagnosticCount, _maximumIntegrationStepMs).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try
 		{
@@ -360,10 +366,6 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			var elapsedMilliseconds = NormalizeElapsedMilliseconds(tickSignal.TickDurationMs);
 			InitializeLearningClock(Math.Max(0, tickSignal.TimestampMs - elapsedMilliseconds));
 			_lastBiologicalTimestampMs = tickSignal.TimestampMs;
-			var integrationStepCount = Math.Max(
-				1,
-				(int)Math.Ceiling(elapsedMilliseconds / Math.Min(MaximumIntegrationSubstepMilliseconds, _neurons[0].MaximumIntegrationStepMs)));
-			var integrationStepMilliseconds = elapsedMilliseconds / integrationStepCount;
 			DecayRightingTraces(tickSignal.TimestampMs, elapsedMilliseconds);
 			DecayWithdrawalTraces(tickSignal.TimestampMs, elapsedMilliseconds);
 			var actionCircuit = ActionChannelTopology.IsActionCircuitStructure(_profile.StructureId);
@@ -415,9 +417,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			}
 			int num = 0;
 			int num2 = 0;
-			var activeDuringInterval = integrationStepCount > 1
-				? new bool[_neurons.Length]
-				: null;
+			var activeDuringInterval = new bool[_neurons.Length];
 			double num3 = 0.0;
 			double num4 = 0.0;
 			double stabilityTotal = 0.0;
@@ -434,18 +434,23 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			double norepinephrineTotal = 0.0;
 			double rewardSignalTotal = 0.0;
 			var intervalStartTimestampMs = Math.Max(0.0, tickSignal.TimestampMs - elapsedMilliseconds);
-			for (var integrationStep = 0; integrationStep < integrationStepCount; integrationStep++)
+			var cursorMs = intervalStartTimestampMs;
+			while (cursorMs < tickSignal.TimestampMs)
 			{
-				var captureDiagnostics = integrationStep == integrationStepCount - 1;
-				var substepTimestampMs = intervalStartTimestampMs +
-					((integrationStep + 1) * integrationStepMilliseconds);
+				// An arrival changes the state at its boundary, never the preceding
+				// interval. Late transport is processed now and remains visible in
+				// ScheduledMs/ProcessedMs; do not backdate it into elapsed biology.
+				ProcessDueInputs(tickSignal with { TimestampMs = cursorMs });
+				var gridEnd = (Math.Floor(cursorMs / _maximumIntegrationStepMs) + 1) * _maximumIntegrationStepMs;
+				if (gridEnd <= cursorMs) gridEnd = cursorMs + _maximumIntegrationStepMs;
+				var substepTimestampMs = Math.Min(tickSignal.TimestampMs, Math.Min(gridEnd, NextDeliveryAfter(cursorMs)));
+				var integrationStepMilliseconds = substepTimestampMs - cursorMs;
+				var captureDiagnostics = substepTimestampMs == tickSignal.TimestampMs;
 				var substepSignal = tickSignal with
 				{
 					TimestampMs = substepTimestampMs,
 					TickDurationMs = integrationStepMilliseconds
 				};
-				ProcessDueQueue(_feedForward, substepSignal, integrationStepMilliseconds, isFeedback: false);
-				ProcessDueQueue(_feedback, substepSignal, integrationStepMilliseconds, isFeedback: true);
 				for (int i = 0; i < _neurons.Length; i++)
 				{
 				ModelNeuron modelNeuron = _neurons[i];
@@ -470,8 +475,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 						out var intrinsicInhibition);
 					modelNeuron.IntegrateIntrinsicDrive(intrinsicExcitation, intrinsicInhibition);
 				}
+				var previousDendriteVoltage = modelNeuron.LearningDendriteVoltageMv;
 				var fired = modelNeuron.Step(integrationStepMilliseconds);
-				AdvanceContactModulation(modelNeuron, substepTimestampMs, integrationStepMilliseconds);
+				AdvanceContactModulation(modelNeuron, substepTimestampMs, integrationStepMilliseconds, previousDendriteVoltage);
 				if (fired) LearnPostsynaptic(modelNeuron, substepTimestampMs);
 				if (activeDuringInterval is not null && (fired || modelNeuron.IsActive))
 				{
@@ -619,7 +625,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				norepinephrineTotal += neuronNeuromod.NorepinephrineLevel;
 				rewardSignalTotal += modelNeuron.LocalRewardSignal;
 				}
+				cursorMs = substepTimestampMs;
 			}
+			ProcessDueInputs(tickSignal);
 			_activeNeuronCount = num2;
 			_meanFiringRateHz = (float)(num3 / (double)_neurons.Length);
 			_meanActivityTrace = (float)(num4 / (double)_neurons.Length);
@@ -762,6 +770,25 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		=> double.IsFinite(elapsedMilliseconds) && elapsedMilliseconds > 0.0
 			? Math.Min(elapsedMilliseconds, MaximumCatchUpMilliseconds)
 			: 1.0;
+
+	private double NextDeliveryAfter(double timestampMs)
+	{
+		lock (_inboundQueueGate)
+		{
+			var next = double.PositiveInfinity;
+			if (_feedForward.TryPeek(out _, out var forward) && forward > timestampMs) next = forward;
+			if (_feedback.TryPeek(out _, out var feedback) && feedback > timestampMs) next = Math.Min(next, feedback);
+			return next;
+		}
+	}
+
+	private void ProcessDueInputs(TickSignal signal)
+	{
+		// Receptor release is instantaneous. Continuous kinetics advance only in
+		// ModelNeuron.Step; a boundary event must not consume another time slice.
+		ProcessDueQueue(_feedForward, signal, 0, isFeedback: false);
+		ProcessDueQueue(_feedback, signal, 0, isFeedback: true);
+	}
 
 	private void ProcessDueQueue(
 		PriorityQueue<SpikeEnvelope, double> queue,

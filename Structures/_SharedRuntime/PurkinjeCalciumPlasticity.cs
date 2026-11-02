@@ -45,13 +45,20 @@ internal sealed class PurkinjeCalciumPlasticity
         .0015/(1+Math.Exp((v+29)/8)),.0055/(1+Math.Exp((v+23)/-8)));
 
     internal double Advance(double dtMs, double dendriteVoltageMv)
+        => Advance(dtMs, dendriteVoltageMv, dendriteVoltageMv);
+
+    // Couple chemistry to the voltage trajectory, not a final voltage held
+    // retrospectively over the whole interval. Linear reconstruction is still
+    // a numerical approximation; the connected study refines its time step.
+    internal double Advance(double dtMs, double initialVoltageMv, double finalVoltageMv)
     {
-        if (!double.IsFinite(dtMs) || dtMs<=0 || !double.IsFinite(dendriteVoltageMv))
+        if (!double.IsFinite(dtMs) || dtMs<=0 || !double.IsFinite(initialVoltageMv) || !double.IsFinite(finalVoltageMv))
             throw new InvalidOperationException("Invalid spine integration input.");
         double previousWeight=Weight;
         int n=(int)Math.Ceiling(dtMs/.125);double h=dtMs/n;
         for(int i=0;i<n;i++)
         {
+            double dendriteVoltageMv=initialVoltageMv+(finalVoltageMv-initialVoltageMv)*(i+.5)/n;
             var (a,b,c,d)=Rates(dendriteVoltageMv);
             Activation=a/(a+b)+(Activation-a/(a+b))*Math.Exp(-(a+b)*h);
             Inactivation=c/(c+d)+(Inactivation-c/(c+d))*Math.Exp(-(c+d)*h);

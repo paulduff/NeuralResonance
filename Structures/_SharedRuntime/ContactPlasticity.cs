@@ -53,7 +53,7 @@ internal static class ContactPlasticity
                     + (rule == "BCM+STDP" ? PlasticityRules.LocalTraceDelta(pair, synapse.VesicleQuanta) : 0f),
                 "MossyFiberLTP" => PlasticityRules.LocalTraceDelta(Math.Max(0f, pair), synapse.VesicleQuanta),
                 "DopamineModulatedSTDP" or "DopamineModulatedSTDP+SynapticTaggingCapture" or
-                "SynapticTaggingCapture" or "CerebellarLTD" or "HomeostaticGain" or "DopamineHomeostasis" => 0f,
+                "SynapticTaggingCapture" or "CerebellarLTD" or PurkinjeCalciumPlasticity.Rule or "HomeostaticGain" or "DopamineHomeostasis" => 0f,
                 _ => throw new InvalidOperationException("Undefined contact learning rule: " + rule)
             };
         Apply(synapse, delta, timestampMs);

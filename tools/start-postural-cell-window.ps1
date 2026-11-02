@@ -90,7 +90,7 @@ try {
  if($configuration.PSObject.Properties.Name -contains 'StudyDescription'){
   Write-Host $configuration.StudyDescription
  }else{Write-Host 'Three production cell profiles; excitation, inhibition, pacemaker and integration-step controls.'}
- Write-Host ('Short preflight, then '+$configuration.CaseCount+' conditions. This tests cell response; no whole brain, contact learning or body dynamics.')
+ Write-Host ('Short preflight, then '+$configuration.CaseCount+' isolated conditions. See the saved protocol for scope; no whole brain or body dynamics.')
  Assert-FileHashes $configuration.PackageFiles
  Assert-FileHashes $configuration.ProtectedBackupFiles
  Invoke-ProbeStage -name 'preflight' -Smoke

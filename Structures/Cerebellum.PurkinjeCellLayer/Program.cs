@@ -1,4 +1,4 @@
 ﻿using NeuralResonanceEngine.Protocol;
 
-StructureHostApplication.Run(args, new StructureProfile(StructureId.PurkinjeCellLayer, "HH", "CerebellarLTD", "Purkinje dendritic integration and complex-spike learning require HH-like membrane dynamics with climbing-fiber coupling.", new DelayWindow(10, 15)));
+StructureHostApplication.Run(args, new StructureProfile(StructureId.PurkinjeCellLayer, "HH", "PurkinjeCalciumLTD", "Contact-local calcium/IP3 LTD candidate driven by the reduced dendritic voltage; physiological calibration and LTP remain pending.", new DelayWindow(10, 15)));
 

@@ -5605,7 +5605,7 @@
                                            ],
                            "color":  "#BA9AFA",
                            "neuronModel":  "HH",
-                           "plasticity":  "CerebellarLTD",
+                           "plasticity":  "PurkinjeCalciumLTD",
                            "source":  "AAL3 v1 1 mm atlas, MNI space"
                        },
                        {

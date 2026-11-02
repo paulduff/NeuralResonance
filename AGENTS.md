@@ -70,6 +70,16 @@ inhibition roughly halves burst output but does not monotonically reduce hit
 probability. Brief delayed spikes must remain visible; no off-window activity
 persists into late recovery. Next assess actual olive-to-Purkinje event delivery
 and per-contact learning in an isolated circuit, preserving all axonal events.
+The operator subsequently authorized the calcium learning change described in
+`docs/DNNE_Purkinje_Calcium_Candidate_2026-11-02.md`. Purkinje cells now have an
+explicit climbing AMPA compartment and contact-local voltage/IP3/calcium LTD.
+Its reference-inspired parameters, passive electrical reduction, peak-induction
+approximation and missing LTP remain unqualified. Do not call it a complete
+Purkinje model or assume it is better because it contains calcium. The isolated
+128-condition comparison uses matched legacy learning and entry/release ablations,
+all real olive axonal events, fresh state, and no live monitoring. Old Purkinje
+saves have incompatible fingerprints and must stay preserved. Other nuclei's
+learning and the unresolved connected decoder issue are not repaired by this change.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

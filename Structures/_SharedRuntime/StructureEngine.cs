@@ -10,6 +10,7 @@ using NeuralResonanceEngine.Shared.Contracts;
 public sealed partial class StructureEngine : IStructureHost, IDisposable
 {
 	internal Action<InboundSynapticObservation>? InboundIntegrationObserver { get; set; }
+	internal Action<ContactLearningObservation>? ContactLearningObserver { get; set; }
 
 	private const double MaximumIntegrationSubstepMilliseconds = 4.0;
 	private const double MaximumCatchUpMilliseconds = 100.0;
@@ -170,13 +171,27 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 
 	private long _lastProcessedTick = -1;
 
-	public StructureEngine(StructureProfile profile)
+	public StructureEngine(StructureProfile profile) : this(profile, null) { }
+
+	// Internal, fresh-state diagnostic population only. Service hosts cannot select
+	// this through configuration, and its saves cannot masquerade as a full nucleus.
+	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (isolatedNeuronCount is { } count)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (count < 1 || count > _circuit.NeuronCount ||
+				profile.StructureId is not (StructureId.InferiorOlive or StructureId.PurkinjeCellLayer) ||
+				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
+				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Diagnostic populations require an empty absolute state directory and an isolated instance.");
+		}
 		_kernel = CircuitKernelFactory.For(profile.StructureId);
-		_neurons = (from i in Enumerable.Range(0, _circuit.NeuronCount)
+		_neurons = (from i in Enumerable.Range(0, isolatedNeuronCount ?? _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
 		_rightingInputTrace = new float[_neurons.Length];
 		_incomingByTarget = Enumerable.Range(0, _neurons.Length).Select(_ => new List<SynapseState>()).ToArray();
@@ -188,6 +203,12 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		var fingerprint = StableNeuralIdentity.Create(StableNeuralIdentity.TopologyVersion, ModelNeuron.DynamicsVersion,
 			IntrinsicCircuitDriveTopology.ClockVersion, profile.StructureId,
 			profile.NeuronModel, profile.PlasticityRule, System.Text.Json.JsonSerializer.Serialize(_circuit)).ToString("N");
+		if (profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeCalciumPlasticity.Version).ToString("N");
+		if (profile.StructureId == StructureId.PurkinjeCellLayer)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeClimbingCompartment.Version).ToString("N");
+		if (isolatedNeuronCount is { } diagnosticCount)
+			fingerprint = StableNeuralIdentity.Create("isolated-population-v1", fingerprint, diagnosticCount).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try
 		{
@@ -815,7 +836,15 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
 			modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,
 			synapse.VesicleQuanta, effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
+		var learningObserver = ContactLearningObserver;
+		var beforeLearning = learningObserver is null ? null : _inboundSynapses.Values
+			.OrderBy(c => c.SynapseId).Select(ContactLearningSnapshot.From).ToArray();
 		LearnPresynaptic(message, synapse, modelNeuron, tickSignal.TimestampMs);
+		if (learningObserver is not null)
+			learningObserver(new ContactLearningObservation(message.MessageId, synapse.SynapseId,
+				envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, modelNeuron.Index,
+				message.SourceStructure, beforeLearning!, _inboundSynapses.Values
+				.OrderBy(c => c.SynapseId).Select(ContactLearningSnapshot.From).ToArray()));
 	}
 
 	private ModelNeuron SelectInboundNeuron(SpikeMessage message)

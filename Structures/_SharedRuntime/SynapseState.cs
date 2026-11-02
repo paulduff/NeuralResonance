@@ -14,6 +14,8 @@ internal sealed class SynapseState(
 	public float VesicleQuanta { get; set; } = vesicleQuanta;
 
 	public float BaselineVesicleQuanta { get; set; } = baselineVesicleQuanta ?? vesicleQuanta;
+	// Transient chemistry is reinitialized on a learned-weight warm start.
+	internal PurkinjeCalciumPlasticity? PurkinjeCalcium { get; set; }
 
 	public Guid ProjectionId { get; set; }
 	public StructureId SourceStructure { get; set; }
@@ -27,6 +29,7 @@ internal sealed class SynapseState(
 	public void PrepareWarmStart()
 	{
 		PreTrace = PostTrace = EligibilityTrace = SynapticTagTrace = 0f;
+		PurkinjeCalcium = null;
 		LastUpdateTimestampMs = 0;
 		LastPlasticityBudgetTimestampMs = -1;
 	}

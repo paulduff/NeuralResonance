@@ -12,6 +12,9 @@ public sealed partial class StructureEngine
     private double _lastBiologicalTimestampMs = double.NaN;
     private long _presynapticLearningEvents;
     private long _postsynapticLearningEvents;
+    // Diagnostic channel/release ablations, never enabled by a service host.
+    internal bool DiagnosticBlockPurkinjeCalciumEntry { get; set; }
+    internal bool DiagnosticBlockPurkinjeStoreRelease { get; set; }
 
     private SynapticContactSample[] _contactSamples = [];
     private double _contactSampleTimestampMs = -1;
@@ -34,7 +37,9 @@ public sealed partial class StructureEngine
             $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}); physiological calibration pending" +
                 (_profile.NeuronModel == "HH" ? (_profile.StructureId == StructureId.InferiorOlive
                     ? "; olivary three-compartment reference, isolated-cell calibration pending; no gap junctions"
-                    : "; HH with population channel reductions, not a calibrated cerebellar cell") : ""),
+                    : "; HH with population channel reductions, not a calibrated cerebellar cell") : "") +
+                (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule
+                    ? "; contact-local voltage/IP3/calcium LTD candidate; no fitted human spine, LTP or full dendritic complex-spike model" : ""),
             _neurons.Length, _inboundSynapses.Count,
             _presynapticLearningEvents, _postsynapticLearningEvents, _contactSamples, _contactSampleTimestampMs,
             new NeuralEnergyDiagnostics(_neurons[0].SupplySource, _neurons.Length,
@@ -91,6 +96,16 @@ public sealed partial class StructureEngine
         var previous = ComputeSynapticMemoryContribution(contact);
         var supported = contact.UpdateCount > 0;
         ContactPlasticity.Spike(contact, _profile.PlasticityRule, true, timestampMs, cell.ActivityTrace);
+        if (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule &&
+            ContactPlasticity.IsLearningContact(contact) && contact.Neurotransmitter == NTEnum.GLUTAMATE &&
+            contact.SourceStructure == StructureId.CerebellarGranule)
+        {
+            contact.PurkinjeCalcium ??= new(contact.VesicleQuanta, cell.LearningDendriteVoltageMv)
+            { BlockEntry=DiagnosticBlockPurkinjeCalciumEntry, BlockRelease=DiagnosticBlockPurkinjeStoreRelease };
+            // Presynaptic glutamate activates local mGluR chemistry. Postsynaptic
+            // AMPAR efficacy is not a multiplier on the presynaptic release.
+            contact.PurkinjeCalcium.ParallelRelease(message.VesicleQuanta);
+        }
         UpdateContactDiagnostics(contact, previous, supported);
         if (ContactPlasticity.IsLearningContact(contact)) _presynapticLearningEvents++;
         if (_profile.PlasticityRule == "CerebellarLTD" && message.SourceStructure == StructureId.InferiorOlive &&
@@ -120,6 +135,19 @@ public sealed partial class StructureEngine
 
     private void AdvanceContactModulation(ModelNeuron cell, double timestampMs, double elapsedMs)
     {
+        if (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule)
+        {
+            foreach(var contact in _incomingByTarget[cell.Index])
+            {
+                if(contact.PurkinjeCalcium is not { } chemistry) continue;
+                var previous=ComputeSynapticMemoryContribution(contact);var supported=contact.UpdateCount>0;
+                double delta=chemistry.Advance(elapsedMs,cell.LearningDendriteVoltageMv);
+                contact.VesicleQuanta=(float)chemistry.Weight;
+                contact.TotalAbsolutePlasticityChange+=Math.Abs(delta);
+                UpdateContactDiagnostics(contact,previous,supported);
+            }
+            if(_incomingByTarget[cell.Index].Count>0)PersistSynapses(timestampMs);
+        }
         var modulation = cell.LocalNeuromodState;
         if (modulation.DopamineLevel <= 0.001f && modulation.AcetylcholineLevel <= 0.001f &&
             !_profile.PlasticityRule.Contains("BCM", StringComparison.Ordinal) && _profile.PlasticityRule != "HomeostaticGain") return;

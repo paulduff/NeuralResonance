@@ -8,7 +8,10 @@ internal sealed class ModelNeuron
 	private readonly HodgkinHuxleyMembrane? _hh;
 	private readonly OlivaryMembrane? _olive;
 	private readonly OlivarySynapticContacts? _oliveSynapses;
+	private readonly PurkinjeClimbingCompartment? _purkinjeClimbing;
 	internal OlivaryMembrane? Olive => _olive;
+	internal double BasalDendriteVoltageMv => _basalDendriteVoltage;
+	internal double LearningDendriteVoltageMv => _purkinjeClimbing?.VoltageMv ?? _basalDendriteVoltage;
 	internal double MaximumIntegrationStepMs => _hh is not null || _olive is not null ? 1 : 100;
 	private readonly NeuronModelKind _modelKind;
 
@@ -190,6 +193,8 @@ internal sealed class ModelNeuron
 		_aisVoltage = _subtype.RestingPotential;
 		_basalDendriteVoltage = _subtype.RestingPotential - 3.0;
 		_apicalDendriteVoltage = _subtype.RestingPotential - 3.0;
+		if (circuitProfile.StructureId == StructureId.PurkinjeCellLayer)
+			_purkinjeClimbing = new(_basalDendriteVoltage);
 		_phase = (double)index * 0.017;
 	}
 
@@ -203,6 +208,12 @@ internal sealed class ModelNeuron
 		{
 			// Contact weights arrive as quanta. No generic receptor gain or voltage kick.
 			_oliveSynapses.Release(spike, quanta);
+			_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
+			return;
+		}
+		if (_purkinjeClimbing is not null && spike.SourceStructure == StructureId.InferiorOlive && spike.Neurotransmitter == NTEnum.GLUTAMATE)
+		{
+			_purkinjeClimbing.Release(spike);
 			_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
 			return;
 		}
@@ -377,6 +388,12 @@ internal sealed class ModelNeuron
 		_lastNetSynapticCurrent = netSynCurrent;
 		excitabilityGain *= _microtubules.IntegrationGain;
 		AdvanceCompartmentalBiology(dtMs, neuromod, nmdaVoltageRelief, excitatorySynCurrent, inhibitorySynCurrent, tonicDrive, phasicDrive, inhibitoryGain, excitabilityGain, ref netSynCurrent, out var thresholdOffset);
+		if (_purkinjeClimbing is not null)
+		{
+			_purkinjeClimbing.Advance(dtMs,_basalDendriteVoltage);
+			netSynCurrent+=_purkinjeClimbing.MeanAxialCurrent;
+			_lastNetSynapticCurrent=netSynCurrent;
+		}
 		var canSpike = _refractoryMs <= 0.0;
 
 		switch (_modelKind)
@@ -536,7 +553,7 @@ internal sealed class ModelNeuron
 	private void AdvanceMetabolicState(double dtMs, NeuromodState neuromod, double excitatorySynCurrent, double inhibitorySynCurrent)
 	{
 		// Absolute ionic load: opposite currents must not cancel their energy cost.
-		var synapticLoad = (Math.Abs(excitatorySynCurrent) + Math.Abs(inhibitorySynCurrent) + (_hh?.AdditionalIonicLoad ?? 0)) * dtMs * .000002;
+		var synapticLoad = (Math.Abs(excitatorySynCurrent) + Math.Abs(inhibitorySynCurrent) + (_hh?.AdditionalIonicLoad ?? 0) + (_purkinjeClimbing?.MeanAbsoluteCurrent ?? 0)) * dtMs * .000002;
 		var spikeCost = IsActive ? .0028 : 0;
 		var plasticityCost = (_calciumTrace + _dendriticPlateauTrace) * dtMs * .000012;
 		_energy.Advance(dtMs, spikeCost + synapticLoad + plasticityCost, _substrates);

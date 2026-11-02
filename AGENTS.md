@@ -100,6 +100,15 @@ host packet cadence independently of solver resolution, retaining fractional
 arrival times and all olive events. Exact packet invariance is not a convergence
 proof. Review successive refinements before fitting learning strength or replacing
 the maximum-history induction approximation. Physiology and balance remain open.
+The completed timing findings are in
+`docs/DNNE_Connected_Timing_Results_2026-11-02.md`: all 60 packet-cadence pairs
+match exactly, but finer solvers change olive burst counts substantially and
+non-monotonically. The active LTD target is established early, so similar final
+weights conceal later source divergence. Do not claim source convergence from
+packet invariance, short regressions or similar learning totals. Next isolate
+olive numerical accuracy against an independent error-controlled reference and
+test Purkinje refinement with one fixed recorded olive train. Distinguish solver
+error from nonlinear trajectory sensitivity before fitting biological parameters.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

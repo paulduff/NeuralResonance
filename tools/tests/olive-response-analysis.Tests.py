@@ -17,6 +17,15 @@ write=lambda p,v:p.write_text(json.dumps(v),encoding="utf-8")
 assert read(source/"protocol.json")["smoke"] and read(source/"protocol.json")["quick"]
 with contextlib.redirect_stdout(io.StringIO()):module.analyse(source)
 print("Valid short capture and all full schedules: accepted")
+with tempfile.TemporaryDirectory(prefix="nre-olive-response-readonly-") as directory:
+    root=Path(directory)/"capture";shutil.copytree(source,root)
+    (root/"cell-analysis.json").unlink()
+    from hashlib import sha256
+    before={p.name:sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()}
+    with contextlib.redirect_stdout(io.StringIO()):report=module.analyse(root,write_report=False)
+    after={p.name:sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()}
+    assert before==after and report["accountingValidated"] and not (root/"cell-analysis.json").exists()
+    print("Read-only validation: original evidence unchanged and no report created")
 for change in ("missing-simultaneous-input","late-response-window","incorrect-latency","energy","supply","unmatched-baseline","missing-full-probe"):
     with tempfile.TemporaryDirectory(prefix="nre-olive-response-validator-") as directory:
         root=Path(directory)/"capture";shutil.copytree(source,root)

@@ -33,7 +33,7 @@ def stats(responses):
         precedingSomaticSpikes=sum(r["precedingSoma"] for r in responses),precedingAxonalSpikes=sum(r["precedingAxon"] for r in responses))
 
 
-def analyse(root):
+def analyse(root, *, write_report=True):
     protocol,result=read(root/"protocol.json"),read(root/"results.json")
     duration,start,end=(protocol[k] for k in ("durationMs","challengeStartMs","challengeEndMs"))
     smoke=protocol["smoke"]
@@ -138,7 +138,8 @@ def analyse(root):
     report=dict(completed=True,accountingValidated=True,physiologicallyQualified=False,traceRowsVerified=row_count,
         matchedBaselineVerified=True,identicalStepTraceComparisons=equal,stepTraceComparisons=len(expected)//2,
         interpretation="Response windows, matched sham and off-window events require review. These deterministic offsets are not independent biological samples. No automatic physiological or connected-brain qualification.",cases=summaries,matchedSham=matches)
-    (root/"cell-analysis.json").write_text(json.dumps(report,indent=2,allow_nan=False)+"\n",encoding="utf-8")
+    if write_report:
+        (root/"cell-analysis.json").write_text(json.dumps(report,indent=2,allow_nan=False)+"\n",encoding="utf-8")
     print(json.dumps({k:v for k,v in report.items() if k not in ("cases","matchedSham")},indent=2));return report
 
 

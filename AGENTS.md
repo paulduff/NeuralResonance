@@ -63,6 +63,13 @@ identical four-contact probes before/during/after challenges, matched sham,
 rest-during-challenge controls, complete windows and preserved off-window spikes.
 Assess recovered evoked output and inhibitory sensitivity before connecting the
 cerebellar loop. These diagnostic probes are not a live restart mechanism.
+The completed matched response findings are in
+`docs/DNNE_Olivary_Response_Results_2026-11-02.md`. Late outgoing responses return
+to 95–100% versus 95% in matched sham, with matching outer-step traces. Stronger
+inhibition roughly halves burst output but does not monotonically reduce hit
+probability. Brief delayed spikes must remain visible; no off-window activity
+persists into late recovery. Next assess actual olive-to-Purkinje event delivery
+and per-contact learning in an isolated circuit, preserving all axonal events.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

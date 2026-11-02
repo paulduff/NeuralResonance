@@ -22,6 +22,7 @@ internal static class PosturalCellProbe
         if (args.Contains("--support-controls")) throw new InvalidOperationException("Legacy artificial support clamps require the frozen v2 binary; they are not supported by the new energy model.");
         if (args.Contains("--energy-recovery")) throw new InvalidOperationException("The v3 energy comparison requires its preserved frozen binary; olive dynamics have changed.");
         if (args.Contains("--olive-calibration")) return OliveCalibrationProbe.Run(args);
+        if (args.Contains("--olive-response")) return OliveResponseProbe.Run(args);
         if (args.Contains("--reference-recovery")) return ReferenceRecoveryProbe.Run(args);
         if (args.Length < 1 || args.Skip(1).Any(arg => arg is not ("--smoke" or "--convergence")))
             throw new ArgumentException("Arguments: new-output-directory [--smoke] [--convergence]");

@@ -57,6 +57,12 @@ HCN removal does not. Restored oscillations are not proof of recovered evoked ou
 test matched input before/during/after challenges before connected qualification.
 The weak paired cases cannot rank output timing; correct their unequal endpoint
 counts in a future matched comparison. Do not overwrite the completed package.
+The next matched response rig is documented in
+`docs/DNNE_Olivary_Response_Recovery_2026-11-02.md`: fixed production channels,
+identical four-contact probes before/during/after challenges, matched sham,
+rest-during-challenge controls, complete windows and preserved off-window spikes.
+Assess recovered evoked output and inhibitory sensitivity before connecting the
+cerebellar loop. These diagnostic probes are not a live restart mechanism.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

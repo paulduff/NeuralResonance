@@ -49,6 +49,14 @@ spontaneous spiking from every isolated olive cell. Evoked responsiveness, slow
 oscillations, timing, inhibition and supply recovery must be assessed separately.
 Reference conductances and input-density conversion are not fitted human anatomy;
 gap junctions and connected teaching remain unqualified. Preserve v3 saves too.
+The completed 180-condition findings are in
+`docs/DNNE_Olivary_Results_2026-11-02.md`. The reference olive oscillates near 8.2 Hz
+without tonic spikes, responds to stronger input and restores its baseline waveform
+after challenges. All outer-step traces match. CaT removal abolishes oscillation;
+HCN removal does not. Restored oscillations are not proof of recovered evoked output:
+test matched input before/during/after challenges before connected qualification.
+The weak paired cases cannot rank output timing; correct their unequal endpoint
+counts in a future matched comparison. Do not overwrite the completed package.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

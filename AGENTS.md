@@ -35,6 +35,12 @@ Avatar supply proxies and hybrid membrane parameters remain uncalibrated.
 Missing/stale live body supply must remain visible; isolated probes use an explicit
 reference bath. Channel ablations are diagnostic only. Do not confuse successful
 accounting or recovered firing with a calibrated olive or physical balance.
+The completed 120-condition findings are in
+`docs/DNNE_Energy_Recovery_Results_2026-11-02.md`. Candidate cells sustain energy and
+recover, but recovery survives removal of both added channel mechanisms at the
+higher drive; the lower drive still loses Purkinje recovery. Do not attribute
+success to HCN alone. The fast tonic olive remains uncalibrated; establish its
+cell-specific physiology before interpreting connected LTD or physical recovery.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

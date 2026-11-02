@@ -6,6 +6,12 @@ adjusts the provisional HH input-to-current conversion. It is ready for an
 isolated comparison, not qualified as a human cerebellar cell or physical balance.
 No live DNNE, Unity or editor service is redeployed by this experiment.
 
+The experiment is now complete. See
+[2 November results](DNNE_Energy_Recovery_Results_2026-11-02.md): candidate energy
+and recovery checks hold over the longer protocol, but channel ablation shows
+recovery does not require the new channels at the higher current conversion.
+The olive remains too fast to claim physiological calibration.
+
 ## Energy mechanism and boundaries
 
 `NeuralEnergyBudget` uses normalized reserve units, not ATP molarity or joules.

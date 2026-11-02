@@ -36,6 +36,24 @@ function Assert-FileHashes($entries){
   }
  }
 }
+function Invoke-LoggedNative([string]$Executable,[string[]]$NativeArguments,[string]$ConsolePath){
+ # Windows PowerShell's transcript can omit buffered native stdout. Explicitly
+ # save each stage while still showing it in the operator's independent window.
+ if(-not (Test-Path -LiteralPath $Executable -PathType Leaf)){throw ('Native executable not found: '+$Executable)}
+ $previousErrorPreference=$ErrorActionPreference
+ $consoleWriter=[IO.StreamWriter]::new($ConsolePath,$false,[Text.UTF8Encoding]::new($false))
+ $consoleWriter.AutoFlush=$true
+ try {
+  $ErrorActionPreference='Continue'
+  & $Executable @NativeArguments 2>&1 | ForEach-Object {
+   $nativeLine=[string]$_
+   $consoleWriter.WriteLine($nativeLine)
+   Write-Host $nativeLine
+  } -ErrorAction Stop
+  $nativeExitCode=$LASTEXITCODE
+ } finally {$consoleWriter.Dispose();$ErrorActionPreference=$previousErrorPreference}
+ return $nativeExitCode
+}
 function Invoke-ProbeStage([string]$name,[switch]$Smoke,[switch]$Baseline){
  $output=Join-Path $package $name
  if(Test-Path -LiteralPath $output){throw ('Refusing to reuse neural state: '+$output)}
@@ -50,10 +68,10 @@ function Invoke-ProbeStage([string]$name,[switch]$Smoke,[switch]$Baseline){
  }elseif($configuration.PSObject.Properties.Name -contains 'ProbeArguments'){$arguments+=@($configuration.ProbeArguments)}
  if($Smoke){$arguments+='--smoke'}
  Write-Host ('========== '+$name.ToUpperInvariant()+' ==========') -ForegroundColor Cyan
- & $configuration.DotnetExecutable @arguments
- if($LASTEXITCODE -ne 0){throw ($name+' failed; inspect '+(Join-Path $output 'FAILED.json'))}
- & $configuration.PythonExecutable $analyser $output
- if($LASTEXITCODE -ne 0){throw ($name+' accounting/state validation failed.')}
+ $probeExit=Invoke-LoggedNative $configuration.DotnetExecutable $arguments (Join-Path $package ($name+'-console.log'))
+ if($probeExit -ne 0){throw ($name+' failed with exit '+$probeExit+'; inspect '+(Join-Path $output 'FAILED.json'))}
+ $analysisExit=Invoke-LoggedNative $configuration.PythonExecutable @($analyser,$output) (Join-Path $package ($name+'-analysis-console.log'))
+ if($analysisExit -ne 0){throw ($name+' accounting/state validation failed with exit '+$analysisExit+'.')}
  $report=Get-Content -LiteralPath (Join-Path $output 'results.json') -Raw | ConvertFrom-Json
  $analysis=Get-Content -LiteralPath (Join-Path $output 'cell-analysis.json') -Raw | ConvertFrom-Json
  if(-not $report.completed -or $report.cases.Count -ne $expected -or -not $analysis.accountingValidated -or -not $analysis.completed){

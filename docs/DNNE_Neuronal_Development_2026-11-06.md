@@ -17,9 +17,11 @@ supporting mechanisms, not alternative decision makers.
 
 No whole-brain biological equivalence or usable closed-loop Avatar has been
 established. The 119 `StructureId` entries are a software inventory, not a count of
-qualified biological structures. The current isolated boundary-timing experiment
-is awaiting the operator's report; its full result has not been inspected for this
-development audit. The separate cortical-consolidation test failure remains open.
+qualified biological structures. The original boundary-timing result and
+subsequent cell-local repair have now been reviewed; see
+[cell-local results](DNNE_Cell_Local_Timing_Results_2026-11-06.md). The isolated
+locality checks pass, while numerical accuracy and general scheduling remain
+open. The separate cortical-consolidation test failure has recurred.
 
 ## Source-level gaps, in implementation order
 

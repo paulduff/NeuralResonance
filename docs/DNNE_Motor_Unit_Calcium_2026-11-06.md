@@ -122,8 +122,12 @@ and backs the finished package up to D:. Cancellation is recorded as interrupted
 Tests run only in the visible PowerShell window, without live monitoring.
 
 Development builds for Avatar, the probe and the test assembly passed with zero
-warnings/errors. The new tests and numerical study have not yet been run. The
-current motor/Golgi window and separate cell-local timing window are untouched.
+warnings/errors. The first study, `motor-calcium-20261106-7cde4b`, was subsequently
+launched in its independent visible PowerShell window after the operator reported
+the cell-local timing run complete. It uses frozen revision
+`825d17f4890fb99310c5afc48c64d8e44fac2836`; its initial 1,264-file D: backup was
+verified before launch. Results await the operator's report; no live monitoring
+is used. The separate motor/Golgi window is untouched.
 
 ## Promotion gate
 

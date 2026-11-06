@@ -82,6 +82,17 @@ an arithmetic error term “reflex” does not establish that circuit.
 
 ## Replacement requirements
 
+The follow-up source check at `825d17f` confirms that
+`Structures/SpinalCordMotor/Program.cs` selects the generic Izhikevich/STDP
+profile. `ModelNeuron` uses its shared reduced compartments, spike threshold,
+voltage reset and adaptation increment for that branch. No dedicated calibrated
+alpha-motoneuron membrane is selected there. A reduced model is not disqualified
+merely by being reduced, but this source does not yet establish the required
+motor-cell recruitment, afterhyperpolarization, inhibitory response and recovery.
+The new axon transport and muscle candidate cannot establish those source
+properties. Qualify them explicitly before treating the joined path as neuronal
+motor authority.
+
 1. Define and instantiate the relevant excitatory/inhibitory spinal interneurons
    and cholinergic motor-neuron populations, with explicit body targets. Preserve
    separate agonist and antagonist populations. A negative drive value must not
@@ -121,7 +132,7 @@ The subsequent isolated muscle candidate is documented in
 equations of Nagamori et al. (2021), replacing the earlier possible reference
 choice with an explicit release/binding/activation component. It accepts
 identified arrivals and produces isometric unit force; no live plant selects it.
-Numerical verification is prepared, not yet passed. A complete neuronal source,
+Numerical verification is launched and awaiting the operator's report. A complete neuronal source,
 neuromuscular junction, dynamic plant and spinal reflex circuit remain open.
 
 ## Editor and migration implications

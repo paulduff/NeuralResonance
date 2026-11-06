@@ -89,8 +89,10 @@ unfinished Golgi-cell development through an explicit committed-source archive.
 The operator closed the failed window during its protection audit. Its initial
 RUNNING status was stale; the saved TRX and terminal task establish the failure.
 The failed capture is preserved separately, and the launcher now records failures
-before starting lengthy cleanup. The replacement comparison is pending the
-operator's report; no timing-study pass or physiological qualification is claimed.
+before starting lengthy cleanup. The replacement has subsequently completed;
+see [cell-local results](DNNE_Cell_Local_Timing_Results_2026-11-06.md). All 15 timing
+tests and the isolated locality comparison pass, but the full suite retains its
+known cortical-consolidation failure and solver refinement remains unresolved.
 Whole-cell accuracy, meaningful repeated teaching and Avatar recovery require
 their separate evidence. Neither an all-green locality result nor the existing
 Golgi channel result would establish those outcomes.

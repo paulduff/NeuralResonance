@@ -879,6 +879,6 @@ binding and activation. AvatarMuscle and its joint controller were inspected
 before adding it. Existing mechanics, fatigue, vestibular/proprioceptive/plantar
 inputs and paused world startup are retained. No live editor or service is
 redeployed, and no new calibration claim is displayed. Focused tests and an
-independent numerical comparison are prepared but unrun. Promotion must update
+independent numerical comparison are launched and awaiting the operator's report. Promotion must update
 the canonical Avatar muscle and Unity source generator together, prevent double
 activation/fatigue, and qualify dynamic load and afferent feedback separately.

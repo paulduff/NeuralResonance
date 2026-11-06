@@ -226,8 +226,18 @@ The next isolated motor-unit consumer is documented in
 `docs/DNNE_Motor_Unit_Calcium_2026-11-06.md`. Identified arrivals drive a slow-unit
 calcium/binding/activation model at fixed optimal length, using pinned Nagamori
 parameters. It is not connected to a live neuron or Avatar/Unity muscle plant.
-Its focused tests and DOP853/Radau comparison are prepared but unrun. Do not
+Its focused tests and DOP853/Radau comparison are now launched in the independent
+`motor-calcium-20261106-7cde4b` PowerShell window; await the operator's report. Do not
 double-apply the old muscle's activation/fatigue or import a rate-based spike
 generator as neuronal authority. Endplate transmission is assumed; muscle APs,
 metabolic supply, dynamic length/tendon behavior and physical recovery remain
 unqualified. Keep the current windows frozen and wait for reported completion.
+
+The operator-reported replacement timing result is recorded in
+`docs/DNNE_Cell_Local_Timing_Results_2026-11-06.md`. Both stages reproduce all 24
+original cases; all 15 timing tests and the isolated cell/contact-locality checks
+pass. The full suite is 1,074/1,075, retaining the known cortical-consolidation
+failure. Finer steps still change spike counts/timing, and dormant contacts still
+depress. This is evidence for the isolated scheduling repair, not convergence,
+selective learning, general recurrent scheduling or live adoption. The new review
+rehashes the completed capture and D: copy without modifying their files.

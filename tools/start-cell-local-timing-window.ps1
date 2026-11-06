@@ -15,7 +15,7 @@ if(-not $InWindow){
  $quoted=($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' '
  $action=New-ScheduledTaskAction -Execute $shell -Argument $quoted -WorkingDirectory $package
  $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
- $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::FromHours(24)) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
  Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
  [ordered]@{TaskName=$taskName;RequestedUtc=[DateTime]::UtcNow.ToString('o');Package=$package;NoLiveMonitoring=$true} |
   ConvertTo-Json | Set-Content -LiteralPath (Join-Path $package 'launch.json') -Encoding UTF8
@@ -108,6 +108,7 @@ try {
   Write-Host ('KNOWN UNRESOLVED FAILURE: '+$failed[0].testName+'. The whole suite is not green.') -ForegroundColor Yellow
  }elseif($failed.Count -ne 0 -or $testExit -ne 0){throw 'New, unexpected, or incomplete unit-suite failure; stopping before experiments.'}
  $status['UnitTests']=[ordered]@{Total=$results.Count;Passed=$results.Count-$failed.Count;Failed=@($failed | ForEach-Object {$_.testName});TimingPassed=$focused.Count}
+ $status['FullUnitSuitePassed']=$failed.Count -eq 0
  foreach($stage in @('preflight','study')){
   $stagePath=Join-Path $package $stage
   if(Test-Path -LiteralPath $stagePath){throw ('Refusing to reuse '+$stagePath)}
@@ -128,7 +129,7 @@ try {
   Assert-Package
  }
  foreach($entry in $binaries){if((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ne $entry.Sha256){throw ('Test binary changed: '+$entry.Path)}}
- $status.Status='FINISHED';$status.ExitCode=0
+ $status['TimingStudyPassed']=$true;$status.Status='FINISHED';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
  # Keep the actual failure durable before the potentially lengthy protection
@@ -136,6 +137,11 @@ try {
  $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 }finally{
+ if($status.Status -eq 'RUNNING'){
+  $status.Status='INTERRUPTED';$status.ExitCode=2
+  $status['Error']='Pipeline ended before completing its checks. Cause not established; inspect retained stage logs.'
+  $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8
+ }
  foreach($name in $priorEnvironment.Keys){[Environment]::SetEnvironmentVariable($name,$priorEnvironment[$name],'Process')}
  try{Assert-Protected;$status['OldBackupUnchanged']=$true}
  catch{$status.Status='FAILED';$status.ExitCode=1;$status['PreservationError']=$_.Exception.ToString()}
@@ -150,5 +156,9 @@ try {
  }
  if($LaunchTaskName -match '^DNNE-Cell-Local-[0-9a-f]{12}$'){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
+ if($status.Status -eq 'FINISHED' -and -not $status.FullUnitSuitePassed){
+  Write-Host 'TIMING STUDY PASSED; FULL UNIT SUITE IS NOT GREEN.' -ForegroundColor Yellow
+  Write-Host ('Known unresolved failure: '+($status.UnitTests.Failed -join ', ')) -ForegroundColor Yellow
+ }
  Write-Host 'Tell Orion the outcome. Cell-local timing, solver accuracy and biological function are separate checks.'
 }

@@ -6,6 +6,7 @@ import importlib.util
 import json
 import math
 from pathlib import Path
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -22,9 +23,12 @@ def main(run,out):
     backup=Path(config['BackupDestination']).resolve()
     assert run==Path(manifest['Source']).resolve() and backup==Path(manifest['Destination']).resolve()
     assert status['Status']=='DIAGNOSTICS_COMPLETE' and status['ExitCode']==0 and status['DiagnosticCaptureComplete']
-    assert status['Revision']==config['Revision']=='2b89c98a5d5e37ea710a618bc9d3a8149cd7503d'
-    assert not any(status[k] for k in ('LiveBrainAccessed','OldSavesLoaded','BiologicalConsolidationQualified','FullUnitSuitePassed','OriginalConsolidationTestPassed'))
-    assert status['OriginalTestProcessExitCode']==1 and config['OriginalConsolidationTestUnchanged']
+    assert status['Revision']==config['Revision'] and config['Revision'] in (
+        '2b89c98a5d5e37ea710a618bc9d3a8149cd7503d','aeb40be364e2e44dd4d83e47f9a9641d326c6765')
+    recipient_study=config['Revision']=='aeb40be364e2e44dd4d83e47f9a9641d326c6765'
+    assert not any(status[k] for k in ('LiveBrainAccessed','OldSavesLoaded','BiologicalConsolidationQualified','FullUnitSuitePassed'))
+    assert status['OriginalConsolidationTestPassed']==recipient_study
+    assert status['OriginalTestProcessExitCode']==(0 if recipient_study else 1) and config['OriginalConsolidationTestUnchanged']
     assert hashing.digest(run/'backup-manifest.json')==hashing.digest(backup/'backup-manifest.json')
     with ThreadPoolExecutor(max_workers=2) as pool:
         left=pool.submit(hashing.audit,run,manifest);right=pool.submit(hashing.audit,backup,manifest)
@@ -36,13 +40,21 @@ def main(run,out):
     ns={'t':'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
     tests=ET.parse(run/'test-results/memory-fixture.trx').findall('.//t:UnitTestResult',ns)
     actual={t.attrib['testName']:t.attrib['outcome'] for t in tests}
-    assert actual=={
+    expected={
         'NeuralResonanceEngine.DNNE.Tests.SolutionManifestTests.Solution_Manifest_Includes_Every_Project_In_The_Repository':'Passed',
-        'NeuralResonanceEngine.DNNE.Tests.NeuronalMemoryTests.RepeatedCorticalExperienceGraduallyRaisesConsolidation':'Failed'} and len(tests)==2
-    failed=next(t for t in tests if t.attrib['outcome']=='Failed')
-    assert failed.find('t:Output/t:ErrorInfo/t:Message',ns).text==status['OriginalConsolidationFailure']
+        'NeuralResonanceEngine.DNNE.Tests.NeuronalMemoryTests.RepeatedCorticalExperienceGraduallyRaisesConsolidation':'Passed' if recipient_study else 'Failed'}
+    if recipient_study:
+        source=(run/'source/tests/NeuralResonanceEngine.DNNE.Tests/DeclaredSynapticTargetTests.cs').read_text()
+        methods=re.findall(r'\[Fact\]\s+public (?:async Task|void) (\w+)\(',source)
+        assert len(methods)==status['PassedRecipientTests']==8
+        expected.update({'NeuralResonanceEngine.DNNE.Tests.DeclaredSynapticTargetTests.'+name:'Passed' for name in methods})
+    else:
+        failed=next(t for t in tests if t.attrib['outcome']=='Failed')
+        assert failed.find('t:Output/t:ErrorInfo/t:Message',ns).text==status['OriginalConsolidationFailure']
+    assert actual==expected and len(tests)==len(expected)
     analysis=read(run/'study/analysis.json');protocol=read(run/'study/protocol.json');results=read(run/'study/results.json')
     names=['legacy-observed','legacy-unobserved','continuous-simultaneous','continuous-spaced','continuous-unmodulated']
+    if recipient_study:names+=['continuous-colocated','continuous-neighbor']
     assert analysis['completed'] and analysis['captureIntegrityPassed'] and analysis['observationInvariancePassed']
     assert not analysis['biologicalConsolidationQualified'] and results['completed']
     assert [c['scenario'] for c in analysis['cases']]==names==[c['key'] for c in protocol['scenarios']]==[c['key'] for c in results['cases']]
@@ -75,6 +87,14 @@ def main(run,out):
         assert abs(score-saved['cues'][-1]['consolidationScore'])<=1e-6
         modulators=[c for c in final if c['neurotransmitter'] in (3,5,6)]
         assert len(modulators)==(126 if declared['modulation'] else 0)
+        if recipient_study and declared['modulatorTarget'] is not None:
+            assert cue['target']==166 and {c['target'] for c in modulators}=={declared['modulatorTarget']}
+            if declared['modulatorTarget']==166:
+                assert any(e['dopamine']>0 and e['acetylcholine']>0 for e in selected)
+                assert sum(e['kind']=='modulation' for e in selected)==489
+            else:
+                assert all(e['dopamine']==e['acetylcholine']==0 for e in selected)
+                assert all(e['kind']!='modulation' for e in selected)
         change_by_kind={kind:sum(e['after']['weight']-e['before']['weight'] for e in selected if e['kind']==kind)
                         for kind in ('pre','post','modulation')}
         row=dict(case=declared['key'],cueTarget=cue['target'],modulatorContactTargets=dict(Counter(c['target'] for c in modulators)),
@@ -91,9 +111,16 @@ def main(run,out):
         assert a['signal']==b['signal'] and a['ack']==b['ack'] and a['contacts']==b['contacts']
         scrub=lambda items:[{k:v for k,v in item.items() if k!='messageId'} for item in items]
         assert scrub(a['emitted'])==scrub(b['emitted'])
+    if recipient_study:
+        baseline=read(run/'cortical-baseline/analysis.json')
+        assert len(baseline['cases'])==5
+        for previous,current in zip(baseline['cases'],analysis['cases'][:5],strict=True):
+            assert previous=={key:current[key] for key in previous}
     report=dict(reviewedUtc=datetime.now(timezone.utc).isoformat(),capture=str(run),backup=str(backup),sourceRevision=config['Revision'],
         completedUtc=status['CompletedUtc'],verifiedFilesPerCopy=len(hashes),verifiedBytesPerCopy=sum(x['Bytes'] for x in manifest['Files']),
-        packagedFilesVerified=len(config['PackageFiles']),unitOutcomes=actual,originalConsolidationFailure=status['OriginalConsolidationFailure'],
+        packagedFilesVerified=len(config['PackageFiles']),unitOutcomes=actual,
+        originalConsolidationTestPassed=status['OriginalConsolidationTestPassed'],originalConsolidationFailure=status.get('OriginalConsolidationFailure'),
+        recipientDeliveryPassed=recipient_study,previousFiveControlsReproduced=recipient_study,
         observationInvariancePassed=True,cases=cases,biologicalConsolidationQualified=False,originalTestRepaired=False,
         fullUnitSuitePassed=False,liveBrainAccessed=False,avatarRecoveryAssessed=False)
     out.mkdir(parents=True);(out/'review.json').write_text(json.dumps(report,indent=2,allow_nan=False)+'\n')

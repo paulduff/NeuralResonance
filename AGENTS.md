@@ -305,3 +305,15 @@ local ACh/DA at the cue versus neighbouring-cell exclusion; it does not require
 potentiation or change the original assertion. No service enables this map.
 Actual receptor/arbor calibration, long-term consolidation and deployment remain
 open even if the recipient comparison passes.
+
+The reported recipient result is in
+`docs/DNNE_Cortical_Recipient_Results_2026-11-06.md`: all ten selected tests pass,
+five controls reproduce, and local modulation reaches the cue only when declared
+there. The original assertion passed this invocation but remains intermittent;
+different postsynaptic firing prevents attributing all weight improvement to
+direct modulatory capture. No live promotion or biological consolidation claim.
+The active motor-cell result is in
+`docs/DNNE_Motoneuron_Active_Results_2026-11-06.md`: all spike counts agree, but
+the original numerical gate fails on calcium refinement, finest charge accounting
+and one reference gate contrast. Preserve its failed status and original bounds;
+test accumulation/reference accuracy before changing physiology.

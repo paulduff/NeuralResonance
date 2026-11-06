@@ -30,12 +30,12 @@ function Assert-Package {
   if((Get-FileHash -LiteralPath (Join-Path $package $entry.Path) -Algorithm SHA256).Hash -ne $entry.Sha256){throw ('Frozen source changed: '+$entry.Path)}
  }
 }
-function Invoke-Logged([string[]]$NativeArguments,[string]$LogName){
+function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$LogName){
  $writer=[IO.StreamWriter]::new((Join-Path $package $LogName),$false,[Text.UTF8Encoding]::new($false))
  $writer.AutoFlush=$true;$previous=$ErrorActionPreference
  try {
   $ErrorActionPreference='Continue'
-  & $configuration.DotnetExecutable @NativeArguments 2>&1 | ForEach-Object {$line=[string]$_;$writer.WriteLine($line);Write-Host $line} -ErrorAction Stop
+  & $Executable @NativeArguments 2>&1 | ForEach-Object {$line=[string]$_;$writer.WriteLine($line);Write-Host $line} -ErrorAction Stop
   $nativeExit=$LASTEXITCODE
  } finally {$writer.Dispose();$ErrorActionPreference=$previous}
  if($nativeExit -ne 0){throw ($LogName+' exited '+$nativeExit)}
@@ -47,13 +47,14 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE motor-axon transport - isolated verification'
+ $withReference=$configuration.PSObject.Properties.Name -contains 'GolgiBaseline' -and $null -ne $configuration.GolgiBaseline
+ $Host.UI.RawUI.WindowTitle=if($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Original event identity/timing, packet integrity and shared simulation clock. No live brain or muscles.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/motor-axon-tests'
- Invoke-Logged @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),
+ Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),
   '-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'build.log'
  $assembly=Join-Path $build 'bin/NeuralResonanceEngine.DNNE.Tests/release/NeuralResonanceEngine.DNNE.Tests.dll'
  $testRoot=[IO.DirectoryInfo]::new((Split-Path -Parent $assembly))
@@ -64,12 +65,27 @@ try {
  $binaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'build-binaries.json') -Encoding UTF8
  $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
  Write-Host '========== MOTOR-AXON TRANSPORT TESTS ==========' -ForegroundColor Cyan
- Invoke-Logged @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),
+ Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),
   ('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=motor-axon.trx') 'tests.log'
  [xml]$trx=Get-Content -LiteralPath (Join-Path $testOutput 'motor-axon.trx') -Raw
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Required transport/manifest tests did not all pass.'}
+ $status['PassedMotorTransportAndManifestTests']=$results.Count
+ $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
+ if($withReference){
+  Write-Host '========== GOLGI: TIGHTER AND CROSS-METHOD REFERENCE ==========' -ForegroundColor Cyan
+  Write-Host 'Same biological equations, unchanged voltage/timing criteria. Existing candidate traces reused.'
+  $threadEnvironment=@{}
+  try {
+   foreach($name in @('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS')){
+    $threadEnvironment[$name]=[Environment]::GetEnvironmentVariable($name,'Process')
+    [Environment]::SetEnvironmentVariable($name,'1','Process')
+   }
+   Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/golgi-reference-refinement.py'),$package) 'reference-refinement.log'
+   $status['GolgiReferenceCriteriaPassed']=$true
+  } finally {foreach($name in $threadEnvironment.Keys){[Environment]::SetEnvironmentVariable($name,$threadEnvironment[$name],'Process')}}
+ }
  Assert-Package
  foreach($entry in $binaries){if((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
  $status['PassedTests']=$results.Count;$status.Status='FINISHED';$status.ExitCode=0
@@ -78,6 +94,12 @@ try {
  $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 } finally {
+ # PowerShell pipeline cancellation can skip catch while still entering finally.
+ # Terminal output must never leave a completed capture labelled RUNNING.
+ if($status.Status -eq 'RUNNING'){
+  $status.Status='INTERRUPTED';$status.ExitCode=2
+  $status['Error']='Pipeline ended before completing its checks. Cause not established; inspect transcript and retained stage logs.'
+ }
  $status['CompletedUtc']=[DateTime]::UtcNow.ToString('o')
  if($transcribing){Stop-Transcript | Out-Null}
  $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -85,5 +107,5 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the motor-axon transport outcome. Neuronal firing, muscle responses and Avatar recovery remain unqualified.'
+ Write-Host 'Tell Orion this run outcome. Neuronal firing, muscle responses and Avatar recovery remain unqualified.'
 }

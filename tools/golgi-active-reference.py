@@ -168,7 +168,9 @@ class CoupledReference:
         sparsity[-1,0]=True;sparsity[-1,self.n+11:self.n+13]=True;sparsity[-1,-1]=True
         self.sparsity=sparsity.tocsc()
 
-    def run(self,case,rtol,voltage_atol,gate_atol,calcium_atol):
+    def run(self,case,rtol,voltage_atol,gate_atol,calcium_atol,method='BDF',max_step=.25):
+        if method not in ('BDF','Radau') or not math.isfinite(max_step) or max_step<=0:
+            raise ValueError('Declare an implicit reference method and positive maximum step.')
         n=self.n;channels=self.channels
         gates,sk=channels.initial()
         # Calcium states use micromolar for an explicit, useful absolute tolerance.
@@ -194,8 +196,8 @@ class CoupledReference:
                     p=channels.parameters[name]
                     result[n+24+i]=1000*(-current_density*1e4/(2*96485.33212*p['d'])-p['beta']*(calcium-.00005))
                 return result
-            solution=solve_ivp(derivative,(start,end),state,method='BDF',jac_sparsity=self.sparsity,
-                rtol=rtol,atol=atol,max_step=.25,t_eval=times[(times>start)&(times<=end)],events=crossing)
+            solution=solve_ivp(derivative,(start,end),state,method=method,jac_sparsity=self.sparsity,
+                rtol=rtol,atol=atol,max_step=max_step,t_eval=times[(times>start)&(times<=end)],events=crossing)
             if not solution.success:raise RuntimeError(solution.message)
             samples.extend(solution.y.T);state=solution.y[:,-1]
             spikes.extend(t for t in solution.t_events[0] if not spikes or t>spikes[-1])

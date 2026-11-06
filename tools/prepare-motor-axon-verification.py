@@ -4,6 +4,7 @@ No tests, live services, old saves or prior experiment results are accessed here
 """
 from datetime import datetime, timezone
 from hashlib import sha256
+import argparse
 import json
 from pathlib import Path
 import shutil
@@ -23,6 +24,9 @@ def write(path, value):
 
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--golgi-reference-from',type=Path)
+    args=parser.parse_args()
     assert not git('status', '--porcelain'), 'Commit the coherent candidate before freezing.'
     revision = git('rev-parse', 'HEAD')
     assert revision == git('rev-parse', 'origin/main'), 'Push before packaging.'
@@ -37,12 +41,32 @@ def main():
         assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
         archive.extractall(package/'source')
     shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
+    baseline=None
+    python=ROOT/'artifacts/numerical-reference-env-20261102/Scripts/python.exe'
+    if args.golgi_reference_from:
+        previous=args.golgi_reference_from.resolve();assert python.is_file()
+        status=json.loads((previous/'window-status.json').read_text(encoding='utf-8-sig'))
+        assert status['Status']=='FAILED' and status['ExitCode']==1
+        assert status['Revision']=='ba67f99bea6162b6bd0a77aa235182e91cc6a5c9'
+        manifest=json.loads((previous/'backup-manifest.json').read_text(encoding='utf-8-sig'))
+        expected={entry['Path'].replace('\\','/').lower():entry['Sha256'] for entry in manifest['Files']}
+        selected=[p for folder in ('reference','study') for p in (previous/folder).rglob('*') if p.is_file()]
+        selected.append(previous/'clamps/channels.json')
+        for original in selected:
+            relative=original.relative_to(previous)
+            value=sha256(original.read_bytes()).hexdigest().upper()
+            assert value==expected[relative.as_posix().lower()],str(original)
+            target=package/'golgi-input'/relative;target.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(original,target)
+            assert sha256(target.read_bytes()).hexdigest().upper()==value
+        baseline=dict(capture=str(previous),revision=status['Revision'],copiedInputFiles=len(selected),
+            originalBackupManifestSha256=sha256((previous/'backup-manifest.json').read_bytes()).hexdigest())
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper())
         for p in sorted(package.rglob('*')) if p.is_file()]
     write(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),
         DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=33,
         TestFilter='FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests',
-        NoLiveMonitoring=True,LiveMotorPathEnabled=False))
+        NoLiveMonitoring=True,LiveMotorPathEnabled=False,GolgiBaseline=baseline,PythonExecutable=str(python)))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,
         Launcher=str(package/'source/tools/start-motor-axon-window.ps1'),NoLiveMonitoring=True)
     write(ROOT/'artifacts'/('motor-axon-launch-'+stamp+'.json'),pointer)

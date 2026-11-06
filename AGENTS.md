@@ -210,3 +210,14 @@ replacement qualify together; keep its population-derived status visible.
 The bounded transport rig also needs durable replay/backpressure and explicit
 epoch/checkpoint handling before cluster deployment. Do not silently reset an
 epoch, discard events or use wall-clock receipt time as biological firing time.
+
+The first coupled Golgi result is recorded in
+`docs/DNNE_Golgi_Coupled_Results_2026-11-06.md`: 25 unit cases, clamps, passive cable
+and accounting passed. All candidate/reference spike counts agree, but four of
+six reference voltage contrasts exceed the original 0.05 mV bound. Candidate
+spike timing also remains step-dependent. Review the tighter BDF/cross-method
+Radau comparison before changing physiology or promoting the cell; keep the
+original limits. The first motor-transport window was interrupted during build,
+before tests. Its RUNNING status was stale; both original captures and D: copies
+are preserved. The replacement window retries transport tests then refines the
+Golgi reference, with no live monitoring. A process footer is not test success.

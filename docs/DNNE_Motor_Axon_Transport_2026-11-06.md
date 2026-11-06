@@ -106,7 +106,11 @@ neuronal firing, neurotransmitter release, muscle contraction or body recovery.
 `tools/start-motor-axon-window.ps1` builds/tests inside that snapshot. It records
 source/binary hashes and TRX/logs, verifies a D: backup, and leaves its visible
 PowerShell window open. No live monitoring is used. Results await the operator's
-completion report. The separate Golgi and cell-local timing captures are untouched.
+completion report for that original window. The later combined motor-calcium
+study has now passed all 32 transport cases along with its calcium and manifest
+cases; see [calcium results](DNNE_Motor_Unit_Calcium_Results_2026-11-06.md).
+The separate Golgi capture is untouched. Cell-local timing was independently
+reviewed after its own completion report.
 
 The editor now labels its existing channels as population-derived commands and
 its counter as derived motor events. Unity no longer claims “no scripted balance

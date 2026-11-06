@@ -132,8 +132,12 @@ The subsequent isolated muscle candidate is documented in
 equations of Nagamori et al. (2021), replacing the earlier possible reference
 choice with an explicit release/binding/activation component. It accepts
 identified arrivals and produces isometric unit force; no live plant selects it.
-Numerical verification is launched and awaiting the operator's report. A complete neuronal source,
-neuromuscular junction, dynamic plant and spinal reflex circuit remain open.
+Its [completed numerical study](DNNE_Motor_Unit_Calcium_Results_2026-11-06.md)
+passes the 46 required unit cases and all 21 numerical conditions. A complete
+neuronal source, neuromuscular junction, dynamic plant and spinal reflex circuit
+remain open. The isolated [motor-cell reference](DNNE_Motoneuron_Reference_2026-11-06.md)
+now supplies a candidate five-compartment conductance model; its initial
+verification covers channels and passive coupling, not yet active firing.
 
 ## Editor and migration implications
 

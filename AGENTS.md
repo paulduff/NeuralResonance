@@ -241,3 +241,16 @@ failure. Finer steps still change spike counts/timing, and dormant contacts stil
 depress. This is evidence for the isolated scheduling repair, not convergence,
 selective learning, general recurrent scheduling or live adoption. The new review
 rehashes the completed capture and D: copy without modifying their files.
+
+The reported motor-calcium result is in
+`docs/DNNE_Motor_Unit_Calcium_Results_2026-11-06.md`: all 46 transport/calcium/
+manifest cases and all 21 numerical conditions pass, with verified C:/D: copies.
+This qualifies the isolated calculation, not a neuronal source, physiological
+calibration or a dynamic body plant. The next source candidate is described in
+`docs/DNNE_Motoneuron_Reference_2026-11-06.md`: an isolated five-compartment
+Powers/Heckman reference using pinned cat MG parameters. The first verification
+covers channels and passive coupling only; active firing is still unassessed.
+It is not selected by ModelNeuron or live spinal/Avatar/Unity services. Preserve
+its explicit fixed reversals, local calcium-pool convention, passive endpoint
+topology and unqualified metabolic/reference-bath assumptions. No invented spike
+generator or motor policy may substitute for the subsequent source qualification.

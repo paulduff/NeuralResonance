@@ -29,13 +29,14 @@ def main():
     selection=parser.add_mutually_exclusive_group()
     selection.add_argument('--golgi-reference-from',type=Path)
     selection.add_argument('--muscle-calcium',action='store_true')
+    selection.add_argument('--motoneuron-reference',action='store_true')
     args=parser.parse_args()
     assert not git('status', '--porcelain'), 'Commit the coherent candidate before freezing.'
     revision = git('rev-parse', 'HEAD')
     assert revision == git('rev-parse', 'origin/main'), 'Push before packaging.'
     dotnet = shutil.which('dotnet'); assert dotnet
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    prefix='motor-calcium' if args.muscle_calcium else 'motor-axon'
+    prefix='motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
     package = ROOT/'artifacts'/(prefix+'-'+stamp+'-'+uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists()
@@ -45,8 +46,30 @@ def main():
         assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
         archive.extractall(package/'source')
     shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
-    baseline=None; muscle_reference=None
+    baseline=None; muscle_reference=None; motoneuron_reference=None
     python=ROOT/'artifacts/numerical-reference-env-20261102/Scripts/python.exe'
+    if args.motoneuron_reference:
+        assert python.is_file()
+        reference=ROOT/'artifacts/reference-motoneuron-239582-20261106'
+        reference_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=reference,encoding='utf-8').strip()
+        assert reference_revision=='0d11354490fad5fcd940d016a8d69b000693fd81'
+        selected=['na3rp.mod','naps.mod','kdrRL.mod','mAHP.mod','gh.mod','L_Ca_inact.mod',
+                  'init_5cmpt.hoc','FivecomptcMG/FivecomptcMG_0/FivecomptcMG_0.hoc']
+        copied=[]
+        target=package/'motoneuron-input';target.mkdir()
+        for name in selected:
+            original=reference/name
+            committed=subprocess.check_output(['git','show',reference_revision+':'+name],cwd=reference)
+            # Git checkout newline conversion can differ from the committed blob.
+            # Freeze the blob itself and verify the copied bytes.
+            destination=target/original.name;destination.write_bytes(committed)
+            value=sha256(committed).hexdigest()
+            assert sha256(destination.read_bytes()).hexdigest()==value
+            copied.append(dict(SourcePath=name,PackagedName=original.name,Sha256=value))
+        motoneuron_reference=dict(Revision=reference_revision,Model='https://modeldb.science/239582',
+            Study='https://doi.org/10.1152/jn.00850.2016',Cell='FivecomptcMG_0',Files=copied,
+            NativeNeuronExecuted=False,ActiveCellAssessment=False)
+        write(target/'provenance.json',motoneuron_reference)
     if args.muscle_calcium:
         assert python.is_file()
         reference=ROOT/'artifacts/reference-muscle-nagamori-20261106'
@@ -84,11 +107,12 @@ def main():
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper())
         for p in sorted(package.rglob('*')) if p.is_file()]
     write(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),
-        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=46 if args.muscle_calcium else 33,
-        TestFilter='FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests'+
-            ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium else ''),
+        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=10 if args.motoneuron_reference else 46 if args.muscle_calcium else 33,
+        TestFilter=('FullyQualifiedName~MotoneuronReferenceTests|FullyQualifiedName~SolutionManifestTests' if args.motoneuron_reference else
+            'FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests'+
+            ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium else '')),
         NoLiveMonitoring=True,LiveMotorPathEnabled=False,GolgiBaseline=baseline,
-        MuscleCalciumReference=muscle_reference,PythonExecutable=str(python)))
+        MuscleCalciumReference=muscle_reference,MotoneuronReference=motoneuron_reference,PythonExecutable=str(python)))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,
         Launcher=str(package/'source/tools/start-motor-axon-window.ps1'),NoLiveMonitoring=True)
     write(ROOT/'artifacts'/(prefix+'-launch-'+stamp+'.json'),pointer)

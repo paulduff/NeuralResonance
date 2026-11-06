@@ -126,8 +126,10 @@ warnings/errors. The first study, `motor-calcium-20261106-7cde4b`, was subsequen
 launched in its independent visible PowerShell window after the operator reported
 the cell-local timing run complete. It uses frozen revision
 `825d17f4890fb99310c5afc48c64d8e44fac2836`; its initial 1,264-file D: backup was
-verified before launch. Results await the operator's report; no live monitoring
-is used. The separate motor/Golgi window is untouched.
+verified before launch. The operator subsequently reported completion; see
+[calcium results](DNNE_Motor_Unit_Calcium_Results_2026-11-06.md). All 46 tests and
+the isolated numerical comparison passed. No live monitoring was used. The
+separate motor/Golgi window remains untouched and awaits its own report.
 
 ## Promotion gate
 

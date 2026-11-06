@@ -77,25 +77,30 @@ internal static class SplitNumericsProbe
         var summary=new{key,kind="source",sourceId=source.Id,duration,useEnergy,coupling,membraneStep,inputs=next,soma,axon,spikeTimes};Save(Path.Combine(dir,"summary.json"),summary);return summary;
     }
 
-    static async Task<object> Replay(string root,string key,ReplayCase replay,int duration,string variant,double step)
+    internal static async Task<object> Replay(string root,string key,ReplayCase replay,int duration,string variant,double step,
+        double[]? noOpBoundaries=null,string? boundaryCondition=null)
     {
         string dir=Path.Combine(root,key);Directory.CreateDirectory(dir);
         string? oldDir=Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR"),oldId=Environment.GetEnvironmentVariable("SERVICE_INSTANCE"),oldMode=Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE");
         try
         {
             Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",Path.Combine(dir,"state"));Environment.SetEnvironmentVariable("SERVICE_INSTANCE","isolated-purkinje");Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE","classical");
-            using var engine=new StructureEngine(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"Fixed recorded train",new DelayWindow(10,15)),2,step);
+            using var engine=new StructureEngine(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"Fixed recorded train",new DelayWindow(10,15)),2,step,noOpBoundaries);
             engine.DiagnosticBlockPurkinjeCalciumEntry=variant=="no-entry";
             var inputs=replay.Inputs.Where(x=>x.ArrivalMs<duration&&(variant!="disconnected"||x.Role!="climbing")).ToArray();
             var declared=inputs.ToDictionary(x=>x.Message.MessageId);var received=new HashSet<Guid>();
             using var events=new StreamWriter(Path.Combine(dir,"events.jsonl"));
             void Event(string kind,object value)=>events.WriteLine(JsonSerializer.Serialize(new{kind,value},Json));
+            int boundariesProcessed=0;
+            engine.DiagnosticBoundaryObserver=(scheduled,processed)=>{boundariesProcessed++;Event("boundary",new{scheduledMs=scheduled,processedMs=processed});};
             engine.ContactLearningObserver=o=>{if(!declared.TryGetValue(o.MessageId,out var input)||!received.Add(o.MessageId)||o.ProcessedMs!=input.ArrivalMs||o.ScheduledMs!=input.ArrivalMs)throw new InvalidOperationException("Replay time, identity or count changed.");Event("learning",o);};
             foreach(var c in replay.Contacts)if(engine.ResolveContactId(replay.Inputs.First(x=>x.Role==c.Role).Message)!=c.ContactId)throw new InvalidOperationException("Replay contact identity changed.");
-            Save(Path.Combine(dir,"design.json"),new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs,contacts=replay.Contacts});
+            Save(Path.Combine(dir,"design.json"),new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs,contacts=replay.Contacts,boundaryCondition,noOpBoundaries});
             using var trace=new StreamWriter(Path.Combine(dir,"trace.csv"));trace.WriteLine("timeMs,p0Soma,p0Dendrite,p1Soma,p1Dendrite,p0Reserve,p1Reserve,p0BalanceError,p1BalanceError,p0Unmet,p1Unmet");
             using var contacts=new StreamWriter(Path.Combine(dir,"contacts.csv"));contacts.WriteLine("timeMs,role,weight,ip3,calcium,store,integratedCalcium,inducedDepression,entry,extruded,massError");
             int next=0;var ordered=inputs.OrderBy(x=>x.Message.TimestampMs).ToArray();var spikes=new[]{new List<double>(),new List<double>()};var cells=Cells(engine);
+            using var stateTrace=boundaryCondition is null?null:new StreamWriter(Path.Combine(dir,"cell-states.csv"));
+            if(stateTrace is not null)BoundaryTimingProbe.WriteStateHeader(stateTrace);
             for(int n=1;n<=duration/.125;n++)
             {
                 double time=n*.125;
@@ -103,6 +108,7 @@ internal static class SplitNumericsProbe
                 await engine.ProcessTickAsync(new(n,time,.125,new NeuromodState(),new Dictionary<BrainRhythm,double>(),0){NeuralSubstrates=NeuralSubstrateSupply.ReferenceBath});
                 foreach(var m in await engine.DrainOutboundSpikesAsync()){spikes[int.Parse(m.SourceNeuronId[2..])].Add(m.TimestampMs);Event("spike",m);}
                 if(time%2!=0)continue;
+                if(stateTrace is not null)for(int i=0;i<cells.Length;i++)BoundaryTimingProbe.WriteState(stateTrace,time,i,cells[i]);
                 Row(trace,new[]{time,cells[0].MembranePotentialMillivolts,cells[0].LearningDendriteVoltageMv,cells[1].MembranePotentialMillivolts,cells[1].LearningDendriteVoltageMv,cells[0].Energy.Reserve,cells[1].Energy.Reserve,cells[0].Energy.BalanceError,cells[1].Energy.BalanceError,cells[0].Energy.Unmet,cells[1].Energy.Unmet});
                 foreach(var c in replay.Contacts)
                 {
@@ -110,8 +116,8 @@ internal static class SplitNumericsProbe
                     contacts.Write(time.ToString("R",CultureInfo.InvariantCulture)+","+c.Role+",");Row(contacts,new[]{contact.VesicleQuanta,ca?.Ip3Um??0,ca?.CalciumUm??0,ca?.StoreUm??0,ca?.IntegratedCalciumUm??0,ca?.InducedDepression??0,ca?.EntryUm??0,ca?.ExtrudedUm??0,ca?.MaximumMassError??0});
                 }
             }
-            if(next!=inputs.Length||received.Count!=inputs.Length)throw new InvalidOperationException("Incomplete replay.");
-            var summary=new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs=received.Count,spikes,contacts=Contacts(engine).Select(x=>new{contactId=x.Key,state=ContactLearningSnapshot.From(x.Value),peakCa=x.Value.PurkinjeCalcium?.PeakCalciumUm??0}).ToArray()};Save(Path.Combine(dir,"summary.json"),summary);return summary;
+            if(next!=inputs.Length||received.Count!=inputs.Length||boundariesProcessed!=(noOpBoundaries?.Length??0))throw new InvalidOperationException("Incomplete replay or no-op boundary accounting.");
+            var summary=new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs=received.Count,spikes,boundaryCondition,boundariesProcessed,contacts=Contacts(engine).Select(x=>new{contactId=x.Key,state=ContactLearningSnapshot.From(x.Value),peakCa=x.Value.PurkinjeCalcium?.PeakCalciumUm??0}).ToArray()};Save(Path.Combine(dir,"summary.json"),summary);return summary;
         }
         finally{Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldDir);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldId);Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE",oldMode);}
     }

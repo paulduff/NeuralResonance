@@ -32,11 +32,16 @@ $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revis
 $statusPath=Join-Path $package 'window-status.json'
 $transcribing=$false
 function Assert-FileHashes($entries){
+ Write-Host ('Verifying '+$entries.Count+' protected/package files...')
+ $verified=0
  foreach($entry in $entries){
   if((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ne $entry.Sha256){
    throw ('Protected or packaged file changed: '+$entry.Path)
   }
+  $verified++
+  if($verified % 1000 -eq 0){Write-Host ('Verified '+$verified+' / '+$entries.Count+' files')}
  }
+ Write-Host ('Verified all '+$verified+' files.')
 }
 function Invoke-LoggedNative([string]$Executable,[string[]]$NativeArguments,[string]$ConsolePath){
  # Windows PowerShell's transcript can omit buffered native stdout. Explicitly

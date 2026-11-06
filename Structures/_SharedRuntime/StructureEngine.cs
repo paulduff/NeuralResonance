@@ -16,6 +16,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	private const double MaximumCatchUpMilliseconds = 100.0;
 	internal const string IntegrationVersion = "event-aligned-calcium-v1";
 	private readonly double _maximumIntegrationStepMs;
+	private readonly Queue<double>? _diagnosticNoOpBoundaries;
+	internal Action<double, double>? DiagnosticBoundaryObserver { get; set; }
 
 	private readonly StructureProfile _profile;
 
@@ -177,7 +179,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 
 	// Internal, fresh-state diagnostic population only. Service hosts cannot select
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
-	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null)
+	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
+		IReadOnlyList<double>? diagnosticNoOpBoundaries = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
@@ -199,6 +202,17 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			(isolatedNeuronCount is null || !double.IsFinite(diagnosticStep) || diagnosticStep <= 0 || diagnosticStep > .125))
 			throw new ArgumentOutOfRangeException(nameof(diagnosticIntegrationStepMs), "Refinement is restricted to fresh isolated populations and at most 0.125 ms.");
 		_maximumIntegrationStepMs = diagnosticIntegrationStepMs ?? Math.Min(MaximumIntegrationSubstepMilliseconds, _neurons[0].MaximumIntegrationStepMs);
+		if (diagnosticNoOpBoundaries is not null)
+		{
+			// No-op time boundaries are a causal diagnostic, never a synaptic input
+			// or a service option. Copy before validating to prevent later mutation.
+			var boundaries = diagnosticNoOpBoundaries.ToArray();
+			if (isolatedNeuronCount is null || profile.StructureId != StructureId.PurkinjeCellLayer ||
+				boundaries.Any(x => !double.IsFinite(x) || x < 0) ||
+				boundaries.Zip(boundaries.Skip(1)).Any(x => x.First >= x.Second))
+				throw new ArgumentException("No-op boundaries require a fresh isolated Purkinje population and strictly increasing finite nonnegative times.", nameof(diagnosticNoOpBoundaries));
+			_diagnosticNoOpBoundaries = new Queue<double>(boundaries);
+		}
 		_rightingInputTrace = new float[_neurons.Length];
 		_incomingByTarget = Enumerable.Range(0, _neurons.Length).Select(_ => new List<SynapseState>()).ToArray();
 		_cellPostTrace = new float[_neurons.Length];
@@ -215,6 +229,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeClimbingCompartment.Version).ToString("N");
 		if (isolatedNeuronCount is { } diagnosticCount)
 			fingerprint = StableNeuralIdentity.Create("isolated-population-v2", fingerprint, diagnosticCount, _maximumIntegrationStepMs).ToString("N");
+		if (_diagnosticNoOpBoundaries is not null)
+			fingerprint = StableNeuralIdentity.Create("isolated-no-op-boundaries-v1", fingerprint,
+				string.Join(",", _diagnosticNoOpBoundaries.Select(x => x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)))).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try
 		{
@@ -778,6 +795,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			var next = double.PositiveInfinity;
 			if (_feedForward.TryPeek(out _, out var forward) && forward > timestampMs) next = forward;
 			if (_feedback.TryPeek(out _, out var feedback) && feedback > timestampMs) next = Math.Min(next, feedback);
+			if (_diagnosticNoOpBoundaries is not null && _diagnosticNoOpBoundaries.TryPeek(out var boundary) && boundary > timestampMs)
+				next = Math.Min(next, boundary);
 			return next;
 		}
 	}
@@ -788,6 +807,11 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		// ModelNeuron.Step; a boundary event must not consume another time slice.
 		ProcessDueQueue(_feedForward, signal, 0, isFeedback: false);
 		ProcessDueQueue(_feedback, signal, 0, isFeedback: true);
+		while (_diagnosticNoOpBoundaries is not null && _diagnosticNoOpBoundaries.TryPeek(out var boundary) && boundary <= signal.TimestampMs)
+		{
+			_diagnosticNoOpBoundaries.Dequeue();
+			DiagnosticBoundaryObserver?.Invoke(boundary, signal.TimestampMs);
+		}
 	}
 
 	private void ProcessDueQueue(

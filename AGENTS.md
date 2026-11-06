@@ -128,6 +128,14 @@ or infer chaos. Global arrival boundaries split every receiving cell's step,
 providing a numerical route for unrelated-event effects. Test no-op boundaries
 and complete-state short-interval accuracy before tuning learning. Purkinje
 still has provisional imposed drives; endogenous pacemaking is unqualified.
+The next causal diagnostic is documented in
+`docs/DNNE_Boundary_Timing_Study_2026-11-06.md`: connected/disconnected input and
+disconnected input retaining no-op arrival boundaries. Its fresh isolated-only
+hook releases no transmitter and is not a production fix. The eight-second
+preflight supports the shared-boundary mechanism and reproduces 16 archived
+baselines; review the full 60-second result before advancing. The full test suite
+has one cortical-consolidation failure also reproduced with the pre-change binary;
+do not call the whole suite green or conceal that separate unresolved issue.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

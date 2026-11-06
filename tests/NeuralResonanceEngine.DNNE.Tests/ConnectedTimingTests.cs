@@ -12,11 +12,12 @@ public sealed class ConnectedTimingTests
     {
         readonly string? oldDir=Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR"),oldInstance=Environment.GetEnvironmentVariable("SERVICE_INSTANCE");
         internal readonly StructureEngine Engine;
-        internal Fixture(double step=.125)
+        internal Fixture(double step=.125,double[]? boundaries=null)
         {
             Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",Path.Combine(Path.GetTempPath(),"nre-timing",Guid.NewGuid().ToString("N")));
             Environment.SetEnvironmentVariable("SERVICE_INSTANCE","isolated-timing");
-            Engine=new(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"timing test",new DelayWindow(1,1)),1,step);
+            try {Engine=new(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"timing test",new DelayWindow(1,1)),1,step,boundaries);}
+            catch {Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldDir);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldInstance);throw;}
         }
         public void Dispose(){Engine.Dispose();Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldDir);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldInstance);}
     }
@@ -29,6 +30,28 @@ public sealed class ConnectedTimingTests
     };
     static TickSignal Tick(long n,double time,double dt)=>new(n,time,dt,new NeuromodState(),new Dictionary<BrainRhythm,double>(),0){NeuralSubstrates=NeuralSubstrateSupply.ReferenceBath};
     static int Delay(StructureEngine e,SpikeMessage m)=>(int)typeof(StructureEngine).GetMethod("ComputeConductionDelayMs",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(e,[m])!;
+
+    [Fact]
+    public async Task DiagnosticBoundariesOnlySplitTimeAndCopyTheirSchedule()
+    {
+        double[] boundaries=[0,.03125,.5,1];using var f=new Fixture(boundaries:boundaries);
+        boundaries[1]=.75;
+        var seen=new List<(double Scheduled,double Processed)>();int releases=0;
+        f.Engine.DiagnosticBoundaryObserver=(a,b)=>seen.Add((a,b));
+        f.Engine.InboundIntegrationObserver=_=>releases++;
+        await f.Engine.ProcessTickAsync(Tick(1,1,1));
+        await f.Engine.ProcessTickAsync(Tick(2,2,1));
+        Assert.Equal(new[]{(0d,0d),(.03125,.03125),(.5,.5),(1d,1d)},seen);
+        Assert.Equal(0,releases);Assert.Empty(Contacts(f.Engine));
+    }
+
+    [Fact]
+    public void DiagnosticBoundariesRejectMalformedSchedulesAndNonisolatedHosts()
+    {
+        foreach(var values in new[]{new[]{double.NaN},new[]{double.PositiveInfinity},new[]{-.1},new[]{1d,.5},new[]{1d,1d}})
+            Assert.Throws<ArgumentException>(()=>new Fixture(boundaries:values));
+        Assert.Throws<ArgumentException>(()=>new StructureEngine(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"not isolated",new DelayWindow(1,1)),null,null,[.03125]));
+    }
 
     [Fact]
     public async Task BoundaryReleaseCannotTeachDuringTheIntervalBeforeItArrives()

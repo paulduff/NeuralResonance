@@ -153,6 +153,12 @@ The continuing neuronal-development objective and acceptance gates are recorded 
 missing populations and mechanism repairs, with regular commits and pushes, until
 Avatar usability is demonstrated or the operator stops the work. This is not
 permission to claim human-brain equivalence or promote unqualified candidates.
+The isolated Golgi channel implementation is described in
+`docs/DNNE_Golgi_Channels_2026-11-06.md`. It is not wired to ModelNeuron or a host.
+Its voltage-clamp/SK2 checks do not establish free-cell firing, a functioning
+granular-layer circuit, or human physiology. Review the operator-reported results
+before advancing to coupled membrane/cable dynamics; preserve the pinned source
+convention and explicitly documented corrections.
 
 Tests and experiments run independently in a visible PowerShell window. Do not live
 monitor them; inspect saved results after the operator reports completion. Builds

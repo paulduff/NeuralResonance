@@ -109,3 +109,8 @@ under matched inputs. Only then join real cell events to the separately checked
 motor-unit consumer and qualify the sensory/spinal/body loop. Preserve Avatar's
 existing receptors and mechanics, and update Unity/editor/save fingerprints when
 the live pathway changes. Old saves remain untouched throughout this isolated work.
+
+The next rig is specified in `DNNE_Motoneuron_Active_Comparison_2026-11-06.md`:
+matched current/conductance inputs, channel ablations, three candidate steps and
+two independent adaptive solver methods. Numerical uncertainty is assessed before
+physiological interpretation.

@@ -30,13 +30,15 @@ def main():
     selection.add_argument('--golgi-reference-from',type=Path)
     selection.add_argument('--muscle-calcium',action='store_true')
     selection.add_argument('--motoneuron-reference',action='store_true')
+    selection.add_argument('--motoneuron-active-from',type=Path)
     args=parser.parse_args()
     assert not git('status', '--porcelain'), 'Commit the coherent candidate before freezing.'
     revision = git('rev-parse', 'HEAD')
     assert revision == git('rev-parse', 'origin/main'), 'Push before packaging.'
     dotnet = shutil.which('dotnet'); assert dotnet
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    prefix='motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
+    with_motoneuron=args.motoneuron_reference or args.motoneuron_active_from is not None
+    prefix='motoneuron-active' if args.motoneuron_active_from else 'motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
     package = ROOT/'artifacts'/(prefix+'-'+stamp+'-'+uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists()
@@ -46,9 +48,9 @@ def main():
         assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
         archive.extractall(package/'source')
     shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
-    baseline=None; muscle_reference=None; motoneuron_reference=None
+    baseline=None; muscle_reference=None; motoneuron_reference=None; motoneuron_active_baseline=None
     python=ROOT/'artifacts/numerical-reference-env-20261102/Scripts/python.exe'
-    if args.motoneuron_reference:
+    if with_motoneuron:
         assert python.is_file()
         reference=ROOT/'artifacts/reference-motoneuron-239582-20261106'
         reference_revision=subprocess.check_output(['git','rev-parse','HEAD'],cwd=reference,encoding='utf-8').strip()
@@ -68,8 +70,29 @@ def main():
             copied.append(dict(SourcePath=name,PackagedName=original.name,Sha256=value))
         motoneuron_reference=dict(Revision=reference_revision,Model='https://modeldb.science/239582',
             Study='https://doi.org/10.1152/jn.00850.2016',Cell='FivecomptcMG_0',Files=copied,
-            NativeNeuronExecuted=False,ActiveCellAssessment=False)
+            NativeNeuronExecuted=False,ActiveCellAssessment=bool(args.motoneuron_active_from))
         write(target/'provenance.json',motoneuron_reference)
+    if args.motoneuron_active_from:
+        from motoneuron_active_protocol import protocol
+        reviewed=args.motoneuron_active_from.resolve()
+        report=json.loads((reviewed/'review.json').read_text(encoding='utf-8-sig'))
+        assert report['channelAndPassiveCriteriaPassed'] and report['backupRepaired']
+        assert report['passedFocusedAndManifestTests']==10 and report['clampCases']==96 and report['passiveCases']==9
+        assert report['sourceRevision']=='1ff49a1603599b3581b3557c7aab193774173c96'
+        previous=Path(report['capture']);previous_backup=Path(report['backup'])
+        for base in (previous,previous_backup):
+            assert sha256((base/'backup-manifest.json').read_bytes()).hexdigest().upper()==report['repairedManifestSha256']
+        review_manifest=json.loads((reviewed/'backup-manifest.json').read_text(encoding='utf-8-sig'))
+        review_backup=Path(review_manifest['Destination'])
+        assert sha256((reviewed/'review.json').read_bytes()).digest()==sha256((review_backup/'review.json').read_bytes()).digest()
+        target=package/'motoneuron-baseline';target.mkdir()
+        shutil.copy2(reviewed/'review.json',target/'review.json')
+        shutil.copy2(previous/'window-status.json',target/'original-window-status.json')
+        shutil.copy2(previous/'backup-manifest.json',target/'repaired-backup-manifest.json')
+        motoneuron_active_baseline=dict(Review=str(reviewed),Capture=str(previous),Backup=str(previous_backup),
+            ReviewSha256=sha256((reviewed/'review.json').read_bytes()).hexdigest(),
+            ChannelsAndPassivePassed=True,ActiveCellPreviouslyAssessed=False)
+        write(package/'motoneuron-active-input.json',protocol())
     if args.muscle_calcium:
         assert python.is_file()
         reference=ROOT/'artifacts/reference-muscle-nagamori-20261106'
@@ -107,12 +130,13 @@ def main():
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper())
         for p in sorted(package.rglob('*')) if p.is_file()]
     write(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),
-        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=10 if args.motoneuron_reference else 46 if args.muscle_calcium else 33,
-        TestFilter=('FullyQualifiedName~MotoneuronReferenceTests|FullyQualifiedName~SolutionManifestTests' if args.motoneuron_reference else
+        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=10 if with_motoneuron else 46 if args.muscle_calcium else 33,
+        TestFilter=('FullyQualifiedName~MotoneuronReferenceTests|FullyQualifiedName~SolutionManifestTests' if with_motoneuron else
             'FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests'+
             ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium else '')),
         NoLiveMonitoring=True,LiveMotorPathEnabled=False,GolgiBaseline=baseline,
-        MuscleCalciumReference=muscle_reference,MotoneuronReference=motoneuron_reference,PythonExecutable=str(python)))
+        MuscleCalciumReference=muscle_reference,MotoneuronReference=motoneuron_reference,
+        MotoneuronActiveBaseline=motoneuron_active_baseline,PythonExecutable=str(python)))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,
         Launcher=str(package/'source/tools/start-motor-axon-window.ps1'),NoLiveMonitoring=True)
     write(ROOT/'artifacts'/(prefix+'-launch-'+stamp+'.json'),pointer)

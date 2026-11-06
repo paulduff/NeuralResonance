@@ -43,16 +43,18 @@ function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$L
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;
  LiveBrainAccessed=$false;OldSavesLoaded=$false;LiveMotorPathEnabled=$false;
  NeuronalSourceQualified=$false;MuscleResponseQualified=$false;AvatarRecoveryAssessed=$false}
-$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$withMotoneuron=$false
+$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$withMotoneuron=$false;$withActiveMotoneuron=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $withReference=$configuration.PSObject.Properties.Name -contains 'GolgiBaseline' -and $null -ne $configuration.GolgiBaseline
  $withCalcium=$configuration.PSObject.Properties.Name -contains 'MuscleCalciumReference' -and $null -ne $configuration.MuscleCalciumReference
  $withMotoneuron=$configuration.PSObject.Properties.Name -contains 'MotoneuronReference' -and $null -ne $configuration.MotoneuronReference
- $Host.UI.RawUI.WindowTitle=if($withMotoneuron){'DNNE motor-cell channels and passive coupling'}elseif($withCalcium){'DNNE isolated motor-unit calcium and force'}elseif($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
+ $withActiveMotoneuron=$configuration.PSObject.Properties.Name -contains 'MotoneuronActiveBaseline' -and $null -ne $configuration.MotoneuronActiveBaseline
+ $Host.UI.RawUI.WindowTitle=if($withActiveMotoneuron){'DNNE active motor-cell numerical comparison'}elseif($withMotoneuron){'DNNE motor-cell channels and passive coupling'}elseif($withCalcium){'DNNE isolated motor-unit calcium and force'}elseif($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($withMotoneuron){Write-Host 'Reference motor-cell channels and passive cable. Active firing and the body loop are not assessed.'}
+ if($withActiveMotoneuron){Write-Host 'Active motor-cell voltages/calcium/crossings: RK4 refinement, independent DOP853 and Radau. No live brain or body.'}
+ elseif($withMotoneuron){Write-Host 'Reference motor-cell channels and passive cable. Active firing and the body loop are not assessed.'}
  else {Write-Host 'Original event identity/timing, packet integrity and shared simulation clock. No live brain or body.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
@@ -87,10 +89,23 @@ try {
   $probeBinaries=@(Get-ChildItem -LiteralPath (Split-Path -Parent $probe) -Recurse -File |
    ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
   $probeBinaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'motoneuron-build-binaries.json') -Encoding UTF8
-  Invoke-Logged $configuration.DotnetExecutable @($probe,(Join-Path $package 'motoneuron-study')) 'motoneuron-study.log'
-  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/motoneuron-reference-check.py'),$package) 'motoneuron-reference.log'
+  if($withActiveMotoneuron){
+   Invoke-Logged $configuration.DotnetExecutable @($probe,'--active',(Join-Path $package 'motoneuron-active-input.json'),(Join-Path $package 'motoneuron-active-study')) 'motoneuron-active-study.log'
+   $threadEnvironment=@{}
+   try {
+    foreach($name in @('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS')){
+     $threadEnvironment[$name]=[Environment]::GetEnvironmentVariable($name,'Process')
+     [Environment]::SetEnvironmentVariable($name,'1','Process')
+    }
+    Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/motoneuron-active-reference.py'),$package) 'motoneuron-active-reference.log'
+   } finally {foreach($name in $threadEnvironment.Keys){[Environment]::SetEnvironmentVariable($name,$threadEnvironment[$name],'Process')}}
+   $status['MotoneuronActiveNumericalCriteriaPassed']=$true
+  } else {
+   Invoke-Logged $configuration.DotnetExecutable @($probe,(Join-Path $package 'motoneuron-study')) 'motoneuron-study.log'
+   Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/motoneuron-reference-check.py'),$package) 'motoneuron-reference.log'
+   $status['MotoneuronChannelAndPassiveCriteriaPassed']=$true
+  }
   foreach($entry in $probeBinaries){if((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ne $entry.Sha256){throw ('Probe binary changed: '+$entry.Path)}}
-  $status['MotoneuronChannelAndPassiveCriteriaPassed']=$true
   $status['MotoneuronActiveFiringQualified']=$false
   $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
  }
@@ -143,6 +158,7 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- if($withMotoneuron){Write-Host 'Tell Orion the motor-cell channel/passive outcome. Active firing, circuit function and Avatar recovery remain unqualified.'}
+ if($withActiveMotoneuron){Write-Host 'Tell Orion the active motor-cell outcome. Numerical agreement, physiological calibration and Avatar recovery are separate.'}
+ elseif($withMotoneuron){Write-Host 'Tell Orion the motor-cell channel/passive outcome. Active firing, circuit function and Avatar recovery remain unqualified.'}
  else {Write-Host 'Tell Orion this run outcome. Neuronal firing, muscle responses and Avatar recovery remain unqualified.'}
 }

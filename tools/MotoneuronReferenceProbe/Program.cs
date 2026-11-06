@@ -1,6 +1,12 @@
 using System.Globalization;
 using System.Text.Json;
 
+if (args.Length == 3 && args[0] == "--active")
+{
+    ActiveStudy.Run(args[1], args[2]);
+    return;
+}
+
 if (args.Length != 1 || !Path.IsPathFullyQualified(args[0]) || Directory.Exists(args[0]))
     throw new ArgumentException("Supply a new absolute output directory; old saves are never loaded.");
 Directory.CreateDirectory(args[0]);

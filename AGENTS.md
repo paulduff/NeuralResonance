@@ -260,3 +260,10 @@ The operator-reported channel/passive outcome is reviewed in
 260-character Windows path; extended-path I/O repaired and verified the full C:/D:
 capture while preserving the original FAILED status and frozen source. No test
 was rerun. Active-cell comparison is now the next gate, not live motor adoption.
+The active rig is documented in
+`docs/DNNE_Motoneuron_Active_Comparison_2026-11-06.md`: ten fixed six-second inputs
+at three RK4 steps, independently integrated with ordinary/tight DOP853 and Radau.
+No membrane parameter changes or live deployment accompany it. Require reference
+agreement, complete-state accounting, exercised action potentials and refinement;
+then assess physiology separately. Do not substitute quiet-trace agreement for
+active verification or retune a failed acceptance bound after seeing the result.

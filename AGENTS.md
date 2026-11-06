@@ -274,3 +274,19 @@ solver interference. Fifteen new fixture checks join 46 existing component and
 manifest cases in a separate visible window. No outcome is claimed before the
 operator's report. Do not confuse this fixed-length reference with a live muscle,
 add a second activation filter, or connect an unqualified source to body authority.
+
+The operator-reported isometric result is reviewed in
+`docs/DNNE_Isometric_Motor_Unit_Results_2026-11-06.md`: all 61 focused/component/
+manifest cases passed and both complete captures were verified. Its fixture force
+is not neuronal-source or whole-body qualification. The operator subsequently
+reported SciPy Jacobian-overflow warnings in the still-running active motor-cell
+study, not that isometric capture. A bounded derivative candidate is documented
+in the active-comparison report; its numerical checks have not yet run. Do not
+change, monitor or restart the original frozen experiment on this evidence alone.
+
+The separate cortical failure diagnosis is described in
+`docs/DNNE_Cortical_Memory_Diagnosis_2026-11-06.md`. It records actual per-contact
+updates and compares the original gapped fixture with continuous/spaced controls.
+The original assertion and learning parameters are unchanged. Diagnostic capture
+completion must not be reported as a passing full suite or qualified biological
+consolidation. Review the operator-reported capture before choosing a repair.

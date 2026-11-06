@@ -93,6 +93,7 @@ public sealed partial class StructureEngine
 
     private void LearnPresynaptic(SpikeMessage message, SynapseState contact, ModelNeuron cell, double timestampMs)
     {
+        var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
         var previous = ComputeSynapticMemoryContribution(contact);
         var supported = contact.UpdateCount > 0;
         ContactPlasticity.Spike(contact, _profile.PlasticityRule, true, timestampMs, cell.ActivityTrace);
@@ -107,6 +108,7 @@ public sealed partial class StructureEngine
             contact.PurkinjeCalcium.ParallelRelease(message.VesicleQuanta);
         }
         UpdateContactDiagnostics(contact, previous, supported);
+        ObserveMemoryLearning("pre", message.MessageId, timestampMs, 0, cell, memoryBefore, contact);
         if (ContactPlasticity.IsLearningContact(contact)) _presynapticLearningEvents++;
         if (_profile.PlasticityRule == "CerebellarLTD" && message.SourceStructure == StructureId.InferiorOlive &&
             message.Neurotransmitter == NTEnum.GLUTAMATE && !message.IsSyntheticBackground)
@@ -124,10 +126,12 @@ public sealed partial class StructureEngine
         _cellPostTimestamp[cell.Index] = timestampMs;
         foreach (var contact in _incomingByTarget[cell.Index])
         {
+            var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
             var previous = ComputeSynapticMemoryContribution(contact);
             var supported = contact.UpdateCount > 0;
             ContactPlasticity.Spike(contact, _profile.PlasticityRule, false, timestampMs, cell.ActivityTrace);
             UpdateContactDiagnostics(contact, previous, supported);
+            ObserveMemoryLearning("post", null, timestampMs, 0, cell, memoryBefore, contact);
             if (ContactPlasticity.IsLearningContact(contact)) _postsynapticLearningEvents++;
         }
         if (_incomingByTarget[cell.Index].Count > 0) PersistSynapses(timestampMs);
@@ -153,11 +157,13 @@ public sealed partial class StructureEngine
             !_profile.PlasticityRule.Contains("BCM", StringComparison.Ordinal) && _profile.PlasticityRule != "HomeostaticGain") return;
         foreach (var contact in _incomingByTarget[cell.Index])
         {
+            var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
             var previous = ComputeSynapticMemoryContribution(contact);
             var supported = contact.UpdateCount > 0;
             ContactPlasticity.Modulate(contact, _profile.PlasticityRule, timestampMs, elapsedMs,
                 modulation, cell.LocalRewardSignal, cell.ActivityTrace);
             UpdateContactDiagnostics(contact, previous, supported);
+            ObserveMemoryLearning("modulation", null, timestampMs, elapsedMs, cell, memoryBefore, contact);
         }
         if (_incomingByTarget[cell.Index].Count > 0) PersistSynapses(timestampMs);
     }

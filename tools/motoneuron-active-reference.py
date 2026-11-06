@@ -143,6 +143,9 @@ def main(package):
         study=package/'motoneuron-active-study';meta=read(study/'protocol.json');outcomes=read(study/'results.json')
         assert meta['inputSha256']==sha256((package/'motoneuron-active-input.json').read_bytes()).hexdigest().upper()
         assert meta['specification']=={k:spec[k] for k in meta['specification']} and not meta['liveBrainAccessed']
+        assert meta['stateAccumulation']==spec['stateAccumulation']=='Compensated'
+        assert meta['version']=='isolated-motoneuron-five-compartment-rk4-compensated-v2'
+        report.update(protocolVersion=spec['version'],stateAccumulation=spec['stateAccumulation'],candidateVersion=meta['version'])
         assert outcomes['completed'] and outcomes['expectedCases']==30 and len(outcomes['cases'])==30
         expected={(s['key'],h) for s in spec['cases'] for h in spec['stepsMs']}
         for row in outcomes['cases']:
@@ -170,14 +173,14 @@ def main(package):
                 except Exception as error:
                     row['references'].append(dict(method=method['key'],completed=False,error=repr(error)))
                 save()
-            for a,b in (('dop853','dop853-tight'),('dop853-tight','radau')):
+            for a,b in (('dop853-tight','dop853-tighter'),('dop853-tighter','radau')):
                 if a in references and b in references:
                     x,sx=references[a];y,sy=references[b];error=compare(x,y,sx,sy)
                     row['referenceContrasts'].append(dict(left=a,right=b,maximumAbsolute=error,passed=meets(error,c,'reference')))
             ref_ok=(len(row['referenceContrasts'])==2 and all(x['passed'] for x in row['referenceContrasts'])
                 and len(references)==3 and all(x['physicalAndAccountingPassed'] for x in row['references']))
-            if 'dop853-tight' in references:
-                reference,rs=references['dop853-tight']
+            if 'dop853-tighter' in references:
+                reference,rs=references['dop853-tighter']
                 for candidate in (x for x in outcomes['cases'] if x['scenario']==scenario['key']):
                     item=dict(key=candidate['key'],stepMs=candidate['stepMs'],completed=candidate['completed'],passed=False)
                     row['candidates'].append(item)

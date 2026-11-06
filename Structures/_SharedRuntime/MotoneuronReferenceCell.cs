@@ -40,16 +40,19 @@ internal sealed record MotoneuronReferenceParameters(string SourceKey,
 }
 
 internal enum MotoneuronDiagnosticBlock { None, Passive, WithoutTransientSodium, WithoutCalciumL, WithoutPotassiumCalcium }
+internal enum MotoneuronAccumulation { Naive, Compensated }
 
 internal sealed class MotoneuronReferenceCell
 {
     public const string Version = "isolated-motoneuron-five-compartment-rk4-v1";
+    public const string CompensatedVersion = "isolated-motoneuron-five-compartment-rk4-compensated-v2";
     public const double MaximumStepMs = .0125;
     public const double SpikeThresholdMv = -20; // Observational crossing, never a reset.
     public const int PhysicalStateCount = 27;
     // V soma/d1/d2/d3/d4 (0..4), nine soma gates (5..13), local Ca (14),
     // each dendrite mCaL/hCaL/HCN (15..26); release/removal/charge ledgers (27..29).
     private readonly double[] _state = new double[30];
+    private readonly double[] _additionError = new double[30];
     private readonly double[] _initialVoltage = new double[5];
     private readonly double[] _area = new double[5], _capacitance = new double[5];
     private readonly double[,] _coupling = new double[5, 5];
@@ -57,6 +60,8 @@ internal sealed class MotoneuronReferenceCell
     private readonly MotoneuronDiagnosticBlock _block;
     private readonly List<double> _spikes = [];
     private bool _faulted;
+    public MotoneuronAccumulation Accumulation { get; }
+    public string IntegrationVersion => Accumulation == MotoneuronAccumulation.Compensated ? CompensatedVersion : Version;
     public double TimeMs { get; private set; }
     public double SomaVoltageMv => _state[0];
     public double CalciumMm => _state[14];
@@ -69,11 +74,13 @@ internal sealed class MotoneuronReferenceCell
     public double[][] CopyCouplingNs() => Enumerable.Range(0, 5).Select(i => Enumerable.Range(0, 5).Select(j => _coupling[i, j]).ToArray()).ToArray();
 
     public MotoneuronReferenceCell(MotoneuronReferenceParameters parameters, double initialVoltageMv = -65,
-        MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None)
+        MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
+        MotoneuronAccumulation accumulation = MotoneuronAccumulation.Naive)
     {
         ArgumentNullException.ThrowIfNull(parameters); parameters.Validate();
-        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block)) throw new ArgumentException("Invalid isolated cell initialization.");
-        _parameters = parameters; _block = block;
+        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block) || !Enum.IsDefined(accumulation))
+            throw new ArgumentException("Invalid isolated cell initialization.");
+        _parameters = parameters; _block = block; Accumulation = accumulation;
         for (int i = 0; i < 5; ++i)
         {
             var section = i == 0 ? parameters.Soma : parameters.Dendrite;
@@ -124,12 +131,26 @@ internal sealed class MotoneuronReferenceCell
         try
         {
             Span<double> a = stackalloc double[30], b = stackalloc double[30], c = stackalloc double[30], d = stackalloc double[30];
-            Span<double> temporary = stackalloc double[30], next = stackalloc double[30];
+            Span<double> temporary = stackalloc double[30], next = stackalloc double[30], nextError = stackalloc double[30];
             Derivative(_state, a, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
             Offset(_state, a, dtMs / 2, temporary); Derivative(temporary, b, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
             Offset(_state, b, dtMs / 2, temporary); Derivative(temporary, c, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
             Offset(_state, c, dtMs, temporary); Derivative(temporary, d, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
-            for (int i = 0; i < 30; ++i) next[i] = _state[i] + dtMs / 6 * (a[i] + 2 * b[i] + 2 * c[i] + d[i]);
+            for (int i = 0; i < 30; ++i)
+            {
+                double increment = dtMs / 6 * (a[i] + 2 * b[i] + 2 * c[i] + d[i]);
+                // Kahan addition retains the part lost when a small RK4 increment
+                // is added to a larger state. The RHS, stages and physical bounds
+                // are unchanged. Apply to physical states AND accounting integrals.
+                if (Accumulation == MotoneuronAccumulation.Compensated)
+                {
+                    increment -= _additionError[i];
+                    next[i] = _state[i] + increment;
+                    nextError[i] = (next[i] - _state[i]) - increment;
+                    if (!double.IsFinite(nextError[i])) throw new InvalidOperationException("Non-finite compensated increment.");
+                }
+                else { next[i] = _state[i] + increment; nextError[i] = 0; }
+            }
             RequireState(next);
             double charge = 0;
             for (int i = 0; i < 5; ++i) charge += _capacitance[i] * (next[i] - _initialVoltage[i]);
@@ -138,7 +159,7 @@ internal sealed class MotoneuronReferenceCell
                 Math.Abs(next[14] - MotoneuronChannelKinetics.RestingCalciumMm - next[27] + next[28]));
             if (_state[0] < SpikeThresholdMv && next[0] >= SpikeThresholdMv)
                 _spikes.Add(TimeMs + dtMs * (SpikeThresholdMv - _state[0]) / (next[0] - _state[0]));
-            next.CopyTo(_state); TimeMs += dtMs;
+            next.CopyTo(_state); nextError.CopyTo(_additionError); TimeMs += dtMs;
         }
         catch { _faulted = true; throw; }
     }

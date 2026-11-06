@@ -2,6 +2,53 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 
 public sealed class MotoneuronReferenceTests
 {
+    [Fact]
+    public void CompensatedPassiveChargeRetainsSubUlpIncrements()
+    {
+        // Analytic diagnostic: no membrane currents, so sum(C*dV) = I*T.
+        // Current is deliberately below one voltage ULP per step; not physiology.
+        var original = MotoneuronReferenceParameters.CatLowThreshold;
+        var parameters = original with { Soma = original.Soma with { LeakSiemensPerCm2 = 0 },
+            Dendrite = original.Dendrite with { LeakSiemensPerCm2 = 0 } };
+        var naive = new MotoneuronReferenceCell(parameters, -71, MotoneuronDiagnosticBlock.Passive);
+        var compensated = new MotoneuronReferenceCell(parameters, -71, MotoneuronDiagnosticBlock.Passive,
+            MotoneuronAccumulation.Compensated);
+        const double current = 1e-10, step = .003125;
+        const int count = 32000;
+        for (int i = 0; i < count; ++i) { naive.Advance(step, current); compensated.Advance(step, current); }
+        var cap = compensated.CopyCapacitancesPf(); var state = compensated.CopyState();
+        double expectedCharge = current * (step * count);
+        // Two voltage ULPs across all capacitances, fixed before the experiment.
+        double bound = 2 * (Math.BitIncrement(-71d) + 71) * cap.Sum();
+        double charge = Enumerable.Range(0, 5).Sum(i => cap[i] * (state[i] + 71));
+        Assert.All(naive.CopyState().Take(5), v => Assert.Equal(-71, v));
+        Assert.True(expectedCharge > 10 * bound);
+        Assert.InRange(Math.Abs(charge - expectedCharge), 0, bound);
+        Assert.InRange(Math.Abs(state[29] - expectedCharge), 0, 1e-20);
+        Assert.InRange(compensated.MaximumChargeLedgerErrorFc, 0, bound);
+        Assert.True(naive.MaximumChargeLedgerErrorFc > 10 * bound);
+        Assert.Empty(compensated.CopyCrossings());
+    }
+
+    [Fact]
+    public void AccumulationIsExplicitAndRejectedInputsPreserveCompensatedContinuation()
+    {
+        var parameters = MotoneuronReferenceParameters.CatLowThreshold;
+        Assert.Throws<ArgumentException>(() => new MotoneuronReferenceCell(parameters, accumulation: (MotoneuronAccumulation)99));
+        var naive = new MotoneuronReferenceCell(parameters);
+        var first = new MotoneuronReferenceCell(parameters, -71, MotoneuronDiagnosticBlock.Passive, MotoneuronAccumulation.Compensated);
+        var control = new MotoneuronReferenceCell(parameters, -71, MotoneuronDiagnosticBlock.Passive, MotoneuronAccumulation.Compensated);
+        Assert.Equal(MotoneuronReferenceCell.Version, naive.IntegrationVersion);
+        Assert.Equal(MotoneuronReferenceCell.CompensatedVersion, first.IntegrationVersion);
+        for (int i = 0; i < 100; ++i) { first.Advance(.003125, 100); control.Advance(.003125, 100); }
+        var accepted = first.CopyState();
+        Assert.Throws<ArgumentException>(() => first.Advance(.025));
+        Assert.Equal(accepted, first.CopyState());
+        for (int i = 0; i < 100; ++i) { first.Advance(.003125, 100); control.Advance(.003125, 100); }
+        Assert.Equal(control.CopyState(), first.CopyState());
+        Assert.Equal(control.TimeMs, first.TimeMs);
+    }
+
     [Theory]
     [InlineData(24)]
     [InlineData(37)]

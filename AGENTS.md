@@ -317,3 +317,10 @@ The active motor-cell result is in
 the original numerical gate fails on calcium refinement, finest charge accounting
 and one reference gate contrast. Preserve its failed status and original bounds;
 test accumulation/reference accuracy before changing physiology.
+The isolated next candidate is documented in
+`docs/DNNE_Motoneuron_Numerical_Repair_2026-11-06.md`: explicit compensated RK4
+accumulation, analytic passive charge controls and tighter adaptive references
+with the bounded Jacobian. Old naive callers and failed captures are preserved;
+inputs and acceptance bounds stay fixed. Its independent visible window must
+pass twelve focused/manifest tests before active comparisons. Do not monitor it
+or claim numerical/physiological qualification before operator-reported completion.

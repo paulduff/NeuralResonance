@@ -1,5 +1,11 @@
 # Active motor-cell numerical comparison
 
+The operator-reported result is now recorded in
+`DNNE_Motoneuron_Active_Results_2026-11-06.md`. The original run failed its numerical
+criteria. Its next explicitly versioned candidate is described in
+`DNNE_Motoneuron_Numerical_Repair_2026-11-06.md`; the protocol below remains the
+historical specification of the first run, not a new passing result.
+
 This is the next isolated gate after `DNNE_Motoneuron_Passive_Results_2026-11-06.md`.
 The five-compartment candidate and its parameters are unchanged. No live DNNE
 host, Avatar, Unity service, editor or saved brain selects this model.

@@ -31,15 +31,27 @@ def main():
     selection.add_argument('--muscle-calcium',action='store_true')
     selection.add_argument('--motoneuron-reference',action='store_true')
     selection.add_argument('--motoneuron-active-from',type=Path)
+    selection.add_argument('--motoneuron-numerical-from',type=Path)
     selection.add_argument('--motor-unit-plant',action='store_true')
     args=parser.parse_args()
+    active_from=args.motoneuron_active_from
+    active_review=None
+    if args.motoneuron_numerical_from:
+        active_review=args.motoneuron_numerical_from.resolve()
+        reviewed_active=json.loads((active_review/'review.json').read_text(encoding='utf-8-sig'))
+        assert reviewed_active['sourceRevision']=='1ef1b6a9426bd319d9866dbcc39e096af8d06035'
+        assert reviewed_active['originalNumericalCriteriaPassed'] is False
+        assert reviewed_active['candidateConditionsCompleted']==reviewed_active['referenceConditionsCompleted']==30
+        previous_active=Path(reviewed_active['capture'])
+        previous_config=json.loads((previous_active/'configuration.json').read_text(encoding='utf-8-sig'))
+        active_from=Path(previous_config['MotoneuronActiveBaseline']['Review'])
     assert not git('status', '--porcelain'), 'Commit the coherent candidate before freezing.'
     revision = git('rev-parse', 'HEAD')
     assert revision == git('rev-parse', 'origin/main'), 'Push before packaging.'
     dotnet = shutil.which('dotnet'); assert dotnet
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    with_motoneuron=args.motoneuron_reference or args.motoneuron_active_from is not None
-    prefix='motor-unit-plant' if args.motor_unit_plant else 'motoneuron-active' if args.motoneuron_active_from else 'motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
+    with_motoneuron=args.motoneuron_reference or active_from is not None
+    prefix='motor-unit-plant' if args.motor_unit_plant else 'motoneuron-numerical' if active_review else 'motoneuron-active' if active_from else 'motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
     package = ROOT/'artifacts'/(prefix+'-'+stamp+'-'+uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists()
@@ -49,7 +61,7 @@ def main():
         assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
         archive.extractall(package/'source')
     shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
-    baseline=None; muscle_reference=None; motoneuron_reference=None; motoneuron_active_baseline=None
+    baseline=None; muscle_reference=None; motoneuron_reference=None; motoneuron_active_baseline=None; original_active_baseline=None
     python=ROOT/'artifacts/numerical-reference-env-20261102/Scripts/python.exe'
     if with_motoneuron:
         assert python.is_file()
@@ -71,11 +83,11 @@ def main():
             copied.append(dict(SourcePath=name,PackagedName=original.name,Sha256=value))
         motoneuron_reference=dict(Revision=reference_revision,Model='https://modeldb.science/239582',
             Study='https://doi.org/10.1152/jn.00850.2016',Cell='FivecomptcMG_0',Files=copied,
-            NativeNeuronExecuted=False,ActiveCellAssessment=bool(args.motoneuron_active_from))
+            NativeNeuronExecuted=False,ActiveCellAssessment=bool(active_from))
         write(target/'provenance.json',motoneuron_reference)
-    if args.motoneuron_active_from:
+    if active_from:
         from motoneuron_active_protocol import protocol
-        reviewed=args.motoneuron_active_from.resolve()
+        reviewed=active_from.resolve()
         report=json.loads((reviewed/'review.json').read_text(encoding='utf-8-sig'))
         assert report['channelAndPassiveCriteriaPassed'] and report['backupRepaired']
         assert report['passedFocusedAndManifestTests']==10 and report['clampCases']==96 and report['passiveCases']==9
@@ -92,8 +104,30 @@ def main():
         shutil.copy2(previous/'backup-manifest.json',target/'repaired-backup-manifest.json')
         motoneuron_active_baseline=dict(Review=str(reviewed),Capture=str(previous),Backup=str(previous_backup),
             ReviewSha256=sha256((reviewed/'review.json').read_bytes()).hexdigest(),
-            ChannelsAndPassivePassed=True,ActiveCellPreviouslyAssessed=False)
+            ChannelsAndPassivePassed=True,ActiveCellPreviouslyAssessed=active_review is not None)
         write(package/'motoneuron-active-input.json',protocol())
+    if active_review:
+        review_manifest=json.loads((active_review/'backup-manifest.json').read_text(encoding='utf-8-sig'))
+        review_bytes=(active_review/'review.json').read_bytes()
+        assert sha256(review_bytes).hexdigest().upper()==next(e['Sha256'] for e in review_manifest['Files'] if e['Path']=='review.json')
+        assert review_bytes==(Path(review_manifest['Destination'])/'review.json').read_bytes()
+        target=package/'motoneuron-failed-active-baseline';target.mkdir()
+        (target/'review.json').write_bytes(review_bytes)
+        original_manifest=json.loads((previous_active/'backup-manifest.json').read_text(encoding='utf-8-sig'))
+        expected={e['Path'].replace('\\','/').lower():e['Sha256'] for e in original_manifest['Files']}
+        previous_active_backup=Path(reviewed_active['backup'])
+        for name in ('configuration.json','window-status.json','motoneuron-active-input.json','motoneuron-active-reference/comparison.json'):
+            raw=(previous_active/name).read_bytes()
+            assert sha256(raw).hexdigest().upper()==expected[name.lower()]
+            assert raw==(previous_active_backup/name).read_bytes()
+            destination=target/name;destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(raw)
+        original_spec=json.loads((target/'motoneuron-active-input.json').read_text(encoding='utf-8-sig'))
+        new_spec=protocol()
+        for key in ('cases','criteria','durationMs','sampleMs','initialVoltageMv','stepsMs','thresholdMv','sourceRevision','cell'):
+            assert original_spec[key]==new_spec[key], 'Changed original biological inputs or acceptance bounds: '+key
+        original_active_baseline=dict(Review=str(active_review),Capture=str(previous_active),Backup=str(previous_active_backup),
+            ReviewSha256=sha256(review_bytes).hexdigest(),OriginalNumericalCriteriaPassed=False,
+            BiologicalInputsAndAcceptanceBoundsUnchanged=True)
     if args.muscle_calcium:
         assert python.is_file()
         reference=ROOT/'artifacts/reference-muscle-nagamori-20261106'
@@ -131,14 +165,15 @@ def main():
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper())
         for p in sorted(package.rglob('*')) if p.is_file()]
     write(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),
-        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=61 if args.motor_unit_plant else 10 if with_motoneuron else 46 if args.muscle_calcium else 33,
+        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=61 if args.motor_unit_plant else 12 if with_motoneuron else 46 if args.muscle_calcium else 33,
         TestFilter=('FullyQualifiedName~MotoneuronReferenceTests|FullyQualifiedName~SolutionManifestTests' if with_motoneuron else
             'FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests'+
             ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium or args.motor_unit_plant else '')+
             ('|FullyQualifiedName~IsometricMotorUnitPlantTests' if args.motor_unit_plant else '')),
         NoLiveMonitoring=True,LiveMotorPathEnabled=False,GolgiBaseline=baseline,
         MuscleCalciumReference=muscle_reference,MotoneuronReference=motoneuron_reference,
-        MotoneuronActiveBaseline=motoneuron_active_baseline,IsometricMotorUnitPlant=args.motor_unit_plant,PythonExecutable=str(python)))
+        MotoneuronActiveBaseline=motoneuron_active_baseline,OriginalFailedActiveBaseline=original_active_baseline,
+        IsometricMotorUnitPlant=args.motor_unit_plant,PythonExecutable=str(python)))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,
         Launcher=str(package/'source/tools/start-motor-axon-window.ps1'),NoLiveMonitoring=True)
     write(ROOT/'artifacts'/(prefix+'-launch-'+stamp+'.json'),pointer)

@@ -8,7 +8,7 @@ internal static class ActiveStudy
     internal sealed record Segment(double UntilMs, double SomaCurrentPa, double DendriteExcitatoryNs, double DendriteInhibitoryNs);
     internal sealed record Case(string Key, string Block, Segment[] Segments);
     internal sealed record Protocol(string Version, double DurationMs, double SampleMs, double InitialVoltageMv,
-        double[] StepsMs, double ThresholdMv, string SourceRevision, string Cell, Case[] Cases);
+        double[] StepsMs, double ThresholdMv, string SourceRevision, string Cell, string StateAccumulation, Case[] Cases);
 
     public static void Run(string input, string output)
     {
@@ -17,7 +17,8 @@ internal static class ActiveStudy
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
         byte[] raw = File.ReadAllBytes(input);
         var spec = JsonSerializer.Deserialize<Protocol>(raw, json) ?? throw new ArgumentException("Missing active protocol.");
-        if (spec.Version != "motoneuron-active-comparison-v1" || spec.DurationMs != 6000 || spec.SampleMs != .1 ||
+        if (spec.Version != "motoneuron-active-comparison-v2" || spec.StateAccumulation != "Compensated" ||
+            spec.DurationMs != 6000 || spec.SampleMs != .1 ||
             spec.InitialVoltageMv != -65 || spec.ThresholdMv != MotoneuronReferenceCell.SpikeThresholdMv ||
             spec.SourceRevision != "0d11354490fad5fcd940d016a8d69b000693fd81" || spec.Cell != "FivecomptcMG_0" ||
             spec.StepsMs is null || !spec.StepsMs.SequenceEqual(new[] { .0125, .00625, .003125 }) ||
@@ -44,9 +45,10 @@ internal static class ActiveStudy
         Directory.CreateDirectory(output);
         void Save(string name, object value) => File.WriteAllText(Path.Combine(output, name), JsonSerializer.Serialize(value, json));
         var parameters = MotoneuronReferenceParameters.CatLowThreshold;
-        var geometry = new MotoneuronReferenceCell(parameters);
+        var geometry = new MotoneuronReferenceCell(parameters, accumulation: MotoneuronAccumulation.Compensated);
         Save("protocol.json", new { inputSha256 = Convert.ToHexString(SHA256.HashData(raw)), specification = spec, parameters,
-            version = MotoneuronReferenceCell.Version, areasUm2 = geometry.CopyAreasUm2(), capacitancesPf = geometry.CopyCapacitancesPf(),
+            version = geometry.IntegrationVersion, stateAccumulation = geometry.Accumulation.ToString(),
+            areasUm2 = geometry.CopyAreasUm2(), capacitancesPf = geometry.CopyCapacitancesPf(),
             couplingNs = geometry.CopyCouplingNs(), nativeNeuronExecuted = false, liveBrainAccessed = false });
         var cases = new List<object>(); int successful = 0;
         foreach (var scenario in spec.Cases)
@@ -54,7 +56,8 @@ internal static class ActiveStudy
         {
             string key = scenario.Key + "-h" + step.ToString(CultureInfo.InvariantCulture);
             Console.WriteLine(key);
-            var cell = new MotoneuronReferenceCell(parameters, spec.InitialVoltageMv, Enum.Parse<MotoneuronDiagnosticBlock>(scenario.Block));
+            var cell = new MotoneuronReferenceCell(parameters, spec.InitialVoltageMv,
+                Enum.Parse<MotoneuronDiagnosticBlock>(scenario.Block), MotoneuronAccumulation.Compensated);
             try
             {
                 using var trace = new StreamWriter(Path.Combine(output, key + ".csv"));

@@ -31,6 +31,7 @@ def main():
     selection.add_argument('--muscle-calcium',action='store_true')
     selection.add_argument('--motoneuron-reference',action='store_true')
     selection.add_argument('--motoneuron-active-from',type=Path)
+    selection.add_argument('--motor-unit-plant',action='store_true')
     args=parser.parse_args()
     assert not git('status', '--porcelain'), 'Commit the coherent candidate before freezing.'
     revision = git('rev-parse', 'HEAD')
@@ -38,7 +39,7 @@ def main():
     dotnet = shutil.which('dotnet'); assert dotnet
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
     with_motoneuron=args.motoneuron_reference or args.motoneuron_active_from is not None
-    prefix='motoneuron-active' if args.motoneuron_active_from else 'motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
+    prefix='motor-unit-plant' if args.motor_unit_plant else 'motoneuron-active' if args.motoneuron_active_from else 'motoneuron-reference' if args.motoneuron_reference else 'motor-calcium' if args.muscle_calcium else 'motor-axon'
     package = ROOT/'artifacts'/(prefix+'-'+stamp+'-'+uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists()
@@ -130,13 +131,14 @@ def main():
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper())
         for p in sorted(package.rglob('*')) if p.is_file()]
     write(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),
-        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=10 if with_motoneuron else 46 if args.muscle_calcium else 33,
+        DotnetExecutable=dotnet,PackageFiles=files,BackupDestination=str(backup),ExpectedTestCases=61 if args.motor_unit_plant else 10 if with_motoneuron else 46 if args.muscle_calcium else 33,
         TestFilter=('FullyQualifiedName~MotoneuronReferenceTests|FullyQualifiedName~SolutionManifestTests' if with_motoneuron else
             'FullyQualifiedName~MotorAxonTransportTests|FullyQualifiedName~SolutionManifestTests'+
-            ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium else '')),
+            ('|FullyQualifiedName~MotorUnitCalciumTests' if args.muscle_calcium or args.motor_unit_plant else '')+
+            ('|FullyQualifiedName~IsometricMotorUnitPlantTests' if args.motor_unit_plant else '')),
         NoLiveMonitoring=True,LiveMotorPathEnabled=False,GolgiBaseline=baseline,
         MuscleCalciumReference=muscle_reference,MotoneuronReference=motoneuron_reference,
-        MotoneuronActiveBaseline=motoneuron_active_baseline,PythonExecutable=str(python)))
+        MotoneuronActiveBaseline=motoneuron_active_baseline,IsometricMotorUnitPlant=args.motor_unit_plant,PythonExecutable=str(python)))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,
         Launcher=str(package/'source/tools/start-motor-axon-window.ps1'),NoLiveMonitoring=True)
     write(ROOT/'artifacts'/(prefix+'-launch-'+stamp+'.json'),pointer)

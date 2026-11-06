@@ -267,3 +267,10 @@ No membrane parameter changes or live deployment accompany it. Require reference
 agreement, complete-state accounting, exercised action potentials and refinement;
 then assess physiology separately. Do not substitute quiet-trace agreement for
 active verification or retune a failed acceptance bound after seeing the result.
+The isolated axon-to-unit connector is documented in
+`docs/DNNE_Isometric_Motor_Unit_Plant_2026-11-06.md`. Its immutable snapshots and
+per-unit grid preserve actual arrivals without frame/packet or unrelated-unit
+solver interference. Fifteen new fixture checks join 46 existing component and
+manifest cases in a separate visible window. No outcome is claimed before the
+operator's report. Do not confuse this fixed-length reference with a live muscle,
+add a second activation filter, or connect an unqualified source to body authority.

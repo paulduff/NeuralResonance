@@ -138,6 +138,11 @@ neuronal source, neuromuscular junction, dynamic plant and spinal reflex circuit
 remain open. The isolated [motor-cell reference](DNNE_Motoneuron_Reference_2026-11-06.md)
 now supplies a candidate five-compartment conductance model; its initial
 verification covers channels and passive coupling, not yet active firing.
+The channel/passive study has since passed, and an active-cell comparison awaits
+the operator. The independently prepared
+[isometric connector](DNNE_Isometric_Motor_Unit_Plant_2026-11-06.md) joins the
+preserved event lane to named calcium/force units, with a unit-local solver grid.
+Its fixture checks remain pending and no live motor path selects it.
 
 ## Editor and migration implications
 

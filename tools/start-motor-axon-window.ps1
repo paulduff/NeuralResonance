@@ -43,7 +43,7 @@ function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$L
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;
  LiveBrainAccessed=$false;OldSavesLoaded=$false;LiveMotorPathEnabled=$false;
  NeuronalSourceQualified=$false;MuscleResponseQualified=$false;AvatarRecoveryAssessed=$false}
-$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$withMotoneuron=$false;$withActiveMotoneuron=$false
+$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$withMotoneuron=$false;$withActiveMotoneuron=$false;$withIsometricPlant=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
@@ -51,9 +51,11 @@ try {
  $withCalcium=$configuration.PSObject.Properties.Name -contains 'MuscleCalciumReference' -and $null -ne $configuration.MuscleCalciumReference
  $withMotoneuron=$configuration.PSObject.Properties.Name -contains 'MotoneuronReference' -and $null -ne $configuration.MotoneuronReference
  $withActiveMotoneuron=$configuration.PSObject.Properties.Name -contains 'MotoneuronActiveBaseline' -and $null -ne $configuration.MotoneuronActiveBaseline
- $Host.UI.RawUI.WindowTitle=if($withActiveMotoneuron){'DNNE active motor-cell numerical comparison'}elseif($withMotoneuron){'DNNE motor-cell channels and passive coupling'}elseif($withCalcium){'DNNE isolated motor-unit calcium and force'}elseif($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
+ $withIsometricPlant=$configuration.PSObject.Properties.Name -contains 'IsometricMotorUnitPlant' -and $configuration.IsometricMotorUnitPlant
+ $Host.UI.RawUI.WindowTitle=if($withIsometricPlant){'DNNE isometric motor-unit integration'}elseif($withActiveMotoneuron){'DNNE active motor-cell numerical comparison'}elseif($withMotoneuron){'DNNE motor-cell channels and passive coupling'}elseif($withCalcium){'DNNE isolated motor-unit calcium and force'}elseif($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($withActiveMotoneuron){Write-Host 'Active motor-cell voltages/calcium/crossings: RK4 refinement, independent DOP853 and Radau. No live brain or body.'}
+ if($withIsometricPlant){Write-Host 'Identified fixture events through transport to isolated motor units. Packet/frame invariance, unit locality and faults. No neuronal-source or body qualification.'}
+ elseif($withActiveMotoneuron){Write-Host 'Active motor-cell voltages/calcium/crossings: RK4 refinement, independent DOP853 and Radau. No live brain or body.'}
  elseif($withMotoneuron){Write-Host 'Reference motor-cell channels and passive cable. Active firing and the body loop are not assessed.'}
  else {Write-Host 'Original event identity/timing, packet integrity and shared simulation clock. No live brain or body.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -69,7 +71,8 @@ try {
   ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
  $binaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'build-binaries.json') -Encoding UTF8
  $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
- if($withMotoneuron){Write-Host '========== MOTOR-CELL CHANNEL AND PASSIVE TESTS ==========' -ForegroundColor Cyan}
+ if($withIsometricPlant){Write-Host '========== ISOMETRIC MOTOR-UNIT INTEGRATION TESTS ==========' -ForegroundColor Cyan}
+ elseif($withMotoneuron){Write-Host '========== MOTOR-CELL CHANNEL AND PASSIVE TESTS ==========' -ForegroundColor Cyan}
  elseif($withCalcium){Write-Host '========== MOTOR TRANSPORT AND CALCIUM TESTS ==========' -ForegroundColor Cyan}
  else {Write-Host '========== MOTOR-AXON TRANSPORT TESTS ==========' -ForegroundColor Cyan}
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),
@@ -78,7 +81,8 @@ try {
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Required focused/manifest tests did not all pass.'}
- if($withMotoneuron){$status['PassedMotoneuronAndManifestTests']=$results.Count}
+ if($withIsometricPlant){$status['PassedIsometricPlantAndComponentTests']=$results.Count;$status['LiveMotorPathEnabled']=$false}
+ elseif($withMotoneuron){$status['PassedMotoneuronAndManifestTests']=$results.Count}
  elseif($withCalcium){$status['PassedTransportCalciumAndManifestTests']=$results.Count}
  else {$status['PassedMotorTransportAndManifestTests']=$results.Count}
  $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -158,7 +162,8 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- if($withActiveMotoneuron){Write-Host 'Tell Orion the active motor-cell outcome. Numerical agreement, physiological calibration and Avatar recovery are separate.'}
+ if($withIsometricPlant){Write-Host 'Tell Orion the isometric motor-unit integration outcome. Fixture delivery and force are not neuronal-source or Avatar recovery qualification.'}
+ elseif($withActiveMotoneuron){Write-Host 'Tell Orion the active motor-cell outcome. Numerical agreement, physiological calibration and Avatar recovery are separate.'}
  elseif($withMotoneuron){Write-Host 'Tell Orion the motor-cell channel/passive outcome. Active firing, circuit function and Avatar recovery remain unqualified.'}
  else {Write-Host 'Tell Orion this run outcome. Neuronal firing, muscle responses and Avatar recovery remain unqualified.'}
 }

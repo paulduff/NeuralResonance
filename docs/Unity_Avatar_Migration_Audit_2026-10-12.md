@@ -884,3 +884,18 @@ independent numerical comparison have now passed their isolated criteria; see
 source and dynamic body loop remain unqualified. Promotion must update
 the canonical Avatar muscle and Unity source generator together, prevent double
 activation/fatigue, and qualify dynamic load and afferent feedback separately.
+
+## Isolated axon-to-unit integration — 6 November
+
+Revisited canonical AvatarMuscle, AvatarNervousSystem and the event/calcium
+components before adding `AvatarIsometricMotorUnitPlant`. It preserves each
+event's identity and actual delay, with separate per-unit integration and explicit
+source completeness. Its fixed-length reference force does not feed AvatarMuscle,
+Unity torque or a live neuronal controller. The focused fixture checks await the
+operator's report; see `DNNE_Isometric_Motor_Unit_Plant_2026-11-06.md`.
+
+Existing mechanics, fatigue, receptors, editor authority labels and paused-start
+behavior are unchanged. No Unity port or UI activation is appropriate until the
+coupled neuronal source and dynamic body pathway are qualified. Future promotion
+must port the single canonical mechanism and expose real event/force provenance,
+without adding a second activation/fatigue pass.

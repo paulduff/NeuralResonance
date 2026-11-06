@@ -117,9 +117,11 @@ its counter as derived motor events. Unity no longer claims “no scripted balan
 or gait” for that existing path. Those are source changes; no live editor/world
 was restarted or rebuilt as a Unity player during this increment.
 
-Next connect a qualified motor-neuron population to this lane and independently
-qualify an event-driven isometric twitch response before dynamic force, fatigue
-and joint coupling. Then replace the arithmetic joint-error and phase rules with
+The isolated calcium component has passed its numerical comparison. The next
+connector is described in `DNNE_Isometric_Motor_Unit_Plant_2026-11-06.md`; its
+fixture checks await the operator's report. A qualified motor-neuron population
+must still supply this lane before dynamic force, fatigue and joint coupling.
+Then replace the arithmetic joint-error and phase rules with
 connected spinal sensory/interneuron/motor populations. Update the shared Unity
 port and actual authority telemetry together at promotion. Existing saves,
 fingerprints and live control remain on their previous path until that explicit

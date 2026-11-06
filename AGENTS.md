@@ -187,3 +187,13 @@ monitor them; inspect saved results after the operator reports completion. Build
 and static inspection can run during development. Live
 worlds start paused and wait for the operator to press Play. Preserve existing
 brain state and verified D: backups. Commit and push applied changes once stable.
+
+The next isolated Golgi candidate is described in
+`docs/DNNE_Golgi_Coupled_Cell_2026-11-06.md`: free soma/cable voltage, separate
+HVA/LVA calcium pools and somatic crossing events, without imposed pacemaking.
+Its first-order split solver is compared with independent passive and fully
+coupled active BDF references. No host selects it; a passive axon is not qualified
+active propagation, and an unlimited reference bath is not metabolic calibration.
+Review its operator-reported results before granule-layer integration. The
+declared analytic/singularity/HCN choices differ from native deposited tables;
+solver agreement is not native NEURON reproduction or physiological equivalence.

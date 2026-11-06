@@ -24,6 +24,35 @@ internal readonly record struct GolgiIonicCurrents(
         Hcn1 + Hcn2 + Bk + Sk + Leak;
 }
 
+internal readonly record struct GolgiIonicConductances(
+    double SodiumTransient, double SodiumPersistent, double SodiumResurgent,
+    double PotassiumDelayed, double PotassiumSlow, double PotassiumA,
+    double CalciumHigh, double CalciumLow, double Hcn1, double Hcn2,
+    double Bk, double Sk, double Leak)
+{
+    public double Total => SodiumTransient + SodiumPersistent + SodiumResurgent +
+        PotassiumDelayed + PotassiumSlow + PotassiumA + CalciumHigh + CalciumLow +
+        Hcn1 + Hcn2 + Bk + Sk + Leak;
+
+    public double ReversalWeighted(double highCalciumReversalMv, double lowCalciumReversalMv) =>
+        (SodiumTransient + SodiumPersistent + SodiumResurgent) * GolgiChannelKinetics.SodiumReversalMv +
+        (PotassiumDelayed + PotassiumSlow + PotassiumA + Bk + Sk) * GolgiChannelKinetics.PotassiumReversalMv +
+        CalciumHigh * highCalciumReversalMv + CalciumLow * lowCalciumReversalMv +
+        (Hcn1 + Hcn2) * GolgiChannelKinetics.HcnReversalMv + Leak * GolgiChannelKinetics.LeakReversalMv;
+
+    public GolgiIonicCurrents Currents(double voltageMv, double highCalciumReversalMv, double lowCalciumReversalMv)
+    {
+        double sodium = voltageMv - GolgiChannelKinetics.SodiumReversalMv;
+        double potassium = voltageMv - GolgiChannelKinetics.PotassiumReversalMv;
+        double hcn = voltageMv - GolgiChannelKinetics.HcnReversalMv;
+        return new(SodiumTransient * sodium, SodiumPersistent * sodium, SodiumResurgent * sodium,
+            PotassiumDelayed * potassium, PotassiumSlow * potassium, PotassiumA * potassium,
+            CalciumHigh * (voltageMv - highCalciumReversalMv), CalciumLow * (voltageMv - lowCalciumReversalMv),
+            Hcn1 * hcn, Hcn2 * hcn, Bk * potassium, Sk * potassium,
+            Leak * (voltageMv - GolgiChannelKinetics.LeakReversalMv));
+    }
+}
+
 internal sealed class GolgiChannelKinetics
 {
     public const string CandidateVersion = "golgi-solinas-channels-v1";
@@ -101,6 +130,23 @@ internal sealed class GolgiChannelKinetics
             .003 * G(GolgiGate.Bk) * k,
             .038 * SkOpenProbability * k,
             .000021 * (voltageMv - LeakReversalMv));
+    }
+
+    // Frozen-gate conductances for an implicit cable solve. Never obtain these
+    // by dividing current by (V-E), which is singular exactly at reversal.
+    public GolgiIonicConductances Conductances()
+    {
+        double G(GolgiGate gate) => Gate(gate);
+        return new(
+            .048 * Math.Pow(G(GolgiGate.NaM), 3) * G(GolgiGate.NaH),
+            .00019 * G(GolgiGate.NaP), .0017 * G(GolgiGate.NaRS) * G(GolgiGate.NaRF),
+            .032 * Math.Pow(G(GolgiGate.Kv), 4), .001 * G(GolgiGate.Km),
+            .008 * Math.Pow(G(GolgiGate.KaA), 3) * G(GolgiGate.KaB),
+            .000460 * Math.Pow(G(GolgiGate.HvaS), 2) * G(GolgiGate.HvaU),
+            .00025 * Math.Pow(G(GolgiGate.LvaM), 2) * G(GolgiGate.LvaH),
+            .00005 * (G(GolgiGate.Hcn1Fast) + G(GolgiGate.Hcn1Slow)),
+            .00008 * (G(GolgiGate.Hcn2Fast) + G(GolgiGate.Hcn2Slow)),
+            .003 * G(GolgiGate.Bk), .038 * SkOpenProbability, .000021);
     }
 
     public static double CalciumReversal(double calciumMm, double temperatureCelsius, double externalMm = 2)

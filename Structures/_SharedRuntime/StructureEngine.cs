@@ -17,6 +17,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	internal const string IntegrationVersion = "event-aligned-calcium-v1";
 	private readonly double _maximumIntegrationStepMs;
 	private readonly Queue<double>? _diagnosticNoOpBoundaries;
+	private readonly double[]? _diagnosticCellIntegrationTimes;
+	private readonly bool[]? _diagnosticCellBoundaryTargets;
+	internal const string CellLocalIntegrationVersion = "isolated-cell-local-arrivals-v1";
 	internal Action<double, double>? DiagnosticBoundaryObserver { get; set; }
 
 	private readonly StructureProfile _profile;
@@ -180,7 +183,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	// Internal, fresh-state diagnostic population only. Service hosts cannot select
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
 	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
-		IReadOnlyList<double>? diagnosticNoOpBoundaries = null)
+		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
@@ -195,6 +198,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
 				throw new InvalidOperationException("Diagnostic populations require an empty absolute state directory and an isolated instance.");
 		}
+		if (diagnosticCellLocalIntegration && (isolatedNeuronCount is null || profile.StructureId != StructureId.PurkinjeCellLayer))
+			throw new ArgumentException("Cell-local integration is restricted to fresh isolated Purkinje populations.", nameof(diagnosticCellLocalIntegration));
 		_kernel = CircuitKernelFactory.For(profile.StructureId);
 		_neurons = (from i in Enumerable.Range(0, isolatedNeuronCount ?? _circuit.NeuronCount)
 			select new ModelNeuron(i, profile.NeuronModel, _circuit)).ToArray();
@@ -202,6 +207,11 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			(isolatedNeuronCount is null || !double.IsFinite(diagnosticStep) || diagnosticStep <= 0 || diagnosticStep > .125))
 			throw new ArgumentOutOfRangeException(nameof(diagnosticIntegrationStepMs), "Refinement is restricted to fresh isolated populations and at most 0.125 ms.");
 		_maximumIntegrationStepMs = diagnosticIntegrationStepMs ?? Math.Min(MaximumIntegrationSubstepMilliseconds, _neurons[0].MaximumIntegrationStepMs);
+		if (diagnosticCellLocalIntegration)
+		{
+			_diagnosticCellIntegrationTimes = new double[_neurons.Length];
+			_diagnosticCellBoundaryTargets = new bool[_neurons.Length];
+		}
 		if (diagnosticNoOpBoundaries is not null)
 		{
 			// No-op time boundaries are a causal diagnostic, never a synaptic input
@@ -229,6 +239,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			fingerprint = StableNeuralIdentity.Create(fingerprint, PurkinjeClimbingCompartment.Version).ToString("N");
 		if (isolatedNeuronCount is { } diagnosticCount)
 			fingerprint = StableNeuralIdentity.Create("isolated-population-v2", fingerprint, diagnosticCount, _maximumIntegrationStepMs).ToString("N");
+		if (diagnosticCellLocalIntegration)
+			fingerprint = StableNeuralIdentity.Create(CellLocalIntegrationVersion, fingerprint).ToString("N");
 		if (_diagnosticNoOpBoundaries is not null)
 			fingerprint = StableNeuralIdentity.Create("isolated-no-op-boundaries-v1", fingerprint,
 				string.Join(",", _diagnosticNoOpBoundaries.Select(x => x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)))).ToString("N");
@@ -452,6 +464,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			double rewardSignalTotal = 0.0;
 			var intervalStartTimestampMs = Math.Max(0.0, tickSignal.TimestampMs - elapsedMilliseconds);
 			var cursorMs = intervalStartTimestampMs;
+			if (_diagnosticCellIntegrationTimes is not null) Array.Fill(_diagnosticCellIntegrationTimes, cursorMs);
 			while (cursorMs < tickSignal.TimestampMs)
 			{
 				// An arrival changes the state at its boundary, never the preceding
@@ -461,15 +474,21 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				var gridEnd = (Math.Floor(cursorMs / _maximumIntegrationStepMs) + 1) * _maximumIntegrationStepMs;
 				if (gridEnd <= cursorMs) gridEnd = cursorMs + _maximumIntegrationStepMs;
 				var substepTimestampMs = Math.Min(tickSignal.TimestampMs, Math.Min(gridEnd, NextDeliveryAfter(cursorMs)));
-				var integrationStepMilliseconds = substepTimestampMs - cursorMs;
 				var captureDiagnostics = substepTimestampMs == tickSignal.TimestampMs;
-				var substepSignal = tickSignal with
+				var sharedSubstepSignal = tickSignal with
 				{
 					TimestampMs = substepTimestampMs,
-					TickDurationMs = integrationStepMilliseconds
+					TickDurationMs = substepTimestampMs - cursorMs
 				};
+				if (_diagnosticCellBoundaryTargets is not null)
+					SelectCellBoundaryTargets(substepTimestampMs, captureDiagnostics || substepTimestampMs == gridEnd);
 				for (int i = 0; i < _neurons.Length; i++)
 				{
+				if (_diagnosticCellBoundaryTargets is not null && !_diagnosticCellBoundaryTargets[i]) continue;
+				var integrationStepMilliseconds = substepTimestampMs - (_diagnosticCellIntegrationTimes?[i] ?? cursorMs);
+				if (_diagnosticCellIntegrationTimes is not null) _diagnosticCellIntegrationTimes[i] = substepTimestampMs;
+				var substepSignal = _diagnosticCellIntegrationTimes is null ? sharedSubstepSignal :
+					sharedSubstepSignal with { TickDurationMs = integrationStepMilliseconds };
 				ModelNeuron modelNeuron = _neurons[i];
 				modelNeuron.SetSubstrateSupply(tickSignal.NeuralSubstrates ?? NeuralSubstrateSupply.Missing);
 				IntrinsicCircuitDriveTopology.Resolve(
@@ -798,6 +817,25 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			if (_diagnosticNoOpBoundaries is not null && _diagnosticNoOpBoundaries.TryPeek(out var boundary) && boundary > timestampMs)
 				next = Math.Min(next, boundary);
 			return next;
+		}
+	}
+
+	private void SelectCellBoundaryTargets(double timestampMs, bool allCells)
+	{
+		// Candidate for a fresh isolated population: keep global event ordering,
+		// but only end a cell's integration interval at its own receptor arrival
+		// or the regular physical grid/host endpoint. A diagnostic no-op marker
+		// has no target and therefore cannot partition any cell's dynamics.
+		// Do not enable for recurrent host circuits until their causal scheduling,
+		// arbors and concurrent ingress have been qualified separately.
+		Array.Fill(_diagnosticCellBoundaryTargets!, allCells);
+		if (allCells) return;
+		lock (_inboundQueueGate)
+		{
+			foreach (var queue in new[] { _feedForward, _feedback })
+				foreach (var item in queue.UnorderedItems)
+					if (item.Priority <= timestampMs)
+						_diagnosticCellBoundaryTargets![ResolveInboundNeuronIndex(item.Element.Message)] = true;
 		}
 	}
 

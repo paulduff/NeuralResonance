@@ -34,7 +34,7 @@ public sealed partial class StructureEngine
             _contactSampleTimestampMs = timestampMs;
         }
         return new(StableNeuralIdentity.TopologyVersion, "Learned weights; warm initialization",
-            $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}; {IntegrationVersion}); physiological calibration pending" +
+            $"Reduced model ({ModelNeuron.DynamicsVersion}; {IntrinsicCircuitDriveTopology.ClockVersion}; {(_diagnosticCellIntegrationTimes is null ? IntegrationVersion : CellLocalIntegrationVersion)}); physiological calibration pending" +
                 (_profile.NeuronModel == "HH" ? (_profile.StructureId == StructureId.InferiorOlive
                     ? "; olivary three-compartment reference, isolated-cell calibration pending; no gap junctions"
                     : "; HH with population channel reductions, not a calibrated cerebellar cell") : "") +

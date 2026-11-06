@@ -17,11 +17,13 @@ def digest(p):
 def rows(path):
     with path.open(newline='') as f:yield from csv.DictReader(f)
 
-def analyse(root,write_report=True):
+def analyse(root,write_report=True,cell_local=False):
     root=Path(root);p=read(root/'protocol.json');bundle=read(root/'inputs.json');results=read(root/'results.json')
     baseline=read(root.parent/'baseline.json');duration=8000 if p['smoke'] else 60000
     assert p['study']=='boundary-timing' and p['durationMs']==duration and p['caseCount']==24 and p['hostStepMs']==.125
     assert p['conditions']==['connected','disconnected','markers'] and p['steps']==[.125,.0625,.03125,.015625]
+    assert p.get('cellLocalIntegration',False) is cell_local
+    if cell_local:assert p['integrationVersion']=='isolated-cell-local-arrivals-v1'
     assert digest(root/'inputs.json')==p['bundleSha256'] and results['completed'] and not results['physiologicallyQualified']
     assert bundle['durationMs']==60000 and len(bundle['replayCases'])==2
     expected={(s['id'],h,k) for s in bundle['replayCases'] for h in p['steps'] for k in p['conditions']}
@@ -32,8 +34,10 @@ def analyse(root,write_report=True):
         k=(c['sourceId'],c['step'],c['boundaryCondition']);assert k in expected;expected.remove(k);lookup[k]=c
         source=next(s for s in bundle['replayCases'] if s['id']==c['sourceId']);condition=c['boundaryCondition']
         assert c['kind']=='replay' and c['duration']==duration and c['variant']==('calcium' if condition=='connected' else 'disconnected')
+        assert c.get('cellLocalIntegration',False) is cell_local
         directory=root/c['key'];design=read(directory/'design.json');assert read(directory/'summary.json')==c
         for field in ('key','kind','sourceId','duration','variant','step','boundaryCondition'):assert design[field]==c[field]
+        assert design.get('cellLocalIntegration',False) is cell_local
         inputs=[x for x in source['inputs'] if x['arrivalMs']<duration and (condition=='connected' or x['role']!='climbing')]
         boundaries=sorted({x['arrivalMs'] for x in source['inputs'] if x['role']=='climbing' and x['arrivalMs']<duration}) if condition=='markers' else None
         contacts=[{name:x[name] for name in ('role','contactId','target')} for x in source['contacts']]
@@ -104,13 +108,13 @@ def analyse(root,write_report=True):
             cell_rows[i%2].append(tuple(x.values()))
         assert all(len(x)==duration//2 for x in cell_rows)
         states[c['key']]=(headers,cell_rows)
-        if condition!='markers':
+        if condition!='markers' and not cell_local:
             old=next(x for x in baseline['cases'] if (x['sourceId'],x['step'],x['condition'])==k)
             assert spikes==[[t for t in train if t<=duration] for train in old['spikes']]
             for name in ('trace.csv','contacts.csv'):
                 assert digest(directory/name)==old['files'][name][str(duration)]['sha256'],(c['key'],name,'archived baseline changed')
             baseline_matches+=1
-    assert not expected and baseline_matches==16
+    assert not expected and baseline_matches==(0 if cell_local else 16)
     comparisons=[]
     for s in bundle['replayCases']:
         j=1-s['taughtCell']
@@ -132,6 +136,28 @@ def analyse(root,write_report=True):
         maximumEnergyBalanceError=max_energy_error,maximumCalciumMassError=max_calcium_error,
         boundaryHypothesisSupported=all(c['connectedVersusMarkers']['spikesIdentical'] and c['connectedVersusMarkers']['sampledStatesIdentical'] for c in comparisons) and any(not c['connectedVersusDisconnected']['sampledStatesIdentical'] for c in comparisons),
         solverConvergenceQualified=False,physiologicalCalibrationComplete=False,physicalRecoveryAssessed=False,comparisons=comparisons)
+    if cell_local:
+        def identical(x):return x['spikesIdentical'] and x['sampledStatesIdentical']
+        locality=all(identical(c['connectedVersusDisconnected']) and identical(c['connectedVersusMarkers']) and
+            all(identical(x) for x in c['disconnectedVersusMarkers']) for c in comparisons)
+        # Compare complete recorded contact trajectories, including the untouched
+        # cell in the connected contrast. Do not substitute similar final weights.
+        contact_checks=[]
+        for s in bundle['replayCases']:
+            for h in p['steps']:
+                cases={k:lookup[(s['id'],h,k)] for k in p['conditions']}
+                def contact_digest(case,roles):
+                    digest=sha256()
+                    for row in rows(root/case['key']/'contacts.csv'):
+                        if row['role'] in roles:digest.update(json.dumps(row,sort_keys=True).encode())
+                    return digest.hexdigest()
+                all_roles={c['role'] for c in s['contacts']}
+                untouched={c['role'] for c in s['contacts'] if c['target']!=s['taughtCell']}
+                assert untouched
+                marker_equal=contact_digest(cases['disconnected'],all_roles)==contact_digest(cases['markers'],all_roles)
+                untouched_equal=contact_digest(cases['connected'],untouched)==contact_digest(cases['disconnected'],untouched)
+                contact_checks.append(dict(source=s['id'],step=h,markersIdentical=marker_equal,untouchedIdentical=untouched_equal))
+        report.update(cellLocalIntegration=True,cellLocalityPassed=locality and all(x['markersIdentical'] and x['untouchedIdentical'] for x in contact_checks),contactLocality=contact_checks)
     if write_report:(root/'cell-analysis.json').write_text(json.dumps(report,indent=2,allow_nan=False)+'\n',encoding='utf-8')
     print(f'Validated 24 cases, {baseline_matches} exact archived baselines, {event_count} events. Boundary hypothesis supported: {report["boundaryHypothesisSupported"]}; physiological and solver qualification remain open.')
     return report

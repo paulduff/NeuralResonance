@@ -23,15 +23,16 @@ internal static class BoundaryTimingProbe
     }
     public static async Task<int> Run(string[] args)
     {
-        if(args.Length<3||args[1]!="--boundary-timing"||args.Skip(3).Any(x=>x!="--smoke"))throw new ArgumentException("new-output --boundary-timing bundle.json [--smoke]");
+        if(args.Length<3||args[1]!="--boundary-timing"||args.Skip(3).Any(x=>x is not ("--smoke" or "--cell-local")))throw new ArgumentException("new-output --boundary-timing bundle.json [--smoke] [--cell-local]");
         string output=Path.GetFullPath(args[0]);if(Directory.Exists(output))throw new InvalidOperationException("Use a new output directory.");Directory.CreateDirectory(output);
         void Save(string name,object value)=>File.WriteAllText(Path.Combine(output,name),JsonSerializer.Serialize(value,Json));
         try
         {
             var bundle=JsonSerializer.Deserialize<SplitNumericsProbe.Bundle>(File.ReadAllText(args[2]),Json)!;
-            bool smoke=args.Contains("--smoke");int duration=smoke?8000:bundle.DurationMs;
+            bool smoke=args.Contains("--smoke"),cellLocal=args.Contains("--cell-local");int duration=smoke?8000:bundle.DurationMs;
             if(bundle.ReplayCases.Length!=2||bundle.DurationMs!=60000)throw new InvalidOperationException("Use the frozen two-train 60 s bundle.");
-            Save("protocol.json",new{study="boundary-timing",smoke,durationMs=duration,caseCount=24,hostStepMs=.125,
+            Save("protocol.json",new{study="boundary-timing",smoke,durationMs=duration,caseCount=24,hostStepMs=.125,cellLocalIntegration=cellLocal,
+                integrationVersion=cellLocal?StructureEngine.CellLocalIntegrationVersion:StructureEngine.IntegrationVersion,
                 conditions=new[]{"connected","disconnected","markers"},steps=new[]{.125,.0625,.03125,.015625},
                 bundleSha256=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(args[2]))),
                 interpretation="Diagnostic boundaries consume no spike and release no transmitter. This study tests a scheduling mechanism; physiology and solver convergence remain unqualified."});
@@ -42,7 +43,7 @@ internal static class BoundaryTimingProbe
                 string key=$"boundary-{replay.Id}-{condition}-h{step.ToString(CultureInfo.InvariantCulture)}";
                 double[]? boundaries=condition=="markers"?replay.Inputs.Where(x=>x.Role=="climbing"&&x.ArrivalMs<duration).Select(x=>x.ArrivalMs).Distinct().Order().ToArray():null;
                 Console.WriteLine($"CASE {cases.Count+1}/24: {key}");
-                cases.Add(await SplitNumericsProbe.Replay(output,key,replay,duration,condition=="connected"?"calcium":"disconnected",step,boundaries,condition));
+                cases.Add(await SplitNumericsProbe.Replay(output,key,replay,duration,condition=="connected"?"calcium":"disconnected",step,boundaries,condition,cellLocal));
             }
             Save("results.json",new{completed=true,physiologicallyQualified=false,cases});return 0;
         }

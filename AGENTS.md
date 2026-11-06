@@ -166,7 +166,15 @@ candidate coupled-membrane work, not live Golgi integration. The source-level
 motor path audit is `docs/DNNE_Motor_Authority_Path_Audit_2026-11-06.md`; both the
 population-derived output and joint error controller require neuronal replacements.
 Do not equate ownership/freshness gates or generated pseudo-spikes with preserved
-motor-neuron events. The boundary-timing study is separately awaiting the operator.
+motor-neuron events. The completed boundary-timing result is recorded in
+`docs/DNNE_Boundary_Timing_Results_2026-11-06.md`: all eight untouched-cell
+contrasts exactly match when only the removed timing boundaries are restored.
+Unrelated arrivals can change electrical/support states and even a disconnected
+cell's spike count. The isolated repair candidate is described in
+`docs/DNNE_Cell_Local_Timing_2026-11-06.md`; it advances each cell at its own real
+arrivals and the regular grid. Its tests/comparison are awaiting operator-reported
+completion. It is not enabled in service hosts and does not qualify general
+recurrent scheduling, arbitrary host endpoints, solver accuracy or physiology.
 
 Tests and experiments run independently in a visible PowerShell window. Do not live
 monitor them; inspect saved results after the operator reports completion. Builds

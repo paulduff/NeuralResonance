@@ -78,14 +78,14 @@ internal static class SplitNumericsProbe
     }
 
     internal static async Task<object> Replay(string root,string key,ReplayCase replay,int duration,string variant,double step,
-        double[]? noOpBoundaries=null,string? boundaryCondition=null)
+        double[]? noOpBoundaries=null,string? boundaryCondition=null,bool cellLocalIntegration=false)
     {
         string dir=Path.Combine(root,key);Directory.CreateDirectory(dir);
         string? oldDir=Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR"),oldId=Environment.GetEnvironmentVariable("SERVICE_INSTANCE"),oldMode=Environment.GetEnvironmentVariable("NRE_MICROTUBULE_MODE");
         try
         {
             Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",Path.Combine(dir,"state"));Environment.SetEnvironmentVariable("SERVICE_INSTANCE","isolated-purkinje");Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE","classical");
-            using var engine=new StructureEngine(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"Fixed recorded train",new DelayWindow(10,15)),2,step,noOpBoundaries);
+            using var engine=new StructureEngine(new(StructureId.PurkinjeCellLayer,"HH",PurkinjeCalciumPlasticity.Rule,"Fixed recorded train",new DelayWindow(10,15)),2,step,noOpBoundaries,cellLocalIntegration);
             engine.DiagnosticBlockPurkinjeCalciumEntry=variant=="no-entry";
             var inputs=replay.Inputs.Where(x=>x.ArrivalMs<duration&&(variant!="disconnected"||x.Role!="climbing")).ToArray();
             var declared=inputs.ToDictionary(x=>x.Message.MessageId);var received=new HashSet<Guid>();
@@ -95,7 +95,7 @@ internal static class SplitNumericsProbe
             engine.DiagnosticBoundaryObserver=(scheduled,processed)=>{boundariesProcessed++;Event("boundary",new{scheduledMs=scheduled,processedMs=processed});};
             engine.ContactLearningObserver=o=>{if(!declared.TryGetValue(o.MessageId,out var input)||!received.Add(o.MessageId)||o.ProcessedMs!=input.ArrivalMs||o.ScheduledMs!=input.ArrivalMs)throw new InvalidOperationException("Replay time, identity or count changed.");Event("learning",o);};
             foreach(var c in replay.Contacts)if(engine.ResolveContactId(replay.Inputs.First(x=>x.Role==c.Role).Message)!=c.ContactId)throw new InvalidOperationException("Replay contact identity changed.");
-            Save(Path.Combine(dir,"design.json"),new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs,contacts=replay.Contacts,boundaryCondition,noOpBoundaries});
+            Save(Path.Combine(dir,"design.json"),new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs,contacts=replay.Contacts,boundaryCondition,noOpBoundaries,cellLocalIntegration});
             using var trace=new StreamWriter(Path.Combine(dir,"trace.csv"));trace.WriteLine("timeMs,p0Soma,p0Dendrite,p1Soma,p1Dendrite,p0Reserve,p1Reserve,p0BalanceError,p1BalanceError,p0Unmet,p1Unmet");
             using var contacts=new StreamWriter(Path.Combine(dir,"contacts.csv"));contacts.WriteLine("timeMs,role,weight,ip3,calcium,store,integratedCalcium,inducedDepression,entry,extruded,massError");
             int next=0;var ordered=inputs.OrderBy(x=>x.Message.TimestampMs).ToArray();var spikes=new[]{new List<double>(),new List<double>()};var cells=Cells(engine);
@@ -117,7 +117,7 @@ internal static class SplitNumericsProbe
                 }
             }
             if(next!=inputs.Length||received.Count!=inputs.Length||boundariesProcessed!=(noOpBoundaries?.Length??0))throw new InvalidOperationException("Incomplete replay or no-op boundary accounting.");
-            var summary=new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs=received.Count,spikes,boundaryCondition,boundariesProcessed,contacts=Contacts(engine).Select(x=>new{contactId=x.Key,state=ContactLearningSnapshot.From(x.Value),peakCa=x.Value.PurkinjeCalcium?.PeakCalciumUm??0}).ToArray()};Save(Path.Combine(dir,"summary.json"),summary);return summary;
+            var summary=new{key,kind="replay",sourceId=replay.Id,duration,variant,step,inputs=received.Count,spikes,boundaryCondition,boundariesProcessed,cellLocalIntegration,contacts=Contacts(engine).Select(x=>new{contactId=x.Key,state=ContactLearningSnapshot.From(x.Value),peakCa=x.Value.PurkinjeCalcium?.PeakCalciumUm??0}).ToArray()};Save(Path.Combine(dir,"summary.json"),summary);return summary;
         }
         finally{Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",oldDir);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",oldId);Environment.SetEnvironmentVariable("NRE_MICROTUBULE_MODE",oldMode);}
     }

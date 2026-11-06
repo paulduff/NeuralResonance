@@ -119,6 +119,15 @@ with matched energy-omitted production controls, never as a validation of the
 energy-enabled brain. Reference tolerances and diagnostic perturbations need
 their own review. Preserved spike identity/timing and complete accounting are
 necessary checks, not physiological or long-trajectory convergence claims.
+The completed split-study review is in
+`docs/DNNE_Split_Numerical_Results_2026-11-06.md`. Fixed-input calcium metrics
+improve with refinement, but receiving spike timing remains unresolved. The
+independent olive reference agrees closely under inhibition yet diverges later
+under paired stimulation; do not declare its strictest long trajectory exact
+or infer chaos. Global arrival boundaries split every receiving cell's step,
+providing a numerical route for unrelated-event effects. Test no-op boundaries
+and complete-state short-interval accuracy before tuning learning. Purkinje
+still has provisional imposed drives; endogenous pacemaking is unqualified.
 
 Before adding or changing Avatar functionality or its Unity adapter, inspect the
 corresponding existing `src/NRE.SimAvatar` implementation, receptor path and tests.

@@ -30,7 +30,11 @@ def write(path, value):
 
 
 def main():
-    assert not git("status", "--porcelain"), "Commit source before freezing."
+    if sys.argv[1:] not in ([], ["--committed-source-only"]):
+        raise ValueError("Use no arguments, or --committed-source-only to explicitly exclude unfinished work.")
+    working_changes = bool(git("status", "--porcelain"))
+    assert not working_changes or sys.argv[1:] == ["--committed-source-only"], "Commit source before freezing, or explicitly freeze committed source only."
+    assert not git("diff", "HEAD", "--", "tools/prepare-cell-local-timing.py"), "Run the committed preparation code."
     revision = git("rev-parse", "HEAD")
     assert revision == git("rev-parse", "origin/main"), "Push source before freezing."
     prior = REPO/"artifacts/boundary-timing-20261106-2c82a3"
@@ -41,6 +45,9 @@ def main():
     protected = {x["Path"].lower(): x for x in read(prior/"configuration.json")["ProtectedBackupFiles"]}
     captures = [prior, REPO/"artifacts/boundary-timing-review-20261106",
         REPO/"artifacts/golgi-channels-20261106-943d65", REPO/"artifacts/golgi-channel-review-20261106"]
+    failed_review=REPO/"artifacts/cell-local-closed-review-20261106"
+    if failed_review.exists():
+        captures.append(failed_review)
     for capture in captures:
         manifest = read(capture/"backup-manifest.json")
         backup = Path(manifest["Destination"])
@@ -88,7 +95,7 @@ def main():
     write(package/"configuration.json", dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         DotnetExecutable=dotnet, PythonExecutable=str(Path(sys.executable).resolve()), PackageFiles=package_files,
         ProtectedBackupFiles=list(protected.values()), BackupDestination=str(backup), NoLiveMonitoring=True,
-        MinimumFullSuiteTests=1076, ConnectedTimingTests=16,
+        MinimumFullSuiteTests=1075, ConnectedTimingTests=15, WorkingTreeChangesExcluded=working_changes,
         KnownUnresolvedFullSuiteFailure="NeuralResonanceEngine.DNNE.Tests.NeuronalMemoryTests.RepeatedCorticalExperienceGraduallyRaisesConsolidation",
         FreshCellsOnly=True, ProductionCellLocalModeEnabled=False, PreservationVerifiedDuringPreparation=False))
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision,

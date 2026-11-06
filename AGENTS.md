@@ -173,7 +173,13 @@ Unrelated arrivals can change electrical/support states and even a disconnected
 cell's spike count. The isolated repair candidate is described in
 `docs/DNNE_Cell_Local_Timing_2026-11-06.md`; it advances each cell at its own real
 arrivals and the regular grid. Its tests/comparison are awaiting operator-reported
-completion. It is not enabled in service hosts and does not qualify general
+completion. Its first run stopped before comparison: all 15 timing unit cases
+passed, but a solution-manifest failure and incorrect expected counts exposed
+a packaging mistake. The replacement builds under frozen `source/artifacts`
+so source-reading tests cannot climb into the working repository. Its failed,
+operator-closed capture is retained in `artifacts/cell-local-closed-review-20261106`
+and on D:. The earlier cortical-consolidation case passed on this occasion;
+that alone does not resolve its earlier failure. It is not enabled in service hosts and does not qualify general
 recurrent scheduling, arbitrary host endpoints, solver accuracy or physiology.
 
 Tests and experiments run independently in a visible PowerShell window. Do not live

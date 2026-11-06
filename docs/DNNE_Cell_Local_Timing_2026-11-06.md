@@ -37,7 +37,7 @@ takes precedence before interpreting more connected comparisons.
 
 The launcher freezes committed source, rebuilds it in a new capture and runs:
 
-1. The full DNNE unit suite, including 16 timing cases covering both original and
+1. The full DNNE unit suite, including 15 timing cases covering both original and
    candidate modes, real arrival causality, fractional feed-forward/feedback
    times, late delivery, aligned packet duration, no-op invariance, unrelated-cell
    invariance, target responsiveness, service exclusion and distinct fingerprints.
@@ -71,8 +71,26 @@ the operator reports completion before results are inspected.
 ## Current status
 
 Development Release builds of the probe and DNNE test project succeeded without
-warnings or errors. The new tests and comparison are pending the independent
-PowerShell run; no pass or physiological qualification is claimed here.
+warnings or errors. The first frozen run's 1,075 unit cases gave 1,074 passes and
+one solution-manifest failure. All 15 timing cases passed; the runner had
+incorrectly expected 16 timing cases / 1,076 total. The separate cortical-
+consolidation case passed this time, which does not establish that its earlier
+failure is repaired. No timing comparison ran.
+
+The unit assembly was outside the frozen `source` subtree. Source-reading tests
+therefore climbed into the working repository and saw ongoing development as well
+as the committed Golgi-channel project missing from the solution. The repair adds
+the committed project, puts build output beneath frozen `source/artifacts`, and
+checks the discovered root before tests. All source-reading tests now resolve the
+snapshot. The count is corrected to the actual declared 15 timing cases, without
+removing any case or weakening its assertions. The replacement package excludes
+unfinished Golgi-cell development through an explicit committed-source archive.
+
+The operator closed the failed window during its protection audit. Its initial
+RUNNING status was stale; the saved TRX and terminal task establish the failure.
+The failed capture is preserved separately, and the launcher now records failures
+before starting lengthy cleanup. The replacement comparison is pending the
+operator's report; no timing-study pass or physiological qualification is claimed.
 Whole-cell accuracy, meaningful repeated teaching and Avatar recovery require
 their separate evidence. Neither an all-green locality result nor the existing
 Golgi channel result would establish those outcomes.

@@ -73,13 +73,21 @@ try {
  [Environment]::SetEnvironmentVariable('SERVICE_INSTANCE',$null,'Process')
  [Environment]::SetEnvironmentVariable('HEMISPHERE',$null,'Process')
  [Environment]::SetEnvironmentVariable('NRE_MICROTUBULE_MODE','classical','Process')
- $testBuild=Join-Path $package 'build-tests';$probeBuild=Join-Path $package 'build-probe'
+ # Source-reading tests walk upward from their assembly. Build beneath the
+ # frozen source so every such walk reaches this snapshot before the live repo.
+ $testBuild=Join-Path $package 'source/artifacts/cell-local-tests'
+ $probeBuild=Join-Path $package 'source/artifacts/cell-local-probe'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),
   '-c','Release','--artifacts-path',$testBuild,'--nologo','-v','minimal') 'build-tests.log'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/PosturalCellProbe/PosturalCellProbe.csproj'),
   '-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'build-probe.log'
  $testAssembly=Join-Path $testBuild 'bin/NeuralResonanceEngine.DNNE.Tests/release/NeuralResonanceEngine.DNNE.Tests.dll'
  $probeAssembly=Join-Path $probeBuild 'bin/PosturalCellProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'
+ $testRoot=[IO.DirectoryInfo]::new((Split-Path -Parent $testAssembly))
+ while($null -ne $testRoot -and -not (Test-Path -LiteralPath (Join-Path $testRoot.FullName 'NeuralResonanceEngine.DNNE.slnx'))){$testRoot=$testRoot.Parent}
+ $expectedRoot=(Resolve-Path -LiteralPath (Join-Path $package 'source')).Path
+ if($null -eq $testRoot -or $testRoot.FullName -ne $expectedRoot){throw 'Source-reading tests would escape the frozen source snapshot.'}
+ Write-Host ('Source-reading tests confined to: '+$testRoot.FullName)
  $binaries=@(Get-ChildItem -LiteralPath (Split-Path -Parent $testAssembly),(Split-Path -Parent $probeAssembly) -Recurse -File |
   ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
  $binaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'build-binaries.json') -Encoding UTF8
@@ -93,8 +101,9 @@ try {
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  $failed=@($results | Where-Object {$_.outcome -ne 'Passed'})
  $focused=@($results | Where-Object {$_.testName -like '*ConnectedTimingTests.*'})
- if($results.Count -lt $configuration.MinimumFullSuiteTests -or $focused.Count -ne $configuration.ConnectedTimingTests -or
-  @($focused | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Timing tests did not all pass, or the required suite was incomplete.'}
+ if($results.Count -lt $configuration.MinimumFullSuiteTests){throw ('Incomplete unit suite: expected at least '+$configuration.MinimumFullSuiteTests+', found '+$results.Count)}
+ if($focused.Count -ne $configuration.ConnectedTimingTests){throw ('Timing-case discovery mismatch: expected '+$configuration.ConnectedTimingTests+', found '+$focused.Count)}
+ if(@($focused | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'One or more timing tests failed.'}
  if($failed.Count -eq 1 -and $failed[0].testName -eq $configuration.KnownUnresolvedFullSuiteFailure -and $testExit -eq 1){
   Write-Host ('KNOWN UNRESOLVED FAILURE: '+$failed[0].testName+'. The whole suite is not green.') -ForegroundColor Yellow
  }elseif($failed.Count -ne 0 -or $testExit -ne 0){throw 'New, unexpected, or incomplete unit-suite failure; stopping before experiments.'}
@@ -122,6 +131,9 @@ try {
  $status.Status='FINISHED';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
+ # Keep the actual failure durable before the potentially lengthy protection
+ # hash audit. Closing the window during cleanup must not leave RUNNING behind.
+ $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 }finally{
  foreach($name in $priorEnvironment.Keys){[Environment]::SetEnvironmentVariable($name,$priorEnvironment[$name],'Process')}

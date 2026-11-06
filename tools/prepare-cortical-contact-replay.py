@@ -34,7 +34,10 @@ unchanged=[]
 for filename in ('ContactPlasticity.cs','PlasticityRules.cs','SynapseState.cs','MemoryLearningEvidence.cs'):
     path='Structures/_SharedRuntime/'+filename
     raw=verified('source/'+path)
-    assert raw==subprocess.check_output(['git','show',revision+':'+path],cwd=root), 'Learning source changed: '+path
+    blob=subprocess.check_output(['git','show',revision+':'+path],cwd=root)
+    # Windows git archive uses CRLF here while git show exposes the LF blob.
+    # Check source text now, then require exact archived bytes below as well.
+    assert raw.replace(b'\r\n',b'\n')==blob.replace(b'\r\n',b'\n'), 'Learning source changed: '+path
     unchanged.append(dict(path=path,sha256=digest(raw)))
 stamp=datetime.now(timezone.utc).strftime('%Y%m%d')
 package=root/'artifacts'/('cortical-contact-'+stamp+'-'+uuid.uuid4().hex[:6])
@@ -45,6 +48,8 @@ subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.z
 with ZipFile(package/'source.zip') as archive:
     assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
     archive.extractall(package/'source')
+for source in unchanged:
+    assert digest((package/'source'/source['path']).read_bytes())==source['sha256'], 'Archived learning source changed: '+source['path']
 target=package/'input';target.mkdir()
 (target/'review.json').write_bytes(review_bytes)
 cases=[]

@@ -341,3 +341,10 @@ The isolated double-state candidate is described in
 baseline and requires closed-form accuracy, sign and refinement at fixed bounds.
 It is not wired into live cells, persistence, Avatar or the editor. Its limiter
 and receptor reductions remain unqualified even if the numerical comparison passes.
+The operator-reported precision result is in
+`docs/DNNE_Cortical_Contact_Numerics_Results_2026-11-06.md`: 27/27 numerical cases
+pass, sixteen fixed-history replays complete and the old baseline reproduces.
+The full C:/D: capture is verified. Actual-cell integration and precision across
+float storage/transmission remain open. At the operator's request, work pauses
+after committing/pushing this review; see `docs/DNNE_Continuation_2026-11-06.md`.
+Do not start or monitor further work during that pause.

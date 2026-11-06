@@ -2,17 +2,44 @@ param([Parameter(Mandatory=$true)][string]$Source,[Parameter(Mandatory=$true)][s
 $ErrorActionPreference='Stop'
 $sourceDirectory=(Resolve-Path -LiteralPath $Source).Path.TrimEnd('\')
 $destinationDirectory=[IO.Path]::GetFullPath($Destination).TrimEnd('\')
-if($destinationDirectory.Equals($sourceDirectory,[StringComparison]::OrdinalIgnoreCase) -or $destinationDirectory.StartsWith($sourceDirectory+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Backup must be outside the source run directory.'}
-New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+if($destinationDirectory.Equals($sourceDirectory,[StringComparison]::OrdinalIgnoreCase) -or $destinationDirectory.StartsWith($sourceDirectory+'\',[StringComparison]::OrdinalIgnoreCase) -or $sourceDirectory.StartsWith($destinationDirectory+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Backup and source directories must not contain one another.'}
+# Windows PowerShell 5.1 can enumerate a build file then reject Copy-Item at
+# MAX_PATH. Use extended absolute paths and .NET I/O for enumeration, copying,
+# lengths and hashes consistently; do not omit generated files from evidence.
+function Extended-Path([string]$Path){
+ if($Path.StartsWith('\\?\')){return $Path}
+ if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
+ return '\\?\'+$Path
+}
+function File-Sha256([string]$Path){
+ $stream=[IO.File]::Open($Path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+ $algorithm=[Security.Cryptography.SHA256]::Create()
+ try {return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','')}
+ finally {$algorithm.Dispose();$stream.Dispose()}
+}
+$sourceIo=Extended-Path $sourceDirectory;$destinationIo=Extended-Path $destinationDirectory
+[IO.Directory]::CreateDirectory($destinationIo) | Out-Null
+# Reject links/junctions rather than silently backing up outside the run.
+$directories=[Collections.Generic.Stack[string]]::new();$directories.Push($sourceIo)
+$files=[Collections.Generic.List[string]]::new()
+while($directories.Count){
+ $directory=$directories.Pop()
+ if(([IO.File]::GetAttributes($directory) -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw ('Backup source contains a directory link: '+$directory)}
+ foreach($child in [IO.Directory]::EnumerateDirectories($directory)){$directories.Push($child)}
+ foreach($path in [IO.Directory]::EnumerateFiles($directory)){
+  if(([IO.File]::GetAttributes($path) -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw ('Backup source contains a file link: '+$path)}
+  if(-not $path.Equals($sourceIo+'\backup-manifest.json',[StringComparison]::OrdinalIgnoreCase)){$files.Add($path)}
+ }
+}
 $entries=[Collections.Generic.List[object]]::new()
-foreach($file in Get-ChildItem -LiteralPath $sourceDirectory -File -Recurse | Where-Object {$_.Name -ne 'backup-manifest.json'}){
- $relative=$file.FullName.Substring($sourceDirectory.Length+1);$target=Join-Path $destinationDirectory $relative
- New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
- $snapshot=$file.Extension -eq '.log'
+foreach($path in $files){
+ $relative=$path.Substring($sourceIo.Length+1);$target=$destinationIo+'\'+$relative
+ [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
+ $snapshot=[IO.Path]::GetExtension($path) -eq '.log'
  if($snapshot){
   # Unity keeps its log open for writing. Capture a bounded byte snapshot with
   # shared read access, hash those exact bytes, and verify the saved snapshot.
-  $stream=[IO.File]::Open($file.FullName,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+  $stream=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
   $memory=[IO.MemoryStream]::new()
   try {
    $remaining=$stream.Length;$buffer=New-Object byte[] 65536
@@ -23,15 +50,15 @@ foreach($file in Get-ChildItem -LiteralPath $sourceDirectory -File -Recurse | Wh
   try {$expected=[BitConverter]::ToString($algorithm.ComputeHash($bytes)).Replace('-','')} finally {$algorithm.Dispose()}
   [IO.File]::WriteAllBytes($target,$bytes)
  } else {
-  Copy-Item -LiteralPath $file.FullName -Destination $target
-  $expected=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+  [IO.File]::Copy($path,$target,$true)
+  $expected=File-Sha256 $path
  }
- if($expected -ne (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash){throw ('Backup mismatch: '+$relative)}
- $entries.Add([ordered]@{Path=$relative;Sha256=$expected;Bytes=(Get-Item -LiteralPath $target).Length;LogByteSnapshot=$snapshot})
+ if($expected -ne (File-Sha256 $target)){throw ('Backup mismatch: '+$relative)}
+ $entries.Add([ordered]@{Path=$relative;Sha256=$expected;Bytes=([IO.FileInfo]::new($target)).Length;LogByteSnapshot=$snapshot})
 }
 $manifest=[ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Source=$sourceDirectory;Destination=$destinationDirectory;Files=$entries}
-$manifestPath=Join-Path $sourceDirectory 'backup-manifest.json'
-$manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $destinationDirectory 'backup-manifest.json')
-if((Get-FileHash -LiteralPath $manifestPath).Hash -ne (Get-FileHash -LiteralPath (Join-Path $destinationDirectory 'backup-manifest.json')).Hash){throw 'Backup manifest mismatch.'}
+$manifestPath=$sourceIo+'\backup-manifest.json'
+[IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))
+[IO.File]::Copy($manifestPath,$destinationIo+'\backup-manifest.json',$true)
+if((File-Sha256 $manifestPath) -ne (File-Sha256 ($destinationIo+'\backup-manifest.json'))){throw 'Backup manifest mismatch.'}
 Write-Host ('Verified D: backup: '+$destinationDirectory+' ('+$entries.Count+' files plus manifest; logs are byte snapshots)')

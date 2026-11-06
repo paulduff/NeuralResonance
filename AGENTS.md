@@ -254,3 +254,9 @@ It is not selected by ModelNeuron or live spinal/Avatar/Unity services. Preserve
 its explicit fixed reversals, local calcium-pool convention, passive endpoint
 topology and unqualified metabolic/reference-bath assumptions. No invented spike
 generator or motor policy may substitute for the subsequent source qualification.
+The operator-reported channel/passive outcome is reviewed in
+`docs/DNNE_Motoneuron_Passive_Results_2026-11-06.md`: all 10 focused/manifest tests,
+96 clamps and nine passive traces passed. Its post-check backup failed at a
+260-character Windows path; extended-path I/O repaired and verified the full C:/D:
+capture while preserving the original FAILED status and frozen source. No test
+was rerun. Active-cell comparison is now the next gate, not live motor adoption.

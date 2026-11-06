@@ -67,6 +67,12 @@ neuromodulatory transport, neuronal motor publisher or checkpoint is connected.
 
 ## First verification stage
 
+The operator-reported capture `motoneuron-reference-20261106-f949c7` passed all
+10 tests, 96 clamps and nine passive traces. Its final backup initially failed
+at a 260-character build-file path. The backup is now repaired and fully verified;
+the original failure status is preserved. See
+`DNNE_Motoneuron_Passive_Results_2026-11-06.md` for evidence and scope.
+
 Builds of the runtime, focused test assembly and probe pass with zero warnings
 or errors. The rig contains nine focused test cases plus the solution-manifest
 case. It checks gate domains, singularities, calcium dependence, passive branch

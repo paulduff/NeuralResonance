@@ -12,8 +12,8 @@ internal sealed record MotoneuronReferenceParameters(string SourceKey,
     double Dendrite1CalciumL, double Dendrite2CalciumL, double Dendrite3CalciumL, double Dendrite4CalciumL,
     MotoneuronChannelParameters Channels)
 {
-    // Numeric facts from FivecomptcMG_0.hoc. The study also loads pinned rows
-    // 9 and 19 independently; this fixture is not an Avatar anatomical default.
+    // Numeric facts from FivecomptcMG_0.hoc. Other pool members have not been
+    // imported; this fixture is not an Avatar anatomical default.
     public static MotoneuronReferenceParameters CatLowThreshold { get; } = new("FivecomptcMG_0",
         new(2952, 22, .001, 1.35546, .00008109, -71, .00003),
         new(1794.13, 8.73071, 51.038, .867781, .0000793445, -71, .00003),

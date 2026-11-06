@@ -48,9 +48,10 @@ if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier r
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $withReference=$configuration.PSObject.Properties.Name -contains 'GolgiBaseline' -and $null -ne $configuration.GolgiBaseline
- $Host.UI.RawUI.WindowTitle=if($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
+ $withCalcium=$configuration.PSObject.Properties.Name -contains 'MuscleCalciumReference' -and $null -ne $configuration.MuscleCalciumReference
+ $Host.UI.RawUI.WindowTitle=if($withCalcium){'DNNE isolated motor-unit calcium and force'}elseif($withReference){'DNNE motor transport retry and Golgi reference refinement'}else{'DNNE motor-axon transport - isolated verification'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host 'Original event identity/timing, packet integrity and shared simulation clock. No live brain or muscles.'
+ Write-Host 'Original event identity/timing, packet integrity and shared simulation clock. No live brain or body.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/motor-axon-tests'
@@ -64,15 +65,32 @@ try {
   ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
  $binaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'build-binaries.json') -Encoding UTF8
  $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
- Write-Host '========== MOTOR-AXON TRANSPORT TESTS ==========' -ForegroundColor Cyan
+ if($withCalcium){Write-Host '========== MOTOR TRANSPORT AND CALCIUM TESTS ==========' -ForegroundColor Cyan}
+ else {Write-Host '========== MOTOR-AXON TRANSPORT TESTS ==========' -ForegroundColor Cyan}
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),
   ('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=motor-axon.trx') 'tests.log'
  [xml]$trx=Get-Content -LiteralPath (Join-Path $testOutput 'motor-axon.trx') -Raw
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Required transport/manifest tests did not all pass.'}
- $status['PassedMotorTransportAndManifestTests']=$results.Count
+ if($withCalcium){$status['PassedTransportCalciumAndManifestTests']=$results.Count}
+ else {$status['PassedMotorTransportAndManifestTests']=$results.Count}
  $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
+ if($withCalcium){
+  Write-Host '========== ISOLATED MOTOR-UNIT CALCIUM ==========' -ForegroundColor Cyan
+  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/MotorUnitCalciumProbe/MotorUnitCalciumProbe.csproj'),
+   '-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'calcium-build.log'
+  $probe=Join-Path $build 'bin/MotorUnitCalciumProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'
+  $probeBinaries=@(Get-ChildItem -LiteralPath (Split-Path -Parent $probe) -Recurse -File |
+   ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
+  $probeBinaries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'calcium-build-binaries.json') -Encoding UTF8
+  Invoke-Logged $configuration.DotnetExecutable @($probe,(Join-Path $package 'calcium-study')) 'calcium-study.log'
+  Write-Host '========== INDEPENDENT CALCIUM/FORCE REFERENCE ==========' -ForegroundColor Cyan
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/motor-calcium-reference.py'),$package) 'calcium-reference.log'
+  foreach($entry in $probeBinaries){if((Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash -ne $entry.Sha256){throw ('Probe binary changed: '+$entry.Path)}}
+  $status['MuscleCalciumNumericalCriteriaPassed']=$true
+  $status | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
+ }
  if($withReference){
   Write-Host '========== GOLGI: TIGHTER AND CROSS-METHOD REFERENCE ==========' -ForegroundColor Cyan
   Write-Host 'Same biological equations, unchanged voltage/timing criteria. Existing candidate traces reused.'

@@ -221,3 +221,13 @@ original limits. The first motor-transport window was interrupted during build,
 before tests. Its RUNNING status was stale; both original captures and D: copies
 are preserved. The replacement window retries transport tests then refines the
 Golgi reference, with no live monitoring. A process footer is not test success.
+
+The next isolated motor-unit consumer is documented in
+`docs/DNNE_Motor_Unit_Calcium_2026-11-06.md`. Identified arrivals drive a slow-unit
+calcium/binding/activation model at fixed optimal length, using pinned Nagamori
+parameters. It is not connected to a live neuron or Avatar/Unity muscle plant.
+Its focused tests and DOP853/Radau comparison are prepared but unrun. Do not
+double-apply the old muscle's activation/fatigue or import a rate-based spike
+generator as neuronal authority. Endplate transmission is assumed; muscle APs,
+metabolic supply, dynamic length/tendon behavior and physical recovery remain
+unqualified. Keep the current windows frozen and wait for reported completion.

@@ -864,3 +864,21 @@ is redeployed in this task. Worlds retain paused startup. A future connected run
 must establish fresh body supply before prolonged neuronal operation; missing fuel
 is not silently converted into a healthy reference bath. Neuronal authority and
 contact learning are unchanged. Earlier saves and experiment packages are protected.
+
+## Isolated motor-axon and calcium candidates — 6 November
+
+The [motor-path audit](DNNE_Motor_Authority_Path_Audit_2026-11-06.md) identifies
+population-derived commands, generated pseudo-events and the joint-angle
+controller separately from the existing muscle and receptor mechanisms. The
+editor/Unity authority wording now identifies the live commands as population
+derived; an identity-preserving axon lane is not connected to that live plant.
+
+The separate [calcium candidate](DNNE_Motor_Unit_Calcium_2026-11-06.md) accepts
+identified arrivals and produces slow-unit isometric force using calcium release,
+binding and activation. AvatarMuscle and its joint controller were inspected
+before adding it. Existing mechanics, fatigue, vestibular/proprioceptive/plantar
+inputs and paused world startup are retained. No live editor or service is
+redeployed, and no new calibration claim is displayed. Focused tests and an
+independent numerical comparison are prepared but unrun. Promotion must update
+the canonical Avatar muscle and Unity source generator together, prevent double
+activation/fatigue, and qualify dynamic load and afferent feedback separately.

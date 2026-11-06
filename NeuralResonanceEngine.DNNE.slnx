@@ -383,6 +383,7 @@
     <Project Path="tools/AvatarMechanicsProbe/AvatarMechanicsProbe.csproj" />
     <Project Path="tools/GolgiChannelProbe/GolgiChannelProbe.csproj" />
     <Project Path="tools/GolgiCellProbe/GolgiCellProbe.csproj" />
+    <Project Path="tools/MotorUnitCalciumProbe/MotorUnitCalciumProbe.csproj" />
     <Project Path="tools/LearningStructureAudit/LearningStructureAudit.csproj" />
     <Project Path="tools/PosturalCellProbe/PosturalCellProbe.csproj" />
     <Project Path="tools/PosturalCircuitProbe/PosturalCircuitProbe.csproj" />

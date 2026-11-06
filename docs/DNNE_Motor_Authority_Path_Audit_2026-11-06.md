@@ -116,6 +116,14 @@ isolated event-transport candidate is described in
 and time through explicit contacts/clock epochs, but no live neuronal publisher
 or muscle consumer selects it yet. The coupled pathway remains unqualified.
 
+The subsequent isolated muscle candidate is documented in
+`DNNE_Motor_Unit_Calcium_2026-11-06.md`. It uses the slow-unit calcium/binding
+equations of Nagamori et al. (2021), replacing the earlier possible reference
+choice with an explicit release/binding/activation component. It accepts
+identified arrivals and produces isometric unit force; no live plant selects it.
+Numerical verification is prepared, not yet passed. A complete neuronal source,
+neuromuscular junction, dynamic plant and spinal reflex circuit remain open.
+
 ## Editor and migration implications
 
 When promoting the replacement, update both Avatar implementations and their

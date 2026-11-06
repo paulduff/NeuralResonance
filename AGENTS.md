@@ -197,3 +197,16 @@ active propagation, and an unlimited reference bath is not metabolic calibration
 Review its operator-reported results before granule-layer integration. The
 declared analytic/singularity/HCN choices differ from native deposited tables;
 solver agreement is not native NEURON reproduction or physiological equivalence.
+
+The isolated motor-event boundary is documented in
+`docs/DNNE_Motor_Axon_Transport_2026-11-06.md`. It preserves emitted message/cell/
+projection/source-synapse identity and firing time through declared motor-unit
+contacts. Per-source sequence and completeness gates prevent treating missing
+traffic as silence; the body clock cannot outrun the least-complete source.
+No live host publishes this lane and no muscle consumes it yet. Unit fixtures
+are not neuronal-source or contraction qualification. Retain the current path
+until the actual source, event-driven muscle response and connected spinal
+replacement qualify together; keep its population-derived status visible.
+The bounded transport rig also needs durable replay/backpressure and explicit
+epoch/checkpoint handling before cluster deployment. Do not silently reset an
+epoch, discard events or use wall-clock receipt time as biological firing time.

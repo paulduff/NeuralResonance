@@ -84,7 +84,7 @@ public sealed class WorldController:MonoBehaviour {
   bool ready=!connecting&&(!Connected||(Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f));
   GUI.enabled=ready;
   if(Trial!=null)GUI.enabled=ready&&Connected&&!Trial.Finished;
-  if(GUI.Button(new Rect(32,75,110,30),Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE authority":"Live · isolated mechanics preview"):"Paused";}
+  if(GUI.Button(new Rect(32,75,110,30),Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE population commands":"Live · isolated mechanics preview"):"Paused";}
   GUI.enabled=!connecting&&(Trial==null||!Trial.Finished);
   if(GUI.Button(new Rect(152,75,150,30),Connected?"Disconnect DNNE":"Connect DNNE")){if(Connected)StartCoroutine(Disconnect());else StartCoroutine(Connect());}
   GUI.enabled=true;
@@ -92,7 +92,7 @@ public sealed class WorldController:MonoBehaviour {
   if(GUI.Button(new Rect(432,75,110,30),"Side view"))PositionCamera(new Vector3(4.3f,1.4f,.2f));
   GUI.Label(new Rect(32,114,525,24),$"Step {physicsSteps}  |  Feet: {Avatar.LeftLoad:F0} N / {Avatar.RightLoad:F0} N  |  {Avatar.totalMass:F1} kg");
   GUI.Label(new Rect(32,140,525,24),$"Body accepted: {bodyFramesAccepted}  |  Retina accepted: {retinalFramesAccepted}  |  Rejected: {rejectedFrames}");
-  if(Trial!=null)GUI.Label(new Rect(32,190,750,24),Trial.Caption+" · no scripted balance or gait");
+  if(Trial!=null)GUI.Label(new Rect(32,190,750,24),Trial.Caption+" · population commands; direct motor-axon control unqualified");
   var state=Avatar.physiology.State;
   string plant=Avatar.MusclesEnabled?"38 Avatar muscles with measured joint feedback":"simplified joint torques";
   GUI.Box(new Rect(16,Screen.height-100,800,85),$"DNNE = brain · Avatar = body/nervous system · Unity = environment\nEnergy: {state.StoredEnergyJoules/1000000:F3} MJ · Hydration: {state.HydrationFraction:P1} · Tissue: {state.TissueIntegrityFraction:P2}\nSimulation physiology; {plant}; standing/walking unqualified.\nAvatar: Mike Alger · CC BY 4.0 (source and license in the project credits)");

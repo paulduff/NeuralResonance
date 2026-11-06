@@ -1,10 +1,10 @@
 namespace NRE.SimAvatar;
 
 /// <summary>
-/// Spinal/peripheral motor layer. It integrates neuronal motor population spikes
-/// and exposes no independent goals or semantic action authority. Reciprocal
-/// inhibition and postural reflexes below this boundary are physical spinal
-/// machinery, not behavioural policy.
+/// Legacy population-command interpreter. The bridge supplies derived events,
+/// not preserved individual motor-axon discharges. Its arithmetic competition
+/// and postural rules are not a qualified neuronal spinal circuit. Replacement
+/// transport is isolated in AvatarMotorAxonReceiver pending coupled qualification.
 /// </summary>
 public sealed class AvatarNervousSystem
 {

@@ -68,7 +68,8 @@ public sealed record AvatarNeuronalMotorState(
 }
 
 /// <summary>
-/// Converts read-only neuronal motor telemetry into a body population code.
+/// Legacy conversion of population telemetry into newly generated body events.
+/// This loses original discharge identity/timing; it is not a motor-axon path.
 /// Goal names and symbolic directives are never read while creating output.
 /// </summary>
 public static class AvatarNeuronalMotorBridge

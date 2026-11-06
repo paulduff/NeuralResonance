@@ -5,6 +5,13 @@ tests and DNNE receptor paths before adding a replacement. The operator explicit
 requires this review because the existing Avatar contains substantial prior work.
 Unity provides a dynamic physical solver; it does not replace DNNE's authority.
 
+The 6 November motor-path audit found that the existing population command and
+joint-error paths do not preserve cell-level motor authority. The isolated
+replacement transport is documented in `DNNE_Motor_Axon_Transport_2026-11-06.md`;
+it is not connected to live Avatar/Unity muscles. Editor/Unity labels now state
+the existing population-derived control explicitly. Neuronal motor-unit input,
+contraction and the shared Unity port still require coupled qualification.
+
 | Existing implementation | Unity status and next qualification |
 | --- | --- |
 | `AvatarMuscle.cs` activation, force-length/velocity, antagonism, fatigue | Generated scalar plant matches canonical traces. Opt-in 19 physical axes expose 38 measured muscles. Recruitment alternatives are isolated diagnostics only. |

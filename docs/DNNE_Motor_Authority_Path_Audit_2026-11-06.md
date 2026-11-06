@@ -110,7 +110,11 @@ The published isometric twitch component of
 [Fuglevand, Winter and Patla (1993)](https://doi.org/10.1152/jn.1993.70.6.2470)
 is a possible muscle reference, not a replacement for DNNE neurons. Its stochastic
 rate-based recruitment generator must not be imported as neuronal motor authority.
-No new axon interface or twitch model has been implemented by this audit.
+No new axon interface or twitch model was implemented by this audit. The later
+isolated event-transport candidate is described in
+`DNNE_Motor_Axon_Transport_2026-11-06.md`. It preserves original discharge identity
+and time through explicit contacts/clock epochs, but no live neuronal publisher
+or muscle consumer selects it yet. The coupled pathway remains unqualified.
 
 ## Editor and migration implications
 

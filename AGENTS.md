@@ -159,6 +159,14 @@ Its voltage-clamp/SK2 checks do not establish free-cell firing, a functioning
 granular-layer circuit, or human physiology. Review the operator-reported results
 before advancing to coupled membrane/cable dynamics; preserve the pinned source
 convention and explicitly documented corrections.
+The completed channel results are in
+`docs/DNNE_Golgi_Channel_Results_2026-11-06.md`: 16 focused tests and 36 clamp
+conditions passed, with independent SK2 propagation agreement. This permits
+candidate coupled-membrane work, not live Golgi integration. The source-level
+motor path audit is `docs/DNNE_Motor_Authority_Path_Audit_2026-11-06.md`; both the
+population-derived output and joint error controller require neuronal replacements.
+Do not equate ownership/freshness gates or generated pseudo-spikes with preserved
+motor-neuron events. The boundary-timing study is separately awaiting the operator.
 
 Tests and experiments run independently in a visible PowerShell window. Do not live
 monitor them; inspect saved results after the operator reports completion. Builds

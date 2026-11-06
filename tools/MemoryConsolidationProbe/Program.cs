@@ -7,6 +7,11 @@ if (args.Length == 3 && args[0] == "--contact-replay")
     ContactReplayStudy.Run(args[1], args[2]);
     return;
 }
+if (args.Length == 3 && args[0] == "--contact-numerics")
+{
+    ContactNumericsStudy.Run(args[1], args[2]);
+    return;
+}
 
 if (args.Length != 1 || !Path.IsPathFullyQualified(args[0]) || Directory.Exists(args[0]))
     throw new ArgumentException("Supply a new absolute output directory. Old brain saves are never loaded.");

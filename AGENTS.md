@@ -332,3 +332,12 @@ effects. Its cadence sweep measures the current rule's dead-zone/float behavior;
 diagnostic completion is not numerical or biological qualification. It does not
 change learning, the original assertion, live brain/Avatar/editor or old saves.
 Await its visible PowerShell outcome without live monitoring.
+The replay outcome is in `docs/DNNE_Cortical_Contact_Results_2026-11-06.md`:
+all recorded states reproduce, direct capture is small under fixed spikes, and
+fine-step weak learning disappears through float rounding and the per-update
+cutoff. Do not interpret that as biological insensitivity or increase gain.
+The isolated double-state candidate is described in
+`docs/DNNE_Cortical_Contact_Numerics_2026-11-06.md`. It preserves the old complete
+baseline and requires closed-form accuracy, sign and refinement at fixed bounds.
+It is not wired into live cells, persistence, Avatar or the editor. Its limiter
+and receptor reductions remain unqualified even if the numerical comparison passes.

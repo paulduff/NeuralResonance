@@ -3,6 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+$withNumerics=$configuration.PSObject.Properties.Name -contains 'NumericalCandidate' -and $configuration.NumericalCandidate
 if(-not $InWindow){
  if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
  $taskName='DNNE-Cortical-Contact-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
@@ -37,7 +38,7 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite a prior run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE cortical contact replay - fixed spike histories'
+ $Host.UI.RawUI.WindowTitle=if($withNumerics){'DNNE cortical contact precision candidate'}else{'DNNE cortical contact replay - fixed spike histories'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Recorded synaptic evidence only. No recurrent brain, body or old save is run.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -51,6 +52,11 @@ try {
  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-cortical-contact.py'),$package) 'analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'study/analysis.json') -Raw | ConvertFrom-Json
  if(-not $analysis.completed -or $analysis.exactRecordedReplays -ne 4 -or $analysis.replayCases -ne $configuration.ExpectedReplayCases -or $analysis.cadenceCases -ne $configuration.ExpectedCadenceCases){throw 'Required replay/cadence evidence incomplete.'}
+ if($withNumerics){
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--contact-numerics',(Join-Path $package 'input'),(Join-Path $package 'numerical-study')) 'numerics.log'
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-cortical-numerics.py'),$package) 'numerical-analysis.log'
+  $status['IsolatedNumericalCriteriaPassed']=$true
+ }
  Assert-Package
  foreach($entry in $binaries){if((Get-FileHash -LiteralPath $entry.Path).Hash -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
  $status['RecordedContactStatesReproduced']=$true;$status['DiagnosticCaptureComplete']=$true
@@ -67,5 +73,6 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the cortical contact replay outcome. Recorded-state reproduction is not a repaired learning rule or biological consolidation.'
+ if($withNumerics){Write-Host 'Tell Orion the cortical contact precision outcome. Numerical accuracy is not receptor calibration, biological consolidation or live integration.'}
+ else {Write-Host 'Tell Orion the cortical contact replay outcome. Recorded-state reproduction is not a repaired learning rule or biological consolidation.'}
 }

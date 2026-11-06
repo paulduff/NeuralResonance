@@ -1,6 +1,7 @@
 """Freeze reviewed contact evidence and pushed source; no simulation or live state."""
 from datetime import datetime, timezone
 from hashlib import sha256
+import argparse
 import json
 from pathlib import Path
 import shutil
@@ -10,6 +11,7 @@ import uuid
 from zipfile import ZipFile
 
 root=Path(__file__).resolve().parents[1]
+parser=argparse.ArgumentParser();parser.add_argument('--numerical',action='store_true');args=parser.parse_args()
 read=lambda path:json.loads(path.read_text(encoding='utf-8-sig'))
 digest=lambda raw:sha256(raw).hexdigest().upper()
 git=lambda *args:subprocess.check_output(['git',*args],cwd=root,encoding='utf-8').strip()
@@ -40,7 +42,7 @@ for filename in ('ContactPlasticity.cs','PlasticityRules.cs','SynapseState.cs','
     assert raw.replace(b'\r\n',b'\n')==blob.replace(b'\r\n',b'\n'), 'Learning source changed: '+path
     unchanged.append(dict(path=path,sha256=digest(raw)))
 stamp=datetime.now(timezone.utc).strftime('%Y%m%d')
-package=root/'artifacts'/('cortical-contact-'+stamp+'-'+uuid.uuid4().hex[:6])
+package=root/'artifacts'/(('cortical-contact-numerics-' if args.numerical else 'cortical-contact-')+stamp+'-'+uuid.uuid4().hex[:6])
 backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
 assert not package.exists() and not backup.exists()
 package.mkdir()
@@ -71,15 +73,30 @@ spec=dict(version='cortical-contact-replay-v1',sourceRevision=review['sourceRevi
     interventions=['Recorded','NoTagCapture','NoDopamine','NoAcetylcholine'],
     fixedSpikesAndActivity=True,liveBrainAccessed=False,learningRuleRepaired=False,biologicalConsolidationQualified=False)
 (target/'input.json').write_text(json.dumps(spec,indent=2)+'\n')
+if args.numerical:
+    replay_review=root/'artifacts/cortical-contact-review-20261106'
+    replay_report=read(replay_review/'review.json');replay_manifest=read(replay_review/'backup-manifest.json')
+    assert replay_report['sourceRevision']=='10228ade65624aa3741c745b2d284a46d52a5762'
+    assert replay_report['numericalCadenceDefectObserved'] and replay_report['exactRecordedReplays']==4
+    review_raw=(replay_review/'review.json').read_bytes()
+    assert digest(review_raw)==next(e['Sha256'] for e in replay_manifest['Files'] if e['Path']=='review.json')
+    assert review_raw==(Path(replay_manifest['Destination'])/'review.json').read_bytes()
+    prior=Path(replay_report['capture']);prior_backup=Path(replay_report['backup'])
+    prior_manifest=read(prior/'backup-manifest.json')
+    saved=(prior/'study/results.json').read_bytes()
+    assert digest(saved)==next(e['Sha256'] for e in prior_manifest['Files'] if e['Path'].replace('\\','/')=='study/results.json')
+    assert saved==(prior_backup/'study/results.json').read_bytes()
+    (target/'completed-replay-review.json').write_bytes(review_raw)
+    (target/'completed-replay-results.json').write_bytes(saved)
 shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
 files=[dict(Path=p.relative_to(package).as_posix(),Sha256=digest(p.read_bytes())) for p in sorted(package.rglob('*')) if p.is_file()]
 dotnet=shutil.which('dotnet');assert dotnet
 config=dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,
     DotnetExecutable=dotnet,PythonExecutable=sys.executable,BackupDestination=str(backup),NoLiveMonitoring=True,
-    ExpectedReplayCases=16,ExpectedCadenceCases=27,OriginalConsolidationAssertionUnchanged=True,
+    ExpectedReplayCases=16,ExpectedCadenceCases=27,NumericalCandidate=args.numerical,OriginalConsolidationAssertionUnchanged=True,
     LiveBrainAccessed=False,OldSavesLoaded=False)
 (package/'configuration.json').write_text(json.dumps(config,indent=2)+'\n')
 pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,NoLiveMonitoring=True,
     Launcher=str(package/'source/tools/start-cortical-contact-window.ps1'))
-(root/'artifacts'/('cortical-contact-launch-'+stamp+'.json')).write_text(json.dumps(pointer,indent=2)+'\n')
+(root/'artifacts'/(('cortical-contact-numerics-launch-' if args.numerical else 'cortical-contact-launch-')+stamp+'.json')).write_text(json.dumps(pointer,indent=2)+'\n')
 print(json.dumps(pointer,indent=2))

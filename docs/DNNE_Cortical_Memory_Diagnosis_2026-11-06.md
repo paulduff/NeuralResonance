@@ -1,5 +1,10 @@
 # Cortical memory fixture diagnosis
 
+The five-case v1 capture is now reviewed in
+`DNNE_Cortical_Memory_Results_2026-11-06.md`. The current tools prepare the
+seven-case v2 follow-up described in `DNNE_Cortical_Recipient_Comparison_2026-11-06.md`.
+The v1 source/results remain frozen; the original rig description below is retained.
+
 The completed cell-local timing suite reproduced the original
 `NeuronalMemoryTests.RepeatedCorticalExperienceGraduallyRaisesConsolidation`
 failure: initial score 0.000189, final 0.000035, reported strength 0.008270.

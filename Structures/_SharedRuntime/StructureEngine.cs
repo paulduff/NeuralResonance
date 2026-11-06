@@ -183,11 +183,23 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	// Internal, fresh-state diagnostic population only. Service hosts cannot select
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
 	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
-		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false)
+		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false,
+		IsolatedSynapticTargets? diagnosticSynapticTargets = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (diagnosticSynapticTargets is not null)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (isolatedNeuronCount is not null || !CorticalLaminarTopology.IsCorticalStructure(profile.StructureId) ||
+				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
+				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Declared diagnostic contacts require a fresh isolated cortical population.");
+			diagnosticSynapticTargets.ValidateFor(_circuit.NeuronCount);
+			_diagnosticSynapticTargets = diagnosticSynapticTargets;
+		}
 		if (isolatedNeuronCount is { } count)
 		{
 			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
@@ -244,6 +256,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		if (_diagnosticNoOpBoundaries is not null)
 			fingerprint = StableNeuralIdentity.Create("isolated-no-op-boundaries-v1", fingerprint,
 				string.Join(",", _diagnosticNoOpBoundaries.Select(x => x.ToString("R", System.Globalization.CultureInfo.InvariantCulture)))).ToString("N");
+		if (_diagnosticSynapticTargets is not null)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedSynapticTargets.Version,
+				_diagnosticSynapticTargets.Fingerprint).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
 		try
 		{
@@ -944,6 +959,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 
 	private int ResolveInboundNeuronIndex(SpikeMessage message)
 	{
+		if (_diagnosticSynapticTargets is not null && _diagnosticSynapticTargets.TryResolve(message, out var declaredTarget))
+			return declaredTarget;
 		if (message.SourceStructure == _profile.StructureId &&
 			message.TargetStructure == _profile.StructureId &&
 			message.TargetNeuronId.StartsWith("local-", StringComparison.Ordinal) &&

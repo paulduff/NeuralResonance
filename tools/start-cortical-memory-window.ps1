@@ -37,7 +37,7 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE cortical learning diagnosis'
+ $Host.UI.RawUI.WindowTitle='DNNE cortical recipient comparison'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'The original consolidation assertion remains unchanged. Its known failure is captured separately from diagnostic completion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -55,10 +55,13 @@ try {
  [xml]$trx=Get-Content -LiteralPath (Join-Path $testOutput 'memory-fixture.trx') -Raw
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
- if($results.Count -ne 2){throw 'Original fixture/manifest test coverage incomplete.'}
+ if($results.Count -ne $configuration.ExpectedTestCases){throw 'Original fixture/manifest/recipient test coverage incomplete.'}
  $memory=@($results | Where-Object {$_.testName -eq 'NeuralResonanceEngine.DNNE.Tests.NeuronalMemoryTests.RepeatedCorticalExperienceGraduallyRaisesConsolidation'})
  $manifest=@($results | Where-Object {$_.testName -eq 'NeuralResonanceEngine.DNNE.Tests.SolutionManifestTests.Solution_Manifest_Includes_Every_Project_In_The_Repository'})
  if($memory.Count -ne 1 -or $manifest.Count -ne 1 -or $manifest[0].outcome -ne 'Passed' -or $memory[0].outcome -notin @('Passed','Failed')){throw 'Unexpected or incomplete unit outcome.'}
+ $targetTests=@($results | Where-Object {$_.testName -like 'NeuralResonanceEngine.DNNE.Tests.DeclaredSynapticTargetTests.*'})
+ if($targetTests.Count -ne 8 -or @($targetTests | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Declared recipient checks failed or were incomplete.'}
+ $status['PassedRecipientTests']=$targetTests.Count
  if($exitCode -notin @(0,1) -or (($exitCode -eq 0) -ne ($memory[0].outcome -eq 'Passed'))){throw 'Process/test outcome mismatch.'}
  $status['OriginalConsolidationTestPassed']=$memory[0].outcome -eq 'Passed'
  $status['OriginalTestProcessExitCode']=$exitCode

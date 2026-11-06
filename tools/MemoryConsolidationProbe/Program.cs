@@ -13,11 +13,13 @@ var scenarios = new[]
     new Scenario("legacy-unobserved", false, 0, true, false),
     new Scenario("continuous-simultaneous", true, 0, true, true),
     new Scenario("continuous-spaced", true, 1, true, true),
-    new Scenario("continuous-unmodulated", true, 0, false, true)
+    new Scenario("continuous-unmodulated", true, 0, false, true),
+    new Scenario("continuous-colocated", true, 0, true, true, 166),
+    new Scenario("continuous-neighbor", true, 0, true, true, 165)
 };
 Save(Path.Combine(root, "protocol.json"), new
 {
-    version = "cortical-memory-diagnostic-v1", scenarios, repetitions = 9, featureIndex = 140, cueEvents = 12,
+    version = "cortical-memory-diagnostic-v2", scenarios, repetitions = 9, featureIndex = 140, cueEvents = 12,
     durationMs = 495, structure = "TemporalAssociation", neuronModel = "Izhikevich", rule = "STDP+SynapticTaggingCapture",
     diagnosticOnly = true, learningParametersChanged = false, originalTestChanged = false, physiologicalQualification = false
 });
@@ -40,8 +42,15 @@ try
         using var inbound = new StreamWriter(Path.Combine(output, "inbound.jsonl"));
         using var inputs = new StreamWriter(Path.Combine(output, "inputs.jsonl"));
         using var ticks = new StreamWriter(Path.Combine(output, "ticks.jsonl"));
+        var declaredTargets = scenario.ModulatorTarget is { } recipient
+            ? new IsolatedSynapticTargets(Enumerable.Range(0, 9).SelectMany(r => Modulation(55 * r, r))
+                .Select(message => IsolatedSynapticTarget.From(message, recipient)),
+                StructureCircuitProfile.For(StructureId.TemporalAssociation).NeuronCount) : null;
         using var engine = new StructureEngine(new StructureProfile(StructureId.TemporalAssociation, "Izhikevich",
-            "STDP+SynapticTaggingCapture", "isolated cortical fixture diagnosis", new DelayWindow(0, 0)));
+            "STDP+SynapticTaggingCapture", "isolated cortical fixture diagnosis", new DelayWindow(0, 0)),
+            isolatedNeuronCount: null, diagnosticSynapticTargets: declaredTargets);
+        Save(Path.Combine(output, "declared-targets.json"), new { fingerprint = engine.DiagnosticSynapticTargetFingerprint,
+            entries = declaredTargets?.Entries, receptorCalibrationQualified = false });
         long learningEvents = 0, inboundEvents = 0;
         if (scenario.Observe)
         {
@@ -131,4 +140,4 @@ static SpikeMessage[] Modulation(double previous, int repetition)
     return result.ToArray();
 }
 
-internal sealed record Scenario(string Key, bool Continuous, double SpacingMs, bool Modulation, bool Observe);
+internal sealed record Scenario(string Key, bool Continuous, double SpacingMs, bool Modulation, bool Observe, int? ModulatorTarget = null);

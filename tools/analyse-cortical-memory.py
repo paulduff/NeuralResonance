@@ -14,8 +14,9 @@ def main(root):
     report=dict(completed=False,biologicalConsolidationQualified=False,originalTestChanged=False,cases=[])
     try:
         protocol=read(root/'protocol.json');results=read(root/'results.json')
-        assert protocol['version']=='cortical-memory-diagnostic-v1' and results['completed'] and len(results['cases'])==5
-        names=['legacy-observed','legacy-unobserved','continuous-simultaneous','continuous-spaced','continuous-unmodulated']
+        assert protocol['version']=='cortical-memory-diagnostic-v2' and results['completed'] and len(results['cases'])==7
+        names=['legacy-observed','legacy-unobserved','continuous-simultaneous','continuous-spaced','continuous-unmodulated',
+               'continuous-colocated','continuous-neighbor']
         assert [s['key'] for s in protocol['scenarios']]==names and [s['key'] for s in results['cases']]==names
         captures={}
         for scenario,result in zip(protocol['scenarios'],results['cases']):
@@ -97,6 +98,21 @@ def main(root):
                 external_inbound=[]
             delays=[x['processingTimestampMs']-x['scheduledDeliveryTimestampMs'] for x in inbound]
             declared=sum(t['signal']['tickDurationMs'] for t in ticks)
+            feature_events=[e for e in evidence if e['after']['contactId']==contact_id]
+            local_da=max((e['dopamine'] for e in feature_events),default=None)
+            local_ach=max((e['acetylcholine'] for e in feature_events),default=None)
+            target_map=read(folder/'declared-targets.json')
+            if scenario['modulatorTarget'] is not None:
+                assert target_map['fingerprint'] and len(target_map['entries'])==126
+                assert {e['targetCell'] for e in target_map['entries']}=={scenario['modulatorTarget']}
+                mod_contacts=[c for c in ticks[-1]['contacts'] if c['neurotransmitter'] in (3,5,6)]
+                assert len(mod_contacts)==126 and {c['target'] for c in mod_contacts}=={scenario['modulatorTarget']}
+                assert {e['after']['target'] for e in feature_events}=={166}
+                if scenario['modulatorTarget']==166:
+                    assert local_da>0 and local_ach>0 and contributions['modulation']['events']>0
+                else:
+                    assert local_da==local_ach==0 and contributions['modulation']['events']==0
+            else:assert target_map['fingerprint'] is None and target_map['entries'] is None
             row=dict(scenario=scenario['key'],declaredIntegratedMilliseconds=declared,outerTimestampSpanMs=495,
                 learningEvents=len(evidence),inboundEvents=len(inbound),maximumDeliveryLatenessMs=max(delays,default=None),
                 injectedEvents=len(injected),observedInjectedEvents=len(external_inbound),
@@ -107,6 +123,8 @@ def main(root):
                 featureWeightIncreased=summary[-1]['weight']>summary[0]['weight'],
                 featureWeightChange=summary[-1]['weight']-summary[0]['weight'],
                 maximumAggregateReconstructionError=maximum_aggregate_error,featureLearningContributions=contributions,cues=summary)
+            row.update(declaredModulatorTarget=scenario['modulatorTarget'],targetMapFingerprint=target_map['fingerprint'],
+                       maximumCueDopamine=local_da,maximumCueAcetylcholine=local_ach)
             report['cases'].append(row);captures[scenario['key']]=ticks
         observed=captures['legacy-observed'];unobserved=captures['legacy-unobserved']
         for a,b in zip(observed,unobserved):
@@ -116,7 +134,12 @@ def main(root):
             # event payload and order, not just aggregate firing counts.
             scrub=lambda items:[{k:v for k,v in item.items() if k!='messageId'} for item in items]
             assert scrub(a['emitted'])==scrub(b['emitted']), 'Observation changed outbound events.'
+        baseline=read(root.parent/'cortical-baseline/analysis.json')
+        assert baseline['completed'] and len(baseline['cases'])==5
+        for previous,current in zip(baseline['cases'],report['cases'][:5],strict=True):
+            assert previous=={key:current[key] for key in previous}, 'An unchanged diagnostic control diverged from its retained baseline.'
         report.update(completed=True,observationInvariancePassed=True,captureIntegrityPassed=True,
+            declaredRecipientChecksPassed=True,previousFiveControlsReproduced=True,
             diagnosticLegacyFixtureScoreIncreased=report['cases'][0]['fixtureScoreIncreased'])
         output.write_text(json.dumps(report,indent=2,allow_nan=False)+'\n')
         for case in report['cases']:

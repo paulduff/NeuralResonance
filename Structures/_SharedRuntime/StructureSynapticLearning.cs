@@ -38,6 +38,8 @@ public sealed partial class StructureEngine
                 (_profile.NeuronModel == "HH" ? (_profile.StructureId == StructureId.InferiorOlive
                     ? "; olivary three-compartment reference, isolated-cell calibration pending; no gap junctions"
                     : "; HH with population channel reductions, not a calibrated cerebellar cell") : "") +
+                (_diagnosticSynapticTargets is not null
+                    ? "; isolated declared synaptic recipients; cortical arbor/receptor calibration pending" : "") +
                 (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule
                     ? "; contact-local voltage/IP3/calcium LTD candidate; no fitted human spine, LTP or full dendritic complex-spike model" : ""),
             _neurons.Length, _inboundSynapses.Count,

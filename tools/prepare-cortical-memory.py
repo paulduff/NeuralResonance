@@ -22,13 +22,26 @@ subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.z
 with ZipFile(package/'source.zip') as archive:
     assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
     archive.extractall(package/'source')
+reviewed=root/'artifacts/cortical-memory-review-20261106/review.json'
+review=json.loads(reviewed.read_text(encoding='utf-8-sig'))
+assert review['sourceRevision']=='2b89c98a5d5e37ea710a618bc9d3a8149cd7503d' and review['observationInvariancePassed']
+previous=Path(review['capture']);previous_backup=Path(review['backup'])
+baseline=previous/'study/analysis.json';backup_baseline=previous_backup/'study/analysis.json'
+assert sha256(baseline.read_bytes()).digest()==sha256(backup_baseline.read_bytes()).digest()
+manifest=json.loads((previous/'backup-manifest.json').read_text(encoding='utf-8-sig'))
+entry=next(e for e in manifest['Files'] if e['Path'].replace('\\','/')=='study/analysis.json')
+assert sha256(baseline.read_bytes()).hexdigest().upper()==entry['Sha256'].upper()
+(package/'cortical-baseline').mkdir()
+shutil.copy2(baseline,package/'cortical-baseline/analysis.json')
+shutil.copy2(reviewed,package/'cortical-baseline/review.json')
 shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
 files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper()) for p in sorted(package.rglob('*')) if p.is_file()]
 dotnet=shutil.which('dotnet');assert dotnet
 config=dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,
     DotnetExecutable=dotnet,PythonExecutable=sys.executable,BackupDestination=str(backup),NoLiveMonitoring=True,
     LiveBrainAccessed=False,OldSavesLoaded=False,OriginalConsolidationTestUnchanged=True,
-    TestFilter='FullyQualifiedName~RepeatedCorticalExperienceGraduallyRaisesConsolidation|FullyQualifiedName~SolutionManifestTests')
+    ExpectedTestCases=10,
+    TestFilter='FullyQualifiedName~RepeatedCorticalExperienceGraduallyRaisesConsolidation|FullyQualifiedName~SolutionManifestTests|FullyQualifiedName~DeclaredSynapticTargetTests')
 (package/'configuration.json').write_text(json.dumps(config,indent=2)+'\n')
 pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,NoLiveMonitoring=True,
     Launcher=str(package/'source/tools/start-cortical-memory-window.ps1'))

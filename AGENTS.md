@@ -297,3 +297,11 @@ cell 100 after cortical remapping. Correct recipient identity before interpretin
 modulation-dependent learning. The derived ensemble score is not a molecular
 consolidation measure and can rise while the cue weight falls. Do not solve this
 by boosting gain, broadcasting modulation globally or forcing monotonic scores.
+The isolated explicit-recipient candidate and seven-condition follow-up are in
+`docs/DNNE_Cortical_Recipient_Comparison_2026-11-06.md`. Exact declared contacts
+bypass generic population remapping only in fresh isolated cortex, with map-specific
+save fingerprints. It requires original five-control reproduction and measured
+local ACh/DA at the cue versus neighbouring-cell exclusion; it does not require
+potentiation or change the original assertion. No service enables this map.
+Actual receptor/arbor calibration, long-term consolidation and deployment remain
+open even if the recipient comparison passes.

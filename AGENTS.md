@@ -148,7 +148,14 @@ and Maze are environments. Dyad/Entity provide interaction. CIV is a separate
 experiment. Diagnostic commands/controllers must remain explicitly isolated from
 live DNNE operation and must never be reported as neuronal or learned behavior.
 
-Long experiments run independently in a visible PowerShell window. Do not live
-monitor them; inspect saved results after the operator reports completion. Live
+The continuing neuronal-development objective and acceptance gates are recorded in
+`docs/DNNE_Neuronal_Development_2026-11-06.md`. The operator authorizes justified
+missing populations and mechanism repairs, with regular commits and pushes, until
+Avatar usability is demonstrated or the operator stops the work. This is not
+permission to claim human-brain equivalence or promote unqualified candidates.
+
+Tests and experiments run independently in a visible PowerShell window. Do not live
+monitor them; inspect saved results after the operator reports completion. Builds
+and static inspection can run during development. Live
 worlds start paused and wait for the operator to press Play. Preserve existing
 brain state and verified D: backups. Commit and push applied changes once stable.

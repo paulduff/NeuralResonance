@@ -51,6 +51,10 @@ reset, silent packet loss or synthesized force. Callers must serialize access.
 
 ## Checks and current status
 
+The operator-reported `5836ab` run has now passed all 61 selected cases, with
+verified complete C:/D: captures. See `DNNE_Isometric_Motor_Unit_Results_2026-11-06.md`.
+The following describes the declared rig and its limits, not neuronal qualification.
+
 The Release test-project build passes with zero warnings/errors. Fifteen focused
 cases cover original fractional arrival timing/identity, direct-consumer parity,
 exact frame and packet invariance, isolation from unrelated unit traffic,
@@ -62,9 +66,9 @@ These tests use declared event fixtures; they cannot prove neuronal firing. The
 visible PowerShell package selects those 15 cases plus the 32 transport, 13 calcium
 and one solution-manifest case: **61 required cases**. The full DNNE suite is not
 selected; its previously recorded consolidation failure remains open. No test
-outcome is claimed until the operator reports completion and saved results are
-reviewed. Source/binaries/results are frozen and backed up to D: without live
-monitoring.
+outcome may be claimed without the operator's report and saved-result review.
+That review has now completed for `5836ab`. Source/binaries/results are frozen and
+backed up to D: without live monitoring.
 
 Use `prepare-motor-axon-verification.py --motor-unit-plant` and the frozen motor
 window launcher. Its window is titled **DNNE isometric motor-unit integration**,

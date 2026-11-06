@@ -106,3 +106,40 @@ then connect original identified cell events through the checked transport to th
 calcium/force consumer. Further integration must preserve Avatar's receptors and
 mechanics and replace the existing derived motor-rate/control path. Whole-body
 balance and recovery remain unqualified.
+
+## Reported reference warning: prepared correction, not yet tested
+
+While `motoneuron-active-20261106-df5b5b` was still running, the operator supplied
+overflow warnings from SciPy 1.16.3 `integrate/_ivp/common.py` lines 326, 356,
+357 and 378. No running logs, status or results were inspected in response, and
+the package/process was not changed or restarted.
+
+The installed source and [pinned SciPy source](https://github.com/scipy/scipy/blob/v1.16.3/scipy/integrate/_ivp/common.py)
+show an adaptive finite-difference perturbation factor that grows when a column
+produces little change. The reference has three structural zero columns: the
+calcium-entry, calcium-removal and charge integrals at state indices 27–29 do not
+feed back into the RHS. Escalation on those columns is a plausible trigger,
+not yet a reproduced diagnosis of the particular running warning. A warning
+inside Jacobian estimation does not by itself prove overflow of the physical
+trajectory, and numerical acceptance cannot be inferred from continued execution.
+
+The next-source candidate supplies a bounded central-difference Jacobian for the
+27 physical variables, with the three accounting columns explicitly zero. Each
+perturbation is recomputed from the current variable and a declared physical
+scale; no factor accumulates across calls. The ODE, inputs, solver tolerances and
+comparison bounds are unchanged. This is an approximate Newton derivative, not
+an analytic Jacobian or an increase in claimed physiological accuracy. Its mode
+is explicitly recorded as `motoneuron-bounded-central-physical-v1` in future
+protocols/reports. The original frozen package continues to use its original code.
+
+Before any future adaptive comparison, the prepared rig will require a known
+linear-system check (including very large passive totals), exact ledger
+independence and 40 manufactured-state directional-derivative checks. The latter
+cover four channel blocks, five voltages and two calcium values, with interior
+gate probabilities to avoid crossing a nonsmooth flux-rectification boundary.
+Non-finite Jacobians fail. Future reference solves also turn overflow/invalid-
+arithmetic warnings into recorded condition failures, without clipping states.
+
+These new checks have not run yet. They must pass in a visible PowerShell package,
+followed by unchanged cross-method/step criteria. Await the operator's completed
+original run before deciding which retained comparisons need to be repeated.

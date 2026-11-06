@@ -11,6 +11,7 @@ def protocol():
     return dict(version='motoneuron-active-comparison-v1',durationMs=6000,sampleMs=.1,initialVoltageMv=-65,
         stepsMs=[.0125,.00625,.003125],thresholdMv=-20,
         sourceRevision='0d11354490fad5fcd940d016a8d69b000693fd81',cell='FivecomptcMG_0',
+        radauJacobian='motoneuron-bounded-central-physical-v1',
         cases=[case('quiet',[segment(6000)]),
             case('soma-1000',pulse(1000)),case('soma-3000',pulse(3000)),case('soma-6000',pulse(6000)),
             case('brief-soma',[segment(1000),segment(1002,current=20000),segment(6000)]),

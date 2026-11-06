@@ -25,12 +25,13 @@ their manifest. The package contains 1,281 pre-launch hashed files. Review evide
 is in `artifacts/isometric-plant-review-20261106`, with its own verified D: copy.
 No experiment or test was rerun during this review.
 
-The operator subsequently recalled an overflow message. No overflow message is
-present in this capture's transcript, stage logs or TRX; its build reports zero
-warnings/errors. The originating window/error text has been requested. Do not
-attribute an unidentified overflow to the intentional fault fixture, or conclude
-that it is harmless from this passing report. The separate active-cell result
-remains pending operator report and review.
+The operator subsequently clarified that an overflow message came from the still
+running **active motor-cell reference**, and supplied SciPy 1.16.3 numerical-
+Jacobian warnings. This is separate from the isometric fixture capture, whose
+transcript, logs and TRX contain no overflow warning. Do not attribute those
+warnings to the intentional isometric fault fixture or dismiss them from this
+passing report. The active-cell result remains pending operator completion and
+review; see the warning investigation in the active-comparison document.
 
 These events are fixtures, not actual qualified motor-neuron output. The outcome
 supports the isolated event-to-unit connector, not endplate physiology, human

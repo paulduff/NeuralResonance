@@ -10,9 +10,11 @@ import json
 from pathlib import Path
 import sys
 import time
+import warnings
 import numpy as np
 from scipy.integrate import solve_ivp
 from motoneuron_active_protocol import protocol
+from motoneuron_bounded_jacobian import VERSION as JACOBIAN_VERSION, bounded_jacobian, verify as verify_jacobian
 
 read=lambda p:json.loads(p.read_text(encoding='utf-8-sig'))
 GATES=np.r_[np.arange(5,14),np.arange(15,27)]
@@ -109,8 +111,15 @@ def solve(rhs,initial,scenario,method,grid):
     crossing.direction=1;crossing.terminal=False
     for command in scenario['segments']:
         end=command['untilMs'];mask=(grid>begin)&(grid<=end)
-        solution=solve_ivp(rhs(scenario['block'],command),(begin,end),state,method=method['method'],
-            rtol=method['rtol'],atol=atol,max_step=method['maximumStepMs'],events=crossing,dense_output=True)
+        fun=rhs(scenario['block'],command)
+        options=dict(jac=bounded_jacobian(fun)) if method['method']=='Radau' else {}
+        # Fail this reference condition explicitly on numerical overflow instead
+        # of treating emitted warnings as successful qualification. Underflow in
+        # asymptotic channel exponentials is left at NumPy's normal behavior.
+        with warnings.catch_warnings(), np.errstate(over='raise',invalid='raise',divide='raise'):
+            warnings.simplefilter('error',RuntimeWarning)
+            solution=solve_ivp(fun,(begin,end),state,method=method['method'],
+                rtol=method['rtol'],atol=atol,max_step=method['maximumStepMs'],events=crossing,dense_output=True,**options)
         if not solution.success:raise RuntimeError(solution.message)
         assert solution.t[-1]==end and np.isfinite(solution.y).all()
         result[mask]=solution.sol(grid[mask]).T
@@ -129,6 +138,8 @@ def main(package):
     try:
         spec=read(package/'motoneuron-active-input.json');assert spec==protocol()
         report['criteria']=spec['criteria'];c=spec['criteria']
+        assert spec['radauJacobian']==JACOBIAN_VERSION
+        report['radauJacobian']=JACOBIAN_VERSION
         study=package/'motoneuron-active-study';meta=read(study/'protocol.json');outcomes=read(study/'results.json')
         assert meta['inputSha256']==sha256((package/'motoneuron-active-input.json').read_bytes()).hexdigest().upper()
         assert meta['specification']=={k:spec[k] for k in meta['specification']} and not meta['liveBrainAccessed']
@@ -138,6 +149,8 @@ def main(package):
             key=(row['scenario'],row['stepMs']);assert key in expected;expected.remove(key)
             assert row['key']==row['scenario']+'-h'+str(row['stepMs'])
         rhs,initial,area,cap,axial=source_model(package/'motoneuron-input')
+        jacobian_check=verify_jacobian(rhs,initial)
+        (output/'jacobian-check.json').write_text(json.dumps(jacobian_check,indent=2,allow_nan=False)+'\n')
         coupling=-axial.copy();np.fill_diagonal(coupling,0)
         assert np.max(np.abs(area-meta['areasUm2']))<=1e-8 and np.max(np.abs(cap-meta['capacitancesPf']))<=1e-9
         assert np.max(np.abs(coupling-np.asarray(meta['couplingNs'])))<=1e-9

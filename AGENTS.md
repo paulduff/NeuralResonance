@@ -324,3 +324,11 @@ with the bounded Jacobian. Old naive callers and failed captures are preserved;
 inputs and acceptance bounds stay fixed. Its independent visible window must
 pass twelve focused/manifest tests before active comparisons. Do not monitor it
 or claim numerical/physiological qualification before operator-reported completion.
+The independent cortical follow-up is documented in
+`docs/DNNE_Cortical_Contact_Replay_2026-11-06.md`: replay the reviewed recipient
+capture with fixed spike/activity histories and selective modulation interventions.
+Require exact original contact-state reproduction before interpreting direct
+effects. Its cadence sweep measures the current rule's dead-zone/float behavior;
+diagnostic completion is not numerical or biological qualification. It does not
+change learning, the original assertion, live brain/Avatar/editor or old saves.
+Await its visible PowerShell outcome without live monitoring.

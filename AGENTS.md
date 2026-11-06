@@ -290,3 +290,10 @@ updates and compares the original gapped fixture with continuous/spaced controls
 The original assertion and learning parameters are unchanged. Diagnostic capture
 completion must not be reported as a passing full suite or qualified biological
 consolidation. Review the operator-reported capture before choosing a repair.
+The completed result is in `docs/DNNE_Cortical_Memory_Results_2026-11-06.md`:
+the original assertion still fails, but the five-case capture and C:/D: review
+complete. Cue cell 166 receives no local ACh/DA; the intended modulators all reach
+cell 100 after cortical remapping. Correct recipient identity before interpreting
+modulation-dependent learning. The derived ensemble score is not a molecular
+consolidation measure and can rise while the cue weight falls. Do not solve this
+by boosting gain, broadcasting modulation globally or forcing monotonic scores.

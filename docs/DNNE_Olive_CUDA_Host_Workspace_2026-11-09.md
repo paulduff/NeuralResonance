@@ -88,3 +88,12 @@ biological parameters or old-save behavior changes. Motor-cell qualification and
 the closed sensory/motor/body loop remain required. The finer Golgi rig remains
 unlaunched; the somatic motor-unit circuit still requires a passing motor-boundary
 review.
+
+## Launched accuracy comparison
+
+The package `olive-cuda-host-20261109-aeb5f2` is now launched at frozen revision
+`91c53eab1ae51f9270a732e051eb0cc30782d352`, task
+`DNNE-Olive-Host-336733e41879`. All 1,495 initial files plus manifest have a
+verified D: copy, rechecked before launch. Await its operator-reported completion
+without inspecting live status or results. This is not a timing run; any speed
+comparison remains gated on passing accuracy and no competing studies.

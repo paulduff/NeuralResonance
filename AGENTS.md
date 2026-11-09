@@ -834,3 +834,20 @@ focused tests, twelve control groups per variant and six complete recorded-byte
 comparisons per variant. It can overlap motor accuracy work, but no speed claim
 or later timing run is allowed until both operator reports and the accuracy
 review. No live neuronal/body path selects this candidate.
+
+The CUDA host accuracy comparison is launched as `olive-cuda-host-20261109-aeb5f2`,
+revision `91c53eab1ae51f9270a732e051eb0cc30782d352`, task
+`DNNE-Olive-Host-336733e41879`, with 1,495 initial files plus manifest verified
+on D:. Await its operator report without monitoring. The operator has separately
+reported motor-boundary completion; inspect only that reported capture and keep
+the host accuracy window untouched. No performance result is inferred from launch.
+
+The completed motor scheduling review is
+`docs/DNNE_Motor_Boundary_Results_2026-11-09.md`. All 12 tests and all ten
+endpoint-scheduled scenario gates pass at unchanged bounds. Thirty original
+controls reproduce exactly, including the two failed calcium-refinement gates.
+All 2,057 C:/D: files and executed binaries verify, and saved analysis reproduces
+exactly. The separate review has a verified D: backup. This permits freezing and
+running the already coded somatic motor-unit circuit with that exact source;
+it does not qualify physiology, active axons or live Avatar authority. The CUDA
+host accuracy window remains pending; do not inspect it without its own report.

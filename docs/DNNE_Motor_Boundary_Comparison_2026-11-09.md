@@ -103,3 +103,13 @@ PowerShell window. It is the only pending window. Await the operator's report;
 do not inspect live status/logs or infer a result from launch. The finer Golgi
 comparison remains unlaunched, and the somatic motor-unit circuit remains gated
 on a passing motor-boundary outcome.
+
+## Completed numerical result
+
+The operator has now reported completion. The verified review in
+`DNNE_Motor_Boundary_Results_2026-11-09.md` confirms all 12 tests and all ten
+endpoint-scheduled scenario gates pass, with exact reproduction of the thirty
+original control traces and their two failed scenario gates. All 2,057 C:/D:
+files verify and saved analysis reproduces exactly. No bounds or biology changed.
+This satisfies the numerical prerequisite for the isolated somatic motor-unit
+experiment; live authority and physiological/body qualification remain open.

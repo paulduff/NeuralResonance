@@ -56,6 +56,28 @@ try {
  Write-Host 'Three variants, six cases, five rounds: 90 measured trajectories plus 90 warmups. Avoid other heavy work; report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
+ # Windows PowerShell 5.1 emits a JSON array as one pipeline object. Wrapping
+ # that pipeline in @() nests the 90 entries inside a one-element array.
+ # Assign the deserialized array directly, then check the entire declared order
+ # before building or allocating CUDA resources.
+ $scheduleText=Get-Content -LiteralPath (Join-Path $package 'schedule.json') -Raw
+ $schedule=ConvertFrom-Json -InputObject $scheduleText
+ $oldWrapped=@($scheduleText | ConvertFrom-Json)
+ if($schedule -isnot [array] -or $schedule.Count -ne 90){throw 'Incomplete process schedule.'}
+ $scheduleIndex=0;$caseIndex=0;$modes=@('control','host','device')
+ foreach($count in @(192,3072,12288)){foreach($step in @([double]0.025,[double]0.00625)){
+  $stepText=$step.ToString('R',[Globalization.CultureInfo]::InvariantCulture)
+  for($round=0;$round -lt 5;$round++){for($position=0;$position -lt 3;$position++){
+   $mode=$modes[($position+$round+$caseIndex)%3];$entry=$schedule[$scheduleIndex]
+   $expectedPath='cells-'+$count+'-h-'+$stepText+'/round-'+$round+'/'+$mode
+   if($entry.count -ne $count -or $entry.step -ne $step -or $entry.round -ne $round -or $entry.mode -ne $mode -or $entry.path -ne $expectedPath){throw ('Process schedule entry differs at '+$scheduleIndex)}
+   $scheduleIndex++
+  }}
+  $caseIndex++
+ }}
+ if($scheduleIndex -ne 90){throw 'Process schedule coverage differs.'}
+ [ordered]@{PowerShellVersion=$PSVersionTable.PSVersion.ToString();OriginalWrappedCount=$oldWrapped.Count;OriginalFirstItemIsArray=($oldWrapped[0] -is [array]);DirectCount=$schedule.Count;ValidatedEntries=$scheduleIndex;ExactDeclaredOrderPassed=$true} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $package 'schedule-check.json') -Encoding UTF8
+ $status['ProcessScheduleChecked']=$true
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize,FreePhysicalMemory} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
  $build=Join-Path $package 'source/artifacts/olive-cost-tests'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
@@ -85,8 +107,6 @@ try {
   foreach($mode in @('control','host','device')){
    Invoke-Logged $configuration.DotnetExecutable @($probes[$mode],$package,(Join-Path $package ('study/controls/'+$mode)),'controls','0','0') ($mode+'-controls.log')
   }
-  $schedule=@(Get-Content -LiteralPath (Join-Path $package 'schedule.json') -Raw | ConvertFrom-Json)
-  if($schedule.Count -ne 90){throw 'Incomplete process schedule.'}
   $completedProcesses=[Collections.Generic.List[object]]::new();$index=0
   foreach($entry in $schedule){
    $step=([double]$entry.step).ToString('R',[Globalization.CultureInfo]::InvariantCulture)

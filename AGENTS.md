@@ -776,3 +776,23 @@ cost package `olive-cuda-cost-20261109-06f78b` is launched with
 operator report without inspecting live output or starting builds, numerical
 studies or heavy audits. The motor scheduling package remains held until that
 report. Golgi's finer-step follow-up is justified but has not launched.
+
+The operator reported the CUDA cost attempt failed. The verified
+`artifacts/olive-cost-startup-review-20261109/review.json` covers 2,201 C:/D: files,
+11 passing tests and six passing CUDA controls in each of three variants. Zero
+timed trials ran: the launcher rejected its schedule because Windows PowerShell
+5.1 nested the deserialized JSON array inside `@(...)`. Assigning it directly
+and checking all 90 entries before build/CUDA setup repairs that source defect;
+the fresh window must record the old/new shape check. No cost result is qualified.
+Preserve the failure, back up this review and retry a new frozen package before
+the prepared motor scheduling comparison. The old timing window is no longer
+pending. Do not let a retry overlap other studies or builds.
+
+The finer Golgi rig in `docs/DNNE_Golgi_Finer_Comparison_2026-11-09.md` is coded
+but not frozen or launched. Fourteen new cases at 0.0009765625 ms retain all
+38 verified old cases and unchanged bounds; the old failed analysis must first
+reproduce exactly from the copied input subset. Mechanism sources and the
+integration/sampling body match the completed comparison. Build and syntax
+checks pass, not runtime tests or analysis regression. Its preparation/hashing,
+tests and simulations must wait until the corrected CUDA timing window is
+operator-reported complete. Preserve the motor scheduling gate and old captures.

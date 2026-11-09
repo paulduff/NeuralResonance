@@ -129,3 +129,29 @@ window. Do not inspect live output, run builds, launch competing experiments or
 perform heavy offline audits until the operator reports completion. The launcher
 reverified the original source and D: backup before launch. No result or speedup
 is claimed by launch; the prepared motor scheduling comparison remains held.
+
+## First attempt: launcher failure before timing
+
+The operator reported `FAILED`. The verified review is
+`artifacts/olive-cost-startup-review-20261109/review.json`: all 2,201 files
+(171,057,067 bytes per copy), frozen source and executed binaries match on C:/D:.
+All 11 focused/manifest tests passed. Each of the three instrumentation variants
+completed six CUDA control checks, reported context disposal and retained zero
+owned buffer bytes. No timed process or measured trial started; no cost analysis
+exists. There is no new speed or profiling-overhead result.
+
+The 90-entry JSON schedule itself exactly matches the declared protocol. The
+launcher wrapped the `ConvertFrom-Json` pipeline in `@(...)`. Windows PowerShell
+5.1 emits an array as one pipeline object, so that wrapper nests all entries
+inside an array of length one. The subsequent count check therefore rejected it.
+The version-dependent behavior is documented in the
+[PowerShell project discussion](https://github.com/PowerShell/PowerShell/issues/3424).
+
+The repair assigns the deserialized array directly. Before building or creating
+a CUDA context, it now checks all 90 population/step/round/mode/path entries and
+their exact rotated order. A saved `schedule-check.json` records the shell
+version and both old-wrapper and corrected shapes; the final analyzer requires
+this check. This regression will execute in the next visible window, not inline.
+The membrane implementation, GPU kernel, input schedule, timing cases and
+numerical bounds are unchanged. Preserve the failed capture and use a fresh
+frozen package for the retry; the motor comparison waits until timing is done.

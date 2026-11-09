@@ -16,6 +16,10 @@ digest=lambda p:sha256(p.read_bytes()).hexdigest().upper()
 def audit(package):
     assert read(package/'cost-protocol.json')==protocol()
     assert read(package/'schedule.json')==schedule()
+    shape=read(package/'schedule-check.json')
+    assert shape['DirectCount']==shape['ValidatedEntries']==90 and shape['ExactDeclaredOrderPassed']
+    if shape['PowerShellVersion'].startswith('5.1.'):
+        assert shape['OriginalWrappedCount']==1 and shape['OriginalFirstItemIsArray']
     root=package/'study';recorded=read(package/'completed-processes.json')
     assert recorded==schedule(),'Incomplete or reordered process schedule.'
     old_device=read(package/'timing-evidence/device.json')

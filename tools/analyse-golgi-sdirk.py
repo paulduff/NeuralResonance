@@ -180,7 +180,7 @@ def candidate(package, row, condition, cap, criteria):
         passed=all(checks.values()),sampledChargeLedgerErrorFc=charge_error,sampledCalciumLedgerErrorMm=max(high_error,low_error))
 
 
-def main(package):
+def audit(package):
     spec=validate_package(package)
     criteria = spec['criteria']
     refs, uncertainty = load_references(package,spec)
@@ -252,6 +252,11 @@ def main(package):
     report=dict(completed=True,caseCount=30,completedCases=sum(r['completed'] for r in rows),cases=rows,
         criteria=criteria,referenceUncertainty=uncertainty,passiveReferenceComparisons=passive_checks,assessment=assessment,
         numericalCriteriaPassed=all(r['passed'] for r in assessment),physiologyQualified=False,activeAxonQualified=False,avatarRecoveryAssessed=False)
+    return report
+
+
+def main(package):
+    report=audit(package)
     with (package/'sdirk-analysis.json').open('x',encoding='utf-8') as stream:
         stream.write(json.dumps(report,indent=2,allow_nan=False)+'\n')
     if not report['numericalCriteriaPassed']:

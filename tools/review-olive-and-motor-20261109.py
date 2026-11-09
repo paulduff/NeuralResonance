@@ -21,7 +21,7 @@ def digest(path):
 def module(name,path):
     spec=importlib.util.spec_from_file_location(name,path); result=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result); return result
-def verify(capture,binaries,revision):
+def verify(capture,binaries,revision,expected_status='DIAGNOSTICS_COMPLETE',expected_exit=0):
     manifest=read(capture/'backup-manifest.json'); backup=Path(manifest['Destination'])
     assert digest(capture/'backup-manifest.json')==digest(backup/'backup-manifest.json')
     names={e['Path'].replace('\\','/') for e in manifest['Files']}; assert len(names)==len(manifest['Files'])
@@ -32,7 +32,7 @@ def verify(capture,binaries,revision):
             path=folder/entry['Path']
             assert io(path).stat().st_size==entry['Bytes'] and digest(path)==entry['Sha256'],str(path)
     config=read(capture/'configuration.json'); status=read(capture/'window-status.json')
-    assert status['Status']=='DIAGNOSTICS_COMPLETE' and status['ExitCode']==0
+    assert status['Status']==expected_status and status['ExitCode']==expected_exit
     assert config['Revision']==status['Revision']==revision
     for entry in config['PackageFiles']: assert digest(capture/entry['Path'])==entry['Sha256']
     for name in binaries:

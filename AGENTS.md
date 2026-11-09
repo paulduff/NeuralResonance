@@ -517,3 +517,13 @@ An asynchronous question asks whether `golgi-sdirk-20261109-440bb8` has finished
 Keep the package held until that report; do not infer completion from elapsed time
 or inspect Golgi live. After a finished report, review that evidence and launch
 the frozen timing runner with `-OtherStudiesFinished`, without live monitoring.
+
+The operator has now reported the full Golgi comparison finished with FAILED.
+Its verified review is `docs/DNNE_Golgi_Coupled_Results_2026-11-09.md`: all thirty
+conditions, 32 focused tests and physical/accounting checks complete, but five
+firing protocols fail absolute state/timing bounds. Counts, refinement and Newton
+sensitivity pass. Timing errors shrink roughly fourfold per timestep halving;
+do not retune physiology or loosen criteria. Preserve the failed capture. Improve
+integration order/error control and assess event interpolation before live use.
+The earlier timing hold is now satisfied by the operator's report; launch the
+already frozen olive timing package and await completion without monitoring.

@@ -823,3 +823,14 @@ comparison `motor-boundary-20261109-a79744` is launched at unchanged revision
 files plus manifest. It is the only pending window. Await operator-reported
 completion without live monitoring. No numerical, neuronal-source or body
 qualification is inferred from launch; finer Golgi remains unlaunched.
+
+The isolated host-workspace candidate is described in
+`docs/DNNE_Olive_CUDA_Host_Workspace_2026-11-09.md`. It reuses private scratch and
+precomputes ordinal identity ranks while retaining dynamic end-time order, fresh
+returned reports, arbitrary subsets, all validation and transactional state.
+The original CUDA implementation/kernel/driver remain unchanged. Both variants
+build; runtime checks are pending. Its accuracy-only PowerShell rig has 11
+focused tests, twelve control groups per variant and six complete recorded-byte
+comparisons per variant. It can overlap motor accuracy work, but no speed claim
+or later timing run is allowed until both operator reports and the accuracy
+review. No live neuronal/body path selects this candidate.

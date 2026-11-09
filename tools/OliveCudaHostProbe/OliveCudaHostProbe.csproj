@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>NeuralResonanceEngine.DNNE.Tests</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OliveHostMode Condition="'$(OliveHostMode)' == ''">reference</OliveHostMode>
+    <DefineConstants Condition="'$(OliveHostMode)' == 'candidate'">$(DefineConstants);HOST_CANDIDATE</DefineConstants>
+  </PropertyGroup>
+  <Target Name="ValidateHostMode" BeforeTargets="CoreCompile">
+    <Error Condition="'$(OliveHostMode)' != 'reference' and '$(OliveHostMode)' != 'candidate'" Text="Unknown OliveHostMode." />
+  </Target>
+  <ItemGroup>
+    <Compile Remove="OlivaryCudaBatch.Host.cs" />
+    <Compile Include="OlivaryCudaBatch.Host.cs" Condition="'$(OliveHostMode)' == 'candidate'" />
+    <Compile Include="../OliveCudaProbe/OlivaryCudaBatch.cs" Link="OlivaryCudaBatch.cs" Condition="'$(OliveHostMode)' == 'reference'" />
+    <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
+    <Compile Include="../CudaInteropProbe/CudaDriverProbe.cs" Link="CudaDriverProbe.cs" />
+    <Compile Include="../OliveBatchProbe/OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />
+    <Compile Include="../OliveBatchProbe/OlivaryCpuBatch.cs" Link="OlivaryCpuBatch.cs" />
+    <Compile Include="../OliveCudaProbe/CudaDriverProbe.Olive.cs" Link="CudaDriverProbe.Olive.cs" />
+    <Compile Include="../OliveCudaProbe/BatchControls.cs" Link="BatchControls.cs" />
+    <Compile Include="../OliveCudaTimingProbe/CudaDriverProbe.Memory.cs" Link="CudaDriverProbe.Memory.cs" />
+  </ItemGroup>
+</Project>

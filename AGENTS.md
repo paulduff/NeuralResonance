@@ -485,3 +485,9 @@ Run only in the visible frozen PowerShell workflow and await operator-reported
 completion. C# builds do not establish successful CUDA compilation or execution.
 No host selects it; measure end-to-end speed only after its numerical outcome,
 and keep receptor/metabolic integration and physiological qualification separate.
+
+The CUDA membrane comparison is launched as `olive-cuda-20261109-cd1fee`,
+revision `f8de323a5ef989219d10be8906f9f46aa13cbdbf`, task
+`DNNE-Olive-Cuda-b2e2befffce3`, with verified initial D: backup. Its result and
+the full Golgi result are pending operator-reported completion. Neither window
+may be monitored live. No CUDA speedup or live backend is qualified by launch.

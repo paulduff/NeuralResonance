@@ -107,6 +107,12 @@ Actual event transport and longer trajectories remain prerequisites for promotio
 
 Both C# probe builds pass with zero warnings/errors; Python and PowerShell syntax
 checks pass. CUDA compilation and execution occur only inside the visible window.
+The first window was launched as `olive-cuda-20261109-cd1fee`, frozen revision
+`f8de323a5ef989219d10be8906f9f46aa13cbdbf`, task
+`DNNE-Olive-Cuda-b2e2befffce3`. Its initial D: backup verified 1,420 files plus
+manifest. The outcome is pending operator-reported completion; no live result
+has been inspected.
+
 Prepare from clean pushed source with `prepare-olive-cuda.py`, verify its initial
 D: backup, then use the frozen `start-olive-cuda-window.ps1`. No live monitoring;
 review only after the operator reports completion. The independently running

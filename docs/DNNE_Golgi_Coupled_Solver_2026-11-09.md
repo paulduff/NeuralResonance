@@ -82,7 +82,8 @@ does not run a six-second candidate comparison or qualify long-run accuracy.
 The full capture and comparison tooling is implemented, and the operator-reported
 component outcome has now passed its review. Its predeclared
 conditions and acceptance limits are in
-`DNNE_Golgi_Coupled_Comparison_2026-11-09.md`. No full comparison has run yet.
+`DNNE_Golgi_Coupled_Comparison_2026-11-09.md`. Its full comparison is now launched
+and awaiting the operator's completion report; no result has been inspected.
 The physical trace export also has assertions within the existing active
 component case; the full window repeats all 32 cases before integration.
 

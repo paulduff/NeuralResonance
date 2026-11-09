@@ -3,9 +3,12 @@
 The completed reference continuation supports a numerical repair of the original
 split solver, not a change to channel biology. The isolated candidate and short
 component checks are described in `DNNE_Golgi_Coupled_Solver_2026-11-09.md`.
-This longer study is implemented and builds, but **has not run**. Its launch
-requires the operator-reported component result and a verified passing review.
-That prerequisite has now passed; see `DNNE_Batch_And_Component_Results_2026-11-09.md`.
+This longer study is implemented and builds. Its component prerequisite passed;
+see `DNNE_Batch_And_Component_Results_2026-11-09.md`. The full comparison was
+launched on 9 November as `golgi-sdirk-20261109-440bb8`, frozen revision
+`fb6c6e1028748d0b965d544ac9858cc0f269db25`, independent visible task
+`DNNE-Golgi-Sdirk-620aa678d3f8`. Its initial D: backup verified 1,481 files plus
+manifest. The result is pending operator-reported completion; do not monitor it.
 
 ## Fixed conditions and evidence
 
@@ -102,7 +105,7 @@ final metadata. No failed or incomplete condition can qualify through averaging.
    operator reports completion. Keep both original and failed evidence.
 
 Release probe and test builds pass with zero warnings/errors. Python syntax and
-PowerShell parsing pass; these are preparation checks, not runtime results.
+PowerShell parsing pass; these are preparation checks, not full-study results.
 Even a successful numerical study would leave native NEURON reproduction,
 active axonal propagation, metabolic calibration, granular-layer integration,
 physiology and Avatar recovery unqualified. No host selects this candidate.

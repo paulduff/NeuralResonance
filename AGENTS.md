@@ -468,3 +468,10 @@ The motor fixed-state diagnosis reproduces 396 states with identical C#/Python
 calcium derivatives, but does not repair or causally explain the original failed
 refinement gate. Preserve that failure and its bounds. All original captures and
 reviews have verified D: copies; none qualifies live neuronal/body function.
+
+The full Golgi comparison is now launched as `golgi-sdirk-20261109-440bb8`,
+revision `fb6c6e1028748d0b965d544ac9858cc0f269db25`, task
+`DNNE-Golgi-Sdirk-620aa678d3f8`, with verified initial D: backup. Await the
+operator's completion report without inspecting its live results. The three
+preceding windows are reviewed; they are no longer pending. CUDA membrane work
+can proceed independently against the passing CPU batch reference.

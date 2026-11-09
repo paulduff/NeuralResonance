@@ -1,10 +1,19 @@
 // Isolated coupled-solver candidate for the unchanged Solinas reference model.
-// Alexander's two-stage second-order SDIRK: gamma = 1 - 1/sqrt(2).
+// Alexander SDIRK2 control or explicit three-stage third-order candidate.
 // No live host, imposed pacemaking, gate clipping or automatic step retry.
+internal enum GolgiSdirkOrder { Second = 2, Third = 3 }
+
 internal sealed class GolgiSdirkCell
 {
     public const string Version = "isolated-golgi-coupled-sdirk2-v1";
+    public const string ThirdOrderVersion = "isolated-golgi-coupled-sdirk3-v1";
     public static readonly double Gamma = 1 - 1 / Math.Sqrt(2);
+    // Middle root of 6*g^3 - 18*g^2 + 9*g - 1 = 0. The tableau
+    // is documented by Alexander (1977) and INL MOOSE LStableDirk3.
+    public const double ThirdGamma = .435866521508458999416019451193556843;
+    public static readonly double ThirdA21 = (1 - ThirdGamma) / 2;
+    public static readonly double ThirdB1 = -1.5 * ThirdGamma * ThirdGamma + 4 * ThirdGamma - .25;
+    public static readonly double ThirdB2 = 1.5 * ThirdGamma * ThirdGamma - 5 * ThirdGamma + 1.25;
     public const double MaximumStepMs = .015625;
     private const double PumpPerMs = 1.3;
     private const double VoltageResidualMv = 1e-10, CalciumResidualUm = 1e-11;
@@ -25,12 +34,24 @@ internal sealed class GolgiSdirkCell
             for (int i = 0; i < Sk.Length; ++i) target.Sk[i] = Sk[i] + factor * (other.Sk[i] - Sk[i]);
             target.High = High + factor * (other.High - High); target.Low = Low + factor * (other.Low - Low);
         }
+        public void ThirdStageBasis(State first, State second, State secondBasis, State target)
+        {
+            // h*f_j = (Y_j - basis_j)/gamma. These combinations are stage
+            // right-hand sides, not accepted biological states; do not clip them.
+            double a = ThirdB1 / ThirdGamma, b = ThirdB2 / ThirdGamma;
+            for (int i = 0; i < V.Length; ++i) target.V[i] = V[i] + a * (first.V[i]-V[i]) + b * (second.V[i]-secondBasis.V[i]);
+            for (int i = 0; i < Gates.Length; ++i) target.Gates[i] = Gates[i] + a * (first.Gates[i]-Gates[i]) + b * (second.Gates[i]-secondBasis.Gates[i]);
+            for (int i = 0; i < Sk.Length; ++i) target.Sk[i] = Sk[i] + a * (first.Sk[i]-Sk[i]) + b * (second.Sk[i]-secondBasis.Sk[i]);
+            target.High = High + a * (first.High-High) + b * (second.High-secondBasis.High);
+            target.Low = Low + a * (first.Low-Low) + b * (second.Low-secondBasis.Low);
+        }
     }
 
     private readonly GolgiCable _cable = new();
     private readonly GolgiDiagnosticBlock _block;
     private readonly double _temperature, _initialOffset, _toleranceScale;
     private readonly State _state = new(), _first = new(), _secondBase = new(), _second = new(), _scratch = new(), _trial = new();
+    private readonly State? _thirdBase, _third;
     private readonly double[] _conductance = new double[135], _source = new double[135], _injection = new double[135];
     private readonly double[] _ledgers = new double[5], _ledgerErrors = new double[5];
     private readonly List<double> _spikes = [];
@@ -54,6 +75,8 @@ internal sealed class GolgiSdirkCell
     public long NonlinearEvaluations { get; private set; }
     public int MaximumNewtonIterations { get; private set; }
     public bool Faulted => _faulted;
+    public GolgiSdirkOrder Order { get; }
+    public string SolverVersion => Order == GolgiSdirkOrder.Second ? Version : ThirdOrderVersion;
     public double[] CopyVoltages() => _state.V.Select(v => v + GolgiChannelKinetics.LeakReversalMv).ToArray();
     public double[] CopyGates() => (double[])_state.Gates.Clone();
     public double[] CopySkOccupancy() => (double[])_state.Sk.Clone();
@@ -70,10 +93,13 @@ internal sealed class GolgiSdirkCell
     }
 
     public GolgiSdirkCell(double temperatureCelsius = 23, double initialVoltageMv = -60,
-        GolgiDiagnosticBlock block = GolgiDiagnosticBlock.None, double toleranceScale = 1)
+        GolgiDiagnosticBlock block = GolgiDiagnosticBlock.None, double toleranceScale = 1,
+        GolgiSdirkOrder order = GolgiSdirkOrder.Second)
     {
-        if (!Enum.IsDefined(block) || !double.IsFinite(toleranceScale) || toleranceScale is < .125 or > 1)
-            throw new ArgumentException("Declare a valid block and a 0.125..1 nonlinear tolerance scale.");
+        if (!Enum.IsDefined(block) || !Enum.IsDefined(order) || !double.IsFinite(toleranceScale) || toleranceScale is < .125 or > 1)
+            throw new ArgumentException("Declare a valid block, SDIRK order and a 0.125..1 nonlinear tolerance scale.");
+        Order = order;
+        if (order == GolgiSdirkOrder.Third) { _thirdBase = new(); _third = new(); }
         var channels = new GolgiChannelKinetics(initialVoltageMv, temperatureCelsius: temperatureCelsius);
         _temperature = temperatureCelsius; _block = block; _toleranceScale = toleranceScale;
         _initialOffset = initialVoltageMv - GolgiChannelKinetics.LeakReversalMv;
@@ -92,33 +118,44 @@ internal sealed class GolgiSdirkCell
         try
         {
             _injection[0] = somaCurrentPa; _injection[_cable.ElectrodeIndex] = electrodeCurrentPa;
-            double alpha = Gamma * elapsedMs;
+            bool third = Order == GolgiSdirkOrder.Third;
+            double alpha = (third ? ThirdGamma : Gamma) * elapsedMs;
             SolveStage(_state, alpha, _state, _first);
-            _state.Extrapolate(_first, (1 - Gamma) / Gamma, _secondBase);
+            _state.Extrapolate(_first, third ? ThirdA21 / ThirdGamma : (1 - Gamma) / Gamma, _secondBase);
             SolveStage(_secondBase, alpha, _first, _second);
             // Accounting uses actual stage RHSs and the RK weights. It is not
             // reconstructed from the accepted calcium or voltage endpoint.
-            Span<double> f1 = stackalloc double[5], f2 = stackalloc double[5];
+            Span<double> f1 = stackalloc double[5], f2 = stackalloc double[5], f3 = stackalloc double[5];
             AuditStage(_state, _first, alpha, f1); AuditStage(_secondBase, _second, alpha, f2);
+            State accepted = _second;
+            if (third)
+            {
+                _state.ThirdStageBasis(_first, _second, _secondBase, _thirdBase!);
+                SolveStage(_thirdBase!, alpha, _second, _third!);
+                AuditStage(_thirdBase!, _third!, alpha, f3);
+                accepted = _third!; // Stiff accuracy: accepted state is the last solved stage.
+            }
             Span<double> nextLedger = stackalloc double[5], nextErrors = stackalloc double[5];
             for (int i = 0; i < 5; ++i)
             {
-                double increment = elapsedMs * ((1 - Gamma) * f1[i] + Gamma * f2[i]) - _ledgerErrors[i];
+                double increment = (third
+                    ? elapsedMs * (ThirdB1 * f1[i] + ThirdB2 * f2[i] + ThirdGamma * f3[i])
+                    : elapsedMs * ((1 - Gamma) * f1[i] + Gamma * f2[i])) - _ledgerErrors[i];
                 nextLedger[i] = _ledgers[i] + increment;
                 nextErrors[i] = (nextLedger[i] - _ledgers[i]) - increment;
                 if (!double.IsFinite(nextLedger[i]) || !double.IsFinite(nextErrors[i])) throw new InvalidOperationException("Non-finite accounting.");
             }
             double charge = 0;
-            for (int i = 0; i < 135; ++i) charge += _cable.Node(i).CapacitancePf * (_second.V[i] - _initialOffset);
+            for (int i = 0; i < 135; ++i) charge += _cable.Node(i).CapacitancePf * (accepted.V[i] - _initialOffset);
             double calciumError = Math.Max(
-                Math.Abs(_second.High - GolgiChannelKinetics.RestingCalciumMm - nextLedger[1] + nextLedger[2]),
-                Math.Abs(_second.Low - GolgiChannelKinetics.RestingCalciumMm - nextLedger[3] + nextLedger[4]));
-            double previousSoma = SomaVoltageMv, nextSoma = _second.V[0] + GolgiChannelKinetics.LeakReversalMv;
+                Math.Abs(accepted.High - GolgiChannelKinetics.RestingCalciumMm - nextLedger[1] + nextLedger[2]),
+                Math.Abs(accepted.Low - GolgiChannelKinetics.RestingCalciumMm - nextLedger[3] + nextLedger[4]));
+            double previousSoma = SomaVoltageMv, nextSoma = accepted.V[0] + GolgiChannelKinetics.LeakReversalMv;
             if (previousSoma < GolgiReferenceCell.SpikeThresholdMv && nextSoma >= GolgiReferenceCell.SpikeThresholdMv)
                 _spikes.Add(TimeMs + elapsedMs * (GolgiReferenceCell.SpikeThresholdMv - previousSoma) / (nextSoma - previousSoma));
             MaximumChargeBalanceErrorFc = Math.Max(MaximumChargeBalanceErrorFc, Math.Abs(charge - nextLedger[0]));
             MaximumCalciumBalanceErrorMm = Math.Max(MaximumCalciumBalanceErrorMm, calciumError);
-            nextLedger.CopyTo(_ledgers); nextErrors.CopyTo(_ledgerErrors); _second.CopyTo(_state); TimeMs += elapsedMs;
+            nextLedger.CopyTo(_ledgers); nextErrors.CopyTo(_ledgerErrors); accepted.CopyTo(_state); TimeMs += elapsedMs;
         }
         catch { _faulted = true; throw; }
     }

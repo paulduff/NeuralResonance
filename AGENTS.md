@@ -587,3 +587,13 @@ new fixture; do not claim dense whole-cortex qualification. All C:/D: bytes and
 binaries verify. No window is pending. Live schema 4, biochemical calibration,
 the full unit suite and Avatar recovery remain open. Golgi order/timing repair is
 the next numerical task; its original failed bounds remain unchanged.
+
+The explicit third-order Golgi candidate is described in
+`docs/DNNE_Golgi_Third_Order_2026-11-09.md`. The common coupled stage solve and
+biological equations are unchanged; all three stages contribute to independent
+ledgers. Second order remains the default control. Do not clip negative stage
+right-hand sides, bypass physical-domain failures, loosen the old full-comparison
+bounds, or infer event-interpolation order from state order. The 43-case visible
+component window must be reported and reviewed before a long comparison. Short
+self-refinement and coefficient order conditions are not physiological or Avatar
+qualification. No live host selects this candidate.

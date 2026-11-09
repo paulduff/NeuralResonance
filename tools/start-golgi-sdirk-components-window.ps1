@@ -3,9 +3,19 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+$solverOrder=2
+if($configuration.SolverOrder -eq 3){$solverOrder=3}
+if(-not $configuration.NoLiveMonitoring -or ($solverOrder -eq 3 -and $configuration.ExpectedTestCases -ne 43) -or ($solverOrder -eq 2 -and $configuration.ExpectedTestCases -ne 32)){throw 'Unexpected component configuration.'}
 if(-not $InWindow){
  if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
- $taskName='DNNE-Golgi-Sdirk-Components-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $manifestPath=Join-Path $package 'backup-manifest.json'
+ $manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+ if($manifest.Destination -ne $configuration.BackupDestination){throw 'Initial backup destination differs.'}
+ if((Get-FileHash -LiteralPath $manifestPath).Hash -ne (Get-FileHash -LiteralPath (Join-Path $configuration.BackupDestination 'backup-manifest.json')).Hash){throw 'Initial backup manifests differ.'}
+ foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
+  if((Get-FileHash -LiteralPath (Join-Path $directory $entry.Path)).Hash -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
+ }}
+ $taskName='DNNE-Golgi-Sdirk'+$solverOrder+'-Components-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -37,12 +47,12 @@ function Capture-Binaries([string]$Assembly,[string]$Name){
  return $entries
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
- GpuExecuted=$false;SpeedupMeasured=$false;IndependentSolverQualified=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
+ SolverOrder=$solverOrder;GpuExecuted=$false;SpeedupMeasured=$false;IndependentSolverQualified=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE Golgi coupled solver - component checks'
+ $Host.UI.RawUI.WindowTitle='DNNE Golgi SDIRK'+$solverOrder+' - component checks'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'Fresh isolated fixtures. No live DNNE, world or old save is opened. Report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -64,6 +74,9 @@ try {
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
  foreach($class in $configuration.TestClasses){if(-not @($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count){throw ('Missing test class: '+$class)}}
+ if($configuration.TestClassCounts){foreach($class in $configuration.TestClassCounts.PSObject.Properties){
+  if(@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class.Name+'.*')}).Count -ne $class.Value){throw ('Incomplete test class: '+$class.Name)}
+ }}
  $status['PassedFocusedTests']=$results.Count
  Assert-Package
  foreach($entry in @($testBinaries)){if((Get-FileHash -LiteralPath $entry.Path).Hash -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
@@ -80,5 +93,5 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the Golgi coupled-solver component outcome. Component checks do not qualify long-run spike timing, physiology or Avatar recovery.'
+ Write-Host ('Tell Orion the Golgi SDIRK'+$solverOrder+' component outcome. Component checks do not qualify long-run spike timing, physiology or Avatar recovery.')
 }

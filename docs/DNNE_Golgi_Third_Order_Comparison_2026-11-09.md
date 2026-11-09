@@ -92,3 +92,58 @@ All 1,524 initial package files plus manifest have a verified D: copy at
 The independent visible PowerShell window is pending operator-reported completion.
 Do not inspect its live outputs. CUDA cost profiling may be prepared independently,
 but do not run a timing benchmark while this comparison competes for CPU resources.
+
+## Reported failure and verified outcome
+
+The operator reported `FAILED`. The window completed all 38 conditions and all
+43 focused tests; analysis rejected the numerical result. The offline review at
+`artifacts/golgi-sdirk3-review-20261109/review.json` verifies all 2,114 files
+(1,964,554,387 bytes per copy) on C: and D:, frozen source, executed binaries and
+TRX coverage. Recomputing from saved arrays reproduces the original analysis
+exactly, including the failure. No ODE was solved and no bound was changed.
+
+The first review attempt imported SciPy before setting the frozen analyzer's
+single-thread numerical-library environment; exact report equality failed.
+The reviewer now sets those variables before numerical imports, matching the
+frozen analyzer. The repeated review passes exact equality. No original capture
+or reference array was modified to obtain that result.
+
+All cases pass physical domains, stage/accounting checks and the declared
+refinement checks. The five firing protocols still fail voltage, gate and
+calcium absolute accuracy at 0.001953125 ms. Their ordinary finest comparisons
+against the preserved tighter BDF reference are:
+
+| Protocol | Voltage error (mV) | Gate error | Calcium error (mM) | Crossing error (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Quiet | 0.210635 | 0.00263938 | 1.59777e-6 | 0.000740411 |
+| Depolarize | 0.253744 | 0.00266363 | 1.87226e-6 | 0.000846024 |
+| Hyperpolarize | 0.0937742 | 0.000972978 | 8.13527e-7 | 0.000371219 |
+| Without HCN | 0.251334 | 0.00257976 | 1.79106e-6 | 0.000801098 |
+| Without SK | 0.109158 | 0.00129466 | 7.00479e-7 | 0.000360253 |
+| Unchanged bound | 0.05 | 0.0005 | 5e-7 | 0.01 |
+
+Crossing counts match and finest crossing-time and SK-occupancy errors pass.
+Tightening nonlinear tolerances eightfold also passes the sensitivity bound;
+the largest resulting voltage change is approximately 3.24e-6 mV. The no-NaP
+protocol and both passive protocols pass overall. The old 0.00390625 ms resolution
+still fails all five firing protocols; the extra resolution has not qualified
+the candidate either.
+
+For the last timestep halving, firing-protocol maximum voltage errors shrink
+by 7.87–7.98 times and crossing errors by 7.83–7.88 times. This is evidence of
+third-order behavior in these resolved full-trajectory errors, unlike the earlier
+floor-dominated component checks. It is not a universal order proof, a waveform
+phase-alignment exemption or permission to loosen limits.
+
+A justified next numerical experiment is one further halving to 0.0009765625 ms,
+retaining both ordinary and tighter nonlinear tolerances, unchanged references,
+full-state comparisons and all existing bounds. Continuing the measured scaling
+would predict approximately 0.032 mV worst voltage error, but that is an
+extrapolation, not a passing result. Preserve/reuse the verified coarse traces
+for the refinement comparison rather than silently replacing them. This follow-up
+is not launched. The prepared CUDA cost window runs first without competing work;
+the existing motor scheduling comparison still follows that timing report.
+
+The completed Golgi comparison is no longer pending. No live solver selection,
+physiological calibration, circuit qualification or Avatar recovery follows from
+this failed result.

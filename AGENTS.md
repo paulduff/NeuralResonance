@@ -742,3 +742,27 @@ The frozen CUDA cost package `olive-cuda-cost-20261109-06f78b` must wait for bot
 operator reports; the motor scheduling package `motor-boundary-20261109-a79744`
 still follows the reported completion of that timing run. No new transport,
 afferent physiology or Avatar recovery result is claimed by launch.
+
+The operator has now reported both windows complete. Physical-sample transport
+passed all 23 cases; `artifacts/physical-sample-review-20261109/review.json`
+verifies all 1,844 C:/D: files and executed binaries. No neuronal model ran.
+Golgi SDIRK3 completed 38 conditions and 43 tests but still fails voltage/gate/
+calcium accuracy in all five firing protocols. Its 2,114-file C:/D: review is
+`artifacts/golgi-sdirk3-review-20261109/review.json`; saved analysis reproduces
+exactly with unchanged bounds. Set numerical thread variables before importing
+SciPy/NumPy in offline reviews. Finest voltage errors are 0.0938–0.2537 mV
+against 0.05 mV; last-halving reductions near eightfold support one further
+halving, not a qualification or relaxed limit. Both windows are no longer pending.
+Finish preserving these reviews, then launch the existing frozen CUDA cost
+package with `-OtherStudiesFinished`; keep builds/heavy work out of its timing.
+The prepared motor scheduling comparison still follows that operator report.
+
+The pinned spindle-source review is `docs/DNNE_Spindle_Source_Review_2026-11-09.md`.
+Original author code at `da0ed89078a948167b4e2b511480787ddb681892` and its license
+are retained unmodified in `artifacts/spindle-source-20261109`, with verified D:
+backup. Static inspection found forward-difference timing, cached detached-pool
+and passive-stress/slack-root issues, and a threshold/reset example rather than
+the paper's conductance-based passive membrane. No model was executed or adopted.
+Do not silently repair the reference or feed extrafusal Avatar force directly
+as intrafusal stress/current. Establish reproducible mechanics and a sourced
+afferent membrane, then qualify their causal connection to physical samples.

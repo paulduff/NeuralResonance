@@ -108,3 +108,13 @@ revision `0cff80e63bf0fea24626c1fc1f3a84e46a7188d4`, task
 verified on D:. No live result inspection follows launch. This window and
 `golgi-sdirk3-20261109-210c3d` now await operator completion reports; the prepared
 CUDA cost and motor scheduling packages remain held in their documented order.
+
+## Reported completion and verified review
+
+The operator reported completion. All 23 focused/manifest cases passed. The
+review at `artifacts/physical-sample-review-20261109/review.json` verifies the
+TRX class counts, frozen package and executed binaries, plus all 1,844 files
+(91,003,906 bytes per copy) on C: and D:. It establishes the tested sample-clock,
+immutability, bounded delivery and replay behavior. It does not establish a
+physically integrated producer, afferent firing, a full unit-suite pass or Avatar
+recovery. This window is no longer pending.

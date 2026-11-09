@@ -959,3 +959,11 @@ no live Unity producer, neuronal consumer, editor activation or saved-state
 conversion. Before integration, physical capture must honor every declared step
 and backpressure; receptor dynamics and afferent events need independent gates.
 Existing mechanics, legacy sensory behavior and paused startup remain intact.
+
+The operator subsequently reported the transport window complete. Its 23 tests,
+frozen source/binaries and 1,844-file C:/D: capture are verified. This qualifies
+the tested isolated sample/replay behavior only. The upstream spindle inspection
+in `DNNE_Spindle_Source_Review_2026-11-09.md` found concrete causal-time,
+population-bookkeeping and slack-root concerns in the pinned author code; its
+threshold/reset example is not the paper's conductance-based passive afferent.
+No live source or muscle-force substitution is adopted on that evidence.

@@ -115,3 +115,17 @@ The operator has now reported the clock window complete and its saved evidence
 has been reviewed. Only Golgi's completion report remains outstanding. The later
 motor neuronal comparison is prepared but held until this cost study finishes,
 so it will not compete with the benchmark.
+
+## Launched after completed-study reviews
+
+The operator reported both Golgi SDIRK3 and the subsequently launched physical
+sample transport checks complete. Both C:/D: captures have now been verified;
+Golgi remains numerically unqualified and the 23 sample-transport checks pass.
+Their offline reviews and source inspection finished before starting this timing.
+
+The existing frozen cost package was launched with `-OtherStudiesFinished` as
+independent visible task `DNNE-Olive-Cost-101087822647`. It is the only pending
+window. Do not inspect live output, run builds, launch competing experiments or
+perform heavy offline audits until the operator reports completion. The launcher
+reverified the original source and D: backup before launch. No result or speedup
+is claimed by launch; the prepared motor scheduling comparison remains held.

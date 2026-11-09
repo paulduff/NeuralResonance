@@ -766,3 +766,13 @@ the paper's conductance-based passive membrane. No model was executed or adopted
 Do not silently repair the reference or feed extrafusal Avatar force directly
 as intrafusal stress/current. Establish reproducible mechanics and a sourced
 afferent membrane, then qualify their causal connection to physical samples.
+
+Both completed-study reviews and the spindle source snapshot now have verified
+D: backups, and source/documentation are committed and pushed. The frozen CUDA
+cost package `olive-cuda-cost-20261109-06f78b` is launched with
+`-OtherStudiesFinished`, task `DNNE-Olive-Cost-101087822647`, source revision
+`f8561578320143a30f0fd0a95c9c914d72e711b0`. The launcher reverified its initial
+1,441 files plus manifest on C:/D:. This is the only pending window. Await the
+operator report without inspecting live output or starting builds, numerical
+studies or heavy audits. The motor scheduling package remains held until that
+report. Golgi's finer-step follow-up is justified but has not launched.

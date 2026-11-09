@@ -77,3 +77,8 @@ will not qualify the six-second spike timing, physiological calibration, granula
 layer circuit, full unit suite or Avatar recovery. Review this outcome before
 preparing the full third-order comparison against the unchanged saved references.
 Avatar, Unity and editor behavior and all old brain saves remain unchanged.
+
+The component window is now launched as `golgi-sdirk3-components-20261109-8660b2`,
+revision `70c2e48c914dd55d5737a0f9420f71a0d44646a9`, task
+`DNNE-Golgi-Sdirk3-Components-e4fe068fba0d`. The initial 1,420 files plus manifest
+have a verified D: copy. Await operator-reported completion without monitoring.

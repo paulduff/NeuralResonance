@@ -597,3 +597,10 @@ bounds, or infer event-interpolation order from state order. The 43-case visible
 component window must be reported and reviewed before a long comparison. Short
 self-refinement and coefficient order conditions are not physiological or Avatar
 qualification. No live host selects this candidate.
+
+The third-order component window is launched as
+`golgi-sdirk3-components-20261109-8660b2`, revision
+`70c2e48c914dd55d5737a0f9420f71a0d44646a9`, task
+`DNNE-Golgi-Sdirk3-Components-e4fe068fba0d`, with 1,420 initial files verified on D:.
+It is the only pending window. The cortical integration outcome is reviewed;
+await the new component report without inspecting live logs or status.

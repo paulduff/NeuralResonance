@@ -380,6 +380,7 @@
     <Project Path="Structures/FastigialNucleus/NeuralResonanceEngine.Structures.FastigialNucleus.csproj" />
   </Folder>
   <Folder Name="/Tools/">
+    <Project Path="tools/CudaInteropProbe/CudaInteropProbe.csproj" />
     <Project Path="tools/DnneComputeProbe/DnneComputeProbe.csproj" />
     <Project Path="tools/AvatarMechanicsProbe/AvatarMechanicsProbe.csproj" />
     <Project Path="tools/GolgiChannelProbe/GolgiChannelProbe.csproj" />

@@ -1,6 +1,7 @@
 """Freeze the isolated CPU batch comparison, without running any calculation."""
 from datetime import datetime, timezone
 from hashlib import sha256
+from io import BytesIO
 import json
 from pathlib import Path
 import shutil
@@ -20,8 +21,10 @@ read=lambda p:json.loads(p.read_text(encoding='utf-8-sig'))
 config=read(baseline/'configuration.json')
 reference_hash=next(e['Sha256'] for e in config['PackageFiles'] if e['Path']=='source/'+reference.as_posix())
 assert sha256((baseline/'source'/reference).read_bytes()).hexdigest().upper()==reference_hash
-# Git exports LF; compare tracked source exactly as it will appear in the archive.
-current_source=subprocess.check_output(['git','show','HEAD:'+reference.as_posix()],cwd=root)
+# Compare archive bytes, not raw Git blob bytes: Windows archive conversion can
+# emit CRLF while `git show` returns LF. Keep the captured byte hash gate exact.
+reference_archive=subprocess.check_output(['git','archive','--format=zip','HEAD',reference.as_posix()],cwd=root)
+with ZipFile(BytesIO(reference_archive)) as archive:current_source=archive.read(reference.as_posix())
 assert sha256(current_source).hexdigest().upper()==reference_hash,'Original reference changed.'
 stamp=datetime.now(timezone.utc).strftime('%Y%m%d');package=root/'artifacts'/('olive-batch-'+stamp+'-'+uuid.uuid4().hex[:6])
 backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
@@ -30,6 +33,7 @@ subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.z
 with ZipFile(package/'source.zip') as archive:
     assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
     archive.extractall(package/'source')
+assert sha256((package/'source'/reference).read_bytes()).hexdigest().upper()==reference_hash
 shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
 files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper()) for p in sorted(package.rglob('*')) if p.is_file()]
 dotnet=shutil.which('dotnet');assert dotnet

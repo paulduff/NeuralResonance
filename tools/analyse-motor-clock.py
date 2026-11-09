@@ -9,7 +9,7 @@ import sys
 
 read=lambda p:json.loads(p.read_text(encoding='utf-8-sig'))
 
-def audit(package):
+def audit(package,*,replay_arithmetic=True):
     root=package/'study';protocol=read(root/'protocol.json');result=read(root/'results.json')
     assert protocol==dict(version='motor-clock-arithmetic-v1',scalePower=80,durationMs=6000,sampleMs=.1,
         stepsMs=[.0125,.00625,.003125],modes=['original','endpoint-difference'],boundariesMs=[1000,1002,1800,2200,3000,6000],
@@ -31,7 +31,7 @@ def audit(package):
                 assert t==i*.1 and Fraction.from_float(t)*scale==clock and units-clock==error
                 # Independently decode each supplied Python binary64 duration
                 # through its integer ratio, rather than reusing C#'s bit shifts.
-                while replay_time<t:
+                while replay_arithmetic and replay_time<t:
                     if mode=='original':dt=min(step,t-replay_time)
                     else:
                         end=min(t,replay_time+step)
@@ -42,7 +42,8 @@ def audit(package):
                     n,d=dt.as_integer_ratio();assert n*scale%d==0
                     du=n*scale//d;before=Fraction.from_float(replay_time)*scale;after=Fraction.from_float(next_time)*scale
                     replay_units+=du;replay_calls+=1;replay_rounded+=int(after-before!=du);replay_time=next_time
-                assert (units,calls,rounded)==(replay_units,replay_calls,replay_rounded),'Independent schedule arithmetic differs.'
+                if replay_arithmetic:
+                    assert (units,calls,rounded)==(replay_units,replay_calls,replay_rounded),'Independent schedule arithmetic differs.'
                 assert calls>=last_calls and last_rounded<=rounded<=calls and units>=last_units
                 if i:assert calls>last_calls and units>last_units
                 if mode=='endpoint-difference':assert error==0 and rounded==0

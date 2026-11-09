@@ -665,3 +665,23 @@ with 1,434 initial files plus manifest verified on D:. There are now two pending
 windows: this clock diagnosis and `golgi-sdirk3-20261109-210c3d`. Do not inspect
 either live output. The frozen `olive-cuda-cost-20261109-06f78b` remains held until
 both completion reports arrive. Neither launch qualifies a neuronal/body repair.
+
+The operator has now reported the motor-clock window complete. The verified
+`artifacts/motor-clock-review-20261109/review.json` covers all 1,565 C:/D: files
+and recomputes saved-row analysis. The original schedule's maximum discrepancy
+reaches 2.0177e-7 ms (about 0.2 ns); endpoint differences conserve represented
+elapsed time exactly at every sample. This confirms the scheduling discrepancy,
+not its causal contribution to calcium errors or Avatar behaviour. Only Golgi
+remains pending; CUDA cost timing is still held for that report. Prepare a causal
+neuronal comparison with unchanged equations, controls and original bounds.
+
+The causal motor scheduling rig is coded in
+`docs/DNNE_Motor_Boundary_Comparison_2026-11-09.md`: thirty freshly rerun original
+controls must reproduce the old state bytes/results, followed by thirty conditions
+using the qualified endpoint-difference helper. The cell/channel equations and
+all original bounds remain unchanged; exact elapsed duration is checked during
+actual cell integration. The analyzer reproduces all old scenario analyses exactly
+from saved arrays, including failures. Build/syntax checks pass, not runtime tests.
+Freeze only with the verified clock review. Hold launch until the prepared CUDA
+cost window has been reported finished, then use `-CostStudyFinished`. Golgi is
+still the only pending window; do not inspect its live output.

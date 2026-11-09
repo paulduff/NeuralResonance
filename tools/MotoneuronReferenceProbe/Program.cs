@@ -19,6 +19,12 @@ if (args.Length == 3 && args[0] == "--active")
     return;
 }
 
+if (args.Length == 3 && args[0] == "--active-boundary")
+{
+    ActiveStudy.Run(args[1], args[2], endpointDurations: true);
+    return;
+}
+
 if (args.Length != 1 || !Path.IsPathFullyQualified(args[0]) || Directory.Exists(args[0]))
     throw new ArgumentException("Supply a new absolute output directory; old saves are never loaded.");
 Directory.CreateDirectory(args[0]);

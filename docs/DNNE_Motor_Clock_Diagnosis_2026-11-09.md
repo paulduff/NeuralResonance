@@ -75,3 +75,29 @@ revision `167ddd6203ec362b46e713a6b1f6efcbfa145349`, task
 verified D: copy. Await the operator's completion report without inspecting live
 output. Both this clock window and `golgi-sdirk3-20261109-210c3d` are pending;
 the prepared CUDA timing window must wait until both have been reported complete.
+
+## Reported outcome
+
+The operator reported this clock window complete. It finished at
+2026-11-09T13:18:27.7659154Z. The review verifies all 1,565 files / 93,266,746 bytes
+in each C:/D: copy, packaged source, executed binaries, and the exact saved-row
+analysis. The window performed the independent C#/Python schedule reconstruction;
+review rechecks the saved records without running those schedules again.
+`artifacts/motor-clock-review-20261109/review.json` has a verified D: copy too.
+
+| Maximum requested step, ms | Original maximum elapsed-time mismatch, ms | Endpoint-difference mismatch, ms |
+| --- | ---: | ---: |
+| 0.0125 | 5.295148843e-8 | 0 |
+| 0.00625 | 6.165117643e-8 | 0 |
+| 0.003125 | 2.017669439e-7 | 0 |
+
+All original maxima occur at 6,000 ms; the finest-step mismatch is about 0.2 ns.
+Errors change sign at earlier boundaries and do not decrease monotonically with
+maximum step. Every one of the 60,001 samples per endpoint-difference case has
+zero exact-unit discrepancy. This confirms a run-harness timing defect at a very
+small scale. It does not establish that this defect caused the calcium failures,
+and it does not explain macroscopic Avatar behaviour. The proposed causal test
+must retain the same equations, input segments, original controls and bounds.
+
+The clock window is now reviewed and no longer pending. Golgi remains pending
+its own completion report; the prepared CUDA cost benchmark remains held.

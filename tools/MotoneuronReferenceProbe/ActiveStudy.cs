@@ -10,14 +10,15 @@ internal static class ActiveStudy
     internal sealed record Protocol(string Version, double DurationMs, double SampleMs, double InitialVoltageMv,
         double[] StepsMs, double ThresholdMv, string SourceRevision, string Cell, string StateAccumulation, Case[] Cases);
 
-    public static void Run(string input, string output)
+    public static void Run(string input, string output, bool endpointDurations = false)
     {
         if (!Path.IsPathFullyQualified(input) || !Path.IsPathFullyQualified(output) || Directory.Exists(output))
             throw new ArgumentException("Supply an absolute input file and new absolute output directory.");
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
         byte[] raw = File.ReadAllBytes(input);
         var spec = JsonSerializer.Deserialize<Protocol>(raw, json) ?? throw new ArgumentException("Missing active protocol.");
-        if (spec.Version != "motoneuron-active-comparison-v2" || spec.StateAccumulation != "Compensated" ||
+        string requiredVersion = endpointDurations ? "motoneuron-boundary-comparison-v1" : "motoneuron-active-comparison-v2";
+        if (spec.Version != requiredVersion || spec.StateAccumulation != "Compensated" ||
             spec.DurationMs != 6000 || spec.SampleMs != .1 ||
             spec.InitialVoltageMv != -65 || spec.ThresholdMv != MotoneuronReferenceCell.SpikeThresholdMv ||
             spec.SourceRevision != "0d11354490fad5fcd940d016a8d69b000693fd81" || spec.Cell != "FivecomptcMG_0" ||
@@ -48,6 +49,7 @@ internal static class ActiveStudy
         var geometry = new MotoneuronReferenceCell(parameters, accumulation: MotoneuronAccumulation.Compensated);
         Save("protocol.json", new { inputSha256 = Convert.ToHexString(SHA256.HashData(raw)), specification = spec, parameters,
             version = geometry.IntegrationVersion, stateAccumulation = geometry.Accumulation.ToString(),
+            clockScheduling = endpointDurations ? "endpoint-difference" : "original", exactTimeUnitPower = 80,
             areasUm2 = geometry.CopyAreasUm2(), capacitancesPf = geometry.CopyCapacitancesPf(),
             couplingNs = geometry.CopyCouplingNs(), nativeNeuronExecuted = false, liveBrainAccessed = false });
         var cases = new List<object>(); int successful = 0;
@@ -63,7 +65,7 @@ internal static class ActiveStudy
                 using var trace = new StreamWriter(Path.Combine(output, key + ".csv"));
                 trace.WriteLine("timeMs," + string.Join(',', Enumerable.Range(0, 30).Select(i => "state" + i)));
                 void Sample() => trace.WriteLine(string.Join(',', new[] { cell.TimeMs }.Concat(cell.CopyState()).Select(x => x.ToString("R", CultureInfo.InvariantCulture))));
-                int segment = 0; Sample();
+                int segment = 0; long calls = 0; Int128 suppliedUnits = 0; Sample();
                 for (int sample = 1; sample <= 60000; ++sample)
                 {
                     double until = sample * spec.SampleMs;
@@ -71,12 +73,19 @@ internal static class ActiveStudy
                     {
                         while (segment + 1 < scenario.Segments.Length && cell.TimeMs >= scenario.Segments[segment].UntilMs) ++segment;
                         var command = scenario.Segments[segment];
-                        double dt = Math.Min(step, Math.Min(until, command.UntilMs) - cell.TimeMs);
+                        double dt = endpointDurations
+                            ? ClockAudit.BoundaryDuration(cell.TimeMs, Math.Min(until, command.UntilMs), step)
+                            : Math.Min(step, Math.Min(until, command.UntilMs) - cell.TimeMs);
                         cell.Advance(dt, command.SomaCurrentPa, command.DendriteExcitatoryNs, command.DendriteInhibitoryNs);
+                        suppliedUnits = checked(suppliedUnits + ClockAudit.Units(dt)); ++calls;
+                        if (endpointDurations && suppliedUnits != ClockAudit.Units(cell.TimeMs))
+                            throw new InvalidOperationException("Integrated duration differs from the represented clock.");
                     }
                     Sample();
                 }
                 cases.Add(new { key, scenario = scenario.Key, stepMs = step, completed = true, cell.TimeMs,
+                    calls, suppliedUnits = suppliedUnits.ToString(CultureInfo.InvariantCulture),
+                    elapsedTimeErrorUnits = (suppliedUnits - ClockAudit.Units(cell.TimeMs)).ToString(CultureInfo.InvariantCulture),
                     cell.MaximumCalciumLedgerErrorMm, cell.MaximumChargeLedgerErrorFc, crossingsMs = cell.CopyCrossings() });
                 ++successful;
             }

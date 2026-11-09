@@ -9,7 +9,7 @@ internal static class ClockAudit
     private const int ScalePower=80;
     private static readonly double[] Boundaries=[1000,1002,1800,2200,3000,6000];
 
-    private static Int128 Units(double value)
+    internal static Int128 Units(double value)
     {
         if(!double.IsFinite(value) || value<0 || value>6000)throw new ArgumentOutOfRangeException(nameof(value));
         ulong bits=(ulong)BitConverter.DoubleToInt64Bits(value);
@@ -23,7 +23,7 @@ internal static class ClockAudit
         return (Int128)(mantissa>>(-shift));
     }
 
-    private static double BoundaryDuration(double from,double until,double maximum)
+    internal static double BoundaryDuration(double from,double until,double maximum)
     {
         double end=Math.Min(until,from+maximum);
         // Rounding the absolute endpoint upward can otherwise exceed the

@@ -804,3 +804,22 @@ on D: and rechecked before launch. This is the only pending window. Await its
 operator-reported completion without live monitoring or competing builds/heavy
 work. Neither schedule-regression success nor timing results are established
 yet. Motor scheduling remains prepared/held; finer Golgi remains coded/unfrozen.
+
+The operator has now reported the corrected CUDA cost window complete. Its review
+is `docs/DNNE_Olive_CUDA_Cost_Results_2026-11-09.md`: 11 tests, 18 CUDA control
+groups and all 180 trajectories pass; saved analysis reproduces exactly and all
+3,319 C:/D: files verify. Profiling median differences stay below 1%. GPU execution/
+synchronization dominates; packing/report processing matters in large batches,
+while transfer calls are a small share. This does not qualify whole-brain speed
+or physiology. Keep CPU defaults. Back up the review and launch the already frozen
+motor-boundary package with `-CostStudyFinished`; no CUDA study remains pending.
+The finer Golgi rig remains unlaunched and the somatic motor-unit circuit still
+requires a passing, reported motor-boundary outcome. Preserve original failures.
+
+The CUDA cost review now has a verified D: backup. The frozen motor-boundary
+comparison `motor-boundary-20261109-a79744` is launched at unchanged revision
+`2465fdb8026768f2348e7bda53a4375ff203eb28`, task
+`DNNE-Motor-Boundary-c3550f7fed43`, after rechecking its 1,480 initial C:/D:
+files plus manifest. It is the only pending window. Await operator-reported
+completion without live monitoring. No numerical, neuronal-source or body
+qualification is inferred from launch; finer Golgi remains unlaunched.

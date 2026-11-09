@@ -163,3 +163,14 @@ verified on D: and rechecked by the launcher. This is the only pending window.
 Await the operator report without checking live results or doing competing builds,
 hashing, numerical analysis or experiments. The schedule regression and cost
 results remain prospective until that completed capture is reviewed.
+
+## Corrected retry reviewed
+
+The operator subsequently reported `DIAGNOSTICS_COMPLETE`. The full saved-byte
+review is `DNNE_Olive_CUDA_Cost_Results_2026-11-09.md`: all 11 tests, 18 CUDA
+control groups, 180 trajectories, exact cross-mode outputs and original CPU
+bounds pass, with 3,319 files verified in each C:/D: copy. Saved analysis reproduces
+exactly. Profiling changes median elapsed time by less than 1% in these cases.
+GPU execution/synchronization dominates; host packing/report processing is also
+substantial in large batches. Transfer calls are a small share. The timing hold
+is over; no live CUDA backend or physiological qualification follows from it.

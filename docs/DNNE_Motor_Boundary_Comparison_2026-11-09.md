@@ -88,3 +88,18 @@ have a verified D: copy. It has **not launched**. The existing cost package
 `olive-cuda-cost-20261109-06f78b` must run after the Golgi completion report, then
 be reported finished before this motor comparison starts. No result is inferred
 from preparation, elapsed time or the completed clock-only diagnostic.
+
+## Launched after the corrected CUDA cost review
+
+The operator reported `olive-cuda-cost-20261109-fedff9` complete. Its full C:/D:
+and saved-analysis review passed; the separate review also has a verified D:
+backup. The timing hold is therefore satisfied.
+
+The existing `motor-boundary-20261109-a79744` package is now launched at its
+unchanged frozen revision `2465fdb8026768f2348e7bda53a4375ff203eb28`, task
+`DNNE-Motor-Boundary-c3550f7fed43`. The launcher rechecked all 1,480 initial
+files plus the manifest against D: before starting the independent visible
+PowerShell window. It is the only pending window. Await the operator's report;
+do not inspect live status/logs or infer a result from launch. The finer Golgi
+comparison remains unlaunched, and the somatic motor-unit circuit remains gated
+on a passing motor-boundary outcome.

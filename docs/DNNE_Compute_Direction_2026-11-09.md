@@ -80,10 +80,11 @@ float storage and small-change transmission bypass remain relevant to any CPU or
 GPU backend. Preserve the reviewed reference and address these boundaries during
 integration. Faster execution cannot establish correct learning by itself.
 
-The two experiment reports listed in `DNNE_Continuation_2026-11-06.md` are still
-awaited. Do not inspect, restart, or claim outcomes for them before the operator
-reports completion. A source whose numerical/physiological gates are open stays
-unqualified on the GPU as well.
+The two experiment reports listed in `DNNE_Continuation_2026-11-06.md` were
+confirmed finished by the operator on 9 November and reviewed in
+`DNNE_Compute_And_Cell_Results_2026-11-09.md`. The motor-cell run still fails its
+original refinement gate; the Golgi run was interrupted before its final solve.
+A source whose numerical/physiological gates are open stays unqualified on the GPU.
 
 All tests, comparisons and benchmarks continue in visible independent PowerShell
 windows, without live monitoring. Preserve old saves and verified D: backups;

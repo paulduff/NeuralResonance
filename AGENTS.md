@@ -404,3 +404,19 @@ the device was identified, but NVRTC failed to open its present, verified helper
 DLL; no arithmetic case ran. The explicit absolute helper preload and saved
 loaded-module verification are isolated repairs. Protocol v3 retains all six
 arithmetic criteria; await the fresh visible PowerShell retry without monitoring.
+
+The operator has now reported the CUDA retry and both older cell studies. Their
+review is `docs/DNNE_Compute_And_Cell_Results_2026-11-09.md`: CUDA's six saved-byte
+cases pass; the motor-cell experiment retains FAILED with eight of ten scenario
+gates passing (all finest absolute checks pass, three tiny calcium-refinement
+contrasts fail); the Golgi run is stopped/incomplete with eleven of twelve solves.
+Its stale RUNNING file is preserved, and the complete partial capture is sealed
+inside the new review with a verified D: backup. Do not infer missing-reference success.
+
+`docs/DNNE_Motor_Replay_Buffer_2026-11-09.md` records the isolated bounded source
+queue and matching receiver/plant acceptance receipts. These are in-memory,
+trusted protocol components, not durable delivery or neuronal-source proof.
+The next fresh olive CPU batch package expands its selected checks from eleven
+to 87, covering the new interface and existing transport/calcium/plant cases.
+No live brain/Avatar/Unity lane is enabled. Review its reported outcome before
+porting the membrane calculation to CUDA, retaining numerical/biological gates.

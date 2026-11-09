@@ -899,3 +899,15 @@ behavior are unchanged. No Unity port or UI activation is appropriate until the
 coupled neuronal source and dynamic body pathway are qualified. Future promotion
 must port the single canonical mechanism and expose real event/force provenance,
 without adding a second activation/fatigue pass.
+
+## Motor acceptance receipts and bounded retransmission — 9 November
+
+Revisited the motor publisher, Avatar receiver, isometric plant and original motor
+path before adding `MotorAxonReplayBuffer` and acceptance receipts. The isolated
+receiver/plant can acknowledge an intact packet and its exact replay; the source
+retains unacknowledged events and rejects publication when its queue is full.
+See `DNNE_Motor_Replay_Buffer_2026-11-09.md`. Receipt is not muscle delivery or a
+durable checkpoint, and no live controller consumes this lane. Existing calcium,
+force, receptors, Unity behavior and population-derived editor authority labels
+remain unchanged. Focused regression checks are prepared in the next CPU-batch
+PowerShell window; qualification and live migration remain separate.

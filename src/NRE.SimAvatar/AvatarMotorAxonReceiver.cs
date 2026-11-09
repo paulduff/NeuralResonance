@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text.Json;
 using NeuralResonanceEngine.Protocol;
 
 namespace NRE.SimAvatar;
@@ -55,7 +53,13 @@ public sealed class AvatarMotorAxonReceiver
         BodyTimeMs = clock.BodyEpochMs;
     }
 
-    public MotorAxonBatchDisposition Accept(MotorAxonBatch batch)
+    public MotorAxonBatchDisposition Accept(MotorAxonBatch batch)=>AcceptCore(batch).Disposition;
+
+    // Receipt is made from the same immutable snapshot that passed acceptance.
+    // An exact replay returns the same receipt without applying its events again.
+    public MotorAxonAcknowledgement AcceptWithAcknowledgement(MotorAxonBatch batch)=>AcceptCore(batch).Receipt;
+
+    private (MotorAxonBatchDisposition Disposition,MotorAxonAcknowledgement Receipt) AcceptCore(MotorAxonBatch batch)
     {
         ArgumentNullException.ThrowIfNull(batch);
         if (batch.Version != MotorAxonAnatomy.ProtocolVersion || batch.SessionId != _clock.SessionId ||
@@ -65,12 +69,12 @@ public sealed class AvatarMotorAxonReceiver
             throw new ArgumentException("Wrong protocol/session/anatomy/source or invalid batch header.");
         // Snapshot caller-owned collections before checking or queuing anything.
         var captured = batch with { Spikes = Array.AsReadOnly(batch.Spikes.ToArray()) };
-        string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(captured)));
+        string digest = MotorAxonBatchIntegrity.Digest(captured);
         if (batch.Sequence <= source.Sequence)
         {
             if (!source.RetainedBatches.TryGetValue(batch.Sequence, out var previous) || previous != digest)
                 throw new ArgumentException("Conflicting or expired replay; no events applied.");
-            return MotorAxonBatchDisposition.ExactReplay;
+            return (MotorAxonBatchDisposition.ExactReplay,MotorAxonBatchIntegrity.Receipt(captured,digest));
         }
         if (batch.Sequence != checked(source.Sequence + 1))
             throw new ArgumentException("Missing motor batch; recover the gap before advancing completeness.");
@@ -106,7 +110,7 @@ public sealed class AvatarMotorAxonReceiver
         source.RetainedBatches.Add(batch.Sequence, digest);
         if (source.RetainedBatches.Count > _retainedBatches)
             source.RetainedBatches.Remove(source.Sequence - _retainedBatches);
-        return MotorAxonBatchDisposition.Accepted;
+        return (MotorAxonBatchDisposition.Accepted,MotorAxonBatchIntegrity.Receipt(captured,digest));
     }
 
     // The caller advances contraction at each returned event's own arrival time,

@@ -68,6 +68,12 @@ internal sealed class AvatarIsometricMotorUnitPlant
         return _receiver.Accept(batch); // Receiver validates the whole packet before committing it.
     }
 
+    public MotorAxonAcknowledgement AcceptWithAcknowledgement(MotorAxonBatch batch)
+    {
+        RequireOperational();
+        return _receiver.AcceptWithAcknowledgement(batch);
+    }
+
     // Output endpoints are integer solver ticks, not arbitrary frame times.
     // Epoch + tick * step preserves the grid across packet/frame partitioning.
     // Future world integration must explicitly reconcile its own time domain.

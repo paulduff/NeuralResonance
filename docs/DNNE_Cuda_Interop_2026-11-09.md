@@ -73,3 +73,8 @@ The first reported run failed while NVRTC located its helper DLL, before any
 arithmetic case. Its verified evidence and explicit-library-load repair are in
 `DNNE_Cuda_Load_Repair_2026-11-09.md`. The retry uses protocol v3, adding verified
 loaded-library paths while retaining all arithmetic and cleanup criteria.
+
+The operator-reported v3 retry passes all six cases, with complete C:/D: hashes
+and saved GPU-returned bytes independently checked. See
+`DNNE_Compute_And_Cell_Results_2026-11-09.md`. The next step is actual CPU/CUDA
+membrane qualification; no neuronal model or speedup is established by this pass.

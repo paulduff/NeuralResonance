@@ -37,10 +37,10 @@ assert sha256((package/'source'/reference).read_bytes()).hexdigest().upper()==re
 shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
 files=[dict(Path=p.relative_to(package).as_posix(),Sha256=sha256(p.read_bytes()).hexdigest().upper()) for p in sorted(package.rglob('*')) if p.is_file()]
 dotnet=shutil.which('dotnet');assert dotnet
-classes=['OlivaryBatchTests','SolutionManifestTests']
+classes=['OlivaryBatchTests','MotorAxonReplayBufferTests','MotorAxonTransportTests','MotorUnitCalciumTests','IsometricMotorUnitPlantTests','SolutionManifestTests']
 configuration=dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,
     DotnetExecutable=dotnet,PythonExecutable=sys.executable,BackupDestination=str(backup),NoLiveMonitoring=True,
-    ExpectedTestCases=11,ExpectedBatchCases=6,TestFilter='|'.join('FullyQualifiedName~'+name for name in classes),TestClasses=classes,
+    ExpectedTestCases=87,ExpectedBatchCases=6,TestFilter='|'.join('FullyQualifiedName~'+name for name in classes),TestClasses=classes,
     OriginalMembraneSha256=reference_hash,OriginalMembraneRevision=config['Revision'],
     LiveBrainAccessed=False,OldSavesLoaded=False,GpuExecuted=False,SpeedupMeasured=False)
 (package/'configuration.json').write_text(json.dumps(configuration,indent=2)+'\n',encoding='utf-8')

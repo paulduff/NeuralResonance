@@ -1,8 +1,7 @@
 # Isolated olive membrane batching candidate
 
 The reviewed CPU baseline identifies olive/Purkinje cell calculations as the
-first acceleration candidates. While the separate native CUDA interoperability
-retry awaits the operator, this change prepares the CPU state/identity boundary
+first acceleration candidates. This change prepares the CPU state/identity boundary
 needed for a comparable batched backend. It does not build on an assumed GPU pass.
 
 `tools/OliveBatchProbe` contains a flat-state transcription of the existing
@@ -47,8 +46,10 @@ Ten new unit cases cover serial/parallel reference equality, unrelated-cell
 exclusion, lane permutation, instance identity, malformed intervals, failure
 atomicity, copied state ownership, actual reference-generated crossing transfer,
 resumption of membrane counters/loads and rejection of foreign-thread access.
-The PowerShell run also requires the solution-manifest test: eleven cases total.
-The probe project is included in the solution.
+The initial prepared package required these ten cases plus the solution-manifest
+case. The next package additionally checks the new motor replay buffer and all
+existing transport/calcium/isometric-plant cases: 87 selected cases total; see
+`DNNE_Motor_Replay_Buffer_2026-11-09.md`. The probe project is included in the solution.
 
 After those pass, six recorded comparisons use populations of 1, 32 and 192 with
 maximum membrane steps of 0.025 and 0.00625 ms. Each executes 1,024 frames using
@@ -73,10 +74,9 @@ runs the comparison/audit, rechecks source and binaries and verifies the complet
 D: copy. It remains visible for the operator, with no live monitoring.
 
 Both Release builds and Python/PowerShell syntax checks pass. **Runtime checks
-are pending.** The first CUDA run failed at helper-library loading; see
-`DNNE_Cuda_Load_Repair_2026-11-09.md`. Prepare this package without launching another
-window while the operator's CUDA retry report is pending. Do not infer that window's state from
-elapsed time, inspect its output early or claim this candidate is qualified.
-After the reported GPU outcome is reviewed, run this CPU comparison before
+are pending.** The CUDA retry has now passed its isolated arithmetic checks; see
+`DNNE_Compute_And_Cell_Results_2026-11-09.md`. Run a fresh package with the expanded
+87-test selection, preserving the earlier unlaunched eleven-test package.
+Review this CPU comparison before
 extending it into a CUDA membrane backend. Live DNNE, Avatar, World and old saves
 remain unchanged.

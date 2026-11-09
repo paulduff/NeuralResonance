@@ -348,3 +348,13 @@ The full C:/D: capture is verified. Actual-cell integration and precision across
 float storage/transmission remain open. At the operator's request, work pauses
 after committing/pushing this review; see `docs/DNNE_Continuation_2026-11-06.md`.
 Do not start or monitor further work during that pause.
+
+The operator resumed work on 9 November and changed the active scope to DNNE,
+Avatar and World. Park LM/Entity and Dyad development, preserving their code and
+saves; language interaction is no longer a completion prerequisite for this scope.
+The editor remains the observation interface. See
+`docs/DNNE_Compute_Direction_2026-11-09.md` for the inspected RTX 5060 platform and
+the proposed measured CPU/CUDA execution work. GPU execution must retain neuronal
+identity, biological timing, contact-local learning and required precision.
+Performance improvement does not qualify physiology. Preserve the outstanding
+experiment windows and await operator-reported outcomes without live monitoring.

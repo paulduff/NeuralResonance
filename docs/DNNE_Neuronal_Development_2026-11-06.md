@@ -2,6 +2,12 @@
 
 ## Mandate and current limits
 
+**Scope update, 9 November:** active development now focuses on DNNE, Avatar and
+World. LM/Entity and Dyad are parked and preserved; language interaction is no
+longer required by the current acceptance gate. The editor remains in scope for
+observation. See [the compute direction](DNNE_Compute_Direction_2026-11-09.md)
+for the operator's CUDA proposal and the measured acceleration sequence.
+
 On 6 November 2026 the operator authorized continuing brain development, including
 anatomically justified missing structures, until the Avatar is usable or the
 operator stops the work. Tests run in visible PowerShell windows; the operator
@@ -93,7 +99,7 @@ disprove the model; it argues for establishing a channel-level reference first.
    Account separately for world time, neural time and stale transport.
 4. **Usable Avatar:** sustained closed-loop posture, corrective responses to
    controlled disturbances, recovery after falls, then basic movement and
-   grounded Dyad/Entity reporting. Require repeat trials and withheld disturbances;
+   observable neuronal/body state in the editor. Require repeat trials and withheld disturbances;
    predeclare task-specific metrics before observing outcomes. Worlds start paused.
 5. **Integration:** inspect/update Avatar and Unity parity, editor anatomy/activity
    mapping, save fingerprints and diagnostics whenever a candidate is promoted.

@@ -72,7 +72,7 @@ opens a visible independent PowerShell window. Source and executed binaries are
 hashed, and final results/failures receive a verified backup. No live monitoring.
 
 Test and probe builds succeed with zero warnings/errors; preparation/PowerShell
-syntax checks pass. Runtime tests have not yet been reviewed. Component completion
+syntax checks pass. At preparation, runtime tests had not been reviewed. Component completion
 will not qualify the six-second spike timing, physiological calibration, granular
 layer circuit, full unit suite or Avatar recovery. Review this outcome before
 preparing the full third-order comparison against the unchanged saved references.
@@ -82,3 +82,25 @@ The component window is now launched as `golgi-sdirk3-components-20261109-8660b2
 revision `70c2e48c914dd55d5737a0f9420f71a0d44646a9`, task
 `DNNE-Golgi-Sdirk3-Components-e4fe068fba0d`. The initial 1,420 files plus manifest
 have a verified D: copy. Await operator-reported completion without monitoring.
+
+## Completed component review
+
+The operator reported completion. The frozen run finished at
+2026-11-09T12:34:54.3287711Z with **43 passed, zero failed or skipped**:
+11 third-order, seven second-order, eight cell reference, sixteen channel and one
+solution-manifest check. The review verified 1,811 files / 90,345,555 bytes in
+each C:/D: copy, frozen source, executed binaries and exact TRX class counts.
+`artifacts/golgi-sdirk3-components-review-20261109/review.json` records the result
+and all sixteen active-refinement rows; that review also has a verified D: copy.
+
+Every reported short-refinement error is below its declared numerical floor,
+including the coarsest resolution. Across the four conditions, maximum voltage
+error is 3.283e-9 mV at 0.015625 ms and 6.637e-11 mV at 0.00390625 ms.
+The voltage floor is 2e-7 mV. Gate, SK and calcium errors are also floor dominated.
+These results pass the component gates but do not measure resolved third-order
+convergence or establish sustained spike accuracy. The saved resolved-ratio fields
+are therefore null, rather than interpreted as observed convergence order.
+
+This releases preparation of the 38-condition independent-reference comparison
+in `DNNE_Golgi_Third_Order_Comparison_2026-11-09.md`. The six-second firing,
+physiology, circuit and Avatar requirements remain open. No live model is promoted.

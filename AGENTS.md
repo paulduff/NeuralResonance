@@ -613,3 +613,12 @@ The shared analyzer reproduces the old failed 30-case result exactly. Builds and
 syntax checks pass; no new simulation ran inline. Do not freeze or launch until
 the operator reports the 43-case component window and its C:/D:/TRX review passes.
 The preparer requires the same coupled solver source that passed those components.
+
+The operator has reported the third-order component window complete. Its verified
+review is `artifacts/golgi-sdirk3-components-review-20261109/review.json`, with
+43 passing tests, sixteen saved refinement rows and all 1,811 C:/D: files verified.
+Every short-refinement error is below its numerical floor, so these checks do not
+establish observed cubic convergence or sustained firing accuracy. The component
+review also has a verified D: copy. No window is now pending; the clean-source
+preparer may freeze the 38-condition full comparison with unchanged acceptance
+limits. Launch it visibly in PowerShell and await operator-reported completion.

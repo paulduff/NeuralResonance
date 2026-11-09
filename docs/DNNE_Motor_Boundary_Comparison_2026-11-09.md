@@ -81,3 +81,10 @@ Passing this comparison would establish the tested scheduling repair's numerical
 outcome. It would not establish human motor-cell calibration, physiological axonal
 transmission, live neuronal muscle authority or physical Avatar recovery. All old
 saves, Avatar/Unity/editor behavior and the parked language work remain preserved.
+
+The prepared package is `motor-boundary-20261109-a79744`, frozen revision
+`2465fdb8026768f2348e7bda53a4375ff203eb28`. Its 1,480 initial files plus manifest
+have a verified D: copy. It has **not launched**. The existing cost package
+`olive-cuda-cost-20261109-06f78b` must run after the Golgi completion report, then
+be reported finished before this motor comparison starts. No result is inferred
+from preparation, elapsed time or the completed clock-only diagnostic.

@@ -685,3 +685,10 @@ from saved arrays, including failures. Build/syntax checks pass, not runtime tes
 Freeze only with the verified clock review. Hold launch until the prepared CUDA
 cost window has been reported finished, then use `-CostStudyFinished`. Golgi is
 still the only pending window; do not inspect its live output.
+
+The motor scheduling comparison is prepared as `motor-boundary-20261109-a79744`,
+revision `2465fdb8026768f2348e7bda53a4375ff203eb28`, with 1,480 initial files plus
+manifest verified on D:. It has not launched. The execution order is: await and
+review Golgi's reported completion; run the existing frozen CUDA cost package
+without competing work; after that completion report, launch the motor comparison
+with `-CostStudyFinished`. Clock diagnosis is reviewed and no longer pending.

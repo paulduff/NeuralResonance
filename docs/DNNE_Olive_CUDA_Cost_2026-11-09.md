@@ -110,3 +110,8 @@ builds, heavy offline audits or numerical work during the subsequent timed study
 A separate clock-arithmetic diagnosis has subsequently launched as
 `motor-clock-20261109-6aaa98`. Wait for the operator to report **both** that window
 and Golgi complete before launching this prepared timing package. It remains held.
+
+The operator has now reported the clock window complete and its saved evidence
+has been reviewed. Only Golgi's completion report remains outstanding. The later
+motor neuronal comparison is prepared but held until this cost study finishes,
+so it will not compete with the benchmark.

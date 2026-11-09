@@ -97,3 +97,11 @@ The prepared package is `olive-cuda-timing-20261109-eb7469`, frozen revision
 1,431 files plus manifest. The C# build passes with zero warnings/errors and
 Python/PowerShell syntax checks pass. It has not launched; the completion question
 for `golgi-sdirk-20261109-440bb8` is still pending. No live Golgi results were read.
+
+Subsequently, the operator reported Golgi finished. Its failed numerical outcome
+was reviewed and preserved in `DNNE_Golgi_Coupled_Results_2026-11-09.md` before
+launching this timing package. Task `DNNE-Olive-Timing-ef9e3d7627f9` now runs the
+unchanged frozen revision above in an independent visible PowerShell window.
+The launch succeeded; no live results have been inspected. Await the operator's
+completion report and avoid other builds, numerical studies or heavy audits
+during the timed work. No speed ratio is known yet.

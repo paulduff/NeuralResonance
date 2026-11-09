@@ -527,3 +527,10 @@ do not retune physiology or loosen criteria. Preserve the failed capture. Improv
 integration order/error control and assess event interpolation before live use.
 The earlier timing hold is now satisfied by the operator's report; launch the
 already frozen olive timing package and await completion without monitoring.
+
+The timing package `olive-cuda-timing-20261109-eb7469` is now launched, task
+`DNNE-Olive-Timing-ef9e3d7627f9`, using its unchanged frozen c4f80f2 revision.
+Await operator-reported completion; do not inspect live outputs. Avoid builds,
+new model runs or heavy offline audits that would compete with its CPU timing.
+Source inspection and coding can continue independently. The Golgi capture is
+reviewed and no longer pending; the timing outcome is the current pending window.

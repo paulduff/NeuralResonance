@@ -1,6 +1,12 @@
 using System.Globalization;
 using System.Text.Json;
 
+if (args.Length == 3 && args[0] == "--precision")
+{
+    PrecisionStudy.Run(args[1], args[2]);
+    return;
+}
+
 if (args.Length == 3 && args[0] == "--active")
 {
     ActiveStudy.Run(args[1], args[2]);

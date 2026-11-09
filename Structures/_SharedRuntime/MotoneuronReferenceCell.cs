@@ -73,6 +73,19 @@ internal sealed class MotoneuronReferenceCell
     public double[] CopyCapacitancesPf() => (double[])_capacitance.Clone();
     public double[][] CopyCouplingNs() => Enumerable.Range(0, 5).Select(i => Enumerable.Range(0, 5).Select(j => _coupling[i, j]).ToArray()).ToArray();
 
+    // Read-only diagnostic at a supplied physical state. This is not a restart:
+    // saved CSV states omit the compensated integrator's addition residuals.
+    internal double[] EvaluateDerivativeForDiagnosis(ReadOnlySpan<double> state, double currentPa,
+        double excitationNs, double inhibitionNs)
+    {
+        if (state.Length != 30 || !double.IsFinite(currentPa) || !double.IsFinite(excitationNs) || excitationNs < 0 ||
+            !double.IsFinite(inhibitionNs) || inhibitionNs < 0)
+            throw new ArgumentException("Require thirty state values and finite physical input.");
+        double[] snapshot = state.ToArray(), result = new double[30];
+        Derivative(snapshot, result, currentPa, excitationNs, inhibitionNs);
+        return result;
+    }
+
     public MotoneuronReferenceCell(MotoneuronReferenceParameters parameters, double initialVoltageMv = -65,
         MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
         MotoneuronAccumulation accumulation = MotoneuronAccumulation.Naive)

@@ -429,3 +429,16 @@ and thirty candidate contrasts before solving, then audit all twelve reference
 and 36 candidate contrasts. Never infer candidate solver accuracy, physiology or
 Avatar recovery from a passing reference. Await each independent PowerShell
 window's operator-reported completion without inspecting its live results.
+
+The completed Golgi continuation is reviewed in
+`docs/DNNE_Golgi_Reference_Results_2026-11-09.md`: twelve reference contrasts pass
+their original bounds and 36 candidate contrasts reproduce, with verified full
+C:/D: captures. Candidate spike counts match, but finest timing errors still reach
+1.93 ms and no-SK refinement remains non-monotonic. Repair the coupled numerical
+integrator before physiological retuning or live adoption.
+
+`docs/DNNE_Motor_Fixed_State_Precision_2026-11-09.md` prepares a separate read-only
+RHS/arithmetic diagnosis of the reported motor failure. Preserve its source and
+all original bounds. CSV states are not full compensated-integrator checkpoints;
+do not infer accumulated-roundoff causation or a repaired trajectory from local
+decimal comparisons. No production host selects the diagnostic entry point.

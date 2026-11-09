@@ -7,6 +7,11 @@ if (args.Length == 3 && args[0] == "--sdirk")
     SdirkStudy.Run(args[1], args[2]);
     return 0;
 }
+if (args.Length == 3 && args[0] == "--sdirk3")
+{
+    SdirkStudy.Run(args[1], args[2], thirdOrder: true);
+    return 0;
+}
 
 if (args.Length != 1 || !Path.IsPathFullyQualified(args[0]) || Directory.Exists(args[0]))
     throw new ArgumentException("Supply a new absolute output directory; no old brain state is loaded.");

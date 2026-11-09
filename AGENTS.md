@@ -604,3 +604,12 @@ The third-order component window is launched as
 `DNNE-Golgi-Sdirk3-Components-e4fe068fba0d`, with 1,420 initial files verified on D:.
 It is the only pending window. The cortical integration outcome is reviewed;
 await the new component report without inspecting live logs or status.
+
+The full third-order rig is coded in
+`docs/DNNE_Golgi_Third_Order_Comparison_2026-11-09.md`: 38 fixed conditions, one
+additional finer step, separate reporting at the old finest resolution, unchanged
+absolute/refinement/accounting gates and reused verified passive references.
+The shared analyzer reproduces the old failed 30-case result exactly. Builds and
+syntax checks pass; no new simulation ran inline. Do not freeze or launch until
+the operator reports the 43-case component window and its C:/D:/TRX review passes.
+The preparer requires the same coupled solver source that passed those components.

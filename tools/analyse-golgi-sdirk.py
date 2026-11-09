@@ -97,10 +97,11 @@ def passive_references(package):
 
 def validate_package(package):
     config=read(package/'configuration.json')
-    assert config['ComponentsReviewed'] and config['ExpectedConditions']==30 and config['NoLiveMonitoring']
+    order=config.get('SolverOrder',2);assert order in (2,3)
+    assert config['ComponentsReviewed'] and config['ExpectedConditions']==(30 if order==2 else 38) and config['NoLiveMonitoring']
     for entry in config['PackageFiles']:
         assert sha256((package/entry['Path']).read_bytes()).hexdigest().upper()==entry['Sha256'],entry['Path']
-    spec=read(package/'sdirk-input.json'); assert spec==protocol()
+    spec=read(package/'sdirk-input.json'); assert spec==protocol(order)
     assert np.__version__=='2.2.6' and scipy.__version__=='1.16.3'
     return spec
 
@@ -109,16 +110,21 @@ def preflight(package):
     spec=validate_package(package)
     environment=module('preserved_environment_capture',package/'source/tools/golgi-reference-resume.py').environment()
     _,uncertainty=load_references(package,spec)
-    _,_,checks=passive_references(package)
+    reuse=read(package/'configuration.json').get('ReusePassiveReferences',False)
+    if reuse:
+        assert read(package/'configuration.json')['SolverOrder']==3
+        _,_,checks=load_passive(package,'preceding-reference-preflight.json')
+    else:
+        _,_,checks=passive_references(package)
     files=[dict(path=p.relative_to(package).as_posix(),sha256=sha256(p.read_bytes()).hexdigest())
            for p in sorted((package/'passive-reference').iterdir()) if p.is_file()]
     with (package/'reference-preflight.json').open('x',encoding='utf-8') as stream:
         stream.write(json.dumps(dict(completed=True,referenceUncertainty=uncertainty,passiveChecks=checks,files=files,environment=environment),indent=2)+'\n')
-    print('Reference preflight complete; unchanged active arrays and newly saved passive references pass.',flush=True)
+    print('Reference preflight complete; unchanged active arrays and '+('preserved' if reuse else 'newly saved')+' passive references pass.',flush=True)
 
 
-def load_passive(package):
-    pre=read(package/'reference-preflight.json'); assert pre['completed']
+def load_passive(package,preflight_name='reference-preflight.json'):
+    pre=read(package/preflight_name); assert pre['completed']
     for entry in pre['files']:
         assert sha256((package/entry['path']).read_bytes()).hexdigest()==entry['sha256']
     reports=read(package/'passive-reference/analysis.json'); assert reports==pre['passiveChecks']
@@ -190,9 +196,10 @@ def audit(package):
     assert metadata['inputSha256']==sha256((package/'sdirk-input.json').read_bytes()).hexdigest().upper()
     assert metadata['specification']=={k:spec[k] for k in metadata['specification']}
     assert metadata['rowDoubles']==162 and not metadata['exactCheckpoint'] and not metadata['liveBrainAccessed']
-    assert outcomes['completed'] and len(outcomes['cases'])==30
+    expected_count=len(spec['cases'])
+    assert outcomes['completed'] and len(outcomes['cases'])==expected_count
     assert outcomes['successfulCases']==sum(c['completed'] for c in outcomes['cases'])
-    assert outcomes['allConditionsCompleted']==(outcomes['successfulCases']==30)
+    assert outcomes['allConditionsCompleted']==(outcomes['successfulCases']==expected_count)
     assert [c['key'] for c in outcomes['cases']]==[c['key'] for c in spec['cases']]
     rows,states = [],{}
     for row,condition in zip(outcomes['cases'],spec['cases']):
@@ -217,7 +224,8 @@ def audit(package):
         ordinary=sorted([r for r in selected if r['nonlinearToleranceScale']==1],key=lambda r:r['stepMs'],reverse=True)
         result=dict(protocol=name,passed=False,refinement=[])
         try:
-            assert len(ordinary)==3 and all(r['completed'] and r['physicalPassed'] for r in selected)
+            expected_steps=3 if expected_count==30 else 4
+            assert len(ordinary)==expected_steps and all(r['completed'] and r['physicalPassed'] for r in selected)
             if name.startswith('passive-'):
                 result['passed']=all(r['noSpikes'] for r in ordinary) and ordinary[-1]['passiveVoltageErrorMv']<=criteria['passiveVoltageMv']
                 for coarse,fine in zip(ordinary,ordinary[1:]):
@@ -230,6 +238,10 @@ def audit(package):
                 primary=spec['primaryReference']
                 result['finestAbsolutePassed']=all(within(r['comparisons'][method],criteria)
                     for r in (ordinary[-1],tighter) for method in (primary,spec['crossMethodReference']))
+                if expected_count==38:
+                    original_finest=next(r for r in ordinary if r['stepMs']==.00390625)
+                    result['originalResolutionAbsolutePassed']=all(within(original_finest['comparisons'][method],criteria)
+                        for method in (primary,spec['crossMethodReference']))
                 result['passed']=result['finestAbsolutePassed'] and all(r['comparisons'][primary]['equalCrossingCounts'] for r in selected)
                 for coarse,fine in zip(ordinary,ordinary[1:]):
                     if not coarse['comparisons'][primary]['equalCrossingCounts'] or not fine['comparisons'][primary]['equalCrossingCounts']:
@@ -249,7 +261,7 @@ def audit(package):
         assessment.append(result)
     environment=module('preserved_environment_audit',package/'source/tools/golgi-reference-resume.py').environment()
     assert environment==read(package/'reference-preflight.json')['environment'],'Numerical dependencies changed during the study.'
-    report=dict(completed=True,caseCount=30,completedCases=sum(r['completed'] for r in rows),cases=rows,
+    report=dict(completed=True,caseCount=expected_count,completedCases=sum(r['completed'] for r in rows),cases=rows,
         criteria=criteria,referenceUncertainty=uncertainty,passiveReferenceComparisons=passive_checks,assessment=assessment,
         numericalCriteriaPassed=all(r['passed'] for r in assessment),physiologyQualified=False,activeAxonQualified=False,avatarRecoveryAssessed=False)
     return report

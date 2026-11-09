@@ -68,3 +68,10 @@ the next causal test should change the scheduling alone and compare the same
 neuronal trajectories against the preserved references and original bounds.
 Until then, calcium attribution, active motor-source qualification, physiological
 calibration and Avatar recovery remain open. No old saves or live behavior change.
+
+The visible clock window is now launched as `motor-clock-20261109-6aaa98`, frozen
+revision `167ddd6203ec362b46e713a6b1f6efcbfa145349`, task
+`DNNE-Motor-Clock-a56a8dac458d`. Its initial 1,434 files plus manifest have a
+verified D: copy. Await the operator's completion report without inspecting live
+output. Both this clock window and `golgi-sdirk3-20261109-210c3d` are pending;
+the prepared CUDA timing window must wait until both have been reported complete.

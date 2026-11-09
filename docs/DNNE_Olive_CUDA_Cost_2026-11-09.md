@@ -106,3 +106,7 @@ have a verified D: copy. It is **prepared only**, with no launch requested and n
 GPU/test execution. After the operator reports the Golgi run finished, review its
 evidence and launch this frozen runner with `-OtherStudiesFinished`. Avoid competing
 builds, heavy offline audits or numerical work during the subsequent timed study.
+
+A separate clock-arithmetic diagnosis has subsequently launched as
+`motor-clock-20261109-6aaa98`. Wait for the operator to report **both** that window
+and Golgi complete before launching this prepared timing package. It remains held.

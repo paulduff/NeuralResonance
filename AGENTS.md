@@ -658,3 +658,10 @@ checks pass; this has not established the cause of the calcium failure. Run visi
 without monitoring, preserve original numerical bounds, and require a later causal
 trajectory comparison before claiming repair. CUDA cost timing must wait for every
 additional study to be reported complete as well as the pending Golgi comparison.
+
+The clock-only diagnosis is launched as `motor-clock-20261109-6aaa98`, revision
+`167ddd6203ec362b46e713a6b1f6efcbfa145349`, task `DNNE-Motor-Clock-a56a8dac458d`,
+with 1,434 initial files plus manifest verified on D:. There are now two pending
+windows: this clock diagnosis and `golgi-sdirk3-20261109-210c3d`. Do not inspect
+either live output. The frozen `olive-cuda-cost-20261109-06f78b` remains held until
+both completion reports arrive. Neither launch qualifies a neuronal/body repair.

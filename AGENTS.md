@@ -647,3 +647,14 @@ verified on D:. It has not launched. The Golgi window remains the only pending
 run; await its operator report before reviewing it and launching the frozen cost
 runner with `-OtherStudiesFinished`. Keep numerical/heavy work out of that timing
 window. The active brain/body/world goal remains incomplete.
+
+The next motor diagnosis is `docs/DNNE_Motor_Clock_Diagnosis_2026-11-09.md`.
+The original harness integrates requested dt, accumulates a rounded absolute clock,
+then shortens later dt from that clock. The supplied durations need not sum exactly
+to sampled timestamps. A six-case clock-only C#/Python reconstruction records exact
+binary duration totals and compares an endpoint-difference scheduling candidate.
+No neuron is integrated and no runtime/harness behavior is changed. Build/syntax
+checks pass; this has not established the cause of the calcium failure. Run visibly
+without monitoring, preserve original numerical bounds, and require a later causal
+trajectory comparison before claiming repair. CUDA cost timing must wait for every
+additional study to be reported complete as well as the pending Golgi comparison.

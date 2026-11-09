@@ -127,3 +127,24 @@ The new circuit window may follow only after that comparison passes review.
 All experiments remain visible independent PowerShell windows with no live
 monitoring. Existing saves, Avatar dynamics, Unity and editor authority labels
 remain unchanged; worlds continue to start paused.
+
+## Launched after motor numerical qualification
+
+The operator reported the endpoint-scheduling comparison complete. Its full
+review in `DNNE_Motor_Boundary_Results_2026-11-09.md` passes all original
+scenario gates and reproduces the unchanged controls. The complete capture and
+separate review have verified D: copies. This satisfies the prerequisite above.
+
+The circuit package `motor-unit-circuit-20261109-83e7ee` is now launched at
+frozen revision `e12fff09af30f078e229ed2f56c71b4af93886ec`, task
+`DNNE-Motor-Unit-Circuit-89e8edcebbda`. Preparation verified the unchanged
+source cell/scheduler and existing Avatar transport/plant components against
+their reviewed captures. All 1,483 initial files plus manifest were verified
+on D: and rechecked before launch. The window runs 88 focused tests, eight
+circuit conditions and three independent muscle references without live monitoring.
+
+There are two pending operator reports: this circuit and CUDA host-workspace
+accuracy (`olive-cuda-host-20261109-aeb5f2`). Neither is a performance experiment.
+Do not inspect either live output. Further timing must wait for both reports
+and the appropriate accuracy review. No circuit result is claimed by launch;
+the physiological limitations and live-integration requirements above remain.

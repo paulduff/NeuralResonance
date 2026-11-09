@@ -851,3 +851,14 @@ exactly. The separate review has a verified D: backup. This permits freezing and
 running the already coded somatic motor-unit circuit with that exact source;
 it does not qualify physiology, active axons or live Avatar authority. The CUDA
 host accuracy window remains pending; do not inspect it without its own report.
+
+The somatic motor-unit circuit is now launched as
+`motor-unit-circuit-20261109-83e7ee`, revision
+`e12fff09af30f078e229ed2f56c71b4af93886ec`, task
+`DNNE-Motor-Unit-Circuit-89e8edcebbda`, with 1,483 initial files plus manifest
+verified on D:. It uses the unchanged passing motor source and reviewed Avatar
+transport/calcium/plant components. Two windows await operator reports: this
+circuit (88 tests/eight conditions/three muscle references) and CUDA host accuracy
+`olive-cuda-host-20261109-aeb5f2`. Neither is monitored live; neither measures
+speed. Motor boundary and CUDA cost are reviewed and no longer pending. Finer
+Golgi remains unlaunched. Do not infer physiology or Avatar recovery from launch.

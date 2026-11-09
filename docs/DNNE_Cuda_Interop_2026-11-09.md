@@ -29,7 +29,7 @@ kernel and uses the CUDA driver API to allocate persistent buffers and launch it
 It uses an explicit thread-owned context and destroys that context at the end;
 it never resets the device. The previous current context is restored.
 
-The future check covers lengths 1, 255, 256, 257, 4,097 and 65,537, including
+The check covers lengths 1, 255, 256, 257, 4,097 and 65,537, including
 partial blocks. Seven additions of exact binary fractions must retain changes
 far below single-precision resolution at weight 1. Both guard regions and all
 result bits must match. Compile options disable contraction and fast math; this
@@ -38,10 +38,33 @@ memory-safety proof for arbitrary kernels, speed benchmark or physiology test.
 Transient GPU API failures fail the probe; there is no CPU fallback disguised as
 successful GPU execution. Failed contexts cannot continue computation.
 
-The C# project builds with zero warnings/errors. **The probe has not been run.**
-Run any actual check in a visible PowerShell window, with frozen source and
-verified dependencies/D: backup and no live monitoring. In particular, do not
-treat the completed build or downloaded compiler as a GPU qualification.
-The brain performance study must be reviewed before selecting the neuronal port.
+The C# project builds with zero warnings/errors. At preparation, no GPU result has
+been assessed. The CPU study has now been reviewed in
+`DNNE_Compute_Results_2026-11-09.md`; it points to olive/Purkinje cell calculations.
+Do not treat a completed build or downloaded compiler as GPU qualification.
 The driver API binding is probe-local and is not yet a production resource or
 multi-threaded execution layer.
+
+## Reproducible independent window
+
+`prepare-cuda-interop.py` requires clean pushed source and rechecks the compiler's
+C:/D: hashes before freezing source and a compiler subset. This includes the
+original pinned archive, metadata, license and both required DLLs, with their
+original manifest retained. It does not execute a kernel. Verify the package's
+initial D: copy with `backup-unity-run.ps1` before launching its frozen
+`start-cuda-interop-window.ps1` in a visible independent PowerShell window.
+
+The launcher builds only this standalone probe, records its binary hashes, runs
+the native checks and the independent Python byte audit, and rechecks frozen
+inputs and binaries. There is no DNNE unit-suite or physiological-pass claim.
+Protocol `cuda-double-interop-v2` saves its criteria before native operations and
+retains device/compiler metadata, PTX and every returned transfer/result buffer.
+`analyse-cuda-interop.py` independently reconstructs all expected float64 bytes,
+including both guard regions. Native context destruction and restoration of the
+previous context are required before success is written. The byte audit cannot
+independently observe native cleanup; it reports the checked executable's evidence.
+
+The window saves failure evidence and verifies its final D: copy. It remains open
+for the operator's report; do not monitor it. Inspect only after completion is
+reported. A successful run qualifies this narrow interoperability route, not a
+neuronal solver, performance improvement, full memory safety or Avatar recovery.

@@ -9,6 +9,9 @@ var json=new JsonSerializerOptions {WriteIndented=true};
 void Save(string name,object value)=>File.WriteAllText(Path.Combine(output,name),JsonSerializer.Serialize(value,json));
 const string expectedArchive="8C50A52467826167E0DBE99936140C52D62272BFC5849FE2D6587D050C8C5D29";
 var cases=new List<object>();
+Save("protocol.json",new {version="cuda-double-interop-v2",counts=new[]{1,255,256,257,4097,65537},
+    launchesPerBuffer=7,guardsPerEnd=8,exactArithmeticRequired=true,nativeContextCleanupRequired=true,
+    biologicalModelExecuted=false,speedupMeasured=false});
 try
 {
     string archivePath=Path.Combine(dependency,"nvrtc-13.0.88.zip");
@@ -34,14 +37,14 @@ try
     """;
     File.WriteAllText(Path.Combine(output,"interop.cu"),source);
     using var cuda=new CudaDriverProbe(0);
+    Save("device.json",cuda.Device);
     using var nvrtc=new NvrtcCompiler(compiler);
     if(nvrtc.Version!=(13,0))throw new InvalidOperationException("Unexpected compiler version.");
     var compiled=nvrtc.Compile(source,cuda.Device.Architecture);
     File.WriteAllBytes(Path.Combine(output,"interop.ptx"),compiled.Ptx);File.WriteAllText(Path.Combine(output,"compiler.log"),compiled.Log);
-    Save("protocol.json",new {version="cuda-double-interop-v1",cuda.Device,libraries,archiveSha256=expectedArchive,
+    Save("compiler.json",new {libraries,archiveSha256=expectedArchive,
         nvrtcMajor=nvrtc.Version.Major,nvrtcMinor=nvrtc.Version.Minor,nvrtc.SupportedArchitectures,compiled.Options,
-        counts=new[]{1,255,256,257,4097,65537},launchesPerBuffer=7,guardsPerEnd=8,exactArithmeticRequired=true,
-        nativeContextCleanupRequired=true,biologicalModelExecuted=false,speedupMeasured=false});
+        ptxSha256=Convert.ToHexString(SHA256.HashData(compiled.Ptx))});
     var kernel=cuda.LoadKernel(compiled.Ptx,"add_small_double");
     foreach(int count in new[]{1,255,256,257,4097,65537})
     {
@@ -50,9 +53,12 @@ try
         try
         {
             cuda.Upload(buffer,data);
-            if(!cuda.Download(buffer).AsSpan().SequenceEqual(data))throw new InvalidOperationException("Double transfer mismatch.");
+            var roundtrip=cuda.Download(buffer);
+            File.WriteAllBytes(Path.Combine(output,$"transfer-{count}.bin"),System.Runtime.InteropServices.MemoryMarshal.AsBytes(roundtrip.AsSpan()).ToArray());
+            if(!roundtrip.AsSpan().SequenceEqual(data))throw new InvalidOperationException("Double transfer mismatch.");
             for(int launch=0;launch<7;++launch)cuda.Launch(kernel,buffer,count);
             var actual=cuda.Download(buffer);var expected=(double[])data.Clone();
+            File.WriteAllBytes(Path.Combine(output,$"result-{count}.bin"),System.Runtime.InteropServices.MemoryMarshal.AsBytes(actual.AsSpan()).ToArray());
             for(int i=0;i<count;++i)expected[i+8]+=7*(1+i%7)*Math.ScaleB(1d,-40);
             for(int i=0;i<actual.Length;++i)
                 if(BitConverter.DoubleToInt64Bits(actual[i])!=BitConverter.DoubleToInt64Bits(expected[i]))

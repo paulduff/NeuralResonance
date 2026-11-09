@@ -380,3 +380,12 @@ The separately prepared `docs/DNNE_Cuda_Interop_2026-11-09.md` records a pinned
 NVRTC dependency and standalone driver/float64 probe. It builds but has not run;
 no GPU backend is selected by the brain, Avatar or Unity. Test it only through
 the visible PowerShell workflow with preserved source/dependencies and outcomes.
+
+The replacement CPU study is reviewed in `docs/DNNE_Compute_Results_2026-11-09.md`:
+56 focused tests, all 27 paired comparisons and all 42 previous neural hashes pass,
+with the full C:/D: capture verified. Olive/Purkinje cell calculations dominate
+these sparse-contact fixtures; this does not establish dense-network costs or
+whole-brain throughput. The standalone CUDA interoperability package now has a
+frozen visible PowerShell launcher and independent saved-byte audit. Review its
+operator-reported result before building on the native execution route. No model
+or live host uses it; numerical and biological acceptance gates remain separate.

@@ -98,6 +98,8 @@ internal sealed unsafe class CudaDriverProbe : IDisposable
         int destroyed=Cu.Destroy(_context);_context=0;_module=0;_allocations.Clear();
         int restored=Cu.SetCurrent(_previous);
         Check(destroyed,"cuCtxDestroy");Check(restored,"restore previous CUDA context");
+        Check(Cu.Current(out var current),"verify restored CUDA context");
+        if(current!=_previous)throw new InvalidOperationException("CUDA context restoration mismatch.");
     }
     private static class Cu
     {

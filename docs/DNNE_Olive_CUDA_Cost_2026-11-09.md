@@ -99,3 +99,10 @@ completion report. Hold this benchmark; do not poll that run or infer completion
 from elapsed time. No live brain, Avatar, Unity, editor or old-save behavior changes.
 This cost study will not qualify whole-brain throughput, cell physiology or Avatar
 recovery, and a measured bottleneck is not yet an optimized implementation.
+
+The frozen package is `olive-cuda-cost-20261109-06f78b`, revision
+`f8561578320143a30f0fd0a95c9c914d72e711b0`. Its initial 1,441 files plus manifest
+have a verified D: copy. It is **prepared only**, with no launch requested and no
+GPU/test execution. After the operator reports the Golgi run finished, review its
+evidence and launch this frozen runner with `-OtherStudiesFinished`. Avoid competing
+builds, heavy offline audits or numerical work during the subsequent timed study.

@@ -640,3 +640,10 @@ time includes scheduling and must not be added to host phases or called pure
 arithmetic time. Builds/source/syntax checks pass, but no model test or benchmark
 has run. Prepare from clean pushed source, back up on D:, and hold launch until
 the operator reports the pending Golgi comparison complete. Do not monitor it.
+
+The cost package is prepared as `olive-cuda-cost-20261109-06f78b`, frozen revision
+`f8561578320143a30f0fd0a95c9c914d72e711b0`, with 1,441 initial files plus manifest
+verified on D:. It has not launched. The Golgi window remains the only pending
+run; await its operator report before reviewing it and launching the frozen cost
+runner with `-OtherStudiesFinished`. Keep numerical/heavy work out of that timing
+window. The active brain/body/world goal remains incomplete.

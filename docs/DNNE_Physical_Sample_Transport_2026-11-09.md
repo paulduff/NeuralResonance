@@ -101,3 +101,10 @@ Avatar recovery remain open. Transport alone cannot supply those mechanisms.
 
 The candidate and its test assembly build; runtime checks are prospective until
 the operator reports the frozen PowerShell outcome and its evidence is reviewed.
+
+The independent window was launched as `physical-sample-20261109-44584f`, frozen
+revision `0cff80e63bf0fea24626c1fc1f3a84e46a7188d4`, task
+`DNNE-Physical-Sample-6d9a4329c8a6`. The initial 1,453 files plus manifest were
+verified on D:. No live result inspection follows launch. This window and
+`golgi-sdirk3-20261109-210c3d` now await operator completion reports; the prepared
+CUDA cost and motor scheduling packages remain held in their documented order.

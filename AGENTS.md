@@ -732,3 +732,13 @@ unchanged. The 23-case focused rig runs visibly without monitoring; await the
 operator's report before claiming transport checks pass. It may overlap the
 pending Golgi accuracy study, but both completion reports must precede CUDA cost
 timing. Preserve the later motor-boundary and source/unit prerequisites.
+
+The physical-sample window is launched as `physical-sample-20261109-44584f`,
+revision `0cff80e63bf0fea24626c1fc1f3a84e46a7188d4`, task
+`DNNE-Physical-Sample-6d9a4329c8a6`, with 1,453 initial files plus manifest
+verified on D:. There are now two pending windows: this 23-case transport rig
+and `golgi-sdirk3-20261109-210c3d`. Do not inspect their live status or logs.
+The frozen CUDA cost package `olive-cuda-cost-20261109-06f78b` must wait for both
+operator reports; the motor scheduling package `motor-boundary-20261109-a79744`
+still follows the reported completion of that timing run. No new transport,
+afferent physiology or Avatar recovery result is claimed by launch.

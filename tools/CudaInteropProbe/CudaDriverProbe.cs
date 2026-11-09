@@ -7,11 +7,11 @@ internal sealed record CudaDeviceEvidence(string Name, int Ordinal, int DriverVe
 
 // Deliberately probe-local, synchronous and thread-owned. No application host
 // selects it. One explicit context is destroyed on exit; no device reset.
-internal sealed unsafe class CudaDriverProbe : IDisposable
+internal sealed unsafe partial class CudaDriverProbe : IDisposable
 {
     private readonly int _thread = Environment.CurrentManagedThreadId;
     private readonly nint _previous;
-    private nint _context, _module;
+    private nint _context, _module, _kernelFunction;
     private readonly Dictionary<ulong,int> _allocations = new();
     private bool _faulted;
     internal CudaDeviceEvidence Device { get; }
@@ -52,7 +52,7 @@ internal sealed unsafe class CudaDriverProbe : IDisposable
         Require(); if(_module!=0)throw new InvalidOperationException("One module per probe context.");
         if(ptx.Length==0 || ptx[^1]!=0)throw new ArgumentException("NUL-terminated PTX required.");
         fixed(byte* data=ptx)DeviceCheck(Cu.LoadModule(out _module,(nint)data),"cuModuleLoadData");
-        DeviceCheck(Cu.Function(out var function,_module,name),"cuModuleGetFunction");return function;
+        DeviceCheck(Cu.Function(out var function,_module,name),"cuModuleGetFunction");_kernelFunction=function;return function;
     }
     internal ulong Allocate(int doubles)
     {
@@ -76,7 +76,7 @@ internal sealed unsafe class CudaDriverProbe : IDisposable
     }
     internal void Launch(nint function,ulong address,int elements)
     {
-        Require();if(!_allocations.TryGetValue(address,out int size)||elements<1||size!=elements+16)throw new ArgumentException("Require element buffer with both guard regions.");
+        Require();if(function!=_kernelFunction||!_allocations.TryGetValue(address,out int size)||elements<1||size!=elements+16)throw new ArgumentException("Require owned kernel and element buffer with both guard regions.");
         nint* arguments=stackalloc nint[2];arguments[0]=(nint)(&address);arguments[1]=(nint)(&elements);
         DeviceCheck(Cu.Launch(function,checked((uint)((elements+255)/256)),1,1,256,1,1,0,0,(nint)arguments,0),"cuLaunchKernel");
         DeviceCheck(Cu.Synchronize(),"cuCtxSynchronize");

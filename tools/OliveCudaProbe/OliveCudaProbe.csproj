@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>NeuralResonanceEngine.DNNE.Tests</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
+    <Compile Include="../CudaInteropProbe/CudaDriverProbe.cs" Link="CudaDriverProbe.cs" />
+    <Compile Include="../CudaInteropProbe/NvrtcCompiler.cs" Link="NvrtcCompiler.cs" />
+    <Compile Include="../OliveBatchProbe/OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />
+    <Compile Include="../OliveBatchProbe/OlivaryCpuBatch.cs" Link="OlivaryCpuBatch.cs" />
+    <None Update="olivary.cu" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

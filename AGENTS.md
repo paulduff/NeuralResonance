@@ -475,3 +475,13 @@ revision `fb6c6e1028748d0b965d544ac9858cc0f269db25`, task
 operator's completion report without inspecting its live results. The three
 preceding windows are reviewed; they are no longer pending. CUDA membrane work
 can proceed independently against the passing CPU batch reference.
+
+The first resident CUDA olive candidate is implemented in
+`docs/DNNE_Olive_CUDA_2026-11-09.md`. It retains the qualified CPU equations,
+double state, explicit cell clocks/identities and whole-batch numerical commit.
+The prepared comparison reuses every original CPU frame with prospective state
+bounds and exact per-frame crossing counts/clocks, plus ownership/failure guards.
+Run only in the visible frozen PowerShell workflow and await operator-reported
+completion. C# builds do not establish successful CUDA compilation or execution.
+No host selects it; measure end-to-end speed only after its numerical outcome,
+and keep receptor/metabolic integration and physiological qualification separate.

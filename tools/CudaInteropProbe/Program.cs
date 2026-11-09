@@ -9,16 +9,16 @@ var json=new JsonSerializerOptions {WriteIndented=true};
 void Save(string name,object value)=>File.WriteAllText(Path.Combine(output,name),JsonSerializer.Serialize(value,json));
 const string expectedArchive="8C50A52467826167E0DBE99936140C52D62272BFC5849FE2D6587D050C8C5D29";
 var cases=new List<object>();
-Save("protocol.json",new {version="cuda-double-interop-v2",counts=new[]{1,255,256,257,4097,65537},
+Save("protocol.json",new {version="cuda-double-interop-v3",counts=new[]{1,255,256,257,4097,65537},
     launchesPerBuffer=7,guardsPerEnd=8,exactArithmeticRequired=true,nativeContextCleanupRequired=true,
-    biologicalModelExecuted=false,speedupMeasured=false});
+    explicitBuiltinLoadRequired=true,biologicalModelExecuted=false,speedupMeasured=false});
 try
 {
     string archivePath=Path.Combine(dependency,"nvrtc-13.0.88.zip");
     using(var file=File.OpenRead(archivePath))
         if(file.Length!=318076161 || Convert.ToHexString(SHA256.HashData(file))!=expectedArchive)throw new InvalidOperationException("Unverified NVIDIA compiler archive.");
     using var archive=ZipFile.OpenRead(archivePath);
-    var libraries=new List<object>();string compiler="";
+    var libraries=new List<object>();string compiler="",builtins="";
     foreach(string name in new[]{"nvrtc64_130_0.dll","nvrtc-builtins64_130.dll"})
     {
         var entry=archive.Entries.Single(e=>Path.GetFileName(e.FullName)==name);
@@ -27,7 +27,7 @@ try
         using var original=entry.Open();using var local=File.OpenRead(path);
         string hash=Convert.ToHexString(SHA256.HashData(local));
         if(hash!=Convert.ToHexString(SHA256.HashData(original)))throw new InvalidOperationException("Extracted compiler bytes differ from pinned archive.");
-        libraries.Add(new {path,sha256=hash});if(name.StartsWith("nvrtc64_"))compiler=path;
+        libraries.Add(new {path,sha256=hash});if(name.StartsWith("nvrtc64_"))compiler=path;else builtins=path;
     }
     const string source="""
     extern "C" __global__ void add_small_double(double* state, int count) {
@@ -38,7 +38,8 @@ try
     File.WriteAllText(Path.Combine(output,"interop.cu"),source);
     using var cuda=new CudaDriverProbe(0);
     Save("device.json",cuda.Device);
-    using var nvrtc=new NvrtcCompiler(compiler);
+    using var nvrtc=new NvrtcCompiler(compiler,builtins);
+    Save("loaded-libraries.json",new{nvrtc.CompilerPath,nvrtc.BuiltinsPath,basenameHandlesVerified=true});
     if(nvrtc.Version!=(13,0))throw new InvalidOperationException("Unexpected compiler version.");
     var compiled=nvrtc.Compile(source,cuda.Device.Architecture);
     File.WriteAllBytes(Path.Combine(output,"interop.ptx"),compiled.Ptx);File.WriteAllText(Path.Combine(output,"compiler.log"),compiled.Log);

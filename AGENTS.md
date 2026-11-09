@@ -389,3 +389,18 @@ whole-brain throughput. The standalone CUDA interoperability package now has a
 frozen visible PowerShell launcher and independent saved-byte audit. Review its
 operator-reported result before building on the native execution route. No model
 or live host uses it; numerical and biological acceptance gates remain separate.
+
+The isolated CPU membrane-batch candidate is documented in
+`docs/DNNE_Olive_CPU_Batch_2026-11-09.md`. Its original olive runtime reference is
+unchanged. Explicit instance/cell identity, per-cell clocks and transactional
+staging protect reordered/parallel work. Eleven focused/manifest cases and six
+complete binary-trace comparisons are prepared but not yet run. Hold this window
+until the operator reports the CUDA interoperability retry outcome; do not monitor the
+existing window. No native GPU route, receptor/metabolic coupling, live scheduler,
+physiology or Avatar recovery is qualified by the build or layout implementation.
+
+The first CUDA outcome is reviewed in `docs/DNNE_Cuda_Load_Repair_2026-11-09.md`:
+the device was identified, but NVRTC failed to open its present, verified helper
+DLL; no arithmetic case ran. The explicit absolute helper preload and saved
+loaded-module verification are isolated repairs. Protocol v3 retains all six
+arithmetic criteria; await the fresh visible PowerShell retry without monitoring.

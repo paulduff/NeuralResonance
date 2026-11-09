@@ -8,7 +8,14 @@ import sys
 root=Path(sys.argv[1]).resolve()
 read=lambda name:json.loads((root/name).read_text(encoding='utf-8-sig'))
 protocol=read('protocol.json');device=read('device.json');compiler=read('compiler.json');result=read('results.json')
-assert protocol['version']=='cuda-double-interop-v2'
+assert protocol['version']=='cuda-double-interop-v3' and protocol['explicitBuiltinLoadRequired']
+loaded=read('loaded-libraries.json')
+assert loaded['basenameHandlesVerified']
+assert Path(loaded['CompilerPath']).name=='nvrtc64_130_0.dll' and Path(loaded['BuiltinsPath']).name=='nvrtc-builtins64_130.dll'
+assert {Path(loaded[k]).resolve() for k in ('CompilerPath','BuiltinsPath')}=={Path(row['path']).resolve() for row in compiler['libraries']}
+for row in compiler['libraries']:
+    path=Path(row['path']).resolve()
+    assert path.is_relative_to(root.parent/'compiler') and sha256(path.read_bytes()).hexdigest().upper()==row['sha256']
 counts=[1,255,256,257,4097,65537]
 assert protocol['counts']==counts and protocol['launchesPerBuffer']==7 and protocol['guardsPerEnd']==8
 assert protocol['exactArithmeticRequired'] and protocol['nativeContextCleanupRequired']

@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\..\tools\OliveBatchProbe\OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />
+    <Compile Include="..\..\tools\OliveBatchProbe\OlivaryCpuBatch.cs" Link="OlivaryCpuBatch.cs" />
     <Compile Include="..\..\tools\DnneComputeProbe\StateEvidence.cs" Link="ComputeStateEvidence.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\SpinalCircuit.cs" Link="UnitySpinalCircuit.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\AvatarPhysiology.cs" Link="UnityAvatarPhysiology.cs" />

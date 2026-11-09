@@ -57,7 +57,7 @@ initial D: copy with `backup-unity-run.ps1` before launching its frozen
 The launcher builds only this standalone probe, records its binary hashes, runs
 the native checks and the independent Python byte audit, and rechecks frozen
 inputs and binaries. There is no DNNE unit-suite or physiological-pass claim.
-Protocol `cuda-double-interop-v2` saves its criteria before native operations and
+The initial protocol `cuda-double-interop-v2` saves its criteria before native operations and
 retains device/compiler metadata, PTX and every returned transfer/result buffer.
 `analyse-cuda-interop.py` independently reconstructs all expected float64 bytes,
 including both guard regions. Native context destruction and restoration of the
@@ -68,3 +68,8 @@ The window saves failure evidence and verifies its final D: copy. It remains ope
 for the operator's report; do not monitor it. Inspect only after completion is
 reported. A successful run qualifies this narrow interoperability route, not a
 neuronal solver, performance improvement, full memory safety or Avatar recovery.
+
+The first reported run failed while NVRTC located its helper DLL, before any
+arithmetic case. Its verified evidence and explicit-library-load repair are in
+`DNNE_Cuda_Load_Repair_2026-11-09.md`. The retry uses protocol v3, adding verified
+loaded-library paths while retaining all arithmetic and cleanup criteria.

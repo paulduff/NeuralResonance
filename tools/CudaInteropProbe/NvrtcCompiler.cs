@@ -5,7 +5,7 @@ using System.Text;
 // against the frozen NVIDIA dependency manifest before constructing this class.
 internal sealed class NvrtcCompiler : IDisposable
 {
-    private nint _library;
+    private nint _library, _builtins;
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int VersionDelegate(out int major, out int minor);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int CreateDelegate(out nint program, [MarshalAs(UnmanagedType.LPUTF8Str)] string source,
         [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int headers, nint headerSources, nint headerNames);
@@ -17,15 +17,24 @@ internal sealed class NvrtcCompiler : IDisposable
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ArchitecturesDelegate([Out] int[] architectures);
     internal (int Major, int Minor) Version { get; }
     internal int[] SupportedArchitectures { get; }
+    internal string CompilerPath { get; }
+    internal string BuiltinsPath { get; }
 
-    internal NvrtcCompiler(string absolutePath)
+    internal NvrtcCompiler(string absolutePath, string absoluteBuiltinsPath)
     {
-        if (!OperatingSystem.IsWindows() || !Environment.Is64BitProcess || !Path.IsPathFullyQualified(absolutePath))
-            throw new PlatformNotSupportedException("This probe requires Windows x64 and a verified absolute compiler path.");
-        _library = NativeLibrary.Load(absolutePath, typeof(NvrtcCompiler).Assembly,
-            DllImportSearchPath.UseDllDirectoryForDependencies | DllImportSearchPath.System32);
+        if (!OperatingSystem.IsWindows() || !Environment.Is64BitProcess || !Path.IsPathFullyQualified(absolutePath) || !Path.IsPathFullyQualified(absoluteBuiltinsPath))
+            throw new PlatformNotSupportedException("This probe requires Windows x64 and verified absolute compiler/builtins paths.");
         try
         {
+            // NVRTC opens its helper dynamically during Compile. The dependency
+            // search flags on the earlier compiler load do not persist for that
+            // later load. Preload the verified helper and retain our reference.
+            _builtins=NativeLibrary.Load(absoluteBuiltinsPath,typeof(NvrtcCompiler).Assembly,
+                DllImportSearchPath.UseDllDirectoryForDependencies|DllImportSearchPath.System32);
+            BuiltinsPath=VerifyLoadedPath(_builtins,absoluteBuiltinsPath);
+            _library=NativeLibrary.Load(absolutePath,typeof(NvrtcCompiler).Assembly,
+                DllImportSearchPath.UseDllDirectoryForDependencies|DllImportSearchPath.System32);
+            CompilerPath=VerifyLoadedPath(_library,absolutePath);
             Check(Get<VersionDelegate>("nvrtcVersion")(out int major, out int minor), "nvrtcVersion"); Version = (major,minor);
             Check(Get<ArchitectureCountDelegate>("nvrtcGetNumSupportedArchs")(out int count), "nvrtcGetNumSupportedArchs");
             if (count <= 0 || count > 1024) throw new InvalidOperationException("Invalid supported-architecture count.");
@@ -33,6 +42,20 @@ internal sealed class NvrtcCompiler : IDisposable
         }
         catch { Dispose(); throw; }
     }
+    private static string VerifyLoadedPath(nint module,string expected)
+    {
+        var path=new StringBuilder(32768);uint length=GetModuleFileName(module,path,path.Capacity);
+        if(length==0||length>=path.Capacity)throw new InvalidOperationException("Unable to verify loaded compiler library path.");
+        if(!Path.GetFullPath(path.ToString()).Equals(Path.GetFullPath(expected),StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Loader selected a different compiler library path.");
+        if(GetModuleHandle(Path.GetFileName(expected))!=module)
+            throw new InvalidOperationException("Compiler library basename resolves to a different loaded module.");
+        return path.ToString();
+    }
+    [DllImport("kernel32.dll",EntryPoint="GetModuleFileNameW",CharSet=CharSet.Unicode,ExactSpelling=true)]
+    private static extern uint GetModuleFileName(nint module,StringBuilder path,int capacity);
+    [DllImport("kernel32.dll",EntryPoint="GetModuleHandleW",CharSet=CharSet.Unicode,ExactSpelling=true)]
+    private static extern nint GetModuleHandle(string name);
     private T Get<T>(string name) where T : Delegate => Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(_library,name));
     private static void Check(int result, string operation) { if (result != 0) throw new InvalidOperationException(operation+" returned NVRTC "+result); }
 
@@ -64,5 +87,9 @@ internal sealed class NvrtcCompiler : IDisposable
             Check(Get<DestroyDelegate>("nvrtcDestroyProgram")(ref program),"nvrtcDestroyProgram");
         }
     }
-    public void Dispose() { if(_library!=0) {NativeLibrary.Free(_library);_library=0;} }
+    public void Dispose()
+    {
+        if(_library!=0){NativeLibrary.Free(_library);_library=0;}
+        if(_builtins!=0){NativeLibrary.Free(_builtins);_builtins=0;}
+    }
 }

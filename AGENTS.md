@@ -571,3 +571,9 @@ The runner also uses the determinism class's actual global-namespace identity.
 Model code and numerical criteria are unchanged for the retry; preserve the first
 failure. See the outcome section in the cortical integration document. Golgi's
 higher-order solver was being investigated but has not been implemented or run.
+
+The corrected cortical window is launched as `cortical-precision-20261109-bae439`,
+revision `5e2c3a55c021b25c5745190ebce4dc0e88f9db25`, task
+`DNNE-Cortical-Precision-5738a87a440c`, with 1,451 initial files verified on D:.
+It is the only pending window. Await the operator's completion report without
+inspecting live results; the failed first attempt has been reviewed and preserved.

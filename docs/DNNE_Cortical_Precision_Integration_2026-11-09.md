@@ -115,3 +115,8 @@ The corrected test assembly builds with zero warnings/errors. Runtime confirmati
 requires a new frozen PowerShell package. The original failed package remains
 unchanged; reference data, model equations and numerical acceptance limits are
 preserved. These harness corrections do not qualify the candidate.
+
+The corrected window is launched as `cortical-precision-20261109-bae439`, frozen
+revision `5e2c3a55c021b25c5745190ebce4dc0e88f9db25`, task
+`DNNE-Cortical-Precision-5738a87a440c`. Its initial 1,451 files plus manifest have
+a verified D: backup. Await operator-reported completion without live monitoring.

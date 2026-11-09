@@ -367,3 +367,16 @@ message UUIDs are excluded from neural cross-run equality; connected identities,
 times and payloads remain compared. It measures neither live network transport,
 Unity physics nor CUDA speedup and does not qualify physiology. Review the saved
 operator-reported outcome before choosing a GPU port from its timings.
+
+The reported CPU cost run failed only after completing all 42 neural runs and
+53 focused tests; its verified partial evidence and serializer repair are in
+`docs/DNNE_Compute_Failure_Review_2026-11-09.md`. All eighteen neural observation
+pairs match. Motor-plant evidence encoding encountered a queue comparator's native
+delegate pointer. The retry preserves comparator method/closure identity, requires
+three additional regressions (56 total), and reproduces all earlier neural hashes.
+Do not claim the motor study or entire performance study passed from this partial
+result. Preserve the failed capture and review on C: and D:.
+The separately prepared `docs/DNNE_Cuda_Interop_2026-11-09.md` records a pinned
+NVRTC dependency and standalone driver/float64 probe. It builds but has not run;
+no GPU backend is selected by the brain, Avatar or Unity. Test it only through
+the visible PowerShell workflow with preserved source/dependencies and outcomes.

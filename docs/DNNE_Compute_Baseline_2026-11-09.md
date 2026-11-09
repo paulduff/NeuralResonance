@@ -108,9 +108,10 @@ behavior, Unity collision cost, standing or recovery.
 
 Release builds and Python/PowerShell syntax checks are development checks. Actual
 tests and measurements run only in the independent visible PowerShell window.
-The frozen source must pass all 53 selected cases first: 27 biological-contact,
+The original frozen source required 53 selected cases first: 27 biological-contact,
 eight explicit-recipient, two new timing guard/default, fifteen isometric-plant
-and one solution-manifest case. This is not the full unit suite; the old
+and one solution-manifest case. The retry adds three evidence-encoding regressions,
+for 56 cases; see `DNNE_Compute_Failure_Review_2026-11-09.md`. This is not the full unit suite; the old
 intermittent consolidation assertion is unchanged and outside this selection.
 
 `analyse-dnne-compute.py` audits saved files independently: 42 neural runs, 21

@@ -21,6 +21,16 @@ internal static class StateEvidence
         // Store actual IEEE bits, including signed zero; no decimal rounding.
         if (value is double d) return new { type = "f64", bits = BitConverter.DoubleToUInt64Bits(d).ToString("X16") };
         if (value is float f) return new { type = "f32", bits = BitConverter.SingleToUInt32Bits(f).ToString("X8") };
+        // A queue comparer is executable identity plus any captured state, not
+        // a process-specific native entry-point address. Preserve invocation
+        // order and closure fields; never silently discard an unknown pointer.
+        if (value is Delegate callback)
+            return new { type = "delegate", invocations = callback.GetInvocationList().Select(entry => new {
+                declaringType = entry.Method.DeclaringType?.AssemblyQualifiedName,
+                module = entry.Method.Module.ModuleVersionId, token = entry.Method.MetadataToken,
+                target = Capture(entry.Target, depth + 1) }).ToArray() };
+        if (value is IntPtr or UIntPtr)
+            throw new NotSupportedException("Unmodelled native pointer in diagnostic state; declare its semantic identity explicitly.");
         if (value is string or bool or Guid || type.IsEnum || type.IsPrimitive) return value;
         if (value is SpikeMessage spike) return NormalizeGeneratedEventIds(JsonSerializer.SerializeToNode(spike));
         if (value is IDictionary dictionary)

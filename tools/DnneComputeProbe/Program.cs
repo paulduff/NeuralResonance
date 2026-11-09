@@ -23,7 +23,7 @@ var cases = new[]
     new NeuralCase("spinal-live-rule", StructureId.SpinalCordMotor, "Izhikevich", "STDP", new(1,4))
 };
 const int frameMs = 20, frames = 50, pairs = 3;
-Save(Path.Combine(root, "protocol.json"), new { version = "isolated-cpu-costs-v1", cases,
+Save(Path.Combine(root, "protocol.json"), new { version = "isolated-cpu-costs-v2", cases,
     durationMs = frameMs * frames, frameMs, pairs, warmupRunsPerCase = 1,
     supply = NeuralSubstrateSupply.ReferenceBath, fullConfiguredPopulations = true,
     fixedInputsAreDiagnosticFixtures = true, liveServices = false, unityPhysicsMeasured = false,

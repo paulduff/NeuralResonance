@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\..\tools\DnneComputeProbe\StateEvidence.cs" Link="ComputeStateEvidence.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\SpinalCircuit.cs" Link="UnitySpinalCircuit.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\AvatarPhysiology.cs" Link="UnityAvatarPhysiology.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\BodyPhysiology.cs" Link="UnityBodyPhysiology.cs" />

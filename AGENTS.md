@@ -561,3 +561,13 @@ The cortical precision window is now launched as
 `DNNE-Cortical-Precision-f3c50e797d62`, with 1,450 initial files verified on D:.
 Await the operator's completion report; do not inspect live logs or status.
 The olive timing and Golgi comparison are reviewed and no longer pending.
+
+The operator has now reported the first cortical precision window failed. Its
+verified C:/D: capture contains 67 passing tests and one fixture-timing failure;
+the two longer studies never started. The test inspected at 1 ms before its
+Entorhinal tract's minimum 3 ms delay. It now verifies absence before arrival and
+exact event/contact membership through the existing 24 ms upper delivery bound.
+The runner also uses the determinism class's actual global-namespace identity.
+Model code and numerical criteria are unchanged for the retry; preserve the first
+failure. See the outcome section in the cortical integration document. Golgi's
+higher-order solver was being investigated but has not been implemented or run.

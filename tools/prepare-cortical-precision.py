@@ -66,6 +66,10 @@ def main():
     shutil.copy2(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
     classes=dict(CorticalPrecisionIntegrationTests=13,DeclaredSynapticTargetTests=8,BiologicalContactLearningTests=27,
         InboundPlasticityApplicationTests=9,StructureEngineDeterminismTests=10,SolutionManifestTests=1)
+    # The existing determinism class is in the global namespace. Preserve its
+    # actual test identity rather than prefixing a namespace it does not have.
+    classes={('' if name=='StructureEngineDeterminismTests' else 'NeuralResonanceEngine.DNNE.Tests.')+name:count
+        for name,count in classes.items()}
     files=[dict(Path=p.relative_to(package).as_posix(),Sha256=digest(p)) for p in sorted(package.rglob('*')) if p.is_file()]
     dotnet=shutil.which('dotnet');assert dotnet
     config=dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,

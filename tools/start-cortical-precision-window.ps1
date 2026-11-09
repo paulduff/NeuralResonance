@@ -69,7 +69,7 @@ try {
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
  foreach($class in $configuration.TestClassCounts.PSObject.Properties){
-  if(@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class.Name+'.*')}).Count -ne $class.Value){throw ('Incomplete test class: '+$class.Name)}
+  if(@($results | Where-Object {$_.testName -like ($class.Name+'.*')}).Count -ne $class.Value){throw ('Incomplete test class: '+$class.Name)}
  }
  $status['PassedFocusedTests']=$results.Count
  $probeBuild=Join-Path $package 'source/artifacts/cortical-precision-build'

@@ -86,3 +86,32 @@ The window was launched on 9 November as
 a verified D: copy. Probe and test builds completed with zero warnings/errors;
 Python and PowerShell syntax checks passed before freezing. No tests were run
 inline. The numerical outcome is pending the operator's completion report.
+
+## First outcome and harness corrections
+
+The operator reported that window failed. The completed capture verifies on C:
+and D: (1,840 files, 367,353,970 bytes per copy), including frozen source and test
+binaries. `tools/review-cortical-precision-first-20261109.py` records the audit in
+`artifacts/cortical-precision-first-review-20261109/review.json`. All 68 required
+tests ran: 67 passed and the inhibitory/synthetic contact test failed. Neither
+seven-scenario study started, so the complete integration result is unavailable.
+
+The failing test incorrectly expected delivered contacts after 1 ms. Its input
+originates in Entorhinal cortex, whose existing tract window is 3..12 ms with a
+bounded timing adjustment and a maximum 24 ms delivery time. Declaring a recipient
+does not remove that conduction delay. The corrected test requires no arrivals
+after 1 ms, then advances through 24 ms and requires exactly the three distinct
+input events at their declared cells within the existing delivery bounds. It also
+checks synthetic nonlearning, inhibitory learning and precision save membership.
+No conduction or learning code changes for this retry.
+
+Review of the saved test names also exposed a later runner issue: the existing
+`StructureEngineDeterminismTests` class has no namespace. The new configuration
+records each fully qualified class name as it actually appears, rather than
+prefixing that class with a nonexistent namespace. The same 68 cases remain
+required. This check had not yet been reached by the failed window.
+
+The corrected test assembly builds with zero warnings/errors. Runtime confirmation
+requires a new frozen PowerShell package. The original failed package remains
+unchanged; reference data, model equations and numerical acceptance limits are
+preserved. These harness corrections do not qualify the candidate.

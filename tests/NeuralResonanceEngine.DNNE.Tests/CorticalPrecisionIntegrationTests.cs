@@ -194,8 +194,23 @@ public sealed class CorticalPrecisionIntegrationTests
             IsolatedSynapticTarget.From(inhibitory,166),IsolatedSynapticTarget.From(synthetic,165)},Count);
         using(var engine=new StructureEngine(Profile,null,diagnosticSynapticTargets:map,diagnosticCorticalPrecision:true))
         {
+            var arrivals=new List<MemoryLearningEvidence>();
+            engine.MemoryLearningObserver=e=>{if(e.Kind=="pre" && e.After.SourceInstance=="isolated-source")arrivals.Add(e);};
             await engine.EnqueueSpikeBatchAsync(new[]{explicitInput,inhibitory,synthetic});
             await engine.ProcessTickAsync(Tick(1));
+            // Declared recipients do not bypass tract conduction. Entorhinal
+            // input has a 3..12 ms base window and a bounded 12 ms adjustment.
+            Assert.Empty(arrivals);
+            Assert.DoesNotContain(engine.CaptureMemoryContactEvidence(),c=>c.SourceInstance=="isolated-source");
+            for(int tick=2;tick<=24;++tick)await engine.ProcessTickAsync(Tick(tick));
+            Assert.Equal(3,arrivals.Count);
+            Assert.Equal(new[]{explicitInput.MessageId,inhibitory.MessageId,synthetic.MessageId}.Order(),
+                arrivals.Select(e=>e.MessageId!.Value).Order());
+            Assert.All(arrivals,e=>Assert.InRange(e.TimestampMs,3,24));
+            Assert.All(arrivals,e=>Assert.Equal(e.After.Synthetic?165:166,e.After.Target));
+            var syntheticArrival=Assert.Single(arrivals,e=>e.After.Synthetic);
+            Assert.Equal(0,syntheticArrival.After.Updates);Assert.Equal(1f,syntheticArrival.After.Weight);
+            Assert.Single(arrivals,e=>e.After.Neurotransmitter==NTEnum.GABA && e.After.Updates>0);
             Assert.Single(engine.CaptureCorticalPrecisionContacts(),c=>c.SourceInstance=="isolated-source");
             Assert.Equal(3,engine.CaptureMemoryContactEvidence().Count(c=>c.SourceInstance=="isolated-source"));
         }

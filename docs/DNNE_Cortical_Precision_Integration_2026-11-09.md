@@ -76,3 +76,13 @@ The new warm-start tests load only saves made within this isolated experiment.
 Live Avatar, Unity and editor behavior is unchanged; the diagnostic status labels
 the candidate when used. Promotion requires the saved outcome and further
 biological review. The separate Golgi integration failure remains unresolved.
+
+## Launch record
+
+The window was launched on 9 November as
+`cortical-precision-20261109-67008c`, frozen revision
+`4fefd12c27c027fb86b048d37b25481f9fc00d1b`, task
+`DNNE-Cortical-Precision-f3c50e797d62`. Its 1,450 initial files plus manifest have
+a verified D: copy. Probe and test builds completed with zero warnings/errors;
+Python and PowerShell syntax checks passed before freezing. No tests were run
+inline. The numerical outcome is pending the operator's completion report.

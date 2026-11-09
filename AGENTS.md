@@ -554,3 +554,10 @@ suppress recurrence, or infer all firings from tick-end IsActive. The frozen
 copies and preserves failed evidence. Await operator completion without monitoring.
 This repairs numerical integration only; reduced learning/receptor calibration,
 the original aggregate assertion, full-suite status and Avatar recovery remain open.
+
+The cortical precision window is now launched as
+`cortical-precision-20261109-67008c`, frozen revision
+`4fefd12c27c027fb86b048d37b25481f9fc00d1b`, task
+`DNNE-Cortical-Precision-f3c50e797d62`, with 1,450 initial files verified on D:.
+Await the operator's completion report; do not inspect live logs or status.
+The olive timing and Golgi comparison are reviewed and no longer pending.

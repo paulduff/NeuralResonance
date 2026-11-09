@@ -1,5 +1,6 @@
 // Isolated numerical candidate for the EXISTING reduced excitatory cortical
-// contact rule. Not selected by StructureEngine, persisted saves or any host.
+// contact rule. Selected only by an internal isolated StructureEngine candidate;
+// no live host selects it. Its schema-5 saves are explicit learned warm starts.
 // Double state and removal of per-update numerical dead zones do not constitute
 // a new receptor/biochemical model. The legacy rate limiter remains provisional.
 internal sealed record CorticalContactState(Guid ContactId, double TimeMs, double Weight, double Baseline,

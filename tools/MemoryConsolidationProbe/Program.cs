@@ -2,6 +2,12 @@ using System.Text.Json;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
+if (args.Length == 2 && args[0] == "--cortical-precision-integration")
+{
+    await CorticalPrecisionStudy.Run(args[1]);
+    return;
+}
+
 if (args.Length == 3 && args[0] == "--contact-replay")
 {
     ContactReplayStudy.Run(args[1], args[2]);

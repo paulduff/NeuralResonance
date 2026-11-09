@@ -543,3 +543,14 @@ batch only at 3,072/12,288 cells with the finer step. Keep CPU production defaul
 do not enlarge biological populations to force a GPU win. Profile costs before
 optimization and keep precision/bounds. The timing hold is over; builds and the
 next visible independent study may proceed. Whole-brain/Avatar speed is unmeasured.
+
+The cortical integration candidate is described in
+`docs/DNNE_Cortical_Precision_Integration_2026-11-09.md`: authoritative double
+contact state through actual recurrent cortical cells, receiver-local efficacy,
+and explicit isolated schema-5 learned warm starts. No live host selects it and
+schema 4 remains unchanged. Do not truncate precise state through legacy mirrors,
+suppress recurrence, or infer all firings from tick-end IsActive. The frozen
+68-test/seven-control/seven-scenario PowerShell rig requires verified baseline
+copies and preserves failed evidence. Await operator completion without monitoring.
+This repairs numerical integration only; reduced learning/receptor calibration,
+the original aggregate assertion, full-suite status and Avatar recovery remain open.

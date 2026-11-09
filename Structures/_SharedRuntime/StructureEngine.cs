@@ -185,11 +185,16 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
 	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
 		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false,
-		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false)
+		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false,
+		bool diagnosticCorticalPrecision = false, bool diagnosticCorticalWarmStart = false)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (diagnosticCorticalWarmStart && !diagnosticCorticalPrecision)
+			throw new ArgumentException("Explicit cortical warm start requires the precision mode.");
+		_diagnosticCorticalPrecision = diagnosticCorticalPrecision;
+		if (diagnosticCorticalPrecision) ValidateCorticalPrecisionMode(isolatedNeuronCount, diagnosticCorticalWarmStart);
 		if (diagnosticPerformance)
 		{
 			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
@@ -205,8 +210,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			if (isolatedNeuronCount is not null || !CorticalLaminarTopology.IsCorticalStructure(profile.StructureId) ||
 				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
 				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
-				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
-				throw new InvalidOperationException("Declared diagnostic contacts require a fresh isolated cortical population.");
+				(!diagnosticCorticalWarmStart && Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Declared synaptic recipients require fresh isolated cortex or an explicit compatible precision warm start.");
 			diagnosticSynapticTargets.ValidateFor(_circuit.NeuronCount);
 			_diagnosticSynapticTargets = diagnosticSynapticTargets;
 		}
@@ -248,6 +253,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		_rightingInputTrace = new float[_neurons.Length];
 		_incomingByTarget = Enumerable.Range(0, _neurons.Length).Select(_ => new List<SynapseState>()).ToArray();
 		_cellPostTrace = new float[_neurons.Length];
+		if (_diagnosticCorticalPrecision) _preciseCellPostTrace = new double[_neurons.Length];
 		_cellPostTimestamp = new double[_neurons.Length];
 		_withdrawalInputTrace = new float[_neurons.Length];
 		_feedbackDelayWindow = profile.FeedbackDelay;
@@ -269,9 +275,14 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		if (_diagnosticSynapticTargets is not null)
 			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedSynapticTargets.Version,
 				_diagnosticSynapticTargets.Fingerprint).ToString("N");
-		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint);
+		if (_diagnosticCorticalPrecision)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, CorticalPrecisionMode.Version, CorticalContactNumerics.Version).ToString("N");
+		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint,
+			_diagnosticCorticalPrecision ? profile.PlasticityRule : null);
 		try
 		{
+			if (diagnosticCorticalWarmStart && !_synapseStore.HasSavedState)
+				throw new InvalidOperationException("The explicitly requested cortical warm-start file is missing; no fresh state was created.");
 			_synapseStore.Load(_inboundSynapses, _outboundSynapses);
 			foreach (var contact in _inboundSynapses.Values)
 			{
@@ -546,7 +557,11 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				performance?.End(StructurePerformancePhase.CellDynamics, dynamicsStarted);
 				long learningStarted = performance?.Start() ?? 0;
 				AdvanceContactModulation(modelNeuron, substepTimestampMs, integrationStepMilliseconds, previousDendriteVoltage);
-				if (fired) LearnPostsynaptic(modelNeuron, substepTimestampMs);
+				if (fired)
+				{
+					CorticalNeuronFiringObserver?.Invoke(new(_instanceKey, modelNeuron.Index, substepTimestampMs));
+					LearnPostsynaptic(modelNeuron, substepTimestampMs);
+				}
 				performance?.End(StructurePerformancePhase.ContactLearning, learningStarted);
 				long routingStarted = performance?.Start() ?? 0;
 				if (activeDuringInterval is not null && (fired || modelNeuron.IsActive))
@@ -941,7 +956,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	{
 		var message = envelope.Message;
 			SynapseState synapse = GetOrCreateInboundSynapse(message, modelNeuron.Index, tickSignal.TimestampMs);
-		SpikeMessage effectiveMessage = ApplyLearnedInboundStrength(message, synapse);
+		SpikeMessage effectiveMessage = synapse.CorticalPrecision is null ? ApplyLearnedInboundStrength(message, synapse) : message;
 		effectiveMessage = ApplyRightingRelayEfficacy(effectiveMessage);
 		effectiveMessage = ApplyWithdrawalRecurrentInhibition(effectiveMessage, modelNeuron.Index);
 		effectiveMessage = ApplyWithdrawalRelayEfficacy(effectiveMessage);
@@ -962,11 +977,16 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				ObserveWithdrawalSource(route, afferentDrive);
 			}
 		}
-		modelNeuron.Integrate(effectiveMessage, integrationStepMilliseconds);
+		if (synapse.CorticalPrecision is not null)
+			IntegrateCorticalPrecision(message, synapse, modelNeuron, envelope.DeliverAtTimestampMs,
+				tickSignal.TimestampMs, integrationStepMilliseconds);
+		else modelNeuron.Integrate(effectiveMessage, integrationStepMilliseconds);
 		InboundIntegrationObserver?.Invoke(new InboundSynapticObservation(
 			envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
 			modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,
-			synapse.VesicleQuanta, effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
+			synapse.VesicleQuanta, synapse.CorticalPrecision is { } precise
+				? (float)CombineCorticalPrecisionStrength(message.VesicleQuanta, precise.State.Weight)
+				: effectiveMessage.VesicleQuanta, effectiveMessage.IsRightingCircuitSpike));
 		var learningObserver = ContactLearningObserver;
 		var beforeLearning = learningObserver is null ? null : _inboundSynapses.Values
 			.OrderBy(c => c.SynapseId).Select(ContactLearningSnapshot.From).ToArray();

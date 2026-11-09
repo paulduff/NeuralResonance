@@ -40,6 +40,7 @@ public sealed partial class StructureEngine
                     : "; HH with population channel reductions, not a calibrated cerebellar cell") : "") +
                 (_diagnosticSynapticTargets is not null
                     ? "; isolated declared synaptic recipients; cortical arbor/receptor calibration pending" : "") +
+                (_diagnosticCorticalPrecision ? "; isolated double contact/receptor candidate; schema-5 learned warm start; biochemical calibration pending" : "") +
                 (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule
                     ? "; contact-local voltage/IP3/calcium LTD candidate; no fitted human spine, LTP or full dendritic complex-spike model" : ""),
             _neurons.Length, _inboundSynapses.Count,
@@ -74,6 +75,7 @@ public sealed partial class StructureEngine
                 PostTrace = PlasticityRules.DecayTrace(_cellPostTrace[targetCell],
                     timestampMs - _cellPostTimestamp[targetCell], ContactPlasticity.PostTauMs)
             };
+            EnableNewCorticalContact(contact, timestampMs);
             _inboundSynapses.Add(contactId, contact);
             _incomingByTarget[targetCell].Add(contact);
         }
@@ -86,6 +88,7 @@ public sealed partial class StructureEngine
         if (!_warmStartPending) return;
         foreach (var state in _inboundSynapses.Values.Concat(_outboundSynapses.Values))
         {
+            state.InitializeCorticalClock(intervalStartMs);
             state.LastUpdateTimestampMs = intervalStartMs;
             state.LastPlasticityBudgetTimestampMs = intervalStartMs;
         }
@@ -98,7 +101,8 @@ public sealed partial class StructureEngine
         var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
         var previous = ComputeSynapticMemoryContribution(contact);
         var supported = contact.UpdateCount > 0;
-        ContactPlasticity.Spike(contact, _profile.PlasticityRule, true, timestampMs, cell.ActivityTrace);
+        if (!LearnCorticalPrecision(contact,cell,"pre",message.MessageId,timestampMs))
+            ContactPlasticity.Spike(contact, _profile.PlasticityRule, true, timestampMs, cell.ActivityTrace);
         if (_profile.PlasticityRule == PurkinjeCalciumPlasticity.Rule &&
             ContactPlasticity.IsLearningContact(contact) && contact.Neurotransmitter == NTEnum.GLUTAMATE &&
             contact.SourceStructure == StructureId.CerebellarGranule)
@@ -123,6 +127,9 @@ public sealed partial class StructureEngine
 
     private void LearnPostsynaptic(ModelNeuron cell, double timestampMs)
     {
+        if (_preciseCellPostTrace is not null)
+            _preciseCellPostTrace[cell.Index] = Math.Min(8, _preciseCellPostTrace[cell.Index] *
+                Math.Exp(-(timestampMs-_cellPostTimestamp[cell.Index])/ContactPlasticity.PostTauMs)+1);
         _cellPostTrace[cell.Index] = Math.Min(8f, PlasticityRules.DecayTrace(_cellPostTrace[cell.Index],
             timestampMs - _cellPostTimestamp[cell.Index], ContactPlasticity.PostTauMs) + 1f);
         _cellPostTimestamp[cell.Index] = timestampMs;
@@ -131,7 +138,8 @@ public sealed partial class StructureEngine
             var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
             var previous = ComputeSynapticMemoryContribution(contact);
             var supported = contact.UpdateCount > 0;
-            ContactPlasticity.Spike(contact, _profile.PlasticityRule, false, timestampMs, cell.ActivityTrace);
+            if (!LearnCorticalPrecision(contact,cell,"post",null,timestampMs))
+                ContactPlasticity.Spike(contact, _profile.PlasticityRule, false, timestampMs, cell.ActivityTrace);
             UpdateContactDiagnostics(contact, previous, supported);
             ObserveMemoryLearning("post", null, timestampMs, 0, cell, memoryBefore, contact);
             if (ContactPlasticity.IsLearningContact(contact)) _postsynapticLearningEvents++;
@@ -162,8 +170,9 @@ public sealed partial class StructureEngine
             var memoryBefore = MemoryLearningObserver is null ? null : MemoryContactEvidence.From(contact);
             var previous = ComputeSynapticMemoryContribution(contact);
             var supported = contact.UpdateCount > 0;
-            ContactPlasticity.Modulate(contact, _profile.PlasticityRule, timestampMs, elapsedMs,
-                modulation, cell.LocalRewardSignal, cell.ActivityTrace);
+            if (!LearnCorticalPrecision(contact,cell,"modulation",null,timestampMs,elapsedMs))
+                ContactPlasticity.Modulate(contact, _profile.PlasticityRule, timestampMs, elapsedMs,
+                    modulation, cell.LocalRewardSignal, cell.ActivityTrace);
             UpdateContactDiagnostics(contact, previous, supported);
             ObserveMemoryLearning("modulation", null, timestampMs, elapsedMs, cell, memoryBefore, contact);
         }

@@ -203,7 +203,6 @@ internal sealed class ModelNeuron
 		var quanta = float.IsFinite(spike.VesicleQuanta)
 			? Math.Clamp(spike.VesicleQuanta, 0.01f, 5f)
 			: 0.01f;
-		var feedbackScale = spike.IsFeedback ? _circuitProfile.FeedbackAttenuation : 1.0;
 		if (_oliveSynapses is not null && spike.Neurotransmitter is NTEnum.GLUTAMATE or NTEnum.GABA)
 		{
 			// Contact weights arrive as quanta. No generic receptor gain or voltage kick.
@@ -217,6 +216,26 @@ internal sealed class ModelNeuron
 			_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
 			return;
 		}
+		IntegrateReceptors(spike, quanta, dtMs);
+	}
+
+	internal CorticalReceptorState CaptureCorticalReceptors() => new(_ampaCurrent, _nmdaCurrent,
+		_metabotropicGlutamateCurrent, _basalDendriteVoltage, _apicalDendriteVoltage,
+		_proximalClusterTrace, _distalClusterTrace, _microtubules.RecentExcitatoryDrive);
+
+	internal void IntegrateCorticalPrecision(SpikeMessage spike, double localEffectiveQuanta, double dtMs)
+	{
+		if (!CorticalLaminarTopology.IsCorticalStructure(_circuitProfile.StructureId) ||
+			spike.TargetStructure != _circuitProfile.StructureId || spike.Neurotransmitter != NTEnum.GLUTAMATE ||
+			spike.IsSyntheticBackground || !double.IsFinite(localEffectiveQuanta) ||
+			localEffectiveQuanta < (double).05f || localEffectiveQuanta > 5)
+			throw new ArgumentException("Exact local efficacy requires an explicit cortical glutamate input.");
+		IntegrateReceptors(spike, localEffectiveQuanta, dtMs);
+	}
+
+	private void IntegrateReceptors(SpikeMessage spike, double quanta, double dtMs)
+	{
+		var feedbackScale = spike.IsFeedback ? _circuitProfile.FeedbackAttenuation : 1.0;
 		switch (spike.Neurotransmitter)
 		{
 		case NTEnum.GLUTAMATE:
@@ -259,7 +278,7 @@ internal sealed class ModelNeuron
 			break;
 		}
 		UpdateLocalNeuromodulation();
-		_microtubules.ObserveSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
+		_microtubules.ObservePreciseSynapticInput(spike.Neurotransmitter, quanta, _localNeuromodState, dtMs);
 		_basalDendriteVoltage = Math.Clamp(_basalDendriteVoltage, -85.0, -35.0);
 		_apicalDendriteVoltage = Math.Clamp(_apicalDendriteVoltage, -85.0, -35.0);
 	}

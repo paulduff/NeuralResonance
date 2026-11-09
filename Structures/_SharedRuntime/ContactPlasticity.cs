@@ -14,6 +14,8 @@ internal static class ContactPlasticity
 
     internal static void DecayTo(SynapseState synapse, double timestampMs)
     {
+        if (synapse.CorticalPrecision is not null)
+            throw new InvalidOperationException("A precision contact must use its double-state learning path.");
         if (!double.IsFinite(timestampMs) || timestampMs < synapse.LastUpdateTimestampMs - 0.000001)
             throw new InvalidOperationException("Synaptic biological time cannot run backwards.");
         var elapsed = Math.Max(0, timestampMs - synapse.LastUpdateTimestampMs);

@@ -87,14 +87,18 @@ internal sealed class IntracellularMicrotubuleState
 
 	public void ObserveSynapticInput(NTEnum neurotransmitter, float vesicleQuanta, NeuromodState? modulationContext, double dtMs)
 	{
-		if (!_enabled)
-		{
-			return;
-		}
-
 		double quanta = float.IsFinite(vesicleQuanta)
 			? Math.Clamp(vesicleQuanta, 0.0f, 5.0f)
 			: 0.0;
+		ObservePreciseSynapticInput(neurotransmitter, quanta, modulationContext, dtMs);
+	}
+
+	internal double RecentExcitatoryDrive => _recentExcitatoryDrive;
+
+	internal void ObservePreciseSynapticInput(NTEnum neurotransmitter, double quanta, NeuromodState? modulationContext, double dtMs)
+	{
+		if (!double.IsFinite(quanta) || quanta < 0 || quanta > 5) throw new ArgumentOutOfRangeException(nameof(quanta));
+		if (!_enabled) return;
 		if (neurotransmitter == NTEnum.GLUTAMATE)
 		{
 			// Null context means "no modulation broadcast on the wire" - treat as zeros.

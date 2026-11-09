@@ -16,6 +16,42 @@ internal sealed class SynapseState(
 	public float BaselineVesicleQuanta { get; set; } = baselineVesicleQuanta ?? vesicleQuanta;
 	// Transient chemistry is reinitialized on a learned-weight warm start.
 	internal PurkinjeCalciumPlasticity? PurkinjeCalcium { get; set; }
+	internal CorticalContactNumerics? CorticalPrecision { get; private set; }
+	private bool _corticalPairChangesWeight;
+
+	internal void EnableCorticalPrecision(CorticalContactState state, bool pairChangesWeight)
+	{
+		if (CorticalPrecision is not null || state.ContactId != SynapseId ||
+			Neurotransmitter != NTEnum.GLUTAMATE || IsSyntheticBackground)
+			throw new InvalidOperationException("Precision state requires its own explicit receiving glutamate contact.");
+		CorticalPrecision = new(state, pairChangesWeight);
+		_corticalPairChangesWeight = pairChangesWeight;
+		RefreshCorticalEvidence();
+	}
+
+	// Legacy floats are one-way diagnostic mirrors. Never reconstruct the
+	// accepted double state from them, including during persistence or delivery.
+	internal void RefreshCorticalEvidence()
+	{
+		if (CorticalPrecision is not { } numerical) return;
+		var s = numerical.State;
+		VesicleQuanta = (float)s.Weight; BaselineVesicleQuanta = (float)s.Baseline;
+		PreTrace = (float)s.PreTrace; PostTrace = (float)s.PostTrace; ThetaM = (float)s.Theta;
+		EligibilityTrace = (float)s.Eligibility; SynapticTagTrace = (float)s.Tag;
+		UpdateCount = s.Updates; LastUpdateTimestampMs = s.TimeMs;
+		PlasticityBudgetQuanta = (float)s.Budget; LastPlasticityBudgetTimestampMs = s.BudgetTimeMs;
+		TotalAbsolutePlasticityChange = s.ChargedPlasticity;
+	}
+
+	internal void InitializeCorticalClock(double timestampMs)
+	{
+		if (CorticalPrecision is not { } numerical) return;
+		var s = numerical.State;
+		if (s.TimeMs != 0 || s.PreTrace != 0 || s.PostTrace != 0 || s.Eligibility != 0 || s.Tag != 0)
+			throw new InvalidOperationException("Only cleared warm-start chemistry may acquire a new biological origin.");
+		CorticalPrecision = new(s with { TimeMs=timestampMs, BudgetTimeMs=timestampMs }, _corticalPairChangesWeight);
+		RefreshCorticalEvidence();
+	}
 
 	public Guid ProjectionId { get; set; }
 	public StructureId SourceStructure { get; set; }
@@ -28,6 +64,12 @@ internal sealed class SynapseState(
 	// capacity. It deliberately does not pretend to resume membrane/trace state.
 	public void PrepareWarmStart()
 	{
+		if (CorticalPrecision is { } numerical)
+		{
+			CorticalPrecision = new(numerical.State with
+				{ TimeMs=0, PreTrace=0, PostTrace=0, Eligibility=0, Tag=0, BudgetTimeMs=-1 }, _corticalPairChangesWeight);
+			RefreshCorticalEvidence();
+		}
 		PreTrace = PostTrace = EligibilityTrace = SynapticTagTrace = 0f;
 		PurkinjeCalcium = null;
 		LastUpdateTimestampMs = 0;
@@ -58,6 +100,7 @@ internal sealed class SynapseState(
 
 	public void Stabilize()
 	{
+		if (CorticalPrecision is not null) { RefreshCorticalEvidence(); return; }
 		VesicleQuanta = PlasticityRules.ClampQuanta(VesicleQuanta);
 		BaselineVesicleQuanta = PlasticityRules.ClampQuanta(BaselineVesicleQuanta);
 		PreTrace = FiniteClamp(PreTrace, 0f, 8f, 0f);

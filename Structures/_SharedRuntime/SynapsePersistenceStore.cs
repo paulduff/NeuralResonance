@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using NeuralResonanceEngine.Protocol;
 internal sealed class SynapsePersistenceStore : IDisposable
 {
 	internal const int CurrentSchemaVersion = 4;
+	internal const int CorticalPrecisionSchemaVersion = 5;
 	private const double DefaultSaveEveryMs = 300000.0;
 	private const double DefaultSaveEveryBiologicalMs = 30000.0;
 	private const int DefaultSensoryInboundSynapseLimit = 65_536;
@@ -25,6 +27,10 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly string _instanceKey;
 	private readonly string _path;
 	private readonly string _modelFingerprint;
+	private readonly string? _corticalRule;
+	private int ExpectedSchemaVersion => _corticalRule is null ? CurrentSchemaVersion : CorticalPrecisionSchemaVersion;
+	private string? ExpectedCorticalModel => _corticalRule is null ? null : CorticalPrecisionMode.Version + "/" + CorticalContactNumerics.Version;
+	internal bool HasSavedState => File.Exists(_path);
 	private readonly double _saveEveryMs;
 	private readonly double _saveEveryBiologicalMs;
 	private readonly int _maxInboundSynapseCount;
@@ -49,11 +55,20 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private readonly Task _writerTask;
 	private int _disposed;
 
-	public SynapsePersistenceStore(StructureId structureId, string modelFingerprint = "contact-events-v1")
+	public SynapsePersistenceStore(StructureId structureId, string modelFingerprint = "contact-events-v1", string? isolatedCorticalRule = null)
 	{
 		_structureId = structureId;
 		_modelFingerprint = modelFingerprint;
 		_instanceKey = ResolveInstanceKey(structureId);
+		_corticalRule = isolatedCorticalRule;
+		if (isolatedCorticalRule is not null)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (!CorticalPrecisionMode.Supports(isolatedCorticalRule) || !CorticalLaminarTopology.IsCorticalStructure(structureId) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
+				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory))
+				throw new InvalidOperationException("Schema-5 cortical state requires an explicit isolated cortical store and supported rule.");
+		}
 		_path = ResolvePath(_instanceKey);
 		_saveEveryMs = ResolvePositiveDouble("NRE_SYNAPSE_SAVE_INTERVAL_MS", DefaultSaveEveryMs, 5000.0, 900_000.0);
 		_saveEveryBiologicalMs = ResolvePositiveDouble(
@@ -82,7 +97,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			{
 				throw new InvalidOperationException("Saved neural identity does not match this structure/instance. Existing file is preserved.");
 			}
-			if (snapshot.SchemaVersion != CurrentSchemaVersion || snapshot.ModelFingerprint != _modelFingerprint)
+			if (snapshot.SchemaVersion != ExpectedSchemaVersion || snapshot.ModelFingerprint != _modelFingerprint ||
+				snapshot.CorticalPrecisionModel != ExpectedCorticalModel)
 			{
 				throw new InvalidOperationException($"[{_structureId}] Incompatible neural state (schema {snapshot.SchemaVersion}). Use an explicit migration or a new isolated state directory; existing file is preserved.");
 			}
@@ -92,14 +108,14 @@ internal sealed class SynapsePersistenceStore : IDisposable
 			foreach (SynapseStoreEntry entry in snapshot.Inbound)
 			{
 				if (entry is null || entry.SynapseId == Guid.Empty ||
-					!inboundSynapses.TryAdd(entry.SynapseId, entry.ToSynapseState()))
+					!inboundSynapses.TryAdd(entry.SynapseId, entry.ToSynapseState(_corticalRule, true)))
 					throw new InvalidOperationException("Saved neural state has an invalid or duplicate receiving contact; existing file is preserved.");
 			}
 
 			foreach (SynapseStoreEntry entry in snapshot.Outbound)
 			{
 				if (entry is null || string.IsNullOrWhiteSpace(entry.Key) || entry.SynapseId == Guid.Empty ||
-					!outboundSynapses.TryAdd(entry.Key, entry.ToSynapseState()))
+					!outboundSynapses.TryAdd(entry.Key, entry.ToSynapseState(_corticalRule, false)))
 					throw new InvalidOperationException("Saved neural state has an invalid or duplicate release site; existing file is preserved.");
 			}
 
@@ -210,7 +226,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				throw new InvalidOperationException("Saved contact count exceeds configured capacity; refusing implicit pruning.");
 		return new SynapseStoreSnapshot
 		{
-			SchemaVersion = CurrentSchemaVersion,
+			SchemaVersion = ExpectedSchemaVersion,
+			CorticalPrecisionModel = ExpectedCorticalModel,
 			ModelFingerprint = _modelFingerprint,
 			CheckpointScope = "learned-weights-warm-start; no membrane or queued-event continuation",
 			StructureId = _structureId,
@@ -352,23 +369,23 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		_writerCts.Dispose();
 	}
 
-	private static List<SynapseStoreEntry> CreateInboundEntries(Dictionary<Guid, SynapseState> synapses)
+	private List<SynapseStoreEntry> CreateInboundEntries(Dictionary<Guid, SynapseState> synapses)
 	{
 		var entries = new List<SynapseStoreEntry>(synapses.Count);
 		foreach (SynapseState synapse in synapses.Values)
 		{
-			entries.Add(SynapseStoreEntry.FromSynapseState(null, synapse));
+			entries.Add(SynapseStoreEntry.FromSynapseState(null, synapse, _corticalRule, true));
 		}
 
 		return entries;
 	}
 
-	private static List<SynapseStoreEntry> CreateOutboundEntries(Dictionary<string, SynapseState> synapses)
+	private List<SynapseStoreEntry> CreateOutboundEntries(Dictionary<string, SynapseState> synapses)
 	{
 		var entries = new List<SynapseStoreEntry>(synapses.Count);
 		foreach (KeyValuePair<string, SynapseState> pair in synapses)
 		{
-			entries.Add(SynapseStoreEntry.FromSynapseState(pair.Key, pair.Value));
+			entries.Add(SynapseStoreEntry.FromSynapseState(pair.Key, pair.Value, _corticalRule, false));
 		}
 
 		return entries;
@@ -453,6 +470,8 @@ internal sealed class SynapsePersistenceStore : IDisposable
 	private sealed class SynapseStoreSnapshot
 	{
 		public int SchemaVersion { get; set; }
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+		public string? CorticalPrecisionModel { get; set; }
 
 		public string ModelFingerprint { get; set; } = string.Empty;
 		public string CheckpointScope { get; set; } = string.Empty;
@@ -508,9 +527,14 @@ internal sealed class SynapsePersistenceStore : IDisposable
 		public double LastPlasticityBudgetTimestampMs { get; set; }
 
 		public double TotalAbsolutePlasticityChange { get; set; }
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+		public CorticalContactState? CorticalPrecisionState { get; set; }
 
-		public static SynapseStoreEntry FromSynapseState(string? key, SynapseState synapse)
+		public static SynapseStoreEntry FromSynapseState(string? key, SynapseState synapse, string? corticalRule, bool inbound)
 		{
+			bool requiresPrecision = corticalRule is not null && inbound && !synapse.IsSyntheticBackground && synapse.Neurotransmitter == NTEnum.GLUTAMATE;
+			if (requiresPrecision != (synapse.CorticalPrecision is not null))
+				throw new InvalidOperationException("Contact precision does not match the selected save schema; refusing rounded or misplaced state.");
 			synapse.Stabilize();
 			return new SynapseStoreEntry
 			{
@@ -536,12 +560,24 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				UpdateCount = synapse.UpdateCount,
 				PlasticityBudgetQuanta = synapse.PlasticityBudgetQuanta,
 				LastPlasticityBudgetTimestampMs = synapse.LastPlasticityBudgetTimestampMs,
-				TotalAbsolutePlasticityChange = synapse.TotalAbsolutePlasticityChange
+				TotalAbsolutePlasticityChange = synapse.TotalAbsolutePlasticityChange,
+				CorticalPrecisionState = synapse.CorticalPrecision?.State
 			};
 		}
 
-		public SynapseState ToSynapseState()
+		public SynapseState ToSynapseState(string? corticalRule, bool inbound)
 		{
+			bool requiresPrecision = corticalRule is not null && inbound && !IsSyntheticBackground && Neurotransmitter == NTEnum.GLUTAMATE;
+			if (requiresPrecision != (CorticalPrecisionState is not null))
+				throw new InvalidOperationException("Missing or misplaced precision state; no float fallback is allowed.");
+			if (CorticalPrecisionState is { } exact &&
+				(exact.ContactId != SynapseId || VesicleQuanta != (float)exact.Weight || BaselineVesicleQuanta != (float)exact.Baseline ||
+				 PreTrace != (float)exact.PreTrace || PostTrace != (float)exact.PostTrace || ThetaM != (float)exact.Theta ||
+				 EligibilityTrace != (float)exact.Eligibility || SynapticTagTrace != (float)exact.Tag ||
+				 LastUpdateTimestampMs != exact.TimeMs || UpdateCount != exact.Updates ||
+				 PlasticityBudgetQuanta != (float)exact.Budget || LastPlasticityBudgetTimestampMs != exact.BudgetTimeMs ||
+				 TotalAbsolutePlasticityChange != exact.ChargedPlasticity))
+				throw new InvalidOperationException("Saved precision state and diagnostic mirrors disagree; existing file is preserved.");
 			var baseline = BaselineVesicleQuanta > 0f ? BaselineVesicleQuanta : VesicleQuanta;
 			var synapse = new SynapseState(
 				SynapseId,
@@ -567,7 +603,9 @@ internal sealed class SynapsePersistenceStore : IDisposable
 				LastPlasticityBudgetTimestampMs = LastPlasticityBudgetTimestampMs,
 				TotalAbsolutePlasticityChange = TotalAbsolutePlasticityChange
 			};
-			synapse.Stabilize();
+			if (CorticalPrecisionState is { } state)
+				synapse.EnableCorticalPrecision(state, CorticalPrecisionMode.PairChangesWeight(corticalRule!));
+			else synapse.Stabilize();
 			return synapse;
 		}
 	}

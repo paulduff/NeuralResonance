@@ -629,3 +629,14 @@ revision `faac10d04c87d48155e33946edf6a6cdb1ded763`, task
 on D:. This is the only pending window. Do not inspect live output; await the
 operator's completion report. Independent CUDA profiling code can be prepared,
 but timing must wait until the operator reports this CPU study complete.
+
+The CUDA cost rig is coded in `docs/DNNE_Olive_CUDA_Cost_2026-11-09.md`: separate
+uninstrumented, host-timed and host/device-event variants, six cases and five
+rotated rounds (90 measured trajectories plus 90 warmups). Optional partial hooks
+vanish from other probes; removing their marked lines reproduces the reviewed
+execution source. Numerical equations/kernel remain unchanged. Preserve exact
+cross-variant reports/state as well as the earlier CPU tolerances. Device event
+time includes scheduling and must not be added to host phases or called pure
+arithmetic time. Builds/source/syntax checks pass, but no model test or benchmark
+has run. Prepare from clean pushed source, back up on D:, and hold launch until
+the operator reports the pending Golgi comparison complete. Do not monitor it.

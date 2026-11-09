@@ -1,7 +1,7 @@
 // Isolated resident membrane candidate. No live scheduler, receptor, ATP model
 // or distributed event publisher selects this class. A failed lane prevents the
 // entire public batch from committing; no automatic CPU fallback or state reset.
-internal sealed class OlivaryCudaBatch : IDisposable
+internal sealed partial class OlivaryCudaBatch : IDisposable
 {
     internal const string Version = "isolated-olive-cuda-double-v1";
     internal const double Guard = -12345.625;
@@ -93,6 +93,7 @@ internal sealed class OlivaryCudaBatch : IDisposable
 
     internal OlivaryBatchAdvance[] Advance(IReadOnlyList<OlivaryBatchStep> request)
     {
+        CostBegin(); // COST_HOOK
         Require(); var steps = request.ToArray();
         if (steps.Length > Count) throw new ArgumentException("Too many requested cells.");
         var input = Buffer(9); var lanes = new int[steps.Length]; var seen = new HashSet<int>();
@@ -111,10 +112,15 @@ internal sealed class OlivaryCudaBatch : IDisposable
             for (int component = 0; component < 9; ++component) input[At(component,lane)] = values[component];
         }
         if (steps.Length == 0) return [];
+        CostMark(0); // COST_HOOK
         _cuda.Upload(_inputBuffer,input);
         _lastInputs = input;
+        CostMark(1); // COST_HOOK
         _cuda.LaunchOlive(_kernel,_state,_work,_parameterBuffer,_inputBuffer,_reportBuffer,Count);
-        var raw = _cuda.Download(_reportBuffer); CheckGuards(raw);
+        CostMark(2); // COST_HOOK
+        var raw = _cuda.Download(_reportBuffer);
+        CostMark(3); // COST_HOOK
+        CheckGuards(raw);
         for (int lane = 0; lane < Count; ++lane)
             if (raw[At(0,lane)] != 0) throw new InvalidOperationException($"CUDA membrane condition failed at {_ids[lane]}: code {raw[At(0,lane)]:R}; public state not committed.");
         var results = new OlivaryBatchAdvance[steps.Length]; var soma = new long[steps.Length]; var axon = new long[steps.Length];
@@ -135,8 +141,12 @@ internal sealed class OlivaryCudaBatch : IDisposable
             int lane = lanes[i]; _time[lane] = results[i].EndMs; _soma[lane] = soma[i]; _axon[lane] = axon[i];
             _load[lane] = results[i].Metrics.AdditionalIonicLoad; _synaptic[lane] = results[i].Metrics.SynapticCurrent;
         }
+        CostMark(4); // COST_HOOK
         return ordered;
     }
+
+    partial void CostBegin(); // COST_HOOK
+    partial void CostMark(int phase); // COST_HOOK
 
     public void Dispose()
     {

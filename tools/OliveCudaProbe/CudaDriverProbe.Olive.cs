@@ -17,7 +17,13 @@ internal sealed unsafe partial class CudaDriverProbe
         nint* args = stackalloc nint[6];
         args[0] = (nint)(&state); args[1] = (nint)(&work); args[2] = (nint)(&parameters);
         args[3] = (nint)(&inputs); args[4] = (nint)(&reports); args[5] = (nint)(&count);
+        CostKernelBegin(); // COST_HOOK
         DeviceCheck(Cu.Launch(function, checked((uint)((count + 127) / 128)), 1, 1, 128, 1, 1, 0, 0, (nint)args, 0), "olive cuLaunchKernel");
+        CostKernelLaunched(); // COST_HOOK
         DeviceCheck(Cu.Synchronize(), "olive cuCtxSynchronize");
+        CostKernelSynchronized(); // COST_HOOK
     }
+    partial void CostKernelBegin(); // COST_HOOK
+    partial void CostKernelLaunched(); // COST_HOOK
+    partial void CostKernelSynchronized(); // COST_HOOK
 }

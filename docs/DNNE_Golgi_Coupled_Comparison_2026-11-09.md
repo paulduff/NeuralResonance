@@ -5,6 +5,7 @@ split solver, not a change to channel biology. The isolated candidate and short
 component checks are described in `DNNE_Golgi_Coupled_Solver_2026-11-09.md`.
 This longer study is implemented and builds, but **has not run**. Its launch
 requires the operator-reported component result and a verified passing review.
+That prerequisite has now passed; see `DNNE_Batch_And_Component_Results_2026-11-09.md`.
 
 ## Fixed conditions and evidence
 

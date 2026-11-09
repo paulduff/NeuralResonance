@@ -459,3 +459,12 @@ Require the operator-reported component outcome and its verified 32-case review
 before freezing/launching it. The full window repeats those cases, preserves
 all partial failures and runs without live monitoring. Its declared small-error
 refinement floor does not alter any previous failed result or acceptance bound.
+
+The operator has reported all three pending windows. Their verified review is
+`docs/DNNE_Batch_And_Component_Results_2026-11-09.md`: 87 olive/transport/body
+tests and twelve complete CPU batch contrasts pass exactly; 32 Golgi component
+tests pass. CUDA membrane development and the full Golgi comparison may proceed.
+The motor fixed-state diagnosis reproduces 396 states with identical C#/Python
+calcium derivatives, but does not repair or causally explain the original failed
+refinement gate. Preserve that failure and its bounds. All original captures and
+reviews have verified D: copies; none qualifies live neuronal/body function.

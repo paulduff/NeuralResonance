@@ -71,15 +71,16 @@ calculation uses a different solver and RK coefficient expression, retaining all
 135 nodes. It is not an independent anatomical calibration.
 
 Release builds of both the probe and test assembly succeed with zero warnings or
-errors. Runtime component checks are pending. They run only through
+errors. All 32 runtime component checks subsequently passed; see
+`DNNE_Batch_And_Component_Results_2026-11-09.md`. They ran through
 `prepare-golgi-sdirk-components.py` and the visible frozen-source PowerShell
 launcher, with initial/final D: backups and no live monitoring. This first window
 does not run a six-second candidate comparison or qualify long-run accuracy.
 
 ## Required continuation
 
-The full capture and comparison tooling is now implemented, but its launch waits
-for the operator-reported component outcome and its review. Its predeclared
+The full capture and comparison tooling is implemented, and the operator-reported
+component outcome has now passed its review. Its predeclared
 conditions and acceptance limits are in
 `DNNE_Golgi_Coupled_Comparison_2026-11-09.md`. No full comparison has run yet.
 The physical trace export also has assertions within the existing active

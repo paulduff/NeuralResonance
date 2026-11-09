@@ -118,7 +118,7 @@ def calcium(point, parameters, constants, precision):
         return [entry - removal, entry, removal]
 
 
-def analyse(package):
+def audit(package):
     reference, spec, recorded = load(package)
     request = read(package / 'fixed-states.json')
     assert request == select(package), 'Fixed-state selection changed.'
@@ -191,8 +191,7 @@ def analyse(package):
             originalNumericalStatus='FAILED', originalBoundsChanged=False, odeSolved=False, causalAttributionEstablished=False,
             exactCheckpointReplay=False, activeMotorSourceQualified=False, physiologyQualified=False, avatarRecoveryAssessed=False,
             interpretation='Fixed-state differences and local bias times removal constant are diagnostics, not a trajectory error bound or proof of the failure cause.')
-        write_new(package / 'precision-analysis.json', report)
-    print('Fixed-state arithmetic diagnosis complete. Original numerical failure and biology remain unqualified.', flush=True)
+    return report
 
 
 if __name__ == '__main__':
@@ -204,4 +203,5 @@ if __name__ == '__main__':
     if args.stage == 'select':
         write_new(package / 'fixed-states.json', select(package))
     else:
-        analyse(package)
+        write_new(package / 'precision-analysis.json', audit(package))
+        print('Fixed-state arithmetic diagnosis complete. Original numerical failure and biology remain unqualified.', flush=True)

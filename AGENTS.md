@@ -358,3 +358,12 @@ the proposed measured CPU/CUDA execution work. GPU execution must retain neurona
 identity, biological timing, contact-local learning and required precision.
 Performance improvement does not qualify physiology. Preserve the outstanding
 experiment windows and await operator-reported outcomes without live monitoring.
+
+The first CPU cost study is documented in
+`docs/DNNE_Compute_Baseline_2026-11-09.md`. Its internal timing collector is limited
+to fresh isolated runs; no host enables it. Six current-model workloads and the
+existing isometric motor plant measure costs with paired evidence checks. Generated
+message UUIDs are excluded from neural cross-run equality; connected identities,
+times and payloads remain compared. It measures neither live network transport,
+Unity physics nor CUDA speedup and does not qualify physiology. Review the saved
+operator-reported outcome before choosing a GPU port from its timings.

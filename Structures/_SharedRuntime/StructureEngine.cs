@@ -11,6 +11,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 {
 	internal Action<InboundSynapticObservation>? InboundIntegrationObserver { get; set; }
 	internal Action<ContactLearningObservation>? ContactLearningObserver { get; set; }
+	internal StructurePerformanceEvidence? DiagnosticPerformance { get; }
 
 	private const double MaximumIntegrationSubstepMilliseconds = 4.0;
 	private const double MaximumCatchUpMilliseconds = 100.0;
@@ -184,11 +185,20 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	// this through configuration, and its saves cannot masquerade as a full nucleus.
 	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
 		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false,
-		IsolatedSynapticTargets? diagnosticSynapticTargets = null)
+		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (diagnosticPerformance)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
+				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Performance evidence requires fresh isolated state.");
+			DiagnosticPerformance = new();
+		}
 		if (diagnosticSynapticTargets is not null)
 		{
 			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
@@ -399,6 +409,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		cancellationToken.ThrowIfCancellationRequested();
 		lock (_stateGate)
 		{
+			var performance = DiagnosticPerformance;
+			long tickStarted = performance?.Start() ?? 0;
 			if (tickSignal.Tick <= _lastProcessedTick)
 			{
 				throw new StructureTickSequenceException(_profile.StructureId, tickSignal.Tick, _lastProcessedTick);
@@ -485,7 +497,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				// An arrival changes the state at its boundary, never the preceding
 				// interval. Late transport is processed now and remains visible in
 				// ScheduledMs/ProcessedMs; do not backdate it into elapsed biology.
+				long dueStarted = performance?.Start() ?? 0;
 				ProcessDueInputs(tickSignal with { TimestampMs = cursorMs });
+				performance?.End(StructurePerformancePhase.DueInputs, dueStarted);
 				var gridEnd = (Math.Floor(cursorMs / _maximumIntegrationStepMs) + 1) * _maximumIntegrationStepMs;
 				if (gridEnd <= cursorMs) gridEnd = cursorMs + _maximumIntegrationStepMs;
 				var substepTimestampMs = Math.Min(tickSignal.TimestampMs, Math.Min(gridEnd, NextDeliveryAfter(cursorMs)));
@@ -505,6 +519,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				var substepSignal = _diagnosticCellIntegrationTimes is null ? sharedSubstepSignal :
 					sharedSubstepSignal with { TickDurationMs = integrationStepMilliseconds };
 				ModelNeuron modelNeuron = _neurons[i];
+				long dynamicsStarted = performance?.Start() ?? 0;
 				modelNeuron.SetSubstrateSupply(tickSignal.NeuralSubstrates ?? NeuralSubstrateSupply.Missing);
 				IntrinsicCircuitDriveTopology.Resolve(
 					_profile.StructureId,
@@ -528,8 +543,12 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				}
 				var previousDendriteVoltage = modelNeuron.LearningDendriteVoltageMv;
 				var fired = modelNeuron.Step(integrationStepMilliseconds);
+				performance?.End(StructurePerformancePhase.CellDynamics, dynamicsStarted);
+				long learningStarted = performance?.Start() ?? 0;
 				AdvanceContactModulation(modelNeuron, substepTimestampMs, integrationStepMilliseconds, previousDendriteVoltage);
 				if (fired) LearnPostsynaptic(modelNeuron, substepTimestampMs);
+				performance?.End(StructurePerformancePhase.ContactLearning, learningStarted);
+				long routingStarted = performance?.Start() ?? 0;
 				if (activeDuringInterval is not null && (fired || modelNeuron.IsActive))
 				{
 					activeDuringInterval[i] = true;
@@ -583,10 +602,12 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 						AttributeWithdrawalOutput(channel, evokedDrive);
 					}
 				}
+				performance?.End(StructurePerformancePhase.SpikeRouting, routingStarted);
 				if (!captureDiagnostics)
 				{
 					continue;
 				}
+				long diagnosticsStarted = performance?.Start() ?? 0;
 				var activeInInterval = activeDuringInterval?[i] ?? modelNeuron.IsActive;
 				if (activeInInterval)
 				{
@@ -675,10 +696,14 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				acetylcholineTotal += neuronNeuromod.AcetylcholineLevel;
 				norepinephrineTotal += neuronNeuromod.NorepinephrineLevel;
 				rewardSignalTotal += modelNeuron.LocalRewardSignal;
+				performance?.End(StructurePerformancePhase.Diagnostics, diagnosticsStarted);
 				}
 				cursorMs = substepTimestampMs;
 			}
+			long finalDueStarted = performance?.Start() ?? 0;
 			ProcessDueInputs(tickSignal);
+			performance?.End(StructurePerformancePhase.DueInputs, finalDueStarted);
+			long summaryStarted = performance?.Start() ?? 0;
 			_activeNeuronCount = num2;
 			_meanFiringRateHz = (float)(num3 / (double)_neurons.Length);
 			_meanActivityTrace = (float)(num4 / (double)_neurons.Length);
@@ -731,6 +756,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			var corticalLaminar = BuildCorticalLaminarDiagnostics();
 			TickAck result = new TickAck(_profile.StructureId, tickSignal.Tick, num, _meanFiringRateHz, Math.Max(0, Volatile.Read(in _feedbackDepth)), Volatile.Read(in _spikeInCount), Volatile.Read(in _spikeOutCount), _activeNeuronCount, SelectDominantRhythm(_profile.StructureId), localNeuromod, microtubules, bodySchema, basalGanglia, cerebellar, vestibuloReticular, superiorColliculus, hippocampalSpatial, salienceAffect, prefrontalWorkingMemory, thalamicAttentionGate, hypothalamicHomeostasis, sleepWakeArousal, descendingDefense, dopamineReward, septohippocampalTheta, spinalProprioceptive, olfactoryLimbicMemory, auditoryLanguageMotor, visualObjectRecognition, actionSelection, perceptEnsembles, synapticMemory, neuronalAttentionWorkspace, neuronalSleepConsolidation, corticalLaminar, BuildSynapticLearningDiagnostics(tickSignal.TimestampMs));
 			_lastProcessedTick = tickSignal.Tick;
+			performance?.End(StructurePerformancePhase.Diagnostics, summaryStarted);
+			performance?.End(StructurePerformancePhase.TickTotal, tickStarted);
 			return ValueTask.FromResult(result);
 		}
 	}

@@ -59,6 +59,16 @@ internal sealed class GolgiSdirkCell
     public double[] CopySkOccupancy() => (double[])_state.Sk.Clone();
     public double[] CopySomaticCrossings() => _spikes.ToArray();
 
+    // Physical trace, not a restart checkpoint: 135 shifted cable voltages,
+    // 18 gates, six SK occupancies, then two calcium pools in micromolar.
+    internal void CopyPhysicalTrace(Span<double> destination)
+    {
+        if (destination.Length != 161) throw new ArgumentException("Require all 161 physical values.");
+        _state.V.AsSpan().CopyTo(destination); _state.Gates.AsSpan().CopyTo(destination[135..]);
+        _state.Sk.AsSpan().CopyTo(destination[153..]);
+        destination[159] = _state.High * 1000; destination[160] = _state.Low * 1000;
+    }
+
     public GolgiSdirkCell(double temperatureCelsius = 23, double initialVoltageMv = -60,
         GolgiDiagnosticBlock block = GolgiDiagnosticBlock.None, double toleranceScale = 1)
     {

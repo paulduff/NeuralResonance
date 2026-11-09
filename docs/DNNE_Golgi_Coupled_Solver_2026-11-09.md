@@ -78,13 +78,12 @@ does not run a six-second candidate comparison or qualify long-run accuracy.
 
 ## Required continuation
 
-After the component outcome, add the full six-protocol capture and compare every
-saved state and somatic crossing against the already verified reference arrays.
-Include step refinement and a tighter nonlinear-tolerance control to distinguish
-time-discretization from incomplete stage convergence. Preserve the original
-split traces, full error histories and all failed conditions. Predeclare the
-candidate acceptance protocol before executing it; do not infer long-run success
-from component tests, formal order or the method's scalar stability function.
+The full capture and comparison tooling is now implemented, but its launch waits
+for the operator-reported component outcome and its review. Its predeclared
+conditions and acceptance limits are in
+`DNNE_Golgi_Coupled_Comparison_2026-11-09.md`. No full comparison has run yet.
+The physical trace export also has assertions within the existing active
+component case; the full window repeats all 32 cases before integration.
 
 The calcium pump/reference bath, passive axon, native NEURON reproduction,
 physiological calibration and granular-layer circuit remain open. Production

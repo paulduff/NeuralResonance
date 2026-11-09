@@ -74,6 +74,12 @@ public sealed class GolgiSdirkTests
         Assert.InRange(cell.MaximumCalciumBalanceErrorMm, 0, 1e-9);
         Assert.InRange(cell.MaximumSkMassError, 0, 1e-8);
         Assert.True(cell.NonlinearEvaluations > 0);
+        var trace = new double[161]; cell.CopyPhysicalTrace(trace);
+        var volts = cell.CopyVoltages();
+        for (int i = 0; i < 135; ++i) Assert.Equal(volts[i], trace[i]-55);
+        Assert.Equal(cell.CopyGates(), trace[135..153]); Assert.Equal(cell.CopySkOccupancy(), trace[153..159]);
+        Assert.Equal(cell.HighCalciumMm*1000, trace[159]); Assert.Equal(cell.LowCalciumMm*1000, trace[160]);
+        Assert.Throws<ArgumentException>(() => cell.CopyPhysicalTrace(new double[160]));
     }
 
     [Fact]

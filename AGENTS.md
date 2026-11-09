@@ -450,3 +450,12 @@ stage convergence do not establish six-second spike timing or physiology. Review
 component results before running the full saved-reference/refinement comparison;
 include nonlinear-tolerance sensitivity and preserve all failed cases. No live
 host selects the candidate, and failed stages must not reset, clip or invent events.
+
+The full coupled comparison is prepared in
+`docs/DNNE_Golgi_Coupled_Comparison_2026-11-09.md`: 30 conditions, full physical
+traces, existing active BDF/Radau references, saved passive references and
+prospective absolute/refinement/nonlinear-sensitivity gates. It has not run.
+Require the operator-reported component outcome and its verified 32-case review
+before freezing/launching it. The full window repeats those cases, preserves
+all partial failures and runs without live monitoring. Its declared small-error
+refinement floor does not alter any previous failed result or acceptance bound.

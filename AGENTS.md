@@ -577,3 +577,13 @@ revision `5e2c3a55c021b25c5745190ebce4dc0e88f9db25`, task
 `DNNE-Cortical-Precision-5738a87a440c`, with 1,451 initial files verified on D:.
 It is the only pending window. Await the operator's completion report without
 inspecting live results; the failed first attempt has been reviewed and preserved.
+
+The operator has now reported the corrected cortical window complete. Its verified
+review is `docs/DNNE_Cortical_Precision_Results_2026-11-09.md`: 68 tests, seven
+legacy controls, 2,613 precise learning events, 840 receptor deliveries and six
+learned warm starts pass the declared checks. Twenty-six modulation updates survive
+below float resolution. Only two recurrent precise contacts are exercised by each
+new fixture; do not claim dense whole-cortex qualification. All C:/D: bytes and
+binaries verify. No window is pending. Live schema 4, biochemical calibration,
+the full unit suite and Avatar recovery remain open. Golgi order/timing repair is
+the next numerical task; its original failed bounds remain unchanged.

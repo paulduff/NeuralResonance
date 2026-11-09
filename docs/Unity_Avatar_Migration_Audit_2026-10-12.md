@@ -911,3 +911,19 @@ durable checkpoint, and no live controller consumes this lane. Existing calcium,
 force, receptors, Unity behavior and population-derived editor authority labels
 remain unchanged. Focused regression checks are prepared in the next CPU-batch
 PowerShell window; qualification and live migration remain separate.
+
+## Prospective somatic motor source integration — 9 November
+
+Revisited Avatar's receiver, isometric plant, calcium model, legacy muscle and
+nervous-system code before preparing `MotoneuronUnitCircuitProbe`. The experiment
+connects actual reference-cell somatic crossings to the existing transport and
+fixed-length motor unit. It adds no live Avatar feature or Unity controller.
+Its cat MG cell and human TA unit form a numerical interface test, not a matched
+physiological motor unit. Active axon/NMJ, dynamic force and sensory feedback
+remain open. See `DNNE_Somatic_Motor_Unit_Circuit_2026-11-09.md` for the unchanged
+components, prospective controls and prerequisite motor-cell comparison.
+
+The existing canonical mechanics, tendon/fatigue and vestibular/proprioceptive/
+plantar paths remain intact. No Unity port or editor authority-label promotion
+follows from preparation; the world still starts paused. The new candidate has
+built but has not run, and is held behind the reviewed numerical-source gate.

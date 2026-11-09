@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>NeuralResonanceEngine.DNNE.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
+    <ProjectReference Include="../../src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
+    <Compile Include="../MotoneuronReferenceProbe/ClockAudit.cs" Link="ClockAudit.cs" />
+    <Compile Include="../MotoneuronReferenceProbe/ActiveStudy.cs" Link="ActiveStudy.cs" />
+  </ItemGroup>
+</Project>

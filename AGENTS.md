@@ -692,3 +692,18 @@ manifest verified on D:. It has not launched. The execution order is: await and
 review Golgi's reported completion; run the existing frozen CUDA cost package
 without competing work; after that completion report, launch the motor comparison
 with `-CostStudyFinished`. Clock diagnosis is reviewed and no longer pending.
+
+The next isolated source/body integration is coded in
+`docs/DNNE_Somatic_Motor_Unit_Circuit_2026-11-09.md`. Eight conditions connect
+actual five-compartment somatic crossings to the existing motor transport and
+isometric plant, retaining the entire qualified source trace, original identities,
+fractional times, explicit completeness and pending tail. Packet/retry controls,
+quiet/cut controls, muscle refinement and three independent calcium references
+have prospective gates. This cat-MG/human-TA pairing is a numerical interface
+experiment, not a matched physiological motor unit; no active axon, NMJ or live
+Avatar authority is qualified. The 88-test PowerShell rig is coded but has not
+run or been frozen. Only a passing, operator-reported and C:/D:-verified motor
+boundary comparison permits its preparer. Preserve the current Golgi → CUDA cost
+→ motor boundary execution order. Do not inspect pending runs or start this
+candidate merely because its build passes. Existing Avatar/Unity/editor behavior
+and saved brains are unchanged.

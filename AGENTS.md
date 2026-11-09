@@ -442,3 +442,11 @@ RHS/arithmetic diagnosis of the reported motor failure. Preserve its source and
 all original bounds. CSV states are not full compensated-integrator checkpoints;
 do not infer accumulated-roundoff causation or a repaired trajectory from local
 decimal comparisons. No production host selects the diagnostic entry point.
+
+`docs/DNNE_Golgi_Coupled_Solver_2026-11-09.md` describes the isolated coupled
+SDIRK2 candidate and its 32-case component window. It retains the original split
+cell, biological definitions and fixed physical inputs. Formal second order and
+stage convergence do not establish six-second spike timing or physiology. Review
+component results before running the full saved-reference/refinement comparison;
+include nonlinear-tolerance sensitivity and preserve all failed cases. No live
+host selects the candidate, and failed stages must not reset, clip or invent events.

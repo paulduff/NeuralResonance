@@ -134,9 +134,12 @@ internal sealed class GolgiChannelKinetics
 
     // Frozen-gate conductances for an implicit cable solve. Never obtain these
     // by dividing current by (V-E), which is singular exactly at reversal.
-    public GolgiIonicConductances Conductances()
+    public GolgiIonicConductances Conductances() => ConductancesForState(_gates, _sk);
+
+    internal static GolgiIonicConductances ConductancesForState(double[] gates, double[] sk)
     {
-        double G(GolgiGate gate) => Gate(gate);
+        if (gates.Length != GateCount || sk.Length != 6) throw new ArgumentException("Require complete Golgi channel state.");
+        double G(GolgiGate gate) => gates[(int)gate];
         return new(
             .048 * Math.Pow(G(GolgiGate.NaM), 3) * G(GolgiGate.NaH),
             .00019 * G(GolgiGate.NaP), .0017 * G(GolgiGate.NaRS) * G(GolgiGate.NaRF),
@@ -146,7 +149,7 @@ internal sealed class GolgiChannelKinetics
             .00025 * Math.Pow(G(GolgiGate.LvaM), 2) * G(GolgiGate.LvaH),
             .00005 * (G(GolgiGate.Hcn1Fast) + G(GolgiGate.Hcn1Slow)),
             .00008 * (G(GolgiGate.Hcn2Fast) + G(GolgiGate.Hcn2Slow)),
-            .003 * G(GolgiGate.Bk), .038 * SkOpenProbability, .000021);
+            .003 * G(GolgiGate.Bk), .038 * (sk[4] + sk[5]), .000021);
     }
 
     public static double CalciumReversal(double calciumMm, double temperatureCelsius, double externalMm = 2)

@@ -420,3 +420,12 @@ The next fresh olive CPU batch package expands its selected checks from eleven
 to 87, covering the new interface and existing transport/calcium/plant cases.
 No live brain/Avatar/Unity lane is enabled. Review its reported outcome before
 porting the membrane calculation to CUDA, retaining numerical/biological gates.
+
+The separate missing Golgi reference solve is packaged by
+`docs/DNNE_Golgi_Reference_Continuation_2026-11-09.md`. Reuse the eleven verified
+completed arrays and original reference modules; compute only no-SK/Radau with
+the original settings. Require exact reproduction of the ten recorded reference
+and thirty candidate contrasts before solving, then audit all twelve reference
+and 36 candidate contrasts. Never infer candidate solver accuracy, physiology or
+Avatar recovery from a passing reference. Await each independent PowerShell
+window's operator-reported completion without inspecting its live results.

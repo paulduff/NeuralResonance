@@ -491,3 +491,12 @@ revision `f8de323a5ef989219d10be8906f9f46aa13cbdbf`, task
 `DNNE-Olive-Cuda-b2e2befffce3`, with verified initial D: backup. Its result and
 the full Golgi result are pending operator-reported completion. Neither window
 may be monitored live. No CUDA speedup or live backend is qualified by launch.
+
+The operator subsequently reported the olive CUDA window complete. Its verified
+review is `docs/DNNE_Olive_CUDA_Results_2026-11-09.md`: eleven focused tests, six
+interop cases, six GPU control groups and all six complete membrane comparisons
+pass, with 461,250 cell-frame records and verified C:/D: captures. Counts/clocks
+agree exactly; this establishes the tested arithmetic port, not speedup or
+biological/Avatar qualification. The full Golgi window remains pending its own
+completion report. Avoid competing studies during CPU/GPU timing. The cortical
+receptor/storage precision integration remains outstanding and has not been edited.

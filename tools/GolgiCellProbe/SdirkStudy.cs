@@ -9,16 +9,18 @@ internal static class SdirkStudy
     internal sealed record Input(string Version, string CandidateVersion, double TemperatureCelsius, double InitialVoltageMv,
         double SampleMs, double ThresholdMv, Condition[] Cases);
 
-    public static void Run(string input, string output, bool thirdOrder = false)
+    public static void Run(string input, string output, bool thirdOrder = false, bool finestExtension = false)
     {
         if (!Path.IsPathFullyQualified(input) || !Path.IsPathFullyQualified(output) || Directory.Exists(output))
             throw new ArgumentException("Require absolute input and a new output directory.");
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
         byte[] raw = File.ReadAllBytes(input);
         var request = JsonSerializer.Deserialize<Input>(raw, json) ?? throw new ArgumentException("Missing protocol.");
-        int caseCount = thirdOrder ? 38 : 30;
-        double[] steps = thirdOrder ? [.015625, .0078125, .00390625, .001953125] : [.015625, .0078125, .00390625];
-        if (request.Version != (thirdOrder ? "golgi-sdirk3-reference-comparison-v1" : "golgi-sdirk-reference-comparison-v1") ||
+        if (finestExtension && !thirdOrder) throw new ArgumentException("The finer extension requires third order.");
+        int caseCount = finestExtension ? 14 : thirdOrder ? 38 : 30;
+        double[] steps = finestExtension ? [.0009765625] : thirdOrder ? [.015625, .0078125, .00390625, .001953125] : [.015625, .0078125, .00390625];
+        string version = finestExtension ? "golgi-sdirk3-finer-comparison-v1" : thirdOrder ? "golgi-sdirk3-reference-comparison-v1" : "golgi-sdirk-reference-comparison-v1";
+        if (request.Version != version ||
             request.CandidateVersion != (thirdOrder ? GolgiSdirkCell.ThirdOrderVersion : GolgiSdirkCell.Version) ||
             request.TemperatureCelsius != 23 || request.InitialVoltageMv != -60 || request.SampleMs != .25 ||
             request.ThresholdMv != GolgiReferenceCell.SpikeThresholdMv || request.Cases is null || request.Cases.Length != caseCount ||
@@ -34,6 +36,23 @@ internal static class SdirkStudy
                 c.DurationMs != (passive ? 100 : 6000) || c.InjectionStartMs != (passive ? 20 : 2000) ||
                 c.InjectionEndMs != (passive ? 60 : 3000) || !double.IsFinite(c.CurrentPa) || (!passive && c.Electrode))
                 throw new ArgumentException("Invalid fixed condition.");
+        }
+        if (finestExtension)
+        {
+            var expected = new List<Condition>();
+            (string Name, string Block, double Current)[] protocols =
+            [ ("quiet", "None", 0), ("depolarize", "None", 50), ("hyperpolarize", "None", -50),
+              ("no-nap", "WithoutPersistentSodium", 0), ("no-hcn", "WithoutHcn", 0), ("no-sk", "WithoutSk", 0),
+              ("passive-soma", "Passive", 25), ("passive-electrode", "Passive", 25) ];
+            foreach (var p in protocols)
+            {
+                bool passive = p.Block == "Passive";
+                foreach (double scale in passive ? new double[] { 1 } : new double[] { 1, .125 })
+                    expected.Add(new(p.Name + "-h0.0009765625-tol" + scale.ToString("G", CultureInfo.InvariantCulture),
+                        p.Name, p.Block, p.Current, .0009765625, scale, passive ? 100 : 6000,
+                        passive ? 20 : 2000, passive ? 60 : 3000, p.Name == "passive-electrode"));
+            }
+            if (!request.Cases.SequenceEqual(expected)) throw new ArgumentException("Finer extension must retain every fixed protocol in order.");
         }
         Directory.CreateDirectory(output);
         void Save(string name, object value) => File.WriteAllText(Path.Combine(output, name), JsonSerializer.Serialize(value, json));

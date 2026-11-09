@@ -534,3 +534,12 @@ Await operator-reported completion; do not inspect live outputs. Avoid builds,
 new model runs or heavy offline audits that would compete with its CPU timing.
 Source inspection and coding can continue independently. The Golgi capture is
 reviewed and no longer pending; the timing outcome is the current pending window.
+
+The operator has now reported the timing window complete. Its verified review is
+`docs/DNNE_Olive_CUDA_Timing_Results_2026-11-09.md`: eleven focused tests and all
+288 accuracy-checked trials complete, with full C:/D: verification. CUDA is slower
+at the current 192-cell size; it is 1.31–1.36x faster than the best measured CPU
+batch only at 3,072/12,288 cells with the finer step. Keep CPU production defaults;
+do not enlarge biological populations to force a GPU win. Profile costs before
+optimization and keep precision/bounds. The timing hold is over; builds and the
+next visible independent study may proceed. Whole-brain/Avatar speed is unmeasured.

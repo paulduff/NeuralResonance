@@ -944,3 +944,18 @@ vestibular, muscle and pressure mechanisms remain preserved. The next sensory
 candidate must separate physical samples from actual afferent firing and preserve
 causal timing across retries/batches. No behavior, UI or Unity deployment changes
 in this audit; paused startup and the existing run queue remain unchanged.
+
+## Isolated physical sample transport — 9 November
+
+The candidate in `DNNE_Physical_Sample_Transport_2026-11-09.md` preserves original
+Avatar body measurements under an explicit physics-step/body/neural clock map.
+It adds bounded immutable queues, exact acceptance receipts and replay handling,
+without converting measurements into afferent spikes. Its completeness covers
+captured physics-grid samples only. It retains signed muscle observations and
+the existing nested physical contract without altering receptor mechanics.
+
+The 23-case focused PowerShell rig is prepared for isolated validation. There is
+no live Unity producer, neuronal consumer, editor activation or saved-state
+conversion. Before integration, physical capture must honor every declared step
+and backpressure; receptor dynamics and afferent events need independent gates.
+Existing mechanics, legacy sensory behavior and paused startup remain intact.

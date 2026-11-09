@@ -719,3 +719,16 @@ for measured causation of falls or discard Avatar's existing sensors. The next
 isolated sensory boundary must preserve physical samples, explicit body/neural
 epochs, completeness and exact retries before a qualified mechanistic afferent
 source can close the spinal loop. No live behavior or pending run changes here.
+
+The isolated physical-sample candidate is documented in
+`docs/DNNE_Physical_Sample_Transport_2026-11-09.md`. It preserves signed original
+body observations on a declared integer physics grid, maps physical/neural epochs
+explicitly and retains immutable packets until exact acceptance receipts arrive.
+Completeness covers captured samples only, never unobserved events or afferent
+silence. Bounded queues require the producer to hold physics before losing a
+sample; no live producer, receptor neuron, network endpoint or durable restart
+selects this lane yet. Existing Avatar/Unity/editor behavior and saves remain
+unchanged. The 23-case focused rig runs visibly without monitoring; await the
+operator's report before claiming transport checks pass. It may overlap the
+pending Golgi accuracy study, but both completion reports must precede CUDA cost
+timing. Preserve the later motor-boundary and source/unit prerequisites.

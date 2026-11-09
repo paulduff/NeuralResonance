@@ -509,3 +509,11 @@ including transfers and synchronization; do not claim whole-brain speedup. Wait
 for the operator to report the other studies finished before launching, then
 use the visible frozen PowerShell window without monitoring. No live promotion
 or biological qualification follows from this preparation.
+
+Timing package `olive-cuda-timing-20261109-eb7469` is prepared at revision
+`c4f80f22c6cd16b94f188cc558cba65002d1e07e`, with 1,431 initial files verified
+on D: plus manifest. Build/syntax checks pass; no timing test has launched.
+An asynchronous question asks whether `golgi-sdirk-20261109-440bb8` has finished.
+Keep the package held until that report; do not infer completion from elapsed time
+or inspect Golgi live. After a finished report, review that evidence and launch
+the frozen timing runner with `-OtherStudiesFinished`, without live monitoring.

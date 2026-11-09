@@ -91,3 +91,9 @@ with no live monitoring. Avoid starting other heavy work during the timing study
 This does not replace the outstanding cortical precision integration through
 actual neuronal receptors and learned-state persistence. No live model, saved
 brain, Avatar, editor or World behavior changes with this timing rig.
+
+The prepared package is `olive-cuda-timing-20261109-eb7469`, frozen revision
+`c4f80f22c6cd16b94f188cc558cba65002d1e07e`. Its initial D: backup verifies
+1,431 files plus manifest. The C# build passes with zero warnings/errors and
+Python/PowerShell syntax checks pass. It has not launched; the completion question
+for `golgi-sdirk-20261109-440bb8` is still pending. No live Golgi results were read.

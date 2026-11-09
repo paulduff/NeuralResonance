@@ -380,6 +380,7 @@
     <Project Path="Structures/FastigialNucleus/NeuralResonanceEngine.Structures.FastigialNucleus.csproj" />
   </Folder>
   <Folder Name="/Tools/">
+    <Project Path="tools/OliveCudaTimingProbe/OliveCudaTimingProbe.csproj" />
     <Project Path="tools/OliveCudaProbe/OliveCudaProbe.csproj" />
     <Project Path="tools/OliveBatchProbe/OliveBatchProbe.csproj" />
     <Project Path="tools/CudaInteropProbe/CudaInteropProbe.csproj" />

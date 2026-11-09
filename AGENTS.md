@@ -500,3 +500,12 @@ agree exactly; this establishes the tested arithmetic port, not speedup or
 biological/Avatar qualification. The full Golgi window remains pending its own
 completion report. Avoid competing studies during CPU/GPU timing. The cortical
 receptor/storage precision integration remains outstanding and has not been edited.
+
+The isolated timing protocol is `docs/DNNE_Olive_CUDA_Timing_2026-11-09.md`:
+six populations, two solver steps, CPU worker limits 1/8/16 and CUDA, with 288
+trials including 48 warmups. It links unchanged reviewed arithmetic and compares
+all saved reports/final states to the old CPU bytes. Time the complete batch API,
+including transfers and synchronization; do not claim whole-brain speedup. Wait
+for the operator to report the other studies finished before launching, then
+use the visible frozen PowerShell window without monitoring. No live promotion
+or biological qualification follows from this preparation.

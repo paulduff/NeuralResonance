@@ -862,3 +862,16 @@ circuit (88 tests/eight conditions/three muscle references) and CUDA host accura
 `olive-cuda-host-20261109-aeb5f2`. Neither is monitored live; neither measures
 speed. Motor boundary and CUDA cost are reviewed and no longer pending. Finer
 Golgi remains unlaunched. Do not infer physiology or Avatar recovery from launch.
+
+Both operator reports have now arrived and both captures pass review. See
+`docs/DNNE_Somatic_Motor_Unit_Results_2026-11-09.md` and
+`docs/DNNE_Olive_CUDA_Host_Results_2026-11-09.md`. Motor: 88 focused tests,
+eight conditions, 28 actual somatic emissions delivered, exact packet/retry
+invariance, zero force after disconnection, unchanged numerical gates passed.
+CUDA host: 11 focused tests, 12 control groups per variant, six complete workloads
+exact against reference and recorded evidence. Both full C:/D: captures and
+executed binaries verify; both saved analyses reproduce exactly, with separate
+verified D: review copies. Neither window remains pending. This is isolated motor
+integration and host numerical agreement, not matched human physiology, live
+authority, speedup or recovery. Finer Golgi is the next prepared window; host
+timing must await its operator report, without competing experiments or builds.

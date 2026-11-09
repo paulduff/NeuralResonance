@@ -1,5 +1,10 @@
 # CUDA olive host workspace candidate
 
+**Current status:** accuracy completed and reviewed. All 11 focused tests, all
+control groups and six complete recorded-byte comparisons per variant passed;
+see `DNNE_Olive_CUDA_Host_Results_2026-11-09.md`. Speed remains unmeasured for this
+candidate. The protocol and launch history below are preserved.
+
 The completed cost review in `DNNE_Olive_CUDA_Cost_Results_2026-11-09.md` found
 that packing and report processing account for approximately 30–43% of the
 larger-batch host-profiled time. This candidate removes repeated host work at

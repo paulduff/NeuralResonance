@@ -1,5 +1,9 @@
 # Isolated somatic motor source to muscle unit
 
+**Current status:** completed and reviewed. All 88 focused tests and all eight
+conditions passed; see `DNNE_Somatic_Motor_Unit_Results_2026-11-09.md`. The
+prospective protocol and launch history below are preserved as originally declared.
+
 The missing motor-path evidence is a membrane-generated firing train reaching
 Avatar's existing event/calcium/force implementation. Earlier plant checks used
 fixture events. This candidate connects the five-compartment motor reference to

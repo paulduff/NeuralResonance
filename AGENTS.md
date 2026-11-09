@@ -796,3 +796,11 @@ integration/sampling body match the completed comparison. Build and syntax
 checks pass, not runtime tests or analysis regression. Its preparation/hashing,
 tests and simulations must wait until the corrected CUDA timing window is
 operator-reported complete. Preserve the motor scheduling gate and old captures.
+
+The corrected CUDA cost retry is now launched as `olive-cuda-cost-20261109-fedff9`,
+revision `0d94dd2cd7d0b402451e03c508ef253cacd93c26`, task
+`DNNE-Olive-Cost-e5d41eb4882c`, with 1,475 initial files plus manifest verified
+on D: and rechecked before launch. This is the only pending window. Await its
+operator-reported completion without live monitoring or competing builds/heavy
+work. Neither schedule-regression success nor timing results are established
+yet. Motor scheduling remains prepared/held; finer Golgi remains coded/unfrozen.

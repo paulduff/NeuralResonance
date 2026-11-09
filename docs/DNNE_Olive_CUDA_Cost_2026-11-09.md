@@ -155,3 +155,11 @@ this check. This regression will execute in the next visible window, not inline.
 The membrane implementation, GPU kernel, input schedule, timing cases and
 numerical bounds are unchanged. Preserve the failed capture and use a fresh
 frozen package for the retry; the motor comparison waits until timing is done.
+
+The corrected retry is launched as `olive-cuda-cost-20261109-fedff9`, frozen
+revision `0d94dd2cd7d0b402451e03c508ef253cacd93c26`, independent visible task
+`DNNE-Olive-Cost-e5d41eb4882c`. All 1,475 initial files plus manifest were
+verified on D: and rechecked by the launcher. This is the only pending window.
+Await the operator report without checking live results or doing competing builds,
+hashing, numerical analysis or experiments. The schedule regression and cost
+results remain prospective until that completed capture is reviewed.

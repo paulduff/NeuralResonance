@@ -927,3 +927,20 @@ The existing canonical mechanics, tendon/fatigue and vestibular/proprioceptive/
 plantar paths remain intact. No Unity port or editor authority-label promotion
 follows from preparation; the world still starts paused. The new candidate has
 built but has not run, and is held behind the reviewed numerical-source gate.
+
+## Sensory clock and afferent-source audit — 9 November
+
+`DNNE_Sensory_Boundary_Audit_2026-11-09.md` traces Unity physical capture through
+the existing Avatar contract, coordinator transducer and actual receiving cells.
+Unity stamps wall time; derivative/filter updates use capture intervals; generated
+stimuli are stamped with the coordinator's neural time. The contract has no
+physical epoch/completeness mapping, and the legacy transducer generates events
+per received frame. Its muscle-specific spindle magnitude mapping also removes
+shortening/lengthening sign. Duplicate/out-of-order frames and source identity
+need explicit treatment before connected neuronal motor authority can qualify.
+
+This is source evidence, not a new physiological or recovery result. Existing
+vestibular, muscle and pressure mechanisms remain preserved. The next sensory
+candidate must separate physical samples from actual afferent firing and preserve
+causal timing across retries/batches. No behavior, UI or Unity deployment changes
+in this audit; paused startup and the existing run queue remain unchanged.

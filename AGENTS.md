@@ -707,3 +707,15 @@ boundary comparison permits its preparer. Preserve the current Golgi → CUDA co
 → motor boundary execution order. Do not inspect pending runs or start this
 candidate merely because its build passes. Existing Avatar/Unity/editor behavior
 and saved brains are unchanged.
+
+The sensory-side source audit is
+`docs/DNNE_Sensory_Boundary_Audit_2026-11-09.md`. Current Unity frames carry wall
+time; transducer derivatives use capture intervals, while generated inputs take
+the coordinator's current neural timestamp. `AddPopulation` creates messages on
+each body frame, not from afferent membrane crossings. Muscle-specific spindle
+channels rectify length deviation/velocity; duplicate/order resets and omitted
+InputSource in event identities also need repair. Do not mistake these findings
+for measured causation of falls or discard Avatar's existing sensors. The next
+isolated sensory boundary must preserve physical samples, explicit body/neural
+epochs, completeness and exact retries before a qualified mechanistic afferent
+source can close the spinal loop. No live behavior or pending run changes here.

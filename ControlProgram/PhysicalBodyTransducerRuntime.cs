@@ -467,6 +467,11 @@ internal sealed record PhysicalBodyTransduction(
     }
 }
 
+// Legacy frame-driven receptor stimulus approximation. Its SpikeMessages are
+// generated from each received frame's activation values; they are not recorded
+// action potentials from individual afferent membranes. Preserve this distinction
+// when connecting the neuronal motor lane. Clock, cadence and identity findings:
+// docs/DNNE_Sensory_Boundary_Audit_2026-11-09.md.
 internal sealed class PhysicalBodyTransducerRuntime
 {
     private const float MinimumActivation = 0.035f;

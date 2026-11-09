@@ -622,3 +622,10 @@ establish observed cubic convergence or sustained firing accuracy. The component
 review also has a verified D: copy. No window is now pending; the clean-source
 preparer may freeze the 38-condition full comparison with unchanged acceptance
 limits. Launch it visibly in PowerShell and await operator-reported completion.
+
+The full third-order comparison is launched as `golgi-sdirk3-20261109-210c3d`,
+revision `faac10d04c87d48155e33946edf6a6cdb1ded763`, task
+`DNNE-Golgi-Sdirk3-c7ed345c12dc`, with 1,524 initial files plus manifest verified
+on D:. This is the only pending window. Do not inspect live output; await the
+operator's completion report. Independent CUDA profiling code can be prepared,
+but timing must wait until the operator reports this CPU study complete.

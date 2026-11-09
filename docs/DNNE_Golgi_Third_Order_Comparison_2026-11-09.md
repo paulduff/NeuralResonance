@@ -74,3 +74,21 @@ been frozen or launched. Await the component report without live monitoring.
 Even full numerical agreement would leave physiology, active axonal propagation,
 metabolic/circuit integration and Avatar recovery open. It would not establish
 the order of the retained event interpolation or whole-brain performance.
+
+## Launch after the component review
+
+The operator reported the component window complete and its C:/D:/TRX review
+passed all 43 tests. The sixteen short-refinement rows are floor dominated;
+they do not establish sustained firing accuracy. The component review is recorded
+in `DNNE_Golgi_Third_Order_2026-11-09.md` and has its own verified D: copy.
+
+The full comparison is now launched as `golgi-sdirk3-20261109-210c3d`, frozen
+revision `faac10d04c87d48155e33946edf6a6cdb1ded763`, task
+`DNNE-Golgi-Sdirk3-c7ed345c12dc`. The preparer verified unchanged solver source
+against the passing component capture and copied the 102 verified reference files.
+All 1,524 initial package files plus manifest have a verified D: copy at
+`D:\DNNE-desktop-runs\UnityWorld\golgi-sdirk3-20261109-210c3d`.
+
+The independent visible PowerShell window is pending operator-reported completion.
+Do not inspect its live outputs. CUDA cost profiling may be prepared independently,
+but do not run a timing benchmark while this comparison competes for CPU resources.

@@ -976,3 +976,14 @@ declared neural epoch is isolated, not a live handshake. .NET builds succeed;
 Unity compile/runtime checks remain prospective in an independent PowerShell
 window. No live integration, afferent or recovery qualification is inferred.
 If launched, await its report/review as well as Golgi before CUDA host timing.
+
+The actual Unity sample study is now launched as
+`unity-physical-sample-20261113-1ff02e`, frozen revision
+`b41dc3afc69ca1a7e0ca7afda48e8492392b561e`, task
+`DNNE-Unity-Samples-7a2ebffbef3c`. Its 1,506 initial files plus manifest have a
+verified D: copy, rechecked before launch. Two reports now remain pending: this
+39-test/native-Unity physical study and corrected finer Golgi `ca813f`, which
+the operator explicitly said was still running. Do not inspect either window's
+live output. Starting the task establishes no build, physical or test result.
+Wait for both reports and evidence reviews before CUDA host timing; no live
+brain/body service was deployed or changed by this launch.

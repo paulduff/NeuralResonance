@@ -116,3 +116,17 @@ no speed, so it may run alongside Golgi. Both operator completion reports and
 reviews are required before CUDA host timing. Neither a successful build nor
 successful physical sampling qualifies afferent physiology, live neuronal
 authority, balance learning, movement or Avatar recovery.
+
+## Launch record — 13 November 2026
+
+The frozen package is `artifacts/unity-physical-sample-20261113-1ff02e`, revision
+`b41dc3afc69ca1a7e0ca7afda48e8492392b561e`. Its initial D: copy is
+`D:\DNNE-desktop-runs\UnityWorld\unity-physical-sample-20261113-1ff02e`:
+1,506 files plus manifest verified before launch and rechecked by the launcher.
+The independent visible PowerShell task is `DNNE-Unity-Samples-7a2ebffbef3c`.
+
+No output is inspected after launch until the operator reports completion.
+The native Unity build, 39 focused checks and physical experiment remain
+unreviewed; no pass or live-process state is inferred from starting the task.
+This and corrected Golgi `golgi-sdirk3-fine-20261113-ca813f` are the two pending
+reports. CUDA timing remains held until both captures have been reviewed.

@@ -17,7 +17,8 @@ pass before new simulations. The original numerical bounds remain unchanged.
 
 The operator explicitly confirmed the corrected Golgi `ca813f` run is still
 running after pasting the older `4b5c0f` failure. Do not inspect the retry or
-restart it based on that old message. It is the sole remaining pending window.
+restart it based on that old message. It remains pending alongside the new
+actual Unity physical-sample study below; neither window is monitored live.
 
 The physical producer window `physical-producer-20261113-efe4af` has now been
 reported complete and reviewed: all 39 checks passed, including the 16 new
@@ -41,9 +42,10 @@ reviewed and pushed before the pause. Their result documents are
 isolated neuronal-source muscle activation and exact host-candidate agreement;
 they do not establish calibrated human physiology, live balance or GPU speedup.
 
-After the operator reports Golgi completion, review that saved evidence without
-new model execution. Producer review is complete. Then prepare the matched
-host-candidate timing package. Do not overlap timing with other studies, builds
+After the operator reports Golgi and actual Unity physical-sample completion,
+review their saved evidence without new model execution. Producer fixture review
+is complete. Then prepare the matched host-candidate timing package. Do not
+overlap timing with other studies, builds
 or heavy evidence hashing. No host-candidate timing package has been launched.
 The timing rig is now coded and both variants build; its prospective protocol,
 scope and execution gate are in `DNNE_Olive_Host_Timing_2026-11-13.md`.
@@ -62,7 +64,7 @@ concerns. Its threshold/reset spike conversion is not a verified conductance
 afferent membrane. Preserve the downloads; do not convert receptor potential or
 a firing-rate proxy into invented sensory events. Native reference reproduction,
 causal transduction and membrane sourcing remain outstanding. No spindle model
-or test was executed, and no second pending experiment was introduced.
+or test was executed during that source review, which introduced no experiment.
 The new 2026 source capture (65 files plus manifest) and separate review (one
 file plus manifest) both have verified D: backups under their matching names.
 
@@ -86,6 +88,12 @@ isolated actual Unity child through recorded step commands, with scoped Unity
 step ownership and original per-step body/contact capture. The study requires
 201 delivered samples, actual holds during backpressure/pauses and a failed
 capture after a final extra step, without moving its completeness boundary.
-Both .NET assemblies build. Native Unity compilation/execution remain pending
-in the PowerShell rig; no live body or brain path selects it. If launched, its
-report and review must also precede CUDA timing.
+Both .NET assemblies build. The independent PowerShell study is now launched as
+`unity-physical-sample-20261113-1ff02e`, frozen revision
+`b41dc3afc69ca1a7e0ca7afda48e8492392b561e`, task
+`DNNE-Unity-Samples-7a2ebffbef3c`. All 1,506 initial files plus manifest have a
+verified D: copy, rechecked before launch. Native Unity compilation/execution
+and the 39 focused test outcomes await the operator report; launch establishes
+no result. No live body or brain path selects this adapter. There are now two
+pending windows: this study and corrected Golgi `ca813f`. Both reports and
+evidence reviews must precede CUDA host timing.

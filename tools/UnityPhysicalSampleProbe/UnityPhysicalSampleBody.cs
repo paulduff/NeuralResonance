@@ -57,11 +57,12 @@ public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatar
     }
 
     public BridgeReply Inspect() => Command("inspect", CompletedPhysicsStep);
-    // Prospective combined lane: both payloads come from the same retained
+    // Combined lane: both payloads come from the same retained
     // Unity reply. This neither requests a new capture nor changes the existing
-    // body-only study. A future study must explicitly select the new interface.
+    // body-only study. Its stricter native decoder checks omissions before
+    // conversion can fill defaults. The old capture-failure hook is body-only.
     PhysicalObservationFrame IAvatarPhysicalObservationBody.CaptureObservation() =>
-        UnityObservationEncoding.Capture(CaptureObservation(), _lastStep.ContactsJson);
+        UnityObservationEncoding.Capture(_lastStep.BodyJson, _lastStep.ContactsJson);
     public void Stop() => Command("stop", CompletedPhysicsStep);
     public static PhysicalBodyFrameRequest DecodeBody(BridgeReply reply) =>
         JsonSerializer.Deserialize<PhysicalBodyFrameRequest>(reply.BodyJson, Json)

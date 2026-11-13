@@ -995,3 +995,13 @@ It preserves actual hand load/contact/muscle measurements and original numbers.
 It does not implement missing hand mechanics or supply physiological calibration.
 Both .NET builds pass; the new 70-case window and actual combined Unity study
 remain prospective. Live receptor selection and editor diagnostics are unchanged.
+
+The prospective actual combined Unity study is now implemented in
+`DNNE_Unity_Body_Contacts_2026-11-13.md`. Its native source decoder rejects missing
+body members before shared defaults can hide them; only the eight declared absent
+hand members may be omitted. All other body plants and all fifteen contact sites
+must be present at each endpoint. It preserves the current physical mechanisms
+and exposes availability/reference declarations in its saved layout, without
+selecting the lane in a live receptor or editor. The independent study requires
+74 fixture/schema checks, then real Unity stepping and a recorded missing-contact
+intervention. Builds pass; actual execution/physiology are not yet qualified.

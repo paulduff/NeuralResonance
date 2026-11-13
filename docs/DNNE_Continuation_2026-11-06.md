@@ -50,3 +50,14 @@ process-status claim:
 Continue using visible independent PowerShell windows and user-reported outcomes,
 without live monitoring. Worlds start paused. Commit/push coherent changes and
 preserve all old saves and frozen captures with verified D: backups.
+
+## 13 November: actual combined body/contact study coded
+
+`DNNE_Unity_Body_Contacts_2026-11-13.md` records the native combined v2 rig and
+strict body-source decoder. Both .NET builds pass. The standalone run must pass
+74 tests before checking 201 delivered bodies/3,015 contacts, four full-state holds,
+packet replay/backpressure and an explicitly omitted head contact after real step
+201. Its saved-byte audit does not run physics. No live services or saves change.
+Profile `physical-observation-20261113-64ad44` and native spindle
+`spindle-reference-20261113-9a5090` remain unreported/uninspected. The operator's
+reused FAILED footer was not assigned to a new capture without its folder ID.

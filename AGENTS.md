@@ -1102,3 +1102,16 @@ files plus manifest verified on D:). Preparation also verified every one of the
 Await both reports without live monitoring. No result/native compatibility is
 inferred from launch. CUDA timing is reviewed and no longer pending. Complete
 body/contact actual Unity integration still needs its own physical study.
+
+The actual combined Unity study is now coded in
+`docs/DNNE_Unity_Body_Contacts_2026-11-13.md`. It selects the complete v2 producer,
+strictly validates native body omissions before shared defaults, and requires
+201 delivered bodies with all 3,015 site observations. Its explicit post-step-201
+adapter intervention preserves the full native reply, drops only the head contact
+in a separate copy, and must stop completeness at 200. Four native-schema checks
+join the original 70 in its PowerShell gate. Both .NET builds pass; no test or
+native result is inferred. Existing body-only evidence and live services/saves
+are unchanged. Earlier profile `64ad44` and spindle `9a5090` still await clear
+operator reports; a reused FAILED footer without a folder did not identify a new
+failure. Do not inspect those pending outputs. The combined rig can repeat its
+own frozen prerequisites before native execution, without live monitoring.

@@ -3,7 +3,10 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 39 -or $configuration.LiveBodySelected -or -not $configuration.ActualUnityPhysicsRequired -or -not $configuration.NoTimingMeasured){throw 'Unexpected Unity physical-sample configuration.'}
+$combined=$configuration.CombinedBodyContacts -eq $true
+$expectedCases=if($combined){74}else{39}
+if($combined -and ($configuration.ExpectedContactObservations -ne 3015 -or $configuration.ObservationProtocolVersion -ne 2)){throw 'Unexpected combined native observation scope.'}
+if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne $expectedCases -or $configuration.LiveBodySelected -or -not $configuration.ActualUnityPhysicsRequired -or -not $configuration.NoTimingMeasured){throw 'Unexpected Unity physical-sample configuration.'}
 if($configuration.ExpectedBodySamples -ne 201 -or $configuration.ExpectedActualPhysicsSteps -ne 201 -or $configuration.ExpectedFinalCompleteStep -ne 200 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1'){throw 'Unexpected physical study scope.'}
 [Guid]::ParseExact($configuration.SessionId,'N') | Out-Null
 function Extended-Path([string]$Path){
@@ -25,7 +28,8 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
  }}
- $taskName='DNNE-Unity-Samples-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskPrefix=if($combined){'DNNE-Unity-Body-Contacts-'}else{'DNNE-Unity-Samples-'}
+ $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -84,9 +88,9 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE actual Unity step and body sample checks'
+ $Host.UI.RawUI.WindowTitle=if($combined){'DNNE actual Unity complete body/contact checks'}else{'DNNE actual Unity step and body sample checks'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '39 focused checks, a frozen Unity build and 201 real physical steps. No DNNE connection; no live monitoring. Report completion to Orion.'
+ Write-Host ($expectedCases.ToString()+' focused checks, a frozen Unity build and 201 real physical steps. No DNNE connection; no live monitoring. Report completion to Orion.')
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize,FreePhysicalMemory} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
@@ -104,6 +108,7 @@ try {
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
  $requiredCounts=@{PhysicalSampleProducerTests=16;PhysicalSampleTransportTests=22;SolutionManifestTests=1}
+ if($combined){$requiredCounts.PhysicalObservationTests=31;$requiredCounts.UnityBodyEncodingTests=4}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count
@@ -149,16 +154,27 @@ try {
  $study=Join-Path $package 'study'
  Write-Host 'Running actual physical steps, bounded sample delivery, pauses and an explicit capture-failure intervention...' -ForegroundColor Cyan
  $status.PhysicsStudyAttempted=$true
- Invoke-Logged $configuration.DotnetExecutable @($probe,(Join-Path $playerOutput 'DNNE Unity World.exe'),$study,$configuration.SessionId) 'study.log'
+ $studyArguments=@($probe)
+ if($combined){$studyArguments+='--combined'}
+ $studyArguments+=@((Join-Path $playerOutput 'DNNE Unity World.exe'),$study,$configuration.SessionId)
+ Invoke-Logged $configuration.DotnetExecutable $studyArguments 'study.log'
  $result=Get-Content -LiteralPath (Join-Path $study 'study-result.json') -Raw | ConvertFrom-Json
  $analysis=Get-Content -LiteralPath (Join-Path $study 'saved-analysis.json') -Raw | ConvertFrom-Json
- if(-not $result.completed -or -not $result.stepAndBodyDeliveryChecksPassed -or $result.exitCode -ne 0 -or
+ if(-not $result.completed -or $result.exitCode -ne 0 -or
     $result.unity -ne $configuration.ExpectedUnityVersion -or $result.actualPhysicsSteps -ne 201 -or
     $result.capturedAndConsumedSamples -ne 201 -or $result.completeThroughStep -ne 200 -or
     -not $result.postMovementCaptureFailureStopped -or -not $result.directAndWrongOwnerStepsRejected -or
     -not $analysis.completed -or -not $analysis.originalTypedObservationsExactlyPreserved -or
     $analysis.originalGridSamples -ne 202 -or $analysis.deliveredBodySamples -ne 201 -or
-    $analysis.completeThroughStep -ne 200 -or $analysis.heldBodyInspections -ne 4){throw 'Actual Unity physical sample criteria failed.'}
+    $analysis.completeThroughStep -ne 200){throw 'Actual Unity physical sample criteria failed.'}
+ if($combined){
+  if(-not $result.completeBodyAndContactDeliveryChecksPassed -or $result.deliveredContactObservations -ne 3015 -or
+     -not $result.bodyProfilePreserved -or -not $result.missingContactInjectionStoppedCompleteness -or
+     -not $analysis.bodyProfilePreserved -or -not $analysis.completeBodyAndContactsTransported -or
+     $analysis.deliveredContactObservations -ne 3015 -or $analysis.heldBodyAndContactInspections -ne 4 -or
+     -not $analysis.missingContactInjectionRejected -or $analysis.nativeSourceActuallyLostContact){throw 'Complete native body/contact criteria failed.'}
+  $status['CompleteBodyContactChecksPassed']=$true;$status['DeliveredContactObservations']=3015
+ } elseif(-not $result.stepAndBodyDeliveryChecksPassed -or $analysis.heldBodyInspections -ne 4){throw 'Body-only native criteria failed.'}
  foreach($entry in @($testBinaries)+@($probeBinaries)+@($playerFiles)){
   if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Executed binary/player input changed: '+$entry.Path)}
  }
@@ -177,5 +193,7 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the actual Unity sample outcome. Physical step/capture integration, live neural coupling, afferent physiology and Avatar recovery are separate.'
+ if($combined){Write-Host 'Tell Orion the actual Unity body/contact outcome. Complete endpoint delivery, afferent physiology and Avatar recovery are separate.'}
+ else {Write-Host 'Tell Orion the actual Unity sample outcome. Physical step/capture integration, live neural coupling, afferent physiology and Avatar recovery are separate.'}
+ Write-Host ('Results: '+$package)
 }

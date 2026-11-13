@@ -17,7 +17,7 @@ def io_path(path):
     return Path('\\\\?\\' + str(path)) if os.name == 'nt' and not str(path).startswith('\\\\?\\') else path
 
 
-def main():
+def main(combined=False):
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, encoding='utf-8').strip()
     if git('status', '--porcelain'):
@@ -29,7 +29,7 @@ def main():
     if not dotnet:
         raise RuntimeError('No dotnet executable.')
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    package = ROOT / 'artifacts' / ('unity-physical-sample-' + stamp + '-' + uuid.uuid4().hex[:6])
+    package = ROOT / 'artifacts' / (('unity-body-contact-' if combined else 'unity-physical-sample-') + stamp + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
     if package.exists() or backup.exists():
         raise RuntimeError('Fresh capture required.')
@@ -66,6 +66,8 @@ def main():
     files = [dict(Path=p.relative_to(io_path(package)).as_posix(), Sha256=sha256(p.read_bytes()).hexdigest().upper())
              for p in sorted(io_path(package).rglob('*')) if p.is_file()]
     counts = dict(PhysicalSampleProducerTests=16, PhysicalSampleTransportTests=22, SolutionManifestTests=1)
+    if combined:
+        counts.update(PhysicalObservationTests=31, UnityBodyEncodingTests=4)
     configuration = dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         PackageFiles=files, DotnetExecutable=dotnet, BackupDestination=str(backup),
         NoLiveMonitoring=True, ExpectedTestCases=sum(counts.values()), ExpectedClassCounts=counts,
@@ -74,7 +76,9 @@ def main():
         SessionId=uuid.uuid4().hex, ExpectedUnityVersion='6000.3.19f1',
         UnityExecutable=str(unity), UnityExecutableSha256=sha256(unity.read_bytes()).hexdigest().upper(),
         UnityBuildWorkspace=str(workspace), ExpectedBodySamples=201, ExpectedActualPhysicsSteps=201,
-        ExpectedFinalCompleteStep=200)
+        ExpectedFinalCompleteStep=200, CombinedBodyContacts=combined,
+        ExpectedContactObservations=3015 if combined else 0,
+        ObservationProtocolVersion=2 if combined else 1)
     (package / 'configuration.json').write_text(json.dumps(configuration, indent=2) + '\n', encoding='utf-8')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True,
                    NoLiveMonitoring=True, Launcher=str(package / 'source/tools/start-unity-physical-sample-window.ps1'))
@@ -84,4 +88,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--combined', action='store_true')
+    main(parser.parse_args().combined)

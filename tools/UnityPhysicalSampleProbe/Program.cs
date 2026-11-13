@@ -13,6 +13,12 @@ static class Program
 
     public static int Main(string[] args)
     {
+        if (args.Length == 4 && args[0] == "--combined") return CombinedStudy.Run(args[1..]);
+        if (args.Length == 2 && args[0] == "--audit-combined")
+        {
+            Console.WriteLine(JsonSerializer.Serialize(CombinedEvidence.Audit(Path.GetFullPath(args[1])), UnityPhysicalSampleBody.Json));
+            return 0;
+        }
         if (args.Length == 2 && args[0] == "--audit")
         {
             Console.WriteLine(JsonSerializer.Serialize(SavedEvidence.Audit(Path.GetFullPath(args[1])), UnityPhysicalSampleBody.Json));

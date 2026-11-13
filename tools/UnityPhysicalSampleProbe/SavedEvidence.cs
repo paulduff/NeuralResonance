@@ -17,52 +17,9 @@ public static class SavedEvidence
 
     public static object Audit(string directory)
     {
-        var clock = Read<PhysicalSampleClock>(Path.Combine(directory, "clock.json")); clock.Validate();
-        Require(clock.InitialPhysicsStep == 0 && clock.PhysicsStepMs == (double).01f * 1000 &&
-            clock.PhysicalEpochMs == 0 && clock.NeuralEpochMs == 1000 && clock.BodyId == "isolated-unity-avatar" &&
-            clock.SourceId == "avatar_unity_body", "Declared isolated clock differs.");
-        var rows = Read<SourceRow[]>(Path.Combine(directory, "source-grid.json"));
-        Require(rows.Length == 202 && rows.Select(s => s.Step).SequenceEqual(Enumerable.Range(0, 202).Select(i => (long)i)),
-            "Original Unity grid is incomplete or repeated.");
-        var originals = new Dictionary<long, BridgeReply>();
-        foreach (var row in rows)
-        {
-            Require(row.ReplyFile == "bridge/hello.json" && row.Step == 0 ||
-                System.Text.RegularExpressions.Regex.IsMatch(row.ReplyFile, "^bridge/reply-[0-9]{6}\\.json$") && row.Step > 0,
-                "Unexpected source evidence path.");
-            var reply = Read<BridgeReply>(Path.Combine(directory, row.ReplyFile));
-            Validate(reply, clock);
-            Require(reply.PhysicsStep == row.Step && reply.Operation == (row.Step == 0 ? "hello" : "step"), "Source grid identity differs.");
-            originals.Add(row.Step, reply);
-        }
-        string bridge = Path.Combine(directory, "bridge");
-        Require(!File.Exists(Path.Combine(bridge, "failure.json")) && Directory.GetFiles(bridge, "*.tmp").Length == 0,
-            "Failed or incomplete source transaction exists.");
-        var requests = Directory.GetFiles(bridge, "request-*.json").OrderBy(p => p, StringComparer.Ordinal).ToArray();
-        Require(requests.Length == 206 && Directory.GetFiles(bridge, "reply-*.json").Length == 206, "Expected 201 step, four inspect and one stop transactions.");
-        long step = 0; int inspections = 0; var inspectedSteps = new List<long>();
-        for (int i = 0; i < requests.Length; ++i)
-        {
-            var request = Read<Request>(requests[i]); long sequence = i + 1;
-            Require(Path.GetFileName(requests[i]) == "request-" + sequence.ToString("D6") + ".json" &&
-                request.Version == 1 && request.SessionId == clock.SessionId.ToString("N") && request.Sequence == sequence && request.ExpectedStep == step,
-                "Invalid physical command history.");
-            if (request.Operation == "step") ++step;
-            else Require(request.Operation == "inspect" || request.Operation == "stop" && sequence == requests.Length, "Unknown or premature stop command.");
-            var reply = Read<BridgeReply>(Path.Combine(bridge, "reply-" + sequence.ToString("D6") + ".json")); Validate(reply, clock);
-            Require(reply.Sequence == sequence && reply.Operation == request.Operation && reply.PhysicsStep == step, "Reply changed the actual command/step mapping.");
-            if (request.Operation == "inspect")
-            {
-                ++inspections;
-                inspectedSteps.Add(step);
-                Require(UnityPhysicalSampleBody.BodyWithoutWallStamp(reply) == UnityPhysicalSampleBody.BodyWithoutWallStamp(originals[step]),
-                    "Held body changed at an independently inspected physical endpoint.");
-            }
-            if (request.Operation == "step") Require(reply == originals[step] ||
-                JsonSerializer.Serialize(reply, UnityPhysicalSampleBody.Json) == JsonSerializer.Serialize(originals[step], UnityPhysicalSampleBody.Json),
-                "Grid does not retain the original step reply.");
-        }
-        Require(step == 201 && inspections == 4 && inspectedSteps.SequenceEqual(new long[] { 0, 3, 80, 201 }), "Actual physical/check history differs.");
+        var history = ReadSourceHistory(directory);
+        var clock = history.Clock; var originals = history.Originals;
+        long step = history.FinalStep; int inspections = history.Held.Count;
         var receiver = new AvatarPhysicalSampleReceiver(clock, maximumSamples: 4);
         var consumed = new List<PhysicalBodySample>(); var packetSizes = new HashSet<int>(); long batchSequence = 0;
         string batches = Path.Combine(directory, "batches");
@@ -93,6 +50,61 @@ public static class SavedEvidence
             originalTypedObservationsExactlyPreserved = true, rawUnityRepliesRetained = true,
             contactsTransportedThroughBodyLane = false, modelExecutedDuringAudit = false,
             liveNeuralClockHandshake = false, afferentPhysiologyQualified = false, avatarRecoveryAssessed = false };
+    }
+
+    public sealed record SourceHistory(PhysicalSampleClock Clock, Dictionary<long, BridgeReply> Originals,
+        long FinalStep, IReadOnlyList<BridgeReply> Held);
+
+    // Shared source-transaction audit, without running Unity or any model.
+    public static SourceHistory ReadSourceHistory(string directory)
+    {
+        var clock = Read<PhysicalSampleClock>(Path.Combine(directory, "clock.json")); clock.Validate();
+        Require(clock.InitialPhysicsStep == 0 && clock.PhysicsStepMs == (double).01f * 1000 &&
+            clock.PhysicalEpochMs == 0 && clock.NeuralEpochMs == 1000 && clock.BodyId == "isolated-unity-avatar" &&
+            clock.SourceId == "avatar_unity_body", "Declared isolated clock differs.");
+        var rows = Read<SourceRow[]>(Path.Combine(directory, "source-grid.json"));
+        Require(rows.Length == 202 && rows.Select(s => s.Step).SequenceEqual(Enumerable.Range(0, 202).Select(i => (long)i)),
+            "Original Unity grid is incomplete or repeated.");
+        var originals = new Dictionary<long, BridgeReply>();
+        foreach (var row in rows)
+        {
+            Require(row.ReplyFile == "bridge/hello.json" && row.Step == 0 ||
+                System.Text.RegularExpressions.Regex.IsMatch(row.ReplyFile, "^bridge/reply-[0-9]{6}\\.json$") && row.Step > 0,
+                "Unexpected source evidence path.");
+            var reply = Read<BridgeReply>(Path.Combine(directory, row.ReplyFile));
+            Validate(reply, clock);
+            Require(reply.PhysicsStep == row.Step && reply.Operation == (row.Step == 0 ? "hello" : "step"), "Source grid identity differs.");
+            originals.Add(row.Step, reply);
+        }
+        string bridge = Path.Combine(directory, "bridge");
+        Require(!File.Exists(Path.Combine(bridge, "failure.json")) && Directory.GetFiles(bridge, "*.tmp").Length == 0,
+            "Failed or incomplete source transaction exists.");
+        var requests = Directory.GetFiles(bridge, "request-*.json").OrderBy(p => p, StringComparer.Ordinal).ToArray();
+        Require(requests.Length == 206 && Directory.GetFiles(bridge, "reply-*.json").Length == 206, "Expected 201 step, four inspect and one stop transactions.");
+        long step = 0; int inspections = 0; var inspectedSteps = new List<long>(); var held = new List<BridgeReply>();
+        for (int i = 0; i < requests.Length; ++i)
+        {
+            var request = Read<Request>(requests[i]); long sequence = i + 1;
+            Require(Path.GetFileName(requests[i]) == "request-" + sequence.ToString("D6") + ".json" &&
+                request.Version == 1 && request.SessionId == clock.SessionId.ToString("N") && request.Sequence == sequence && request.ExpectedStep == step,
+                "Invalid physical command history.");
+            if (request.Operation == "step") ++step;
+            else Require(request.Operation == "inspect" || request.Operation == "stop" && sequence == requests.Length, "Unknown or premature stop command.");
+            var reply = Read<BridgeReply>(Path.Combine(bridge, "reply-" + sequence.ToString("D6") + ".json")); Validate(reply, clock);
+            Require(reply.Sequence == sequence && reply.Operation == request.Operation && reply.PhysicsStep == step, "Reply changed the actual command/step mapping.");
+            if (request.Operation == "inspect")
+            {
+                ++inspections; held.Add(reply);
+                inspectedSteps.Add(step);
+                Require(UnityPhysicalSampleBody.BodyWithoutWallStamp(reply) == UnityPhysicalSampleBody.BodyWithoutWallStamp(originals[step]),
+                    "Held body changed at an independently inspected physical endpoint.");
+            }
+            if (request.Operation == "step") Require(reply == originals[step] ||
+                JsonSerializer.Serialize(reply, UnityPhysicalSampleBody.Json) == JsonSerializer.Serialize(originals[step], UnityPhysicalSampleBody.Json),
+                "Grid does not retain the original step reply.");
+        }
+        Require(step == 201 && inspections == 4 && inspectedSteps.SequenceEqual(new long[] { 0, 3, 80, 201 }), "Actual physical/check history differs.");
+        return new(clock, originals, step, held.AsReadOnly());
     }
 
     private static void Validate(BridgeReply reply, PhysicalSampleClock clock)

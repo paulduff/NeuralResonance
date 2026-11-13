@@ -34,6 +34,8 @@ After the operator reports Golgi completion, review the saved evidence without
 new model execution. Prepare a matched host-candidate timing protocol before
 launching performance work; do not overlap timing with other studies, builds or
 heavy evidence hashing. No host-candidate timing package has been launched.
+The timing rig is now coded and both variants build; its prospective protocol,
+scope and execution gate are in `DNNE_Olive_Host_Timing_2026-11-13.md`.
 
 The sensory work is still a source review. The newer downloaded spindle mechanics
 capture `artifacts/spindle-mechanics-source-20261109` now has a verified D: copy

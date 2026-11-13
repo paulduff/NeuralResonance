@@ -907,3 +907,14 @@ controls and exact old-analysis replay are gates, not results inferred from
 launch. CUDA timing remains held. Current handoff, prior reviewed outcomes and
 the preserved but unfinished spindle-source work are recorded in
 `docs/DNNE_Continuation_2026-11-13.md`.
+
+The matched host timing rig is coded in
+`docs/DNNE_Olive_Host_Timing_2026-11-13.md`. It uses the unchanged reviewed
+reference/candidate batch implementations, six workloads and six paired rounds
+(72 processes, 144 trajectories), exact recorded bytes and all 24 control groups.
+Both variants build with zero warnings/errors; syntax/source checks pass. It has
+not run and is not frozen. The only pending experiment remains Golgi retry
+`golgi-sdirk3-fine-20261113-ca813f`; do not inspect its outputs before the operator
+report. Host timing preparation/launch requires that report and review first,
+then exclusive timing without competing heavy work. A valid timing result may
+show no benefit; neither successful execution nor reduced allocations prove speed.

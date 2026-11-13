@@ -176,3 +176,13 @@ implement a general active slack controller, change cross-bridge equations,
 provide zero-overlap kinetics or establish physiological validity. Fresh packages
 include the verified failure review and pinned solver source explaining this
 change. The original captures are not rewritten.
+
+## Corrected root-control launch
+
+`spindle-state-20261113-a43f1a` is frozen from
+`b9937e9163233b89322510b7742ee6d292361836`. Preparation verified all 59,532 pinned
+runtime files and the canonical transformations, including the saved root-search
+failure evidence. All 1,712 initial package files plus manifest have a verified
+D: copy, rechecked at launch. Visible task `DNNE-Spindle-State-83574529f0c3` is
+launched and unmonitored. Await the operator's completion report; this is the
+only pending experiment. The motor coupled comparison has not been launched.

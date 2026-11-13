@@ -21,7 +21,7 @@ syntax checked; no candidate trajectory or reference solve has been executed.
 The study still needs analytic reference/recorder checks, a frozen preparer and
 visible PowerShell runner before it can be launched.
 
-The fixture is a free joint with inertia 1 kg m² and opposing constant moment
+The fixture is a free joint with inertia 1 kg mÂ² and opposing constant moment
 arms +0.02 m and -0.02 m. Each path has one slow motor unit using the previously
 qualified author geometry and first parameter row. They are deliberately matched
 reference muscles, not an anatomically calibrated human antagonist pair. Joint
@@ -82,3 +82,16 @@ Physiological calibration, native Unity geometry/step ownership, actual
 afferents, live neuronal feedback and Avatar recovery remain subsequent gates.
 No pending experiment has been monitored and no runtime/save/editor selection
 is changed by preparing this comparison.
+
+## Reference controls authored, not executed
+
+`test-causal-motor-reference.py` now defines two artificial constant-tension
+joint fixtures, each solved with tight DOP853 and Radau and checked against the
+closed-form Newtonian angle, velocity, impulse, work and tendon-work solutions.
+Clustered event boundaries exercise intervals without requested output samples.
+Four signed/zero tendon-length integrals compare 64/128 point Gauss-Legendre
+quadrature with QUADPACK. These checks have only been syntax checked; none has
+run. The analysis now requires their saved eight-check passing record before
+it can qualify a coupled trajectory. Frozen preparation and the visible runner
+are still to be implemented; the 120-case component pass remains the latest
+executed motor/body evidence.

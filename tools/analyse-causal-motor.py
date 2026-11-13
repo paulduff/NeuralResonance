@@ -162,6 +162,11 @@ def boundary_energy(spec, raw, path):
 
 def audit(package):
     spec = validate(package); assert environment(package) == read(package / 'reference-preflight.json')['environment']
+    controls = read(package / 'reference-controls.json')
+    assert controls['completed'] and controls['passed'] and controls['exactAnalyticMechanicalFixtures']
+    assert controls['analyticMechanicalConditions'] == 2 and controls['analyticMethodChecks'] == 4 and controls['tendonQuadratureCases'] == 4
+    assert not controls['biologicalDynamicsIntegrated'] and len(controls['mechanics']) == len(controls['quadrature']) == 4
+    assert all(row['passed'] for row in controls['mechanics'] + controls['quadrature'])
     candidate = package / 'causal-study'; reference = package / 'causal-reference'
     executed = read(candidate / 'results.json'); refs_executed = read(reference / 'execution.json')
     assert executed['completed'] and executed['successfulCases'] == 40 and len(executed['cases']) == 40

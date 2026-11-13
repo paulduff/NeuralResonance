@@ -1333,3 +1333,10 @@ and Python source parses, but analytic reference controls, frozen preparation
 and the visible runner are still required. No numerical comparison has run.
 Both review artifacts have verified D: copies. Consult later launch records
 before identifying pending work; these two reported packages are no longer pending.
+
+Corrected spindle root package `spindle-state-20261113-a43f1a`, frozen `b9937e9`,
+is launched in visible task `DNNE-Spindle-State-83574529f0c3`. All 1,712 initial
+files plus manifest are D: verified; it is the only pending run. Do not monitor
+it. The coupled motor comparison's analytic reference controls are now authored
+and syntax checked, but unexecuted. Its frozen preparer and visible runner are
+still required. No coupled numerical qualification or live promotion is claimed.

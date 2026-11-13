@@ -361,3 +361,13 @@ candidate conditions, 24 references and energy-accounting gates are documented
 in `DNNE_Causal_Motor_Comparison_2026-11-13.md`. It still needs analytic reference
 controls, frozen preparation and its visible runner. Both reviews have verified
 D: copies; no live runtime is selected. Neither reported package remains pending.
+
+## Corrected root-control launch
+
+`spindle-state-20261113-a43f1a` is frozen from
+`b9937e9163233b89322510b7742ee6d292361836`. Preparation verified all 59,532 pinned
+runtime files and the canonical transformations, including the saved root-search
+failure evidence. All 1,712 initial package files plus manifest have a verified
+D: copy, rechecked at launch. Visible task `DNNE-Spindle-State-83574529f0c3` is
+launched and unmonitored. Await the operator's completion report; this is the
+only pending experiment. The motor coupled comparison has not been launched.

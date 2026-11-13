@@ -8,9 +8,9 @@ with results inspected only after the operator reports completion.
 Latest update: corrected Golgi `ca813f` and repaired body/contact retry `014b85`
 were both operator-reported complete and passed full evidence review. Golgi's
 43 tests, fourteen new cases and all original numerical gates pass; contact's
-67 tests pass. No outstanding experiment report remains at this point. Prepare
-and launch the matched CUDA host timing study exclusively; further experiment
-execution and heavy hashing must wait for that timing report. Historical pending
+67 tests pass. The matched CUDA host timing study `ab15ac` is now launched and
+is the sole outstanding report. Further experiment execution, builds and heavy
+hashing must wait for its operator report and review. Historical pending
 counts below are superseded by this update and subsequent launch records.
 
 ## Pending Golgi window
@@ -178,3 +178,10 @@ are coded but unfrozen/unlaunched. Python/PowerShell syntax checks pass; native
 compatibility and numerical results remain untested. Its prospective scope is
 `DNNE_Spindle_Native_Reference_2026-11-13.md`. Hold it and new Unity integration
 until the exclusive host timing window is reported complete and reviewed.
+
+The exclusive timing package is `olive-host-timing-20261113-ab15ac`, revision
+`8a3c63c1c8cc1f4c4a5337fbb5b56001c1f87417`, task
+`DNNE-Olive-Host-Timing-e6d1b659eff2`. Its 1,547 initial files plus manifest have
+a verified D: copy, rechecked before launch. Do not inspect live outputs or
+overlap competing work. Await the operator report; no pass or speedup is inferred
+from launch. See `DNNE_Olive_Host_Timing_2026-11-13.md` for the exact scope.

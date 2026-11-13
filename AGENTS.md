@@ -1060,3 +1060,14 @@ coded and Python/PowerShell syntax checked, but remains unfrozen/unlaunched;
 Octave compatibility and numerical results are untested. Its scope is in
 `docs/DNNE_Spindle_Native_Reference_2026-11-13.md`. Combined actual Unity delivery,
 afferent physiology, connected Golgi function and recovery remain unqualified.
+
+The exclusive CUDA host timing study is now launched as
+`olive-host-timing-20261113-ab15ac`, revision
+`8a3c63c1c8cc1f4c4a5337fbb5b56001c1f87417`, task
+`DNNE-Olive-Host-Timing-e6d1b659eff2`. Its 1,547 initial files plus manifest are
+verified on D: and rechecked at launch. This is the only outstanding report.
+No live monitoring, competing experiments, builds or heavy evidence hashing
+until the operator reports completion. Its scope is 11 tests, 24 control groups,
+72 processes and 144 trajectories comparing original/candidate CUDA host work;
+no speed result is inferred from launch. Spindle and combined Unity studies
+remain unlaunched. Preserve all old results and await the timing report.

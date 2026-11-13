@@ -112,3 +112,17 @@ hashes, binary enumeration and test-root confinement, matching the reviewed
 capture tools. This avoids long-path setup failures without changing mechanisms,
 timing boundaries, schedules or numerical acceptance. Python/PowerShell syntax
 checks precede freezing; the existing C# implementations are unchanged.
+
+## Launch record — 13 November 2026
+
+`olive-host-timing-20261113-ab15ac` is frozen at
+`8a3c63c1c8cc1f4c4a5337fbb5b56001c1f87417` and launched as independent visible
+PowerShell task `DNNE-Olive-Host-Timing-e6d1b659eff2`. All 1,547 initial files plus
+manifest were verified on D: and rechecked before launch. The preparer reverified
+the passing host-accuracy review, original C:/D: capture and unchanged mechanisms.
+
+This is the only outstanding experiment report. The 11 tests, 24 control groups,
+72 scheduled processes and 144 trajectories are prospective; launching the task
+establishes no accuracy or timing result. No live monitoring follows. Keep
+competing experiments, builds and heavy evidence hashing out of this benchmark
+until the operator reports completion. Spindle and combined Unity work stay held.

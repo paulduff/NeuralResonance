@@ -1,10 +1,49 @@
-function run_spindle_state_controls(package)
+function run_spindle_state_controls(package, rootsOnly)
 % Mechanistic state/force-query controls, executed only in the visible window.
-  fibers = {'bag', 'chain'}; records = cell(1, 2);
+  if nargin < 2, rootsOnly = false; end
+  if rootsOnly, stage = 'preflight'; else, stage = 'post-trajectory'; end
+  fibers = {'bag', 'chain'}; records = cell(1, 2); roots = cell(1, 2);
+  for f = 1:2
+    [hs, parameters] = create_fiber(fibers{f});
+    expectedDelta = hs.hsl_slack - hs.hs_length;
+    probes = [expectedDelta-1, expectedDelta, expectedDelta+1, 0];
+    stresses = zeros(size(probes)); expectedStresses = zeros(size(probes));
+    for k = 1:numel(probes)
+      stresses(k) = spindle_trial_stress(hs, probes(k));
+      expectedStresses(k) = hs.k_passive * (hs.hs_length + probes(k) - hs.hsl_slack);
+    end
+    [delta, residual, info, output] = fzero(@(dx) spindle_trial_stress(hs, dx), 0, optimset('display', 'off'));
+    bracketError = ''; bracketDelta = NaN; bracketResidual = NaN; bracketInfo = 0; bracketOutput = struct();
+    try
+      [bracketDelta, bracketResidual, bracketInfo, bracketOutput] = fzero(@(dx) spindle_trial_stress(hs, dx), ...
+        [expectedDelta-1, expectedDelta+1], optimset('display', 'off'));
+    catch failure
+      bracketError = failure.message;
+    end
+    roots{f} = struct('fiber', fibers{f}, 'initialLengthNm', hs.hs_length, 'slackLengthNm', hs.hsl_slack, ...
+      'initialState', hs.y, 'parameters', parameters, 'probeDisplacementsNm', probes, 'trialStressesPa', stresses, ...
+      'analyticPassiveStressesPa', expectedStresses, 'scalarGuessDeltaNm', delta, ...
+      'scalarGuessRootNm', delta + hs.hs_length, 'scalarGuessResidualPa', residual, 'scalarGuessInfo', info, ...
+      'scalarGuessOutput', output, 'bracketDeltaNm', bracketDelta, 'bracketRootNm', bracketDelta + hs.hs_length, ...
+      'bracketResidualPa', bracketResidual, 'bracketInfo', bracketInfo, 'bracketOutput', bracketOutput, 'bracketError', bracketError, ...
+      'initialStatePreserved', isequal(hs.y, [1, zeros(1,81), 1, 0]));
+  end
+  rootDiagnostics = struct('version', 'unloaded-spindle-root-diagnostic-v1', 'stage', stage, 'fibers', {roots}, ...
+    'boundChanged', false, 'kineticsExecuted', false);
+  matPath = fullfile(package, [stage '-root-diagnostics.mat']);
+  if exist(matPath, 'file'), error('Preserve previous root diagnostics.'); end
+  save(matPath, 'rootDiagnostics', '-v7');
+  write_json(fullfile(package, [stage '-root-diagnostics.json']), rootDiagnostics);
+  for f = 1:2
+    fprintf('%s unloaded %s root: scalar=%.17g nm, bracket=%.17g nm, expected=%.17g nm\n', ...
+      stage, fibers{f}, roots{f}.scalarGuessRootNm, roots{f}.bracketRootNm, roots{f}.slackLengthNm);
+  end
+  assert(all(cellfun(@(r) abs(r.scalarGuessRootNm-r.slackLengthNm) <= 1e-9, roots)));
+  if rootsOnly, return; end
   for f = 1:2
     name = fibers{f}; [hs, parameters] = create_fiber(name);
     state0 = hs.y;
-    root = fzero(@(dx) spindle_trial_stress(hs, dx), 0, optimset('display', 'off')) + hs.hs_length;
+    root = roots{f}.scalarGuessRootNm;
     assert(abs(root - hs.hsl_slack) <= 1e-9);
     props = {'bin_pops', 'no_detached', 'f_bound'}; readonly = false(1, 3);
     for k = 1:3
@@ -54,7 +93,10 @@ function run_spindle_state_controls(package)
   end
   result = struct('version', 'canonical-spindle-state-v1', 'fibers', {records}, ...
     'zeroOverlapKineticsImplemented', false, 'fullSlackDriverExecuted', false);
-  target = fullfile(package, 'state-controls.json');
+  write_json(fullfile(package, 'state-controls.json'), result);
+end
+
+function write_json(target, result)
   if exist(target, 'file'), error('Preserve previous state controls.'); end
   stream = fopen(target, 'w'); if stream < 0, error('Cannot save state controls.'); end
   cleanup = onCleanup(@() fclose(stream)); fprintf(stream, '%s\n', jsonencode(result));

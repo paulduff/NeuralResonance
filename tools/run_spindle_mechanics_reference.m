@@ -56,6 +56,12 @@ function run_spindle_mechanics_reference(package)
   if ~control.emptyArgumentRejected || ~control.threeAndStructExactlyEqual || control.maximumExponentialError > 1e-8
     error('Octave empty-options compatibility controls failed.');
   end
+  % Fail early on state/force-query controls, retaining their diagnostics before
+  % starting the longer trajectory matrix. Never discard a failed root value.
+  if canonical
+    addpath(fullfile(package, 'source', 'tools'));
+    run_spindle_state_controls(package, true);
+  end
 
   fibers = {'bag', 'chain'};
   protocols = {'quiet-hold', 'active-hold', 'drive-on-off', 'stretch-shorten', 'imposed-below-slack'};
@@ -104,8 +110,9 @@ function run_spindle_mechanics_reference(package)
     error('Native mechanics execution incomplete or nonfinite; preserve evidence.');
   end
   if canonical
-    addpath(fullfile(package, 'source', 'tools'));
-    run_spindle_state_controls(package);
+    % Retain the original after-matrix context as well: moving a failing check
+    % earlier must not conceal state/path contamination introduced by a run.
+    run_spindle_state_controls(package, false);
   end
 end
 

@@ -69,6 +69,28 @@ outputs. The earlier `c9a66b` preparation rejection ran no experiment and is
 preserved with a verified D: copy. Muscle qualification is complete only for
 its isolated numerical scope; causal body coupling remains the motor follow-up.
 
+The operator reported spindle `3468db` FAILED. Full review shows all thirty
+trajectories/two boundaries complete, with exactly matching old states and
+post-initial stresses and corrected population/scalar/geometry reporting. The
+later unloaded-root assertion failed without retaining its root value. See
+`DNNE_Spindle_State_Candidate_2026-11-13.md`. Complete C:/D: evidence and the
+separate review verify. No old report is pending. The next native window saves
+root/force/solver diagnostics before unchanged assertions, before and after the
+matrix; no unsupported numerical or physiological repair is claimed.
+
+Motor/body source work began in parallel and is preserved, unbuilt/untested, in
+stash `7c38cb3e111d59bd1bec9aa612def30e50fd9b62` and the three-file, D:-verified
+`artifacts/causal-motor-draft-20261113`. It adds an endpoint length-observation
+method to the qualified muscle without changing its prescribed integrator, and
+an isolated `AvatarCausalMotorPlant` draft. The explicit first-order partition
+applies start-state tension, advances actual physics, evolves muscle/events at
+known start geometry, then accepts endpoint geometry. It preserves motor event
+identity and gates physics on all source watermarks. It is not a live selection
+or a qualified coupling scheme. Restore the two draft sources after the spindle
+package is frozen; preflight all inner time slices before any queue drain/physics,
+then build and add tests for ownership, causality, force/work, replay and faults.
+Require a coupled mechanical reference/refinement before Unity promotion.
+
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,

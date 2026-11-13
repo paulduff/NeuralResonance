@@ -175,6 +175,14 @@ def analyse(package, base):
     controls = base.read(package / 'state-controls.json')
     assert controls['version'] == VERSION and len(controls['fibers']) == 2
     assert {f['fiber'] for f in controls['fibers']} == set(base.FIBERS)
+    for stage in ('preflight', 'post-trajectory'):
+        roots = base.read(package / (stage + '-root-diagnostics.json'))
+        assert roots['stage'] == stage and not roots['boundChanged'] and not roots['kineticsExecuted']
+        assert {f['fiber'] for f in roots['fibers']} == set(base.FIBERS)
+        for r in roots['fibers']:
+            assert r['initialStatePreserved'] and abs(r['scalarGuessRootNm'] - r['slackLengthNm']) <= 1e-9
+            assert len(r['trialStressesPa']) == len(r['analyticPassiveStressesPa']) == 4
+            assert max(abs(a-b) for a,b in zip(r['trialStressesPa'], r['analyticPassiveStressesPa'])) <= STRESS_ABSOLUTE_PA
     for fiber in controls['fibers']:
         assert fiber['fiber'] in base.FIBERS
         assert len(fiber['readOnlyProperties']) == 3 and all(fiber['readOnlyProperties'])

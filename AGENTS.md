@@ -1280,3 +1280,19 @@ and the separate 18-file transformed execution tree. All 1,697 initial files
 plus manifest have a verified D: copy, rechecked at launch. This is the only
 pending operator report; no live monitoring. No numerical/biological pass is
 inferred from launch. All older reports, including muscle `95e59f`, are reviewed.
+
+The operator reported spindle `3468db` FAILED. All thirty trajectories/two boundary
+records complete; full review verifies C:/D: files, source and runtime fingerprints,
+exact state/post-initial-stress agreement and repaired state views/scalar force/
+overlap geometry. The first subsequent unloaded-root assertion fails; its root
+value was not saved, so cause is unestablished. Review has a verified D: copy.
+The next diagnostic preserves initial states, direct force probes and root/solver
+results before unchanged assertions, preflight and after the matrix. No tolerance
+relaxation or physiological/root repair is inferred. See the spindle-state doc.
+
+An unbuilt motor/body coupling draft is preserved in stash
+`7c38cb3e111d59bd1bec9aa612def30e50fd9b62` and D:-verified
+`artifacts/causal-motor-draft-20261113` (three files plus manifest). Restore after
+freezing the next spindle window; do not lose or treat it as validated code.
+Continuation notes describe the start-held physical partition and required
+preflight time-grid fix/tests/reference comparison. Live paths/saves are untouched.

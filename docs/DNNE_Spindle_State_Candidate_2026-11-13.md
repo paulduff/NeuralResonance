@@ -96,3 +96,36 @@ the unchanged compatibility copy and the 18-file candidate execution tree.
 All **1,697 initial files plus manifest** have a verified D: backup, rechecked
 before launch. This is the only pending operator report. No live output has
 been inspected and no candidate result is inferred from launch.
+
+## Reported first outcome
+
+The operator reported `3468db` FAILED. Full review verifies all 1,772 C:/D: files
+per copy (98,300,886 bytes), all 1,551 frozen Git files, declared transformations,
+and matching preparation/before/after fingerprints for all 59,532 runtime files.
+Manifest SHA256:
+`56F65FDB9D67D567741B8F4978CB508FA5B6E16F647F0BFECD313AD6A68BE836`.
+`tools/review-spindle-state-failure-20261113.py` records the review in
+`artifacts/spindle-state-failure-review-20261113/review.json`, with its own verified
+D: copy. It ran no test or model.
+
+All **30 trajectories and two boundary records** completed. State and post-initial
+stress differences from the preserved baseline are **exactly zero**. Reported
+populations now agree with the authoritative state; initial force is scalar and
+equals analytic passive stress; zero-overlap geometry no longer retains history.
+Accounting and eligible-site bounds pass the declared checks on saved samples.
+This still does not qualify independent numerical convergence or physiology.
+
+The subsequent control failed its first unloaded-root assertion. The original
+harness did not save the root value or solver exit information before asserting,
+so the cause is not yet established. The pinned Octave `fzero.m` declares a
+default `TolX` of machine epsilon; there is no evidence supporting a blanket
+tolerance increase. No bound or mechanism is changed on that supposition.
+
+The next diagnostic saves the initial state, parameters, four direct force
+queries and their analytic passive values, scalar-guess and explicit-bracket
+root results/residuals/exit information, in both JSON and MAT before asserting.
+The bracketed root is a diagnostic contrast, not a fallback replacing the failed
+root. The original `1e-9 nm` bound remains. A preflight check stops early if the
+failure recurs; the same check still runs after the matrix so moving it earlier
+cannot conceal an order-dependent fault. This is investigation, not a claimed
+root repair. The original failed capture remains preserved.

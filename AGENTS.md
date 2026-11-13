@@ -1166,3 +1166,17 @@ mechanical RK stages, so original-ordering reproduction and fully coupled
 numerical qualification must be distinguished. No dynamic implementation or
 physiological result is claimed yet. Preserve old isometric evidence and live
 mechanisms; implement and qualify an isolated candidate before Unity migration.
+
+The isolated coupled candidate is now implemented in
+`docs/DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`. Slow-unit calcium, yield and
+fiber/tendon motion share RK stages; explicit arrivals retain identity and time.
+Prescribed total-length intervals and a fixed-fiber clamp are diagnostics only,
+not live body interpolation or neuronal control. Original isometric/transport
+classes remain unchanged. The component/test assembly builds with zero warnings
+or errors; Python/PowerShell syntax checks pass. Its 93-case visible-window rig
+is coded but not yet launched. Do not infer a passing numerical or physical
+result from build success. Require operator-reported component review, then
+independent adaptive traces, source-ordering/refinement checks and causal source/
+body integration before Unity promotion. A kinetic-work ledger is not metabolic
+calibration; first-row TA parameters are not anatomy for every muscle. Existing
+live paths/editor/saves and pending spindle/profile captures remain untouched.

@@ -20,13 +20,15 @@ Original spindle `9a5090` and Unity `162523` failures have been reviewed and the
 evidence preserved. CUDA host timing, finer Golgi and previous contact retries
 are reviewed; no timing window remains pending.
 
-Source-only motor work is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`.
-The verified neuronal motor-unit calculation still has fixed optimal length.
-The next extension needs length-dependent calcium/activation, velocity-dependent
-yield and explicitly coupled muscle/tendon mechanics. Source and Avatar mappings
-are captured with a verified D: copy; no dynamic implementation or result is yet
-claimed. Preserve the isometric reference, actual event identities and current
-live mechanisms until the replacement has its own numerical/physical evidence.
+The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
+verified C:/D: provenance. Its isolated coupled implementation is now described in
+`DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,
+velocity-dependent yield and explicit fiber/tendon mechanics in common RK stages.
+It retains actual arrival identities and the old isometric reference. Build and
+syntax checks pass; the prospective 93-case component window has not run yet.
+Independent adaptive traces, original-ordering comparisons, causal live body
+coupling and physiological calibration remain required. No current live
+mechanism or saved state is replaced by this candidate.
 Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window

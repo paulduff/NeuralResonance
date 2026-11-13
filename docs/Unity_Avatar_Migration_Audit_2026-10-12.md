@@ -1031,3 +1031,20 @@ or live controller accompanies this review. Future migration must retain actual
 motor events and signed physical measurements, qualify causal timing and derive
 the Unity mechanism from its canonical source. Existing editor authority labels,
 paused startup, old saves and legacy receptors remain unchanged.
+
+## Isolated coupled muscle candidate — 13 November
+
+`DNNE_Dynamic_Muscle_Candidate_2026-11-13.md` records the subsequent implementation.
+The new canonical Avatar candidate couples identified slow-unit arrivals,
+length-dependent calcium, velocity-dependent yield and fiber/tendon mechanics.
+It preserves the original calcium and isometric classes. Its prescribed length
+interval and optional fixed-fiber clamp are explicit diagnostic boundaries,
+not live observations or a hidden motor controller. Axial tendon force is
+reported separately from its projected force; no muscle force is fed into the
+legacy filter or joint-torque path. The 93-case component window is prepared
+in code but unlaunched, and independent trace qualification remains outstanding.
+
+No Unity port or editor activation is appropriate yet. Migration still requires
+qualified causal physical coupling, actual source completeness, geometry for
+each muscle, neuronal recruitment and afferent feedback. Existing muscle/fatigue,
+vestibular/proprioceptive/contact mechanisms and paused startup remain intact.

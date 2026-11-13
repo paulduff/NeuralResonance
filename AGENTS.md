@@ -918,3 +918,18 @@ not run and is not frozen. The only pending experiment remains Golgi retry
 report. Host timing preparation/launch requires that report and review first,
 then exclusive timing without competing heavy work. A valid timing result may
 show no benefit; neither successful execution nor reduced allocations prove speed.
+
+The completed spindle mechanics source review is
+`docs/DNNE_Spindle_Mechanics_Review_2026-11-13.md`. All 1,066 extracted files in
+four pinned archives verify without upstream code execution. The 2026 author
+tutorial fixes particular older detached-state/slack-root issues, but its
+separate population representations, slack flags, overlap boundaries, time
+labels and offline filtering require explicit reproduction. Its threshold/reset
+generator and receptor-potential fitting do not qualify a conductance afferent.
+Use it only as the next isolated mechanics reference candidate; do not wire it
+to Avatar or replace signed observations with invented events. Preserve the
+2023 downloads and their failed source assumptions. No extra study was launched;
+Golgi retry `golgi-sdirk3-fine-20261113-ca813f` remains the sole pending window,
+with host timing held until the operator report and review.
+The new tutorial source capture and separate source review have verified D:
+backups (65 and one files respectively, each plus manifest).

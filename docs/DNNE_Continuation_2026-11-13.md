@@ -42,11 +42,18 @@ capture `artifacts/spindle-mechanics-source-20261109` now has a verified D: copy
 (1,008 files plus manifest). It contains the pinned Simha/Ting repository and
 both linked and author-fork MATMyoSim sources, with archive hashes in `sources.json`
 and `author-dependency.json`. No upstream code has been executed or adopted.
-The structured follow-up review remains unfinished; preserve these downloads.
-Observed kinetic-scheme/template differences and causal derivative indexing
-require explicit treatment before mechanics reproduction. A verified conductance
-afferent membrane remains missing from this candidate. Do not convert receptor
-potential or a firing-rate proxy into invented sensory events.
+The structured follow-up review is now complete in
+`DNNE_Spindle_Mechanics_Review_2026-11-13.md`. It verifies all 1,066 files across
+those three archives and a newly pinned 2026 author tutorial. The latter fixes
+two specific old mechanics defects and is the next isolated reproduction
+candidate, but retains state-consistency, slack, timing and offline-filtering
+concerns. Its threshold/reset spike conversion is not a verified conductance
+afferent membrane. Preserve the downloads; do not convert receptor potential or
+a firing-rate proxy into invented sensory events. Native reference reproduction,
+causal transduction and membrane sourcing remain outstanding. No spindle model
+or test was executed, and no second pending experiment was introduced.
+The new 2026 source capture (65 files plus manifest) and separate review (one
+file plus manifest) both have verified D: backups under their matching names.
 
 Continue inspecting Avatar's existing sensory/muscle path before changing it.
 The previous source/boundary reviews remain the integration map. Worlds start

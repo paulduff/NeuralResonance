@@ -168,3 +168,11 @@ Once the retry passes review, exercise complete body/contact delivery against
 actual Unity using original per-step evidence. Corrected Golgi `ca813f` still
 awaits its own operator report and remains uninspected. Any new retry also gates
 exclusive CUDA timing until its completion report and review.
+
+The first repair package `physical-observation-20261113-205752` (revision
+`900005780a0039a25e03f33cf7b2d54a1ddf7da9`) was rejected before task creation:
+one launcher guard still expected 65 despite the new 67-case configuration.
+No launch or window-status file exists and no tests started. Its initial 1,514
+files plus manifest were verified on D:; the explicit setup rejection is also
+preserved. Correct the guard and freeze a fresh package, leaving this source
+unchanged. This is a setup failure, not another test result or pending window.

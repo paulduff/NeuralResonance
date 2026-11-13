@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 65 -or $configuration.LiveBodySelected -or $configuration.ModelExecuted -or -not $configuration.NoTimingMeasured){throw 'Unexpected combined-observation configuration.'}
+if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 67 -or $configuration.LiveBodySelected -or $configuration.ModelExecuted -or -not $configuration.NoTimingMeasured){throw 'Unexpected combined-observation configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}

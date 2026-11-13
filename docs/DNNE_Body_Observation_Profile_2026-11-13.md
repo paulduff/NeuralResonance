@@ -60,3 +60,11 @@ The 70-case package is `physical-observation-20261113-64ad44`, revision
 PowerShell task `DNNE-Physical-Observations-50120d406ffc`. Its 1,523 initial files
 plus manifest have a verified D: copy, rechecked before launch. The results await
 the operator report; no live monitoring or pass is inferred from launch.
+
+The operator later confirmed all windows complete. This capture has 69 passes
+and the same stale protocol-v2 rejection fixture failure already diagnosed in
+`162523`. Its full C:/D: review is recorded in
+`DNNE_Muscle_And_Spindle_Results_2026-11-13.md`; the original FAILED status is
+preserved. Corrected `7800c5` already passes all 74 cases, including this profile
+scope, and actual native body/contact delivery. No further retry is required for
+this older fixture failure, and it is no longer a pending report.

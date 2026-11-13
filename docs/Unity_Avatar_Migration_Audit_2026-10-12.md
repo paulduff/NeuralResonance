@@ -1048,3 +1048,11 @@ No Unity port or editor activation is appropriate yet. Migration still requires
 qualified causal physical coupling, actual source completeness, geometry for
 each muscle, neuronal recruitment and afferent feedback. Existing muscle/fatigue,
 vestibular/proprioceptive/contact mechanisms and paused startup remain intact.
+
+The 93-case dynamic component capture has now passed full review. All prior
+pending reports are resolved; see `DNNE_Muscle_And_Spindle_Results_2026-11-13.md`.
+Spindle mechanics execute with the declared Octave adapter, but cache/overlap
+state concerns remain and no afferent membrane runs. The next coupled-muscle
+reference rig replays the preserved real somatic arrivals and retains separate
+synthetic inputs; its implementation does not promote a live Avatar or editor
+path. Existing mechanisms and the Unity migration gates remain as above.

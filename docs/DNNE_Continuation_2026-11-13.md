@@ -5,7 +5,7 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-Latest update: corrected actual Unity body/contact run `7800c5` was reported
+The corrected actual Unity body/contact run `7800c5` was reported
 complete and passed full review: all 74 cases, 201 delivered bodies and 3,015
 contact observations. Every delivered measurement matches the original native
 reply; the deliberate missing-contact intervention stops completeness at 200.
@@ -13,13 +13,14 @@ See `DNNE_Unity_Body_Contacts_2026-11-13.md`. The re-pasted FAILED footer belong
 to old `162523`, whose stale protocol-version fixture failure remains preserved.
 Both the completed capture and its separate review have verified D: copies.
 
-Outstanding reports are Octave-adapted spindle retry `98c085`, older body-profile
-fixture window `64ad44`, and new dynamic muscle components `f9970f`. None is
-inspected live. The older profile window's fixture scope
-is included in the passing 74-case Unity run, but its own result is unknown.
-Original spindle `9a5090` and Unity `162523` failures have been reviewed and their
-evidence preserved. CUDA host timing, finer Golgi and previous contact retries
-are reviewed; no timing window remains pending.
+Latest update: the operator has reported all three remaining windows complete.
+Their full review is `DNNE_Muscle_And_Spindle_Results_2026-11-13.md`, with a
+separate verified three-file D: copy. Muscle `f9970f` passes all 93 cases. Spindle
+`98c085` completes thirty trajectories/two boundaries and twenty descriptive
+comparisons, but exposes cache and exact-overlap issues requiring explicit
+repair. Old profile `64ad44` has 69 passes and the same already-corrected version
+fixture failure; preserve FAILED, do not duplicate its retry. No previous report
+or timing window remains outstanding.
 
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
@@ -30,10 +31,16 @@ syntax checks pass. The 93-case component window is now launched as
 `dynamic-muscle-20261113-f9970f`, frozen at
 `23d6a0618968d10c92cf1afaaefa7cb19354e41d`, task
 `DNNE-Dynamic-Muscle-7976293860f3`, with 1,540 initial files plus manifest verified
-on D: and rechecked at launch. Await its operator report without monitoring.
+on D: and rechecked at launch. It has now passed its reported component review.
 Independent adaptive traces, original-ordering comparisons, causal live body
 coupling and physiological calibration remain required. No current live
 mechanism or saved state is replaced by this candidate.
+The full numerical rig is coded in `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`:
+33 candidate traces, 33 adaptive references and fifteen source-ordering controls,
+including complete replay of the 28 earlier genuine somatic arrivals. The probe
+builds; freezing/launch follows clean pushed source and verified initial D: backup.
+No new numerical result is inferred. Spindle state/overlap repair can proceed
+independently while the eventual comparison awaits its operator report.
 Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window

@@ -400,6 +400,7 @@
     <Project Path="tools/PosturalCircuitProbe/PosturalCircuitProbe.csproj" />
     <Project Path="tools/UnityBodyValidation/ValidateBody.csproj" />
     <Project Path="tools/UnityPhysicalSampleProbe/UnityPhysicalSampleProbe.csproj" />
+    <Project Path="tools/DynamicMuscleProbe/DynamicMuscleProbe.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj" />

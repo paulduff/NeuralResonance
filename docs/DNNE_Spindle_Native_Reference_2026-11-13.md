@@ -144,3 +144,11 @@ Preparation verified the complete 59,532-file runtime and separate execution cop
 without running Octave. Its 1,615 initial files plus manifest have a verified D:
 copy, rechecked at launch. Await the operator's outcome without live monitoring;
 launch establishes no compatibility-control, trajectory or physiological result.
+
+The operator subsequently reported all windows complete. This retry completes
+all thirty trajectories and two boundary records, and its saved analysis
+reproduces all twenty descriptive comparisons exactly. The compatibility
+controls pass. The result and state/cache/overlap concerns are in
+`DNNE_Muscle_And_Spindle_Results_2026-11-13.md`, with full source/C:/D: review.
+The window is no longer pending. Finite native-adapted execution is not numerical
+accuracy, a repaired boundary rule, afferent firing or physiological calibration.

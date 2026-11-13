@@ -1191,3 +1191,25 @@ outstanding: this new window, spindle retry `98c085` and old profile `64ad44`.
 Independent source/reference rig development can proceed, but its longer muscle
 comparison must wait for reported and reviewed component evidence. No live
 brain/body/Unity/editor path or old save changed.
+
+The operator has now reported dynamic `f9970f`, then all remaining windows
+complete. All three captures pass full evidence review in
+`docs/DNNE_Muscle_And_Spindle_Results_2026-11-13.md`: muscle 93/93; older profile
+69/70 with the already-repaired current-version fixture; spindle thirty finite
+trajectories/two boundaries and exact reproduction of twenty descriptive
+comparisons. All C:/D: files, Git source and relevant binaries verify, and the
+separate three-file review has a verified D: copy. No prior window is pending.
+Spindle stretch leaves reported cached populations inconsistent with authoritative
+`y`; force and ODE use `y`, so do not attribute an ODE error merely to that cache.
+Exact-zero overlap retains history and the kinetics divide by overlap; assigning
+zero alone is not a biological repair. Preserve the native-adapted baseline.
+
+The subsequent muscle rig is coded in
+`docs/DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`: unchanged candidate, 33 traces,
+33 adaptive references, fifteen explicitly adapted source-ordering controls and
+replay of all 28 preserved actual somatic arrivals. The C# probe builds; Python/
+PowerShell syntax checks precede freezing. Component review permits its preparer,
+not a numerical accuracy claim. Require clean pushed source and verified initial
+D: backup, launch independently in visible PowerShell, then await the operator
+without monitoring. Independent reference bounds and legacy-control accuracy
+must not be relaxed after results. No live source/body/Unity/editor promotion.

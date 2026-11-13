@@ -117,3 +117,10 @@ task `DNNE-Dynamic-Muscle-7976293860f3` was started. The 93-case outcome awaits
 the operator's report; no live output is inspected and launch establishes no
 passing model or test result. Spindle retry `98c085` and older body-profile
 fixture window `64ad44` also remain unreported and untouched.
+
+The operator subsequently reported all three windows complete. The dynamic
+candidate passes all 93 cases and full evidence review, with a separate verified
+D: copy. See `DNNE_Muscle_And_Spindle_Results_2026-11-13.md`. It is no longer
+pending. The independent trace rig is documented in
+`DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`; component success does not establish
+its numerical, physiological or live integration outcome.

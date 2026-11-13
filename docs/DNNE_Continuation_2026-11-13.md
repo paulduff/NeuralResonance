@@ -91,6 +91,14 @@ package is frozen; preflight all inner time slices before any queue drain/physic
 then build and add tests for ownership, causality, force/work, replay and faults.
 Require a coupled mechanical reference/refinement before Unity promotion.
 
+Root-diagnostic retry `spindle-state-20261113-ae7ae4` is now launched at
+`b60ee5b95908e5c866b5ed83014947bf14dbb0af`, task
+`DNNE-Spindle-State-7f9eefcd0c40`, with all 1,698 initial files plus manifest
+verified on D: and rechecked before launch. Only this window is pending; all
+other reports are reviewed. Await the operator without monitoring. The causal
+motor draft remains in its explicitly named stash and verified artifact above,
+ready for independent source work while the diagnostic runs.
+
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,

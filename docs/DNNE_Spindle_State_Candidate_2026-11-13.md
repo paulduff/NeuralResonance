@@ -129,3 +129,10 @@ root. The original `1e-9 nm` bound remains. A preflight check stops early if the
 failure recurs; the same check still runs after the matrix so moving it earlier
 cannot conceal an order-dependent fault. This is investigation, not a claimed
 root repair. The original failed capture remains preserved.
+
+The diagnostic retry is launched as `spindle-state-20261113-ae7ae4`, frozen
+revision `b60ee5b95908e5c866b5ed83014947bf14dbb0af`, task
+`DNNE-Spindle-State-7f9eefcd0c40`. All 1,698 initial files plus manifest have a
+verified D: copy, rechecked before launch; preparation verified the entire pinned
+runtime and source transformations. This is the only pending operator report.
+Do not inspect live outputs. A launch does not establish a passing root check.

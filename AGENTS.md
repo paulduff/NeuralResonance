@@ -1296,3 +1296,11 @@ An unbuilt motor/body coupling draft is preserved in stash
 freezing the next spindle window; do not lose or treat it as validated code.
 Continuation notes describe the start-held physical partition and required
 preflight time-grid fix/tests/reference comparison. Live paths/saves are untouched.
+
+Spindle root-diagnostic retry `spindle-state-20261113-ae7ae4` is launched at
+`b60ee5b95908e5c866b5ed83014947bf14dbb0af`, task
+`DNNE-Spindle-State-7f9eefcd0c40`. All 1,698 initial files plus manifest have a
+verified D: copy, rechecked at launch; all pinned runtime files verify. This is
+the only pending operator report. No live monitoring or inferred root pass.
+Restore the preserved causal-motor draft for independent development as above;
+it is not built, tested or selected live.

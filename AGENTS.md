@@ -1247,3 +1247,22 @@ do not read its status/logs until the operator reports completion. Its three
 analytic cases/six method checks and full 93/33/33/15 comparison are not yet
 qualified. Spindle source work can proceed independently; no timing window is
 pending. The original failed capture and separate full review remain preserved.
+
+The operator reported muscle retry `95e59f` complete. Full review verifies all
+2,299 C:/D: files, source and binaries and exactly reproduces the full saved
+analysis. All 93 tests, six analytic method checks and 33 candidate conditions
+pass; all 33 adaptive references and fifteen ordering diagnostics complete.
+Recorded fixed-fiber calcium/force match exactly. Separate review has a verified
+D: copy; see `docs/DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`. No muscle report
+is pending. This is isolated numerical qualification, not calibration or live
+motor/body authority. Build causal physical coupling on these preserved controls.
+
+The spindle canonical-state candidate and comparison are now coded in
+`docs/DNNE_Spindle_State_Candidate_2026-11-13.md`. Read-only population views derive
+from y; scalar initialization and exact geometry remove state/reporting faults.
+Zero-overlap kinetics remain explicitly unsupported and reject before evolving;
+do not call that a physiological boundary repair or insert epsilon/clipping.
+A pure trial-stress function uses authoritative populations and returns detached
+mass without mutation. Original source/license and completed captures stay
+preserved. Python/PowerShell syntax checks pass; Octave class/trajectory/control
+results await a fresh visible window. No live Avatar/Unity/editor/save changed.

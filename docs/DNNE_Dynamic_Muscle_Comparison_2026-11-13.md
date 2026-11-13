@@ -149,3 +149,34 @@ The corrected package is now launched as
 have a verified D: copy, rechecked before launch. It is the only pending operator
 report. Await completion without inspecting live outputs; launch establishes
 neither passing regressions nor numerical qualification.
+
+## Corrected comparison: reported and reviewed
+
+The operator reported `95e59f` complete. Offline review reproduces the entire
+saved analysis exactly, with **all 11 cases / 33 candidate conditions passing**
+the original cross-reference, refinement, domain and accounting criteria.
+All **93 component checks**, three analytic boundary tests / six solver-method
+checks, **33 adaptive solves** and **15 ordering diagnostics** completed.
+All 28 recorded somatic arrivals retain their complete identities and times;
+the original fixed-fiber calcium and activation-equivalent force control match
+exactly (maximum differences zero).
+
+Across finest candidates versus both tight DOP853 and Radau, largest differences
+are `1.864e-13 m` for fiber length, `2.325e-10 m/s` for velocity, `6.003e-11` for
+calcium, `9.702e-11` for activation and `3.555e-8 N` for force. Largest calcium
+ledger residual across all candidates is `6.614e-12`; finest kinetic-work
+residual is `1.848e-17 J`. No bound, input or physiological parameter changed.
+
+`tools/review-dynamic-muscle-comparison-20261113.py` verified all **2,299 C:/D:
+files per copy** (290,275,696 bytes), all 1,546 frozen Git files, executed
+binaries and exact test identities. Manifest SHA256:
+`CDA8B5F1C50D9E86D788D3AB21AC883BFC060C17DD9DF63E519C985991DBA8CE`.
+The separate `artifacts/dynamic-muscle-comparison-review-20261113/review.json`
+also has a verified D: copy. Review solved no model and ran no test.
+
+This qualifies the isolated implementation's declared numerical comparison,
+not its physiological calibration or a live motor/body loop. Next motor work
+can connect preserved event timing to causal physical muscle geometry, while
+retaining the fixed-length control and these independent references. Intrafusal
+mechanics remain a separate sensory path; extrafusal force is not substituted
+for spindle stress. No muscle comparison report remains pending.

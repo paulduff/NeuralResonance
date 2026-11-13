@@ -3,7 +3,8 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.NoLiveMonitoring -or -not $configuration.NoTimingMeasured -or $configuration.ExpectedTrajectories -ne 30 -or $configuration.ExpectedBoundaryRecords -ne 2 -or $configuration.LiveBodySelected -or $configuration.UpstreamEquationsModified){throw 'Unexpected spindle reference configuration.'}
+$canonical=[bool]$configuration.CanonicalStateCandidate
+if(-not $configuration.NoLiveMonitoring -or -not $configuration.NoTimingMeasured -or $configuration.ExpectedTrajectories -ne 30 -or $configuration.ExpectedBoundaryRecords -ne 2 -or $configuration.LiveBodySelected -or ([bool]$configuration.UpstreamEquationsModified -ne $canonical)){throw 'Unexpected spindle reference configuration.'}
 if($configuration.RuntimeCompatibility -ne 'octave-ode23-empty-options-struct-v1' -or -not $configuration.ExecutionSourceAdapted){throw 'Declare the preserved original and separate Octave options-binding copy.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
@@ -24,7 +25,8 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source or backup differs: '+$entry.Path)}
  }}
- $taskName='DNNE-Spindle-Reference-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskPrefix=if($canonical){'DNNE-Spindle-State-'}else{'DNNE-Spindle-Reference-'}
+ $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -48,7 +50,7 @@ function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$L
  if($nativeExit -ne 0){throw ($LogName+' exited '+$nativeExit)}
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;
- NativeExecutionAttempted=$false;CompleteFiniteNativeExecution=$false;UpstreamEquationsModified=$false;ExecutionSourceAdapted=$true;RuntimeCompatibility=$configuration.RuntimeCompatibility;
+ NativeExecutionAttempted=$false;CompleteFiniteNativeExecution=$false;UpstreamEquationsModified=$configuration.UpstreamEquationsModified;CanonicalStateCandidate=$canonical;CanonicalStateChecksPassed=$false;ExecutionSourceAdapted=$true;RuntimeCompatibility=$configuration.RuntimeCompatibility;
  NumericalAccuracyQualified=$false;MatlabAgreementAssessed=$false;AfferentMembraneExecuted=$false;
  LiveBrainAccessed=$false;OldSavesLoaded=$false;TimingMeasured=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
@@ -59,9 +61,10 @@ foreach($name in @('PATH','OCTAVE_HOME','OCTAVE_EXEC_HOME','OCTAVE_PATH','OPENBL
 }
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE native spindle mechanics reference'
+ $Host.UI.RawUI.WindowTitle=if($canonical){'DNNE canonical spindle state comparison'}else{'DNNE native spindle mechanics reference'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host '30 bag/chain mechanics trajectories and two bookkeeping records, using a declared Octave options-binding copy. No afferent neurons, live body or speed measurement. Report completion to Orion.'
+ if($canonical){Write-Host 'Canonical state candidate: comparing against preserved original traces, plus read-only state, trial-force and unsupported-overlap controls.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
  $audit=Join-Path $package 'source/tools/spindle-reference.py'
@@ -78,14 +81,18 @@ try {
  try {
   $status.NativeExecutionAttempted=$true
   Invoke-Logged $configuration.OctaveExecutable @('--quiet','--no-gui','--no-init-file','--no-site-file','--no-history','--eval',$expression) 'native-mechanics.log'
-  Invoke-Logged $configuration.PythonExecutable @('-I','-B',$audit,'analyse','--package',$package,'--output',(Join-Path $package 'mechanics-analysis.json')) 'analysis.log'
+  $analysisMode=if($canonical){'analyse-state'}else{'analyse'}
+  Invoke-Logged $configuration.PythonExecutable @('-I','-B',$audit,$analysisMode,'--package',$package,'--output',(Join-Path $package 'mechanics-analysis.json')) 'analysis.log'
  } catch {$firstFailure=$_;$status['NativeOrAnalysisError']=$_.Exception.ToString()}
  # Recheck all runtime files and pinned inputs even if the native run failed.
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',$audit,'verify','--package',$package,'--output',(Join-Path $package 'runtime-after.json')) 'runtime-after.log'
  if((File-Sha256 (Join-Path $package 'runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'runtime-after.json'))){throw 'Runtime fingerprint changed.'}
  if($null -ne $firstFailure){throw $firstFailure}
  $analysis=Get-Content -LiteralPath (Join-Path $package 'mechanics-analysis.json') -Raw | ConvertFrom-Json
- if(-not $analysis.complete -or @($analysis.trajectories).Count -ne 30 -or @($analysis.boundaries).Count -ne 2 -or @($analysis.refinementComparisons).Count -ne 20){throw 'Incomplete native mechanics evidence.'}
+ if($canonical){
+  if(-not $analysis.complete -or -not $analysis.canonicalStateChecksPassed -or @($analysis.trajectories).Count -ne 30 -or @($analysis.boundaryControls.fibers).Count -ne 2 -or @($analysis.sourceComparison.refinementComparisons).Count -ne 20){throw 'Incomplete canonical-state comparison evidence.'}
+  $status.CanonicalStateChecksPassed=$true
+ }elseif(-not $analysis.complete -or @($analysis.trajectories).Count -ne 30 -or @($analysis.boundaries).Count -ne 2 -or @($analysis.refinementComparisons).Count -ne 20){throw 'Incomplete native mechanics evidence.'}
  $status.CompleteFiniteNativeExecution=$true;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 } catch {
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
@@ -100,6 +107,7 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the Octave-adapted spindle mechanics outcome. Execution, numerical accuracy, sensory physiology and Avatar recovery are separate.'
+ if($canonical){Write-Host 'Tell Orion the canonical spindle state outcome. State consistency, independent numerical accuracy, afferent physiology and Avatar recovery are separate.'}
+ else{Write-Host 'Tell Orion the Octave-adapted spindle mechanics outcome. Execution, numerical accuracy, sensory physiology and Avatar recovery are separate.'}
  Write-Host ('Results: '+$package)
 }

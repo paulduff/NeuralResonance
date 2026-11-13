@@ -42,6 +42,23 @@ report. Do not inspect its live output. Independent spindle state/overlap source
 work may continue while waiting; no timing study or live simulation is running
 under this comparison.
 
+The operator has now reported `95e59f` complete. Full review verifies all 2,299
+C:/D: files, frozen source and binaries and reproduces the complete analysis:
+93 component checks, six analytic method checks and all 33 candidate conditions
+pass. All 33 adaptive references and fifteen ordering diagnostics completed;
+the recorded fixed-fiber control matches exactly. Its separate review has a
+verified D: copy. See `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`. No muscle
+report is outstanding. Causal motor/body coupling can now build on this isolated
+numerical result; physiological calibration and live recovery remain unproved.
+
+Independent spindle work is now coded in
+`DNNE_Spindle_State_Candidate_2026-11-13.md`: read-only views of authoritative
+cross-bridge state, scalar initial force, exact overlap geometry and explicit
+unsupported-domain rejection. The separate trial-stress function is pure and
+uses current populations. The new native comparison retains all 30 baseline
+trajectories and adds boundary/force-query controls. Python/PowerShell syntax
+checks pass; no Octave candidate result is inferred before visible execution.
+
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,

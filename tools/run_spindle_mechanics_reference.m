@@ -7,6 +7,7 @@ function run_spindle_mechanics_reference(package)
     error('Use the declared isolated Octave 11.3.0 runtime.');
   end
   config = jsondecode(fileread(fullfile(package, 'configuration.json')));
+  canonical = isfield(config, 'CanonicalStateCandidate') && config.CanonicalStateCandidate;
   if ~strcmp(config.UpstreamRevision, '721ba03cb775261548766ed1349c4bf2e0e35385')
     error('Unexpected upstream source declaration.');
   end
@@ -17,8 +18,10 @@ function run_spindle_mechanics_reference(package)
   if ~strcmp(config.RuntimeCompatibility, 'octave-ode23-empty-options-struct-v1') || ~config.ExecutionSourceAdapted
     error('Declare the separate Octave options compatibility copy.');
   end
-  spindle = fullfile(package, 'octave-compatible', 'vendor', 'matlabMuscleSpindleModellingTools', 'spindle_model');
-  extrafusal = fullfile(package, 'octave-compatible', 'vendor', 'matlabMuscleSpindleModellingTools', 'extrafusal_model');
+  executionTree = 'octave-compatible';
+  if canonical, executionTree = 'canonical-state'; end
+  spindle = fullfile(package, executionTree, 'vendor', 'matlabMuscleSpindleModellingTools', 'spindle_model');
+  extrafusal = fullfile(package, executionTree, 'vendor', 'matlabMuscleSpindleModellingTools', 'extrafusal_model');
   addpath(extrafusal); addpath(spindle);
   expectedNames = {'halfSarcWithCoopBag', 'halfSarcWithCoopChain', 'getDefaultSarcB', 'getDefaultSarcC', 'getDefaultSarcE'};
   expectedFiles = {fullfile(spindle, '@halfSarcWithCoopBag', 'halfSarcWithCoopBag.m'), ...
@@ -46,6 +49,7 @@ function run_spindle_mechanics_reference(package)
   resolved.runtime = OCTAVE_VERSION; resolved.computer = computer();
   resolved.ode23Defaults = odeset();
   resolved.runtimeCompatibility = config.RuntimeCompatibility;
+  resolved.canonicalStateCandidate = canonical;
   resolved.emptyOptionsCompatibility = verify_empty_options();
   write_json(fullfile(output, 'resolution.json'), resolved);
   control = resolved.emptyOptionsCompatibility;
@@ -90,7 +94,7 @@ function run_spindle_mechanics_reference(package)
     outcomes{end+1} = outcome;
   end
   summary = struct('outcomes', {outcomes}, 'expectedTrajectories', 30, 'expectedBoundaryRecords', 2, ...
-    'upstreamEquationsModified', false, 'fullSlackDriverExecuted', false, 'matlabAgreementAssessed', false, ...
+    'upstreamEquationsModified', canonical, 'fullSlackDriverExecuted', false, 'matlabAgreementAssessed', false, ...
     'receptorPotentialComputed', false, 'afferentMembraneExecuted', false, 'physiologyQualified', false, ...
     'avatarRecoveryAssessed', false);
   summary.allExecutionsCompleted = all(cellfun(@(x) x.completed, outcomes));
@@ -98,6 +102,10 @@ function run_spindle_mechanics_reference(package)
   write_json(fullfile(output, 'execution.json'), summary);
   if ~summary.allExecutionsCompleted || ~summary.allRecordedStatesFinite
     error('Native mechanics execution incomplete or nonfinite; preserve evidence.');
+  end
+  if canonical
+    addpath(fullfile(package, 'source', 'tools'));
+    run_spindle_state_controls(package);
   end
 end
 
@@ -147,7 +155,7 @@ function result = trajectory(fiber, protocol, dt)
   result = struct('fiber', fiber, 'protocol', protocol, 'dtSeconds', dt, 'durationSeconds', count * dt, ...
     'parameters', parameters, 'snapshots', {states(1:completedSteps+1)}, 'finite', finite, ...
     'completed', completedSteps == count, 'completedSteps', completedSteps, 'error', message, 'failedAttempt', failedAttempt, ...
-    'driver', 'isolated-imposed-length-original-forwardStep', 'timeConvention', 'initial plus completed endpoints', ...
+    'driver', 'isolated-imposed-length-forwardStep', 'timeConvention', 'initial plus completed endpoints', ...
     'slackControllerUsed', false, 'upstreamODEOptionsChanged', false);
 end
 

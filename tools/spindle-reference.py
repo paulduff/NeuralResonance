@@ -7,6 +7,7 @@ inferred from finite traces or differences between timesteps.
 import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
+import importlib.util
 import json
 import math
 import os
@@ -16,6 +17,7 @@ import subprocess
 import sys
 import uuid
 from zipfile import ZipFile
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = '721ba03cb775261548766ed1349c4bf2e0e35385'
@@ -25,6 +27,14 @@ FIBERS = ('bag', 'chain')
 PROTOCOLS = ('quiet-hold', 'active-hold', 'drive-on-off', 'stretch-shorten', 'imposed-below-slack')
 STEPS_US = (1000, 500, 250)
 COMPATIBILITY = 'octave-ode23-empty-options-struct-v1'
+
+
+def state_candidate():
+    spec = importlib.util.spec_from_file_location('spindle_state_candidate', Path(__file__).with_name('spindle-state-candidate.py'))
+    candidate = importlib.util.module_from_spec(spec); spec.loader.exec_module(candidate)
+    api = SimpleNamespace(io=io, read=read, write=write, digest=digest, analyse=analyse,
+        FIBERS=FIBERS, PROTOCOLS=PROTOCOLS, STEPS_US=STEPS_US)
+    return candidate, api
 
 
 def io(path):
@@ -88,11 +98,15 @@ def verify_runtime(package):
         e = expected[name]
         assert not path.is_symlink() and path.stat().st_size == e['bytes'] and digest(path) == e['sha256'].upper(), name
     adapter_files = verify_compatibility(package)
-    return dict(verifiedRuntimeFiles=len(paths), runtimeManifestSha256=digest(package / 'runtime-files.json'),
+    result = dict(verifiedRuntimeFiles=len(paths), runtimeManifestSha256=digest(package / 'runtime-files.json'),
         verifiedPackageFiles=len(config['PackageFiles']), verifiedExternalFiles=len(config['ExternalFiles']),
         verifiedCompatibilityFiles=adapter_files,
         octaveExecutableSha256=digest(config['OctaveExecutable']), pythonVersion=sys.version,
         modelExecutedDuringVerification=False)
+    if config.get('CanonicalStateCandidate', False):
+        candidate, api = state_candidate()
+        result['verifiedCanonicalStateFiles'] = candidate.verify(package, api)
+    return result
 
 
 def verify_compatibility(package):
@@ -124,7 +138,7 @@ def verify_compatibility(package):
     return len(original_paths)
 
 
-def prepare():
+def prepare(canonical=False):
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, encoding='utf-8').strip()
     assert not git('status', '--porcelain'), 'Commit clean source before freezing'
@@ -145,7 +159,7 @@ def prepare():
     dependencies.append(dict(Path=sys.executable, Sha256=digest(sys.executable)))
     for dll in sorted(Path(sys.executable).parent.glob('python*.dll')):
         dependencies.append(dict(Path=str(dll), Sha256=digest(dll)))
-    name = 'spindle-reference-' + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6]
+    name = ('spindle-state-' if canonical else 'spindle-reference-') + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6]
     package = ROOT / 'artifacts' / name
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / name
     assert not package.exists() and not backup.exists()
@@ -175,6 +189,9 @@ def prepare():
             (runtime_capture / 'download.json', 'runtime-download.json'),
             (package / 'source/tools/backup-unity-run.ps1', 'backup-run.ps1')):
         shutil.copyfile(io(source), io(package / target))
+    if canonical:
+        candidate, api = state_candidate()
+        candidate.prepare(package, api)
     entries = [dict(Path=p.relative_to(io(package)).as_posix(), Sha256=digest(p))
                for p in sorted(io(package).rglob('*')) if p.is_file()]
     config = dict(Revision=revision, UpstreamRevision=UPSTREAM, PreparedUtc=datetime.now(timezone.utc).isoformat(),
@@ -182,7 +199,7 @@ def prepare():
         RuntimeDirectory=str(runtime), OctaveHome=str(runtime / 'mingw64'), OctaveExecutable=str(executable),
         BackupDestination=str(backup), NoLiveMonitoring=True, NoTimingMeasured=True,
         ExpectedTrajectories=30, ExpectedBoundaryRecords=2, LiveBodySelected=False,
-        UpstreamEquationsModified=False, RuntimeCompatibility=COMPATIBILITY,
+        UpstreamEquationsModified=canonical, CanonicalStateCandidate=canonical, RuntimeCompatibility=COMPATIBILITY,
         ExecutionSourceAdapted=True, PhysiologyQualified=False)
     write(package / 'configuration.json', config)
     write(package / 'preparation-verification.json', verify_runtime(package))
@@ -248,7 +265,9 @@ def analyse(package):
     outcomes = execution['outcomes']
     assert len(outcomes) == 32 and {o['label'] for o in outcomes} == expected
     assert execution['expectedTrajectories'] == 30 and execution['expectedBoundaryRecords'] == 2
-    assert not any(execution[k] for k in ('upstreamEquationsModified', 'fullSlackDriverExecuted',
+    canonical = config.get('CanonicalStateCandidate', False)
+    assert execution['upstreamEquationsModified'] == canonical
+    assert not any(execution[k] for k in ('fullSlackDriverExecuted',
         'matlabAgreementAssessed', 'receptorPotentialComputed', 'afferentMembraneExecuted',
         'physiologyQualified', 'avatarRecoveryAssessed'))
     assert {p.name for p in folder.iterdir()} == {'execution.json', 'resolution.json'} | {
@@ -330,7 +349,8 @@ def analyse(package):
             boundaryHistoryDifference=abs(one(r['exactBoundaryFromPositive']) - one(r['exactBoundaryFromZero']))))
     return dict(complete=len(trajectories) == 30 and len(boundary_reports) == 2 and not failed,
         trajectories=trajectories, refinementComparisons=comparisons, boundaries=boundary_reports, failedExecutions=failed,
-        interpretation='Original mechanics equations with a declared Octave options-binding adapter; finite execution and descriptive differences only',
+        interpretation=('Canonical-state candidate with explicit unsupported-overlap rejection' if canonical else
+            'Original mechanics equations with a declared Octave options-binding adapter; finite execution and descriptive differences only'),
         runtimeCompatibility=COMPATIBILITY, verifiedCompatibilityFiles=verified_adapter_files,
         modelExecutedDuringAnalysis=False, numericalAcceptanceAssessed=False, matlabAgreementAssessed=False,
         receptorPotentialComputed=False, afferentMembraneExecuted=False, physiologyQualified=False, avatarRecoveryAssessed=False)
@@ -338,16 +358,20 @@ def analyse(package):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('prepare', 'verify', 'analyse'))
+    parser.add_argument('mode', choices=('prepare', 'prepare-state', 'verify', 'analyse', 'analyse-state'))
     parser.add_argument('--package', type=Path)
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    if args.mode == 'prepare':
-        prepare()
+    if args.mode in ('prepare', 'prepare-state'):
+        prepare(args.mode == 'prepare-state')
     else:
         assert args.package and args.output
-        report = (verify_runtime if args.mode == 'verify' else analyse)(args.package.resolve())
+        if args.mode == 'analyse-state':
+            candidate, api = state_candidate()
+            report = candidate.analyse(args.package.resolve(), api)
+        else:
+            report = (verify_runtime if args.mode == 'verify' else analyse)(args.package.resolve())
         write(args.output.resolve(), report)
-        print(json.dumps({k: v for k, v in report.items() if k not in ('trajectories', 'refinementComparisons', 'boundaries')}, indent=2))
-        if args.mode == 'analyse' and not report['complete']:
+        print(json.dumps({k: v for k, v in report.items() if k not in ('trajectories', 'refinementComparisons', 'boundaries', 'sourceComparison', 'boundaryControls')}, indent=2))
+        if args.mode in ('analyse', 'analyse-state') and (not report['complete'] or not report.get('canonicalStateChecksPassed', True)):
             raise RuntimeError('Native execution incomplete/nonfinite; retained evidence requires review')

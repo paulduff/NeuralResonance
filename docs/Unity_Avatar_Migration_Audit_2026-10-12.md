@@ -1064,3 +1064,15 @@ recording repair are in `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`. Complete
 numerical acceptance still awaits a fresh visible-window retry with analytic
 boundary regressions. No Avatar dynamics, Unity port or editor/live selection
 changes accompany this analysis-tool repair.
+
+Corrected muscle `95e59f` now passes its complete independent numerical review:
+all 33 conditions, cross-method/refinement/accounting gates and exact original
+fixed-fiber control. All 28 recorded somatic arrivals are preserved. This permits
+causal muscle/body coupling work; it does not establish live recruitment,
+per-muscle anatomy, physiological force calibration or recovery.
+
+The separate spindle state candidate is described in
+`DNNE_Spindle_State_Candidate_2026-11-13.md`. It removes stale population copies
+and makes a pure trial-force query available for slack mechanics. It explicitly
+rejects unsupported zero-overlap kinetics rather than inventing activation.
+Its isolated comparison is coded; live Avatar/Unity/editor paths remain unchanged.

@@ -436,3 +436,9 @@ The next isolated native point-force matrix is implemented with a separate scene
 and build entry, 24 cases/48 physical steps and prospective float-boundary gates.
 See `DNNE_Native_Muscle_Paths_2026-11-13.md`; it does not change live World/Avatar
 or qualify constrained joints. Consult later launch records before checking runs.
+
+Native point-force package `native-muscle-paths-20261113-d9097a`, frozen
+`c9eff12`, is now launched in visible task `DNNE-Native-Muscle-Paths-ea468e8fcb13`.
+Initial D: backup verifies 1,589 files plus manifest, rechecked at launch. This
+is the only pending operator report. Do not inspect build/test progress before
+the operator reports completion. No native qualification follows from launch.

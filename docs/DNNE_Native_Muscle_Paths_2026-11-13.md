@@ -79,3 +79,12 @@ Remaining requirements include constrained articulations, ownership/clock-bound
 production path observations and effort receipts, native coupled trajectory
 refinement, actual anatomical paths/wrapping, calibrated muscle fiber/tendon
 parameters and afferent physiology. The live Avatar remains unchanged.
+
+## Launch record
+
+`native-muscle-paths-20261113-d9097a`, frozen revision
+`c9eff12ace1bc35f7bfa2cfc7777f3a377a64cf5`, was launched in independent visible
+PowerShell task `DNNE-Native-Muscle-Paths-ea468e8fcb13`. All 1,589 initial files
+plus manifest were verified on D: and rechecked at launch. This is the only
+pending operator completion report. Neither the Unity build nor native test
+outcome has been inspected; no live monitoring or qualification is inferred.

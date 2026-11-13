@@ -1395,3 +1395,9 @@ the next separate native point-force fixture: 24 cases, 48 physical steps,
 one owner and original float-boundary bounds. The empty qualification scene
 contains no live Avatar/DNNE. Free-root impulse checks cannot qualify constrained
 joints, anatomy or whole-body motion. See later launch records; do not monitor.
+
+Native point-force `native-muscle-paths-20261113-d9097a`, frozen `c9eff12`, is now
+launched in visible task `DNNE-Native-Muscle-Paths-ea468e8fcb13`. All 1,589 initial
+files plus manifest are D: verified and rechecked at launch. This is the only
+pending operator completion report. No build/native outcome has been inspected;
+do not monitor. All preceding spindle, coupled motor and geometry reports are reviewed.

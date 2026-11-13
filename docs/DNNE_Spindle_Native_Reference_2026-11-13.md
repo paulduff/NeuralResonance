@@ -135,3 +135,12 @@ The original thirty trajectories, two boundary records and twenty descriptive
 outer-step comparisons remain required. The source-resolution record includes
 the compatibility controls. Independent PowerShell execution, full runtime/source
 verification and final D: backup remain mandatory; no tests/models run inline.
+
+## Compatibility retry launch
+
+The fresh retry is `spindle-reference-20261113-98c085`, frozen at
+`c0ce3e9e7a42a25d19821819b0a47e7933cc2e1d`, task `DNNE-Spindle-Reference-25be52c4f713`.
+Preparation verified the complete 59,532-file runtime and separate execution copy
+without running Octave. Its 1,615 initial files plus manifest have a verified D:
+copy, rechecked at launch. Await the operator's outcome without live monitoring;
+launch establishes no compatibility-control, trajectory or physiological result.

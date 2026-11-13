@@ -1130,3 +1130,15 @@ passing retry. Prepare fresh independent PowerShell packages without monitoring.
 Older body-profile `64ad44` remains unreported and uninspected; these reported
 failures are no longer pending. Live services/saves and biological parameters
 remain unchanged.
+
+Two fresh retries are now launched at `c0ce3e9e7a42a25d19821819b0a47e7933cc2e1d`:
+Unity body/contact `unity-body-contact-20261113-7800c5`, task
+`DNNE-Unity-Body-Contacts-d3394556f5c3`, 1,531 initial files plus manifest on D:;
+Octave-adapted spindle `spindle-reference-20261113-98c085`, task
+`DNNE-Spindle-Reference-25be52c4f713`, 1,615 initial files plus manifest on D:.
+Both backups were rechecked at launch. Preparation verified all 59,532 runtime
+files and the separately declared compatibility copy, with no model execution.
+Await both reports without monitoring. Old profile `64ad44` still lacks an
+unambiguous completion report and stays uninspected; its original fixture coverage
+is also included in the new 74-case native Unity gate. The reported `9a5090` and
+`162523` failures and their separate full review are preserved and no longer pending.

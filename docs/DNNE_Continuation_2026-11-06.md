@@ -76,3 +76,13 @@ and prospective analytic/default-call controls. See the result/retry sections in
 `DNNE_Unity_Body_Contacts_2026-11-13.md` and
 `DNNE_Spindle_Native_Reference_2026-11-13.md`. New tests remain in PowerShell.
 Earlier profile `64ad44` still lacks a clear completion report; do not inspect it.
+
+## 13 November: repaired retries launched
+
+Frozen revision `c0ce3e9e7a42a25d19821819b0a47e7933cc2e1d` now has two independent visible
+PowerShell retries: actual Unity body/contact `7800c5` (task
+`DNNE-Unity-Body-Contacts-d3394556f5c3`; 1,531 initial files/D: verified) and
+Octave-adapted spindle `98c085` (task `DNNE-Spindle-Reference-25be52c4f713`;
+1,615 initial files/D: verified). No output inspected after launch. Wait for the
+operator's reports; old profile `64ad44` is still unreported/uninspected. All
+reported failed captures and the one-file combined review remain preserved on D:.

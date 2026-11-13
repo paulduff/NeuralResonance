@@ -102,3 +102,11 @@ binaries and the exact 74 case names. Manifest SHA256 is
 `3C0C44C75A30DB497AD0AE63DED9C354EC357B33717D1ADA19DC32C68EB4B095`.
 The unchanged failed package is preserved. The separate review in
 `artifacts/spindle-unity-failure-review-20261113` has its own verified D: backup.
+
+## Corrected retry launch
+
+The fresh retry is `unity-body-contact-20261113-7800c5`, frozen at
+`c0ce3e9e7a42a25d19821819b0a47e7933cc2e1d`, task `DNNE-Unity-Body-Contacts-d3394556f5c3`.
+Its 1,531 initial files plus manifest are verified on D: and rechecked at launch.
+The same 74-case gate precedes actual Unity physics. Await the operator report;
+no live monitoring or passing result is inferred from task creation.

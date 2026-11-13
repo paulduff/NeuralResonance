@@ -1115,3 +1115,18 @@ are unchanged. Earlier profile `64ad44` and spindle `9a5090` still await clear
 operator reports; a reused FAILED footer without a folder did not identify a new
 failure. Do not inspect those pending outputs. The combined rig can repeat its
 own frozen prerequisites before native execution, without live monitoring.
+
+The operator reported native spindle `9a5090` and combined Unity `162523` failed.
+Both are fully reviewed in `artifacts/spindle-unity-failure-review-20261113` with
+verified D: backup. Spindle: all 32 cases fail at the first ode23 callback because
+Octave forwards [] as an extra derivative parameter; no integration step completed.
+Unity: 73/74 tests pass, including all four native schema cases; one stale fixture
+expects current protocol v2 to reject. No Unity build/physics ran. Preserve both
+failed captures. Their docs record the full hashes/source/binary verification.
+The fixture now rejects current+1, legacy v1 and zero. The spindle retry preserves
+original source and declares a separately hashed two-call [] -> odeset() adapter,
+with analytic/default-call controls before fibers. Neither repair establishes a
+passing retry. Prepare fresh independent PowerShell packages without monitoring.
+Older body-profile `64ad44` remains unreported and uninspected; these reported
+failures are no longer pending. Live services/saves and biological parameters
+remain unchanged.

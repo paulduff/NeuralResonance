@@ -282,7 +282,8 @@ public sealed class PhysicalObservationTests
     public void WrongStreamClockSampleIdentityAndPayloadAreRejected()
     {
         var p = Packet(); var r = new AvatarPhysicalObservationReceiver(Layout()); var before = State(r);
-        foreach (var bad in new[] { p with { Version = 2 }, p with { SessionId = Guid.NewGuid() },
+        foreach (var bad in new[] { p with { Version = PhysicalObservationProtocol.Version + 1 },
+            p with { Version = 1 }, p with { Version = 0 }, p with { SessionId = Guid.NewGuid() },
             p with { SourceId = "other" }, p with { LayoutFingerprint = Clock.Fingerprint } })
             Assert.Throws<ArgumentException>(() => r.Accept(bad));
         foreach (var bad in new[] { p.Samples[0] with { SampleId = Guid.NewGuid() }, p.Samples[0] with { NeuralTimeMs = 999 },

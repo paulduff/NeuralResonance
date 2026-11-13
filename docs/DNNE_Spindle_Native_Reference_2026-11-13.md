@@ -91,3 +91,47 @@ No live monitoring follows launch. All thirty trajectories and two boundary
 records await the operator report. Compatibility, numerical behavior and
 physiology remain unqualified. The other outstanding report is the 70-case body
 profile window `physical-observation-20261113-64ad44`; neither measures speed.
+
+## First Octave execution: argument-binding failure, reviewed
+
+The operator reported `spindle-reference-20261113-9a5090` failed. All thirty
+trajectories stopped on their first integration attempt, retaining only their
+unevolved initial state; both boundary records failed before warmup completed.
+All 32 errors say `derivs: function called with too many inputs`. There is no
+completed integration step from which to assess numerical or biological behavior.
+
+The pinned author classes call `ode23(@derivs,time_step*[0 1],y,[])`. The actual
+Octave 11.3.0 `ode23.m` sends a non-struct fourth argument to the derivative as
+an additional parameter. Its callback accepts only time and state. The stack
+stops at `starting_stepsize` invoking that callback. This is an execution
+compatibility failure, not evidence of unstable physiological equations.
+
+The separate failure review verifies all 1,665 files in each C:/D: copy
+(67,205,238 bytes), 1,520 frozen Git files and every extracted upstream file
+against the pinned archive. Runtime verification before/after exactly matches
+preparation, covering all 59,532 files. Manifest SHA256:
+`AD1079D9FF9FFF89C02D19E8D0A83D0767810355E7921839F387F9E0D44404E1`.
+The review has its own verified D: backup; the failed source/status stays intact.
+
+## Declared Octave compatibility retry
+
+A fresh package keeps `upstream/` byte-for-byte and makes a separate
+`octave-compatible/vendor/` execution copy. Exactly two call sites, one in bag
+and one in chain, replace the empty argument `[]` with `odeset()`. The generated
+`octave-compatibility.json` records both source/output hashes and exact edits.
+Verification checks matching inventories, unchanged remaining bytes and the
+precise two substitutions. No equation, parameter, integration interval, solver
+setting, initial state, slack logic or population bookkeeping is changed.
+
+The retry declares `octave-ode23-empty-options-struct-v1`; it is no longer described
+as execution of completely unmodified source. Before any fiber trajectory, a
+control integrates y'=-y over 0.01 s using the three-argument call and explicit
+empty options structure. Their saved time/state arrays must match exactly, their
+maximum error against exp(-t) must be at most 1e-8, and passing `[]` must reproduce
+the argument-count rejection. These prospective controls test Octave binding and
+its own default solver, not MATLAB equivalence or spindle accuracy.
+
+The original thirty trajectories, two boundary records and twenty descriptive
+outer-step comparisons remain required. The source-resolution record includes
+the compatibility controls. Independent PowerShell execution, full runtime/source
+verification and final D: backup remain mandatory; no tests/models run inline.

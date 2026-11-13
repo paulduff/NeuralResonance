@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.NoTimingMeasured -or $configuration.ExpectedTrajectories -ne 30 -or $configuration.ExpectedBoundaryRecords -ne 2 -or $configuration.LiveBodySelected -or $configuration.UpstreamEquationsModified){throw 'Unexpected spindle reference configuration.'}
+if($configuration.RuntimeCompatibility -ne 'octave-ode23-empty-options-struct-v1' -or -not $configuration.ExecutionSourceAdapted){throw 'Declare the preserved original and separate Octave options-binding copy.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -47,7 +48,7 @@ function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$L
  if($nativeExit -ne 0){throw ($LogName+' exited '+$nativeExit)}
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;
- NativeExecutionAttempted=$false;CompleteFiniteNativeExecution=$false;UpstreamEquationsModified=$false;
+ NativeExecutionAttempted=$false;CompleteFiniteNativeExecution=$false;UpstreamEquationsModified=$false;ExecutionSourceAdapted=$true;RuntimeCompatibility=$configuration.RuntimeCompatibility;
  NumericalAccuracyQualified=$false;MatlabAgreementAssessed=$false;AfferentMembraneExecuted=$false;
  LiveBrainAccessed=$false;OldSavesLoaded=$false;TimingMeasured=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
@@ -60,7 +61,7 @@ try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE native spindle mechanics reference'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '30 original bag/chain mechanics trajectories and two bookkeeping records. No afferent neurons, live body or speed measurement. Report completion to Orion.'
+ Write-Host '30 bag/chain mechanics trajectories and two bookkeeping records, using a declared Octave options-binding copy. No afferent neurons, live body or speed measurement. Report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
  $audit=Join-Path $package 'source/tools/spindle-reference.py'
@@ -99,5 +100,6 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- Write-Host 'Tell Orion the native spindle mechanics outcome. Execution, numerical accuracy, sensory physiology and Avatar recovery are separate.'
+ Write-Host 'Tell Orion the Octave-adapted spindle mechanics outcome. Execution, numerical accuracy, sensory physiology and Avatar recovery are separate.'
+ Write-Host ('Results: '+$package)
 }

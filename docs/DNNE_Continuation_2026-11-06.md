@@ -61,3 +61,18 @@ packet replay/backpressure and an explicitly omitted head contact after real ste
 Profile `physical-observation-20261113-64ad44` and native spindle
 `spindle-reference-20261113-9a5090` remain unreported/uninspected. The operator's
 reused FAILED footer was not assigned to a new capture without its folder ID.
+
+## 13 November: reported spindle and native combined failures repaired
+
+The operator reported spindle `9a5090` and Unity body/contact `162523`. Full C:/D:
+reviews pass for 1,665 and 1,921 files per copy; separate review backup verified.
+The former completes no integration steps because Octave treats [] as an extra
+callback input. The latter passes 73/74 cases, failing only a fixture expecting
+current v2 to reject; it does not build/run Unity. Original failures stay frozen.
+
+The repair uses explicit unsupported/legacy protocol versions in that fixture,
+and a declared separate Octave options-binding copy with exactly two substitutions
+and prospective analytic/default-call controls. See the result/retry sections in
+`DNNE_Unity_Body_Contacts_2026-11-13.md` and
+`DNNE_Spindle_Native_Reference_2026-11-13.md`. New tests remain in PowerShell.
+Earlier profile `64ad44` still lacks a clear completion report; do not inspect it.

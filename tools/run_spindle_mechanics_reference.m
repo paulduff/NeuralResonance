@@ -1,5 +1,6 @@
 function run_spindle_mechanics_reference(package)
-% Execute pinned upstream class methods in Octave, without modifying them.
+% Execute the pinned mechanics equations with a declared Octave options-binding
+% copy; preserve the original source and do not alter equations or solver defaults.
 % This is a mechanics diagnostic, not a MATLAB-equivalence, afferent, gamma
 % motor interface, full slack-driver, physiological or Avatar qualification.
   if exist('OCTAVE_VERSION', 'builtin') ~= 5 || ~strcmp(OCTAVE_VERSION, '11.3.0')
@@ -13,8 +14,11 @@ function run_spindle_mechanics_reference(package)
   if exist(output, 'dir'), error('Preserve previous mechanics evidence.'); end
   mkdir(output);
   restoredefaultpath();
-  spindle = fullfile(package, 'upstream', 'vendor', 'matlabMuscleSpindleModellingTools', 'spindle_model');
-  extrafusal = fullfile(package, 'upstream', 'vendor', 'matlabMuscleSpindleModellingTools', 'extrafusal_model');
+  if ~strcmp(config.RuntimeCompatibility, 'octave-ode23-empty-options-struct-v1') || ~config.ExecutionSourceAdapted
+    error('Declare the separate Octave options compatibility copy.');
+  end
+  spindle = fullfile(package, 'octave-compatible', 'vendor', 'matlabMuscleSpindleModellingTools', 'spindle_model');
+  extrafusal = fullfile(package, 'octave-compatible', 'vendor', 'matlabMuscleSpindleModellingTools', 'extrafusal_model');
   addpath(extrafusal); addpath(spindle);
   expectedNames = {'halfSarcWithCoopBag', 'halfSarcWithCoopChain', 'getDefaultSarcB', 'getDefaultSarcC', 'getDefaultSarcE'};
   expectedFiles = {fullfile(spindle, '@halfSarcWithCoopBag', 'halfSarcWithCoopBag.m'), ...
@@ -41,7 +45,13 @@ function run_spindle_mechanics_reference(package)
   resolved.griddedInterpolant = which('griddedInterpolant');
   resolved.runtime = OCTAVE_VERSION; resolved.computer = computer();
   resolved.ode23Defaults = odeset();
+  resolved.runtimeCompatibility = config.RuntimeCompatibility;
+  resolved.emptyOptionsCompatibility = verify_empty_options();
   write_json(fullfile(output, 'resolution.json'), resolved);
+  control = resolved.emptyOptionsCompatibility;
+  if ~control.emptyArgumentRejected || ~control.threeAndStructExactlyEqual || control.maximumExponentialError > 1e-8
+    error('Octave empty-options compatibility controls failed.');
+  end
 
   fibers = {'bag', 'chain'};
   protocols = {'quiet-hold', 'active-hold', 'drive-on-off', 'stretch-shorten', 'imposed-below-slack'};
@@ -89,6 +99,26 @@ function run_spindle_mechanics_reference(package)
   if ~summary.allExecutionsCompleted || ~summary.allRecordedStatesFinite
     error('Native mechanics execution incomplete or nonfinite; preserve evidence.');
   end
+end
+
+function result = verify_empty_options()
+  % Octave forwards [] as an extra callback argument; an empty options struct
+  % selects its default solver settings. Exercise that boundary before fibers.
+  derivative = @(t, y) -y;
+  [t3, y3] = ode23(derivative, [0, 0.01], 1);
+  [t4, y4] = ode23(derivative, [0, 0.01], 1, odeset());
+  rejected = false; message = '';
+  try
+    ode23(derivative, [0, 0.01], 1, []);
+  catch failure
+    message = failure.message;
+    rejected = ~isempty(strfind(message, 'too many inputs'));
+  end
+  same = isequal(t3, t4) && isequal(y3, y4);
+  maximumError = max(abs(y3(:) - exp(-t3(:))));
+  result = struct('emptyArgumentRejected', rejected, 'emptyArgumentError', message, ...
+    'threeAndStructExactlyEqual', same, 'maximumExponentialError', maximumError, ...
+    'timesSeconds', t3(:)', 'states', y3(:)', 'matlabAgreementAssessed', false);
 end
 
 function result = trajectory(fiber, protocol, dt)

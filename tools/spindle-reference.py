@@ -24,6 +24,7 @@ RUNTIME_HASH = 'B0E1BC72A87ABE4E2A0CF7E76B7727D8FDE5C99EC049C1576F095280C3E48E5A
 FIBERS = ('bag', 'chain')
 PROTOCOLS = ('quiet-hold', 'active-hold', 'drive-on-off', 'stretch-shorten', 'imposed-below-slack')
 STEPS_US = (1000, 500, 250)
+COMPATIBILITY = 'octave-ode23-empty-options-struct-v1'
 
 
 def io(path):
@@ -86,10 +87,41 @@ def verify_runtime(package):
     for name, path in paths.items():
         e = expected[name]
         assert not path.is_symlink() and path.stat().st_size == e['bytes'] and digest(path) == e['sha256'].upper(), name
+    adapter_files = verify_compatibility(package)
     return dict(verifiedRuntimeFiles=len(paths), runtimeManifestSha256=digest(package / 'runtime-files.json'),
         verifiedPackageFiles=len(config['PackageFiles']), verifiedExternalFiles=len(config['ExternalFiles']),
+        verifiedCompatibilityFiles=adapter_files,
         octaveExecutableSha256=digest(config['OctaveExecutable']), pythonVersion=sys.version,
         modelExecutedDuringVerification=False)
+
+
+def verify_compatibility(package):
+    declaration = read(package / 'octave-compatibility.json')
+    assert declaration['Compatibility'] == COMPATIBILITY and declaration['OriginalSourcePreserved']
+    assert not declaration['EquationsChanged'] and not declaration['SolverDefaultsChanged']
+    originals = io(package / 'upstream/vendor')
+    adapter = io(package / 'octave-compatible/vendor')
+    original_paths = {p.relative_to(originals).as_posix(): p for p in originals.rglob('*') if p.is_file()}
+    adapted_paths = {p.relative_to(adapter).as_posix(): p for p in adapter.rglob('*') if p.is_file()}
+    assert original_paths.keys() == adapted_paths.keys()
+    expected_edits = {'vendor/matlabMuscleSpindleModellingTools/spindle_model/@halfSarcWithCoop' + f + '/halfSarcWithCoop' + f + '.m'
+                      for f in ('Bag', 'Chain')}
+    edits = {e['Path']: e for e in declaration['Edits']}
+    assert len(declaration['Edits']) == 2 and edits.keys() == expected_edits
+    for name, path in original_paths.items():
+        original = path.read_bytes()
+        changed = adapted_paths[name].read_bytes()
+        if 'vendor/' + name in edits:
+            e = edits['vendor/' + name]
+            assert e['Before'] == 'ode23(@derivs,time_step*[0 1],y,[])'
+            assert e['After'] == 'ode23(@derivs,time_step*[0 1],y,odeset())'
+            assert original.count(e['Before'].encode()) == 1
+            assert original.replace(e['Before'].encode(), e['After'].encode()) == changed
+            assert sha256(original).hexdigest().upper() == e['OriginalSha256']
+            assert sha256(changed).hexdigest().upper() == e['ExecutionSha256']
+        else:
+            assert changed == original, name
+    return len(original_paths)
 
 
 def prepare():
@@ -121,6 +153,23 @@ def prepare():
     subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(package / 'source.zip'), revision], cwd=ROOT, check=True)
     extract(package / 'source.zip', package / 'source')
     extract(upstream_capture / 'spindleModelTutorial.zip', package / 'upstream', strip_root=True)
+    # Preserve every original byte. Only the separately identified execution
+    # copy translates the MATLAB empty-options argument into an options struct.
+    shutil.copytree(io(package / 'upstream/vendor'), io(package / 'octave-compatible/vendor'))
+    edits = []
+    before = b'ode23(@derivs,time_step*[0 1],y,[])'
+    after = b'ode23(@derivs,time_step*[0 1],y,odeset())'
+    for fiber in ('Bag', 'Chain'):
+        relative = Path('vendor/matlabMuscleSpindleModellingTools/spindle_model') / ('@halfSarcWithCoop' + fiber) / ('halfSarcWithCoop' + fiber + '.m')
+        original = io(package / 'upstream' / relative).read_bytes()
+        assert original.count(before) == 1
+        changed = original.replace(before, after)
+        io(package / 'octave-compatible' / relative).write_bytes(changed)
+        edits.append(dict(Path=relative.as_posix(), OriginalSha256=sha256(original).hexdigest().upper(),
+                          ExecutionSha256=sha256(changed).hexdigest().upper(), Before=before.decode(), After=after.decode()))
+    write(package / 'octave-compatibility.json', dict(Compatibility=COMPATIBILITY, Edits=edits,
+        OriginalSourcePreserved=True, EquationsChanged=False, SolverDefaultsChanged=False,
+        MatlabAgreementAssessed=False))
     for source, target in ((upstream_capture / 'source.json', 'upstream-source.json'),
             (runtime_capture / 'runtime-files.json', 'runtime-files.json'),
             (runtime_capture / 'download.json', 'runtime-download.json'),
@@ -133,7 +182,8 @@ def prepare():
         RuntimeDirectory=str(runtime), OctaveHome=str(runtime / 'mingw64'), OctaveExecutable=str(executable),
         BackupDestination=str(backup), NoLiveMonitoring=True, NoTimingMeasured=True,
         ExpectedTrajectories=30, ExpectedBoundaryRecords=2, LiveBodySelected=False,
-        UpstreamEquationsModified=False, PhysiologyQualified=False)
+        UpstreamEquationsModified=False, RuntimeCompatibility=COMPATIBILITY,
+        ExecutionSourceAdapted=True, PhysiologyQualified=False)
     write(package / 'configuration.json', config)
     write(package / 'preparation-verification.json', verify_runtime(package))
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True,
@@ -189,6 +239,7 @@ def snapshot(s):
 def analyse(package):
     config = read(package / 'configuration.json')
     assert config['UpstreamRevision'] == UPSTREAM
+    verified_adapter_files = verify_compatibility(package)
     folder = package / 'mechanics'
     execution = read(folder / 'execution.json')
     labels = [f'{f}-{p}-{dt}us' for f in FIBERS for p in PROTOCOLS for dt in STEPS_US]
@@ -206,6 +257,10 @@ def analyse(package):
         assert (folder / (label + '.mat')).stat().st_size > 0
     resolution = read(folder / 'resolution.json')
     assert resolution['runtime'] == '11.3.0'
+    assert config['RuntimeCompatibility'] == resolution['runtimeCompatibility'] == COMPATIBILITY
+    controls = resolution['emptyOptionsCompatibility']
+    assert controls['emptyArgumentRejected'] and controls['threeAndStructExactlyEqual']
+    assert controls['maximumExponentialError'] <= 1e-8
     for key in ('ode23', 'interp1', 'fzero', 'odeset'):
         Path(resolution[key]).resolve().relative_to(Path(config['OctaveHome']).resolve())
     trajectories, states, failed = [], {}, []
@@ -275,7 +330,8 @@ def analyse(package):
             boundaryHistoryDifference=abs(one(r['exactBoundaryFromPositive']) - one(r['exactBoundaryFromZero']))))
     return dict(complete=len(trajectories) == 30 and len(boundary_reports) == 2 and not failed,
         trajectories=trajectories, refinementComparisons=comparisons, boundaries=boundary_reports, failedExecutions=failed,
-        interpretation='Original mechanics under Octave; finite execution and descriptive differences only',
+        interpretation='Original mechanics equations with a declared Octave options-binding adapter; finite execution and descriptive differences only',
+        runtimeCompatibility=COMPATIBILITY, verifiedCompatibilityFiles=verified_adapter_files,
         modelExecutedDuringAnalysis=False, numericalAcceptanceAssessed=False, matlabAgreementAssessed=False,
         receptorPotentialComputed=False, afferentMembraneExecuted=False, physiologyQualified=False, avatarRecoveryAssessed=False)
 

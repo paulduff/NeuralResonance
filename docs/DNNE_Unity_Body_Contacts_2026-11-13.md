@@ -79,3 +79,26 @@ sensory neuron, calibrate afferent physiology or demonstrate Avatar recovery.
 The existing contact saturation, aggregation, coordinate convention and stale
 unloaded metadata remain explicit limitations. Original legacy behavior and saves
 stay preserved; no claim of complete biological sensing follows from exact delivery.
+
+## First native combined package: fixture failure, reviewed
+
+Package `unity-body-contact-20261113-162523`, revision
+`c5438665baeb75eeecd1382785ed96be39b77f5a`, launched as
+`DNNE-Unity-Body-Contacts-995a2d74424f` after verifying 1,530 initial files plus
+manifest on D:. The operator reported FAILED. It completed 74 cases: 73 passed,
+one failed. All four new native source-schema checks passed. Unity was neither
+built nor run because the focused gate stopped the window first.
+
+The failed `WrongStreamClockSampleIdentityAndPayloadAreRejected` fixture still
+used hard-coded version 2 as its invalid packet after the protocol became v2.
+Accepting that packet is correct. The repair tests the current version plus one,
+zero, and legacy v1, retaining all stream/clock/identity/payload checks and the
+same 74-case scope. No protocol acceptance rule is weakened. The corrected test
+project builds with zero warnings/errors; its retry remains a prospective run.
+
+`tools/review-spindle-and-unity-failures-20261113.py` verifies all 1,921 C:/D: files
+per copy (123,694,681 bytes), all 1,525 frozen Git source files, executed test
+binaries and the exact 74 case names. Manifest SHA256 is
+`3C0C44C75A30DB497AD0AE63DED9C354EC357B33717D1ADA19DC32C68EB4B095`.
+The unchanged failed package is preserved. The separate review in
+`artifacts/spindle-unity-failure-review-20261113` has its own verified D: backup.

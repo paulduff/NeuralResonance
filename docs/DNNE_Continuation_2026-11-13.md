@@ -421,3 +421,18 @@ The generated Unity copy changes only the namespace; no live selection, saves,
 editor or qualified muscle/coupling core has changed. The geometry doc declares
 31 new checks plus 44 regressions and the remaining native/calibration boundary.
 Consult later launch records before identifying any pending runs.
+
+The geometry package `muscle-paths-20261113-2d0fa4` is now launched at frozen
+`31a6f45`, visible task `DNNE-Muscle-Paths-7a1d62f9f57f`. Initial D: backup verifies
+1,581 files plus manifest, rechecked at launch. It runs 31 new geometry checks
+and 44 causal/dynamic regressions. This is the only pending completion report;
+do not monitor. Authoring builds and syntax checks pass, but no test outcome,
+native force application or anatomical calibration is inferred from launch.
+
+Geometry `2d0fa4` was subsequently reported complete and fully reviewed: all 75
+cases pass; all 1,971 C:/D: files, 1,577 Git files and binary/method coverage verify.
+Its derived review has a verified D: copy. No older report remains pending.
+The next isolated native point-force matrix is implemented with a separate scene
+and build entry, 24 cases/48 physical steps and prospective float-boundary gates.
+See `DNNE_Native_Muscle_Paths_2026-11-13.md`; it does not change live World/Avatar
+or qualify constrained joints. Consult later launch records before checking runs.

@@ -1381,3 +1381,17 @@ not authenticate native poses/clocks; an eventual adapter must preserve the
 existing clock, session, effort receipt and sole physical owner. No live path
 is selected. Total musculotendon length and spindle-sensed fiber state remain
 distinct. See later launch records; compilation alone is not qualification.
+
+Muscle geometry package `muscle-paths-20261113-2d0fa4`, frozen `31a6f45`, is now
+launched in visible task `DNNE-Muscle-Paths-7a1d62f9f57f`. All 1,581 initial files
+plus manifest are D: verified and rechecked at launch. This is the only pending
+operator report. The 75 test outcomes remain uninspected; no live monitoring.
+Native Unity forces, anatomy and recovery are not qualified by source parity.
+
+Geometry `2d0fa4` was subsequently reported complete and fully reviewed. All 75
+cases and full C:/D:/source/binary/method checks pass; derived review is D: backed.
+It is no longer pending. `docs/DNNE_Native_Muscle_Paths_2026-11-13.md` specifies
+the next separate native point-force fixture: 24 cases, 48 physical steps,
+one owner and original float-boundary bounds. The empty qualification scene
+contains no live Avatar/DNNE. Free-root impulse checks cannot qualify constrained
+joints, anatomy or whole-body motion. See later launch records; do not monitor.

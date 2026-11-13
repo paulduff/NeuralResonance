@@ -124,7 +124,12 @@ class Reference:
             if not answer.success:
                 raise RuntimeError(answer.message)
             chosen = (grid >= left) & ((grid < right) if right < grid[-1] else (grid <= right))
-            trace[chosen] = answer.sol(grid[chosen]).T; state = answer.y[:, -1]
+            # Event/load intervals can be shorter than the recording grid.
+            # SciPy dense output rejects an empty query, but the physical state
+            # must still advance across that interval and retain its checks.
+            if np.any(chosen):
+                trace[chosen] = answer.sol(grid[chosen]).T
+            state = answer.y[:, -1]
             self.reference_partial['completedBoundarySeconds'] = float(right)
             stats['acceptedInternalPoints'] += len(answer.t)
             stats['acceptedInternalDomainPassed'] &= self.domain(answer.y.T)

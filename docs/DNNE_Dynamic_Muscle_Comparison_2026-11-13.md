@@ -3,7 +3,9 @@
 The reported component gate passed all 93 cases; see
 `DNNE_Muscle_And_Spindle_Results_2026-11-13.md`. This next rig keeps its exact
 calcium/muscle implementation and all old isometric/transport sources unchanged.
-It is coded and the C# probe builds, but no new comparison result is claimed.
+The first full comparison completed its candidate traces but failed in reference
+recording; see the reviewed outcome below. Overall numerical acceptance remains
+unqualified pending the corrected full comparison.
 
 ## Inputs and scope
 
@@ -97,6 +99,45 @@ The frozen package is `dynamic-muscle-comparison-20261113-cd1577`, revision
 `66e136dc464254d7936c77332085a6ae6f75bb9d`. All 1,555 initial files plus manifest
 have a verified D: copy, rechecked before launch. Independent visible PowerShell
 task `DNNE-Dynamic-Muscle-Comparison-90d60cea3207` was started. This is the only
-outstanding report. Await operator completion without inspecting live outputs;
-launch establishes no candidate/reference result. All preceding muscle, spindle
-and profile windows have completed evidence reviews.
+comparison launched at that revision. Its operator-reported failure is reviewed
+below. All preceding muscle, spindle and profile windows have completed reviews.
+
+## Reported failure and recording repair
+
+The operator reported `cd1577` FAILED. The separate offline audit is
+`artifacts/dynamic-muscle-failure-review-20261113/review.json`, reproduced by
+`tools/review-dynamic-muscle-failure-20261113.py`. All **2,259 files per copy**
+(264,453,156 bytes), the frozen Git source and executed binaries match C:/D:.
+Manifest SHA256 is
+`4DAA755FBFECB3D7969DC4A7ECF66F0819B80CCF25A8B3F0F7962BB502E14C86`.
+The separate review also has a verified D: copy. Neither capture is overwritten.
+
+All **93 tests and 33 candidate executions** completed with complete finite
+sample arrays and the recorded events preserved. **21 reference solves and nine
+source-ordering controls** completed before the reference recorder failed during
+the active-stretch case. The finest candidate is within the predeclared absolute
+bounds against those 21 saved references. This partial result does not establish
+all-case reference agreement, refinement or complete numerical acceptance.
+
+The preserved partial trace isolates the failure: a load knot at **500.015625 ms**
+and the next motor arrival at **500.03125 ms** enclose no requested 0.25-ms output
+sample. SciPy integrated that interval successfully and its retained states are
+finite and in the declared domain. The recorder then passed an empty time array
+to dense interpolation, which raised `ValueError: need at least one array to
+concatenate`. The last 2,001 requested samples remain preserved. This failure
+does not identify a muscle-dynamics defect; complete numerical qualification is
+still required.
+
+The repair only guards dense interpolation with a nonempty sample mask. Endpoint
+state advancement, domain checks, statistics and boundary bookkeeping always run,
+including intervals with no output samples. No boundaries, equations, parameters,
+solver tolerances, recording times or acceptance bounds change.
+
+The corrected visible runner adds three analytic regression cases, each with
+DOP853 and Radau (six method checks), before the full comparison. They check
+clustered unsampled boundaries, coincident events/knots/final samples and the
+exact failed active-stretch partition. Their analytic event-count integral
+detects skipped physical time and lost events without using muscle equations.
+All three require complete state carry and internal-point validation. Python
+and PowerShell syntax checks pass; these new tests await execution in the fresh
+window. The retry repeats the unchanged 93/33/33/15 study under frozen source.

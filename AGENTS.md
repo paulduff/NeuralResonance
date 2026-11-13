@@ -1222,3 +1222,18 @@ have a verified D: copy, rechecked at launch. It is the only pending operator
 report. Do not inspect its live outputs. All prior reports are reviewed; spindle
 state/overlap repair may proceed independently without changing the preserved
 native-adapted source or the running comparison. No timing study is pending.
+
+The operator reported coupled-muscle `cd1577` FAILED. Full offline review verifies
+all 2,259 C:/D: files per copy, frozen Git source, executed binaries and all 93
+passing test identities. All 33 candidate traces, 21 adaptive references and nine
+ordering controls completed; reference recording failed at an empty dense-output
+query between 500.015625 and 500.03125 ms. Preserved internal states show that
+interval integrated successfully. See `docs/DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`.
+The separate review has a verified D: copy. Overall numerical acceptance remains
+incomplete; preserve FAILED and unchanged equations/inputs/tolerances/bounds.
+The recorder now guards only interpolation, always carrying state/checks through
+unsampled intervals. Three analytic boundary tests with both DOP853 and Radau
+are mandatory in the fresh visible-window retry before the full 93/33/33/15 rig.
+Syntax checks pass; do not claim those regressions pass until operator-reported
+execution. No previous report remains pending. No live Avatar/Unity/editor or
+brain-save changes accompany this harness repair.

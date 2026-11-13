@@ -13,7 +13,7 @@ See `DNNE_Unity_Body_Contacts_2026-11-13.md`. The re-pasted FAILED footer belong
 to old `162523`, whose stale protocol-version fixture failure remains preserved.
 Both the completed capture and its separate review have verified D: copies.
 
-Latest update: the operator has reported all three remaining windows complete.
+The operator previously reported all three remaining windows complete.
 Their full review is `DNNE_Muscle_And_Spindle_Results_2026-11-13.md`, with a
 separate verified three-file D: copy. Muscle `f9970f` passes all 93 cases. Spindle
 `98c085` completes thirty trajectories/two boundaries and twenty descriptive
@@ -21,6 +21,18 @@ comparisons, but exposes cache and exact-overlap issues requiring explicit
 repair. Old profile `64ad44` has 69 passes and the same already-corrected version
 fixture failure; preserve FAILED, do not duplicate its retry. No previous report
 or timing window remains outstanding.
+
+Latest update: the subsequent coupled-muscle comparison `cd1577` was reported
+FAILED and fully reviewed. All 93 tests and 33 candidate executions completed;
+21 adaptive references and nine ordering controls finished before an empty
+dense-output query aborted the reference recorder. A 0.015625-ms interval between
+a load knot and motor arrival contains no requested sample; integration itself
+succeeded. See `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`. All C:/D: evidence,
+frozen source and binaries verify, and the separate review has a verified backup.
+The recorder now skips empty interpolation requests while always advancing and
+checking state. Three analytic regressions (six solver-method checks) precede
+the fresh full retry. Equations, inputs, bounds and old captures stay unchanged.
+No new numerical pass is inferred from the repair; no older report is pending.
 
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in

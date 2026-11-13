@@ -91,7 +91,8 @@ def main(review_folder):
         DotnetExecutable=dotnet, PythonExecutable=str(python), BackupDestination=str(backup), NoLiveMonitoring=True,
         ExpectedTestCases=93, ExpectedClassCounts=counts, TestFilter='|'.join('FullyQualifiedName~' + name for name in counts),
         LiveBodySelected=False, IsolatedDynamicMuscle=True, NoTimingMeasured=True, ComponentReviewPassed=True,
-        ExpectedCandidateConditions=33, ExpectedReferenceSolves=33, ExpectedSourceOrderingAttempts=15)
+        ExpectedCandidateConditions=33, ExpectedReferenceSolves=33, ExpectedSourceOrderingAttempts=15,
+        ExpectedReferenceSamplingTests=3, ExpectedReferenceSamplingMethodChecks=6)
     (package / 'configuration.json').write_text(json.dumps(config, indent=2) + '\n')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True, NoLiveMonitoring=True,
         Launcher=str(package / 'source/tools/start-dynamic-muscle-comparison-window.ps1'))

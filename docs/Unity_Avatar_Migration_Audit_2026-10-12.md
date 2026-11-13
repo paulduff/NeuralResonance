@@ -1056,3 +1056,11 @@ state concerns remain and no afferent membrane runs. The next coupled-muscle
 reference rig replays the preserved real somatic arrivals and retains separate
 synthetic inputs; its implementation does not promote a live Avatar or editor
 path. Existing mechanisms and the Unity migration gates remain as above.
+
+The first coupled-muscle comparison `cd1577` subsequently completed all 93 checks
+and 33 candidate traces, then failed in independent-reference recording at an
+interval containing no requested output sample. Its full failure review and
+recording repair are in `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`. Complete
+numerical acceptance still awaits a fresh visible-window retry with analytic
+boundary regressions. No Avatar dynamics, Unity port or editor/live selection
+changes accompany this analysis-tool repair.

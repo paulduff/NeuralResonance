@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 93 -or $configuration.LiveBodySelected -or -not $configuration.IsolatedDynamicMuscle -or -not $configuration.NoTimingMeasured -or -not $configuration.ComponentReviewPassed -or $configuration.ExpectedCandidateConditions -ne 33 -or $configuration.ExpectedReferenceSolves -ne 33 -or $configuration.ExpectedSourceOrderingAttempts -ne 15){throw 'Unexpected isolated dynamic-muscle configuration.'}
+if($configuration.ExpectedReferenceSamplingTests -ne 3 -or $configuration.ExpectedReferenceSamplingMethodChecks -ne 6){throw 'Missing reference recording regressions.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -96,6 +97,10 @@ try {
  $status.DynamicMuscleAndRegressionChecksPassed=$true
  $script=Join-Path $package 'source/tools/analyse-dynamic-muscle.py'
  Invoke-Logged $configuration.PythonExecutable @('-B',$script,$package,'--preflight') 'reference-preflight.log'
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/test-dynamic-muscle-sampling.py'),$package) 'reference-sampling-tests.log'
+ $sampling=Get-Content -LiteralPath (Join-Path $package 'reference-sampling-tests.json') -Raw | ConvertFrom-Json
+ if(-not $sampling.passed -or $sampling.tests -ne $configuration.ExpectedReferenceSamplingTests -or $sampling.methodChecks -ne $configuration.ExpectedReferenceSamplingMethodChecks -or -not $sampling.analyticalOracle -or $sampling.physiologicalModelExecuted){throw 'Reference recording regression coverage failed or incomplete.'}
+ $status['ReferenceSamplingTestsPassed']=$true
  $probeBuild=Join-Path $package 'source/artifacts/dynamic-muscle-comparison-build'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/DynamicMuscleProbe/DynamicMuscleProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/DynamicMuscleProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'

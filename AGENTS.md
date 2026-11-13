@@ -1142,3 +1142,27 @@ Await both reports without monitoring. Old profile `64ad44` still lacks an
 unambiguous completion report and stays uninspected; its original fixture coverage
 is also included in the new 74-case native Unity gate. The reported `9a5090` and
 `162523` failures and their separate full review are preserved and no longer pending.
+
+The operator reported corrected Unity `7800c5` complete. Its full review passes:
+74 exact test identities, 201 bodies and all 3,015 contacts match original native
+replies; the explicit missing-head intervention stops completeness at 200 while
+the original step-201 reply remains complete. All 2,855 C:/D: files per copy,
+frozen Git source, compiled Unity sources/player and executed binaries verify.
+Saved analysis reproduces exactly without model execution; the separate review
+has a verified D: copy. See `docs/DNNE_Unity_Body_Contacts_2026-11-13.md`.
+The re-pasted `162523` FAILED footer is old, not a new retry failure. Unity is
+no longer pending. Spindle retry `98c085` and older profile window `64ad44` still
+lack their own reports and remain uninspected. The latter's scope is covered by
+the passing native gate, but its own outcome must not be inferred.
+
+The source-only motor follow-up is
+`docs/DNNE_Motor_Mechanics_Source_2026-11-13.md`. Existing Avatar/Unity muscle,
+calcium/unit and generator sources were inspected first. The pinned reference
+and exact parameters have a separate verified C:/D: capture. Dynamic extension
+needs length-dependent calcium/activation, velocity-dependent yield and explicit
+fiber/tendon coupling; do not just scale the fixed-length unit's force or apply
+legacy activation/fatigue twice. Native source holds tendon length across its
+mechanical RK stages, so original-ordering reproduction and fully coupled
+numerical qualification must be distinguished. No dynamic implementation or
+physiological result is claimed yet. Preserve old isometric evidence and live
+mechanisms; implement and qualify an isolated candidate before Unity migration.

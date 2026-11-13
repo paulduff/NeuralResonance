@@ -5,13 +5,28 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-Latest update: CUDA host timing `ab15ac` was operator-reported complete and passed
-full review: eleven tests, 24 control groups and exact bytes for 144 trajectories.
-The larger batches save 18.71–27.87% time; 192-cell savings miss the declared 5%
-threshold. Timing no longer blocks preparation. Golgi `ca813f` and contacts
-`014b85` are also reviewed. The 70-case body-profile v2 check `64ad44` and native
-spindle mechanics study `9a5090` are now launched in separate PowerShell windows
-without monitoring. These are the two outstanding reports.
+Latest update: corrected actual Unity body/contact run `7800c5` was reported
+complete and passed full review: all 74 cases, 201 delivered bodies and 3,015
+contact observations. Every delivered measurement matches the original native
+reply; the deliberate missing-contact intervention stops completeness at 200.
+See `DNNE_Unity_Body_Contacts_2026-11-13.md`. The re-pasted FAILED footer belongs
+to old `162523`, whose stale protocol-version fixture failure remains preserved.
+Both the completed capture and its separate review have verified D: copies.
+
+Outstanding reports are Octave-adapted spindle retry `98c085` and older body-profile
+fixture window `64ad44`. Neither output is inspected. The latter's fixture scope
+is included in the passing 74-case Unity run, but its own result is unknown.
+Original spindle `9a5090` and Unity `162523` failures have been reviewed and their
+evidence preserved. CUDA host timing, finer Golgi and previous contact retries
+are reviewed; no timing window remains pending.
+
+Source-only motor work is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`.
+The verified neuronal motor-unit calculation still has fixed optimal length.
+The next extension needs length-dependent calcium/activation, velocity-dependent
+yield and explicitly coupled muscle/tendon mechanics. Source and Avatar mappings
+are captured with a verified D: copy; no dynamic implementation or result is yet
+claimed. Preserve the isometric reference, actual event identities and current
+live mechanisms until the replacement has its own numerical/physical evidence.
 Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window

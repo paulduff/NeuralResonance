@@ -110,3 +110,45 @@ The fresh retry is `unity-body-contact-20261113-7800c5`, frozen at
 Its 1,531 initial files plus manifest are verified on D: and rechecked at launch.
 The same 74-case gate precedes actual Unity physics. Await the operator report;
 no live monitoring or passing result is inferred from task creation.
+
+## Corrected retry result: complete delivery passed
+
+The operator reported `7800c5` complete. All **74 focused cases passed** with the
+exact declared identities: 31 combined protocol, four native schema, 16 producer,
+22 transport and one manifest check. Unity 6000.3.19f1 built and completed the
+isolated physical study. The subsequently re-pasted `162523` FAILED footer is
+the preserved first attempt, not a new failure of this retry.
+
+The native source recorded initial step 0 and 201 actual advances. The receiver
+consumed steps **0–200: 201 bodies and 3,015 contact observations**, including
+2,604 unloaded contacts. All four independent body/contact holds, 225
+backpressure checks, 76 receipt retries and two pause checks passed. Maximum
+pelvis displacement was 0.66786236 m; peak contact force was approximately
+3,720.659 N. These establish exercised mechanics, not learned movement.
+
+At step 201 the original native reply still contained all fifteen contacts.
+The declared adapter intervention removed only the head contact in a separate
+copy. The producer rejected that incomplete endpoint, refused a further advance
+and left captured/delivered completeness at 200. Previously complete samples
+drained with no retained or pending entries. This qualifies the injected-loss
+response; it does not report a spontaneous Unity contact loss.
+
+`tools/review-unity-body-contacts-20261113.py` verified all **2,855 files per
+C:/D: copy (322,884,710 bytes)**, all 1,526 frozen Git source files, all 27 compiled
+Unity C# sources, 144 player files and the executed probe/test binaries. Manifest
+SHA256 is `8030C46BF66EBE51D5F266609AE9C3B51CC1B19F7F9CFC199E16748E321140FD`.
+The original saved audit reproduced exactly without starting Unity or a model.
+
+An additional independent field-by-field review compared every delivered body
+and contact against its original native reply. Float measurements were compared
+as exact binary32 values, substrate fields as binary64 values, and integer
+sequences/timestamps unchanged. Equivalent JSON decimal spellings therefore do
+not require a numerical tolerance. Only the eight explicitly unavailable hand
+defaults were supplied for comparison; they remain unavailable measurements.
+
+The separate `artifacts/unity-body-contact-review-20261113/review.json` has a
+verified D: copy and matching manifest. No test or model was rerun during review.
+This establishes complete endpoint delivery for the isolated Unity study. A live
+DNNE clock handshake, causal receptor dynamics, actual afferent membrane firing,
+physiological calibration and Avatar recovery remain outstanding. The full unit
+suite was not run by this focused package. No live service or saved brain changed.

@@ -1005,3 +1005,29 @@ and exposes availability/reference declarations in its saved layout, without
 selecting the lane in a live receptor or editor. The independent study requires
 74 fixture/schema checks, then real Unity stepping and a recorded missing-contact
 intervention. Builds pass; actual execution/physiology are not yet qualified.
+
+The corrected actual study `unity-body-contact-20261113-7800c5` now passes all
+74 cases and the native physical checks. Independent review verifies all 201
+delivered bodies and 3,015 contacts against original replies, including unloaded
+sites and explicit body availability. The missing-head adapter intervention
+stops completeness at 200; native step 201 itself still has all contacts. Full
+C:/D: captures and the separate review verify. See the result section of
+`DNNE_Unity_Body_Contacts_2026-11-13.md`. This is isolated endpoint delivery;
+live sensory selection, afferent firing and recovery are still unqualified.
+
+## Dynamic muscle source review — 13 November
+
+Revisited `AvatarMuscle`, the event-driven calcium unit and isometric plant,
+Unity `MuscleCore`/`MusclePlant`/`MotorUnitPool`, and the canonical Unity muscle
+generator before proposing dynamic motor-unit mechanics. The preserved legacy
+path uses scalar activation, reduced length/velocity force and fatigue. It does
+not instantiate the explicit fiber/tendon state of the inspected reference.
+The verified event-driven unit still assumes optimal fixed length and equilibrium
+yield. See `DNNE_Motor_Mechanics_Source_2026-11-13.md` for pinned source evidence
+and the required calcium/length/velocity coupling, not just a force multiplier.
+
+No force substitution, added activation/fatigue filter, new Unity muscle model
+or live controller accompanies this review. Future migration must retain actual
+motor events and signed physical measurements, qualify causal timing and derive
+the Unity mechanism from its canonical source. Existing editor authority labels,
+paused startup, old saves and legacy receptors remain unchanged.

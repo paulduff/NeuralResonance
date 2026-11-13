@@ -126,3 +126,11 @@ This is the only outstanding experiment report. The 11 tests, 24 control groups,
 establishes no accuracy or timing result. No live monitoring follows. Keep
 competing experiments, builds and heavy evidence hashing out of this benchmark
 until the operator reports completion. Spindle and combined Unity work stay held.
+
+## Reported result
+
+The operator reported completion, and full C:/D: review and saved-analysis
+reproduction passed. See `DNNE_Olive_Host_Timing_Results_2026-11-13.md`. All 144
+trajectories preserve exact recorded bytes; the larger four workloads save
+18.71–27.87% elapsed time, meeting the declared practical-benefit rule. Small
+workloads save 2.43–2.66%, below that threshold. This timing window is resolved.

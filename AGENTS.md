@@ -1272,3 +1272,11 @@ unrelated imported verifier required a motor protocol outside isolated Python's
 search path. The preparer now verifies selected C:/D: files directly. The frozen
 setup rejection is preserved with a verified D: copy (1,639 files plus manifest),
 ran no model/test, and is not pending. Use a fresh package after committing.
+
+Corrected canonical spindle comparison `spindle-state-20261113-3468db` is now
+launched at `cd0c193d44426704dce0a03b3d27aa0864088d95`, task
+`DNNE-Spindle-State-0f7f73e4c0ec`. Preparation verified all 59,532 runtime files
+and the separate 18-file transformed execution tree. All 1,697 initial files
+plus manifest have a verified D: copy, rechecked at launch. This is the only
+pending operator report; no live monitoring. No numerical/biological pass is
+inferred from launch. All older reports, including muscle `95e59f`, are reviewed.

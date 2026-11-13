@@ -59,6 +59,16 @@ uses current populations. The new native comparison retains all 30 baseline
 trajectories and adds boundary/force-query controls. Python/PowerShell syntax
 checks pass; no Octave candidate result is inferred before visible execution.
 
+The candidate is launched as `spindle-state-20261113-3468db`, frozen revision
+`cd0c193d44426704dce0a03b3d27aa0864088d95`, task
+`DNNE-Spindle-State-0f7f73e4c0ec`, with all 1,697 initial files plus manifest
+verified on D: and rechecked at launch. Preparation also verified every pinned
+runtime file and the separate declared source transformation, without model
+execution. Only this window awaits an operator report; do not inspect live
+outputs. The earlier `c9a66b` preparation rejection ran no experiment and is
+preserved with a verified D: copy. Muscle qualification is complete only for
+its isolated numerical scope; causal body coupling remains the motor follow-up.
+
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,

@@ -180,3 +180,10 @@ can connect preserved event timing to causal physical muscle geometry, while
 retaining the fixed-length control and these independent references. Intrafusal
 mechanics remain a separate sensory path; extrafusal force is not substituted
 for spindle stress. No muscle comparison report remains pending.
+
+The adapted source-ordering controls also completed without domain failure.
+Their largest force differences halve approximately with each halved step;
+for active stretch they are 0.000844646, 0.000419328 and 0.000208833 N at the
+three steps. Quiet control is at roundoff. These observations distinguish
+ordering error from the qualified coupled candidate under the declared inputs;
+they do not reproduce or invalidate the native 200-unit MATLAB study.

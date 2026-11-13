@@ -88,3 +88,11 @@ shared verification helper. The preparer now verifies selected C:/D: files
 directly using standard-library hashing. The rejected source snapshot and
 preparation-failure record have a verified D: copy (1,639 files plus manifest).
 No PowerShell experiment was launched for that package; it is not pending.
+
+The corrected package is now launched as `spindle-state-20261113-3468db`, frozen
+revision `cd0c193d44426704dce0a03b3d27aa0864088d95`, task
+`DNNE-Spindle-State-0f7f73e4c0ec`. Preparation verified all 59,532 runtime files,
+the unchanged compatibility copy and the 18-file candidate execution tree.
+All **1,697 initial files plus manifest** have a verified D: backup, rechecked
+before launch. This is the only pending operator report. No live output has
+been inspected and no candidate result is inferred from launch.

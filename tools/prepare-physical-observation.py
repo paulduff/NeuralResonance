@@ -53,7 +53,7 @@ def main():
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(io_path(package)).as_posix(), Sha256=sha256(p.read_bytes()).hexdigest().upper())
              for p in sorted(io_path(package).rglob('*')) if p.is_file()]
-    counts = dict(PhysicalObservationTests=26, PhysicalSampleProducerTests=16, PhysicalSampleTransportTests=22, SolutionManifestTests=1)
+    counts = dict(PhysicalObservationTests=28, PhysicalSampleProducerTests=16, PhysicalSampleTransportTests=22, SolutionManifestTests=1)
     configuration = dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         PackageFiles=files, DotnetExecutable=dotnet, BackupDestination=str(backup),
         NoLiveMonitoring=True, ExpectedTestCases=sum(counts.values()), ExpectedClassCounts=counts,

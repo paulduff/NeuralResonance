@@ -65,7 +65,7 @@ try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE complete body and contact observation checks'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '26 complete-observation checks, 16 body producer and 22 body transport checks plus solution manifest. Recorded frames/fixtures only; no live model or service. Report completion to Orion.'
+ Write-Host '28 complete-observation checks, 16 body producer and 22 body transport checks plus solution manifest. Recorded frames/fixtures only; no live model or service. Report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize,FreePhysicalMemory} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
@@ -82,7 +82,7 @@ try {
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
- $requiredCounts=@{PhysicalObservationTests=26;PhysicalSampleProducerTests=16;PhysicalSampleTransportTests=22;SolutionManifestTests=1}
+ $requiredCounts=@{PhysicalObservationTests=28;PhysicalSampleProducerTests=16;PhysicalSampleTransportTests=22;SolutionManifestTests=1}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count

@@ -1010,3 +1010,24 @@ review: corrected Golgi `ca813f`, actual Unity body sampling `1ff02e` and these
 65 combined/regression checks `8c18b7`. Do not inspect live outputs. Await every
 report and review before CUDA timing. The new window runs no Unity or neuronal
 model; no result or physiological qualification is inferred from launch.
+
+The operator has now reported Unity `1ff02e` and combined checks `8c18b7`, and
+both captures are reviewed in `artifacts/unity-contact-review-20261113` with its
+own verified D: copy. All 2,827 Unity and 1,903 contact capture files per copy,
+Git source, executed binaries and test identities verify. Unity's 39 checks and
+201 actual steps pass, delivering samples 0–200 exactly and stopping after the
+deliberate capture failure at 201. Saved analysis reproduces exactly offline.
+The combined suite has 41 passes/24 failures; all failures share the computed
+getter-only `NeuralSubstrateSupply.IsValid` required-JSON defect. All 39 old body
+regressions/manifest checks passed. Neither completed window remains pending.
+See the result sections of `docs/DNNE_Unity_Physical_Samples_2026-11-13.md` and
+`docs/DNNE_Body_Contact_Observations_2026-11-13.md`.
+
+The narrow combined-protocol repair excludes only that derived validity flag,
+requiring every actual measurement and rejecting forged flags. Two added supply
+cases bring its prospective retry to 67 tests. Both .NET builds pass; no tests
+run inline. Preserve the failed capture and launch a new frozen PowerShell
+package. Corrected Golgi `ca813f` remains unreported and uninspected. CUDA host
+timing stays held until every report and review. The spindle Octave harness and
+portable runtime are prepared but unexecuted; its freezer/launcher/analysis
+remain unfinished. No new afferent source or live neuronal path is qualified.

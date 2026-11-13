@@ -65,6 +65,12 @@ public static class PhysicalObservationProtocol
         var resolver = new DefaultJsonTypeInfoResolver();
         resolver.Modifiers.Add(info =>
         {
+            // Validity is recomputed from the four supply inputs, never sent as
+            // trusted state. Keep this exclusion specific: other missing body
+            // or contact measurements must still fail rather than become zero.
+            if (info.Type == typeof(NeuralSubstrateSupply))
+                info.Properties.Remove(info.Properties.Single(p => p.Name ==
+                    JsonNamingPolicy.CamelCase.ConvertName(nameof(NeuralSubstrateSupply.IsValid))));
             if (info.Kind == JsonTypeInfoKind.Object)
                 foreach (var property in info.Properties) property.IsRequired = true;
         });

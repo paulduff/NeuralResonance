@@ -5,6 +5,13 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
+Latest update: actual Unity body sampling `1ff02e` and combined contact checks
+`8c18b7` were both reported and reviewed. Unity passed; the contact suite failed
+on a computed-property JSON metadata defect. The repair builds and a fresh
+67-check retry is being prepared. The two completed windows are no longer
+pending. Corrected Golgi `ca813f` still awaits its own completion report; do not
+inspect it. Later launch records supersede the historical pending counts below.
+
 ## Pending Golgi window
 
 `golgi-sdirk3-fine-20261113-ca813f`, frozen revision
@@ -120,3 +127,28 @@ Current pending report count is three: Golgi `ca813f`, actual Unity body
 sampling `1ff02e`, and combined body/contact checks `8c18b7`. This is a report
 queue, not a claim about live process state. Leave their outputs untouched until
 their own operator reports. No CUDA timing study is launched.
+
+## Completed body/contact reviews and next retry
+
+The subsequent operator reports resolve Unity `1ff02e` and contact `8c18b7`.
+`artifacts/unity-contact-review-20261113` has a verified three-file D: copy plus
+manifest. All 2,827 Unity and 1,903 contact files per capture verify, with exact
+Git source, binary and test-identity checks. Unity's saved analysis reproduces
+exactly offline: 39 tests passed, 201 actual advances, 201 delivered observations,
+completeness 200 after the deliberate failed final capture, and all holds/retries
+passed. Contacts were retained in raw replies but not transported by that lane.
+
+All 24 failed combined cases hit the same getter-only `IsValid` metadata defect;
+the 39 old body/manifest checks passed. The repair excludes only that computed
+flag from this protocol, retaining strict required measurements and rejecting
+forged validity. It adds two regression cases, bringing the fresh retry to 67.
+Both .NET builds pass with zero warnings/errors; test execution remains in the
+independent PowerShell workflow. Detailed results and unchanged scope are in
+`DNNE_Unity_Physical_Samples_2026-11-13.md` and
+`DNNE_Body_Contact_Observations_2026-11-13.md`.
+
+Spindle work meanwhile has an unexecuted original-class Octave harness, a verified
+portable runtime archive and additional preserved source-discovery evidence.
+Its preparation/launcher/analysis are unfinished; no native result exists. See
+the preparation section of `DNNE_Spindle_Mechanics_Review_2026-11-13.md`. Keep the
+existing numerical Python environment and pending Golgi study untouched.

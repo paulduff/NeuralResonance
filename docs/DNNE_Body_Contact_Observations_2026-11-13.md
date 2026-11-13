@@ -1,5 +1,11 @@
 # Complete body and contact observations
 
+Current status: the original 65-check window was reported failed and reviewed.
+All 24 failures share one computed-property JSON metadata defect. The narrow
+repair and two additional checks build; a fresh 67-check PowerShell retry is
+being prepared. See the result and repair section below. Earlier preparation
+and launch descriptions record what was known at that time.
+
 The existing physical-sample v1 lane transports only a body frame. The pending
 actual Unity study preserves all contact JSON separately, but that does not
 deliver a complete body/contact endpoint to a future sensory consumer. A lost
@@ -121,3 +127,44 @@ Three reports are now pending: this 65-check window, actual Unity body sampling
 `golgi-sdirk3-fine-20261113-ca813f`. CUDA host timing remains held until all
 reports and evidence reviews are complete. This window does not run Unity,
 DNNE, a receptor model or any new physical solve.
+
+## Reported failure and serialization repair
+
+The operator reported `physical-observation-20261113-8c18b7` failed: 41 passed,
+24 failed, 65 total. The full review verifies all 1,903 files in each C:/D: copy
+(92,712,589 bytes), executed test binaries, all 1,509 frozen Git source files and
+the exact test identities. Every failed case is in `PhysicalObservationTests`
+and reports the same exception: computed getter-only `NeuralSubstrateSupply.IsValid`
+was marked required without a setter. The metadata is constructed even when the
+optional supply value is null, preventing serialization before the affected
+behavior assertions can run. All 39 prior body/manifest regressions passed;
+only two of the 26 new combined cases passed. Combined behavior is unqualified.
+
+The failure capture manifest SHA-256 is
+`AB1A8E6932C184C5A11AF2DAEF5D79C5D43C143BE433906E0725324D25EE4AD2`.
+`tools/review-unity-and-contacts-20261113.py` records the complete failure list in
+`artifacts/unity-contact-review-20261113/contact-failure-review.json`. This review
+has a verified D: copy. The original failed source, status and evidence remain
+unchanged. The separately reported actual Unity body study passes its review.
+
+The repair removes exactly the computed `IsValid` property from the combined
+protocol's JSON metadata for `NeuralSubstrateSupply`. It still requires each
+actual supply input (glucose, oxygen, perfusion and source), every other body or
+contact member, and explicit nulls for optional values. Unknown fields remain
+forbidden, including a forged transmitted validity flag. Decoded validity is
+derived from the retained measurements. Finite out-of-range values remain visible
+as invalid observations; transport does not clamp them or certify physiology.
+The shared supply type and existing body-only protocol are unchanged.
+
+Two added cases cover non-null and null supply snapshots, exact preservation,
+derived validity for valid and out-of-range observations, removal of each actual
+input, missing whole optional-field declaration, and forged validity despite a
+matching payload digest. The retry requires **67 tests**: 28 combined, 16 body
+producer, 22 body transport and one manifest. Both the test assembly and Unity
+.NET adapter build with zero warnings/errors after the repair. Tests execute
+only in a fresh frozen visible PowerShell window; their outcome is pending.
+
+Once the retry passes review, exercise complete body/contact delivery against
+actual Unity using original per-step evidence. Corrected Golgi `ca813f` still
+awaits its own operator report and remains uninspected. Any new retry also gates
+exclusive CUDA timing until its completion report and review.

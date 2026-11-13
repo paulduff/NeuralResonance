@@ -130,3 +130,29 @@ The native Unity build, 39 focused checks and physical experiment remain
 unreviewed; no pass or live-process state is inferred from starting the task.
 This and corrected Golgi `golgi-sdirk3-fine-20261113-ca813f` are the two pending
 reports. CUDA timing remains held until both captures have been reviewed.
+
+## Reported result and verified review
+
+The operator reported completion on 13 November. All 39 focused checks passed,
+and Unity 6000.3.19f1 built and completed the isolated physical study. The saved
+evidence contains 201 actual advances, 202 original grid observations (0–201),
+and exactly 201 delivered body samples (0–200). The deliberate capture failure
+after the final movement left completeness at step 200 and stopped later steps.
+Direct and wrong-owner advances rejected. All 225 backpressure checks, 76 receipt
+retries, two pause checks and four held-body inspections passed. Maximum pelvis
+displacement was 0.66786236 m; recorded contact force reached 3720.658935546875 N.
+Those values establish physical motion/contact evidence, not controlled balance.
+
+`tools/review-unity-and-contacts-20261113.py` verified all 2,827 files in each C:/D:
+capture (317,760,833 bytes per copy), frozen source against all 1,501 Git archive
+files, executed test/probe binaries, 144 player files and 27 built C# source files.
+The 39 exact test identities matched their source declarations. The saved probe's
+offline `--audit` entry reproduced the complete saved analysis exactly, without
+starting Unity or running tests/models. The capture manifest SHA-256 is
+`262AFEC358D322DA2488884A2DAD6F0BB2654D8ED33FEE8DAA17049E62588917`.
+
+The review is `artifacts/unity-contact-review-20261113/unity-review.json`; the
+three-file combined review has its own verified D: copy plus manifest. Raw
+15-link contacts were retained, but this body-only lane did not transport them.
+Combined delivery, a live neural-clock handshake, afferent physiology and Avatar
+recovery remain separate outstanding work. This window is no longer pending.

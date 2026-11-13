@@ -99,6 +99,43 @@ public sealed class PhysicalObservationTests
     }
 
     [Fact]
+    public void SubstrateInputsRoundTripExactlyAndValidityIsRecomputed()
+    {
+        var frame = Frame(); var layout = Layout();
+        Assert.Null(PhysicalObservationProtocol.Decode(layout,
+            PhysicalObservationProtocol.Capture(layout, 0, frame)).Body.NeuralSubstrates);
+        foreach (var supply in new[] { new NeuralSubstrateSupply(.25, .5, .75, "measured-body"),
+            new NeuralSubstrateSupply(.25, .5, 1.2, "out-of-range-observation") })
+        {
+            var sample = PhysicalObservationProtocol.Capture(layout, 0, frame with
+            { Body = frame.Body with { NeuralSubstrates = supply } });
+            var fields = JsonNode.Parse(sample.ObservationJson)!["body"]!["neuralSubstrates"]!.AsObject();
+            Assert.Equal(new[] { "glucoseAvailability", "oxygenAvailability", "perfusionAvailability", "source" },
+                fields.Select(p => p.Key).OrderBy(k => k, StringComparer.Ordinal));
+            var decoded = PhysicalObservationProtocol.Decode(layout, sample).Body.NeuralSubstrates!;
+            Assert.Equal(supply, decoded);
+            Assert.Equal(supply.PerfusionAvailability <= 1, decoded.IsValid);
+        }
+    }
+
+    [Fact]
+    public void MissingSubstrateInputsAndForgedValidityRejectDespiteMatchingDigest()
+    {
+        var frame = Frame(); var layout = Layout();
+        var sample = PhysicalObservationProtocol.Capture(layout, 0, frame with
+        { Body = frame.Body with { NeuralSubstrates = new(.25, .5, .75, "measured-body") } });
+        foreach (string member in new[] { "glucoseAvailability", "oxygenAvailability", "perfusionAvailability", "source" })
+        {
+            var missing = Rewrite(sample, n => n["body"]!["neuralSubstrates"]!.AsObject().Remove(member));
+            Assert.Throws<JsonException>(() => PhysicalObservationProtocol.Decode(layout, missing));
+        }
+        var forged = Rewrite(sample, n => n["body"]!["neuralSubstrates"]!["isValid"] = true);
+        Assert.Throws<JsonException>(() => PhysicalObservationProtocol.Decode(layout, forged));
+        var missingSupply = Rewrite(sample, n => n["body"]!.AsObject().Remove("neuralSubstrates"));
+        Assert.Throws<JsonException>(() => PhysicalObservationProtocol.Decode(layout, missingSupply));
+    }
+
+    [Fact]
     public void MissingExtraDuplicateStaleAndSubstitutedContactsRejectBeforeCapture()
     {
         var good = Frame(); var sender = new AvatarPhysicalObservationOutbox(Layout());

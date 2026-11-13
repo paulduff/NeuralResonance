@@ -14,14 +14,16 @@ public sealed class PhysicalObservationLayout
 {
     public PhysicalSampleClock Clock { get; }
     public string ContactEncoding { get; }
+    public PhysicalBodyObservationProfile BodyProfile { get; }
     public IReadOnlyList<PhysicalContactSite> ContactSites { get; }
     public string Fingerprint { get; }
 
     public PhysicalObservationLayout(PhysicalSampleClock clock, string contactEncoding,
-        IReadOnlyList<PhysicalContactSite> contactSites)
+        IReadOnlyList<PhysicalContactSite> contactSites, PhysicalBodyObservationProfile bodyProfile)
     {
         ArgumentNullException.ThrowIfNull(clock); clock.Validate();
         ArgumentNullException.ThrowIfNull(contactSites);
+        ArgumentNullException.ThrowIfNull(bodyProfile);
         if (!ValidKey(contactEncoding) || contactSites.Count is < 1 or > 128)
             throw new ArgumentException("Declare an encoding and one to 128 contact sites.");
         var sites = contactSites.ToArray();
@@ -30,11 +32,11 @@ public sealed class PhysicalObservationLayout
             sites.Select(s => s.SourceId).Distinct(StringComparer.Ordinal).Count() != sites.Length)
             throw new ArgumentException("Each contact site and source must be distinct, explicit and separate from the body source.");
         Array.Sort(sites, (a, b) => StringComparer.Ordinal.Compare(a.SiteId, b.SiteId));
-        Clock = clock; ContactEncoding = contactEncoding; ContactSites = Array.AsReadOnly(sites);
+        Clock = clock; ContactEncoding = contactEncoding; BodyProfile = bodyProfile; ContactSites = Array.AsReadOnly(sites);
         Fingerprint = PhysicalSampleProtocol.Digest(JsonSerializer.Serialize(new
         {
             Domain = "body-and-contact-observations", PhysicalObservationProtocol.Version,
-            Clock = clock.Fingerprint, ContactEncoding, ContactSites
+            Clock = clock.Fingerprint, ContactEncoding, BodyProfile, ContactSites
         }));
     }
 
@@ -55,7 +57,7 @@ public sealed record PhysicalObservationReceipt(int Version, Guid SessionId, str
 // upgrade of captures, no claim about collisions between endpoints or spikes.
 public static class PhysicalObservationProtocol
 {
-    public const int Version = 1;
+    public const int Version = 2;
     public const int MaximumObservationBytes = 1_048_576;
     public const int MaximumBatchSamples = 128;
     private static readonly JsonSerializerOptions Json = CreateJson();
@@ -82,7 +84,7 @@ public static class PhysicalObservationProtocol
 
     public static int ObservationBytes(PhysicalObservationSample sample) => Encoding.UTF8.GetByteCount(sample.ObservationJson);
     public static Guid Identity(PhysicalObservationLayout layout, long step) =>
-        StableNeuralIdentity.Create("physical-body-and-contacts-v1", layout.Fingerprint, step);
+        StableNeuralIdentity.Create("physical-body-and-contacts-v2", layout.Fingerprint, step);
 
     public static PhysicalObservationSample Capture(PhysicalObservationLayout layout, long step, PhysicalObservationFrame observation)
     {

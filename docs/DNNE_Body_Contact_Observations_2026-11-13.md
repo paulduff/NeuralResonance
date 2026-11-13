@@ -209,3 +209,13 @@ The operator's re-pasted `8c18b7` failure is the already reviewed old capture.
 Corrected Golgi `ca813f` also passed its review. Both reports are resolved. Run
 the prepared CUDA host timing study exclusively before another physical or
 spindle experiment; no live brain/body/editor path is promoted by these checks.
+
+## Subsequent body profile candidate
+
+The native encoder omits eight legacy finger/grip fields whose shared-record
+defaults must not become measured hand state. The candidate in
+`DNNE_Body_Observation_Profile_2026-11-13.md` adds an immutable, fingerprinted body
+availability/reference profile and explicitly versions combined transport as v2.
+Its 70-case rig builds but has not run; the preserved 67-case v1 result is not
+evidence for this new version. Native complete-body/contact integration remains
+outstanding. No live source, saves or editor state are upgraded.

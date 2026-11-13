@@ -985,3 +985,13 @@ and unloaded-step metadata limitations are documented, not silently repaired by
 transport. There is no live receptor/brain selection, pseudo-spike generation,
 editor authority promotion or service deployment. Worlds still start paused.
 The 65-case focused window is prepared; a passing build is not a runtime result.
+
+The corrected combined v1 window subsequently passed all 67 checks and full
+evidence review. The next source inspection found eight absent Unity finger/grip
+members becoming legacy shared-record defaults. The v2 candidate in
+`DNNE_Body_Observation_Profile_2026-11-13.md` makes those omissions, three other
+placeholders and three imposed reference values explicit in the declared stream.
+It preserves actual hand load/contact/muscle measurements and original numbers.
+It does not implement missing hand mechanics or supply physiological calibration.
+Both .NET builds pass; the new 70-case window and actual combined Unity study
+remain prospective. Live receptor selection and editor diagnostics are unchanged.

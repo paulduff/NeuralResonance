@@ -5,13 +5,13 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-Latest update: corrected Golgi `ca813f` and repaired body/contact retry `014b85`
-were both operator-reported complete and passed full evidence review. Golgi's
-43 tests, fourteen new cases and all original numerical gates pass; contact's
-67 tests pass. The matched CUDA host timing study `ab15ac` is now launched and
-is the sole outstanding report. Further experiment execution, builds and heavy
-hashing must wait for its operator report and review. Historical pending
-counts below are superseded by this update and subsequent launch records.
+Latest update: CUDA host timing `ab15ac` was operator-reported complete and passed
+full review: eleven tests, 24 control groups and exact bytes for 144 trajectories.
+The larger batches save 18.71–27.87% time; 192-cell savings miss the declared 5%
+threshold. Timing no longer blocks preparation. Golgi `ca813f` and contacts
+`014b85` are also reviewed. Prepare the 70-case body-profile v2 check and native
+spindle mechanics study next, in separate PowerShell windows without monitoring.
+Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window
 
@@ -185,3 +185,19 @@ The exclusive timing package is `olive-host-timing-20261113-ab15ac`, revision
 a verified D: copy, rechecked before launch. Do not inspect live outputs or
 overlap competing work. Await the operator report; no pass or speedup is inferred
 from launch. See `DNNE_Olive_Host_Timing_2026-11-13.md` for the exact scope.
+
+## Timing reviewed; body availability and spindle work
+
+See `DNNE_Olive_Host_Timing_Results_2026-11-13.md`. All 3,059 C:/D: files per copy,
+frozen Git source, binaries and eleven test identities verify, and the complete
+saved analysis reproduces exactly. The separate one-file review has a verified
+D: backup. Use the candidate for later larger CUDA batch work while retaining
+the original implementation and CPU reference; no live host selection changes.
+
+Light source inspection during the benchmark found missing Unity finger/grip
+fields becoming shared-record defaults. The v2 profile candidate is documented
+in `DNNE_Body_Observation_Profile_2026-11-13.md`. It declares unavailable and
+reference members in immutable stream identity. Test and .NET adapter builds
+pass after timing completion; the new 70 cases have not run. The spindle rig
+remains coded but unexecuted. Actual combined Unity delivery still needs its
+physical probe and must retain the declared availability profile.

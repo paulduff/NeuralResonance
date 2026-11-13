@@ -1071,3 +1071,22 @@ until the operator reports completion. Its scope is 11 tests, 24 control groups,
 72 processes and 144 trajectories comparing original/candidate CUDA host work;
 no speed result is inferred from launch. Spindle and combined Unity studies
 remain unlaunched. Preserve all old results and await the timing report.
+
+The operator reported CUDA host timing `ab15ac` complete. Its full review passes:
+all 3,059 C:/D: files per copy, frozen Git source, binaries and eleven test
+identities verify; all 144 trajectories and 24 controls reproduce exact bytes;
+saved analysis reproduces exactly. Larger workloads save 18.71–27.87% time and
+meet the declared rule; small workloads save 2.43–2.66% and miss its 5% threshold.
+See `docs/DNNE_Olive_Host_Timing_Results_2026-11-13.md`. The separate review has a
+verified D: backup. No report remains pending at this point and timing no longer
+blocks other work. CPU stays the live default; this is not a new CPU/GPU crossover.
+
+During timing, source-only inspection found Unity omits eight shared finger/grip
+fields, which otherwise become defaults. The candidate in
+`docs/DNNE_Body_Observation_Profile_2026-11-13.md` adds explicit unavailable and
+reference fields to immutable layout identity and versions combined transport
+as v2. Old combined v1 packets reject; old captures/body-only v1/saves stay intact.
+Both .NET builds pass after the completion report; the new 70-case test window
+has not run. Prepare it and the already coded native spindle study in independent
+PowerShell windows. Native complete body/contact integration, afferent physiology,
+live neuronal authority and Avatar recovery remain unqualified.

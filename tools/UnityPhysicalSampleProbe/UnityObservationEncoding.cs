@@ -16,11 +16,22 @@ public static class UnityObservationEncoding
     private static readonly Dictionary<string, string> SiteBySource = Sites.ToDictionary(s => s.SourceId, s => s.SiteId, StringComparer.Ordinal);
     private static readonly JsonSerializerOptions Json = CreateJson();
     public const string Encoding = "unity-contact-v1-pelvis-rotated-position-with-initial-height-offset";
+    // Unity has rigid hands, not the legacy articulated finger/grip plant. Two
+    // recovery diagnostics and the manipulator extension are also placeholders.
+    // Preserve their encoded/default values, but never label them measurements.
+    public static PhysicalBodyObservationProfile BodyProfile { get; } = new("unity-muscular-body-v1",
+        new[] { "/articulation/leftHandApertureFraction", "/articulation/rightHandApertureFraction",
+            "/articulation/leftGripForceNewtons", "/articulation/rightGripForceNewtons",
+            "/articulation/leftHandFatigue", "/articulation/rightHandFatigue",
+            "/articulation/leftHandSlip", "/articulation/rightHandSlip", "/articulation/manipulatorExtensionFraction",
+            "/articulation/musculoskeletal/balance/rightingForceFraction",
+            "/articulation/musculoskeletal/balance/dynamicStabilityAllowanceMeters" },
+        new[] { "/coreTemperatureCelsius", "/bloodOxygenSaturationFraction", "/articulation/supportPlaneOffsetMeters" });
 
     public static PhysicalObservationLayout CreateLayout(PhysicalSampleClock clock)
     {
         if (clock.SourceId != "avatar_unity_body") throw new ArgumentException("Unity body source differs.");
-        return new(clock, Encoding, Sites);
+        return new(clock, Encoding, Sites, BodyProfile);
     }
 
     public static PhysicalObservationFrame Capture(PhysicalBodyFrameRequest body, IReadOnlyList<string> contactsJson)

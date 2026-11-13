@@ -11,7 +11,8 @@ public sealed class PhysicalObservationTests
     private static readonly PhysicalSampleClock Clock = new(Guid.Parse("30cbca20-f89f-4e28-b38b-3243e5b11586"),
         "body-1", "avatar_unity_body", 0, (double).01f * 1000, 100, 500);
     private static readonly PhysicalContactSite[] Sites = { new("left-foot", "left-contact"), new("right-foot", "right-contact") };
-    private static PhysicalObservationLayout Layout(PhysicalSampleClock? clock = null) => new(clock ?? Clock, "fixture-body-coordinates-v1", Sites);
+    private static readonly PhysicalBodyObservationProfile FixtureProfile = new("complete-fixture-body-v1", Array.Empty<string>(), Array.Empty<string>());
+    private static PhysicalObservationLayout Layout(PhysicalSampleClock? clock = null) => new(clock ?? Clock, "fixture-body-coordinates-v1", Sites, FixtureProfile);
     private static PhysicalObservationFrame Frame(long step = 0, long wall = 10_000) => new(
         new(step, wall, -.5f, 0, 0, 0, 0, 0, 6_000_000, .99f, 37, .98f, .75f, Clock.SourceId,
             PhysicalArticulationFrame.Neutral with { Musculoskeletal = MusculoskeletalStateFrame.Neutral with
@@ -54,14 +55,14 @@ public sealed class PhysicalObservationTests
     [Fact]
     public void DeclaredSitesAreFrozenAndOrderIndependent()
     {
-        var sites = Sites.Reverse().ToArray(); var layout = new PhysicalObservationLayout(Clock, "fixture-body-coordinates-v1", sites);
+        var sites = Sites.Reverse().ToArray(); var layout = new PhysicalObservationLayout(Clock, "fixture-body-coordinates-v1", sites, FixtureProfile);
         sites[0] = new("other", "other-source");
         Assert.Equal(Layout().Fingerprint, layout.Fingerprint); Assert.Equal(Sites, layout.ContactSites);
-        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "", Sites));
-        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", Array.Empty<PhysicalContactSite>()));
-        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0], Sites[0] }));
-        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0], Sites[1] with { SourceId = Sites[0].SourceId } }));
-        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0] with { SourceId = Clock.SourceId } }));
+        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "", Sites, FixtureProfile));
+        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", Array.Empty<PhysicalContactSite>(), FixtureProfile));
+        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0], Sites[0] }, FixtureProfile));
+        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0], Sites[1] with { SourceId = Sites[0].SourceId } }, FixtureProfile));
+        Assert.Throws<ArgumentException>(() => new PhysicalObservationLayout(Clock, "v1", new[] { Sites[0] with { SourceId = Clock.SourceId } }, FixtureProfile));
     }
 
     [Fact]
@@ -70,9 +71,9 @@ public sealed class PhysicalObservationTests
         var original = Layout(); var sample = PhysicalObservationProtocol.Capture(original, 0, Frame());
         var different = new[] { Layout(Clock with { SessionId = Guid.NewGuid() }), Layout(Clock with { BodyId = "body-2" }),
             Layout(Clock with { NeuralEpochMs = 600 }), Layout(Clock with { PhysicsStepMs = 1 }),
-            new PhysicalObservationLayout(Clock, "changed-encoding", Sites),
-            new PhysicalObservationLayout(Clock, original.ContactEncoding, new[] { Sites[0], Sites[1] with { SiteId = "right-hand" } }),
-            new PhysicalObservationLayout(Clock, original.ContactEncoding, new[] { Sites[0], Sites[1] with { SourceId = "replacement" } }) };
+            new PhysicalObservationLayout(Clock, "changed-encoding", Sites, FixtureProfile),
+            new PhysicalObservationLayout(Clock, original.ContactEncoding, new[] { Sites[0], Sites[1] with { SiteId = "right-hand" } }, FixtureProfile),
+            new PhysicalObservationLayout(Clock, original.ContactEncoding, new[] { Sites[0], Sites[1] with { SourceId = "replacement" } }, FixtureProfile) };
         foreach (var layout in different)
         {
             Assert.NotEqual(original.Fingerprint, layout.Fingerprint);
@@ -80,6 +81,62 @@ public sealed class PhysicalObservationTests
             Assert.Throws<ArgumentException>(() => PhysicalObservationProtocol.Decode(layout, sample));
         }
         Assert.NotEqual(PhysicalSampleProtocol.Identity(Clock, 0), sample.SampleId);
+    }
+
+    [Fact]
+    public void BodyAvailabilityAndReferenceDeclarationsAreImmutableStreamIdentity()
+    {
+        var missing = new[] { "/articulation/rightGripForceNewtons", "/articulation/leftGripForceNewtons" };
+        var references = new[] { "/coreTemperatureCelsius" };
+        var profile = new PhysicalBodyObservationProfile("fixture-body-v2", missing, references);
+        var original = new PhysicalObservationLayout(Clock, "v1", Sites, profile);
+        var reordered = new PhysicalObservationLayout(Clock, "v1", Sites,
+            new("fixture-body-v2", missing.Reverse().ToArray(), references));
+        Assert.Equal(original.Fingerprint, reordered.Fingerprint);
+        missing[0] = "/hydrationFraction"; references[0] = "/storedEnergyJoules";
+        Assert.DoesNotContain("/hydrationFraction", profile.UnavailableMembers);
+        Assert.Equal("/coreTemperatureCelsius", Assert.Single(profile.ReferenceMembers));
+        var sample = PhysicalObservationProtocol.Capture(original, 0, Frame());
+        foreach (var changed in new[] {
+            new PhysicalBodyObservationProfile("changed-body", profile.UnavailableMembers, profile.ReferenceMembers),
+            new PhysicalBodyObservationProfile(profile.Encoding, missing, profile.ReferenceMembers),
+            new PhysicalBodyObservationProfile(profile.Encoding, profile.UnavailableMembers, references),
+            new PhysicalBodyObservationProfile(profile.Encoding, Array.Empty<string>(), Array.Empty<string>()) })
+        {
+            var layout = new PhysicalObservationLayout(Clock, "v1", Sites, changed);
+            Assert.NotEqual(original.Fingerprint, layout.Fingerprint);
+            Assert.Throws<ArgumentException>(() => PhysicalObservationProtocol.Decode(layout, sample));
+        }
+        var receiver = new AvatarPhysicalObservationReceiver(Layout());
+        Assert.Throws<ArgumentException>(() => receiver.Accept(Packet() with { Version = 1 }));
+        Assert.Equal(0, receiver.AcceptedSamples);
+    }
+
+    [Fact]
+    public void InvalidOrContradictoryBodyProfileCannotDeclareAnObservationStream()
+    {
+        foreach (string path in new[] { "", "no-root", "/", "/a/", "/a//b", "/a b", "/a~1b", "/a[0]" })
+            Assert.Throws<ArgumentException>(() => new PhysicalBodyObservationProfile("body", new[] { path }, Array.Empty<string>()));
+        Assert.Throws<ArgumentException>(() => new PhysicalBodyObservationProfile(" ", Array.Empty<string>(), Array.Empty<string>()));
+        Assert.Throws<ArgumentException>(() => new PhysicalBodyObservationProfile("body", new[] { "/a", "/a" }, Array.Empty<string>()));
+        Assert.Throws<ArgumentException>(() => new PhysicalBodyObservationProfile("body", new[] { "/a" }, new[] { "/a" }));
+        Assert.Throws<ArgumentNullException>(() => new PhysicalObservationLayout(Clock, "v1", Sites, null!));
+    }
+
+    [Fact]
+    public void UnityBodyProfileKeepsRigidHandDefaultsSeparateFromMeasuredInputs()
+    {
+        var layout = UnityPhysicalSampleProbe.UnityObservationEncoding.CreateLayout(Clock);
+        Assert.Equal("unity-muscular-body-v1", layout.BodyProfile.Encoding);
+        Assert.Equal(11, layout.BodyProfile.UnavailableMembers.Count);
+        Assert.Contains("/articulation/leftHandApertureFraction", layout.BodyProfile.UnavailableMembers);
+        Assert.Contains("/articulation/rightGripForceNewtons", layout.BodyProfile.UnavailableMembers);
+        Assert.Contains("/articulation/musculoskeletal/balance/rightingForceFraction", layout.BodyProfile.UnavailableMembers);
+        Assert.Equal(new[] { "/articulation/supportPlaneOffsetMeters", "/bloodOxygenSaturationFraction", "/coreTemperatureCelsius" }, layout.BodyProfile.ReferenceMembers);
+        // The preserved legacy default is not evidence of measured finger state.
+        Assert.Equal(1f, Frame().Body.Articulation!.LeftHandApertureFraction);
+        Assert.DoesNotContain("/articulation/leftHandLoadNewtons", layout.BodyProfile.UnavailableMembers);
+        Assert.DoesNotContain("/articulation/musculoskeletal/muscles", layout.BodyProfile.UnavailableMembers);
     }
 
     [Fact]

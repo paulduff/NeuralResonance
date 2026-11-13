@@ -107,3 +107,13 @@ It will not establish that comparison, physiological calibration, live neuronal
 authority, dynamic Unity torque or recovery. Those remain required before
 promotion. The legacy muscle, sensory paths, editor authority labels, paused
 startup and saved brains are unchanged.
+
+## Component window launch
+
+The fresh package is `dynamic-muscle-20261113-f9970f`, frozen at
+`23d6a0618968d10c92cf1afaaefa7cb19354e41d`. Its 1,540 initial files plus manifest
+have a verified D: copy, rechecked before launch. Independent visible PowerShell
+task `DNNE-Dynamic-Muscle-7976293860f3` was started. The 93-case outcome awaits
+the operator's report; no live output is inspected and launch establishes no
+passing model or test result. Spindle retry `98c085` and older body-profile
+fixture window `64ad44` also remain unreported and untouched.

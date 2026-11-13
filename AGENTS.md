@@ -1180,3 +1180,14 @@ independent adaptive traces, source-ordering/refinement checks and causal source
 body integration before Unity promotion. A kinetic-work ledger is not metabolic
 calibration; first-row TA parameters are not anatomy for every muscle. Existing
 live paths/editor/saves and pending spindle/profile captures remain untouched.
+
+The dynamic muscle component window is now launched as
+`dynamic-muscle-20261113-f9970f`, frozen revision
+`23d6a0618968d10c92cf1afaaefa7cb19354e41d`, task
+`DNNE-Dynamic-Muscle-7976293860f3`. All 1,540 initial files plus manifest have a
+verified D: copy, rechecked at launch. Its 93 tests await the operator report;
+do not inspect live outputs or infer success from launch. Three reports are
+outstanding: this new window, spindle retry `98c085` and old profile `64ad44`.
+Independent source/reference rig development can proceed, but its longer muscle
+comparison must wait for reported and reviewed component evidence. No live
+brain/body/Unity/editor path or old save changed.

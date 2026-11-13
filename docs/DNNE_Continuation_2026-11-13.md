@@ -13,8 +13,9 @@ See `DNNE_Unity_Body_Contacts_2026-11-13.md`. The re-pasted FAILED footer belong
 to old `162523`, whose stale protocol-version fixture failure remains preserved.
 Both the completed capture and its separate review have verified D: copies.
 
-Outstanding reports are Octave-adapted spindle retry `98c085` and older body-profile
-fixture window `64ad44`. Neither output is inspected. The latter's fixture scope
+Outstanding reports are Octave-adapted spindle retry `98c085`, older body-profile
+fixture window `64ad44`, and new dynamic muscle components `f9970f`. None is
+inspected live. The older profile window's fixture scope
 is included in the passing 74-case Unity run, but its own result is unknown.
 Original spindle `9a5090` and Unity `162523` failures have been reviewed and their
 evidence preserved. CUDA host timing, finer Golgi and previous contact retries
@@ -25,7 +26,11 @@ verified C:/D: provenance. Its isolated coupled implementation is now described 
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,
 velocity-dependent yield and explicit fiber/tendon mechanics in common RK stages.
 It retains actual arrival identities and the old isometric reference. Build and
-syntax checks pass; the prospective 93-case component window has not run yet.
+syntax checks pass. The 93-case component window is now launched as
+`dynamic-muscle-20261113-f9970f`, frozen at
+`23d6a0618968d10c92cf1afaaefa7cb19354e41d`, task
+`DNNE-Dynamic-Muscle-7976293860f3`, with 1,540 initial files plus manifest verified
+on D: and rechecked at launch. Await its operator report without monitoring.
 Independent adaptive traces, original-ordering comparisons, causal live body
 coupling and physiological calibration remain required. No current live
 mechanism or saved state is replaced by this candidate.

@@ -371,3 +371,10 @@ failure evidence. All 1,712 initial package files plus manifest have a verified
 D: copy, rechecked at launch. Visible task `DNNE-Spindle-State-83574529f0c3` is
 launched and unmonitored. Await the operator's completion report; this is the
 only pending experiment. The motor coupled comparison has not been launched.
+
+The coupled motor comparison's frozen preparer and visible PowerShell runner are
+now implemented and syntax checked. They require the verified 120-case component
+pass, unchanged qualified muscle/reference source and numerical dependencies,
+and retain all 28 original recorded arrivals. Eight reference controls gate the
+40 candidate/24 adaptive-reference conditions. No coupled model or reference
+control was executed during authoring; see later launch records for its status.

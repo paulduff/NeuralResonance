@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import traceback
 for name in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEXPR_NUM_THREADS'):
     os.environ[name] = '1'
 import numpy as np
@@ -52,12 +53,23 @@ def run(package):
             expected[:, 3] = .5 * inertia * (expected[:, 1] ** 2 - case['initialSpeedRadiansPerSecond'] ** 2)
             for i in range(2):
                 expected[:, 26 + i] = -tension[i] * spec['momentArmsMeters'][i] * expected[:, 0]
-            state, forces, stats = ref.solve(settings, grid)
-            error = float(np.max(abs(state - expected)))
-            force_error = max(float(np.max(abs(forces[:, i, 2] - tension[i]))) for i in range(2))
-            passed = bool(error <= 1e-12 and force_error == 0 and stats['acceptedInternalDomainPassed'] and stats['sampleDomainPassed'])
-            outcomes.append(dict(case=name, method=settings['key'], maximumAnalyticStateError=error,
-                maximumTensionErrorNewtons=force_error, emptyRecordingIntervalsPresent=True, passed=passed))
+            try:
+                state, forces, stats = ref.solve(settings, grid)
+                error = float(np.max(abs(state - expected)))
+                force_error = max(float(np.max(abs(forces[:, i, 2] - tension[i]))) for i in range(2))
+                if not np.isfinite(error) or not np.isfinite(force_error):
+                    raise RuntimeError('Nonfinite analytic control comparison.')
+                passed = bool(error <= 1e-12 and force_error == 0 and stats['acceptedInternalDomainPassed'] and stats['sampleDomainPassed'])
+                # Retain the actual traces even when the analytic bound fails.
+                np.savez_compressed(package / (name + '-' + settings['key'] + '-control.npz'),
+                                    timeSeconds=grid, state=state, expected=expected, forces=forces)
+                outcomes.append(dict(case=name, method=settings['key'], maximumAnalyticStateError=error,
+                    maximumTensionErrorNewtons=force_error, emptyRecordingIntervalsPresent=True, passed=passed))
+            except Exception:
+                if hasattr(ref, 'partial'):
+                    np.savez_compressed(package / (name + '-' + settings['key'] + '-control-partial.npz'),
+                        timeSeconds=grid, expected=expected, **ref.partial)
+                outcomes.append(dict(case=name, method=settings['key'], error=traceback.format_exc(), passed=False))
     g = spec['geometry']; length = g['referenceTendonLengthMeters']; quadrature = []
     intervals = [(length * .93, length * .95), (length * .95, length * .93),
                  (length * .964, length * .964), (length * .962, length * .966)]

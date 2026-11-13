@@ -95,3 +95,28 @@ run. The analysis now requires their saved eight-check passing record before
 it can qualify a coupled trajectory. Frozen preparation and the visible runner
 are still to be implemented; the 120-case component pass remains the latest
 executed motor/body evidence.
+
+## Frozen preparation and visible runner
+
+`prepare-causal-motor-comparison.py` and
+`start-causal-motor-comparison-window.ps1` now implement the complete workflow.
+Preparation requires clean pushed source, the operator-reported 120-case review,
+the passing independent muscle review, matching current/frozen motor and muscle
+implementations and tests, unchanged reference equations, and verified C:/D:
+copies of the selected evidence. Parameters and all 28 original arrivals are
+copied from the qualified capture. Numerical dependency hashes must still match
+that capture; preparation decodes parameters but performs no simulation.
+
+The new package contains its full frozen source archive, reviewed prerequisites,
+prospective protocol, parameter/event inputs, environment fingerprint and exact
+test-method coverage. An initial D: backup is required and checked before the
+independent visible PowerShell window starts. It runs the 120 regressions, four
+analytic joint checks and four energy quadrature checks before the 40 candidate
+and 24 reference conditions. Compiled binaries and frozen inputs are hashed;
+numerical dependencies are checked before and after reference work, including
+when a later stage fails. All results and partial evidence receive a verified
+D: backup. Nothing polls the running experiment.
+
+The reference controls now preserve their actual/analytic traces and any partial
+state on exception. Their source and the complete runner/preparer parse cleanly;
+no outcome is inferred from syntax checks or the successful probe compilation.

@@ -1340,3 +1340,10 @@ files plus manifest are D: verified; it is the only pending run. Do not monitor
 it. The coupled motor comparison's analytic reference controls are now authored
 and syntax checked, but unexecuted. Its frozen preparer and visible runner are
 still required. No coupled numerical qualification or live promotion is claimed.
+
+The coupled comparison's frozen preparer and visible runner are now implemented
+and syntax checked: require the verified 120-case review, unchanged qualified
+muscle/reference source and dependencies, eight reference controls, then all
+40 candidate conditions and 24 adaptive references. The controls preserve actual
+and analytic traces on failure. Authoring executed no test or model. Consult the
+comparison/continuation launch records before identifying pending packages.

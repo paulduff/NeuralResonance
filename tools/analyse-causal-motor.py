@@ -37,8 +37,19 @@ def validate(package):
 
 def preflight(package):
     spec = validate(package)
-    save(package / 'reference-preflight.json', dict(environment=environment(package), protocol=spec,
+    current = environment(package)
+    assert current == read(package / 'preparation-environment.json')
+    assert current == read(package / 'reference/qualified-numerical-preflight.json')['environment']
+    save(package / 'reference-preflight.json', dict(environment=current, protocol=spec,
                                                   completed=True, modelExecuted=False))
+
+
+def postflight(package):
+    current = environment(package)
+    unchanged = current == read(package / 'reference-preflight.json')['environment'] == read(package / 'preparation-environment.json')
+    save(package / 'reference-postflight.json', dict(environment=current, unchanged=unchanged, modelExecuted=False))
+    if not unchanged:
+        raise RuntimeError('Numerical dependencies changed during the coupled study.')
 
 
 def solve(package):
@@ -262,10 +273,14 @@ def audit(package):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument('package', type=Path)
-    parser.add_argument('--preflight', action='store_true'); parser.add_argument('--solve-reference', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--preflight', action='store_true'); mode.add_argument('--solve-reference', action='store_true')
+    mode.add_argument('--verify-environment', action='store_true')
     args = parser.parse_args(); package = args.package.resolve()
     if args.preflight:
         preflight(package)
+    elif args.verify_environment:
+        postflight(package)
     else:
         if args.solve_reference:
             solve(package)

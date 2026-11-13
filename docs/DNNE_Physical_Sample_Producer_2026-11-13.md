@@ -93,3 +93,10 @@ Golgi accuracy retry. If launched, both operator reports and saved-result review
 must precede CUDA host timing; that benchmark requires no competing studies or
 builds. Do not inspect either window's live outputs. No test result or launch
 is inferred from the successful build.
+
+The window is now launched as `physical-producer-20261113-efe4af`, frozen at
+`af9faf305e9c18215b5d3c3670e63b240467eb93`, scheduled task
+`DNNE-Physical-Producer-50ce8b4cc5d5`. All 1,494 initial files plus manifest were
+verified on D: and rechecked by the launcher. No runtime result has been read.
+This and Golgi retry `golgi-sdirk3-fine-20261113-ca813f` await operator reports;
+both reviews are prerequisites for CUDA host timing.

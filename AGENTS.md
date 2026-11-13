@@ -944,3 +944,11 @@ Sixteen new producer tests plus 22 transport and one manifest case are prepared
 for an independent PowerShell window. They are fixtures/recorded observations,
 not Unity physics, afferent or recovery qualification. If launched, await both
 this report and the still-pending Golgi report before CUDA host timing.
+
+The producer window is now launched as `physical-producer-20261113-efe4af`,
+revision `af9faf305e9c18215b5d3c3670e63b240467eb93`, task
+`DNNE-Physical-Producer-50ce8b4cc5d5`, after verifying 1,494 initial files plus
+manifest on D: and rechecking them at launch. Two windows now await operator
+reports: this 39-case producer/transport check and finer Golgi retry
+`golgi-sdirk3-fine-20261113-ca813f`. Do not inspect their live outputs. CUDA
+host timing stays unlaunched until both reports and evidence reviews are complete.

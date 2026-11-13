@@ -5,7 +5,7 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-## One pending window
+## Pending windows
 
 `golgi-sdirk3-fine-20261113-ca813f`, frozen revision
 `ad68cc7a3c5e1f854d1c0bfe489602a9caad37f4`, task
@@ -14,6 +14,13 @@ manifest have a verified D: copy, rechecked before launch. Do not read live outp
 The scope remains 43 focused tests, 14 new fine traces and 38 retained traces.
 The additional nine environment controls and exact saved-analysis replay must
 pass before new simulations. The original numerical bounds remain unchanged.
+
+The isolated physical producer window `physical-producer-20261113-efe4af` is
+also now launched, frozen at `af9faf305e9c18215b5d3c3670e63b240467eb93`, task
+`DNNE-Physical-Producer-50ce8b4cc5d5`. Its 1,494 initial files plus manifest were
+verified on D: and rechecked at launch. It runs 16 producer, 22 transport and one
+manifest check, with no live body or neuronal model. No output has been inspected.
+Await both operator reports and saved-result reviews before CUDA host timing.
 
 The first package `golgi-sdirk3-fine-20261109-4b5c0f` is a preserved failure,
 not a pending run. Its 43 tests passed, but three changed Python interpreter
@@ -30,10 +37,10 @@ reviewed and pushed before the pause. Their result documents are
 isolated neuronal-source muscle activation and exact host-candidate agreement;
 they do not establish calibrated human physiology, live balance or GPU speedup.
 
-After the operator reports Golgi completion, review the saved evidence without
-new model execution. Prepare a matched host-candidate timing protocol before
-launching performance work; do not overlap timing with other studies, builds or
-heavy evidence hashing. No host-candidate timing package has been launched.
+After the operator reports each window's completion, review that saved evidence
+without new model execution. Once both reviews are complete, prepare the matched
+host-candidate timing package. Do not overlap timing with other studies, builds
+or heavy evidence hashing. No host-candidate timing package has been launched.
 The timing rig is now coded and both variants build; its prospective protocol,
 scope and execution gate are in `DNNE_Olive_Host_Timing_2026-11-13.md`.
 

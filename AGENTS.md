@@ -896,3 +896,14 @@ review, permits only the explicitly recorded three-binary transition, and must
 reproduce the entire old analysis exactly before finer simulations. Numerical
 bounds and solver equations remain unchanged. The failed window is no longer
 pending; the corrected window has not yet launched. CUDA timing stays held.
+
+The corrected finer Golgi window is now launched as
+`golgi-sdirk3-fine-20261113-ca813f`, revision
+`ad68cc7a3c5e1f854d1c0bfe489602a9caad37f4`, task
+`DNNE-Golgi-Sdirk3-Fine-2db991578748`. Its 3,094 initial files plus manifest were
+verified on D: and rechecked before launch. This is the only pending experiment;
+await the operator report without reading live output. The nine transition
+controls and exact old-analysis replay are gates, not results inferred from
+launch. CUDA timing remains held. Current handoff, prior reviewed outcomes and
+the preserved but unfinished spindle-source work are recorded in
+`docs/DNNE_Continuation_2026-11-13.md`.

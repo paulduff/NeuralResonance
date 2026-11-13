@@ -3,7 +3,9 @@
 **Current status, 13 November:** the first launched package failed during the
 environment preflight, before finer simulations. All 43 focused tests passed.
 See `DNNE_Golgi_Runtime_Transition_2026-11-13.md` for the verified cause and retry
-design. The original protocol and launch history are preserved below.
+design. The corrected package `golgi-sdirk3-fine-20261113-ca813f` has now launched;
+await its operator report without monitoring. The original protocol and launch
+history are preserved below.
 
 The verified [third-order comparison](DNNE_Golgi_Third_Order_Comparison_2026-11-09.md)
 completed all 38 cases but failed voltage, gate and calcium accuracy in the five

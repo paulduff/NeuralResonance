@@ -64,3 +64,19 @@ full saved-analysis replay and new simulations run only in the independent visib
 PowerShell window. No result for the corrected preflight is claimed before the
 operator reports that window complete. Runtime capture beyond the existing
 interpreter/NumPy/SciPy inventory remains a future hardening task.
+
+## Launched retry
+
+The source repair and review were committed and pushed as
+`ad68cc7a3c5e1f854d1c0bfe489602a9caad37f4`. Python syntax and PowerShell parsing
+passed, and static comparison verifies the retained analyzer has only the two
+declared environment-check edits. The two-file environment review has a verified
+D: copy. Preparation reverified both original captures and their source/binary
+evidence before freezing `golgi-sdirk3-fine-20261113-ca813f` at that revision.
+
+All 3,094 initial package files plus manifest were verified on D:, then rechecked
+by the launcher. Independent visible PowerShell task
+`DNNE-Golgi-Sdirk3-Fine-2db991578748` has started. It is the only pending experiment.
+Its nine transition controls, exact old-analysis replay, 43 focused tests and
+14 finer cases are not yet reviewed. Await the operator's completion report with
+no live monitoring. Host CUDA timing remains held until this window finishes.

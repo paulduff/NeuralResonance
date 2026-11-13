@@ -388,3 +388,18 @@ force-query controls pass. Original evidence is untouched; the corrected review
 has its own verified D: copy in `spindle-state-review-20261113`. No model was
 rerun. The spindle package is no longer pending. Independent numerical accuracy,
 active slack handling, receptor physiology and live integration remain open.
+
+## Coupled numerical comparison launched
+
+`causal-motor-comparison-20261113-2acbfd` is frozen from
+`910a1d6f98ce39335d490b7dcbdb92decb7033b4`. Preparation verified the passing
+component/muscle reviews, unchanged candidate/reference source, original recorded
+arrivals, author parameters and the same pinned numerical environment. Its 1,580
+initial files plus manifest were verified on D: and rechecked at launch.
+Visible independent task `DNNE-Causal-Motor-Comparison-cf2a28bca82f` was started.
+
+This is the only pending experiment. Do not inspect its outputs until the
+operator reports completion. It will run 120 regressions, eight reference
+controls, 40 candidate conditions and 24 adaptive references, retaining all
+partial evidence and checking numerical dependencies afterward. No successful
+numerical outcome is inferred from launch; no live Avatar/Unity selection changed.

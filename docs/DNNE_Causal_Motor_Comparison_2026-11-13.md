@@ -120,3 +120,18 @@ D: backup. Nothing polls the running experiment.
 The reference controls now preserve their actual/analytic traces and any partial
 state on exception. Their source and the complete runner/preparer parse cleanly;
 no outcome is inferred from syntax checks or the successful probe compilation.
+
+## Coupled numerical comparison launched
+
+`causal-motor-comparison-20261113-2acbfd` is frozen from
+`910a1d6f98ce39335d490b7dcbdb92decb7033b4`. Preparation verified the passing
+component/muscle reviews, unchanged candidate/reference source, original recorded
+arrivals, author parameters and the same pinned numerical environment. Its 1,580
+initial files plus manifest were verified on D: and rechecked at launch.
+Visible independent task `DNNE-Causal-Motor-Comparison-cf2a28bca82f` was started.
+
+This is the only pending experiment. Do not inspect its outputs until the
+operator reports completion. It will run 120 regressions, eight reference
+controls, 40 candidate conditions and 24 adaptive references, retaining all
+partial evidence and checking numerical dependencies afterward. No successful
+numerical outcome is inferred from launch; no live Avatar/Unity selection changed.

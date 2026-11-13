@@ -1357,3 +1357,10 @@ is preserved; `artifacts/spindle-state-review-20261113` has the corrected analys
 and a verified D: copy. No model rerun is needed for this adapter correction.
 The spindle run is no longer pending. Independent numerical/physiological and
 live-body requirements remain open; see later launch records for motor work.
+
+Coupled comparison `causal-motor-comparison-20261113-2acbfd`, frozen `910a1d6`,
+is now the only pending run. Visible task `DNNE-Causal-Motor-Comparison-cf2a28bca82f`
+was launched after verifying all 1,580 initial files plus manifest on D:. It gates
+40 candidate/24 reference conditions on 120 regressions and eight analytic/
+quadrature controls. Do not monitor; await the operator's completion report.
+No numerical qualification, live selection or Avatar recovery is claimed.

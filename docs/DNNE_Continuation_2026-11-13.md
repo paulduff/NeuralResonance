@@ -7,8 +7,8 @@ with results inspected only after the operator reports completion.
 
 Latest update: actual Unity body sampling `1ff02e` and combined contact checks
 `8c18b7` were both reported and reviewed. Unity passed; the contact suite failed
-on a computed-property JSON metadata defect. The repair builds and a fresh
-67-check retry is being prepared. The two completed windows are no longer
+on a computed-property JSON metadata defect. The repair builds and fresh
+67-check retry `physical-observation-20261113-014b85` is launched. The two completed windows are no longer
 pending. Corrected Golgi `ca813f` still awaits its own completion report; do not
 inspect it. Later launch records supersede the historical pending counts below.
 
@@ -152,3 +152,13 @@ portable runtime archive and additional preserved source-discovery evidence.
 Its preparation/launcher/analysis are unfinished; no native result exists. See
 the preparation section of `DNNE_Spindle_Mechanics_Review_2026-11-13.md`. Keep the
 existing numerical Python environment and pending Golgi study untouched.
+
+The corrected 67-case retry is launched as `physical-observation-20261113-014b85`,
+revision `8a273337542e83433ee92be53a6fb07fee00d233`, task
+`DNNE-Physical-Observations-4fc27636ac75`, with 1,514 initial files plus manifest
+verified on D: and rechecked by the launcher. An earlier prepared repair package
+`205752` was rejected before launch by a stale 65-case guard; its source and
+setup rejection are preserved, with 1,515 files plus manifest verified on D:.
+It ran no tests and is not pending. Current outstanding reports: corrected
+Golgi `ca813f` and contact retry `014b85`. Do not inspect either live output.
+CUDA timing still waits for both reports and reviews.

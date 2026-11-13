@@ -2,8 +2,9 @@
 
 Current status: the original 65-check window was reported failed and reviewed.
 All 24 failures share one computed-property JSON metadata defect. The narrow
-repair and two additional checks build; a fresh 67-check PowerShell retry is
-being prepared. See the result and repair section below. Earlier preparation
+repair and two additional checks build; the fresh 67-check PowerShell retry
+`014b85` is launched and awaits the operator report. See the result and repair
+section below. Earlier preparation
 and launch descriptions record what was known at that time.
 
 The existing physical-sample v1 lane transports only a body frame. The pending
@@ -176,3 +177,13 @@ No launch or window-status file exists and no tests started. Its initial 1,514
 files plus manifest were verified on D:; the explicit setup rejection is also
 preserved. Correct the guard and freeze a fresh package, leaving this source
 unchanged. This is a setup failure, not another test result or pending window.
+
+## Retry launch — 13 November 2026
+
+The corrected package is `physical-observation-20261113-014b85`, frozen revision
+`8a273337542e83433ee92be53a6fb07fee00d233`, launched as independent visible
+PowerShell task `DNNE-Physical-Observations-4fc27636ac75`. Its 1,514 initial files
+plus manifest have a verified D: copy, rechecked before launch. All 67 checks
+remain pending the operator's completion report; no live output is read and no
+pass is inferred from starting the task. This window and corrected Golgi
+`ca813f` are the two outstanding reports. CUDA timing remains held.

@@ -1031,3 +1031,15 @@ package. Corrected Golgi `ca813f` remains unreported and uninspected. CUDA host
 timing stays held until every report and review. The spindle Octave harness and
 portable runtime are prepared but unexecuted; its freezer/launcher/analysis
 remain unfinished. No new afferent source or live neuronal path is qualified.
+
+The corrected combined-observation retry is now launched as
+`physical-observation-20261113-014b85`, revision
+`8a273337542e83433ee92be53a6fb07fee00d233`, task
+`DNNE-Physical-Observations-4fc27636ac75`. Its 1,514 initial files plus manifest
+are verified on D: and rechecked before launch. It requires 67 tests and no
+models. Await its operator report without live monitoring. Prepared package
+`205752` was rejected before task creation by a stale count guard, ran no tests,
+and is preserved with its setup rejection/D: backup. Exactly two reports now
+remain outstanding: this contact retry `014b85` and corrected Golgi `ca813f`.
+The Unity body study passed review; the old contact failure is fully reviewed.
+All pending reports and reviews still gate CUDA host timing.

@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\..\tools\UnityPhysicalSampleProbe\UnityObservationEncoding.cs" Link="UnityObservationEncoding.cs" />
     <Compile Include="..\..\tools\OliveBatchProbe\OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />
     <Compile Include="..\..\tools\OliveBatchProbe\OlivaryCpuBatch.cs" Link="OlivaryCpuBatch.cs" />
     <Compile Include="..\..\tools\DnneComputeProbe\StateEvidence.cs" Link="ComputeStateEvidence.cs" />

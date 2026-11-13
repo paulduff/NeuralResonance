@@ -967,3 +967,21 @@ in `DNNE_Spindle_Source_Review_2026-11-09.md` found concrete causal-time,
 population-bookkeeping and slack-root concerns in the pinned author code; its
 threshold/reset example is not the paper's conductance-based passive afferent.
 No live source or muscle-force substitution is adopted on that evidence.
+
+## Complete body/contact capture candidate — 13 November
+
+Revisited Avatar's body/contact contracts, somatic posting and receptor validation,
+the Unity contact encoder/collector and physical link declaration before adding
+the candidate in `DNNE_Body_Contact_Observations_2026-11-13.md`. Each captured step
+must contain the body and every declared contact site, including unloaded sites.
+The site/source/encoding declaration is immutable and participates in the stream
+identity; a missing contact cannot become an inferred zero load. Signed data,
+original capture stamps and existing units/saturation are preserved.
+
+The explicit Unity adapter reads both payloads from one retained physical reply.
+Its current body-only experiment stays selected; native combined integration
+still requires its own physical comparison. The existing collector's aggregation
+and unloaded-step metadata limitations are documented, not silently repaired by
+transport. There is no live receptor/brain selection, pseudo-spike generation,
+editor authority promotion or service deployment. Worlds still start paused.
+The 65-case focused window is prepared; a passing build is not a runtime result.

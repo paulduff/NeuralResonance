@@ -97,3 +97,14 @@ and the 39 focused test outcomes await the operator report; launch establishes
 no result. No live body or brain path selects this adapter. There are now two
 pending windows: this study and corrected Golgi `ca813f`. Both reports and
 evidence reviews must precede CUDA host timing.
+
+The next contact completeness repair is coded in
+`DNNE_Body_Contact_Observations_2026-11-13.md`: a declared immutable site/source
+layout, body plus all contact frames per actual step, bounded atomic transport,
+and a combined capture owner. The explicit Unity adapter uses the same retained
+reply, with 15 sites declared from the owning Avatar source. Existing body-only
+source and frozen studies remain unchanged. Both .NET assemblies build; the
+65-case independent PowerShell rig is prepared. It qualifies fixtures/parser/
+transport behavior only; native combined capture follows the operator reports
+and review. Any launched new window also blocks exclusive CUDA timing until
+its completion report and evidence review.

@@ -987,3 +987,16 @@ the operator explicitly said was still running. Do not inspect either window's
 live output. Starting the task establishes no build, physical or test result.
 Wait for both reports and evidence reviews before CUDA host timing; no live
 brain/body service was deployed or changed by this launch.
+
+The combined body/contact candidate is documented in
+`docs/DNNE_Body_Contact_Observations_2026-11-13.md`. It declares immutable contact
+sites/source identities/encoding with the physical clock and requires a complete
+body plus all contact sites at every endpoint, including unloaded sites. Missing
+contact after movement faults the producer without advancing completeness; valid
+older samples remain drainable. The existing body-only protocol is unchanged.
+Unity's explicit combined adapter uses one retained reply and does not infer its
+site list from received frames. Existing saturation/contact aggregation and
+unloaded metadata are preserved and remain unqualified. Both .NET builds pass;
+the 65-check rig (26 new, 38 body regressions, one manifest) is prepared but has
+not run. If launched, await this operator report as well as Golgi and native
+Unity before CUDA timing. No live neuronal/Avatar/editor path is promoted.

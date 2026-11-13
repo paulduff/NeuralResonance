@@ -15,7 +15,7 @@ public sealed record BridgeReply(int Version, string SessionId, string Operation
 // An isolated physical adapter, not a production transport. The Unity main
 // thread owns Physics.Simulate; immutable files retain every command/reply.
 // Once a command outcome becomes uncertain, the adapter never retries a step.
-public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody
+public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatarPhysicalObservationBody
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, WriteIndented = true };
@@ -57,6 +57,11 @@ public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody
     }
 
     public BridgeReply Inspect() => Command("inspect", CompletedPhysicsStep);
+    // Prospective combined lane: both payloads come from the same retained
+    // Unity reply. This neither requests a new capture nor changes the existing
+    // body-only study. A future study must explicitly select the new interface.
+    PhysicalObservationFrame IAvatarPhysicalObservationBody.CaptureObservation() =>
+        UnityObservationEncoding.Capture(CaptureObservation(), _lastStep.ContactsJson);
     public void Stop() => Command("stop", CompletedPhysicsStep);
     public static PhysicalBodyFrameRequest DecodeBody(BridgeReply reply) =>
         JsonSerializer.Deserialize<PhysicalBodyFrameRequest>(reply.BodyJson, Json)

@@ -9,8 +9,9 @@ Latest update: CUDA host timing `ab15ac` was operator-reported complete and pass
 full review: eleven tests, 24 control groups and exact bytes for 144 trajectories.
 The larger batches save 18.71–27.87% time; 192-cell savings miss the declared 5%
 threshold. Timing no longer blocks preparation. Golgi `ca813f` and contacts
-`014b85` are also reviewed. Prepare the 70-case body-profile v2 check and native
-spindle mechanics study next, in separate PowerShell windows without monitoring.
+`014b85` are also reviewed. The 70-case body-profile v2 check `64ad44` and native
+spindle mechanics study `9a5090` are now launched in separate PowerShell windows
+without monitoring. These are the two outstanding reports.
 Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window
@@ -201,3 +202,13 @@ reference members in immutable stream identity. Test and .NET adapter builds
 pass after timing completion; the new 70 cases have not run. The spindle rig
 remains coded but unexecuted. Actual combined Unity delivery still needs its
 physical probe and must retain the declared availability profile.
+
+Both new windows are frozen at `d3f148e5e281f3354b4c391f0f2b160768807abb`.
+Body profile: `physical-observation-20261113-64ad44`, task
+`DNNE-Physical-Observations-50120d406ffc`, 1,523 initial files plus manifest
+verified on D:. Native spindle: `spindle-reference-20261113-9a5090`, task
+`DNNE-Spindle-Reference-cebf3230ec3d`, 1,590 initial files plus manifest verified
+on D:. Preparation verified all 59,532 external runtime files and pinned C:/D:
+archives; it executed no Octave model. Await both operator reports without reading
+live outputs. Neither launch establishes native compatibility, physiological
+validity or a new runtime test result. No timing study is pending.

@@ -1090,3 +1090,15 @@ Both .NET builds pass after the completion report; the new 70-case test window
 has not run. Prepare it and the already coded native spindle study in independent
 PowerShell windows. Native complete body/contact integration, afferent physiology,
 live neuronal authority and Avatar recovery remain unqualified.
+
+Two new independent visible PowerShell windows are now launched, both at
+revision `d3f148e5e281f3354b4c391f0f2b160768807abb`:
+`physical-observation-20261113-64ad44` (70 cases, task
+`DNNE-Physical-Observations-50120d406ffc`, 1,523 initial files plus manifest
+verified on D:) and `spindle-reference-20261113-9a5090` (30 native trajectories
+plus two boundary records, task `DNNE-Spindle-Reference-cebf3230ec3d`, 1,590 initial
+files plus manifest verified on D:). Preparation also verified every one of the
+59,532 Octave runtime files and pinned C:/D: archives without model execution.
+Await both reports without live monitoring. No result/native compatibility is
+inferred from launch. CUDA timing is reviewed and no longer pending. Complete
+body/contact actual Unity integration still needs its own physical study.

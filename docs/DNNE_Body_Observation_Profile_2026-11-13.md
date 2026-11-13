@@ -52,3 +52,11 @@ this profile, verify paused/backpressured holds, and stop completeness at the
 last whole endpoint after an injected missing contact. That physical probe is
 not implemented or run yet. Later live editor/neuronal integration must expose
 unavailable/reference inputs instead of presenting them as measured activity.
+
+## Launch record
+
+The 70-case package is `physical-observation-20261113-64ad44`, revision
+`d3f148e5e281f3354b4c391f0f2b160768807abb`, launched as independent visible
+PowerShell task `DNNE-Physical-Observations-50120d406ffc`. Its 1,523 initial files
+plus manifest have a verified D: copy, rechecked before launch. The results await
+the operator report; no live monitoring or pass is inferred from launch.

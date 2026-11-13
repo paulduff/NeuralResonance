@@ -75,3 +75,19 @@ compatibility and all numerical results remain untested. No spindle package is
 frozen or launched. The now-reported Golgi and contact results take review
 priority, followed by the exclusive CUDA host timing study. Do not launch this
 mechanics experiment or perform heavy runtime hashing during that benchmark.
+
+## Launch after timing review
+
+The operator reported CUDA timing complete and its full evidence review passed.
+The spindle package is now `spindle-reference-20261113-9a5090`, frozen revision
+`d3f148e5e281f3354b4c391f0f2b160768807abb`, launched as independent visible
+PowerShell task `DNNE-Spindle-Reference-cebf3230ec3d`. Preparation verified the
+pinned C:/D: archives and all 59,532 extracted runtime files without executing
+Octave. The 1,590 initial package files plus manifest have a verified D: copy,
+rechecked by the launcher. Runtime hashes are also checked inside the window
+before and after execution; those execution-stage outcomes are not yet known.
+
+No live monitoring follows launch. All thirty trajectories and two boundary
+records await the operator report. Compatibility, numerical behavior and
+physiology remain unqualified. The other outstanding report is the 70-case body
+profile window `physical-observation-20261113-64ad44`; neither measures speed.

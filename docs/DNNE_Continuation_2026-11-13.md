@@ -34,6 +34,14 @@ checking state. Three analytic regressions (six solver-method checks) precede
 the fresh full retry. Equations, inputs, bounds and old captures stay unchanged.
 No new numerical pass is inferred from the repair; no older report is pending.
 
+Corrected retry `dynamic-muscle-comparison-20261113-95e59f` is now launched at
+`cc84abe349f7fbd4a442b2da2ad7e120611ba272`, task
+`DNNE-Dynamic-Muscle-Comparison-f76ff58863e5`, with all 1,557 initial files plus
+manifest verified on D: and rechecked at launch. It is the only outstanding
+report. Do not inspect its live output. Independent spindle state/overlap source
+work may continue while waiting; no timing study or live simulation is running
+under this comparison.
+
 The source review is recorded in `DNNE_Motor_Mechanics_Source_2026-11-13.md`, with
 verified C:/D: provenance. Its isolated coupled implementation is now described in
 `DNNE_Dynamic_Muscle_Candidate_2026-11-13.md`: per-unit calcium/activation,

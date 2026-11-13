@@ -141,3 +141,11 @@ detects skipped physical time and lost events without using muscle equations.
 All three require complete state carry and internal-point validation. Python
 and PowerShell syntax checks pass; these new tests await execution in the fresh
 window. The retry repeats the unchanged 93/33/33/15 study under frozen source.
+
+The corrected package is now launched as
+`dynamic-muscle-comparison-20261113-95e59f`, frozen revision
+`cc84abe349f7fbd4a442b2da2ad7e120611ba272`, task
+`DNNE-Dynamic-Muscle-Comparison-f76ff58863e5`. All 1,557 initial files plus manifest
+have a verified D: copy, rechecked before launch. It is the only pending operator
+report. Await completion without inspecting live outputs; launch establishes
+neither passing regressions nor numerical qualification.

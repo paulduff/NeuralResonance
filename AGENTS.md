@@ -1237,3 +1237,13 @@ are mandatory in the fresh visible-window retry before the full 93/33/33/15 rig.
 Syntax checks pass; do not claim those regressions pass until operator-reported
 execution. No previous report remains pending. No live Avatar/Unity/editor or
 brain-save changes accompany this harness repair.
+
+The fresh full comparison is now launched as
+`dynamic-muscle-comparison-20261113-95e59f`, frozen revision
+`cc84abe349f7fbd4a442b2da2ad7e120611ba272`, independent visible PowerShell task
+`DNNE-Dynamic-Muscle-Comparison-f76ff58863e5`. All 1,557 initial files plus manifest
+have a verified D: copy, rechecked at launch. This is the only pending report;
+do not read its status/logs until the operator reports completion. Its three
+analytic cases/six method checks and full 93/33/33/15 comparison are not yet
+qualified. Spindle source work can proceed independently; no timing window is
+pending. The original failed capture and separate full review remain preserved.

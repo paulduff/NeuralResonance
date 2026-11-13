@@ -151,3 +151,34 @@ This review changes no live brain, body, world, editor or save. The sole pending
 experiment remains `golgi-sdirk3-fine-20261113-ca813f`; its outputs were not read.
 CUDA host timing remains coded but unlaunched, gated on the operator's Golgi
 completion report and review. No second experiment was started by this work.
+
+## Subsequent preparation, not an executed reference
+
+`tools/run_spindle_mechanics_reference.m` is an unfinished isolated harness for
+the unchanged pinned 2026 bag/chain classes. It proposes 30 imposed-length
+trajectories and two state-boundary records, preserving initial and completed
+endpoint states, internal population representations, shapes and raw MAT output.
+It does not run the full slack driver, receptor conversion or sensory membrane.
+No Octave parse, model execution, refinement result or MATLAB agreement has been
+established. A frozen preparer, independent PowerShell launcher and saved-output
+analysis are still required before this harness can be used as evidence.
+
+An isolated portable Octave 11.3.0 archive was downloaded from the
+[official GNU Windows archive](https://ftp.gnu.org/gnu/octave/windows/octave-11.3.0-w64.zip).
+The 855,208,207-byte archive has SHA-256
+`b0e1bc72a87abe4e2a0cf7e76b7727d8fde5c99ec049c1576f095280c3e48e5a`.
+Archive, download metadata and a full 59,532-file extraction manifest are retained
+in `artifacts/octave-runtime-11.3.0-20261113`, with three files plus manifest
+verified on D:. Extracted files are in `artifacts/portable-octave-11.3.0`.
+No executable, post-install script, model or test has run. This is an HTTPS
+download and recorded content hash; a publisher signature was not verified.
+It does not alter the Python environment used by pending numerical studies.
+
+Further bounded afferent-source discovery is retained in
+`artifacts/spindle-afferent-discovery-20261113-fde0a8`, with 11 files plus manifest
+verified on D:. Dryad metadata was accessible, but its model download endpoint
+returned HTTP 401; no archive was retrieved. ModelDB requests timed out and the
+bounded GitHub search did not locate the sought Housley source. These are search
+limits, not evidence that a source does not exist. No unauthenticated alternative
+or unreviewed model was adopted. Preparation paused to review the operator's
+completed Unity/body-contact captures and repair their serialization failure.

@@ -58,3 +58,13 @@ file plus manifest) both have verified D: backups under their matching names.
 Continue inspecting Avatar's existing sensory/muscle path before changing it.
 The previous source/boundary reviews remain the integration map. Worlds start
 paused, and live runtime/editor qualification must follow demonstrated circuitry.
+
+The next physical producer candidate is coded in
+`DNNE_Physical_Sample_Producer_2026-11-13.md`. It owns initial capture,
+capacity-before-step, exact counter/duration checks and immediate endpoint capture;
+any uncertain physical/capture failure faults the epoch. The producer and test
+assembly build with zero warnings/errors. Sixteen new producer checks plus the
+22 reviewed transport cases and manifest check form its prospective isolated
+window. No live physical adapter selects it. If launched, its operator report
+and review must also precede CUDA timing; runtime checks are not inferred from
+compilation.

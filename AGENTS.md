@@ -933,3 +933,14 @@ Golgi retry `golgi-sdirk3-fine-20261113-ca813f` remains the sole pending window,
 with host timing held until the operator report and review.
 The new tutorial source capture and separate source review have verified D:
 backups (65 and one files respectively, each plus manifest).
+
+The isolated step/capture owner in
+`docs/DNNE_Physical_Sample_Producer_2026-11-13.md` now builds. It captures an
+initial state, checks bounded capacity before synchronous physics, requires
+exact completed counters/durations and captures every endpoint. A failed capture
+after movement faults the epoch; no skipped or later substituted sample. It
+preserves existing Avatar observations, starts paused and has no live caller.
+Sixteen new producer tests plus 22 transport and one manifest case are prepared
+for an independent PowerShell window. They are fixtures/recorded observations,
+not Unity physics, afferent or recovery qualification. If launched, await both
+this report and the still-pending Golgi report before CUDA host timing.

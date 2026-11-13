@@ -13,10 +13,16 @@ function run_spindle_state_controls(package, rootsOnly)
       expectedStresses(k) = hs.k_passive * (hs.hs_length + probes(k) - hs.hsl_slack);
     end
     [delta, residual, info, output] = fzero(@(dx) spindle_trial_stress(hs, dx), 0, optimset('display', 'off'));
+    % A displacement guess of zero makes Octave search only as far as -49.9
+    % nm. Both unloaded roots lie outside that automatic search. Declare an
+    % initial-geometry interval instead; do NOT use the analytic answer to
+    % choose a narrow root-centered bracket or change the acceptance bound.
+    bracketBounds = [-hs.hs_length/2, 0];
+    bracketStresses = [spindle_trial_stress(hs, bracketBounds(1)), spindle_trial_stress(hs, bracketBounds(2))];
     bracketError = ''; bracketDelta = NaN; bracketResidual = NaN; bracketInfo = 0; bracketOutput = struct();
     try
       [bracketDelta, bracketResidual, bracketInfo, bracketOutput] = fzero(@(dx) spindle_trial_stress(hs, dx), ...
-        [expectedDelta-1, expectedDelta+1], optimset('display', 'off'));
+        bracketBounds, optimset('display', 'off'));
     catch failure
       bracketError = failure.message;
     end
@@ -26,9 +32,11 @@ function run_spindle_state_controls(package, rootsOnly)
       'scalarGuessRootNm', delta + hs.hs_length, 'scalarGuessResidualPa', residual, 'scalarGuessInfo', info, ...
       'scalarGuessOutput', output, 'bracketDeltaNm', bracketDelta, 'bracketRootNm', bracketDelta + hs.hs_length, ...
       'bracketResidualPa', bracketResidual, 'bracketInfo', bracketInfo, 'bracketOutput', bracketOutput, 'bracketError', bracketError, ...
+      'bracketDisplacementsNm', bracketBounds, 'bracketStressesPa', bracketStresses, ...
       'initialStatePreserved', isequal(hs.y, [1, zeros(1,81), 1, 0]));
   end
-  rootDiagnostics = struct('version', 'unloaded-spindle-root-diagnostic-v1', 'stage', stage, 'fibers', {roots}, ...
+  rootDiagnostics = struct('version', 'unloaded-spindle-root-diagnostic-v2', 'stage', stage, 'fibers', {roots}, ...
+    'rootAcceptance', 'explicit-initial-geometry-bracket-v1', 'scalarSearchIsDiagnosticOnly', true, ...
     'boundChanged', false, 'kineticsExecuted', false);
   matPath = fullfile(package, [stage '-root-diagnostics.mat']);
   if exist(matPath, 'file'), error('Preserve previous root diagnostics.'); end
@@ -38,12 +46,14 @@ function run_spindle_state_controls(package, rootsOnly)
     fprintf('%s unloaded %s root: scalar=%.17g nm, bracket=%.17g nm, expected=%.17g nm\n', ...
       stage, fibers{f}, roots{f}.scalarGuessRootNm, roots{f}.bracketRootNm, roots{f}.slackLengthNm);
   end
-  assert(all(cellfun(@(r) abs(r.scalarGuessRootNm-r.slackLengthNm) <= 1e-9, roots)));
+  assert(all(cellfun(@(r) r.initialStatePreserved && r.bracketInfo == 1 && isempty(r.bracketError) && ...
+    r.bracketStressesPa(1) <= 0 && r.bracketStressesPa(2) >= 0 && ...
+    abs(r.bracketRootNm-r.slackLengthNm) <= 1e-9 && abs(r.bracketResidualPa) <= 1e-7, roots)));
   if rootsOnly, return; end
   for f = 1:2
     name = fibers{f}; [hs, parameters] = create_fiber(name);
     state0 = hs.y;
-    root = roots{f}.scalarGuessRootNm;
+    root = roots{f}.bracketRootNm;
     assert(abs(root - hs.hsl_slack) <= 1e-9);
     props = {'bin_pops', 'no_detached', 'f_bound'}; readonly = false(1, 3);
     for k = 1:3

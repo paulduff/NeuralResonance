@@ -124,3 +124,14 @@ were verified on D: and rechecked by the launcher. Visible independent task
 report before inspecting logs, status or test outcomes. The spindle root run
 `spindle-state-20261113-ae7ae4` also awaits its report. These are the two pending
 packages; no additional experiment was launched. No live runtime was selected.
+
+## Reported component outcome
+
+The operator subsequently reported `848e50` complete. Full C:/D: and frozen-source
+review confirms all **120 distinct cases passed**, including all 27 new coupling
+checks and 93 regressions. Current plant/muscle source still matches that capture.
+The qualified muscle core remains exact after removing only the declared
+observation method. See `DNNE_Causal_Motor_Comparison_2026-11-13.md` for review
+counts, manifest and the next independent coupled comparison in preparation.
+The component run is no longer pending. Compilation of the new probe is complete;
+the numerical comparison has not been launched or qualified.

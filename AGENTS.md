@@ -1322,3 +1322,14 @@ Causal motor component package `causal-motor-20261113-848e50` is launched from
 verified 1,563 files plus manifest. Its 120 test outcomes are not yet inspected.
 Together with spindle root package `ae7ae4`, it awaits the operator's completion
 report. Do not monitor either package. Native/live coupling remains unselected.
+
+Both `ae7ae4` and `848e50` were subsequently reported complete and reviewed.
+`docs/DNNE_Spindle_State_Candidate_2026-11-13.md` explains the finite scalar-search
+range failure and corrected explicit initial-geometry bracket with unchanged
+root/stress bounds. All 120 causal motor cases pass; the frozen muscle core and
+current coupling source match. `docs/DNNE_Causal_Motor_Comparison_2026-11-13.md`
+records the prospective 40-condition/24-reference coupled study. Its probe builds
+and Python source parses, but analytic reference controls, frozen preparation
+and the visible runner are still required. No numerical comparison has run.
+Both review artifacts have verified D: copies. Consult later launch records
+before identifying pending work; these two reported packages are no longer pending.

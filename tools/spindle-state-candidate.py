@@ -78,6 +78,18 @@ def transform(original):
 
 def prepare(package, base):
     root = Path(__file__).resolve().parents[1]
+    root_review = root / 'artifacts/spindle-root-review-20261113'
+    verify_selected_capture(root_review, ['review.json', 'pinned-fzero.m'], base)
+    root_evidence = base.read(root_review / 'review.json')
+    assert root_evidence['operatorReportedCompletion'] and root_evidence['scalarSearchMissesBothRoots']
+    assert root_evidence['bracketedRootsExactWithZeroResidual']
+    root_capture = Path(root_evidence['capture'])
+    assert base.digest(root_capture / 'backup-manifest.json') == root_evidence['manifestSha256']
+    verify_selected_capture(root_capture, ['preflight-root-diagnostics.json'], base)
+    assert base.read(root_capture / 'preflight-root-diagnostics.json') == root_evidence['initialRootDiagnostics']
+    evidence_copy = package / 'root-search-evidence'; evidence_copy.mkdir()
+    for name in ('review.json', 'pinned-fzero.m'):
+        shutil.copyfile(root_review / name, evidence_copy / name)
     reviewed = root / 'artifacts/muscle-spindle-profile-review-20261113'
     verify_selected_capture(reviewed, ['spindle-review.json'], base)
     evidence = base.read(reviewed / 'spindle-review.json')
@@ -112,6 +124,10 @@ def prepare(package, base):
 
 
 def verify(package, base):
+    root_evidence = base.read(package / 'root-search-evidence/review.json')
+    assert root_evidence['operatorReportedCompletion'] and root_evidence['scalarSearchMissesBothRoots']
+    assert root_evidence['bracketedRootsExactWithZeroResidual']
+    assert base.digest(package / 'root-search-evidence/pinned-fzero.m') == root_evidence['pinnedFzeroSha256']
     declaration = base.read(package / 'canonical-state.json')
     assert declaration['version'] == VERSION and declaration['baseline'] == BASELINE
     assert declaration['stateAbsolute'] == STATE_ABSOLUTE and declaration['stressAbsolutePa'] == STRESS_ABSOLUTE_PA
@@ -178,9 +194,15 @@ def analyse(package, base):
     for stage in ('preflight', 'post-trajectory'):
         roots = base.read(package / (stage + '-root-diagnostics.json'))
         assert roots['stage'] == stage and not roots['boundChanged'] and not roots['kineticsExecuted']
+        assert roots['version'] == 'unloaded-spindle-root-diagnostic-v2'
+        assert roots['rootAcceptance'] == 'explicit-initial-geometry-bracket-v1' and roots['scalarSearchIsDiagnosticOnly']
         assert {f['fiber'] for f in roots['fibers']} == set(base.FIBERS)
         for r in roots['fibers']:
-            assert r['initialStatePreserved'] and abs(r['scalarGuessRootNm'] - r['slackLengthNm']) <= 1e-9
+            assert r['initialStatePreserved'] and r['bracketInfo'] == 1 and not r['bracketError']
+            assert r['bracketDisplacementsNm'] == [-r['initialLengthNm'] / 2, 0]
+            assert len(r['bracketStressesPa']) == 2 and r['bracketStressesPa'][0] <= 0 <= r['bracketStressesPa'][1]
+            assert math.isfinite(r['bracketRootNm']) and abs(r['bracketRootNm'] - r['slackLengthNm']) <= 1e-9
+            assert math.isfinite(r['bracketResidualPa']) and abs(r['bracketResidualPa']) <= STRESS_ABSOLUTE_PA
             assert len(r['trialStressesPa']) == len(r['analyticPassiveStressesPa']) == 4
             assert max(abs(a-b) for a,b in zip(r['trialStressesPa'], r['analyticPassiveStressesPa'])) <= STRESS_ABSOLUTE_PA
     for fiber in controls['fibers']:

@@ -344,3 +344,20 @@ were verified on D: and rechecked by the launcher. Visible independent task
 report before inspecting logs, status or test outcomes. The spindle root run
 `spindle-state-20261113-ae7ae4` also awaits its report. These are the two pending
 packages; no additional experiment was launched. No live runtime was selected.
+
+## Both reported outcomes reviewed
+
+`ae7ae4` and `848e50` have now both been reported complete and fully reviewed.
+The spindle scalar-zero search failed to bracket either unloaded root: the
+pinned Octave search reaches only -49.9 nm, while bag/chain require -200/-50 nm.
+Explicit brackets returned exact roots with zero residual. The root control is
+corrected to use an interval derived from initial geometry, keeping the original
+accuracy bounds and scalar diagnostic. See the spindle candidate document.
+
+All 120 motor/body component cases pass and the qualified muscle core is
+preserved. The independent coupled comparison source is in preparation and
+compiles; no trajectory/reference solve has been launched. Its 40 prospective
+candidate conditions, 24 references and energy-accounting gates are documented
+in `DNNE_Causal_Motor_Comparison_2026-11-13.md`. It still needs analytic reference
+controls, frozen preparation and its visible runner. Both reviews have verified
+D: copies; no live runtime is selected. Neither reported package remains pending.

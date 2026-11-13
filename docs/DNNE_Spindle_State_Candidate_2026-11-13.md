@@ -136,3 +136,43 @@ revision `b60ee5b95908e5c866b5ed83014947bf14dbb0af`, task
 verified D: copy, rechecked before launch; preparation verified the entire pinned
 runtime and source transformations. This is the only pending operator report.
 Do not inspect live outputs. A launch does not establish a passing root check.
+
+## Root-search failure identified
+
+The operator reported `ae7ae4` complete/FAILED. Full review verifies all 1,710
+C:/D: files per copy (80,647,828 bytes), all 1,552 frozen Git files and the
+canonical transformations. Preparation/before/after runtime fingerprints match.
+The capture manifest is
+`0B6E0A0454891DE23AD35F11588F78951C88E090664E610CE409867566B5223B`.
+The review and pinned solver source are preserved in
+`artifacts/spindle-root-review-20261113`, with their own verified D: copy.
+
+Both scalar-zero searches returned exit code -6, no root and no residual.
+Neither performed a root iteration: each exhausted its 14 interval-search
+queries. The pinned `fzero.m`, verified against the saved runtime manifest,
+sets `aa=0.1` for a zero initial guess and evaluates `aa + aa*srch` using a
+finite search list. Its most negative displacement is **-49.9 nm**. The actual
+unloaded roots require **-200 nm (bag)** and **-50 nm (chain)**. The solver never
+brackets either zero; this is not insufficient root precision or failed kinetics.
+
+All four recorded direct queries equal the analytic unloaded passive stresses.
+The diagnostic brackets centered around the known analytic roots return exactly
+1,050/1,200 nm, residual zero, exit code 1, with the original state intact. The
+run correctly stopped before its trajectory matrix after recording this evidence.
+Its FAILED status remains preserved; the earlier 30 exact trajectory contrasts
+remain separate evidence.
+
+The corrected control explicitly supplies displacement interval
+`[-initial_length/2, 0]`, equivalent to positive trial lengths from half the
+initial length to the initial length. This interval does not use the analytic
+root to choose a narrow bracket. Its endpoint signs are recorded and checked.
+The accepted root must retain the original **1e-9 nm** error bound, successful
+solver exit, finite result and residual within the existing **1e-7 Pa** stress
+bound. The scalar-search failure is still saved as a diagnostic contrast.
+The same checks run before and after the trajectory matrix.
+
+This corrects initialization of the unloaded test's root search. It does not
+implement a general active slack controller, change cross-bridge equations,
+provide zero-overlap kinetics or establish physiological validity. Fresh packages
+include the verified failure review and pinned solver source explaining this
+change. The original captures are not rewritten.

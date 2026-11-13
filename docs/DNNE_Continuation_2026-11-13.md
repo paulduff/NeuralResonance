@@ -378,3 +378,13 @@ pass, unchanged qualified muscle/reference source and numerical dependencies,
 and retain all 28 original recorded arrivals. Eight reference controls gate the
 40 candidate/24 adaptive-reference conditions. No coupled model or reference
 control was executed during authoring; see later launch records for its status.
+
+The operator subsequently reported spindle `a43f1a` FAILED at analysis. Complete
+native data and controls are present; the adapter omitted its existing `vector`
+and `one` parsers. Full C:/D: and frozen-source review reproduces that error and
+passes the unchanged analysis after supplying exactly those helpers. All 30
+state/post-initial-force contrasts remain exact, and the canonical-state/root/
+force-query controls pass. Original evidence is untouched; the corrected review
+has its own verified D: copy in `spindle-state-review-20261113`. No model was
+rerun. The spindle package is no longer pending. Independent numerical accuracy,
+active slack handling, receptor physiology and live integration remain open.

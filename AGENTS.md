@@ -1347,3 +1347,13 @@ muscle/reference source and dependencies, eight reference controls, then all
 40 candidate conditions and 24 adaptive references. The controls preserve actual
 and analytic traces on failure. Authoring executed no test or model. Consult the
 comparison/continuation launch records before identifying pending packages.
+
+Spindle `a43f1a` was reported complete/FAILED at analysis, then fully reviewed.
+Its native matrix and controls completed; the adapter lacked its existing
+`vector` and `one` parsers. Adding only those helpers lets the unchanged saved-data
+analysis pass all canonical-state criteria: 30 exact state/post-initial-force
+contrasts and passing root/force/population controls. Original FAILED evidence
+is preserved; `artifacts/spindle-state-review-20261113` has the corrected analysis
+and a verified D: copy. No model rerun is needed for this adapter correction.
+The spindle run is no longer pending. Independent numerical/physiological and
+live-body requirements remain open; see later launch records for motor work.

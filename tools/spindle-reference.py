@@ -33,7 +33,7 @@ def state_candidate():
     spec = importlib.util.spec_from_file_location('spindle_state_candidate', Path(__file__).with_name('spindle-state-candidate.py'))
     candidate = importlib.util.module_from_spec(spec); spec.loader.exec_module(candidate)
     api = SimpleNamespace(io=io, read=read, write=write, digest=digest, analyse=analyse,
-        FIBERS=FIBERS, PROTOCOLS=PROTOCOLS, STEPS_US=STEPS_US)
+        vector=vector, one=one, FIBERS=FIBERS, PROTOCOLS=PROTOCOLS, STEPS_US=STEPS_US)
     return candidate, api
 
 

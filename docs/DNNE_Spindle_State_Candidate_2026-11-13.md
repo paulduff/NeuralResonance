@@ -186,3 +186,37 @@ failure evidence. All 1,712 initial package files plus manifest have a verified
 D: copy, rechecked at launch. Visible task `DNNE-Spindle-State-83574529f0c3` is
 launched and unmonitored. Await the operator's completion report; this is the
 only pending experiment. The motor coupled comparison has not been launched.
+
+## Complete state result recovered from saved evidence
+
+The operator reported `a43f1a` FAILED at analysis. Native execution had completed
+all 30 finite trajectories, both boundary records and both sets of root/state
+controls. The Python analysis adapter omitted `vector` and `one`, parser helpers
+already defined in the frozen reference module; analysis stopped on the first
+missing attribute. This was an analysis-wiring error, not a failed native check.
+
+`review-complete-spindle-state-20261113.py` verifies the full C:/D: capture
+(1,793 files per copy, 98,554,738 bytes), all 1,564 frozen Git files, unchanged
+declared transformations and matching preparation/before/after runtime evidence.
+Manifest:
+`5C443F0132D1A65AEFEC3108861BC9540AF3AD58960906FF3101AAA117192E1C`.
+It reproduces the original adapter failure, supplies exactly the two existing
+frozen parser functions, then reruns the unchanged analysis on saved arrays.
+The current factory repair is proven to be solely that two-helper addition and
+produces exactly the same analysis. No test, trajectory or ODE was rerun.
+
+All **30 trajectory comparisons pass with exactly zero state and post-initial
+stress difference**. Initial scalar passive stress, authoritative population
+reporting/accounting, boundary geometry, read-only properties, pure trial-force
+queries, population shifts, unloaded bracketed roots before/after the matrix and
+rejection of unsupported overlap kinetics pass the original criteria. Both trial
+force/applied-force comparisons and detached-population accounting report zero
+maximum difference in the saved controls.
+
+The original FAILED package remains untouched. The successful derived analysis
+and provenance are in `artifacts/spindle-state-review-20261113`, with a separate
+verified D: copy. The spindle run is no longer pending and does not need another
+native rerun for this adapter correction. This qualifies the canonical-state
+repair within these tests; independent solver accuracy, physiological calibration,
+the full active slack driver, zero-overlap kinetics and afferent firing remain
+open. Neither Avatar nor the editor selects this candidate live.

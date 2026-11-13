@@ -12,7 +12,7 @@ $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 $solverOrder=3;$expectedConditions=14;$expectedTests=43;$probeMode='--sdirk3-fine'
 if(-not $CostStudyFinished){throw 'Wait for the operator to report CUDA cost timing complete; never poll it.'}
-if(-not $configuration.BaselineReviewed -or -not $configuration.NoLiveMonitoring -or -not $configuration.ReusePassiveReferences -or $configuration.SolverOrder -ne 3 -or $configuration.ExpectedConditions -ne 14 -or $configuration.ExpectedBaselineConditions -ne 38 -or $configuration.ExpectedTestCases -ne 43){throw 'Unexpected finer comparison configuration.'}
+if(-not $configuration.BaselineReviewed -or -not $configuration.EnvironmentTransitionReviewed -or -not $configuration.NoLiveMonitoring -or -not $configuration.ReusePassiveReferences -or $configuration.SolverOrder -ne 3 -or $configuration.ExpectedConditions -ne 14 -or $configuration.ExpectedBaselineConditions -ne 38 -or $configuration.ExpectedTestCases -ne 43){throw 'Unexpected finer comparison configuration.'}
 if(-not $InWindow){
  if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
  $manifestPath=Join-Path $package 'backup-manifest.json'

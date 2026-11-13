@@ -10,6 +10,7 @@ import numpy as np
 import scipy.integrate
 from golgi_sdirk3_fine_protocol import protocol
 from golgi_sdirk_protocol import protocol as original_protocol
+from golgi_environment_transition import controls, validate_analyzer_change, validate_transition
 
 read = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
 
@@ -34,6 +35,7 @@ def validate(package):
     config = read(package/'configuration.json')
     assert config['SolverOrder'] == 3 and config['ExpectedConditions'] == 14 and config['ExpectedBaselineConditions'] == 38
     assert config['NoLiveMonitoring'] and config['BaselineReviewed'] and config['ReusePassiveReferences']
+    assert config['EnvironmentTransitionReviewed']
     for entry in config['PackageFiles']:
         assert digest(package/entry['Path']) == entry['Sha256'], entry['Path']
     spec = read(package/'sdirk-input.json'); assert spec == protocol()
@@ -45,6 +47,11 @@ def validate(package):
     assert digest(baseline/'backup-manifest.json') == provenance['review']['manifestSha256']
     for path in provenance['unchangedSources']:
         assert (package/'source'/path).read_text(encoding='utf-8-sig') == (baseline/'source'/path).read_text(encoding='utf-8-sig'), path
+    validate_analyzer_change((baseline/'source/tools/analyse-golgi-sdirk.py').read_text(encoding='utf-8-sig'),
+                             (package/'source/tools/analyse-golgi-sdirk.py').read_text(encoding='utf-8-sig'))
+    assert provenance['retainedAnalyzerChange'] == 'explicit-replay-environment-only'
+    validate_transition(read(baseline/'reference-preflight.json')['environment'],
+                        read(package/'declared-environment.json'), read(package/'environment-review.json'))
     marker = '        Directory.CreateDirectory(output);'
     original = (baseline/'source/tools/GolgiCellProbe/SdirkStudy.cs').read_text(encoding='utf-8-sig')
     candidate = (package/'source/tools/GolgiCellProbe/SdirkStudy.cs').read_text(encoding='utf-8-sig')
@@ -61,16 +68,27 @@ def validate(package):
 
 def preflight(package):
     spec, baseline, base = validate(package)
-    analysis = base.audit(baseline)
+    environment_controls = controls()
+    declared = read(package/'declared-environment.json')
+    environment = base.module('fine_environment', package/'source/tools/golgi-reference-resume.py').environment()
+    with (package/'observed-preflight-environment.json').open('x', encoding='utf-8') as stream:
+        stream.write(json.dumps(environment, indent=2)+'\n')
+    with (package/'environment-controls.json').open('x', encoding='utf-8') as stream:
+        stream.write(json.dumps(dict(passed=True, controls=environment_controls), indent=2)+'\n')
+    assert environment == declared, 'Current dependencies differ from the explicitly reviewed transition.'
+    transition = validate_transition(read(baseline/'reference-preflight.json')['environment'], declared,
+                                     read(package/'environment-review.json'))
+    analysis = base.audit(baseline, replay_environment=declared)
     assert analysis == read(baseline/'sdirk-analysis.json')
     assert analysis['completedCases'] == 38 and not analysis['numericalCriteriaPassed']
     assert analysis['criteria'] == spec['criteria'] and all(r['physicalPassed'] for r in analysis['cases'])
     assert all(all(r['passed'] for r in a['refinement']) for a in analysis['assessment'])
     assert all(a.get('nonlinearSensitivityPassed', True) for a in analysis['assessment'])
-    environment = base.module('fine_environment', package/'source/tools/golgi-reference-resume.py').environment()
     report = dict(completed=True, originalAnalysisReproduced=True, originalBoundsChanged=False,
                   baselineConditions=38, newConditions=14, originalNumericalStatus='FAILED',
                   baselineAnalysisSha256=digest(baseline/'sdirk-analysis.json'), environment=environment,
+                  environmentTransition=transition, environmentControls=environment_controls,
+                  savedAnalysisCompatibleWithDeclaredRuntime=True, originalRuntimeReproduced=False,
                   referenceSolved=False, physiologyQualified=False, avatarRecoveryAssessed=False)
     with (package/'fine-preflight.json').open('x', encoding='utf-8') as stream:
         stream.write(json.dumps(report, indent=2)+'\n')
@@ -81,6 +99,9 @@ def audit(package):
     spec, baseline, base = validate(package)
     pre = read(package/'fine-preflight.json')
     assert pre['completed'] and pre['originalAnalysisReproduced'] and pre['baselineConditions'] == 38
+    assert pre['environment'] == read(package/'declared-environment.json')
+    assert pre['savedAnalysisCompatibleWithDeclaredRuntime'] and not pre['originalRuntimeReproduced']
+    assert len(pre['environmentControls']) == 9
     assert digest(baseline/'sdirk-analysis.json') == pre['baselineAnalysisSha256']
     original = read(baseline/'sdirk-analysis.json'); criteria = spec['criteria']
     assert original['criteria'] == criteria

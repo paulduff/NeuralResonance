@@ -1,5 +1,10 @@
 # One further Golgi refinement — 9 November 2026
 
+**Current status, 13 November:** the first launched package failed during the
+environment preflight, before finer simulations. All 43 focused tests passed.
+See `DNNE_Golgi_Runtime_Transition_2026-11-13.md` for the verified cause and retry
+design. The original protocol and launch history are preserved below.
+
 The verified [third-order comparison](DNNE_Golgi_Third_Order_Comparison_2026-11-09.md)
 completed all 38 cases but failed voltage, gate and calcium accuracy in the five
 firing protocols. Errors fell approximately eightfold on the last timestep
@@ -69,3 +74,28 @@ hashing, offline analysis and simulations out of that benchmark. The existing
 motor scheduling package still follows its completion report. This candidate
 does not alter live DNNE, Avatar, Unity, editor labels or saved brains, and even
 numerical success would not qualify physiology, circuit function or recovery.
+
+## Preparation, pause and launch
+
+The CUDA cost, motor scheduling, somatic motor-unit and CUDA host accuracy
+windows were all operator-reported complete and reviewed before this launch.
+The latter two reviews are `DNNE_Somatic_Motor_Unit_Results_2026-11-09.md` and
+`DNNE_Olive_CUDA_Host_Results_2026-11-09.md`. No timing window is outstanding.
+
+The package `golgi-sdirk3-fine-20261109-4b5c0f` was frozen on 9 November at
+revision `69bc40f1593ec5cab71883be705cdbe2a8cfbec4`. Preparation reverified the
+original failed Golgi capture, its review and all retained source/evidence.
+All 3,089 initial files plus manifest were verified on D:. The operator then
+paused the goal before launch; the original package and date were preserved.
+
+On 13 November the operator resumed work. The repository was clean, the frozen
+launcher matched the working copy, the configured executables existed, and no
+prior launch or execution-status file existed. The launcher rechecked every
+initial C:/D: hash before starting independent visible PowerShell task
+`DNNE-Golgi-Sdirk3-Fine-b5e096c0065f`. Its 43 focused tests, preserved-analysis
+preflight and 14 new conditions remain unreviewed. No live status or output is
+being inspected.
+
+This is the only pending experiment. Do not start CUDA host timing until the
+operator reports this window complete and its evidence has been reviewed.
+No runtime selection or biological qualification follows from launch.

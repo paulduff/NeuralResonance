@@ -186,7 +186,7 @@ def candidate(package, row, condition, cap, criteria):
         passed=all(checks.values()),sampledChargeLedgerErrorFc=charge_error,sampledCalciumLedgerErrorMm=max(high_error,low_error))
 
 
-def audit(package):
+def audit(package, *, replay_environment=None):
     spec=validate_package(package)
     criteria = spec['criteria']
     refs, uncertainty = load_references(package,spec)
@@ -260,7 +260,8 @@ def audit(package):
             result.update(passed=False,error=repr(error))
         assessment.append(result)
     environment=module('preserved_environment_audit',package/'source/tools/golgi-reference-resume.py').environment()
-    assert environment==read(package/'reference-preflight.json')['environment'],'Numerical dependencies changed during the study.'
+    expected_environment = read(package/'reference-preflight.json')['environment'] if replay_environment is None else replay_environment
+    assert environment==expected_environment,'Numerical dependencies changed during the study.'
     report=dict(completed=True,caseCount=expected_count,completedCases=sum(r['completed'] for r in rows),cases=rows,
         criteria=criteria,referenceUncertainty=uncertainty,passiveReferenceComparisons=passive_checks,assessment=assessment,
         numericalCriteriaPassed=all(r['passed'] for r in assessment),physiologyQualified=False,activeAxonQualified=False,avatarRecoveryAssessed=False)

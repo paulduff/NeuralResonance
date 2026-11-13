@@ -875,3 +875,24 @@ verified D: review copies. Neither window remains pending. This is isolated moto
 integration and host numerical agreement, not matched human physiology, live
 authority, speedup or recovery. Finer Golgi is the next prepared window; host
 timing must await its operator report, without competing experiments or builds.
+
+On 13 November the operator resumed after the 9 November pause. The already
+prepared finer Golgi package `golgi-sdirk3-fine-20261109-4b5c0f`, frozen revision
+`69bc40f1593ec5cab71883be705cdbe2a8cfbec4`, is now launched as independent visible
+PowerShell task `DNNE-Golgi-Sdirk3-Fine-b5e096c0065f`. Its 3,089 initial files plus
+manifest were verified on D: before the pause and rechecked by the launcher.
+This is the only pending window: 43 focused tests, exact old-analysis preflight,
+14 new fine cases and 38 retained traces. Await the operator report; do not read
+live outputs. CUDA host timing remains unlaunched and must wait for this run.
+See the launch section of `docs/DNNE_Golgi_Finer_Comparison_2026-11-09.md`.
+
+The operator reported that finer Golgi window failed at environment preflight.
+The full failed C:/D: capture verifies: 3,481 files, all 43 focused tests passed,
+zero new cases. Exactly three base Python binary hashes changed, with unchanged
+versions and all other 2,433 dependency files. See
+`docs/DNNE_Golgi_Runtime_Transition_2026-11-13.md`. Do not overwrite the failed
+package or silently waive its guard. The retry requires a verified environment
+review, permits only the explicitly recorded three-binary transition, and must
+reproduce the entire old analysis exactly before finer simulations. Numerical
+bounds and solver equations remain unchanged. The failed window is no longer
+pending; the corrected window has not yet launched. CUDA timing stays held.

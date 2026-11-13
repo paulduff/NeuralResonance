@@ -105,3 +105,19 @@ reported and reviewed, exercise the combined producer against actual Unity,
 retaining every original body/contact reply and verifying joint completeness.
 Do not substitute this fixture result for that physical integration. All pending
 reports and reviews must precede the separately prepared CUDA host timing run.
+
+## Launch record — 13 November 2026
+
+The focused check package is `physical-observation-20261113-8c18b7`, frozen
+revision `f263abf83675c53f26a804648794adf8bcffc767`, launched in independent
+visible PowerShell task `DNNE-Physical-Observations-026be2d85734`. Its 1,512
+initial files plus manifest have a verified matching D: copy under
+`D:\DNNE-desktop-runs\UnityWorld\physical-observation-20261113-8c18b7`.
+The launcher rechecked both copies before starting. No outputs are inspected
+until the operator reports completion; no pass is inferred from launching it.
+
+Three reports are now pending: this 65-check window, actual Unity body sampling
+`unity-physical-sample-20261113-1ff02e`, and corrected finer Golgi
+`golgi-sdirk3-fine-20261113-ca813f`. CUDA host timing remains held until all
+reports and evidence reviews are complete. This window does not run Unity,
+DNNE, a receptor model or any new physical solve.

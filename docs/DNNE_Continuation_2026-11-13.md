@@ -17,8 +17,9 @@ pass before new simulations. The original numerical bounds remain unchanged.
 
 The operator explicitly confirmed the corrected Golgi `ca813f` run is still
 running after pasting the older `4b5c0f` failure. Do not inspect the retry or
-restart it based on that old message. It remains pending alongside the new
-actual Unity physical-sample study below; neither window is monitored live.
+restart it based on that old message. It remains pending alongside the actual
+Unity physical-sample and combined body/contact studies below. None is monitored
+live; three completion reports are pending.
 
 The physical producer window `physical-producer-20261113-efe4af` has now been
 reported complete and reviewed: all 39 checks passed, including the 16 new
@@ -42,7 +43,8 @@ reviewed and pushed before the pause. Their result documents are
 isolated neuronal-source muscle activation and exact host-candidate agreement;
 they do not establish calibrated human physiology, live balance or GPU speedup.
 
-After the operator reports Golgi and actual Unity physical-sample completion,
+After the operator reports Golgi, actual Unity physical-sample and combined
+body/contact check completion,
 review their saved evidence without new model execution. Producer fixture review
 is complete. Then prepare the matched host-candidate timing package. Do not
 overlap timing with other studies, builds
@@ -104,7 +106,17 @@ layout, body plus all contact frames per actual step, bounded atomic transport,
 and a combined capture owner. The explicit Unity adapter uses the same retained
 reply, with 15 sites declared from the owning Avatar source. Existing body-only
 source and frozen studies remain unchanged. Both .NET assemblies build; the
-65-case independent PowerShell rig is prepared. It qualifies fixtures/parser/
+65-case independent PowerShell rig is now launched as
+`physical-observation-20261113-8c18b7`, frozen revision
+`f263abf83675c53f26a804648794adf8bcffc767`, task
+`DNNE-Physical-Observations-026be2d85734`, with 1,512 initial files plus manifest
+verified on D: and rechecked before launch. Its outcome awaits the operator
+report. Its scope is fixtures/parser/
 transport behavior only; native combined capture follows the operator reports
 and review. Any launched new window also blocks exclusive CUDA timing until
 its completion report and evidence review.
+
+Current pending report count is three: Golgi `ca813f`, actual Unity body
+sampling `1ff02e`, and combined body/contact checks `8c18b7`. This is a report
+queue, not a claim about live process state. Leave their outputs untouched until
+their own operator reports. No CUDA timing study is launched.

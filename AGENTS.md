@@ -1000,3 +1000,13 @@ unloaded metadata are preserved and remain unqualified. Both .NET builds pass;
 the 65-check rig (26 new, 38 body regressions, one manifest) is prepared but has
 not run. If launched, await this operator report as well as Golgi and native
 Unity before CUDA timing. No live neuronal/Avatar/editor path is promoted.
+
+The combined body/contact checks are now launched as
+`physical-observation-20261113-8c18b7`, frozen revision
+`f263abf83675c53f26a804648794adf8bcffc767`, task
+`DNNE-Physical-Observations-026be2d85734`, after verifying 1,512 initial files
+plus manifest on D: and rechecking both copies. Three operator reports now await
+review: corrected Golgi `ca813f`, actual Unity body sampling `1ff02e` and these
+65 combined/regression checks `8c18b7`. Do not inspect live outputs. Await every
+report and review before CUDA timing. The new window runs no Unity or neuronal
+model; no result or physiological qualification is inferred from launch.

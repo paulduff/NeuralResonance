@@ -81,3 +81,10 @@ loading, controls and trajectories run only in the visible window, with results
 reviewed after the operator reports completion. The candidate is isolated:
 actual gamma firing, causal receptor transduction, afferent membrane calibration,
 full slack/re-tension, Avatar/Unity selection and recovery remain outstanding.
+
+The first preparation `spindle-state-20261113-c9a66b` stopped before execution:
+isolated Python could not resolve an unrelated motor protocol imported by a
+shared verification helper. The preparer now verifies selected C:/D: files
+directly using standard-library hashing. The rejected source snapshot and
+preparation-failure record have a verified D: copy (1,639 files plus manifest).
+No PowerShell experiment was launched for that package; it is not pending.

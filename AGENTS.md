@@ -1266,3 +1266,9 @@ A pure trial-stress function uses authoritative populations and returns detached
 mass without mutation. Original source/license and completed captures stay
 preserved. Python/PowerShell syntax checks pass; Octave class/trajectory/control
 results await a fresh visible window. No live Avatar/Unity/editor/save changed.
+
+Initial spindle-state preparation `c9a66b` rejected before launch because an
+unrelated imported verifier required a motor protocol outside isolated Python's
+search path. The preparer now verifies selected C:/D: files directly. The frozen
+setup rejection is preserved with a verified D: copy (1,639 files plus manifest),
+ran no model/test, and is not pending. Use a fresh package after committing.

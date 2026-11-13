@@ -4,8 +4,6 @@ Preparation edits source bytes; verification/audit reads saved evidence only.
 Model execution belongs to the independent visible Octave/PowerShell window.
 """
 from hashlib import sha256
-import importlib.util
-import json
 import math
 from pathlib import Path
 import shutil
@@ -16,10 +14,16 @@ STATE_ABSOLUTE = 1e-12
 STRESS_ABSOLUTE_PA = 1e-7
 
 
-def module(path, name):
-    spec = importlib.util.spec_from_file_location(name, path)
-    result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
-    return result
+def verify_selected_capture(capture, names, base):
+    manifest = base.read(capture / 'backup-manifest.json')
+    backup = Path(manifest['Destination'])
+    assert base.digest(capture / 'backup-manifest.json') == base.digest(backup / 'backup-manifest.json')
+    entries = {e['Path'].replace('\\', '/'): e for e in manifest['Files']}
+    for name in names:
+        for folder in (capture, backup):
+            path = folder / name
+            assert base.io(path).stat().st_size == entries[name]['Bytes']
+            assert base.digest(path) == entries[name]['Sha256'], name
 
 
 def transform(original):
@@ -74,9 +78,8 @@ def transform(original):
 
 def prepare(package, base):
     root = Path(__file__).resolve().parents[1]
-    helper = module(root / 'tools/prepare-motor-boundary.py', 'spindle_prerequisite')
     reviewed = root / 'artifacts/muscle-spindle-profile-review-20261113'
-    helper.verify(reviewed, ['spindle-review.json'])
+    verify_selected_capture(reviewed, ['spindle-review.json'], base)
     evidence = base.read(reviewed / 'spindle-review.json')
     assert evidence['operatorReportedCompletion'] and evidence['savedAnalysisReproduced']
     assert evidence['runtimeBeforeAndAfterMatched'] and evidence['analysis']['complete']
@@ -86,7 +89,7 @@ def prepare(package, base):
     names = ['mechanics/' + label + '.json' for label in labels]
     names += ['mechanics/' + f + '-state-boundaries.json' for f in base.FIBERS]
     names += ['mechanics/execution.json', 'mechanics/resolution.json', 'runtime-before.json', 'runtime-after.json']
-    helper.verify(baseline, names)
+    verify_selected_capture(baseline, names, base)
     reference = package / 'state-baseline'; reference.mkdir()
     shutil.copyfile(reviewed / 'spindle-review.json', reference / 'review.json')
     for name in names:

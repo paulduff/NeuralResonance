@@ -1317,3 +1317,8 @@ arrivals, all-source completeness and one physics owner. Neither this candidate
 nor the spindle candidate is live-selected. See the continuation document for
 run identifiers; inspect outcomes only after the operator reports completion.
 
+Causal motor component package `causal-motor-20261113-848e50` is launched from
+`4c234d5` in visible task `DNNE-Causal-Motor-a847a7d5df52`; initial D: backup
+verified 1,563 files plus manifest. Its 120 test outcomes are not yet inspected.
+Together with spindle root package `ae7ae4`, it awaits the operator's completion
+report. Do not monitor either package. Native/live coupling remains unselected.

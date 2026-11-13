@@ -334,3 +334,13 @@ build and syntax checks pass; test outcomes remain unreviewed. No live runtime
 selection changed. The spindle root diagnostic `ae7ae4` still awaits the
 operator's completion report and has not been monitored.
 
+## Causal motor component launch
+
+`causal-motor-20261113-848e50` was frozen from
+`4c234d51d0134845283ad1f169fc5ce57e7d8f7e`. Its 1,563 initial files plus manifest
+were verified on D: and rechecked by the launcher. Visible independent task
+`DNNE-Causal-Motor-a847a7d5df52` was launched for 27 causal motor/body cases and
+93 regressions. It has not been monitored; await the operator's completion
+report before inspecting logs, status or test outcomes. The spindle root run
+`spindle-state-20261113-ae7ae4` also awaits its report. These are the two pending
+packages; no additional experiment was launched. No live runtime was selected.

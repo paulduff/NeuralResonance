@@ -224,6 +224,20 @@ internal sealed class AvatarDynamicMuscle
         catch { Faulted = true; throw; }
     }
 
+    // Explicit partition boundary: physics has completed at this SAME time.
+    // Change only the observed total path length; retain every fiber/calcium
+    // state and ledger. The owner must qualify splitting error and account for
+    // physical boundary work. This is not future-frame interpolation or an ODE
+    // advancement, and it is never called by the prescribed-reference rig.
+    public void ObserveCompletedBodyLength(double physicalTimeMs, double lengthMeters)
+    {
+        RequireOperational();
+        if (physicalTimeMs != TimeMs || !double.IsFinite(lengthMeters) || lengthMeters <= 0)
+            throw new ArgumentException("Physical geometry must belong to the muscle's completed time.");
+        _ = Forces(_state, lengthMeters); // Validate before changing the boundary.
+        _length = lengthMeters;
+    }
+
     private void AdvanceCore(PrescribedMusculotendonInterval interval, double h)
     {
         double halfLength = interval.StartLengthMeters + (interval.EndLengthMeters - interval.StartLengthMeters) / 2;

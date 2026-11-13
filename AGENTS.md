@@ -1304,3 +1304,16 @@ verified D: copy, rechecked at launch; all pinned runtime files verify. This is
 the only pending operator report. No live monitoring or inferred root pass.
 Restore the preserved causal-motor draft for independent development as above;
 it is not built, tested or selected live.
+# Causal motor/body candidate, 13 November
+
+`docs/DNNE_Causal_Motor_Body_2026-11-13.md` records the isolated causal motor-to-body
+owner and its explicit start-held tension/geometry partition. The qualified
+muscle core is unchanged except for the declared same-time boundary observation.
+27 new cases plus 93 regressions are prepared for a visible PowerShell package;
+authoring compilation is not a test result. Do not promote this first-order
+coupling without independent full mechanical trajectory refinement. Preserve
+measured metre/newton units, matched force/path geometry, actual fractional
+arrivals, all-source completeness and one physics owner. Neither this candidate
+nor the spindle candidate is live-selected. See the continuation document for
+run identifiers; inspect outcomes only after the operator reports completion.
+

@@ -322,3 +322,15 @@ on D:. Preparation verified all 59,532 external runtime files and pinned C:/D:
 archives; it executed no Octave model. Await both operator reports without reading
 live outputs. Neither launch establishes native compatibility, physiological
 validity or a new runtime test result. No timing study is pending.
+# Causal motor/body integration candidate
+
+The preserved motor/body draft is now implemented with a same-time completed
+geometry boundary and a full preflight of represented muscle substeps before
+event consumption or physics. See `DNNE_Causal_Motor_Body_2026-11-13.md` for its
+explicit first-order partition, physical virtual-work contract, 27 component
+cases plus 93 regressions, frozen preparation/PowerShell runner and remaining
+independent coupled-reference/native integration requirements. The authoring
+build and syntax checks pass; test outcomes remain unreviewed. No live runtime
+selection changed. The spindle root diagnostic `ae7ae4` still awaits the
+operator's completion report and has not been monitored.
+

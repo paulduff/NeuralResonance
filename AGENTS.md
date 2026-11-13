@@ -952,3 +952,14 @@ manifest on D: and rechecking them at launch. Two windows now await operator
 reports: this 39-case producer/transport check and finer Golgi retry
 `golgi-sdirk3-fine-20261113-ca813f`. Do not inspect their live outputs. CUDA
 host timing stays unlaunched until both reports and evidence reviews are complete.
+
+The physical producer window is now reported complete and reviewed: all 39
+checks pass (16 producer, 22 transport, one manifest), with all 1,885 C:/D:
+files, executed binaries and declared test identities verified. Git source
+comparison records only exact LF-to-CRLF archive conversion; frozen byte hashes
+stay strict. The review has its own verified D: backup. See the result section
+of `docs/DNNE_Physical_Sample_Producer_2026-11-13.md`. This qualifies the tested
+ownership/transport behavior, not live Unity, sensory physiology or recovery.
+The operator explicitly confirms Golgi retry `ca813f` is still running; the
+re-pasted `4b5c0f` failure is the old package. Golgi alone remains pending.
+Leave its outputs untouched and continue holding CUDA timing until its report.

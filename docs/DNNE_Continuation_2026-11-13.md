@@ -5,7 +5,7 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-## Pending windows
+## Pending Golgi window
 
 `golgi-sdirk3-fine-20261113-ca813f`, frozen revision
 `ad68cc7a3c5e1f854d1c0bfe489602a9caad37f4`, task
@@ -15,12 +15,16 @@ The scope remains 43 focused tests, 14 new fine traces and 38 retained traces.
 The additional nine environment controls and exact saved-analysis replay must
 pass before new simulations. The original numerical bounds remain unchanged.
 
-The isolated physical producer window `physical-producer-20261113-efe4af` is
-also now launched, frozen at `af9faf305e9c18215b5d3c3670e63b240467eb93`, task
-`DNNE-Physical-Producer-50ce8b4cc5d5`. Its 1,494 initial files plus manifest were
-verified on D: and rechecked at launch. It runs 16 producer, 22 transport and one
-manifest check, with no live body or neuronal model. No output has been inspected.
-Await both operator reports and saved-result reviews before CUDA host timing.
+The operator explicitly confirmed the corrected Golgi `ca813f` run is still
+running after pasting the older `4b5c0f` failure. Do not inspect the retry or
+restart it based on that old message. It is the sole remaining pending window.
+
+The physical producer window `physical-producer-20261113-efe4af` has now been
+reported complete and reviewed: all 39 checks passed, including the 16 new
+producer cases, and all 1,885 C:/D: files and executed binaries verify. The
+separate review also has a verified D: backup. See the result section of
+`DNNE_Physical_Sample_Producer_2026-11-13.md`. No tests were repeated in review;
+live Unity integration and afferent physiology remain unqualified.
 
 The first package `golgi-sdirk3-fine-20261109-4b5c0f` is a preserved failure,
 not a pending run. Its 43 tests passed, but three changed Python interpreter
@@ -37,8 +41,8 @@ reviewed and pushed before the pause. Their result documents are
 isolated neuronal-source muscle activation and exact host-candidate agreement;
 they do not establish calibrated human physiology, live balance or GPU speedup.
 
-After the operator reports each window's completion, review that saved evidence
-without new model execution. Once both reviews are complete, prepare the matched
+After the operator reports Golgi completion, review that saved evidence without
+new model execution. Producer review is complete. Then prepare the matched
 host-candidate timing package. Do not overlap timing with other studies, builds
 or heavy evidence hashing. No host-candidate timing package has been launched.
 The timing rig is now coded and both variants build; its prospective protocol,
@@ -66,12 +70,12 @@ Continue inspecting Avatar's existing sensory/muscle path before changing it.
 The previous source/boundary reviews remain the integration map. Worlds start
 paused, and live runtime/editor qualification must follow demonstrated circuitry.
 
-The next physical producer candidate is coded in
+The physical producer candidate is implemented and reviewed in
 `DNNE_Physical_Sample_Producer_2026-11-13.md`. It owns initial capture,
 capacity-before-step, exact counter/duration checks and immediate endpoint capture;
 any uncertain physical/capture failure faults the epoch. The producer and test
-assembly build with zero warnings/errors. Sixteen new producer checks plus the
-22 reviewed transport cases and manifest check form its prospective isolated
-window. No live physical adapter selects it. If launched, its operator report
-and review must also precede CUDA timing; runtime checks are not inferred from
-compilation.
+assembly build with zero warnings/errors; the sixteen new producer checks,
+22 transport cases and manifest check have now passed their frozen window.
+No live physical adapter selects it. Actual physical stepping/capture integration
+is the next producer boundary; its success cannot be inferred from fixtures or
+from preserving a previously recorded Unity observation.

@@ -100,3 +100,32 @@ The window is now launched as `physical-producer-20261113-efe4af`, frozen at
 verified on D: and rechecked by the launcher. No runtime result has been read.
 This and Golgi retry `golgi-sdirk3-fine-20261113-ca813f` await operator reports;
 both reviews are prerequisites for CUDA host timing.
+
+## Reported completion and review
+
+The operator reported completion on 13 November. All **39 checks passed**:
+16 producer, 22 existing transport and one solution-manifest case, with no
+skipped or repeated names. `tools/review-physical-sample-producer.py` checked the
+TRX against the exact declared test methods and verified the frozen inputs,
+executed test binaries and all **1,885 files (91,578,836 bytes per copy)** on C:
+and D:. The backup-manifest hash is
+`121DA957F7C4B18781D35CEFA86DBFAA7A706F3D41272A5949418B00B5109EB4`.
+
+The separate Git comparison initially rejected Windows archive line endings.
+The review now records exact LF-to-CRLF conversions and corresponding hashes;
+it allows no other text changes. Frozen archive/source hashes and both complete
+capture byte checks remain unchanged. The review did not rerun any test, model
+or benchmark. Its `artifacts/physical-producer-review-20261113/review.json` has
+a verified D: copy under the same folder name (one file plus manifest).
+
+This establishes the tested ownership, backpressure, failure-stop and original
+observation behavior. It does not establish an actual Unity adapter, physical
+integration accuracy, receptor firing or recovery. The next producer step is an
+isolated adapter to actual physical stepping with the same original-sample
+guarantees; its live selection remains gated on coupling and physiology.
+
+This window is no longer pending. The operator explicitly confirmed that the
+corrected Golgi `ca813f` run is still running. The newly pasted `4b5c0f` failure
+belongs to the older, already preserved runtime-mismatch package. Do not treat
+that old report as completion of the retry. Golgi is again the sole pending
+window, and CUDA host timing remains held without live monitoring.

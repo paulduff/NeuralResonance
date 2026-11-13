@@ -15,7 +15,8 @@ public static class WorldBuild {
   var report=new Inspection{unity=Application.unityVersion,human=animator!=null&&animator.avatar!=null&&animator.avatar.isHuman,valid=animator!=null&&animator.avatar!=null&&animator.avatar.isValid,
    meshes=instance.GetComponentsInChildren<SkinnedMeshRenderer>().Select(r=>r.name+" ("+r.sharedMesh.vertexCount+" vertices)").ToArray(),
    bones=instance.GetComponentsInChildren<Transform>().Select(t=>t.name).ToArray()};
-  Directory.CreateDirectory("../artifacts/unity-world-20261012");File.WriteAllText("../artifacts/unity-world-20261012/avatar-inspection.json",JsonUtility.ToJson(report,true));
+  var inspectionDirectory=Environment.GetEnvironmentVariable("NRE_UNITY_OUTPUT")??"../artifacts/unity-world-20261012";
+  Directory.CreateDirectory(inspectionDirectory);File.WriteAllText(Path.Combine(inspectionDirectory,"avatar-inspection.json"),JsonUtility.ToJson(report,true));
   UnityEngine.Object.DestroyImmediate(instance);
   if(!report.human||!report.valid)throw new Exception("Avatar humanoid import did not qualify.");
  }

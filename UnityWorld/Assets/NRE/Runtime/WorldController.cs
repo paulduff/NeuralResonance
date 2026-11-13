@@ -32,9 +32,10 @@ public sealed class WorldController:MonoBehaviour {
  const string brain="http://127.0.0.1:5080";const string editor="http://127.0.0.1:5090/editor/api/world/unity";
  Texture2D retinalTexture;RenderTexture leftRetina,rightRetina;
  public MotorFrame DiagnosticCommand;public bool DiagnosticMode;
+ object physicalSampleOwner;
  void Awake(){
-  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
-  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify"}.Any(flag=>Argument(flag)!=null);
+  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
+  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify"}.Any(flag=>Argument(flag)!=null);
   Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-9.81f,0);Time.fixedDeltaTime=StepSeconds;
   Avatar=ArticulatedAvatar.Create(avatarPrefab);view=Camera.main;previewTarget=new Vector3(0,.85f,0);
   if(Argument("--muscles")!=null)Avatar.EnableMuscles();
@@ -47,6 +48,7 @@ public sealed class WorldController:MonoBehaviour {
   if(Argument("--muscle-qualify")!=null)StartCoroutine(MuscleQualification.Run(this));
   if(Argument("--balance-qualify")!=null)StartCoroutine(BalanceCapability.Run(this));
   if(Argument("--response-qualify")!=null)StartCoroutine(BalanceResponseQualification.Run(this));
+  if(Argument("--physical-sample-qualify")!=null)StartCoroutine(PhysicalSampleQualification.Run(this));
  }
  void CreateEye(bool left){var eye=new GameObject(left?"Left physical eye":"Right physical eye");eye.transform.SetParent(Avatar.links["head"].body.transform,false);eye.transform.localPosition=new Vector3(left?-.032f:.032f,.12f,.115f);
   var camera=eye.AddComponent<Camera>();camera.fieldOfView=85;camera.nearClipPlane=.03f;camera.farClipPlane=40;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.23f,.31f,.38f);camera.enabled=false;
@@ -60,6 +62,20 @@ public sealed class WorldController:MonoBehaviour {
   Avatar.SynchronizeSkin();
  }
  public void Step(){
+  if(physicalSampleOwner!=null)throw new InvalidOperationException("Only the isolated sample owner may step this body.");
+  StepCore();
+ }
+ public void ClaimPhysicalSampleOwnership(object owner){
+  if(owner==null||physicalSampleOwner!=null||!IsolatedQualification||Connected||Running||physicsSteps!=0||Argument("--physical-sample-qualify")==null)
+   throw new InvalidOperationException("Physical sample ownership requires a fresh paused isolated body.");
+  physicalSampleOwner=owner;Status="Paused · isolated physical sample bridge";
+ }
+ public void StepForPhysicalSample(object owner){
+  if(owner==null||!ReferenceEquals(owner,physicalSampleOwner)||!IsolatedQualification||Connected||Running)
+   throw new InvalidOperationException("Invalid isolated physical sample owner.");
+  StepCore();
+ }
+ void StepCore(){
   if(DiagnosticMode&&!IsolatedQualification)throw new InvalidOperationException("Diagnostic commands cannot enter live operation.");
   if(!IsolatedQualification)Avatar.muscles.RequireLivePolicy();
   MotorFrame command=DiagnosticMode?DiagnosticCommand:Connected&&motor.IsAuthorized()?motor:new MotorFrame();
@@ -82,7 +98,7 @@ public sealed class WorldController:MonoBehaviour {
   GUI.Box(new Rect(16,16,560,168),"NRE · Unity physical world");
   GUI.Label(new Rect(32,44,530,24),Status);
   bool ready=!connecting&&(!Connected||(Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f));
-  GUI.enabled=ready;
+  GUI.enabled=ready&&physicalSampleOwner==null&&Argument("--physical-sample-qualify")==null;
   if(Trial!=null)GUI.enabled=ready&&Connected&&!Trial.Finished;
   if(GUI.Button(new Rect(32,75,110,30),Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE population commands":"Live · isolated mechanics preview"):"Paused";}
   GUI.enabled=!connecting&&(Trial==null||!Trial.Finished);
@@ -164,7 +180,7 @@ public sealed class WorldController:MonoBehaviour {
  public IEnumerator ConnectForTrial()=>Connect();
  public IEnumerator DisconnectForTrial()=>Disconnect();
  public void PauseTrial(string reason){Running=false;Status=reason;}
- public void ResetDiagnosticBody(bool muscles,bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true,double diagnosticStrengthScale=1){if(Connected||!DiagnosticMode||!IsolatedQualification)throw new InvalidOperationException("Body reset is an isolated fixture only.");
+ public void ResetDiagnosticBody(bool muscles,bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true,double diagnosticStrengthScale=1){if(physicalSampleOwner!=null||Connected||!DiagnosticMode||!IsolatedQualification)throw new InvalidOperationException("Body reset is an isolated fixture only, outside sample ownership.");
   Running=false;Avatar.pelvis.gameObject.SetActive(false);Avatar.visual.SetActive(false);Destroy(Avatar.pelvis.gameObject);Destroy(Avatar.visual);
   Avatar=ArticulatedAvatar.Create(avatarPrefab,diagnosticStrengthScale);if(muscles)Avatar.EnableMuscles(preserveActiveCapacity,preserveVelocityCapacity);spinal.Reset();
  }

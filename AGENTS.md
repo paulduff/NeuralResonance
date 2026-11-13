@@ -963,3 +963,16 @@ ownership/transport behavior, not live Unity, sensory physiology or recovery.
 The operator explicitly confirms Golgi retry `ca813f` is still running; the
 re-pasted `4b5c0f` failure is the old package. Golgi alone remains pending.
 Leave its outputs untouched and continue holding CUDA timing until its report.
+
+The actual Unity physical-sample adapter is documented in
+`docs/DNNE_Unity_Physical_Samples_2026-11-13.md`. It reuses the unchanged reviewed
+producer/outbox/receiver against a dedicated isolated Unity child. Scoped step
+ownership prevents competing Unity advances; every request/reply is preserved.
+The study requires 201 delivered body observations, 201 actual advances with
+the last capture deliberately failed, completeness only through step 200,
+backpressure/paused-body holds and actual finite motion/contact evidence. Raw
+per-link contacts are preserved but not delivered by the body-only lane. The
+declared neural epoch is isolated, not a live handshake. .NET builds succeed;
+Unity compile/runtime checks remain prospective in an independent PowerShell
+window. No live integration, afferent or recovery qualification is inferred.
+If launched, await its report/review as well as Golgi before CUDA host timing.

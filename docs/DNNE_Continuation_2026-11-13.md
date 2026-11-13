@@ -79,3 +79,13 @@ assembly build with zero warnings/errors; the sixteen new producer checks,
 No live physical adapter selects it. Actual physical stepping/capture integration
 is the next producer boundary; its success cannot be inferred from fixtures or
 from preserving a previously recorded Unity observation.
+
+The actual Unity adapter and its next study are now coded in
+`DNNE_Unity_Physical_Samples_2026-11-13.md`. The unchanged producer controls an
+isolated actual Unity child through recorded step commands, with scoped Unity
+step ownership and original per-step body/contact capture. The study requires
+201 delivered samples, actual holds during backpressure/pauses and a failed
+capture after a final extra step, without moving its completeness boundary.
+Both .NET assemblies build. Native Unity compilation/execution remain pending
+in the PowerShell rig; no live body or brain path selects it. If launched, its
+report and review must also precede CUDA timing.

@@ -182,3 +182,9 @@ bounded GitHub search did not locate the sought Housley source. These are search
 limits, not evidence that a source does not exist. No unauthenticated alternative
 or unreviewed model was adopted. Preparation paused to review the operator's
 completed Unity/body-contact captures and repair their serialization failure.
+
+The freezer, native harness, PowerShell launcher and saved-record analyzer are
+now coded in `DNNE_Spindle_Native_Reference_2026-11-13.md`. They remain unexecuted,
+unfrozen and unlaunched. Both pending study reports have now arrived; their
+evidence reviews and the exclusive CUDA host timing study take priority. Do not
+mistake preparation or native finite execution for qualified sensory physiology.

@@ -29,6 +29,15 @@ function run_spindle_mechanics_reference(package)
     resolved.(expectedNames{k}) = path;
   end
   resolved.ode23 = which('ode23'); resolved.interp1 = which('interp1'); resolved.fzero = which('fzero');
+  resolved.odeset = which('odeset');
+  core = {'ode23', 'interp1', 'fzero', 'odeset'};
+  runtimePrefix = [strrep(config.OctaveHome, '\', '/') '/'];
+  for k = 1:numel(core)
+    path = strrep(resolved.(core{k}), '\', '/');
+    if ~strncmpi(path, runtimePrefix, numel(runtimePrefix))
+      error('Numerical function is outside the declared runtime: %s', core{k});
+    end
+  end
   resolved.griddedInterpolant = which('griddedInterpolant');
   resolved.runtime = OCTAVE_VERSION; resolved.computer = computer();
   resolved.ode23Defaults = odeset();
@@ -60,7 +69,8 @@ function run_spindle_mechanics_reference(package)
     try
       result = boundaries(fibers{f});
       outcome = struct('label', label, 'completed', true, 'finite', ...
-        result.original.finite && result.shifted.finite && result.returned.finite && result.outOfBins.finite, 'error', '');
+        result.original.finite && result.shifted.finite && result.returned.finite && result.outOfBins.finite && ...
+        all(isfinite([result.previousOverlap, result.exactBoundaryFromPositive, result.exactBoundaryFromZero])), 'error', '');
     catch failure
       result = struct('error', failure.message, 'stack', failure.stack);
       outcome = struct('label', label, 'completed', false, 'finite', false, 'error', failure.message);
@@ -74,10 +84,9 @@ function run_spindle_mechanics_reference(package)
     'receptorPotentialComputed', false, 'afferentMembraneExecuted', false, 'physiologyQualified', false, ...
     'avatarRecoveryAssessed', false);
   summary.allExecutionsCompleted = all(cellfun(@(x) x.completed, outcomes));
-  summary.allTrajectoriesFinite = all(cellfun(@(x) x.finite, outcomes(1:15))) && ...
-    all(cellfun(@(x) x.finite, outcomes(17:31)));
+  summary.allRecordedStatesFinite = all(cellfun(@(x) x.finite, outcomes));
   write_json(fullfile(output, 'execution.json'), summary);
-  if ~summary.allExecutionsCompleted || ~summary.allTrajectoriesFinite
+  if ~summary.allExecutionsCompleted || ~summary.allRecordedStatesFinite
     error('Native mechanics execution incomplete or nonfinite; preserve evidence.');
   end
 end
@@ -165,7 +174,8 @@ function value = snapshot(hs, step, seconds)
   value.actinTotal = hs.y(end-1) + hs.y(end);
   value.populationRepresentationDifference = max(abs(attached(:) - hs.bin_pops(:)));
   value.minimumState = min(hs.y(:));
-  value.finite = all(isfinite([hs.y(:); hs.bin_pops(:); hs.hs_length; hs.hs_force(:); hs.f_overlap(:)]));
+  value.finite = all(isfinite([hs.y(:); hs.bin_pops(:); hs.hs_length; hs.cmd_length; hs.hs_force(:); ...
+    hs.cb_force(:); hs.passive_force(:); hs.f_overlap(:); hs.pCa_perStep; hs.no_detached(:); hs.f_bound(:)]));
 end
 
 function result = boundaries(fiber)

@@ -1,4 +1,4 @@
-# Independent coupled motor/body comparison in preparation
+# Independent coupled motor/body comparison and results
 
 The reported component package `causal-motor-20261113-848e50` passes all 120
 checks: 27 new causal motor/body cases and 93 muscle/transport regressions.
@@ -135,3 +135,42 @@ operator reports completion. It will run 120 regressions, eight reference
 controls, 40 candidate conditions and 24 adaptive references, retaining all
 partial evidence and checking numerical dependencies afterward. No successful
 numerical outcome is inferred from launch; no live Avatar/Unity selection changed.
+# Completed comparison review
+
+The operator reported `causal-motor-comparison-20261113-2acbfd` complete. Frozen
+revision `910a1d6f98ce39335d490b7dcbdb92decb7033b4` passes the original criteria:
+120 regression cases, four analytic mechanical method checks, four tendon
+quadrature controls, all 40 candidate conditions and 24 adaptive references over
+eight scenarios. The 28 recorded somatic arrivals remain exact. No new neuronal
+model was executed.
+
+`tools/review-causal-motor-comparison-20261113.py` verifies all 2,387 files in each
+C:/D: capture (564,751,804 bytes), all 1,568 Git source files and both binary
+manifests. The complete analysis was reproduced from saved data, without running
+tests or solving a model. Preparation, preflight, postflight and review numerical
+dependencies match; candidate/reference code remains unchanged. Capture manifest:
+`835F7058B92DE9A57913D1C3A45711C474442A076ADD4107D299C7A0DC3EE287`.
+The derived review has its own verified D: copy at
+`artifacts/causal-motor-comparison-review-20261113`.
+
+At the qualified finest physical step of 0.125 ms, worst errors across both
+muscle resolutions and both independent references are:
+
+| Quantity | Maximum absolute error |
+| --- | ---: |
+| Joint angle | 8.85575e-7 rad |
+| Joint speed | 7.02314e-7 rad/s |
+| Fiber length | 2.42581e-8 m |
+| Muscle force | 1.26279e-5 N |
+| Joint work | 1.01411e-8 J |
+| Maximum cumulative coupling defect | 1.35036e-8 J |
+| Sum of absolute coupling defects | 1.38585e-8 J |
+
+All declared physical refinement, muscle refinement, domain, arrival, reference
+agreement and accounting checks pass with unchanged bounds. This qualifies the
+tested isolated two-muscle, constant-moment-arm mechanical fixture at the stated
+resolutions. It does not establish that a 10 ms Unity step is accurate, that the
+whole body can run at 0.125 ms in real time, or that the reference muscle parameters
+are calibrated for all Avatar muscles. Native attachment geometry and force
+application are the next boundary; see `DNNE_Muscle_Path_Geometry_2026-11-13.md`.
+The package is no longer pending.

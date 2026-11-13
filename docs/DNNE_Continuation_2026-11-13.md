@@ -403,3 +403,21 @@ operator reports completion. It will run 120 regressions, eight reference
 controls, 40 candidate conditions and 24 adaptive references, retaining all
 partial evidence and checking numerical dependencies afterward. No successful
 numerical outcome is inferred from launch; no live Avatar/Unity selection changed.
+# Latest: coupled numerical qualification and muscle paths
+
+Operator-reported `causal-motor-comparison-20261113-2acbfd` is fully reviewed and
+passes its original independent numerical and refinement criteria. All 120
+regressions, eight analytic/quadrature controls, 40 candidate conditions and 24
+reference solves pass. The saved analysis is exactly reproducible, the full
+C:/D: captures/source/binaries verify, and the derived review has a verified D:
+copy. Its coupled fixture is qualified at 0.125 ms physical steps; native Unity,
+anatomical calibration and Avatar recovery remain open. See the comparison doc.
+There are no outstanding reports from earlier packages at this checkpoint.
+
+Independent development adds `AvatarMusclePath`, an immutable fixed-anchor
+polyline whose measured length/speed and attachment forces share one geometry.
+The existing Avatar's normalized joint-derived lengths are not physical paths.
+The generated Unity copy changes only the namespace; no live selection, saves,
+editor or qualified muscle/coupling core has changed. The geometry doc declares
+31 new checks plus 44 regressions and the remaining native/calibration boundary.
+Consult later launch records before identifying any pending runs.

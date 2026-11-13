@@ -1364,3 +1364,20 @@ was launched after verifying all 1,580 initial files plus manifest on D:. It gat
 40 candidate/24 reference conditions on 120 regressions and eight analytic/
 quadrature controls. Do not monitor; await the operator's completion report.
 No numerical qualification, live selection or Avatar recovery is claimed.
+
+Coupled comparison `2acbfd` was subsequently reported complete and fully reviewed:
+120 regressions, eight analytic/quadrature controls, 40 candidate conditions and
+24 independent references pass the original criteria. The full C:/D: capture,
+source/binaries and reproduced analysis verify; derived review is D: backed.
+This qualifies the isolated fixture at 0.125 ms physical steps, not native Unity
+or physiology. No older run remains pending at this checkpoint.
+
+`docs/DNNE_Muscle_Path_Geometry_2026-11-13.md` records the isolated fixed-attachment
+geometry candidate and its 31-case analytic/parity suite plus 44 regressions.
+Length, speed and every attachment/via reaction must derive from the same path;
+do not use normalized legacy joint lengths as calibrated metre-valued anatomy.
+Generate the Unity copy using `prepare-unity-muscle-paths.py`. The library does
+not authenticate native poses/clocks; an eventual adapter must preserve the
+existing clock, session, effort receipt and sole physical owner. No live path
+is selected. Total musculotendon length and spindle-sensed fiber state remain
+distinct. See later launch records; compilation alone is not qualification.

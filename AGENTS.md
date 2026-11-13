@@ -1213,3 +1213,12 @@ not a numerical accuracy claim. Require clean pushed source and verified initial
 D: backup, launch independently in visible PowerShell, then await the operator
 without monitoring. Independent reference bounds and legacy-control accuracy
 must not be relaxed after results. No live source/body/Unity/editor promotion.
+
+The coupled muscle comparison is now launched as
+`dynamic-muscle-comparison-20261113-cd1577`, frozen revision
+`66e136dc464254d7936c77332085a6ae6f75bb9d`, task
+`DNNE-Dynamic-Muscle-Comparison-90d60cea3207`. All 1,555 initial files plus manifest
+have a verified D: copy, rechecked at launch. It is the only pending operator
+report. Do not inspect its live outputs. All prior reports are reviewed; spindle
+state/overlap repair may proceed independently without changing the preserved
+native-adapted source or the running comparison. No timing study is pending.

@@ -35,12 +35,16 @@ on D: and rechecked at launch. It has now passed its reported component review.
 Independent adaptive traces, original-ordering comparisons, causal live body
 coupling and physiological calibration remain required. No current live
 mechanism or saved state is replaced by this candidate.
-The full numerical rig is coded in `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`:
+The full numerical rig is documented in `DNNE_Dynamic_Muscle_Comparison_2026-11-13.md`:
 33 candidate traces, 33 adaptive references and fifteen source-ordering controls,
 including complete replay of the 28 earlier genuine somatic arrivals. The probe
-builds; freezing/launch follows clean pushed source and verified initial D: backup.
-No new numerical result is inferred. Spindle state/overlap repair can proceed
-independently while the eventual comparison awaits its operator report.
+builds, and Python/PowerShell syntax checks pass. It is now launched as
+`dynamic-muscle-comparison-20261113-cd1577`, revision
+`66e136dc464254d7936c77332085a6ae6f75bb9d`, task
+`DNNE-Dynamic-Muscle-Comparison-90d60cea3207`, after verifying 1,555 initial files
+plus manifest on D: and rechecking them at launch. This is the only outstanding
+report; no live monitoring or result inference. Spindle state/overlap repair can
+proceed independently while the comparison awaits its operator report.
 Historical pending counts below are superseded by later launch records.
 
 ## Pending Golgi window

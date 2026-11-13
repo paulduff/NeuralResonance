@@ -90,3 +90,13 @@ Review begins only after the operator reports completion, with no live monitorin
 Numerical success would permit causal dynamic-source/body work; physiology,
 endplate/muscle action potentials, recruitment, live Unity coupling and recovery
 remain separate requirements. No live service, editor or saved brain changes.
+
+## Launch record
+
+The frozen package is `dynamic-muscle-comparison-20261113-cd1577`, revision
+`66e136dc464254d7936c77332085a6ae6f75bb9d`. All 1,555 initial files plus manifest
+have a verified D: copy, rechecked before launch. Independent visible PowerShell
+task `DNNE-Dynamic-Muscle-Comparison-90d60cea3207` was started. This is the only
+outstanding report. Await operator completion without inspecting live outputs;
+launch establishes no candidate/reference result. All preceding muscle, spindle
+and profile windows have completed evidence reviews.

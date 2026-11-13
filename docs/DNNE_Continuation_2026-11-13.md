@@ -5,12 +5,13 @@ and CIV is separate. No live neuronal/body model or saved brain changed today.
 All experimental execution remains in visible independent PowerShell windows,
 with results inspected only after the operator reports completion.
 
-Latest update: actual Unity body sampling `1ff02e` and combined contact checks
-`8c18b7` were both reported and reviewed. Unity passed; the contact suite failed
-on a computed-property JSON metadata defect. The repair builds and fresh
-67-check retry `physical-observation-20261113-014b85` is launched. The two completed windows are no longer
-pending. Corrected Golgi `ca813f` still awaits its own completion report; do not
-inspect it. Later launch records supersede the historical pending counts below.
+Latest update: corrected Golgi `ca813f` and repaired body/contact retry `014b85`
+were both operator-reported complete and passed full evidence review. Golgi's
+43 tests, fourteen new cases and all original numerical gates pass; contact's
+67 tests pass. No outstanding experiment report remains at this point. Prepare
+and launch the matched CUDA host timing study exclusively; further experiment
+execution and heavy hashing must wait for that timing report. Historical pending
+counts below are superseded by this update and subsequent launch records.
 
 ## Pending Golgi window
 
@@ -162,3 +163,18 @@ setup rejection are preserved, with 1,515 files plus manifest verified on D:.
 It ran no tests and is not pending. Current outstanding reports: corrected
 Golgi `ca813f` and contact retry `014b85`. Do not inspect either live output.
 CUDA timing still waits for both reports and reviews.
+
+## Both reports resolved
+
+The completed reviews are documented in `DNNE_Golgi_Finer_Results_2026-11-13.md`
+and the retry-result section of `DNNE_Body_Contact_Observations_2026-11-13.md`.
+All C:/D: files, frozen source, executed binaries and exact test identities verify.
+Golgi's saved analysis reproduces exactly with no ODE solve. The separate
+`golgi-contact-review-20261113` has a verified three-file D: copy plus manifest.
+The old contact failure was re-pasted, not repeated in the corrected retry.
+
+The spindle freezer, original-class harness, PowerShell launcher and analyzer
+are coded but unfrozen/unlaunched. Python/PowerShell syntax checks pass; native
+compatibility and numerical results remain untested. Its prospective scope is
+`DNNE_Spindle_Native_Reference_2026-11-13.md`. Hold it and new Unity integration
+until the exclusive host timing window is reported complete and reviewed.

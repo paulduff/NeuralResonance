@@ -1043,3 +1043,20 @@ and is preserved with its setup rejection/D: backup. Exactly two reports now
 remain outstanding: this contact retry `014b85` and corrected Golgi `ca813f`.
 The Unity body study passed review; the old contact failure is fully reviewed.
 All pending reports and reviews still gate CUDA host timing.
+
+The operator has now reported both corrected Golgi `ca813f` and contact retry
+`014b85`; the re-pasted `8c18b7` failure is old. Both current captures pass full
+review. See `docs/DNNE_Golgi_Finer_Results_2026-11-13.md` and the contact result
+section. Golgi: 43 tests, nine environment controls, fourteen new cases, eight
+protocol assessments, unchanged bounds and exact saved-analysis reproduction.
+All 3,638 C:/D: files per copy verify. Contacts: 67 tests and all 1,905 files per
+copy verify. Frozen Git sources, binaries and exact case identities match both.
+The three-file separate review has a verified D: backup. Neither is pending.
+
+Proceed with exclusive CUDA host timing after freezing clean pushed source and
+verifying its initial backup. No competing experiments, builds or heavy hashing
+after launch until its operator report. The spindle native-reference rig is
+coded and Python/PowerShell syntax checked, but remains unfrozen/unlaunched;
+Octave compatibility and numerical results are untested. Its scope is in
+`docs/DNNE_Spindle_Native_Reference_2026-11-13.md`. Combined actual Unity delivery,
+afferent physiology, connected Golgi function and recovery remain unqualified.

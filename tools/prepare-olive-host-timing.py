@@ -3,7 +3,7 @@ import argparse
 from datetime import datetime, timezone
 import importlib.util
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import sys
@@ -64,12 +64,21 @@ def main(review_folder):
     assert not package.exists() and not backup.exists(); package.mkdir()
     subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.zip'),revision], cwd=ROOT, check=True)
     with ZipFile(package/'source.zip') as archive:
-        assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in archive.namelist())
-        archive.extractall(package/'source')
+        for entry in archive.infolist():
+            name = PurePosixPath(entry.filename)
+            assert not name.is_absolute() and '..' not in name.parts and ':' not in entry.filename and '\\' not in entry.filename
+            assert ((entry.external_attr >> 16) & 0o170000) != 0o120000
+            target = io(package/'source'/name)
+            if entry.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with target.open('xb') as stream:
+                    stream.write(archive.read(entry))
     copied = []
     for old, new in copies.items():
         target = package/new; target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(capture/old, target)
+        shutil.copy2(io(capture/old), io(target))
         assert digest(target) == digest(capture/old)
         copied.append(dict(source=old,target=new,sha256=digest(target)))
     for name, value in [('host-timing-protocol.json',protocol()), ('schedule.json',schedule()),

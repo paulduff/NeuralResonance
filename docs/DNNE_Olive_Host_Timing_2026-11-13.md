@@ -98,3 +98,17 @@ Then prepare with `prepare-olive-host-timing.py --host-review REVIEW
 Do not run competing builds, experiments or heavy evidence hashing during timing.
 No live monitoring; the operator reports completion. Old saves, Avatar dynamics,
 World/Unity behavior and editor qualification labels remain unchanged.
+
+## Execution gate cleared on 13 November
+
+The operator reported corrected Golgi `ca813f` and contact retry `014b85`, and
+both full evidence reviews passed. Unity body sampling was already reviewed.
+Their reviews are preserved on D:. No experiment report is outstanding before
+this timing launch. The unexecuted spindle rig and later combined Unity work
+remain held so they cannot compete with the benchmark.
+
+The preparer and launcher now use extended Windows paths for extraction, source
+hashes, binary enumeration and test-root confinement, matching the reviewed
+capture tools. This avoids long-path setup failures without changing mechanisms,
+timing boundaries, schedules or numerical acceptance. Python/PowerShell syntax
+checks precede freezing; the existing C# implementations are unchanged.

@@ -101,3 +101,12 @@ being inspected.
 This is the only pending experiment. Do not start CUDA host timing until the
 operator reports this window complete and its evidence has been reviewed.
 No runtime selection or biological qualification follows from launch.
+
+## Corrected run reviewed on 13 November
+
+The corrected `ca813f` run was subsequently operator-reported complete and its
+full C:/D: evidence reviewed. All 43 tests and all fourteen finer cases pass the
+unchanged numerical criteria. The complete saved analysis reproduces exactly
+without new reference solves. See `DNNE_Golgi_Finer_Results_2026-11-13.md` for
+limits, measured errors, provenance and remaining biological scope. This run is
+no longer pending; older failed captures and their status remain preserved.

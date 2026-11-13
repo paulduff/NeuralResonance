@@ -3,7 +3,7 @@
 Current status: the original 65-check window was reported failed and reviewed.
 All 24 failures share one computed-property JSON metadata defect. The narrow
 repair and two additional checks build; the fresh 67-check PowerShell retry
-`014b85` is launched and awaits the operator report. See the result and repair
+`014b85` passed all 67 checks and its evidence review. See the result and repair
 section below. Earlier preparation
 and launch descriptions record what was known at that time.
 
@@ -187,3 +187,25 @@ plus manifest have a verified D: copy, rechecked before launch. All 67 checks
 remain pending the operator's completion report; no live output is read and no
 pass is inferred from starting the task. This window and corrected Golgi
 `ca813f` are the two outstanding reports. CUDA timing remains held.
+
+## Retry result and verified review
+
+The operator reported `014b85` complete: all 67 tests passed. The review verifies
+all 1,905 files in each C:/D: copy (92,351,519 bytes), all 1,511 frozen Git files,
+executed test binaries and all exact test identities. This includes 28 combined
+cases, 16 body-producer cases, 22 body-transport cases and the manifest check.
+The supply serialization repair and required/missing/forged-field checks pass.
+The manifest SHA-256 is
+`23F537B01A92210E3741F98EEA56A922287FEE28E9B7040D3D5076D93ADB0BDF`.
+
+`tools/review-golgi-and-contacts-20261113.py` records this in
+`artifacts/golgi-contact-review-20261113/contacts-review.json`; the three-file
+review has its own verified D: copy. No tests or models ran during review. This
+establishes the tested fixture/transport behavior, not combined actual Unity
+delivery or afferent physiology. The next physical check must transport original
+body and all 15 contact observations together from the same actual Unity endpoint.
+The operator's re-pasted `8c18b7` failure is the already reviewed old capture.
+
+Corrected Golgi `ca813f` also passed its review. Both reports are resolved. Run
+the prepared CUDA host timing study exclusively before another physical or
+spindle experiment; no live brain/body/editor path is promoted by these checks.

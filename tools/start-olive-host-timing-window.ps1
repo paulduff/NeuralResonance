@@ -5,14 +5,24 @@ $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.HostAccuracyReviewed -or -not $configuration.RequiresOtherStudiesFinished -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedCases -ne 6 -or $configuration.ExpectedProcesses -ne 72 -or $configuration.ExpectedTrials -ne 144 -or $configuration.ExpectedControlGroups -ne 24 -or $configuration.ExpectedTestCases -ne 11){throw 'Unexpected host timing configuration.'}
 if(-not $OtherStudiesFinished){throw 'Wait for the operator to report other studies finished before timing; no automatic polling.'}
+function Extended-Path([string]$Path){
+ if($Path.StartsWith('\\?\')){return $Path}
+ if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
+ return '\\?\'+[IO.Path]::GetFullPath($Path)
+}
+function File-Sha256([string]$Path){
+ $stream=[IO.File]::OpenRead((Extended-Path $Path));$algorithm=[Security.Cryptography.SHA256]::Create()
+ try {return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','')}
+ finally {$algorithm.Dispose();$stream.Dispose()}
+}
 if(-not $InWindow){
  if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
  $manifestPath=Join-Path $package 'backup-manifest.json'
  $manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
  if($manifest.Destination -ne $configuration.BackupDestination){throw 'Initial backup destination differs.'}
- if((Get-FileHash -LiteralPath $manifestPath).Hash -ne (Get-FileHash -LiteralPath (Join-Path $configuration.BackupDestination 'backup-manifest.json')).Hash){throw 'Initial backup manifests differ.'}
+ if((File-Sha256 $manifestPath) -ne (File-Sha256 (Join-Path $configuration.BackupDestination 'backup-manifest.json'))){throw 'Initial backup manifests differ.'}
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
-  if((Get-FileHash -LiteralPath (Join-Path $directory $entry.Path)).Hash -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
+  if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
  }}
  $taskName='DNNE-Olive-Host-Timing-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
@@ -28,7 +38,7 @@ if(-not $InWindow){
  return
 }
 function Assert-Package {
- foreach($entry in $configuration.PackageFiles){if((Get-FileHash -LiteralPath (Join-Path $package $entry.Path)).Hash -ne $entry.Sha256){throw ('Frozen source/input/dependency changed: '+$entry.Path)}}
+ foreach($entry in $configuration.PackageFiles){if((File-Sha256 (Join-Path $package $entry.Path)) -ne $entry.Sha256){throw ('Frozen source/input/dependency changed: '+$entry.Path)}}
 }
 function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$LogName){
  $writer=[IO.StreamWriter]::new((Join-Path $package $LogName),$false,[Text.UTF8Encoding]::new($false));$writer.AutoFlush=$true
@@ -41,8 +51,11 @@ function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$L
  if($nativeExit -ne 0){throw ($LogName+' exited '+$nativeExit)}
 }
 function Capture-Binaries([string]$Assembly,[string]$Name){
- $entries=@(Get-ChildItem -LiteralPath (Split-Path -Parent $Assembly) -Recurse -File | ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=(Get-FileHash -LiteralPath $_.FullName).Hash}})
- $entries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
+ $directory=Split-Path -Parent $Assembly;$directoryIo=Extended-Path $directory
+ $entries=@([IO.Directory]::EnumerateFiles($directoryIo,'*',[IO.SearchOption]::AllDirectories) | ForEach-Object {
+  [ordered]@{Path=$directory+$_.Substring($directoryIo.Length);Sha256=File-Sha256 $_}
+ })
+ ConvertTo-Json -InputObject @($entries) -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
  return $entries
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
@@ -84,7 +97,7 @@ try {
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
  $assembly=Join-Path $build 'bin/NeuralResonanceEngine.DNNE.Tests/release/NeuralResonanceEngine.DNNE.Tests.dll'
  $testRoot=[IO.DirectoryInfo]::new((Split-Path -Parent $assembly))
- while($null -ne $testRoot -and -not (Test-Path -LiteralPath (Join-Path $testRoot.FullName 'NeuralResonanceEngine.DNNE.slnx'))){$testRoot=$testRoot.Parent}
+ while($null -ne $testRoot -and -not [IO.File]::Exists((Extended-Path (Join-Path $testRoot.FullName 'NeuralResonanceEngine.DNNE.slnx')))){$testRoot=$testRoot.Parent}
  if($null -eq $testRoot -or -not $testRoot.FullName.Equals((Join-Path $package 'source'),[StringComparison]::OrdinalIgnoreCase)){throw 'Tests are not confined to frozen source.'}
  $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
  $testBinaries=Capture-Binaries $assembly 'test-binaries.json'
@@ -120,7 +133,7 @@ try {
  $analysis=Get-Content -LiteralPath (Join-Path $package 'host-timing-analysis.json') -Raw | ConvertFrom-Json
  if(-not $analysis.completed -or -not $analysis.accuracyPassed -or ($analysis.controlGroups -ne 24) -or $analysis.trials -ne 144 -or $analysis.processes -ne 72 -or $analysis.cases.Count -ne 6 -or -not $analysis.contextCleanupReported){throw 'Required matched timing/accuracy evidence incomplete.'}
  Assert-Package
- foreach($entry in @($testBinaries)+@($probeBinaries)){if((Get-FileHash -LiteralPath $entry.Path).Hash -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
+ foreach($entry in @($testBinaries)+@($probeBinaries)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
  $status.TimingMeasured=$true;$status.AccuracyPassed=$true;$status['CompletedTrials']=144;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 } catch {
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()

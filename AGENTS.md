@@ -1430,3 +1430,8 @@ verified D: copy. The corrected GUID and `tools/unity_metadata.py` preflight
 protect native muscle packages. Require valid unique asset identities and C#
 sidecars; do not alter mechanical bounds for this import failure. Consult later
 launch records; this failed package is no longer pending.
+
+Corrected hinge `native-muscle-hinge-20261116-5a98f8`, frozen `200d804`, is now
+launched in visible task `DNNE-Native-Muscle-Hinge-1fb99fb6333b`. Metadata preflight
+passes; 1,601 initial files plus manifest have a verified D: copy, rechecked at
+launch. This is the only pending completion report. No live monitoring.

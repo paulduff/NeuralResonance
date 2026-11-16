@@ -124,3 +124,10 @@ rejects the original malformed capture and accepts all 45 current metadata files
 and 32 scripts. It is an asset-identity check, not full YAML or Unity validation.
 The hinge runtime, build-entry C#, analytic comparison and physical bounds are
 unchanged. Preserve the original failed package; use a fresh frozen retry.
+
+The corrected package `native-muscle-hinge-20261116-5a98f8`, frozen revision
+`200d8042ac2622fb693dabae5c0ced473832fb83`, is launched in independent visible
+PowerShell task `DNNE-Native-Muscle-Hinge-1fb99fb6333b`. All 1,601 initial files
+plus manifest are D: verified and rechecked at launch, including the new frozen
+metadata report. It is the only pending operator completion report. No build or
+physical outcome has been inspected; do not monitor.

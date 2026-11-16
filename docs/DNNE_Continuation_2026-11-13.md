@@ -474,3 +474,9 @@ The identifier is corrected and native muscle preparers now validate unique
 32-character nonzero GUIDs plus C# sidecars before freezing/launching. Runtime
 equations and numerical bounds are unchanged. No earlier report remains pending;
 consult the next fresh launch record.
+
+Corrected hinge `native-muscle-hinge-20261116-5a98f8`, frozen `200d804`, is now
+launched in visible task `DNNE-Native-Muscle-Hinge-1fb99fb6333b`. Its working and
+frozen metadata pass the new preflight; all 1,601 initial files plus manifest
+are D: verified and rechecked at launch. This is the only pending operator
+report. Do not monitor or infer a native pass from successful preparation.

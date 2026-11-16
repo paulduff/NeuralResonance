@@ -254,3 +254,12 @@ results. The next fresh visible PowerShell run repeats the codec diagnosis,
 the 81 focused tests, four causal native cases and eight rejection controls.
 No live monitoring; consult the next launch record. The prospective independent
 nonlinear trajectory reference remains future work; no model was run for it.
+
+The read-recovery retry `native-motor-bridge-20261116-e7ddb6`, frozen revision
+`ea47f667a7848be2dd58f0d7a5c1fba427a5352f`, is launched in independent visible
+PowerShell task `DNNE-Native-Motor-Bridge-de39adaad238`. All 1,627 initial files
+plus manifest are verified on D: and rechecked at launch. The frozen preparer
+requires the reviewed exact-wire/read-failure evidence, all six new file tests
+and the completed-reply lock control. This is the only pending operator report.
+No post-launch test, build, preflight, lock-control or physical result has been
+inspected. Do not monitor.

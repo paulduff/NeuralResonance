@@ -1494,3 +1494,10 @@ Six file checks raise the focused suite to 81. A deliberate completed-reply
 lock in the quiet case must recover with exactly one native step. Builds/static
 checks pass; execution awaits the next launch record. No live Avatar selection
 or dynamics/bounds changed. The failed `bd7079` report is no longer pending.
+
+Read-recovery retry `native-motor-bridge-20261116-e7ddb6`, frozen `ea47f66`, is
+launched in visible task `DNNE-Native-Motor-Bridge-de39adaad238`. All 1,627 initial
+files plus manifest are D: verified and rechecked at launch. This is the only
+pending operator report. No post-launch outcome has been inspected; do not
+monitor. Require the 81-case suite, exact-wire preflight and deliberate locked
+completed-reply recovery before interpreting the full physical matrix.

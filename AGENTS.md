@@ -1456,3 +1456,9 @@ saved brain is selected. Individual impulse and qualitative response criteria
 cannot qualify complete coupled trajectories, physiology or Avatar recovery.
 Consult later launch records; run only in independent visible PowerShell with no
 live monitoring and preserve verified D: evidence.
+
+Native motor/body bridge `native-motor-bridge-20261116-223098`, frozen `3d87882`,
+is launched in visible task `DNNE-Native-Motor-Bridge-c5b38826821e`. Its 1,617
+initial files plus manifest are D: verified and rechecked at launch. This is the
+only pending completion report. No post-launch outcome has been inspected;
+wait for the operator and do not monitor.

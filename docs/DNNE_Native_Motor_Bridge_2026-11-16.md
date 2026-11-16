@@ -108,3 +108,14 @@ trajectory with an independent reference using the actual nonlinear attachment
 geometry and physical step refinement. Numerical accuracy, measured sensory
 feedback, anatomical muscle paths, afferent physiology and whole-body recovery
 remain open. This fixture is not eligible for live Avatar promotion on its own.
+
+## Launch record
+
+`native-motor-bridge-20261116-223098`, frozen revision
+`3d87882a8dc2b4d83fbac76350e2f0e4cf3d20a4`, was launched in independent visible
+PowerShell task `DNNE-Native-Motor-Bridge-c5b38826821e`. All 1,617 initial files
+plus manifest were verified on D: and rechecked by the launcher. The preparer
+verified both prerequisite reviews, unchanged qualified cores and all 48 asset
+metadata files / 35 scripts. This is the only pending completion report.
+No test, Unity build, native run or analysis outcome has been inspected after
+launch; do not monitor. Wait for the operator to report completion.

@@ -30,7 +30,10 @@ def decode(value):
 def read(path):return decode(json.loads(path.read_text(encoding='utf-8-sig')))
 
 
-def make_protocol(native, muscle_input):
+def make_protocol(native, muscle_input, resolution=0, muscle_substeps=2):
+    assert (resolution,muscle_substeps) in ((-1,4),(0,2),(0,4),(1,1),(1,2))
+    steps=512 if resolution==-1 else 2048 if resolution==1 else 1024
+    native_step=struct.unpack('<f',struct.pack('<f',.000125))[0]*(2 if resolution==-1 else .5 if resolution==1 else 1)*1000
     original=read(muscle_input);spec={k:deepcopy(original[k]) for k in ('candidateVersion','muscleVersion','geometry','parameterRows',
         'unitRows','initialFiberLengthMeters','referenceSettings','maximumReferenceStepSeconds')}
     assert spec['unitRows']==[0,0]
@@ -38,10 +41,10 @@ def make_protocol(native, muscle_input):
     for name in CASES:
         folder=native/name;initial=read(folder/'initial.json');final=read(folder/'final.json')
         body=initial['native'];state=json.loads(body['stateJson']);clock=initial['clock']
-        assert initial['scenario']==name and initial['muscleSubsteps']==2 and not initial['neuronalModelExecuted']
-        assert initial['actualSteps']==1024 and final['plant']['completedPhysicsStep']==1024
+        assert initial['scenario']==name and initial['muscleSubsteps']==muscle_substeps and not initial['neuronalModelExecuted']
+        assert initial['actualSteps']==steps and final['plant']['completedPhysicsStep']==steps
         assert clock['initialPhysicsStep']==0 and clock['physicalEpochMs']==clock['neuralEpochMs']==0
-        assert body['physicsStepMs']==clock['physicsStepMs'] and body['physicalTimeMs']==0
+        assert body['physicsStepMs']==clock['physicsStepMs']==native_step and body['physicalTimeMs']==0
         assert hashlib.sha256(body['geometryJson'].encode()).hexdigest().upper()==initial['bodyFingerprint']
         if geometry_json is None:geometry_json=body['geometryJson']
         assert body['geometryJson']==geometry_json
@@ -54,14 +57,14 @@ def make_protocol(native, muscle_input):
             assert len(definition['units'])==1 and all(unit[k]==parameter[k] for k in ('calcium','lengthGainAboveOptimal','lengthGainBelowOptimal'))
             batch=read(folder/f'source-{i}.json');contact=unit['contact']
             assert batch['sessionId']==clock['sessionId'] and batch['sourceInstanceKey']==contact['sourceInstanceKey']
-            assert batch['completeThroughNeuralMs']==1024*clock['physicsStepMs']
+            assert batch['completeThroughNeuralMs']==steps*clock['physicsStepMs']
             for spike in batch['spikes']:
                 assert spike['sourceNeuronId']==contact['sourceNeuronId'] and spike['projectionId']==contact['projectionId']
                 events.append(dict(muscleIndex=i,arrivalAtMs=spike['firedAtNeuralMs']+contact['conductionDelayMs'],
                     originalMessageId=spike['messageId'],originalSourceNeuronId=spike['sourceNeuronId'],originalContactId=contact['contactId']))
         assert len(events)==dict(quiet=0,left=2,right=2,balanced=4)[name]
         assert sorted({e['arrivalAtMs'] for e in events})==([] if name=='quiet' else [10.03125,60.03125])
-        cases.append(dict(key=name,durationMs=1024*clock['physicsStepMs'],physicalStepMs=clock['physicsStepMs'],physicalSteps=1024,
+        cases.append(dict(key=name,durationMs=steps*clock['physicsStepMs'],physicalStepMs=clock['physicsStepMs'],physicalSteps=steps,
             initialAngleRadians=state['angle'],initialSpeedRadiansPerSecond=state['speed'],
             events=sorted(events,key=lambda e:(e['arrivalAtMs'],e['muscleIndex']))))
     return dict(version=VERSION,**spec,cases=cases,nativeGeometry=json.loads(geometry_json),nativeGeometryJson=geometry_json,

@@ -120,3 +120,31 @@ files plus manifest are verified on D: and rechecked by the launcher. The
 qualified numerical environment and unchanged reference/candidate source passed
 preparation checks. This is the only pending operator completion report. No
 post-launch controls, solves or analysis have been inspected; do not monitor.
+
+## Completed comparison
+
+The operator subsequently reported `967542` complete. Review verifies all 1,700
+files / 111,292,507 bytes in each C:/D: copy, all 1,624 Git source files, the
+frozen input package, copied original evidence and unchanged numerical environment.
+The frozen saved-data analysis exactly reproduces the saved result. All 49
+geometry controls, six mechanical method controls, three control contrasts,
+12 muscle/hinge references and four native trajectory comparisons pass their
+original criteria. Saved mechanical-control traces also reproduce their reported
+geometry, energy, impulse and work residuals without another solve.
+
+Maximum native/reference differences over the compared trajectories are
+3.57628956034427e-8 rad in angle, 4.697297118781956e-6 rad/s in speed,
+3.310100334108501e-8 m in fiber length, 9.556588212156214e-5 N in force and
+7.081600032710078e-6 in yield. All calcium, fiber momentum/work and reference
+joint/tendon accounting checks pass. The largest reference-method discrepancies
+are 5.214727846584999e-14 rad, 9.884636512080824e-13 rad/s and
+6.264661012167494e-11 N. Agreement remains a numerical result for this synthetic
+pair, not neuronal authority or physiological calibration.
+
+Capture manifest:
+`5F4C423AB3B72DE94F78869E60AE1B72169553C187EA320F327CF43F6E0FAA7F`.
+`review-native-hinge-comparison-20261116.py` records the review;
+`native-hinge-comparison-review-20261116/review.json` has a verified D: backup.
+No earlier run remains pending. Physical/muscle refinement is still unassessed
+by this capture; the next prospective matrix is documented in
+`DNNE_Native_Hinge_Refinement_2026-11-16.md`.

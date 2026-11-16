@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 
 namespace Nre.UnityWorld {
@@ -7,6 +8,13 @@ public static class MuscleHingeWire {
  public const int Version=2;
  public const float StepSeconds=.000125f;
  public static double StepMs=>(double)StepSeconds*1000;
+ // Exact powers of two preserve common physical endpoints across the isolated
+ // refinement matrix. The default remains the previously qualified resolution.
+ public static float StepSecondsAt(int resolution){
+  Require(resolution>=-1&&resolution<=1,"Unsupported isolated physical resolution.");
+  return resolution==-1?StepSeconds*2:resolution==1?StepSeconds/2:StepSeconds;
+ }
+ public static double StepMsAt(int resolution)=>(double)StepSecondsAt(resolution)*1000;
  // JSON decimal parsers need not agree on the last binary bit. Mechanical
  // scalars carry canonical IEEE-754 bits; no tolerance, decimal reparsing or
  // numerical rounding is used at the wire boundary. Traces retain doubles.
@@ -49,6 +57,8 @@ public static class MuscleHingeWire {
  public static bool Hash(string x)=>x!=null&&x.Length==64&&System.Linq.Enumerable.All(x,c=>(c>='0'&&c<='9')||(c>='A'&&c<='F'));
  public static void Require(bool value,string message){if(!value)throw new InvalidOperationException(message);}
  public static void Validate(Request r,Reply current) {
+  Require(current!=null&&(current.physicsStepMs==StepMsAt(-1)||current.physicsStepMs==StepMsAt(0)||current.physicsStepMs==StepMsAt(1)),
+   "Unsupported isolated physical clock.");
   Require(r!=null&&r.version==Version&&r.sessionId==current.sessionId&&r.sequence==checked(current.sequence+1),"Command identity/sequence differs.");
   Require(r.bodyFingerprint==current.bodyFingerprint&&r.expectedStep==current.physicsStep&&r.stateHash==current.stateHash,
    "Command does not name the current body endpoint.");
@@ -57,7 +67,7 @@ public static class MuscleHingeWire {
    Require(current.physicsStep==0&&string.IsNullOrEmpty(current.plantFingerprint)&&Hash(r.plantFingerprint),"Plant can bind exactly once before movement.");
   } else Require(Hash(current.plantFingerprint)&&r.plantFingerprint==current.plantFingerprint,"Plant binding differs.");
   if(r.operation=="step") {
-   Require(GuidN(r.effortId)&&r.effortId!=current.lastAppliedEffortId&&r.endTimeMs==(current.physicsStep+1)*StepMs,
+   Require(GuidN(r.effortId)&&r.effortId!=current.lastAppliedEffortId&&r.endTimeMs==(current.physicsStep+1)*(double)current.physicsStepMs,
     "Effort identity or physical endpoint differs.");
    Require(r.tensions!=null&&r.tensions.Length==2&&r.tensions[0]!=null&&r.tensions[1]!=null&&
     r.tensions[0].muscleId=="m0"&&r.tensions[1].muscleId=="m1"&&

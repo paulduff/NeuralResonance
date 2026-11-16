@@ -5,7 +5,7 @@ $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.RequireCompletedReplyLockControl){throw 'Require completed-reply lock control.'}
 if($configuration.ExactScalarWireVersion -ne 2 -or $configuration.ExpectedExactScalarRoundTrips -ne 1040 -or -not $configuration.RequireOriginalDecimalFailureReproduction){throw 'Require exact scalar wire and original decoder preflight.'}
-if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 81 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
+if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 93 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -25,7 +25,8 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
  }}
- $taskName='DNNE-Native-Motor-Bridge-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskPrefix=if($configuration.IsolatedNativeRefinement){'DNNE-Native-Hinge-Refinement-'}else{'DNNE-Native-Motor-Bridge-'}
+ $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -78,9 +79,9 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE native motor and muscle bridge'
+ $Host.UI.RawUI.WindowTitle=if($configuration.IsolatedNativeRefinement){'DNNE native hinge step refinement'}else{'DNNE native motor and muscle bridge'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '81 geometry/motor/read regressions, then 4 causal native muscle cases and 8 rejection controls. No DNNE or live Avatar. Report completion to Orion.'
+ Write-Host '93 geometry/motor/clock/read regressions, then the declared native matrix. No DNNE or live Avatar. Report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/muscle-path-tests'
@@ -101,7 +102,7 @@ try {
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
- $requiredCounts=@{MusclePathGeometryTests=31;CausalMotorPlantTests=27;DynamicMuscleTests=16;DiagnosticBridgeFileTests=6;SolutionManifestTests=1}
+ $requiredCounts=@{MusclePathGeometryTests=31;CausalMotorPlantTests=27;DynamicMuscleTests=16;DiagnosticBridgeFileTests=6;MuscleHingeClockTests=12;SolutionManifestTests=1}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count
@@ -122,7 +123,10 @@ try {
  Assert-Package
  foreach($entry in $binaries){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Test binary changed: '+$entry.Path)}}
  $status['PassedFocusedTests']=$results.Count;$status.MusclePathAndRegressionChecksPassed=$true
- if($configuration.ExpectedNativeCases -ne 12 -or $configuration.ExpectedNativePhysicsSteps -ne 4096){throw 'Unexpected native protocol.'}
+ if($configuration.IsolatedNativeRefinement){
+  if($configuration.ExpectedNativeCases -ne 60 -or $configuration.ExpectedNativePhysicsSteps -ne 26624 -or $configuration.RefinementConditions.Count -ne 5){throw 'Unexpected refinement protocol.'}
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-hinge-refinement.py'),$package,'--preflight') 'reference-preflight.log'
+ }elseif($configuration.ExpectedNativeCases -ne 12 -or $configuration.ExpectedNativePhysicsSteps -ne 4096){throw 'Unexpected native protocol.'}
  Write-Host 'Building a separate Unity player for causal muscle coupling...' -ForegroundColor Cyan
  if((File-Sha256 $configuration.UnityExecutable) -ne $configuration.UnityExecutableSha256){throw 'Unity editor changed after preparation.'}
  if(Test-Path -LiteralPath $configuration.UnityBuildWorkspace){throw 'Fresh dedicated build workspace required.'}
@@ -152,6 +156,19 @@ try {
  $probeDirectory=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release'
  $probeFiles=Capture-Tree $probeDirectory 'probe-binaries.json'
  $status['NativePhysicsAttempted']=$true
+ if($configuration.IsolatedNativeRefinement){
+  foreach($condition in $configuration.RefinementConditions){
+   $folder=Join-Path $package ('conditions/'+$condition.key)
+   Write-Host ('NATIVE REFINEMENT '+$condition.key) -ForegroundColor Cyan
+   Invoke-Logged $configuration.DotnetExecutable @((Join-Path $probeDirectory 'NeuralResonanceEngine.DNNE.Tests.dll'),(Join-Path $playerOutput 'DNNE Muscle Bridge.exe'),(Join-Path $folder 'reference/muscle-input.json'),(Join-Path $folder 'native-bridge'),(Join-Path $folder 'run-options.json')) ($condition.key+'-native.log')
+   Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-motor-bridge.py'),$folder,'--resolution',[string]$condition.physicsResolution,'--muscle-substeps',[string]$condition.muscleSubsteps) ($condition.key+'-audit.log')
+  }
+  $status['NativeDriverSucceeded']=$true
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-hinge-refinement.py'),$package) 'refinement-analysis.log'
+  $analysis=Get-Content -LiteralPath (Join-Path $package 'refinement-analysis.json') -Raw | ConvertFrom-Json
+  if(-not $analysis.completed -or -not $analysis.numericalCriteriaPassed -or $analysis.nativeSteps -ne 26624 -or $analysis.nativePhysicalConditions -ne 20 -or $analysis.nativeRejectionControls -ne 40 -or $analysis.fullCoupledTrajectoryQualified -or $analysis.neuronalModelExecuted -or $analysis.physiologyQualified -or $analysis.avatarRecoveryAssessed){throw 'Native refinement incomplete or scope changed.'}
+  $status['NativeRefinementPassed']=$true
+ }else{
  Write-Host 'Running 4 isolated muscle/body cases and 8 native rejection controls. Every command and reply is saved.' -ForegroundColor Cyan
  Invoke-Logged $configuration.DotnetExecutable @((Join-Path $probeDirectory 'NeuralResonanceEngine.DNNE.Tests.dll'),(Join-Path $playerOutput 'DNNE Muscle Bridge.exe'),(Join-Path $package 'reference/muscle-input.json'),(Join-Path $package 'native-bridge')) 'native-bridge.log'
  $status['NativeDriverSucceeded']=$true
@@ -161,15 +178,21 @@ try {
  if($analysis.wire.exactScalarRoundTrips -ne 1040 -or $analysis.wire.malformedScalarsRejectedEachSide -ne 10 -or -not $analysis.wire.originalDecimalFailureReproduced){throw 'Exact scalar or original failure evidence incomplete.'}
  if(-not $analysis.completedReplyLockControlPassed){throw 'Completed physical reply lock control did not pass.'}
  if(-not $analysis.completed -or -not $analysis.originalCriteriaPassed -or $analysis.independentlyAuditedCases -ne 12 -or $analysis.actualPhysicsSteps -ne 4096 -or $analysis.fixtureEventsExactlyDelivered -ne 8 -or $analysis.testsOrPhysicsExecutedByAnalysis -or $analysis.coupledTrajectoryAccuracyQualified -or $analysis.physiologicalCalibrationQualified -or $analysis.avatarRecoveryAssessed){throw 'Native bridge evidence analysis incomplete or scope changed.'}
+ }
  Assert-Package
  foreach($entry in @($playerFiles)+@($probeFiles)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Built binary changed: '+$entry.Path)}}
- $status.NativeBridgeChecksPassed=$true;$status['PassedNativeCases']=12;$status['ActualPhysicsSteps']=4096
+ $status.NativeBridgeChecksPassed=$true;$status['PassedNativeCases']=$configuration.ExpectedNativeCases;$status['ActualPhysicsSteps']=$configuration.ExpectedNativePhysicsSteps
  $status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 } catch {
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 } finally {
  if($status.Status -eq 'RUNNING'){$status.Status='INTERRUPTED';$status.ExitCode=2;$status['Error']='Pipeline ended before completing checks; cause not established.'}
+ if($configuration.IsolatedNativeRefinement){
+  try{Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-hinge-refinement.py'),$package,'--preflight') 'reference-postflight.log';$status['ReferenceEnvironmentUnchanged']=$true}
+  catch{$status.Status='FAILED';$status.ExitCode=1;$status['ReferenceEnvironmentUnchanged']=$false;$status['ReferenceEnvironmentError']=$_.Exception.ToString()}
+ }
+ try{Assert-Package}catch{$status.Status='FAILED';$status.ExitCode=1;$status['FrozenSourceError']=$_.Exception.ToString()}
  $status['CompletedUtc']=[DateTime]::UtcNow.ToString('o')
  if($transcribing){Stop-Transcript | Out-Null}
  $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -178,5 +201,6 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- Write-Host 'Tell Orion the native motor/body bridge outcome. Command causality, coupled trajectory accuracy, physiology and Avatar recovery are separate.'
+ if($configuration.IsolatedNativeRefinement){Write-Host 'Tell Orion the native hinge refinement outcome. Sampled convergence, neuronal authority, physiology and Avatar recovery are separate.'}
+ else{Write-Host 'Tell Orion the native motor/body bridge outcome. Command causality, coupled trajectory accuracy, physiology and Avatar recovery are separate.'}
 }

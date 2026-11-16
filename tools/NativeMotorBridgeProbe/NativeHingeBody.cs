@@ -23,12 +23,13 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     internal Reply Last => Clone(_last);
     public string Fingerprint => _fingerprint;
     public long CompletedPhysicsStep => _last.physicsStep;
-    public double PhysicsStepMs => StepMs;
+    public double PhysicsStepMs { get; }
     internal bool Faulted => _faulted;
-    internal NativeHingeBody(string directory, Guid session, Process process, bool exerciseReadLock = false)
+    internal NativeHingeBody(string directory, Guid session, Process process, bool exerciseReadLock = false, int physicsResolution = 0)
     {
         _directory = directory; _session = session.ToString("N"); _process = process;
         _exerciseReadLock = exerciseReadLock;
+        PhysicsStepMs = StepMsAt(physicsResolution);
         _last = Wait("hello.json", 180);
         Check(_last, "hello", 0, 0, "", "");
         _geometry = _last.geometryJson; _fingerprint = _last.bodyFingerprint;
@@ -51,7 +52,7 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     {
         Require(effort != null && effort.SessionId.ToString("N") == _session && effort.BodyFingerprint == Fingerprint &&
             effort.PlantFingerprint == _last.plantFingerprint && effort.StartStep == CompletedPhysicsStep &&
-            effort.StartTimeMs == _last.physicalTimeMs && effort.EndTimeMs == (CompletedPhysicsStep + 1) * StepMs,
+            effort.StartTimeMs == _last.physicalTimeMs && effort.EndTimeMs == (CompletedPhysicsStep + 1) * PhysicsStepMs,
             "Effort belongs to a different body/clock/plant.");
         var request = RequestFor("step"); request.effortId = effort.EffortId.ToString("N"); request.endTimeMs = effort.EndTimeMs;
         request.tensions = effort.Tensions.Select(t => new Tension { muscleId = t.MuscleId, axialNewtons = t.AxialNewtons }).ToArray();
@@ -89,7 +90,7 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     internal Failure RejectNative(string fault)
     {
         Require(!_faulted && Environment.CurrentManagedThreadId == _owner, "Invalid rejection control owner.");
-        var request = RequestFor("step"); request.endTimeMs = StepMs; request.effortId = Guid.NewGuid().ToString("N");
+        var request = RequestFor("step"); request.endTimeMs = PhysicsStepMs; request.effortId = Guid.NewGuid().ToString("N");
         request.tensions = [new() { muscleId = "m0", axialNewtons = 1 }, new() { muscleId = "m1", axialNewtons = 0 }];
         switch (fault)
         {
@@ -173,8 +174,8 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     private void Check(Reply r, string operation, long sequence, long step, string plant, string effort)
     {
         Require(r != null && r.version == Nre.UnityWorld.MuscleHingeWire.Version && r.sessionId == _session && r.unity == "6000.3.19f1" &&
-            r.operation == operation && r.sequence == sequence && r.physicsStep == step && r.physicalTimeMs == step * StepMs &&
-            r.physicsStepMs == StepMs && r.isolated && r.paused && r.plantFingerprint == plant && r.lastAppliedEffortId == effort &&
+            r.operation == operation && r.sequence == sequence && r.physicsStep == step && r.physicalTimeMs == step * PhysicsStepMs &&
+            r.physicsStepMs == PhysicsStepMs && r.isolated && r.paused && r.plantFingerprint == plant && r.lastAppliedEffortId == effort &&
             !string.IsNullOrWhiteSpace(r.geometryJson) && !string.IsNullOrWhiteSpace(r.stateJson) &&
             r.bodyFingerprint == Digest(r.geometryJson) && r.stateHash == Digest(r.stateJson), "Invalid native state/clock/effort receipt.");
         Require(r.paths != null && r.paths.Length == 2 && r.paths[0]?.muscleId == "m0" && r.paths[1]?.muscleId == "m1" &&

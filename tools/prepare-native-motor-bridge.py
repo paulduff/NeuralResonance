@@ -12,7 +12,7 @@ import uuid
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-COUNTS = dict(MusclePathGeometryTests=31, CausalMotorPlantTests=27, DynamicMuscleTests=16, DiagnosticBridgeFileTests=6, SolutionManifestTests=1)
+COUNTS = dict(MusclePathGeometryTests=31, CausalMotorPlantTests=27, DynamicMuscleTests=16, DiagnosticBridgeFileTests=6, MuscleHingeClockTests=12, SolutionManifestTests=1)
 
 
 def module(name, path):
@@ -20,7 +20,7 @@ def module(name, path):
     result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result); return result
 
 
-def main():
+def main(refinement=False):
     helper = module('package_helpers', ROOT / 'tools/prepare-causal-motor.py')
     assert not helper.git('status', '--porcelain'), 'Commit clean source first.'
     revision = helper.git('rev-parse', 'HEAD'); assert revision == helper.git('rev-parse', 'origin/main'), 'Push first.'
@@ -78,7 +78,23 @@ def main():
         assert sum(members.values()) == count and all(members.values()), cls
         methods.update({'NeuralResonanceEngine.DNNE.Tests.' + cls + '.' + name: n for name, n in members.items()})
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    package = ROOT / 'artifacts' / ('native-motor-bridge-' + stamp + '-' + uuid.uuid4().hex[:6])
+    prefix='native-hinge-refinement-' if refinement else 'native-motor-bridge-'
+    comparison=None
+    if refinement:
+        from native_hinge_refinement_protocol import CONDITIONS,CRITERIA
+        comparison_review=ROOT/'artifacts/native-hinge-comparison-review-20261116'
+        helper.verify(comparison_review,['review.json']);compared=helper.read(comparison_review/'review.json')
+        assert compared['operatorReportedCompletion'] and compared['savedAnalysisExactlyReproduced'] and compared['capturedTrajectoryAgreementPassed']
+        comparison=Path(compared['capture']);assert helper.digest(comparison/'backup-manifest.json')==compared['manifestSha256']
+        selected=['hinge-input.json','hinge-analysis.json','reference-preflight.json','reference-postflight.json','reference-controls/controls.json']
+        selected+=['hinge-reference/'+p.name for p in (comparison/'hinge-reference').iterdir() if p.is_file()]
+        selected+=['native-bridge/'+case+'/'+name for case in ('quiet','left','right','balanced') for name in ('initial.json','final.json','steps.jsonl','source-0.json','source-1.json')]
+        code=['tools/'+name for name in ('native_hinge_reference.py','native_hinge_reference_controls.py','causal_motor_reference.py','dynamic_muscle_reference.py','golgi-reference-resume.py')]
+        helper.verify(comparison,selected+['source/'+name for name in code])
+        for name in code:assert (ROOT/name).read_text()==helper.io(comparison/'source'/name).read_text(),name
+        environment=module('numeric_environment',ROOT/'tools/golgi-reference-resume.py').environment()
+        assert environment==helper.read(comparison/'reference-preflight.json')['environment'],'Qualified numerical dependencies changed.'
+    package = ROOT / 'artifacts' / (prefix + stamp + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
     assert not package.exists() and not backup.exists(); package.mkdir()
     subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(package / 'source.zip'), revision], cwd=ROOT, check=True)
@@ -102,6 +118,19 @@ def main():
     shutil.copyfile(failure_review_folder / 'review.json', package / 'reference/failed-bridge-review.json')
     shutil.copyfile(read_review_folder / 'review.json', package / 'reference/read-failure-review.json')
     for name, source in failure_inputs.items(): shutil.copyfile(failure_capture / source, package / 'reference' / name)
+    if refinement:
+        shutil.copyfile(comparison_review/'review.json',package/'reference/hinge-comparison-review.json')
+        shutil.copyfile(comparison/'backup-manifest.json',package/'reference/qualified-comparison-manifest.json')
+        for name in selected:
+            target=helper.io(package/'qualified'/name);target.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(helper.io(comparison/name),target);assert helper.digest(target)==helper.digest(comparison/name)
+        for condition in CONDITIONS:
+            folder=package/'conditions'/condition['key'];(folder/'reference').mkdir(parents=True)
+            for name in ('muscle-input.json','failed-request-000033.json','last-reply-000032.json'):
+                shutil.copyfile(package/'reference'/name,folder/'reference'/name)
+            options={k:condition[k] for k in ('physicsResolution','muscleSubsteps')}
+            (folder/'run-options.json').write_text(json.dumps(options,indent=2)+'\n')
+        (package/'preparation-environment.json').write_text(json.dumps(environment,indent=2)+'\n')
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(helper.io(package)).as_posix(), Sha256=helper.digest(p))
              for p in sorted(helper.io(package).rglob('*')) if p.is_file()]
@@ -111,6 +140,7 @@ def main():
         ExpectedTestCases=sum(COUNTS.values()), ExpectedClassCounts=COUNTS, ExpectedTestMethods=methods,
         TestFilter='|'.join('FullyQualifiedName~' + name for name in COUNTS),
         IsolatedNativeMuscleBridge=True, GeneratedUnitySource=True, QualifiedCouplingCorePreserved=True,
+        IsolatedNativeRefinement=refinement,
         LiveBodySelected=False, NoTimingMeasured=True, NativeUnityQualified=False,
         PhysiologicalCalibrationQualified=False, AvatarRecoveryAssessed=False)
     unity = Path('C:/Program Files/Unity/Hub/Editor/6000.3.19f1/Editor/Unity.exe')
@@ -123,6 +153,7 @@ def main():
         ExactScalarWireVersion=2, ExpectedExactScalarRoundTrips=1040, RequireOriginalDecimalFailureReproduction=True,
         RequireCompletedReplyLockControl=True,
         PythonExecutable=sys.executable, PythonExecutableSha256=helper.digest(sys.executable))
+    if refinement:config.update(RefinementConditions=CONDITIONS,RefinementCriteria=CRITERIA,ExpectedNativeCases=60,ExpectedNativePhysicsSteps=26624)
     (package / 'configuration.json').write_text(json.dumps(config, indent=2) + '\n')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True, NoLiveMonitoring=True,
         Launcher=str(package / 'source/tools/start-native-motor-bridge-window.ps1'))
@@ -131,4 +162,5 @@ def main():
 
 
 if __name__ == '__main__':
-    argparse.ArgumentParser(description=__doc__).parse_args(); main()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--refinement',action='store_true')
+    args=parser.parse_args();main(args.refinement)

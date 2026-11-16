@@ -1522,3 +1522,17 @@ are D: verified and rechecked at launch. This is the only pending operator
 report. No reference control/solve/analysis has been inspected; do not monitor.
 It reuses completed native captures and cannot qualify physical/muscle step
 refinement, live neuronal authority, physiology or Avatar recovery.
+
+Comparison `967542` subsequently completed and is fully reviewed: all 49 geometry
+controls, six mechanical controls, three control contrasts, 12 references and
+four native comparisons pass original bounds. All C:/D:/source/dependency evidence
+verifies; `native-hinge-comparison-review-20261116` is D: backed. No older report
+is pending. The next native resolution matrix is specified in
+`docs/DNNE_Native_Hinge_Refinement_2026-11-16.md`: five independent physical/muscle
+combinations, 93 tests, 20 physical cases and 40 rejection controls, reusing the
+qualified references on exact common grids. Actual float steps, source identities
+and one physical owner remain mandatory. Fine half-step reference accuracy is
+unassessed; do not inflate sampled convergence into physiology or recovery.
+Builds/static checks pass; no new test or native matrix has run. Consult the next
+launch record, use visible PowerShell without live monitoring, preserve evidence
+and keep the original prospective bounds.

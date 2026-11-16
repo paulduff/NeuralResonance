@@ -30,6 +30,8 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
  }
  ArticulationBody root,child;Vector3[][] anchors;AvatarMusclePath[] paths;
  string directory,session,geometry,bodyFingerprint;Reply last;bool physicsAttempted;long actualSteps;
+ float physicalStepSeconds=StepSeconds;
+ double PhysicalStepMs=>(double)physicalStepSeconds*1000;
  readonly System.Collections.Generic.HashSet<string> effortIds=new System.Collections.Generic.HashSet<string>();
  static MusclePathVector D(Vector3 v)=>new MusclePathVector(v.x,v.y,v.z);
  static Vector3 F(MusclePathVector v)=>new Vector3((float)v.X,(float)v.Y,(float)v.Z);
@@ -68,7 +70,7 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
   string stateJson=JsonUtility.ToJson(state);
   return new Reply{version=MuscleHingeWire.Version,sessionId=session,operation=operation,sequence=sequence,unity=Application.unityVersion,
    bodyFingerprint=bodyFingerprint,plantFingerprint=plant??"",geometryJson=geometry,stateJson=stateJson,stateHash=Digest(stateJson),lastAppliedEffortId=effort??"",
-   physicsStep=step,physicsStepMs=StepMs,physicalTimeMs=step*StepMs,isolated=true,paused=true,paths=measurements};
+   physicsStep=step,physicsStepMs=PhysicalStepMs,physicalTimeMs=step*PhysicalStepMs,isolated=true,paused=true,paths=measurements};
  }
  IEnumerator Start(){
   if(Argument("--wire-input")!=null){
@@ -78,6 +80,7 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
   bool ready=false;
   try {
    directory=Argument("--motor-bridge");session=Argument("--motor-session");
+   physicalStepSeconds=StepSecondsAt(int.Parse(Argument("--motor-resolution")??"0",CultureInfo.InvariantCulture));
    Require(!string.IsNullOrWhiteSpace(directory)&&!Directory.Exists(directory)&&GuidN(session),"Fresh isolated bridge directory/session required.");
    Require(FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).All(b=>b==this)&&FindObjectsByType<ArticulationBody>(FindObjectsSortMode.None).Length==0,"Empty isolated scene required.");
    double rest=Decode(Argument("--motor-rest-length-bits"));Require(rest>.1&&rest<1,"Invalid synthetic rest length.");
@@ -85,7 +88,7 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
    root=Make("fixed-root",null);child=Make("hinge-child",root.transform);
    float z=(float)Math.Sqrt(rest*rest-Math.Pow((double).4f-(double).3f,2));
    anchors=new[]{new[]{new Vector3(0,.3f,z),new Vector3(0,.4f,0)},new[]{new Vector3(0,.3f,-z),new Vector3(0,.4f,0)}};
-   geometry=JsonUtility.ToJson(new Geometry{unity=Application.unityVersion,stepSeconds=(double)StepSeconds,
+   geometry=JsonUtility.ToJson(new Geometry{unity=Application.unityVersion,stepSeconds=(double)physicalStepSeconds,
     anchors=anchors.SelectMany(a=>a).ToArray(),mass=child.mass,centralInertia=child.inertiaTensor.x,centerY=child.centerOfMass.y});
    bodyFingerprint=Digest(geometry);
    paths=anchors.Select((a,i)=>new AvatarMusclePath("m"+i,bodyFingerprint,"isolated-opposing-hinge-v1",
@@ -124,7 +127,7 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
      foreach(var f in forces.SelectMany(f=>f.PointForces))Require(D(F(f.ForceNewtons)).IsFinite,"Native force cannot be represented.");
      physicsAttempted=true;
      for(int i=0;i<2;++i)for(int j=0;j<2;++j)(j==0?root:child).AddForceAtPosition(F(forces[i].PointForces[j].ForceNewtons),states[i][j].point,ForceMode.Force);
-     Physics.Simulate(StepSeconds);actualSteps=checked(actualSteps+1);step=actualSteps;effort=request.effortId;
+     Physics.Simulate(physicalStepSeconds);actualSteps=checked(actualSteps+1);step=actualSteps;effort=request.effortId;
     }
     last=Capture(request.operation,request.sequence,step,plant,effort);
     WriteNew(System.IO.Path.Combine(directory,"reply-"+last.sequence.ToString("D6")+".json"),last);

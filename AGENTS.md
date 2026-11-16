@@ -1638,3 +1638,16 @@ than substitute those inputs or generic HH/rate encoding. The 30-file source
 review is D: backed; no models/tests ran and neither pending output was read.
 Do not repeat identical source searches without new evidence. The two reports
 remain `bb10dc` and `18ec5e`; no third window has launched.
+
+The next isolated increment is documented in
+`docs/DNNE_Motor_Receptor_Contacts_2026-11-16.md`. A contact-owned two-state
+AMPA/GABA-A conductance component accepts identified original presynaptic
+events, preserves exact replay and conditional analytic state, and rejects
+unsupported overlap before mutation. The inspected ModelDB 18500 kinetics
+are hippocampal reference values, not calibrated spinal physiology. It does
+not yet couple to the checked motor membrane or change a live selected circuit.
+The checked motor membrane/channels/transport remain unchanged. A build passes
+with zero warnings/errors; 14 new cases plus 60 regressions are prospective,
+not executed. The 11-file authoring/source capture is D: verified. Consult the
+following launch record before expecting its window. The two pending reports
+remain `bb10dc` and `18ec5e`; do not inspect either output or monitor new runs.

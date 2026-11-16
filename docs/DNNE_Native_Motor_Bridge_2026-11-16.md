@@ -263,3 +263,36 @@ requires the reviewed exact-wire/read-failure evidence, all six new file tests
 and the completed-reply lock control. This is the only pending operator report.
 No post-launch test, build, preflight, lock-control or physical result has been
 inspected. Do not monitor.
+
+## Completed read-recovery retry
+
+The operator reported `e7ddb6` complete. Full review verifies all 27,120 files
+and 290,861,198 bytes in each C:/D: copy, 1,616 Git source files, the frozen
+package, test/probe/player binaries, all 36 compiled Unity sources and all 49
+asset metadata entries. All 81 uniquely identified tests pass. Independent
+reproduction of the frozen bridge analysis exactly matches the saved result.
+The capture manifest is
+`E5B83A35232031F4D390DA92A93A4F4918EB3A8B3A54ADA77954E8FA56451A4B`.
+The derived `native-motor-bridge-review-20261116/review.json` has its own verified
+D: copy. `tools/review-native-motor-bridge-20261116.py` records the review.
+
+The four physical cases complete all 4,096 steps and deliver exactly eight
+fixture motor events. Quiet and balanced remain at zero angle; left and right
+finish at equal opposite angles of 0.0001710321375867352 radians. All eight
+native rejection controls stop before physical stepping. The deliberate reply
+lock causes two actual sharing conflicts, then successfully reads the same
+published reply; exactly one physical command is applied. All 1,040 exact
+scalar round trips and ten malformed encodings on each side pass. The original
+decimal-parser one-ULP discrepancy is reproduced without physical bodies.
+
+Largest independently reconstructed single-step errors are
+2.2788384200500555e-10 rad/s in impulse response and
+5.088258454443058e-10 rad in angle. The original limits are unchanged. These
+results qualify the command/muscle bridge and individual mechanics for this
+isolated fixture. They do not establish complete coupled trajectory accuracy,
+human physiological calibration, a neuronal source or Avatar recovery.
+
+No older completion report remains pending at this review. The next independent
+nonlinear trajectory comparison is specified in
+`DNNE_Native_Hinge_Comparison_2026-11-16.md`; it reuses these saved native traces
+without launching another physical simulation.

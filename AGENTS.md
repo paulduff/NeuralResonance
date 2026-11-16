@@ -1501,3 +1501,16 @@ files plus manifest are D: verified and rechecked at launch. This is the only
 pending operator report. No post-launch outcome has been inspected; do not
 monitor. Require the 81-case suite, exact-wire preflight and deliberate locked
 completed-reply recovery before interpreting the full physical matrix.
+
+Bridge `e7ddb6` subsequently completed and is fully reviewed: all 81 tests, four
+physical cases / 4,096 steps, eight native rejection controls, exact-wire checks
+and deliberate completed-reply lock recovery pass. Full C:/D:/source/binary
+evidence verifies; `native-motor-bridge-review-20261116` is D: backed. No older
+report remains pending. This qualifies the isolated bridge, not full trajectories,
+physiology, neuronal-source operation or recovery. The next captured-trajectory
+comparison is in `docs/DNNE_Native_Hinge_Comparison_2026-11-16.md`: independent
+nonlinear geometry and continuous muscles, 49 geometry controls, six mechanical
+method controls and 12 adaptive references reusing saved native data. Physical
+and muscle step refinement remain explicitly unassessed. Scripts parse and saved
+inputs decode; no new solve has run. Consult later launch records, use visible
+PowerShell and no live monitoring, and preserve the original bounds/evidence.

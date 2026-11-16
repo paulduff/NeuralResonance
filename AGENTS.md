@@ -1582,3 +1582,18 @@ the only pending operator report; no post-launch output has been inspected.
 Require the 66 focused tests, five complete source conditions and independent
 saved-event audit before attaching the newly factored adapter to moving muscles.
 Do not monitor or infer success from process completion. No live body is selected.
+
+Source gate `badc1b` is now reported complete and fully reviewed: all 66 tests,
+five complete 30-state/six-second source traces, exact original crossings and
+delivery pass. Each active condition preserves 28 events; all 85 retries are
+exact. Full C:/D:/source/binary evidence verifies and the saved analysis reproduces;
+`observed-motor-source-review-20261116` is D: backed. See
+`docs/DNNE_Observed_Motor_Source_Results_2026-11-16.md`. No older report is pending.
+The next plan is `docs/DNNE_Observed_Native_Body_2026-11-16.md`: an explicit quiet
+one-second prehistory attaches unchanged neuronal state to a fresh paused native
+body, followed by seven conditions / 14,336 steps and 12 independent references.
+The new ownership extension requires 160 focused tests and the full six-second
+source gate before native connection. Source lookahead is allowed only for this
+declared open-loop reference; it does not implement a closed sensory loop or live
+DNNE authority. Consult later launch records, preserve original bounds and old
+saves, run only in visible PowerShell without live monitoring.

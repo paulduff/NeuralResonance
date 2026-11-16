@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedObservedMotorSource -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 5 -or $configuration.ExpectedTestCases -ne 66 -or $configuration.NativePhysicsRequested){throw 'Unexpected observed motor-source configuration.'}
+if(-not $configuration.IsolatedObservedMotorSource -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 5 -or $configuration.ExpectedTestCases -ne 68 -or $configuration.NativePhysicsRequested){throw 'Unexpected observed motor-source configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -68,7 +68,7 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE observed motor-source ownership and replay'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '66 focused tests, five complete six-second source conditions, exact trace/event comparison. No Unity or live brain.'
+ Write-Host '68 focused tests, five complete six-second source conditions, exact trace/event comparison. No Unity or live brain.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/observed-motor-source-tests'

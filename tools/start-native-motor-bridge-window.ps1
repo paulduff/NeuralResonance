@@ -3,9 +3,11 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+$isNeuronal=($configuration.PSObject.Properties.Name -contains 'IsolatedNeuronalNative') -and $configuration.IsolatedNeuronalNative
+$expectedTests=if($isNeuronal){160}else{93}
 if(-not $configuration.RequireCompletedReplyLockControl){throw 'Require completed-reply lock control.'}
 if($configuration.ExactScalarWireVersion -ne 2 -or $configuration.ExpectedExactScalarRoundTrips -ne 1040 -or -not $configuration.RequireOriginalDecimalFailureReproduction){throw 'Require exact scalar wire and original decoder preflight.'}
-if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 93 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
+if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne $expectedTests -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -25,7 +27,7 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
  }}
- $taskPrefix=if($configuration.IsolatedNativeRefinement){'DNNE-Native-Hinge-Refinement-'}else{'DNNE-Native-Motor-Bridge-'}
+ $taskPrefix=if($isNeuronal){'DNNE-Observed-Native-Body-'}elseif($configuration.IsolatedNativeRefinement){'DNNE-Native-Hinge-Refinement-'}else{'DNNE-Native-Motor-Bridge-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -72,16 +74,17 @@ function Capture-Tree([string]$Directory,[string]$Name){
  return $entries
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
- MusclePathAndRegressionChecksPassed=$false;ModelExecutionAttempted=$false;IncludesFixtureMotorEvents=$true;
+ MusclePathAndRegressionChecksPassed=$false;ModelExecutionAttempted=$false;IncludesFixtureMotorEvents=(-not $isNeuronal);
  NeuronalModelExecuted=$false;LiveUnityIntegrated=$false;TimingMeasured=$false;NativeBridgeChecksPassed=$false;
  PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle=if($configuration.IsolatedNativeRefinement){'DNNE native hinge step refinement'}else{'DNNE native motor and muscle bridge'}
+ $Host.UI.RawUI.WindowTitle=if($isNeuronal){'DNNE observed neurons to native muscles'}elseif($configuration.IsolatedNativeRefinement){'DNNE native hinge step refinement'}else{'DNNE native motor and muscle bridge'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '93 geometry/motor/clock/read regressions, then the declared native matrix. No DNNE or live Avatar. Report completion to Orion.'
+ if($isNeuronal){Write-Host '160 focused tests, complete source gate, seven neuronal/native conditions and 12 independent references. Report completion to Orion.'}
+ else{Write-Host '93 geometry/motor/clock/read regressions, then the declared native matrix. No DNNE or live Avatar. Report completion to Orion.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/muscle-path-tests'
@@ -103,6 +106,7 @@ try {
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
  $requiredCounts=@{MusclePathGeometryTests=31;CausalMotorPlantTests=27;DynamicMuscleTests=16;DiagnosticBridgeFileTests=6;MuscleHingeClockTests=12;SolutionManifestTests=1}
+ if($isNeuronal){$requiredCounts.ObservedMotorSourceTests=8;$requiredCounts.MotorAxonTransportTests=32;$requiredCounts.MotorAxonReplayBufferTests=16;$requiredCounts.MotoneuronReferenceTests=11}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count
@@ -123,7 +127,10 @@ try {
  Assert-Package
  foreach($entry in $binaries){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Test binary changed: '+$entry.Path)}}
  $status['PassedFocusedTests']=$results.Count;$status.MusclePathAndRegressionChecksPassed=$true
- if($configuration.IsolatedNativeRefinement){
+ if($isNeuronal){
+  if($configuration.ExpectedNativeCases -ne 7 -or $configuration.ExpectedNativePhysicsSteps -ne 14336 -or $configuration.ExpectedSourceConditions -ne 5 -or $configuration.ExpectedIndependentReferences -ne 12){throw 'Unexpected neuronal/native protocol.'}
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-observed-native-body.py'),$package,'--stage','preflight') 'reference-preflight.log'
+ }elseif($configuration.IsolatedNativeRefinement){
   if($configuration.ExpectedNativeCases -ne 60 -or $configuration.ExpectedNativePhysicsSteps -ne 26624 -or $configuration.RefinementConditions.Count -ne 5){throw 'Unexpected refinement protocol.'}
   Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-hinge-refinement.py'),$package,'--preflight') 'reference-preflight.log'
  }elseif($configuration.ExpectedNativeCases -ne 12 -or $configuration.ExpectedNativePhysicsSteps -ne 4096){throw 'Unexpected native protocol.'}
@@ -155,8 +162,23 @@ try {
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probeDirectory=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release'
  $probeFiles=Capture-Tree $probeDirectory 'probe-binaries.json'
- $status['NativePhysicsAttempted']=$true
- if($configuration.IsolatedNativeRefinement){
+ $status['NativePhysicsAttempted']=(-not $isNeuronal)
+ if($isNeuronal){
+  $probe=Join-Path $probeDirectory 'NeuralResonanceEngine.DNNE.Tests.dll'
+  $status.NeuronalModelExecuted=$true;$status.ModelExecutionAttempted=$true
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--source-check',(Join-Path $package 'reference'),(Join-Path $package 'source-study')) 'source-study.log'
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-observed-motor-source.py'),$package) 'source-analysis.log'
+  $gate=Get-Content -LiteralPath (Join-Path $package 'source-analysis.json') -Raw | ConvertFrom-Json
+  if(-not $gate.completed -or -not $gate.sourceAdapterCriteriaPassed -or -not $gate.activeCadenceEventIdentityEqual -or $gate.cases.Count -ne 5){throw 'Source gate failed before native connection.'}
+  $status['SourceAdapterCriteriaPassed']=$true;$status['NativePhysicsAttempted']=$true
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--neuronal-body',(Join-Path $playerOutput 'DNNE Muscle Bridge.exe'),(Join-Path $package 'reference'),$package,(Join-Path $package 'native-bridge')) 'neuronal-native.log'
+  $status['NativeDriverSucceeded']=$true
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-observed-native-body.py'),$package,'--stage','solve') 'neuronal-reference.log'
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-observed-native-body.py'),$package,'--stage','audit') 'neuronal-analysis.log'
+  $analysis=Get-Content -LiteralPath (Join-Path $package 'neuronal-body-analysis.json') -Raw | ConvertFrom-Json
+  if(-not $analysis.completed -or -not $analysis.numericalCriteriaPassed -or $analysis.cases.Count -ne 7 -or $analysis.independentReferences -ne 12 -or -not $analysis.allNativeEndpointsCompared -or $analysis.liveMotorAuthorityQualified -or $analysis.physiologyQualified -or $analysis.avatarRecoveryAssessed){throw 'Neuronal/native numerical evidence incomplete or scope changed.'}
+  $status['NeuronalNativeCriteriaPassed']=$true
+ }elseif($configuration.IsolatedNativeRefinement){
   foreach($condition in $configuration.RefinementConditions){
    $folder=Join-Path $package ('conditions/'+$condition.key)
    Write-Host ('NATIVE REFINEMENT '+$condition.key) -ForegroundColor Cyan
@@ -188,7 +210,10 @@ try {
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 } finally {
  if($status.Status -eq 'RUNNING'){$status.Status='INTERRUPTED';$status.ExitCode=2;$status['Error']='Pipeline ended before completing checks; cause not established.'}
- if($configuration.IsolatedNativeRefinement){
+ if($isNeuronal){
+  try{Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-observed-native-body.py'),$package,'--stage','preflight') 'reference-postflight.log';$status['ReferenceEnvironmentUnchanged']=$true}
+  catch{$status.Status='FAILED';$status.ExitCode=1;$status['ReferenceEnvironmentUnchanged']=$false;$status['ReferenceEnvironmentError']=$_.Exception.ToString()}
+ }elseif($configuration.IsolatedNativeRefinement){
   try{Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-native-hinge-refinement.py'),$package,'--preflight') 'reference-postflight.log';$status['ReferenceEnvironmentUnchanged']=$true}
   catch{$status.Status='FAILED';$status.ExitCode=1;$status['ReferenceEnvironmentUnchanged']=$false;$status['ReferenceEnvironmentError']=$_.Exception.ToString()}
  }
@@ -201,6 +226,7 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($configuration.IsolatedNativeRefinement){Write-Host 'Tell Orion the native hinge refinement outcome. Sampled convergence, neuronal authority, physiology and Avatar recovery are separate.'}
+ if($isNeuronal){Write-Host 'Tell Orion the observed neuronal/native body outcome. Source causality, coupled numerical accuracy, live brain authority, physiology and Avatar recovery are separate.'}
+ elseif($configuration.IsolatedNativeRefinement){Write-Host 'Tell Orion the native hinge refinement outcome. Sampled convergence, neuronal authority, physiology and Avatar recovery are separate.'}
  else{Write-Host 'Tell Orion the native motor/body bridge outcome. Command causality, coupled trajectory accuracy, physiology and Avatar recovery are separate.'}
 }

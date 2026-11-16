@@ -36,6 +36,7 @@ internal sealed class ObservedMotorSource
     private long _calls;
     private Int128 _supplied;
     private bool _faulted;
+    private bool _claimed;
     internal ObservedMotorIdentity Identity => _identity;
     internal string Source => _stimulated ? "soma-6000" : "quiet";
 
@@ -59,6 +60,21 @@ internal sealed class ObservedMotorSource
     // Only the fixed source grid can advance the neuron. Native body endpoints,
     // packet cadence, wall time and acknowledgements cannot split its RK4 grid.
     internal ObservedMotorSnapshot AdvanceOneSample()
+    {
+        RequireOwner();
+        if (_claimed) throw new InvalidOperationException("Bound source advances only through its motor lane.");
+        return AdvanceCore();
+    }
+
+    internal Func<ObservedMotorSnapshot> ClaimForLane()
+    {
+        RequireOwner();
+        if (_claimed || _faulted) throw new InvalidOperationException("Source cannot acquire another motor owner.");
+        _claimed = true;
+        return AdvanceCore;
+    }
+
+    private ObservedMotorSnapshot AdvanceCore()
     {
         RequireOwner();
         if (_faulted) throw new InvalidOperationException("Faulted source cannot resume.");
@@ -108,22 +124,33 @@ internal sealed class ObservedMotorLane
 {
     private readonly ObservedMotorSource _source;
     private readonly MotorAxonReplayBuffer _sender;
+    private readonly Func<ObservedMotorSnapshot> _advanceSource;
     private readonly int _maximumBatches, _maximumEvents, _owner = Environment.CurrentManagedThreadId;
     private int _publishedEmissions;
     private double _publishedThrough;
 
     internal ObservedMotorLane(Guid evidenceRun, ObservedMotorIdentity identity, bool stimulated,
         MotorAxonAnatomy anatomy, MotorAxonClock clock, int maximumBatches = 32, int maximumEvents = 65_536)
+        : this(new ObservedMotorSource(evidenceRun, identity, stimulated), anatomy, clock, maximumBatches, maximumEvents) { }
+
+    // Explicitly attach a fresh body after a recorded QUIET source prehistory.
+    // Never reset the cell, shift its original timestamps or discard crossings.
+    internal ObservedMotorLane(ObservedMotorSource source, MotorAxonAnatomy anatomy, MotorAxonClock clock,
+        int maximumBatches = 32, int maximumEvents = 65_536)
     {
-        ArgumentNullException.ThrowIfNull(identity); ArgumentNullException.ThrowIfNull(anatomy); ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(source); ArgumentNullException.ThrowIfNull(anatomy); ArgumentNullException.ThrowIfNull(clock);
+        var identity = source.Identity; var initial = source.Capture();
         clock.Validate();
-        if (clock.NeuralEpochMs != 0 || maximumBatches <= 0 || maximumEvents <= 0 ||
+        if (clock.NeuralEpochMs != initial.TimeMs || initial.Faulted || initial.Emissions.Count != 0 ||
+            initial.CrossingsMs.Count != 0 || maximumBatches <= 0 || maximumEvents <= 0 ||
             anatomy.Contacts.Count(c => c.SourceInstanceKey == identity.Instance) != 1)
-            throw new ArgumentException("This fresh reference lane owns exactly one declared source cell from neural time zero.");
+            throw new ArgumentException("Require one source cell, an exactly matching epoch and fully retained quiet prehistory.");
         _ = anatomy.Resolve(identity.Instance, identity.Neuron, identity.Projection);
-        _source = new(evidenceRun, identity, stimulated);
+        _source = source;
         _sender = new(anatomy, clock, identity.Instance, maximumBatches, maximumEvents);
         _maximumBatches = maximumBatches; _maximumEvents = maximumEvents;
+        _publishedThrough = initial.TimeMs;
+        _advanceSource = source.ClaimForLane();
     }
 
     internal ObservedMotorSnapshot CaptureSource() { RequireOwner(); return _source.Capture(); }
@@ -136,7 +163,7 @@ internal sealed class ObservedMotorLane
         if (_sender.Faulted || _sender.PendingBatches >= _maximumBatches ||
             _sender.PendingEvents + UnpublishedEmissions >= _maximumEvents)
             throw new InvalidOperationException("Motor output is backpressured; preserve source state and recover retained delivery first.");
-        return _source.AdvanceOneSample();
+        return _advanceSource();
     }
 
     internal MotorAxonBatch PublishCompleted()

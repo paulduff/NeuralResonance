@@ -1076,3 +1076,21 @@ The separate spindle state candidate is described in
 and makes a pure trial-force query available for slack mechanics. It explicitly
 rejects unsupported zero-overlap kinetics rather than inventing activation.
 Its isolated comparison is coded; live Avatar/Unity/editor paths remain unchanged.
+
+## Observed neuronal source and native muscle connection — 16 November
+
+The native point-force hinge, causal Avatar muscle bridge and sampled physical/
+muscle refinement now have completed independent numerical reviews. The factored
+somatic source adapter also reproduces its original traces and exact arrivals;
+see `DNNE_Native_Hinge_Refinement_Results_2026-11-16.md` and
+`DNNE_Observed_Motor_Source_Results_2026-11-16.md`. These preserve the existing
+Avatar muscle, calcium, transport and paused-start implementation.
+
+The next isolated connection is `DNNE_Observed_Native_Body_2026-11-16.md`. It uses
+actual running reference neurons, explicit quiet source initialization and epoch
+mapping, original cell/contact identity and the existing native point-force path.
+Its 160-case suite, source gate, seven native conditions and 12 new independent
+references remain unqualified until a reported-complete run is reviewed. It
+does not replace Avatar's existing vestibular, proprioceptive, contact, fatigue
+or supply mechanisms. No live world/editor selection changes: sensory return,
+live recruitment, per-muscle anatomy, balance and fall recovery remain open.

@@ -127,3 +127,11 @@ the original source traces, unchanged neuronal/transport implementations and
 66-case method coverage. This is the only pending operator report. No post-launch
 output has been inspected; do not monitor. The completed native refinement is
 reviewed separately and does not establish this new adapter's behavior.
+
+The operator subsequently reported `badc1b` complete. The full C:/D:/source and
+saved-analysis review passed; see
+[the completed source results](DNNE_Observed_Motor_Source_Results_2026-11-16.md).
+This run is no longer pending. The subsequent quiet-epoch ownership extension
+adds two tests (eight source tests, 68 in a standalone source gate). The combined
+neuronal/native experiment reruns the full source gate before using that extension;
+the earlier 66-case result does not qualify the new ownership path by itself.

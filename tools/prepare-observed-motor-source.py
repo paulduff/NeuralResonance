@@ -10,7 +10,7 @@ import uuid
 from zipfile import ZipFile
 
 ROOT=Path(__file__).resolve().parents[1]
-COUNTS=dict(ObservedMotorSourceTests=6,MotorAxonTransportTests=32,MotorAxonReplayBufferTests=16,
+COUNTS=dict(ObservedMotorSourceTests=8,MotorAxonTransportTests=32,MotorAxonReplayBufferTests=16,
             MotoneuronReferenceTests=11,SolutionManifestTests=1)
 
 

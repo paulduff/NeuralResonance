@@ -13,6 +13,36 @@ public sealed class ObservedMotorSourceTests
     private static string Bytes(ObservedMotorSnapshot value) => JsonSerializer.Serialize(value);
 
     [Fact]
+    public void Quiet_Priming_Attaches_At_The_Exact_Epoch_Without_Resetting_State()
+    {
+        var source = new ObservedMotorSource(Guid.NewGuid(), Identity, false);
+        source.AdvanceOneSample(); var before = Bytes(source.Capture());
+        var clock = new MotorAxonClock(Guid.NewGuid(), .1, 0);
+        var lane = new ObservedMotorLane(source, Anatomy(Identity), clock);
+        Assert.Equal(before, Bytes(lane.CaptureSource()));
+        Assert.Throws<InvalidOperationException>(() => source.AdvanceOneSample());
+        Assert.Throws<InvalidOperationException>(() => lane.PublishCompleted());
+        Assert.Equal(before, Bytes(lane.CaptureSource()));
+        Assert.Equal(.2, lane.AdvanceOneSample().TimeMs);
+        var receiver = new AvatarMotorAxonReceiver(Anatomy(Identity), clock);
+        lane.Acknowledge(receiver.AcceptWithAcknowledgement(lane.PublishCompleted()));
+        Assert.Equal(.1, receiver.CompleteThroughBodyMs);
+    }
+
+    [Fact]
+    public void Quiet_Priming_Cannot_Reanchor_Time_Or_Claim_Another_Owner()
+    {
+        var source = new ObservedMotorSource(Guid.NewGuid(), Identity, false);
+        source.AdvanceOneSample(); var before = Bytes(source.Capture());
+        Assert.Throws<ArgumentException>(() => new ObservedMotorLane(source, Anatomy(Identity), new(Guid.NewGuid(), 0, 0)));
+        Assert.Equal(before, Bytes(source.Capture()));
+        var lane = new ObservedMotorLane(source, Anatomy(Identity), new(Guid.NewGuid(), .1, 0));
+        Assert.Throws<InvalidOperationException>(() => new ObservedMotorLane(source, Anatomy(Identity), new(Guid.NewGuid(), .1, 0)));
+        Assert.Equal(before, Bytes(lane.CaptureSource()));
+        Assert.Equal(.2, lane.AdvanceOneSample().TimeMs);
+    }
+
+    [Fact]
     public void Publication_Requires_A_New_Completed_Source_Interval()
     {
         var lane = new ObservedMotorLane(Guid.NewGuid(), Identity, false, Anatomy(Identity), new(Guid.NewGuid(), 0, 0));

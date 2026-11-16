@@ -1992,3 +1992,12 @@ no-root-state continuity probes. No kinetics, live sensory source or root branch
 selection is implemented. Even success requires separate coupled attachment,
 detachment, actin/overlap and sensory-membrane qualification. No test/comparison
 has executed during authoring; launch separately and await the operator report.
+
+The retained-interval study is now launched as
+`spindle-characteristics-20261116-7c6db6`, revision
+`683b0cf0eb4774b935558b557438c78b60add02c`, visible task
+`DNNE-Spindle-Characteristics-2619cda0839d`. All 1,755 initial files plus manifest
+were D: verified. This is the only pending operator report. No post-launch
+output/status/process was inspected, and no controls or numerical comparisons
+ran inline. The new transport remains an unqualified candidate. Native crossing
+`0b35ae` is already reported/reviewed; do not ask for that result again.

@@ -62,3 +62,12 @@ would introduce new material populations, and kinetic rates must act at their
 actual strain coordinates. Their representation, integration accuracy, domain
 dependence and cost still need qualification. No complete intrafusal transition,
 slack trajectory, sensory firing or whole-Avatar recovery is established here.
+
+The study is launched as `spindle-characteristics-20261116-7c6db6`, frozen at
+`683b0cf0eb4774b935558b557438c78b60add02c`, visible task
+`DNNE-Spindle-Characteristics-2619cda0839d`. All 1,755 initial files plus manifest
+were D: verified. Authoring parsed Python and PowerShell syntax; preparation
+read reported, immutable MAT inputs and checked provenance/dependencies only.
+No control, transport calculation, history or numerical comparison ran inline.
+The operator report is pending. No post-launch outputs, status or processes were
+inspected. The committed implementation is a candidate awaiting qualification.

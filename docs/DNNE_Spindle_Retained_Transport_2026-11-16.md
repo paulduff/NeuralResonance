@@ -71,3 +71,28 @@ read reported, immutable MAT inputs and checked provenance/dependencies only.
 No control, transport calculation, history or numerical comparison ran inline.
 The operator report is pending. No post-launch outputs, status or processes were
 inspected. The committed implementation is a candidate awaiting qualification.
+
+## Completed numerical review
+
+The operator subsequently reported completion. The saved-data review verifies
+2,093 files and 98,635,159 bytes per C:/D: copy, 1,754 protected package files
+and 1,710 frozen Git files, with unchanged numerical dependencies. The separate
+`artifacts/spindle-characteristics-review-20261116` review is D: verified.
+No transport, history or kinetic model was executed during review.
+
+All twelve controls, 25,308 saved translations, 31 continuity probes, 144
+histories (8,208 saved endpoints) and 96 cadence contrasts pass. The review
+reconciles population arrays with saved intervals, exact interval moments,
+outflow/conservation, monotone loss of surviving intervals and shared-position
+comparisons. Maximum history population L1 error is 5.6455e-16; maximum force
+error is 5.8208e-11 Pa and second-moment error is 1.4211e-14 nm². Movement
+subdivision changes neither population shape nor force at shared positions;
+maximum outflow-ledger difference is 1.1103e-16.
+
+This repairs the demonstrated transport diffusion for these isolated histories.
+The previous rebinner's maximum history L1 error was about 0.16505 and force
+error 6,283.14 Pa. The absorbing-domain dependence remains deliberately present:
+this result does not identify a physical detachment boundary or qualify moving
+reaction kinetics, slack equilibrium, sensory spikes or live Avatar recovery.
+The run is no longer pending. Work pauses at the operator's request; see
+`DNNE_Checkpoint_2026-11-16.md` for the next steps.

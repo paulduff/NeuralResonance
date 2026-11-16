@@ -2001,3 +2001,15 @@ were D: verified. This is the only pending operator report. No post-launch
 output/status/process was inspected, and no controls or numerical comparisons
 ran inline. The new transport remains an unqualified candidate. Native crossing
 `0b35ae` is already reported/reviewed; do not ask for that result again.
+
+The operator reported retained transport `7c6db6` complete. Its saved-array review
+verifies 2,093 C:/D: files per copy, 1,710 Git files, twelve controls, all 25,308
+queries, 31 continuity probes, 144 histories/8,208 endpoints and 96 cadence pairs.
+History shape/force errors are at roundoff level; shared-position shape/force
+are identical across tested movement subdivisions. The one-file
+`spindle-characteristics-review-20261116` review is D: verified. This qualifies
+isolated transport, not coupled kinetics, physiological boundaries or firing.
+No reports are pending. The operator requested notes and a pause until tomorrow;
+`docs/DNNE_Checkpoint_2026-11-16.md` records the source findings and next spindle/
+native-timing work. Finish committing/pushing this checkpoint and pause the goal;
+do not start another run until the operator resumes.

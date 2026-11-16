@@ -1776,3 +1776,13 @@ itself awaits receptor `501da5`. Other pending reports remain native-body `bb10d
 and spindle `18ec5e`. None was monitored. Active output agreement, independent
 numerical accuracy, presynaptic neuronal authority, native muscle coupling,
 physiology and Avatar recovery remain distinct requirements.
+
+The operator has now reported `bb10dc`, `18ec5e` and `501da5` complete. The receptor
+component's 74 cases and full C:/D:/source/binary evidence verify; its review is
+`motor-receptor-review-20261116`, D: backed. The spindle's fixed-length saved
+analysis reproduces with all 54 comparisons passing; `spindle-fixed-review-20261116`
+is D: backed. The 89,458-file native-body evidence review is still in progress.
+See `docs/DNNE_Body_Spindle_Receptor_Results_2026-11-16.md` and later records.
+The verified receptor review now permits preparation of the 111-case gate; no
+new body's result is presumed by that dependency. Subsequent launched studies
+still require their own completion reports; do not monitor them.

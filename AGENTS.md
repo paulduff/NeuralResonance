@@ -1401,3 +1401,18 @@ launched in visible task `DNNE-Native-Muscle-Paths-ea468e8fcb13`. All 1,589 init
 files plus manifest are D: verified and rechecked at launch. This is the only
 pending operator completion report. No build/native outcome has been inspected;
 do not monitor. All preceding spindle, coupled motor and geometry reports are reviewed.
+
+Native point-force `d9097a` was subsequently reported FAILED and fully reviewed:
+the native player/24 cases/48 physical steps and 75 regressions pass. PowerShell
+typed decimal literals and mixed Decimal/Double equality caused checker failures.
+The repaired saved-data checks and independent geometric/impulse reconstruction
+pass original bounds; all C:/D:/source/binaries verify. Original failed evidence
+is intact and derived review `native-muscle-path-review-20261113-verified` is D:
+backed. No model rerun was needed and no older report remains pending.
+
+Work resumed on 16 November after the operator's pause. The separate constrained
+hinge candidate is documented in `docs/DNNE_Native_Muscle_Hinge_2026-11-16.md`:
+24 cases/72 steps, generalized inertia, analytic moment arm/power, native impulse,
+joint-angle/pose/velocity consistency and force clearing. Fixed-root diagnostics
+are isolated fixtures, never live balance mechanisms. Independent saved-data
+analysis and frozen visible runner are implemented; consult later launch records.

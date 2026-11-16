@@ -88,3 +88,37 @@ PowerShell task `DNNE-Native-Muscle-Paths-ea468e8fcb13`. All 1,589 initial files
 plus manifest were verified on D: and rechecked at launch. This is the only
 pending operator completion report. Neither the Unity build nor native test
 outcome has been inspected; no live monitoring or qualification is inferred.
+
+## Completed evidence review and checker repair
+
+The operator reported `d9097a` FAILED. Unity actually built without errors or
+warnings, returned exit zero and completed all 24 cases/48 physical steps.
+All 75 regressions passed. The PowerShell checker failed before reading the
+case matrix: `[single].01` was interpreted as a property lookup. Replaying the
+saved-data checks also exposed Decimal/Double equality: Windows PowerShell 5
+reads these JSON fractions as Decimal. Explicit leading-zero literals and
+Double conversion on both sides repair the two checker issues. No numerical
+bound, model, force, geometry or native stepping code changed.
+
+`review-native-muscle-paths-20261113.py` verifies all 2,298 files in each C:/D:
+capture (185,692,729 bytes), 1,585 Git files, test/player binaries and all 30
+compiled Unity C# files. It independently reconstructs every path fingerprint,
+length, force, velocity/impulse, power and clearing check from the saved body
+states. All original bounds pass. The original checker error and corrected
+checking block were replayed using PowerShell 5, without rerunning tests or
+physics. The original FAILED package remains intact.
+
+Worst recomputed errors include 3.74005e-8 m in transformed position,
+9.88132e-9 m/s in forced linear velocity, 1.42904e-8 rad/s in angular velocity,
+3.69264e-7 N in force conversion and 2.24669e-7 W in native power. The unforced
+second-step velocity difference is zero. These qualify the tested free-root
+point-force boundary, not constrained joints or a complete muscle trajectory.
+
+The final derived review is
+`artifacts/native-muscle-path-review-20261113-verified` (five files plus manifest,
+verified D: copy). The earlier diagnostic replay is separately preserved and
+D: backed. Original capture manifest:
+`6BDAC6E508C2F6D30C5C06F17F17B3062F386490ED303776C356FB0D15FBBEDD`.
+No earlier run remains pending. Work paused at the operator's request on
+13 November and resumed on 16 November; the next native constrained-hinge
+candidate is documented in `DNNE_Native_Muscle_Hinge_2026-11-16.md`.

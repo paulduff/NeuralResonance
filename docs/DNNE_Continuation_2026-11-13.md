@@ -442,3 +442,20 @@ Native point-force package `native-muscle-paths-20261113-d9097a`, frozen
 Initial D: backup verifies 1,589 files plus manifest, rechecked at launch. This
 is the only pending operator report. Do not inspect build/test progress before
 the operator reports completion. No native qualification follows from launch.
+
+## Resumed 16 November: verified free-root forces, constrained hinge next
+
+`d9097a` was reported FAILED but its Unity build, all 24 native cases/48 physical
+steps and 75 regressions pass. The failure was the PowerShell typed decimal
+literal syntax; saved-data replay also identified Decimal/Double step equality.
+Both checker-only fixes preserve every physical bound and original capture.
+The independent body-state review verifies all C:/D:/source/binary data and has
+a verified D: copy at `native-muscle-path-review-20261113-verified`. No physics
+rerun was required. No earlier report remains pending.
+
+The uncommitted hinge draft was preserved during the operator's pause and resumed
+on 16 November. `DNNE_Native_Muscle_Hinge_2026-11-16.md` specifies its completed
+candidate, separate physical-unit checks, joint-angle/pose consistency and
+independent saved-data analysis. Its authoring compilation and syntax checks pass;
+the 24-case/72-step native run still needs its launch record and operator report.
+The live brain, Avatar and World remain unchanged.

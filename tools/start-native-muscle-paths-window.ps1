@@ -158,9 +158,9 @@ try {
  if($native.unity -ne $configuration.ExpectedUnityVersion -or $native.sessionId -ne $configuration.SessionId -or $native.actualPhysicsSteps -ne 48 -or @($native.cases).Count -ne 24){throw 'Native identity or coverage differs.'}
  if($native.positionBound -ne 2e-6 -or $native.velocityBound -ne 2e-6 -or $native.forceRoundingBound -ne 3e-6 -or $native.powerBound -ne 2e-5){throw 'Native prospective bounds changed.'}
  $index=0
- foreach($bent in @($false,$true)){foreach($rotated in @($false,$true)){foreach($step in @([single].01,[single].001,[single].000125)){foreach($tension in @(0,10)){
+ foreach($bent in @($false,$true)){foreach($rotated in @($false,$true)){foreach($step in @([single]0.01,[single]0.001,[single]0.000125)){foreach($tension in @(0,10)){
   $row=$native.cases[$index]
-  if($row.key -ne ('case-'+$index.ToString('D2')) -or -not $row.completed -or -not $row.passed -or $row.error -or $row.bent -ne $bent -or $row.rotated -ne $rotated -or $row.tensionNewtons -ne $tension -or $row.stepSeconds -ne [double]$step -or $row.startStep -ne 2*$index -or $row.endStep -ne 2*($index+1)){throw 'Native case sequence or parameter matrix differs.'}
+  if($row.key -ne ('case-'+$index.ToString('D2')) -or -not $row.completed -or -not $row.passed -or $row.error -or $row.bent -ne $bent -or $row.rotated -ne $rotated -or $row.tensionNewtons -ne $tension -or [double]$row.stepSeconds -ne [double]$step -or $row.startStep -ne 2*$index -or $row.endStep -ne 2*($index+1)){throw 'Native case sequence or parameter matrix differs.'}
   foreach($field in @('maximumPositionError','maximumPointVelocityError','maximumLinearVelocityError','maximumAngularVelocityError','maximumClearedForceVelocityError')){
    $value=[double]$row.$field
    if([double]::IsNaN($value) -or [double]::IsInfinity($value) -or $value -lt 0 -or $value -gt 2e-6){throw ('Native numerical bound failed: '+$field)}

@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 5 && args[0] == "--receptor-motor-output")
+{
+    ReceptorMotorOutputStudy.Run(args[1], args[2], args[3], args[4]);
+    return;
+}
 if (args.Length == 2 && args[0] == "--runtime-fingerprint")
 {
     RuntimeFingerprint.Write(args[1]);

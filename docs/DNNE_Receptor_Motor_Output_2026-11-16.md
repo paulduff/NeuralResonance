@@ -101,3 +101,11 @@ was inspected and no extra window was opened while authoring this connection.
 project build, static inventory and source snapshots, with a verified D: copy.
 Build success is not a passed test or numerical comparison. Existing numerical
 bounds, old saves, pending packages and their frozen source remain unchanged.
+
+The subsequent full active-output experiment is now authored in
+`DNNE_Active_Receptor_Motor_Output_2026-11-16.md`. It joins the deferred numerical
+comparison window: all 18 raw candidate conditions are repeated through the
+source adapter at two packet cadences (36 source conditions), with exact sampled
+state and spike comparisons and Avatar receiver evidence. It has not run. The
+111-case gate and independent numerical reference remain mandatory prerequisites
+to interpreting its eventual result; no additional window has been opened.

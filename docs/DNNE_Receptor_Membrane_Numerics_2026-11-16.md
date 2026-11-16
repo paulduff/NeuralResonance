@@ -150,7 +150,8 @@ a guarantee of maximum disk consumption. Preparation runs no cell or test.
 After the fresh package is D: backed and verified,
 `start-receptor-membrane-comparison-window.ps1 -PackageDirectory PACKAGE` opens
 an independent visible PowerShell window. It checks dependencies, runs the 18
-candidate conditions and then the independent reference. Exact matrix counts,
+candidate conditions, 36 active source/Avatar receiver conditions and then the
+saved-data audits and independent reference. Exact matrix counts,
 all contact deliveries, scope flags and the original numerical bounds are
 mandatory. Numerical and managed dependencies are checked again after execution,
 including on failure; frozen files and final backup are also checked. The window
@@ -177,3 +178,11 @@ authoring evidence are described in `DNNE_Receptor_Motor_Output_2026-11-16.md`.
 The older 97-case snapshots above remain historical evidence, not the current
 required test inventory. All numerical conditions and acceptance bounds remain
 unchanged. The gate and comparison preparers now require the expanded inventory.
+
+The active output extension is specified in
+`DNNE_Active_Receptor_Motor_Output_2026-11-16.md`. It preserves all 540,036 source
+observations and wire/delivery evidence across two publication cadences. The
+independent source audit runs before the numerical controls and saves its own
+report. These additional source integrations use the original active cell and
+input matrix; no numerical bound or physiological claim has changed. No study
+package or window has been created for this extension.

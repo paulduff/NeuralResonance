@@ -1757,3 +1757,22 @@ with zero warnings/errors; no test or model executed. No live selection or new
 window was made. Pending operator reports are still `bb10dc`, `18ec5e`, `501da5`;
 their outputs/processes were not inspected. Do not monitor or promote the new
 source to physiological/live authority before the required independent checks.
+
+The deferred numerical comparison now includes a full active source/Avatar
+receiver phase, documented in `docs/DNNE_Active_Receptor_Motor_Output_2026-11-16.md`.
+The 18 raw candidate conditions are followed by 36 fresh active source runs at
+two packet cadences, then saved-data audits and the unchanged independent
+numerical controls/reference. Require all 540,036 sampled observations, original
+crossings, 1,296 input-contact deliveries, wire receipts and receiver timing.
+The source never installs baseline state or prescribes baseline crossings.
+Retain any arrivals beyond the horizon; no fabricated completeness or tail flush.
+
+The new recorder, protocol, independent saved-data audit and frozen launcher
+extension compile/parse; no test, neuron, new package or window ran during
+authoring. `receptor-active-output-authoring-20261116` is D: verified. The actual
+cell/receptor/transport code and numerical equations/bounds remain unchanged.
+The prerequisite remains the reported/reviewed 111-case/five-source gate, which
+itself awaits receptor `501da5`. Other pending reports remain native-body `bb10dc`
+and spindle `18ec5e`. None was monitored. Active output agreement, independent
+numerical accuracy, presynaptic neuronal authority, native muscle coupling,
+physiology and Avatar recovery remain distinct requirements.

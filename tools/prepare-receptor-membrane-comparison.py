@@ -21,6 +21,7 @@ for key in ('OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'NUMEX
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from receptor_membrane_protocol import protocol
+from receptor_motor_output_protocol import protocol as output_protocol
 
 
 def module(name, path):
@@ -165,7 +166,8 @@ def main(review_folder):
         compiledProbeSourceRevision=gate['sourceRevision'], exactQualifiedProbeReused=True,
         compilationInputsUnchanged=True, motorSourceFiles=motor_sources, copied=copied,
         testsExecutedDuringPreparation=False, modelsExecutedDuringPreparation=False)
-    for name, value in [('receptor-membrane-input.json', spec), ('provenance.json', provenance), ('probe-binaries.json', probe_binaries)]:
+    for name, value in [('receptor-membrane-input.json', spec), ('receptor-motor-output-input.json', output_protocol()),
+                        ('provenance.json', provenance), ('probe-binaries.json', probe_binaries)]:
         (package / name).write_text(json.dumps(value, indent=2, allow_nan=False) + '\n')
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(h.io(package)).as_posix(), Sha256=h.digest(p)) for p in sorted(h.io(package).rglob('*')) if p.is_file()]
@@ -179,6 +181,7 @@ def main(review_folder):
         QualifiedProbeRelativePath=probe_relative + '/NeuralResonanceEngine.DNNE.Tests.dll',
         MotorSourceRevision=spec['motorSourceRevision'], ReceptorSourceRevision=spec['receptorSourceRevision'],
         ExpectedCandidateConditions=18, ExpectedReferenceConditions=18, ExpectedContactDeliveries=648,
+        SourceOutputComparisonRequested=True, ExpectedSourceOutputConditions=36, ExpectedSourceObservations=540036,
         ExpectedAnalyticControls=6, ExpectedJacobianControls=36, ExpectedReferenceContrasts=18,
         ExpectedCandidateContrasts=18, ExpectedRefinementContrasts=12, MinimumFreeBytes=minimum_free,
         PresynapticEventsAreFixtures=True, PresynapticNeuronsExecuted=False, NativePhysicsRequested=False,

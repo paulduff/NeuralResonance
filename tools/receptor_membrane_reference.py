@@ -207,12 +207,14 @@ def main(package):
     assert config['IsolatedReceptorMembraneComparison'] and config['NoLiveMonitoring']
     assert config['MotorSourceRevision'] == spec['motorSourceRevision'] and config['ReceptorSourceRevision'] == spec['receptorSourceRevision']
     assert config['ExpectedCandidateConditions'] == config['ExpectedReferenceConditions'] == 18
-    required = {'receptor-membrane-input.json', 'reference-preflight.json'}
+    assert config['SourceOutputComparisonRequested'] and config['ExpectedSourceOutputConditions'] == 36
+    required = {'receptor-membrane-input.json', 'receptor-motor-output-input.json', 'reference-preflight.json'}
     required.update('reference/motor-source/' + name for name in ('FivecomptcMG_0.hoc','na3rp.mod','naps.mod','kdrRL.mod','mAHP.mod','gh.mod','L_Ca_inact.mod'))
     required.update('reference/receptor-source/' + name for name in ('ampa.mod','gabaa.mod'))
     required.update('source/tools/' + name for name in ('receptor_membrane_reference.py','receptor_membrane_protocol.py',
         'audit-receptor-membrane.py','motoneuron-active-reference.py','motoneuron-reference-check.py',
-        'motoneuron_active_protocol.py','motoneuron_bounded_jacobian.py','golgi-reference-resume.py'))
+        'motoneuron_active_protocol.py','motoneuron_bounded_jacobian.py','golgi-reference-resume.py',
+        'receptor_motor_output_protocol.py','analyse-receptor-motor-output.py'))
     assert required <= {entry['Path'].replace('\\','/') for entry in config['PackageFiles']}, 'Unprotected reference input.'
     for entry in config['PackageFiles']: assert digest(package / entry['Path']) == entry['Sha256']
     environment_module = module('receptor_numeric_environment', Path(__file__).with_name('golgi-reference-resume.py'))
@@ -229,6 +231,11 @@ def main(package):
         # Imported only for saved-data validation. This audit performs no solve.
         audit_module = module('receptor_candidate_audit', Path(__file__).with_name('audit-receptor-membrane.py'))
         candidate = audit_module.audit(package); report['candidateAudit'] = candidate['summary']; save()
+        output_audit = module('receptor_output_audit', Path(__file__).with_name('analyse-receptor-motor-output.py'))
+        report['sourceOutputAudit'] = output_audit.audit(package, candidate)
+        with (package / 'motor-output-analysis.json').open('x') as stream:
+            json.dump(report['sourceOutputAudit'], stream, indent=2, allow_nan=False)
+        save()
         report['analyticControls'] = analytic_controls(rates, spec['referenceMethods'], spec['criteria']['analyticControlReceptor'], output)
         assert len(report['analyticControls']) == spec['expectedAnalyticControls']
         systems = {}

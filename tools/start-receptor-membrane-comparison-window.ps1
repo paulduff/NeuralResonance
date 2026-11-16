@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.IsolatedReceptorMembraneComparison -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedCandidateConditions -ne 18 -or $configuration.ExpectedReferenceConditions -ne 18 -or $configuration.ExpectedContactDeliveries -ne 648 -or -not $configuration.PresynapticEventsAreFixtures -or $configuration.PresynapticNeuronsExecuted -or $configuration.NativePhysicsRequested -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected coupled comparison configuration.'}
+if(-not $configuration.SourceOutputComparisonRequested -or $configuration.ExpectedSourceOutputConditions -ne 36 -or $configuration.ExpectedSourceObservations -ne 540036){throw 'Active source/output comparison is missing from the frozen configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -63,6 +64,7 @@ function Assert-NumericalEnvironment([string]$Label){
 $probe=Join-Path $package $configuration.QualifiedProbeRelativePath
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
  CandidateExecutionAttempted=$false;PostsynapticNeuronExecuted=$false;CandidateMatrixComplete=$false;IndependentReferenceAttempted=$false;
+ SourceOutputExecutionAttempted=$false;SourceOutputCaptureComplete=$false;SourceOutputAuditPassed=$false;
  CoupledNumericalCriteriaPassed=$false;ManagedRuntimePreserved=$false;NumericalEnvironmentPreserved=$false;
  PresynapticEventsAreFixtures=$true;PresynapticNeuronsExecuted=$false;NativePhysicsExecuted=$false;MuscleDynamicsExecuted=$false;
  PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
@@ -72,7 +74,7 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE receptor to motor membrane numerical comparison'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '18 candidate conditions, six receptor and 36 Jacobian controls, then 18 independent reference integrations. Input spikes are fixtures; no live body or brain.'
+ Write-Host '18 candidate conditions, 36 active source/Avatar receiver conditions, six receptor and 36 Jacobian controls, then 18 independent reference integrations. Presynaptic inputs are fixtures; no live body or brain.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  foreach($path in @($package,$configuration.BackupDestination)){
   $drive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($path))
@@ -89,10 +91,20 @@ try{
  $status.PostsynapticNeuronExecuted=$true;$status.CandidateMatrixComplete=$true
  Assert-ManagedRuntime 'after-candidate'
  Assert-Package
+ $status.SourceOutputExecutionAttempted=$true
+ Invoke-Logged $configuration.DotnetExecutable @($probe,'--receptor-motor-output',(Join-Path $package 'receptor-membrane-input.json'),(Join-Path $package 'receptor-motor-output-input.json'),(Join-Path $package 'membrane-study'),(Join-Path $package 'motor-output-study')) 'motor-output.log'
+ $outputCapture=Get-Content -LiteralPath (Join-Path $package 'motor-output-study/results.json') -Raw | ConvertFrom-Json
+ if(-not $outputCapture.quietHasNoCrossings -or -not $outputCapture.nontrivialExcitedCrossings){throw 'Quiet or nontrivial excited-source requirement failed.'}
+ if(-not $outputCapture.completed -or -not $outputCapture.exactObservedStateAndDeliveryChecksPassed -or $outputCapture.cases.Count -ne 36 -or -not $outputCapture.postsynapticNeuronExecuted -or -not $outputCapture.actualAvatarReceiverExecuted -or -not $outputCapture.presynapticEventsAreFixtures -or $outputCapture.presynapticNeuronsExecuted -or $outputCapture.nativePhysicsExecuted -or $outputCapture.muscleDynamicsExecuted -or $outputCapture.independentNumericalAccuracyQualified -or $outputCapture.physiologicalCalibrationComplete -or $outputCapture.avatarRecoveryAssessed){throw 'Active source/receiver capture failed or scope changed.'}
+ $status.SourceOutputCaptureComplete=$true
+ Assert-ManagedRuntime 'after-output'
+ Assert-Package
  $status.IndependentReferenceAttempted=$true
  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/receptor_membrane_reference.py'),$package) 'reference.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'membrane-reference/comparison.json') -Raw | ConvertFrom-Json
  if(-not $analysis.completed -or -not $analysis.numericalCriteriaPassed -or -not $analysis.frozenInputsAndEnvironmentPreserved -or $analysis.cases.Count -ne 6 -or $analysis.analyticControls.Count -ne 6 -or -not $analysis.quietHasNoCrossings -or -not $analysis.nontrivialExcitedCrossings -or $analysis.candidateAudit.conditions -ne 18 -or $analysis.candidateAudit.deliveredContactEvents -ne 648){throw 'Coupled comparison failed or incomplete.'}
+ if(-not $analysis.sourceOutputAudit.completed -or -not $analysis.sourceOutputAudit.exactObservedStateAndDeliveryChecksPassed -or $analysis.sourceOutputAudit.sourceConditions -ne 36 -or $analysis.sourceOutputAudit.observationPoints -ne 540036 -or $analysis.sourceOutputAudit.inputContactDeliveries -ne 1296){throw 'Active source/receiver audit incomplete.'}
+ $status.SourceOutputAuditPassed=$true
  foreach($row in $analysis.cases){
   if(-not $row.passed -or $row.jacobianControls.Count -ne 6 -or $row.referenceMethods.Count -ne 3 -or $row.referenceContrasts.Count -ne 3 -or $row.candidateContrasts.Count -ne 3 -or $row.refinement.Count -ne 2){throw ('Incomplete reference matrix: '+$row.key)}
  }

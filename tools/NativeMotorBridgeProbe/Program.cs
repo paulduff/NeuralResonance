@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 2 && args[0] == "--runtime-fingerprint")
+{
+    RuntimeFingerprint.Write(args[1]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--receptor-membrane")
 {
     ReceptorMembraneStudy.Run(args[1], args[2]);

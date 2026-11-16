@@ -112,6 +112,57 @@ def review_component(package, output, reported):
     print(json.dumps(reviewed, indent=2), flush=True)
 
 
+def review_gate(package, output, reported):
+    if not reported:
+        raise ValueError('Wait for the operator completion report before reading this gate.')
+    assert not output.exists(), 'Use a new review directory.'
+    common = module('membrane_gate_capture', ROOT / 'tools/review-olive-and-motor-20261109.py')
+    config = common.read(package / 'configuration.json'); status = common.read(package / 'window-status.json')
+    assert config['IsolatedReceptorMembraneGate'] and config['NoLiveMonitoring']
+    reviewed = common.verify(package, ['test-binaries.json', 'probe-binaries.json'], config['Revision'])
+    archive = module('membrane_gate_archive', ROOT / 'tools/review-spindle-root-and-causal-motor-20261113.py')
+    reviewed['verifiedGitFiles'] = archive.source_archive(common, package, config['Revision'])
+    tests = check_tests(package, COUPLED)
+    for key in ('SourceAdapterCriteriaPassed', 'ReceptorMembraneComponentChecksPassed', 'NeuronalModelExecutionConfirmed',
+                'NeuronalModelExecutionAttempted', 'OriginalSourceExecutionAttempted', 'ManagedRuntimePreserved'):
+        assert status[key] is True, key
+    for key in ('LiveBrainAccessed', 'OldSavesLoaded', 'NativePhysicsExecuted', 'MuscleDynamicsExecuted',
+                'IndependentCoupledReferenceQualified', 'PhysiologyQualified', 'AvatarRecoveryAssessed', 'FullUnitSuitePassed'):
+        assert status[key] is False, key
+    assert status['PassedFocusedTests'] == 97 and status['SuccessfulConditions'] == 5
+    audit_module = module('frozen_membrane_source_audit', package / 'source/tools/analyse-observed-motor-source.py')
+    analysis = audit_module.audit(package)
+    assert analysis == common.read(package / 'source-analysis.json') and analysis['sourceAdapterCriteriaPassed']
+    assert analysis['activeCadenceEventIdentityEqual'] and len(analysis['cases']) == 5
+    provenance = common.read(package / 'provenance.json')
+    assert provenance['sourceReview']['operatorReportedCompletion'] and provenance['sourceReview']['sourceAdapterCriteriaPassed']
+    assert provenance['receptorReview']['operatorReportedCompletion'] and provenance['receptorReview']['componentCriteriaPassed']
+    h = helper(); baseline = Path(provenance['sourceReview']['capture'])
+    assert h.digest(baseline / 'backup-manifest.json') == provenance['sourceReview']['manifestSha256']
+    h.verify(baseline, ['reference/' + name for name in REFERENCES])
+    for row in provenance['copied']:
+        assert common.digest(package / row['path']) == common.digest(row['original']) == row['sha256']
+    before = common.read(package / 'managed-runtime-before.json'); after = common.read(package / 'managed-runtime-after.json')
+    assert before == after and common.digest(package / 'managed-runtime-before.json') == common.digest(package / 'managed-runtime-after.json')
+    assert before['version'] == 'motor-probe-runtime-dependencies-v1' and before['modelsExecuted'] is False and before['testsExecuted'] is False
+    assert before['appLocalDependenciesExcluded'] and before['appLocalFilesRequireSeparateBinaryManifest']
+    probe = package / 'source/artifacts/receptor-membrane-source-probe/bin/NativeMotorBridgeProbe/release'
+    binaries = common.read(package / 'probe-binaries.json')
+    assert binaries and (probe / 'NeuralResonanceEngine.DNNE.Tests.dll').is_file()
+    for entry in binaries: Path(entry['Path']).relative_to(probe)
+    reviewed.update(reviewedUtc=datetime.now(timezone.utc).isoformat(), operatorReportedCompletion=True,
+        gateCriteriaPassed=True, passedTests=97, originalSourceConditions=5, savedAnalysisExactlyReproduced=True,
+        testInventory=tests, analysis=analysis, managedRuntimeSha256=common.digest(package / 'managed-runtime-before.json'),
+        qualifiedProbeDirectory=str(probe), qualifiedProbeFiles=len(binaries),
+        testsExecutedDuringReview=False, modelsSolvedDuringReview=False, independentCoupledAccuracyQualified=False,
+        physiologyQualified=False, avatarRecoveryAssessed=False)
+    output.mkdir(parents=True)
+    (output / 'review.json').write_text(json.dumps(reviewed, indent=2) + '\n')
+    shutil.copyfile(package / 'managed-runtime-before.json', output / 'managed-runtime.json')
+    print(json.dumps({key: reviewed[key] for key in ('capture', 'sourceRevision', 'passedTests', 'originalSourceConditions',
+        'verifiedFilesPerCopy', 'verifiedGitFiles', 'qualifiedProbeFiles', 'gateCriteriaPassed')}, indent=2), flush=True)
+
+
 def prepare(review_folder):
     h = helper()
     assert Path(h.git('rev-parse', '--show-toplevel')).resolve() == ROOT.resolve(), 'Prepare only from the owning checkout.'
@@ -203,15 +254,21 @@ def prepare(review_folder):
 
 
 def main():
+    if not __debug__: raise RuntimeError('Gate preparation and review assertions must remain enabled.')
     parser = argparse.ArgumentParser(description=__doc__); commands = parser.add_subparsers(dest='command', required=True)
     review = commands.add_parser('review-component')
     review.add_argument('package', type=Path); review.add_argument('output', type=Path)
     review.add_argument('--operator-reported-complete', action='store_true', required=True)
+    gate_review = commands.add_parser('review-gate')
+    gate_review.add_argument('package', type=Path); gate_review.add_argument('output', type=Path)
+    gate_review.add_argument('--operator-reported-complete', action='store_true', required=True)
     prepare_command = commands.add_parser('prepare'); prepare_command.add_argument('--receptor-review', type=Path, required=True)
     check = commands.add_parser('check-tests'); check.add_argument('package', type=Path)
     args = parser.parse_args()
     if args.command == 'review-component':
         review_component(args.package.resolve(), args.output.resolve(), args.operator_reported_complete)
+    elif args.command == 'review-gate':
+        review_gate(args.package.resolve(), args.output.resolve(), args.operator_reported_complete)
     elif args.command == 'prepare': prepare(args.receptor_review.resolve())
     else: print(json.dumps(check_tests(args.package.resolve(), COUPLED), indent=2), flush=True)
 

@@ -1718,3 +1718,23 @@ or errors. `receptor-coupled-authoring-20261116` (11 files plus manifest) is als
 D: verified; it records syntax/input checks and reconstruction of 30 identities
 from already completed `badc1b`, not new tests. No new study package or window
 was launched; the three pending operator reports remain unchanged. Do not monitor.
+
+The deferred coupled comparison now has a preparer and visible launcher:
+`tools/prepare-receptor-membrane-comparison.py` and
+`tools/start-receptor-membrane-comparison-window.ps1`. They require the successful,
+operator-reported 97-case/five-source gate review, its D: copy and unchanged
+compiled inputs. `receptor_membrane_gate.py review-gate` must not be called before
+that future report. The comparison reuses the exact gate probe and retains its
+source archive; it does not rebuild or upgrade dependencies. Managed runtime
+metadata is captured before/after the gate and compared with the later study.
+The pinned numerical environment, upstream sources, all accepted endpoint traces
+and original bounds are protected. The scope remains fixture presynaptic input
+to an isolated motor cell, not live neuronal authority or spinal physiology.
+
+`receptor-comparison-rig-authoring-20261116` records a zero-warning/error build,
+syntax checks, 97 source case declarations and five preserved independent
+reference files; it is D: backed. No tests/models were executed and no new
+comparison package or fourth window was created. Pending operator reports remain
+observed/native `bb10dc`, spindle `18ec5e`, and receptor component `501da5`.
+None of their outputs or processes has been inspected. See the numerical plan
+for the explicit report/review/prepare/backup/launch sequence; do not monitor.

@@ -3,8 +3,9 @@
 This is the independent numerical comparison that follows the 97-case
 receptor/membrane gate and its five original-source regressions. The candidate
 recorder, saved-data audit, input protocol and independent reference are
-authored. No numerical comparison has run, no comparison package or launcher
-has been prepared, and the three earlier operator reports remain pending.
+authored, together with the deferred preparer and visible PowerShell launcher.
+No numerical comparison has run or comparison package been created. The three
+earlier operator reports remain pending.
 
 The purpose is to qualify the new coupling's numerical behaviour before it
 supplies motor events to a body. It does not qualify the source of the input
@@ -112,9 +113,60 @@ fixture, not a physiological spinal calibration.
 Before running: review the prerequisite component/source gate, freeze a clean
 pushed revision and source inputs, pin the unchanged numerical environment,
 check available C:/D: space for all endpoint traces, and create a fresh verified
-D: backup. A dedicated visible PowerShell launcher still needs to be prepared.
+D: backup. The dedicated visible PowerShell launcher is authored but has not run.
 The reference expects `membrane-study`, `reference/motor-source`,
 `reference/receptor-source`, `reference-preflight.json`, the input protocol and
 frozen `configuration.json`. It verifies the complete numerical environment
 and protected inputs again on successful or failed completion. No dependency
 update is part of this work. Nothing reads the pending studies automatically.
+
+## Deferred packaging and execution
+
+The sequence remains: operator reports `motor-receptor-20261116-501da5`, review
+its saved 74-case evidence, prepare and run the 97-case/five-source gate, then
+wait for its separate operator completion report. Only after that report may
+`receptor_membrane_gate.py review-gate PACKAGE NEW_REVIEW
+--operator-reported-complete` inspect the new gate. This reviewer verifies the
+complete C:/D: capture, source archive and binaries, exact test inventory,
+original source analysis and managed runtime fingerprints without executing a
+model. Its review and runtime metadata must receive a verified D: backup.
+
+`prepare-receptor-membrane-comparison.py --gate-review REVIEW_DIRECTORY` then
+runs with the existing qualified numerical Python. It requires a clean pushed
+revision, that successful review, unchanged compilation inputs and the previously
+qualified numerical environment. It copies the **exact compiled probe** from
+the gate rather than rebuilding it. The original probe source archive and its
+revision are retained separately from the new comparison package's source.
+All copied binaries are hashed and protected. The independent motor reference
+files must still match the already reviewed circuit capture.
+
+The preparer extracts seven motor source files at the pinned Git revision and
+checks their Git blob identities. It copies the verified receptor sources,
+original README and provenance. It protects the protocol, numerical preflight,
+reference code, all copied inputs and binaries. It requires at least 20 GiB free
+on each capture/backup drive; this is a conservative startup requirement, not
+a guarantee of maximum disk consumption. Preparation runs no cell or test.
+
+After the fresh package is D: backed and verified,
+`start-receptor-membrane-comparison-window.ps1 -PackageDirectory PACKAGE` opens
+an independent visible PowerShell window. It checks dependencies, runs the 18
+candidate conditions and then the independent reference. Exact matrix counts,
+all contact deliveries, scope flags and the original numerical bounds are
+mandatory. Numerical and managed dependencies are checked again after execution,
+including on failure; frozen files and final backup are also checked. The window
+stays open for the operator's report. There is no live-monitoring path.
+
+`NativeMotorBridgeProbe --runtime-fingerprint NEW_ABSOLUTE_JSON` is a metadata
+operation: it creates no cell or test. It records the .NET host, external managed
+runtime files, architecture and selected numerical/JIT environment switches.
+App-local files are covered by the separate complete binary manifest. This is
+not a claim to fingerprint every operating-system component. Both the original
+source gate and the comparison capture this metadata, so a changed runtime
+cannot silently inherit the gate's result.
+
+Authoring evidence is `receptor-comparison-rig-authoring-20261116`: a successful
+probe build with zero warnings/errors, Python/PowerShell syntax inspection,
+97 statically counted cases and five unchanged qualified reference files.
+No new test, model, comparison package or window was executed during authoring.
+The runtime capture and new launchers still require their future visible-window
+execution; compilation is not a numerical result.

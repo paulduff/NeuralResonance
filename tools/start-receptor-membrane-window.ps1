@@ -87,11 +87,15 @@ try{
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'
  $probeBinaries=Capture-Binaries $probe 'probe-binaries.json'
+ Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-before.json')) 'managed-runtime-before.log'
  $status.OriginalSourceExecutionAttempted=$true
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--source-check',(Join-Path $package 'reference'),(Join-Path $package 'source-study')) 'source-study.log'
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/analyse-observed-motor-source.py'),$package) 'analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'source-analysis.json') -Raw | ConvertFrom-Json
  if(-not $analysis.completed -or -not $analysis.sourceAdapterCriteriaPassed -or -not $analysis.activeCadenceEventIdentityEqual -or $analysis.cases.Count -ne 5 -or $analysis.nativePhysicsExecuted -or $analysis.muscleDynamicsExecuted -or $analysis.liveMotorAuthorityQualified -or $analysis.physiologyQualified -or $analysis.avatarRecoveryAssessed){throw 'Source comparison incomplete or scope changed.'}
+ Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-after.json')) 'managed-runtime-after.log'
+ if((File-Sha256 (Join-Path $package 'managed-runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'managed-runtime-after.json'))){throw 'Managed runtime dependencies changed during the source gate.'}
+ $status['ManagedRuntimePreserved']=$true
  Assert-Package
  foreach($entry in @($testBinaries)+@($probeBinaries)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Built binary changed: '+$entry.Path)}}
  $status.SourceAdapterCriteriaPassed=$true;$status['SuccessfulConditions']=5;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0

@@ -43,3 +43,10 @@ receptor comparison. The 18-condition native receptor matrix, its independent
 reference/refinement checks and 36 source/receiver cases still require a new
 cubic-mode comparison with unchanged numerical bounds. Presynaptic neuronal
 authority, physiological calibration and whole-Avatar recovery remain separate.
+
+The gate was launched as `native-crossing-20261116-0b35ae` from revision
+`492c2a491340a7b1b7b3c29ce0464a5d095e850b`, visible task
+`DNNE-Native-Crossing-119c16e5b6f9`. All 1,714 initial files plus manifest were
+verified on D: before launch. C# compilation and Python/PowerShell syntax checks
+completed during authoring; no tests or models were executed inline. No outputs,
+status or processes were inspected after launch. The operator report is pending.

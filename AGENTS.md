@@ -1967,3 +1967,10 @@ No live StructureEngine/Avatar/Unity selection changed. The full 18-condition
 receptor numerical comparison and 36 source/receiver cases remain outstanding
 for the new mode, even if this narrower gate passes. Do not overwrite or relabel
 the original failed comparison, and do not monitor any launched window.
+
+The native crossing gate is now launched as `native-crossing-20261116-0b35ae`,
+revision `492c2a491340a7b1b7b3c29ce0464a5d095e850b`, visible task
+`DNNE-Native-Crossing-119c16e5b6f9`. Its 1,714 initial files plus manifest were
+D: verified. Source/build/syntax checks completed without inline test or model
+execution. This is the only pending operator report; no post-launch output,
+status or process was inspected. Wait for the user's report before review.

@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 3 && args[0] == "--source-check")
+{
+    ObservedMotorSourceStudy.Run(args[1], args[2]);
+    return;
+}
 if ((args.Length != 3 && args.Length != 4) || args.Any(a => !Path.IsPathFullyQualified(a)) || Directory.Exists(args[2]))
     throw new ArgumentException("Supply absolute native player, frozen muscle parameter input and NEW output paths.");
 var parameterJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);

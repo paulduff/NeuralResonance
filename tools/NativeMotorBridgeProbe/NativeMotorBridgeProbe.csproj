@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
+    <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
+    <Compile Include="../MotoneuronReferenceProbe/ClockAudit.cs" Link="ClockAudit.cs" />
     <Compile Include="../../UnityWorld/Assets/NRE/Runtime/MuscleHingeWire.cs" Link="MuscleHingeWire.cs" />
     <Compile Include="../../UnityWorld/Assets/NRE/Runtime/DiagnosticBridgeFiles.cs" Link="DiagnosticBridgeFiles.cs" />
   </ItemGroup>

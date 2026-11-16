@@ -1543,3 +1543,14 @@ initial files plus manifest are D: verified and rechecked at launch. This is
 the only pending operator completion report. No post-launch output has been
 inspected; do not monitor. Require the 93 focused tests, all five complete
 native matrices and the original common-grid/reference/refinement criteria.
+
+While awaiting `421387`, the observed neuronal source adapter and prospective
+source gate are prepared in `docs/DNNE_Observed_Motor_Source_2026-11-16.md`.
+They preserve the checked motor cell, endpoint scheduler and Avatar transport,
+with cell-owned advancement, original fractional crossings and retained-batch
+backpressure/retry. Six new ownership tests and five full source-reproduction
+conditions are authored; builds/static provenance are not test execution.
+No new model/test/native run has been launched. The source gate must reproduce
+all 30 state traces and exact event identities/timing before the adapter reaches
+native moving muscles; it does not qualify live spinal or human motor authority.
+The only pending operator report remains `421387`; do not inspect its outputs.

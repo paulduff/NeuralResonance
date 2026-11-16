@@ -18,6 +18,8 @@
     <Using Include="Xunit" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\DiagnosticBridgeFiles.cs" Link="DiagnosticBridgeFiles.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MuscleHingeWire.cs" Link="MuscleHingeWire.cs" />
+    <Compile Include="..\..\tools\NativeMotorBridgeProbe\ObservedMotorSource.cs" Link="ObservedMotorSource.cs" />
+    <Compile Include="..\..\tools\MotoneuronReferenceProbe\ClockAudit.cs" Link="MotorClockAudit.cs" />
     <Compile Include="..\..\tools\UnityPhysicalSampleProbe\UnityObservationEncoding.cs" Link="UnityObservationEncoding.cs" />
     <Compile Include="..\..\tools\OliveBatchProbe\OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />
     <Compile Include="..\..\tools\OliveBatchProbe\OlivaryCpuBatch.cs" Link="OlivaryCpuBatch.cs" />

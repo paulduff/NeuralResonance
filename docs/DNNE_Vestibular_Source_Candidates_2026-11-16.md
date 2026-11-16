@@ -81,3 +81,20 @@ interface. Then qualify channel arithmetic and the source membrane separately
 from hair-cell input, timing, physiological calibration and whole-body balance.
 The current receptor and spindle results take priority over a new vestibular
 experiment; no third experimental window was launched for this inspection.
+
+## Detailed source retained for further inspection
+
+The same pinned calyx revision has subsequently supplied its model template,
+supporting PDF, displacement stimulus, README and GPL-3.0 license. These five
+original files are retained in `artifacts/vestibular-calyx-source-20261116`, with
+Git blob/size verification and SHA-256 provenance. The `.mph` container permits
+read-only extraction of its XML representation; `dmodel.xml` exposes model
+parameters and expressions for a future port audit. Metadata and the 32-page
+supplement's derived text are retained too. No downloaded code or COMSOL model
+has been executed, and no runtime implementation has been adopted.
+
+This additional source capture is D: backed. Published equations still require
+visual PDF review, correspondence to active XML features and reconciliation of
+the candidate's mechanism/units. Extracted text alone is not evidence that its
+mathematics has been correctly interpreted. The completed spindle force review
+took priority when its operator report arrived.

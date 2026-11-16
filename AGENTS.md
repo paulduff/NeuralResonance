@@ -1874,3 +1874,22 @@ Only two reports are now pending: receptor comparison `f7ece6` and spindle force
 replacement `ba3c0c`. Neither output/status/process was inspected after launch;
 do not monitor. The failed `527839` and successful `f2c9a7` captures are reviewed,
 preserved and no longer pending.
+
+The operator subsequently reported spindle force replacement `ba3c0c` complete.
+Its saved-record review verifies 1,777 C:/D: files per copy, 1,687 frozen Git
+files, unchanged numerical dependencies, eight passing controls and all 2,812
+queries. `spindle-slack-v2-review-20261116` is separately D: backed. There are 418
+single-root, 2,363 multiple-root and 31 no-root saved states; all 31 no-root states
+contain sign-changing finite-support force jumps. See the completed section in
+`docs/DNNE_Receptor_And_Slack_Results_2026-11-16.md`. This qualifies the pinned
+force enumeration, not a slack controller or sensory physiology. Next isolate
+cross-bridge distribution translation/boundaries and unloading history; do not
+choose an arbitrary root, clip stress or relax bounds. Only receptor comparison
+`f7ece6` now awaits an operator report; it remains uninspected and unmonitored.
+No new experiment was launched during the review.
+
+The additional `vestibular-calyx-source-20261116` capture is also D: backed. It
+retains the pinned MPH template, supplementary PDF, stimulus, license/README and
+read-only XML/text extraction. No imported code or COMSOL model ran. Active XML
+feature correspondence and visual equation review remain outstanding; do not
+treat the extracted text as a qualified portable sensory implementation.

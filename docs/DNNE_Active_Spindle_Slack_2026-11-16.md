@@ -9,6 +9,11 @@ The first reported run and the version-2 root-identification repair are now
 recorded in `DNNE_Receptor_And_Slack_Results_2026-11-16.md`. The original six-control
 run below remains failed and preserved. Its replacement requires eight controls
 and the same full 2,812-state matrix, with unchanged acceptance bounds.
+The replacement `ba3c0c` has since been reported complete and reviewed: all eight
+controls and 2,812 queries pass. Its 31 no-root and 2,363 multiple-root states
+preclude treating enumeration as a qualified slack controller. See the completed
+review in the linked results document; launch/pending statements below are the
+historical first-run record.
 
 ## Existing Avatar and source findings
 

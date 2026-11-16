@@ -93,3 +93,67 @@ D: verified before launch. Its visible task is `DNNE-Spindle-Slack-2bb1c5df9d5a`
 No post-launch output or process was inspected. The only two pending operator
 reports are this replacement and receptor comparison `f7ece6`. Keep both
 unmonitored until their respective completion reports arrive.
+
+## Replacement completed and reviewed
+
+The operator subsequently reported `ba3c0c` complete. Saved-data review verifies
+all **1,777 files per C:/D: copy**, 90,016,597 bytes, 1,745 protected package files
+and 1,687 frozen Git files. Numerical dependency fingerprints agree before,
+after and at review. All eight controls pass, including the original step-48
+failure and the separate two-close-roots control. Every record in all twelve
+traces reconciles with the saved analysis: **2,812 queries pass**. The review
+does not rerun root searches, controls, kinetics or trajectories.
+
+The largest force residual is 9.8062e-9 Pa against the original 1e-7 Pa bound;
+the largest candidate/reference force difference is 4.6566e-10 Pa. Root
+locations differ by at most 2.2737e-13 nm against the original 1e-9 nm bound.
+No acceptance bound changed. The repaired enumeration is qualified for these
+recorded states and the pinned finite-grid force rule.
+
+| Zero-force solutions per saved state | States |
+|---|---:|
+| None | 31 |
+| One | 418 |
+| More than one | 2,363 |
+
+All enumerated roots meet the declared population/domain checks. That is
+algebraic admissibility, not evidence of dynamical stability or accessibility
+from the previous state. Among the 699 states with negative original imposed
+stress, 137 have one root, 534 have multiple roots and 28 have none. These
+figures include three time resolutions of the same protocols; they are not
+independent biological samples or estimates of real spindle failure rates.
+
+All 31 no-root states contain a sign-changing force discontinuity. For example,
+`bag-imposed-below-slack-1000us`, step 36, has no zero-force root in the declared
+open domain. At trial length 1,069 nm the recorded force and left limit are
+approximately -1,060.138 Pa, while the right limit is +1,137.633 Pa. A bracketing
+solver must not report that jump as a zero. The pure trial helper uses linear
+interpolation with zero outside the finite distribution support; occupied edge
+bins therefore explain the recorded discontinuities. The independent reference
+shares this source convention, so agreement does not validate that convention
+as physiological mechanics.
+
+Multiple roots also occur without any significant jump: at step 2 of
+`bag-stretch-shorten-1000us`, three roots are approximately 1,050,
+1,209.740813 and 1,222.376251 nm. The passive-tail solution retains no bound
+cross-bridges; the others retain different bound populations. A local slope or
+nearest-root choice alone is not a validated rule for advancing the muscle.
+
+The next mechanical investigation should isolate distribution translation at
+finite support and its effects on population conservation, force continuity and
+unloading history. Compare any proposed conservative transport/boundary treatment
+against analytic translation controls and increasing bin range/resolution before
+coupling it to kinetics. Preserve the original rule and its qualified reference
+as a baseline. Do not clip negative stress, relax bounds, discard roots or install
+an arbitrary selected root in Avatar. A later slack trajectory must additionally
+respect imposed geometry and previous mechanical state.
+
+`tools/review-spindle-slack-v2-20261116.py` reproduces the saved-record review.
+`artifacts/spindle-slack-v2-review-20261116/review.json` preserves its provenance,
+counts, all no-root examples and one multiple-root example per trace. The review
+is separately D: backed. Moving/slack trajectories, sensory firing, physiological
+calibration and Avatar recovery remain unqualified.
+
+Only **receptor comparison `f7ece6`** now awaits an operator completion report.
+Its outputs and process remain uninspected. No further experiment was launched
+as part of this completed-run review.

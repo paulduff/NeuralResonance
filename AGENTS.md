@@ -1893,3 +1893,23 @@ retains the pinned MPH template, supplementary PDF, stimulus, license/README and
 read-only XML/text extraction. No imported code or COMSOL model ran. Active XML
 feature correspondence and visual equation review remain outstanding; do not
 treat the extracted text as a qualified portable sensory implementation.
+
+Receptor comparison `f7ece6` is now operator-reported and reviewed, no longer
+pending. `receptor-comparison-review-20261116` verifies 1,975 C:/D: files,
+5,405,631,249 bytes, 18 passing absolute candidate/reference contrasts each and
+all 36 source/receiver cases. One of 12 refinement checks fails: distributed
+excitation crossing time at 0.0125 -> 0.00625 ms. Saved reference-endpoint
+decomposition shows coarse cancellation of trajectory and linear-secant error;
+do not loosen limits or rewrite the original FAILED status. See
+`docs/DNNE_Receptor_Crossing_Diagnosis_2026-11-16.md`. The window's source-audit
+flag was not reached after reference failure; its saved output audit actually
+passes and has been independently reproduced. The new cubic crossing diagnostic
+must run in its own visible window and await an operator report. No current
+C# membrane/event implementation has changed.
+
+`tools/spindle_population_transport.py` is an authored, unexecuted candidate,
+with separate interval-overlap reference and explicit boundary outflow. Its
+cell-mass interpretation changes the source's interpolation convention. The
+required comparison rig remains unfinished; do not call the candidate tested or
+promote it to Avatar. Requirements and preserved Avatar boundaries are in
+`docs/DNNE_Spindle_Population_Transport_2026-11-16.md`.

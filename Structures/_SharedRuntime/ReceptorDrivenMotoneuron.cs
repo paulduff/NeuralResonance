@@ -42,7 +42,8 @@ internal sealed class ReceptorDrivenMotoneuron
         IReadOnlyList<MotorReceptorDefinition> contacts, Guid sessionId,
         double initialVoltageMv = -65, MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
         MotoneuronAccumulation accumulation = MotoneuronAccumulation.Compensated,
-        int maximumEpochEventsPerContact = 1_000_000, int maximumEpochBatchesPerContact = 1_000_000)
+        int maximumEpochEventsPerContact = 1_000_000, int maximumEpochBatchesPerContact = 1_000_000,
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
     {
         ArgumentNullException.ThrowIfNull(contacts);
         if (sessionId == Guid.Empty || contacts.Count == 0 || maximumEpochEventsPerContact <= 0 || maximumEpochBatchesPerContact <= 0)
@@ -53,7 +54,7 @@ internal sealed class ReceptorDrivenMotoneuron
                 d.TargetNeuronIndex != target.TargetNeuronIndex) || contacts.Select(d => d.ContactId).Distinct().Count() != contacts.Count)
             throw new ArgumentException("Distinct physical contacts must belong to one target motor neuron.");
         _session = sessionId; _maximumEpochEvents = maximumEpochEventsPerContact; _maximumEpochBatches = maximumEpochBatchesPerContact;
-        _cell = new(parameters, initialVoltageMv, block, accumulation);
+        _cell = new(parameters, initialVoltageMv, block, accumulation, crossingInterpolation);
         _lanes = contacts.OrderBy(d => d.ContactId).Select(d => new Lane(d,
             new MotorReceptorContact(d, sessionId, maximumEpochEvents: maximumEpochEventsPerContact))).ToArray();
         _contacts = _lanes.Select(l => l.Receptor).ToArray();

@@ -61,7 +61,9 @@ internal sealed class MotoneuronReferenceCell
     private readonly List<double> _spikes = [];
     private bool _faulted, _receptorInputUsed;
     public MotoneuronAccumulation Accumulation { get; }
+    public MotoneuronCrossingInterpolation CrossingInterpolation { get; }
     public string IntegrationVersion => (Accumulation == MotoneuronAccumulation.Compensated ? CompensatedVersion : Version) +
+        (CrossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite ? MotoneuronCrossing.CubicVersionSuffix : "") +
         (_receptorInputUsed ? "+point-receptors-stage-evaluated-v1" : "");
     public double TimeMs { get; private set; }
     public double SomaVoltageMv => _state[0];
@@ -89,12 +91,13 @@ internal sealed class MotoneuronReferenceCell
 
     public MotoneuronReferenceCell(MotoneuronReferenceParameters parameters, double initialVoltageMv = -65,
         MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
-        MotoneuronAccumulation accumulation = MotoneuronAccumulation.Naive)
+        MotoneuronAccumulation accumulation = MotoneuronAccumulation.Naive,
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
     {
         ArgumentNullException.ThrowIfNull(parameters); parameters.Validate();
-        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block) || !Enum.IsDefined(accumulation))
+        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block) || !Enum.IsDefined(accumulation) || !Enum.IsDefined(crossingInterpolation))
             throw new ArgumentException("Invalid isolated cell initialization.");
-        _parameters = parameters; _block = block; Accumulation = accumulation;
+        _parameters = parameters; _block = block; Accumulation = accumulation; CrossingInterpolation = crossingInterpolation;
         for (int i = 0; i < 5; ++i)
         {
             var section = i == 0 ? parameters.Soma : parameters.Dendrite;
@@ -192,7 +195,19 @@ internal sealed class MotoneuronReferenceCell
             MaximumCalciumLedgerErrorMm = Math.Max(MaximumCalciumLedgerErrorMm,
                 Math.Abs(next[14] - MotoneuronChannelKinetics.RestingCalciumMm - next[27] + next[28]));
             if (_state[0] < SpikeThresholdMv && next[0] >= SpikeThresholdMv)
-                _spikes.Add(TimeMs + dtMs * (SpikeThresholdMv - _state[0]) / (next[0] - _state[0]));
+            {
+                double crossing;
+                if (CrossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite)
+                {
+                    // RK4's d stage is not the derivative at its accepted endpoint.
+                    // Evaluate that endpoint without advancing any receptor or cell.
+                    Span<double> endpoint = stackalloc double[30];
+                    Derivative(next, endpoint, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, end, contacts);
+                    crossing = MotoneuronCrossing.Cubic(TimeMs, end, _state[0], next[0], a[0], endpoint[0]).TimeMs;
+                }
+                else crossing = TimeMs + dtMs * (SpikeThresholdMv - _state[0]) / (next[0] - _state[0]);
+                _spikes.Add(crossing);
+            }
             next.CopyTo(_state); nextError.CopyTo(_additionError); TimeMs += dtMs;
             _receptorInputUsed |= contacts is not null;
         }

@@ -25,6 +25,8 @@ internal sealed record ReceptorMotorSourceState(Guid SessionId, string Configura
 internal sealed class ReceptorMotorSource
 {
     internal const string Version = "isolated-receptor-motor-source-v1";
+    internal const string CubicVersion = "isolated-receptor-motor-source-cubic-v2";
+    internal string SourceVersion { get; }
     internal const double DefaultSampleMs = .1;
     private readonly ReceptorDrivenMotoneuron _cell;
     private readonly Guid _session;
@@ -41,14 +43,15 @@ internal sealed class ReceptorMotorSource
     internal ReceptorMotorSource(MotoneuronReferenceParameters parameters,
         IReadOnlyList<MotorReceptorDefinition> contacts, Guid session, ReceptorMotorIdentity identity,
         double maximumStepMs = .003125, double initialVoltageMv = -65,
-        MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None, double sampleMs = DefaultSampleMs)
+        MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None, double sampleMs = DefaultSampleMs,
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
     {
         ArgumentNullException.ThrowIfNull(contacts); ArgumentNullException.ThrowIfNull(identity);
         static bool Key(string value) => !string.IsNullOrWhiteSpace(value) && value == value.Trim();
         if (session == Guid.Empty || !Key(identity.Instance) || !Key(identity.Neuron) ||
             identity.Projection == Guid.Empty || identity.Synapse == Guid.Empty || contacts.Count == 0 ||
             !double.IsFinite(maximumStepMs) || maximumStepMs <= 0 || maximumStepMs > MotoneuronReferenceCell.MaximumStepMs ||
-            !double.IsFinite(sampleMs) || sampleMs <= 0 || !Enum.IsDefined(block))
+            !double.IsFinite(sampleMs) || sampleMs <= 0 || !Enum.IsDefined(block) || !Enum.IsDefined(crossingInterpolation))
             throw new ArgumentException("Declare one identified motor cell and its bounded integration step.");
         var input = contacts.ToArray();
         foreach (var contact in input)
@@ -57,11 +60,15 @@ internal sealed class ReceptorMotorSource
             if (contact.TargetInstance != identity.Instance || contact.TargetNeuron != identity.Neuron)
                 throw new ArgumentException("Motor output must belong to the cell receiving these contacts.");
         }
-        _cell = new(parameters, input, session, initialVoltageMv, block, MotoneuronAccumulation.Compensated);
+        _cell = new(parameters, input, session, initialVoltageMv, block, MotoneuronAccumulation.Compensated,
+            crossingInterpolation: crossingInterpolation);
+        SourceVersion = crossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite ? CubicVersion : Version;
         _session = session; _identity = identity; _maximumStepMs = maximumStepMs; _block = block; _sampleMs = sampleMs;
         ConfigurationFingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
-            Version, CellVersion = MotoneuronReferenceCell.CompensatedVersion, ReceptorVersion = MotorReceptorContact.Version,
+            Version = SourceVersion, CellVersion = MotoneuronReferenceCell.CompensatedVersion +
+                (crossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite ? MotoneuronCrossing.CubicVersionSuffix : ""),
+            ReceptorVersion = MotorReceptorContact.Version,
             Parameters = parameters, Contacts = input.OrderBy(c => c.ContactId).ToArray(), Identity = identity,
             MaximumStepMs = maximumStepMs, SampleMs = sampleMs, InitialVoltageMv = initialVoltageMv, Block = block
         })));
@@ -125,7 +132,7 @@ internal sealed class ReceptorMotorSource
                 double at = state.Crossings[i];
                 if (!double.IsFinite(at) || at <= 0 || at > until || (i > 0 && at <= state.Crossings[i - 1]))
                     throw new InvalidOperationException("Require original, strictly ordered observed crossings.");
-                Guid id = StableNeuralIdentity.Create(Version, _session, _identity.Instance,
+                Guid id = StableNeuralIdentity.Create(SourceVersion, _session, _identity.Instance,
                     _identity.Neuron, _identity.Projection, _identity.Synapse, i + 1);
                 _emissions.Add(new(i + 1, id, at, _identity.Instance, _identity.Neuron, _identity.Projection, _identity.Synapse));
             }

@@ -21,7 +21,8 @@ public sealed class ReceptorMotorSourceTests
     private static string Bytes(object value) => JsonSerializer.Serialize(value);
     private static ReceptorMotorSource Quiet() => new(MotoneuronReferenceParameters.CatLowThreshold, [Input()], Session, Identity);
 
-    private static (ReceptorMotorSource Source, MotorReceptorDefinition[] Inputs) Passive(double sampleMs = .1)
+    private static (ReceptorMotorSource Source, MotorReceptorDefinition[] Inputs) Passive(double sampleMs = .1,
+        MotoneuronCrossingInterpolation crossing = MotoneuronCrossingInterpolation.Linear)
     {
         // An explicitly labelled passive cable control. Its genuine voltage
         // crossings test event wiring, not active neuronal firing physiology.
@@ -30,7 +31,8 @@ public sealed class ReceptorMotorSourceTests
         var inputs = Enumerable.Range(0, 5).Select(i => Input(i))
             .Concat(Enumerable.Range(0, 5).Select(i => Input(i, true))).ToArray();
         return (new(p with { Soma = section, Dendrite = section }, inputs, Session, Identity,
-            initialVoltageMv: -71, block: MotoneuronDiagnosticBlock.Passive, sampleMs: sampleMs), inputs);
+            initialVoltageMv: -71, block: MotoneuronDiagnosticBlock.Passive, sampleMs: sampleMs,
+            crossingInterpolation: crossing), inputs);
     }
 
     private static void Drive(Func<Guid, Guid, long, double, IReadOnlyList<SpikeMessage>, MotorReceptorBatchReceipt> admit,
@@ -133,10 +135,13 @@ public sealed class ReceptorMotorSourceTests
         Assert.Equal(Bytes(state), Bytes(source.Capture()));
     }
 
-    [Fact]
-    public void Actual_Observed_Crossings_Reach_Avatar_With_Original_Identity_And_Delay()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Actual_Observed_Crossings_Reach_Avatar_With_Original_Identity_And_Delay(bool cubic)
     {
-        var fixture = Passive(64); var anatomy = Anatomy(); var clock = Clock();
+        var fixture = Passive(64, cubic ? MotoneuronCrossingInterpolation.CubicHermite : MotoneuronCrossingInterpolation.Linear);
+        var anatomy = Anatomy(); var clock = Clock();
         var lane = new ReceptorMotorLane(fixture.Source, anatomy, clock, allowDiagnosticSource: true);
         Drive(lane.Admit, fixture.Inputs); var state = lane.AdvanceOneSample();
         Assert.Equal(3, state.Cell.Crossings.Length);
@@ -160,10 +165,13 @@ public sealed class ReceptorMotorSourceTests
         Assert.Empty(receiver.AdvanceTo(64));
     }
 
-    [Fact]
-    public void Small_Packets_Drain_A_Completed_Source_Prefix_Without_Dropping_The_Suffix()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Small_Packets_Drain_A_Completed_Source_Prefix_Without_Dropping_The_Suffix(bool cubic)
     {
-        var fixture = Passive(64); var lane = new ReceptorMotorLane(fixture.Source, Anatomy(), Clock(),
+        var fixture = Passive(64, cubic ? MotoneuronCrossingInterpolation.CubicHermite : MotoneuronCrossingInterpolation.Linear);
+        var lane = new ReceptorMotorLane(fixture.Source, Anatomy(), Clock(),
             maximumBatches: 1, maximumEvents: 1, allowDiagnosticSource: true);
         Drive(lane.Admit, fixture.Inputs); var state = lane.AdvanceOneSample();
         Assert.Equal(3, lane.UnpublishedEmissions); string before = Bytes(state);
@@ -195,10 +203,13 @@ public sealed class ReceptorMotorSourceTests
         Assert.Equal(.2, lane.AdvanceOneSample().Cell.TimeMs);
     }
 
-    [Fact]
-    public void Publication_Cadence_Does_Not_Change_Neuronal_State_Or_Event_Identity()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Publication_Cadence_Does_Not_Change_Neuronal_State_Or_Event_Identity(bool cubic)
     {
-        var a = Passive(); var b = Passive();
+        var mode = cubic ? MotoneuronCrossingInterpolation.CubicHermite : MotoneuronCrossingInterpolation.Linear;
+        var a = Passive(crossing: mode); var b = Passive(crossing: mode);
         var fast = new ReceptorMotorLane(a.Source, Anatomy(), Clock(), allowDiagnosticSource: true);
         var slow = new ReceptorMotorLane(b.Source, Anatomy(), Clock(), allowDiagnosticSource: true);
         Drive(fast.Admit, a.Inputs); Drive(slow.Admit, b.Inputs);
@@ -211,6 +222,52 @@ public sealed class ReceptorMotorSourceTests
         }
         Assert.Equal(3, fast.CaptureSource().Emissions.Count);
         Assert.Equal(Bytes(first.AdvanceTo(64)), Bytes(second.AdvanceTo(64)));
+    }
+
+    [Fact]
+    public void Cubic_Readout_Preserves_Every_Observed_State_But_Versions_Changed_Event_Times()
+    {
+        var linear = Passive(); var cubic = Passive(crossing: MotoneuronCrossingInterpolation.CubicHermite);
+        Drive(linear.Source.Admit, linear.Inputs); Drive(cubic.Source.Admit, cubic.Inputs);
+        Assert.NotEqual(linear.Source.ConfigurationFingerprint, cubic.Source.ConfigurationFingerprint);
+        for (int i = 0; i < 640; ++i)
+        {
+            var a = linear.Source.AdvanceOneSample().Cell; var b = cubic.Source.AdvanceOneSample().Cell;
+            Assert.Equal(a.Crossings.Length, b.Crossings.Length);
+            Assert.Equal(Bytes(a with { Crossings = [], IntegrationVersion = "" }),
+                Bytes(b with { Crossings = [], IntegrationVersion = "" }));
+            Assert.Contains(MotoneuronCrossing.CubicVersionSuffix, b.IntegrationVersion);
+        }
+        var oldEvents = linear.Source.Capture().Emissions; var newEvents = cubic.Source.Capture().Emissions;
+        Assert.Equal(3, newEvents.Count);
+        Assert.Contains(oldEvents.Zip(newEvents), pair => pair.First.FiredAtNeuralMs != pair.Second.FiredAtNeuralMs);
+        for (int i = 0; i < newEvents.Count; ++i)
+        {
+            Assert.NotEqual(oldEvents[i].MessageId, newEvents[i].MessageId);
+            Assert.Equal(StableNeuralIdentity.Create(ReceptorMotorSource.Version, Session, Identity.Instance,
+                Identity.Neuron, Identity.Projection, Identity.Synapse, i + 1), oldEvents[i].MessageId);
+            Assert.Equal(StableNeuralIdentity.Create(ReceptorMotorSource.CubicVersion, Session, Identity.Instance,
+                Identity.Neuron, Identity.Projection, Identity.Synapse, i + 1), newEvents[i].MessageId);
+        }
+    }
+
+    [Fact]
+    public void Default_And_Explicit_Linear_Keep_The_Original_Fingerprint_And_State()
+    {
+        var implicitLinear = Quiet();
+        var explicitLinear = new ReceptorMotorSource(MotoneuronReferenceParameters.CatLowThreshold,
+            [Input()], Session, Identity, crossingInterpolation: MotoneuronCrossingInterpolation.Linear);
+        // Reconstruct the published v1 configuration, including its original field order.
+        var old = new { Version = ReceptorMotorSource.Version, CellVersion = MotoneuronReferenceCell.CompensatedVersion,
+            ReceptorVersion = MotorReceptorContact.Version, Parameters = MotoneuronReferenceParameters.CatLowThreshold,
+            Contacts = new[] { Input() }, Identity, MaximumStepMs = .003125, SampleMs = .1,
+            InitialVoltageMv = -65d, Block = MotoneuronDiagnosticBlock.None };
+        var expected = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(old)));
+        Assert.Equal(expected, implicitLinear.ConfigurationFingerprint);
+        Assert.Equal(expected, explicitLinear.ConfigurationFingerprint);
+        implicitLinear.Admit(Session, Input().ContactId, 1, 1, []);
+        explicitLinear.Admit(Session, Input().ContactId, 1, 1, []);
+        Assert.Equal(Bytes(implicitLinear.AdvanceOneSample()), Bytes(explicitLinear.AdvanceOneSample()));
     }
 
     [Fact]

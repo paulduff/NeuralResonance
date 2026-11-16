@@ -1955,3 +1955,15 @@ See the completed transport document; investigate retained characteristics/
 moving intervals and explicit domain/kinetic accounting before live promotion.
 Both experiments were inspected only after their operator reports. There are
 now no pending completion reports. The full brain/body/world goal is unfinished.
+
+The optional native cubic crossing candidate is now authored. See
+`docs/DNNE_Native_Crossing_Gate_2026-11-16.md`. It uses the actual accepted endpoint
+derivative, changes only event localization, and rejects nonmonotone polynomials.
+Linear mode remains the default with its original fingerprint and event IDs;
+cubic mode has distinct cell/source versions. The prospective gate has 124 cases
+and five exact original source regressions. Preparation and source/build checks
+are not test passes; only the visible PowerShell launcher may execute them.
+No live StructureEngine/Avatar/Unity selection changed. The full 18-condition
+receptor numerical comparison and 36 source/receiver cases remain outstanding
+for the new mode, even if this narrower gate passes. Do not overwrite or relabel
+the original failed comparison, and do not monitor any launched window.

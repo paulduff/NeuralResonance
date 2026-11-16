@@ -107,3 +107,15 @@ mismatch while writing its preparation report. The corrected preparer reads
 verified (1,740 files plus manifest), with no window launched. The two-file
 `spindle-slack-authoring-20261116-r2` records the correction and is D: verified.
 A new package is required; the partial package is not reused.
+
+## Launch
+
+`spindle-slack-roots-20261116-527839` is frozen from
+`cd5b775a4090f18ced1697ae025c7b71fd1f51ea`. Its 1,741 initial files plus manifest
+were D: verified, and rechecked by the independent visible launcher. The task is
+`DNNE-Spindle-Slack-9f7199654b99`. No post-launch output or process was inspected.
+Await the operator's completion report before reviewing its numerical outcome.
+
+There are now two pending reports: this active force check and receptor/motor
+gate `receptor-membrane-20261116-f2c9a7`. Neither is monitored. The larger coupled
+receptor comparison still requires its own passing gate review before launch.

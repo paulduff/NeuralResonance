@@ -1818,3 +1818,17 @@ Six analytic controls and all 2,812 saved-state comparisons belong to the new
 visible-window rig; authoring/preparation executes no controls or new kinetics.
 Do not infer active slack trajectories or biological afference from a successful
 root enumeration. Preserve original bounds and the separate receptor gate.
+
+The active spindle force window is now launched as
+`spindle-slack-roots-20261116-527839`, frozen at
+`cd5b775a4090f18ced1697ae025c7b71fd1f51ea`, visible task
+`DNNE-Spindle-Slack-9f7199654b99`. All 1,741 initial files plus manifest were D:
+verified before launch. Its first preparation `9e00e9` stopped on a report-field
+name mismatch after parsing all saved traces; that partial package is preserved
+and D: backed, with no experiment run. The corrected preparer uses a fresh
+package. Six-file authoring evidence and the two-file preparer correction are D:
+verified. No model, root control or search executed inline during authoring.
+There are now two pending operator reports: spindle force `527839` and
+receptor/motor `f2c9a7`. No post-launch output/status/process was inspected for
+either; do not monitor. Source/physics correctness remains separate from
+diagnostic completion and the unfinished biological brain/body/world goal.

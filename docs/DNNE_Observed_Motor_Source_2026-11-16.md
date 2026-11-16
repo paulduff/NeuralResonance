@@ -116,3 +116,14 @@ and numerical behavior. Fixed conduction delay, ideal endplate transmission and
 reference bath remain approximations. Active axonal propagation, physiological
 calibration, spinal synaptic recruitment, sensory feedback and whole-brain motor
 authority remain open. Avatar balance and fall recovery are not qualified.
+
+## Launch record
+
+`observed-motor-source-20261116-badc1b`, frozen revision
+`3cd9c72ba0c53578a694e7a5a4b32b2a27edea28`, is launched in independent visible
+PowerShell task `DNNE-Observed-Motor-Source-6619bb55f4a0`. All 1,649 initial files
+plus manifest are D: verified and rechecked by the launcher. Preparation verified
+the original source traces, unchanged neuronal/transport implementations and
+66-case method coverage. This is the only pending operator report. No post-launch
+output has been inspected; do not monitor. The completed native refinement is
+reviewed separately and does not establish this new adapter's behavior.

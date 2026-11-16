@@ -1565,3 +1565,20 @@ independent saved-event audit, documented in
 `docs/DNNE_Observed_Motor_Source_2026-11-16.md`. It uses already reviewed neuronal
 reference traces and starts no Unity or live brain. Consult later launch records;
 no newly launched study may be monitored before the operator reports completion.
+
+Refinement `421387` is now fully reviewed: all 93 tests, 20 physical cases /
+26,624 steps and 40 rejection controls pass. All five command audits and the
+saved convergence analysis reproduce exactly, with full C:/D:/source/binary
+verification. Eight physical and eight muscle contrasts pass unchanged bounds;
+all four baseline observed-state arrays repeat bitwise. The derived
+`native-hinge-refinement-review-20261116` is D: backed. See
+`docs/DNNE_Native_Hinge_Refinement_Results_2026-11-16.md`. This supports sampled
+convergence, not fine half-step reference accuracy, physiology or recovery.
+
+Observed source gate `observed-motor-source-20261116-badc1b`, frozen `3cd9c72`,
+is launched in visible task `DNNE-Observed-Motor-Source-6619bb55f4a0`. All 1,649
+initial files plus manifest are D: verified and rechecked at launch. This is
+the only pending operator report; no post-launch output has been inspected.
+Require the 66 focused tests, five complete source conditions and independent
+saved-event audit before attaching the newly factored adapter to moving muscles.
+Do not monitor or infer success from process completion. No live body is selected.

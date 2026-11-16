@@ -1435,3 +1435,12 @@ Corrected hinge `native-muscle-hinge-20261116-5a98f8`, frozen `200d804`, is now
 launched in visible task `DNNE-Native-Muscle-Hinge-1fb99fb6333b`. Metadata preflight
 passes; 1,601 initial files plus manifest have a verified D: copy, rechecked at
 launch. This is the only pending completion report. No live monitoring.
+
+Corrected hinge `5a98f8` subsequently completed and is reviewed: all 75 regressions,
+24 native cases and 72 physical steps pass original bounds. Full capture/source/
+binaries and D: copies verify; `native-hinge-review-20261116` is D: backed.
+See the completed section of `docs/DNNE_Native_Muscle_Hinge_2026-11-16.md`.
+Single-step hinge mechanics pass; coupled native trajectory accuracy, anatomy,
+physiology and Avatar recovery remain open. Use the actual promoted Unity float
+step for coupling; nominal 0.125 ms is slightly over the muscle maximum and needs
+substeps. No completion report remains pending at this review.

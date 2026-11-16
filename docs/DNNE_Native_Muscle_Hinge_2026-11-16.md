@@ -131,3 +131,27 @@ PowerShell task `DNNE-Native-Muscle-Hinge-1fb99fb6333b`. All 1,601 initial files
 plus manifest are D: verified and rechecked at launch, including the new frozen
 metadata report. It is the only pending operator completion report. No build or
 physical outcome has been inspected; do not monitor.
+
+## Completed corrected hinge review
+
+The operator reported `5a98f8` complete. All 75 regression cases and all 24 native
+hinge cases passed, with all 72 physical steps accounted for. The frozen
+independent analysis reproduces exactly without changing any bound. Review tool
+`tools/review-native-hinge-20261116.py` verifies all 2,316 files in each C:/D:
+copy (185,616,628 bytes), all 1,596 Git files, test/player binaries, all 32 compiled
+Unity C# inputs, asset metadata and executable identities. The capture manifest is
+`F8DFBA6403E37A762A735C339AA89378620E5B29F30BB3FE8568D3EC87FA77FE`.
+Derived `artifacts/native-hinge-review-20261116/review.json` is D: backed.
+
+Worst native joint-speed impulse error is 1.36e-8 rad/s; unforced clearing changes
+speed by zero. At the approximately 1 ms physical step, the worst angle error is
+5.81e-6 rad within the prospective first-order envelope; at approximately 0.125 ms
+it is 1.06e-7 rad. Endpoint linear-velocity error falls from 1.79e-6 m/s to
+4.11e-8 m/s. These are single-step checks, not coupled-trajectory qualification.
+
+The actual Unity float steps promoted to double are 0.0010000000474974513 s and
+0.0001250000059371814 s. The native coupling must use those represented intervals,
+not relabel them exactly 1 or 0.125 ms. The smaller interval is slightly above the
+muscle solver's 0.125 ms maximum and therefore still needs at least two substeps.
+No test or simulation ran during this review. No experiment remains pending as
+of this review; later launch records supersede that statement.

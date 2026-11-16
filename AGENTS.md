@@ -1444,3 +1444,15 @@ Single-step hinge mechanics pass; coupled native trajectory accuracy, anatomy,
 physiology and Avatar recovery remain open. Use the actual promoted Unity float
 step for coupling; nominal 0.125 ms is slightly over the muscle maximum and needs
 substeps. No completion report remains pending at this review.
+
+The next isolated native motor/body bridge is described in
+`docs/DNNE_Native_Motor_Bridge_2026-11-16.md`. Existing muscle/calcium/causal cores
+are unchanged. A sole Unity owner applies start-held axial tendon forces to two
+synthetic opposing paths and returns complete native geometry/effort receipts.
+Native float clock, state and identity checks prevent unowned stepping or stale
+force application. Four causal cases and eight native rejection controls are
+prepared; they use fixture events, not a running neuronal source. No live body or
+saved brain is selected. Individual impulse and qualitative response criteria
+cannot qualify complete coupled trajectories, physiology or Avatar recovery.
+Consult later launch records; run only in independent visible PowerShell with no
+live monitoring and preserve verified D: evidence.

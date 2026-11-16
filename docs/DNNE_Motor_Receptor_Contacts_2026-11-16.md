@@ -82,3 +82,14 @@ recovery. A build or a completed process cannot stand in for those results.
 At preparation, the two pending operator reports remain observed/native body
 `bb10dc` and fixed-length spindle `18ec5e`. Neither output is inspected here.
 Consult the subsequent launch record before expecting this third window.
+
+## Launch record
+
+`motor-receptor-20261116-501da5` freezes
+`74e1c62a20d78a88e8a672140a1816f75c6099b1`. All 1,673 initial files plus manifest
+were D: verified and rechecked by the launcher. Visible PowerShell task
+`DNNE-Motor-Receptor-0dcbf8a904cc` was started. No post-launch result, process,
+progress or output was inspected. This is now the third pending operator
+report, alongside observed/native body `bb10dc` and fixed-length spindle
+`18ec5e`. There is no outcome claim until the operator reports completion and
+the saved results are reviewed.

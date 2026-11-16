@@ -1832,3 +1832,30 @@ There are now two pending operator reports: spindle force `527839` and
 receptor/motor `f2c9a7`. No post-launch output/status/process was inspected for
 either; do not monitor. Source/physics correctness remains separate from
 diagnostic completion and the unfinished biological brain/body/world goal.
+
+The operator reported receptor gate `f2c9a7` and spindle force `527839` complete.
+The receptor gate review verifies all 111 cases and five exact source conditions,
+2,282 C:/D: files per copy and 1,679 Git files; its two-file review is D: backed.
+The larger receptor comparison is now launched as
+`receptor-membrane-comparison-20261116-f7ece6`, revision
+`ade8c0252749a204dee4715cb88ab850d1492fb5`, visible task
+`DNNE-Receptor-Comparison-3fc1a1c87fae`, with 1,729 initial files plus manifest
+D: verified. No post-launch output/process was inspected; do not monitor.
+
+The spindle's six controls passed, but its first matrix stopped at query 1,556
+on step 48 of `chain-stretch-shorten-500us`. A small nonzero knot residual was
+counted alongside its adjacent interval root, while the reference merged them.
+The D:-verified `spindle-slack-review-20261116` preserves full failure provenance,
+1,767 C:/D: files and saved-record checks without a root rerun. See
+`docs/DNNE_Receptor_And_Slack_Results_2026-11-16.md`. Version 2 uses exact rational
+near-knot classification, retains distinct close roots and keeps all original
+bounds. Its new eight-control/full-matrix run must be separately launched and
+operator-reported before reading it; authoring does not constitute a pass.
+
+The independent timing/vestibular source inspection is recorded in
+`docs/DNNE_Vestibular_Source_Candidates_2026-11-16.md`. Its 67-file pinned source
+capture is D: backed; no downloaded code or model ran. ModelDB 244202 is somatic
+with synthetic input and unresolved version/license details; the calyx source
+lead requires COMSOL and was inspected only at tree/README/license level. Do not
+substitute either for the missing qualified afferent, or claim open-loop source
+lookahead works unchanged in a closed brain/body sensory loop.

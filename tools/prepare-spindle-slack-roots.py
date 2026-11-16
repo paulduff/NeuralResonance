@@ -59,6 +59,15 @@ def main():
     verify(fixed_capture, ['spindle-fixed-analysis.json', 'source/tools/spindle_fixed_reference.py'])
     assert read(fixed_capture / 'spindle-fixed-analysis.json') == fixed['analysis']
     assert (ROOT / 'tools/spindle_fixed_reference.py').read_text(encoding='utf-8-sig') == io(fixed_capture / 'source/tools/spindle_fixed_reference.py').read_text(encoding='utf-8-sig')
+    failure_review=ROOT/'artifacts/spindle-slack-review-20261116'
+    verify(failure_review,['review.json']); failed=read(failure_review/'review.json')
+    assert failed['operatorReportedCompletion'] and failed['duplicateKnotRootDiagnosed']
+    assert failed['originalStatus']=='FAILED' and failed['savedStateQueries']==1556
+    failure_capture=Path(failed['capture'])
+    assert digest(failure_capture/'backup-manifest.json')==failed['manifestSha256']
+    failure_name='landscapes/chain-stretch-shorten-500us-first-failure.json'
+    verify(failure_capture,[failure_name,'native/chain-stretch-shorten-500us.mat'])
+    assert digest(failure_capture/'native/chain-stretch-shorten-500us.mat')==digest(capture/'mechanics/chain-stretch-shorten-500us.mat')
     qualified_review = ROOT / 'artifacts/causal-motor-comparison-review-20261113'
     verify(qualified_review, ['review.json']); qualified = read(qualified_review / 'review.json')
     assert qualified['operatorReportedCompletion'] and qualified['savedAnalysisExactlyReproduced']
@@ -93,6 +102,8 @@ def main():
     copy(reviewed / 'review.json', 'reference/state-review.json')
     copy(fixed_review / 'review.json', 'reference/fixed-review.json')
     copy(fixed_capture / 'backup-manifest.json', 'reference/fixed-manifest.json')
+    copy(failure_review/'review.json','reference/slack-failure-review.json')
+    copy(failure_capture/failure_name,'reference/slack-first-failure.json')
     copy(capture / 'backup-manifest.json', 'reference/state-manifest.json')
     copy(qualified_review / 'review.json', 'reference/qualified-numerical-review.json')
     copy(qualified_capture / 'reference-preflight.json', 'reference/qualified-numerical-preflight.json')
@@ -112,7 +123,7 @@ def main():
     configuration = dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(), PackageFiles=files,
         PythonExecutable=sys.executable, BackupDestination=str(backup), NoLiveMonitoring=True,
         IsolatedSpindleSlackRoots=True, ExpectedNativeTrajectories=12, ExpectedStateQueries=2812,
-        ExpectedAnalyticControls=6, KineticsExecuted=False,
+        ExpectedAnalyticControls=8, KineticsExecuted=False,
         NativeRerun=False, LiveBodySelected=False, MovingTrajectoryAccuracyAssessed=False, SlackTrajectoryAssessed=False,
         AfferentFiringAssessed=False, PhysiologyQualified=False, AvatarRecoveryAssessed=False)
     (package / 'configuration.json').write_text(json.dumps(configuration, indent=2) + '\n', encoding='utf-8')

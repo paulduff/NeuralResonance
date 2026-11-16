@@ -5,6 +5,11 @@ mechanical step is handling unloading during movement while preserving the
 cross-bridge state. This work does not replace Avatar's sensory path or turn
 mechanical stress into prescribed sensory spikes.
 
+The first reported run and the version-2 root-identification repair are now
+recorded in `DNNE_Receptor_And_Slack_Results_2026-11-16.md`. The original six-control
+run below remains failed and preserved. Its replacement requires eight controls
+and the same full 2,812-state matrix, with unchanged acceptance bounds.
+
 ## Existing Avatar and source findings
 
 `ControlProgram/PhysicalBodyTransducerRuntime.cs: AddMusclePopulations` still

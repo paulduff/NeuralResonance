@@ -7,10 +7,11 @@ No kinetics, state mutation, slack trajectory or physiological root selection.
 Execution/controls belong to an independent visible PowerShell window.
 """
 import math
+from fractions import Fraction
 import numpy as np
 from scipy.optimize import brentq
 
-VERSION = 'spindle-active-force-landscape-v1'
+VERSION = 'spindle-active-force-landscape-v2'
 CRITERIA = dict(forceAbsolutePa=1e-7, rootAbsoluteNm=1e-9,
                 conservationAbsolute=1e-10, domainAbsolute=1e-8)
 FIBERS = ('bag', 'chain')
@@ -21,7 +22,7 @@ STEPS_US = (1000, 500, 250)
 def protocol():
     return dict(version=VERSION, fibers=list(FIBERS), protocols=list(PROTOCOLS),
         stepsUs=list(STEPS_US), criteria=CRITERIA, nativeTrajectories=12,
-        savedStates=2812, analyticControls=6, targetStressPa=0.,
+        savedStates=2812, analyticControls=8, targetStressPa=0.,
         nativeRerun=False, kineticsExecuted=False, slackTrajectoryAssessed=False,
         rootSelected=False, afferentFiringAssessed=False, physiologyQualified=False,
         avatarRecoveryAssessed=False)
@@ -101,10 +102,42 @@ def affine(p, y, old_length, a, b):
     return middle, value, slope
 
 
+def exact_affine(p, y, old_length, a, b):
+    """Certify near-knot topology from exact rational stored binary inputs.
+
+    A small residual is an accuracy check, never proof of a distinct root.
+    This path also retains an interval root that rounds onto its boundary.
+    """
+    F=Fraction; middle=(F(a)+F(b))/2; c=F(p['compliance_factor']); h=F(p['bin_width'])
+    x=[F(float(v)) for v in p['x_bins']]; bins=[F(float(v)) for v in y[1:-2]]
+    value=F(p['k_passive'])*(middle-F(p['hsl_slack'])); slope=F(p['k_passive'])
+    for output in x:
+        q=output-(middle-F(old_length))*c
+        if x[0] < q < x[-1]:
+            j=int((q-x[0])//h); delta=bins[j+1]-bins[j]
+            weight=F(p['cb_force_constant'])*(output+F(p['power_stroke']))
+            value+=weight*(bins[j]+delta*(q-x[j])/h)
+            slope-=weight*c*delta/h
+    return middle,value,slope
+
+
+def exact_query(p, y, old_length, trial_length):
+    """Separate rational interpolation query for knot and reference checks."""
+    F=Fraction; length=F(trial_length); h=F(p['bin_width']); xmin=F(float(p['x_bins'][0])); xmax=F(float(p['x_bins'][-1]))
+    result=F(p['k_passive'])*(length-F(p['hsl_slack']))
+    for i, output_value in enumerate(p['x_bins']):
+        output=F(float(output_value)); q=output-(length-F(old_length))*F(p['compliance_factor'])
+        if xmin <= q <= xmax:
+            position=(q-xmin)/h; j=min(int(position//1),79); f=position-j
+            mass=F(float(y[1+j]))*(1-f)+F(float(y[2+j]))*f
+            result+=F(p['cb_force_constant'])*(output+F(p['power_stroke']))*mass
+    return result
+
+
 def candidate(p, state, old_length, target=0.):
     x, y = validate(p, state, old_length)
     assert math.isfinite(target)
-    points = knots(p, old_length); roots = []; segments = []; flats = []
+    points = knots(p, old_length); roots = []; segments = []; flats = []; nonzero_knots = []
     for i, (a, b) in enumerate(zip(points, points[1:])):
         middle, value, slope = affine(p, y, old_length, a, b)
         row = dict(index=i, lowerNm=a, upperNm=b, middleNm=middle,
@@ -112,6 +145,16 @@ def candidate(p, state, old_length, target=0.):
                    rightLimitAtLowerPa=value + slope * (a - middle),
                    leftLimitAtUpperPa=value + slope * (b - middle))
         segments.append(row)
+        if min(abs(row['rightLimitAtLowerPa']-target),abs(row['leftLimitAtUpperPa']-target)) <= CRITERIA['forceAbsolutePa']:
+            m,v,s=exact_affine(p,y,old_length,a,b)
+            if not s:
+                if v==Fraction(target): flats.append(row)
+                continue
+            exact_root=m+(Fraction(target)-v)/s
+            if Fraction(a) < exact_root < Fraction(b):
+                roots.append(dict(lengthNm=float(exact_root),kind='open-interval',segment=i,
+                    slopePaPerNm=float(s),exactLengthRatio=str(exact_root),nearKnotCertified=True))
+            continue
         if slope == 0.:
             if abs(value - target) <= CRITERIA['forceAbsolutePa']: flats.append(row)
             continue
@@ -126,7 +169,12 @@ def candidate(p, state, old_length, target=0.):
             jumpPa=max(abs(actual-left), abs(actual-right)),
             signChangeAcrossJump=bool((left-target)*(right-target) < 0 and abs(actual-target) > CRITERIA['forceAbsolutePa'])))
         if abs(actual - target) <= CRITERIA['forceAbsolutePa']:
-            roots.append(dict(lengthNm=point, kind='knot', knot=i))
+            residual=exact_query(p,y,old_length,point)-Fraction(target)
+            if residual==0:
+                roots.append(dict(lengthNm=point, kind='knot', knot=i))
+            else:
+                nonzero_knots.append(dict(lengthNm=point,forceResidualPa=actual-target,
+                    exactResidualSign=1 if residual>0 else -1))
     roots.sort(key=lambda r: r['lengthNm'])
     for root in roots:
         length = root['lengthNm']; bins = shifted_manual(p, y, old_length, length)
@@ -139,23 +187,34 @@ def candidate(p, state, old_length, target=0.):
             massResidual=float(detached + bins.sum() - (y[0] + y[1:-2].sum())))
         root['admissibleState'] = bool(root['stateDomainViolation'] <= CRITERIA['domainAbsolute']
             and abs(root['massResidual']) <= CRITERIA['conservationAbsolute'])
-    return dict(roots=roots, segments=segments, boundaries=boundaries, flatIntervals=flats)
+    return dict(roots=roots, segments=segments, boundaries=boundaries, flatIntervals=flats,
+                nonzeroNearKnots=nonzero_knots)
 
 
 def independent_roots(p, y, old_length, target=0.):
     points = knots(p, old_length); roots = []
     fun = lambda length: reference_force(p, y, old_length, length) - target
     for point in points[1:-1]:
-        if abs(fun(point)) <= CRITERIA['forceAbsolutePa']: roots.append(point)
+        if abs(fun(point)) <= CRITERIA['forceAbsolutePa'] and exact_query(p,y,old_length,point)==Fraction(target):
+            roots.append(point)
     for a, b in zip(points, points[1:]):
         # Never bracket over a support discontinuity. Boundary roots are checked
         # separately. Preserve disagreement rather than widening tolerances.
         lo, hi = float(np.nextafter(a, b)), float(np.nextafter(b, a))
         fa, fb = fun(lo), fun(hi)
+        if min(abs(fa),abs(fb)) <= CRITERIA['forceAbsolutePa']:
+            # Independent affine reconstruction from TWO exact interior queries,
+            # rather than the candidate's analytic coefficient construction.
+            q1=(3*Fraction(a)+Fraction(b))/4; q2=(Fraction(a)+3*Fraction(b))/4
+            v1=exact_query(p,y,old_length,q1)-Fraction(target)
+            v2=exact_query(p,y,old_length,q2)-Fraction(target)
+            if v1!=v2:
+                exact_root=q1-v1*(q2-q1)/(v2-v1)
+                if Fraction(a) < exact_root < Fraction(b): roots.append(float(exact_root))
+            continue
         if fa * fb < 0:
             root = float(brentq(fun, lo, hi, xtol=5e-13, rtol=4*np.finfo(float).eps))
-            if not any(abs(root-r) <= CRITERIA['rootAbsoluteNm'] and (r == a or r == b) for r in roots):
-                roots.append(root)
+            roots.append(root)
     return sorted(roots)
 
 

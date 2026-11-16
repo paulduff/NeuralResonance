@@ -4,7 +4,7 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.IsolatedSpindleSlackRoots){throw 'Unexpected spindle comparison configuration.'}
-if($configuration.ExpectedNativeTrajectories -ne 12 -or $configuration.ExpectedStateQueries -ne 2812 -or $configuration.ExpectedAnalyticControls -ne 6){throw 'Unexpected comparison coverage.'}
+if($configuration.ExpectedNativeTrajectories -ne 12 -or $configuration.ExpectedStateQueries -ne 2812 -or $configuration.ExpectedAnalyticControls -ne 8){throw 'Unexpected comparison coverage.'}
 foreach($flag in @('NativeRerun','LiveBodySelected','MovingTrajectoryAccuracyAssessed','SlackTrajectoryAssessed','KineticsExecuted','AfferentFiringAssessed','PhysiologyQualified','AvatarRecoveryAssessed')){if($configuration.$flag){throw ('Unexpected qualification: '+$flag)}}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
@@ -61,13 +61,13 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE active spindle slack forces'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host 'Reusing 12 completed moving spindle traces. Checking 6 analytic controls and all unloaded force candidates in 2,812 saved states. No new kinetics or live Avatar.'
+ Write-Host 'Reusing 12 completed moving spindle traces. Checking 8 analytic/regression controls and all unloaded force candidates in 2,812 saved states. No new kinetics or live Avatar.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  Invoke-Stage 'preflight'
  Invoke-Stage 'controls'
  $controls=Get-Content -LiteralPath (Join-Path $package 'controls/controls.json') -Raw | ConvertFrom-Json
- if(-not $controls.completed -or -not $controls.passed -or $controls.cases.Count -ne 6 -or $controls.physiologicalControls){throw 'Reference controls failed or incomplete.'}
+ if(-not $controls.completed -or -not $controls.passed -or $controls.cases.Count -ne 8 -or $controls.physiologicalControls){throw 'Reference controls failed or incomplete.'}
  $status.ReferenceControlsPassed=$true;$status.StateQueriesAttempted=$true
  Invoke-Stage 'analyse'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'spindle-slack-analysis.json') -Raw | ConvertFrom-Json

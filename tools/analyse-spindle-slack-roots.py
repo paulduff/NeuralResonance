@@ -78,6 +78,9 @@ def validate(package):
     fixed = read(package / 'reference/fixed-review.json')
     assert fixed['operatorReportedCompletion'] and fixed['savedAnalysisExactlyReproduced']
     assert fixed['capturedFixedLengthAccuracyPassed'] and fixed['candidateComparisons'] == 54
+    failure=read(package/'reference/slack-failure-review.json')
+    assert failure['operatorReportedCompletion'] and failure['duplicateKnotRootDiagnosed']
+    assert failure['originalStatus']=='FAILED' and failure['savedStateQueries']==1556
     rows = [load_native(package / 'native' / f'{f}-{p}-{s}us.mat', f, p, s)
             for f in FIBERS for p in PROTOCOLS for s in STEPS_US]
     assert sum(len(r['snapshots']) for r in rows) == 2812
@@ -135,12 +138,32 @@ def controls(package):
             delta=j-p['k_passive']*(1250.+j-p['hsl_slack'])/gradient
             if j < delta < j+1: expected.append(1250.+delta)
     cases.append(('bag-edge-bin-discontinuous-roots', p, y.copy(), 1250., 0., sorted(expected), True))
+    # Two genuine roots straddling one knot, both within the old 1e-9 nm bound.
+    # A proximity-based deduplicator would incorrectly turn these into one.
+    y=np.zeros(84); mass=14400./1207500.+1e-14
+    y[0]=1.-mass; y[41]=mass; y[-2]=.6; y[-1]=.4
+    valley=1210.; value=-69000.*mass*17.5+p['k_passive']*(valley-p['hsl_slack'])
+    left=-69000.*mass*17.5+p['k_passive']; right=69000.*mass*.5+p['k_passive']
+    expected=sorted([p['hsl_slack'],valley-value/left,valley-value/right])
+    cases.append(('two-distinct-near-knot-roots',p,y.copy(),1250.,0.,expected,False))
+    saved=next(r for r in rows if r['label']=='chain-stretch-shorten-500us')
+    original=read(package/'reference/slack-first-failure.json'); step=original['snapshotStep']; assert step==48
+    expected=[r['lengthNm'] for r in original['result']['roots'] if r['kind']=='open-interval']
+    cases.append(('saved-step48-near-knot-regression',saved['parameters'],saved['states'][step].copy(),
+                  saved['snapshots'][step]['hsLengthNm'],0.,expected,False))
     outcomes = []
     for label, p, y, length, target, expected, require_jump in cases:
         result = check_landscape(p, y, length, target)
         actual = [r['lengthNm'] for r in result['roots']]
         exact = len(expected) == len(actual) and all(abs(a-b) <= CRITERIA['rootAbsoluteNm'] for a,b in zip(actual, expected))
         jump = any(b['signChangeAcrossJump'] for b in result['boundaries'])
+        if label=='two-distinct-near-knot-roots':
+            close=[r for r in result['roots'] if abs(r['lengthNm']-1210.)<1e-9]
+            exact &= len(close)==2 and close[0]['lengthNm']<1210.<close[1]['lengthNm']
+            exact &= all(r['kind']=='open-interval' and r.get('nearKnotCertified') for r in close)
+        if label=='saved-step48-near-knot-regression':
+            exact &= any(r['lengthNm']==1200. for r in result['nonzeroNearKnots'])
+            exact &= not any(r['kind']=='knot' and r['lengthNm']==1200. for r in result['roots'])
         record = dict(label=label, expectedRootsNm=expected, result=result,
                       passed=bool(result['passed'] and exact and (jump or not require_jump)))
         save(out / (label+'.json'), record); outcomes.append(dict(label=label, passed=record['passed']))

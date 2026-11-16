@@ -1474,3 +1474,10 @@ failure with zero physical bodies, then checks 1,040 exact scalar round trips
 and ten malformed encodings before any physical retry. No timing/physical bound
 or muscle model changed. See `docs/DNNE_Native_Motor_Bridge_2026-11-16.md` and later
 launch records; the failed `223098` report is no longer pending.
+
+Exact-scalar bridge retry `native-motor-bridge-20261116-bd7079`, frozen `46eaa51`,
+is launched in visible task `DNNE-Native-Motor-Bridge-769bbf16dc61`. All 1,622
+initial files plus manifest are D: verified and rechecked at launch. This is the
+only pending operator report; native decimal diagnosis, codec and physical
+outcomes have not been inspected. Do not monitor. Preserve original bounds and
+require the native zero-body preflight before interpreting the physical retry.

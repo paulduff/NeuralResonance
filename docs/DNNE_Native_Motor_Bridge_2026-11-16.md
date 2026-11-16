@@ -184,3 +184,11 @@ the independent visible PowerShell window. Consult the next launch record.
 Unity's [FromJson documentation](https://docs.unity.com/en-us/engine/6000.3/script-reference/unityengine/jsonutility/fromjson)
 identifies its serializer, but does not prove this numerical diagnosis. The
 retained original request and native replay determine the result.
+
+The fresh retry `native-motor-bridge-20261116-bd7079`, frozen revision
+`46eaa518c56764bd0ac8491ac9d5c4209162f534`, is launched in independent visible
+PowerShell task `DNNE-Native-Motor-Bridge-769bbf16dc61`. All 1,622 initial files
+plus manifest are verified on D: and rechecked at launch, including the original
+failed request/reply and verified failure review. This is the only pending
+operator report. No test, native preflight or physical outcome has been inspected
+after launch. Do not monitor or infer that the candidate repair has passed.

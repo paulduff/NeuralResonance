@@ -1974,3 +1974,10 @@ revision `492c2a491340a7b1b7b3c29ce0464a5d095e850b`, visible task
 D: verified. Source/build/syntax checks completed without inline test or model
 execution. This is the only pending operator report; no post-launch output,
 status or process was inspected. Wait for the user's report before review.
+
+The operator has now reported native crossing `0b35ae` complete. Its review
+`native-crossing-review-20261116` verifies 2,284 C:/D: files per copy, 1,704 Git
+files, all 124 cases and five exactly reproduced original source conditions.
+The two-file review is D: verified; no model/test ran during review. The optional
+cubic component gate passes, but the full receptor/reference/source-output
+matrix for cubic mode is still required. No completion report is now pending.

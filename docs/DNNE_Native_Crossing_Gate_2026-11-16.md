@@ -50,3 +50,13 @@ The gate was launched as `native-crossing-20261116-0b35ae` from revision
 verified on D: before launch. C# compilation and Python/PowerShell syntax checks
 completed during authoring; no tests or models were executed inline. No outputs,
 status or processes were inspected after launch. The operator report is pending.
+
+The operator subsequently reported completion. The review verifies 2,284 files
+per C:/D: copy, 1,704 frozen Git files, all 124 exact expected test cases and
+unchanged managed dependencies. The five six-second source traces and their
+events reproduce exactly: one quiet condition and four active packet/retry
+conditions with 28 events each. The new tests pass their active-membrane state
+preservation and passive receptor/receiver timing checks. The two-file review
+`artifacts/native-crossing-review-20261116` is separately D: verified.
+No test or model ran during review. This run is no longer pending. The full
+receptor numerical matrix and biological qualifications above remain open.

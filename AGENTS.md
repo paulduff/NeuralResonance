@@ -1606,3 +1606,15 @@ inspected. Require all 160 tests, the five full source conditions, seven native
 conditions and 12 independent references with original bounds before interpreting
 this coupled candidate. Never treat running reference cells under injection as
 qualified live DNNE recruitment, sensory feedback, physiology or recovery.
+
+While awaiting `bb10dc`, the fixed-length spindle accuracy comparison is prepared
+in `docs/DNNE_Spindle_Fixed_Length_Accuracy_2026-11-16.md`. It reuses 18 completed
+binary MAT captures from the fully reviewed canonical-state `a43f1a`, preserving
+original equations, fibre-specific constants, licenses and old evidence. Six
+analytic controls, an analytic-Jacobian check and 18 continuous reference solves
+are prospective; no new solve/test ran during authoring. All 18 saved captures
+parse and their force reconstruction agrees within 5.83e-11 Pa. The authoring
+review is D: backed. Consult the subsequent launch record before expecting a
+window. Keep all original bounds; fixed-length accuracy does not qualify moving
+or slack mechanics, afferent membrane firing, live sensory integration or recovery.
+The existing Avatar sensor path is preserved. Do not monitor `bb10dc`.

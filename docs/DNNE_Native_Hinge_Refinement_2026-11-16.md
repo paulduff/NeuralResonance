@@ -104,3 +104,14 @@ player, runs 93 tests and the five-condition native matrix, audits each conditio
 compares references, checks final source/dependency identity, and verifies D:
 backup. All worlds in this fixture start paused; no old save is loaded. Do not
 live-monitor; inspect outcomes only after the operator reports completion.
+
+## Launch record
+
+`native-hinge-refinement-20261116-421387`, frozen revision
+`e59d9ea89adc049376b71bd933fa40986cb3d196`, is launched in independent visible
+PowerShell task `DNNE-Native-Hinge-Refinement-4fa325232e75`. All 1,713 initial
+files plus manifest are D: verified and rechecked by the launcher. Preparation
+verified the qualified references, exact dependency environment, metadata and
+93-case method coverage. This is the only pending operator completion report.
+No post-launch test, build, native or comparison output has been inspected;
+do not monitor. The original comparison and all earlier captures are preserved.

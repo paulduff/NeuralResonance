@@ -23,7 +23,7 @@ COMPONENT = dict(MotorReceptorContactTests=14, MotoneuronReferenceTests=11,
     MotorAxonTransportTests=32, MotorAxonReplayBufferTests=16, SolutionManifestTests=1)
 COUPLED = dict(ReceptorDrivenMotoneuronTests=15, MotorReceptorContactTests=14,
     MotoneuronReferenceTests=11, MotorAxonTransportTests=32, MotorAxonReplayBufferTests=16,
-    ObservedMotorSourceTests=8, SolutionManifestTests=1)
+    ObservedMotorSourceTests=8, ReceptorMotorSourceTests=14, SolutionManifestTests=1)
 REFERENCES = ['boundary-analysis.json', 'boundary-input.json', 'source-results.json',
     'source-metadata.json', 'quiet-h0.003125.csv', 'soma-6000-h0.003125.csv']
 PRESERVED = ['Structures/_SharedRuntime/MotoneuronChannelKinetics.cs',
@@ -129,7 +129,7 @@ def review_gate(package, output, reported):
     for key in ('LiveBrainAccessed', 'OldSavesLoaded', 'NativePhysicsExecuted', 'MuscleDynamicsExecuted',
                 'IndependentCoupledReferenceQualified', 'PhysiologyQualified', 'AvatarRecoveryAssessed', 'FullUnitSuitePassed'):
         assert status[key] is False, key
-    assert status['PassedFocusedTests'] == 97 and status['SuccessfulConditions'] == 5
+    assert status['PassedFocusedTests'] == 111 and status['SuccessfulConditions'] == 5
     audit_module = module('frozen_membrane_source_audit', package / 'source/tools/analyse-observed-motor-source.py')
     analysis = audit_module.audit(package)
     assert analysis == common.read(package / 'source-analysis.json') and analysis['sourceAdapterCriteriaPassed']
@@ -151,7 +151,7 @@ def review_gate(package, output, reported):
     assert binaries and (probe / 'NeuralResonanceEngine.DNNE.Tests.dll').is_file()
     for entry in binaries: Path(entry['Path']).relative_to(probe)
     reviewed.update(reviewedUtc=datetime.now(timezone.utc).isoformat(), operatorReportedCompletion=True,
-        gateCriteriaPassed=True, passedTests=97, originalSourceConditions=5, savedAnalysisExactlyReproduced=True,
+        gateCriteriaPassed=True, passedTests=111, originalSourceConditions=5, savedAnalysisExactlyReproduced=True,
         testInventory=tests, analysis=analysis, managedRuntimeSha256=common.digest(package / 'managed-runtime-before.json'),
         qualifiedProbeDirectory=str(probe), qualifiedProbeFiles=len(binaries),
         testsExecutedDuringReview=False, modelsSolvedDuringReview=False, independentCoupledAccuracyQualified=False,
@@ -196,6 +196,19 @@ def prepare(review_folder):
         if entry['path'].endswith('.cs'):
             assert h.digest(authoring / 'candidate' / entry['path']) == entry['sha256']
             assert (ROOT / entry['path']).read_text(encoding='utf-8-sig') == h.io(authoring / 'candidate' / entry['path']).read_text(encoding='utf-8-sig'), entry['path']
+    source_authoring = ROOT / 'artifacts/receptor-motor-source-authoring-20261116'
+    source_authoring_names = [e['Path'].replace('\\', '/') for e in h.read(source_authoring / 'backup-manifest.json')['Files']]
+    h.verify(source_authoring, source_authoring_names)
+    source_author = h.read(source_authoring / 'authoring-review.json')
+    assert source_author['prospectiveNewCases'] == 14 and source_author['prospectiveTotalCases'] == 111
+    assert source_author['buildSucceeded'] and not source_author['testsExecuted'] and not source_author['modelsExecuted']
+    source_candidates = [e for e in source_author['candidateFiles'] if e['path'].endswith('.cs')]
+    assert {e['path'] for e in source_candidates} == {'Structures/_SharedRuntime/ReceptorMotorSource.cs',
+        'tests/NeuralResonanceEngine.DNNE.Tests/ReceptorMotorSourceTests.cs'}
+    for entry in source_candidates:
+        saved = source_authoring / 'candidate' / entry['path']
+        assert h.digest(saved) == entry['sha256']
+        assert (ROOT / entry['path']).read_text(encoding='utf-8-sig') == h.io(saved).read_text(encoding='utf-8-sig'), entry['path']
     methods = inventory(ROOT, COUPLED)
     package = ROOT / 'artifacts' / ('receptor-membrane-' + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
@@ -230,7 +243,11 @@ def prepare(review_folder):
     for name in authoring_names:
         target = h.io(reference / 'authoring' / name); target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(h.io(authoring / name), target)
+    for name in source_authoring_names:
+        target = h.io(reference / 'motor-source-authoring' / name); target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(h.io(source_authoring / name), target)
     provenance = dict(receptorReview=receptor, sourceReview=source_review, authoringReview=author,
+        motorSourceAuthoringReview=source_author,
         preservedSourceFiles=PRESERVED, copied=copied, changedSourceFiles=changed, membraneFileChanged=True,
         sourceOwnershipExtensionPresent=True, sourceOwnershipExtensionRevision=SOURCE_EXTENSION_REVISION,
         newReceptorInputPathQualified=False, originalTraceReproductionRequired=True,

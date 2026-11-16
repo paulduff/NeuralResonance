@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedReceptorMembraneGate -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 5 -or $configuration.ExpectedTestCases -ne 97 -or $configuration.NativePhysicsRequested -or $configuration.IndependentCoupledReferenceQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected receptor membrane configuration.'}
+if(-not $configuration.IsolatedReceptorMembraneGate -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 5 -or $configuration.ExpectedTestCases -ne 111 -or $configuration.NativePhysicsRequested -or $configuration.IndependentCoupledReferenceQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected receptor membrane configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -68,7 +68,7 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE receptor membrane and original motor-source checks'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '97 focused checks, then five complete original six-second source conditions. New coupling remains a candidate; no Unity or live brain.'
+ Write-Host '111 focused checks, then five complete original six-second source conditions. New coupling remains a candidate; no Unity or live brain.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/receptor-membrane-tests'
@@ -82,7 +82,7 @@ try{
  $status.NeuronalModelExecutionAttempted=$true
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/receptor_membrane_gate.py'),'check-tests',$package) 'test-inventory.log'
- $status['PassedFocusedTests']=97;$status.ReceptorMembraneComponentChecksPassed=$true;$status.NeuronalModelExecutionConfirmed=$true
+ $status['PassedFocusedTests']=111;$status.ReceptorMembraneComponentChecksPassed=$true;$status.NeuronalModelExecutionConfirmed=$true
  $probeBuild=Join-Path $package 'source/artifacts/receptor-membrane-source-probe'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'

@@ -51,7 +51,7 @@ def main(review_folder):
     h.verify(review_folder, ['review.json', 'managed-runtime.json'])
     gate = h.read(review_folder / 'review.json')
     assert gate['operatorReportedCompletion'] and gate['gateCriteriaPassed'] and gate['savedAnalysisExactlyReproduced']
-    assert gate['passedTests'] == 97 and gate['originalSourceConditions'] == 5
+    assert gate['passedTests'] == 111 and gate['originalSourceConditions'] == 5
     assert h.digest(review_folder / 'managed-runtime.json') == gate['managedRuntimeSha256']
     capture = Path(gate['capture'])
     assert h.digest(capture / 'backup-manifest.json') == gate['manifestSha256']

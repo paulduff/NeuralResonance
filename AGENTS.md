@@ -1738,3 +1738,22 @@ comparison package or fourth window was created. Pending operator reports remain
 observed/native `bb10dc`, spindle `18ec5e`, and receptor component `501da5`.
 None of their outputs or processes has been inspected. See the numerical plan
 for the explicit report/review/prepare/backup/launch sequence; do not monitor.
+
+The isolated receptor-driven motor source now has an outgoing transport owner:
+`Structures/_SharedRuntime/ReceptorMotorSource.cs`. It retains actual observed
+crossings, preserves one cell's identity and complete quiet prehistory, and uses
+the existing Avatar receiver/protocol without changing them. Its fixed source
+grid is independent of publication/retry; bounded packets can drain a completed
+prefix without concealing retained crossings. Diagnostic channel blocks require
+explicit opt-in, and the passive transport controls do not qualify active firing.
+See `docs/DNNE_Receptor_Motor_Output_2026-11-16.md` for scope and remaining gates.
+
+The next deferred membrane gate now requires **111 cases**, adding 14 source/
+Avatar transport cases to the old 97, followed by the same five original source
+conditions. Both preparers, the reviewer and visible launcher use this expanded
+inventory. Preserve the older 97-case authoring captures; the preparer also
+requires `receptor-motor-source-authoring-20261116`, D: verified. Its build passes
+with zero warnings/errors; no test or model executed. No live selection or new
+window was made. Pending operator reports are still `bb10dc`, `18ec5e`, `501da5`;
+their outputs/processes were not inspected. Do not monitor or promote the new
+source to physiological/live authority before the required independent checks.

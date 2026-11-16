@@ -1,6 +1,6 @@
 # Prospective coupled receptor/motor comparison — 16 November 2026
 
-This is the independent numerical comparison that follows the 97-case
+This is the independent numerical comparison that follows the 111-case
 receptor/membrane gate and its five original-source regressions. The candidate
 recorder, saved-data audit, input protocol and independent reference are
 authored, together with the deferred preparer and visible PowerShell launcher.
@@ -123,7 +123,7 @@ update is part of this work. Nothing reads the pending studies automatically.
 ## Deferred packaging and execution
 
 The sequence remains: operator reports `motor-receptor-20261116-501da5`, review
-its saved 74-case evidence, prepare and run the 97-case/five-source gate, then
+its saved 74-case evidence, prepare and run the 111-case/five-source gate, then
 wait for its separate operator completion report. Only after that report may
 `receptor_membrane_gate.py review-gate PACKAGE NEW_REVIEW
 --operator-reported-complete` inspect the new gate. This reviewer verifies the
@@ -170,3 +170,10 @@ probe build with zero warnings/errors, Python/PowerShell syntax inspection,
 No new test, model, comparison package or window was executed during authoring.
 The runtime capture and new launchers still require their future visible-window
 execution; compilation is not a numerical result.
+
+The later receptor-to-motor-output increment adds 14 source/Avatar transport
+cases to the original 97, making the prerequisite 111 cases. Its source and
+authoring evidence are described in `DNNE_Receptor_Motor_Output_2026-11-16.md`.
+The older 97-case snapshots above remain historical evidence, not the current
+required test inventory. All numerical conditions and acceptance bounds remain
+unchanged. The gate and comparison preparers now require the expanded inventory.

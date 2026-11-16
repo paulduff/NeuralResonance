@@ -11,7 +11,20 @@ import math
 from pathlib import Path
 import struct
 
-read = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
+def decode_wire(value):
+    if isinstance(value, dict):
+        if set(value) == {'bits'}:
+            bits = value['bits']
+            assert isinstance(bits, str) and len(bits) == 16 and all(c in '0123456789ABCDEF' for c in bits)
+            decoded = struct.unpack('>d', bytes.fromhex(bits))[0]
+            assert math.isfinite(decoded)
+            return decoded
+        return {key: decode_wire(child) for key, child in value.items()}
+    if isinstance(value, list): return [decode_wire(child) for child in value]
+    return value
+
+
+read = lambda p: decode_wire(json.loads(p.read_text(encoding='utf-8-sig')))
 f32 = lambda v: struct.unpack('<f', struct.pack('<f', v))[0]
 H = f32(.000125)
 MS = H * 1000
@@ -32,8 +45,43 @@ def finite_tree(value):
     elif isinstance(value, float): assert math.isfinite(value)
 
 
+def audit_wire(package):
+    folder = package / 'native-bridge'
+    # Inspect the encoded form, not just decoded arithmetic values, including
+    # signed zero, subnormals and every exactly represented physical endpoint.
+    raw = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
+    sent = raw(folder / 'wire-preflight-input.json'); native = raw(folder / 'wire-preflight-native.json')
+    host = raw(folder / 'wire-preflight-host.json')
+    assert native['completed'] and native['passed'] and native['unity'] == '6000.3.19f1'
+    assert native['exactCases'] == host['exactRoundTrips'] == 1040
+    assert host['passed'] and host['originalDecimalFailureReproduced']
+    assert native['rejectedMalformedScalars'] == host['malformedScalarsRejectedEachSide'] == len(sent['invalidBits']) == 10
+    assert not native['physicsExecuted'] and not host['physicsExecuted']
+    assert sent['legacyRequestJson'] == (package / 'reference/failed-request-000033.json').read_text(encoding='utf-8-sig')
+    previous = raw(package / 'reference/last-reply-000032.json')
+    assert sent['legacyLastEffortId'] == previous['lastAppliedEffortId']
+    assert native['legacyGuidValid'] and native['legacyFreshEffort'] and native['legacyStartExact'] and not native['legacyEndExact']
+    bits = lambda x: struct.pack('>d', x).hex().upper()
+    assert native['legacyStartBits'] == native['expectedStartBits'] == bits(9*MS)
+    assert native['legacyEndBits'] != native['expectedEndBits'] == bits(10*MS)
+    assert len(sent['samples']) == len(native['cases']) == 1040
+    differences = 0
+    for index, (sample, row) in enumerate(zip(sent['samples'], native['cases'])):
+        assert sample['key'] == row['key']
+        if index < 1025:
+            assert sample['key'] == 'clock-' + str(index) and sample['expectedBits'] == bits(index*MS) and sample['compareDecimal']
+        assert sample['exactValue']['bits'] == sample['expectedBits'] == row['expectedBits'] == row['exactDecodedBits'] == row['returnedExact']['bits']
+        assert row['compareDecimal'] == sample['compareDecimal']
+        assert math.isfinite(struct.unpack('>d', bytes.fromhex(sample['expectedBits']))[0])
+        if sample['compareDecimal']: differences += row['decimalParsedBits'] != sample['expectedBits']
+    assert native['cases'][10]['decimalParsedBits'] == native['legacyEndBits']
+    assert differences == native['decimalDifferences'] and differences > 0
+    return dict(exactScalarRoundTrips=1040, malformedScalarsRejectedEachSide=10,
+        decimalDecodedDifferences=differences, originalDecimalFailureReproduced=True)
+
+
 def state(reply):
-    assert reply['version'] == 1 and reply['isolated'] and reply['paused'] and reply['unity'] == '6000.3.19f1'
+    assert reply['version'] == 2 and reply['isolated'] and reply['paused'] and reply['unity'] == '6000.3.19f1'
     assert reply['physicsStepMs'] == MS and reply['physicalTimeMs'] == reply['physicsStep'] * MS
     assert digest(reply['stateJson']) == reply['stateHash'] and digest(reply['geometryJson']) == reply['bodyFingerprint']
     result = json.loads(reply['stateJson']); finite_tree(result)
@@ -58,6 +106,7 @@ def state(reply):
 
 
 def audit(package):
+    wire = audit_wire(package)
     folder = package / 'native-bridge'; result = read(folder / 'results.json')
     assert result['completed'] and result['passed'] and result['actualPhysicsSteps'] == 4096
     assert result['responseBoundRadians'] == 1e-5 and result['minimumResponseRadians'] == 1e-7
@@ -78,7 +127,7 @@ def audit(package):
         for sequence, file in enumerate(replies, 1):
             assert file.name == f'reply-{sequence:06d}.json'
             command = read(bridge / f'request-{sequence:06d}.json'); reply = read(file); after = state(reply)
-            assert command['sequence'] == reply['sequence'] == sequence and command['version'] == 1
+            assert command['sequence'] == reply['sequence'] == sequence and command['version'] == 2
             assert command['sessionId'] == reply['sessionId'] == hello['sessionId']
             assert command['bodyFingerprint'] == reply['bodyFingerprint'] == hello['bodyFingerprint']
             assert reply['geometryJson'] == hello['geometryJson']
@@ -134,7 +183,7 @@ def audit(package):
                     firedAtNeuralMs=spike['firedAtNeuralMs'], arrivalAtBodyMs=spike['firedAtNeuralMs']+contact['conductionDelayMs'])
         lines = (case / 'steps.jsonl').read_text().splitlines(); assert len(lines) == 1024
         for tick, line in enumerate(lines, 1):
-            entry = json.loads(line); finite_tree(entry); step = entry['step']; command, reply = step_receipts[tick]
+            entry = decode_wire(json.loads(line)); finite_tree(entry); step = entry['step']; command, reply = step_receipts[tick]
             assert step['after']['physicsStep'] == tick and step['before']['physicsStep'] == tick-1
             assert entry['native']['stateHash'] == reply['stateHash'] and entry['native']['paths'] == reply['paths']
             assert step['effort']['effortId'].replace('-', '') == command['effortId']
@@ -150,7 +199,7 @@ def audit(package):
     assert total == 4096 and complete_events == 8
     assert abs(angles['quiet']) <= 1e-5 and abs(angles['balanced']) <= 1e-5
     assert angles['left'] > 1e-7 and angles['right'] < -1e-7 and abs(angles['left'] + angles['right']) <= 1e-5
-    return dict(completed=True, originalCriteriaPassed=True, independentlyAuditedCases=12, actualPhysicsSteps=total,
+    return dict(completed=True, originalCriteriaPassed=True, independentlyAuditedCases=12, actualPhysicsSteps=total, wire=wire,
         fixtureEventsExactlyDelivered=complete_events, angles=angles, maximumStepImpulseError=maximum_impulse_error,
         maximumStepAngleError=maximum_angle_error, testsOrPhysicsExecutedByAnalysis=False,
         coupledTrajectoryAccuracyQualified=False, physiologicalCalibrationQualified=False, avatarRecoveryAssessed=False)

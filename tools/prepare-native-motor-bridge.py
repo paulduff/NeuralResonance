@@ -51,6 +51,16 @@ def main():
     helper.verify(muscle_capture, ['causal-input.json'] + ['source/' + name for name in muscle_same])
     for name in muscle_same:
         assert (ROOT / name).read_text(encoding='utf-8-sig') == helper.io(muscle_capture / 'source' / name).read_text(encoding='utf-8-sig'), name
+    failure_review_folder = ROOT / 'artifacts/native-motor-bridge-failure-review-20261116'
+    helper.verify(failure_review_folder, ['review.json'])
+    failure_review = helper.read(failure_review_folder / 'review.json')
+    assert failure_review['operatorReportedCompletion'] and failure_review['savedRequestClockExactlyCorrect']
+    assert failure_review['completedQuietSteps'] == 9 and failure_review['rejectedBeforePhysics']
+    failure_capture = Path(failure_review['capture'])
+    assert helper.digest(failure_capture / 'backup-manifest.json') == failure_review['manifestSha256']
+    failure_inputs = {'failed-request-000033.json': 'native-bridge/quiet/bridge/request-000033.json',
+        'last-reply-000032.json': 'native-bridge/quiet/bridge/reply-000032.json'}
+    helper.verify(failure_capture, list(failure_inputs.values()))
     generated = module('unity_path_generator', ROOT / 'tools/prepare-unity-muscle-paths.py').generate(ROOT)
     assert generated == (ROOT / 'UnityWorld/Assets/NRE/Runtime/MusclePathGeometry.cs').read_text(encoding='utf-8-sig')
     methods = {}
@@ -83,6 +93,8 @@ def main():
     shutil.copyfile(review_folder / 'review.json', package / 'reference/native-hinge-review.json')
     shutil.copyfile(muscle_review_folder / 'review.json', package / 'reference/causal-motor-review.json')
     shutil.copyfile(muscle_capture / 'causal-input.json', package / 'reference/muscle-input.json')
+    shutil.copyfile(failure_review_folder / 'review.json', package / 'reference/failed-bridge-review.json')
+    for name, source in failure_inputs.items(): shutil.copyfile(failure_capture / source, package / 'reference' / name)
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(helper.io(package)).as_posix(), Sha256=helper.digest(p))
              for p in sorted(helper.io(package).rglob('*')) if p.is_file()]
@@ -101,6 +113,7 @@ def main():
     config.update(UnityExecutable=str(unity), UnityExecutableSha256=helper.digest(unity),
         UnityBuildWorkspace=str(workspace), ExpectedUnityVersion='6000.3.19f1',
         SessionId=uuid.uuid4().hex, ExpectedNativeCases=12, ExpectedNativePhysicsSteps=4096,
+        ExactScalarWireVersion=2, ExpectedExactScalarRoundTrips=1040, RequireOriginalDecimalFailureReproduction=True,
         PythonExecutable=sys.executable, PythonExecutableSha256=helper.digest(sys.executable))
     (package / 'configuration.json').write_text(json.dumps(config, indent=2) + '\n')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True, NoLiveMonitoring=True,

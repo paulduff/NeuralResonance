@@ -117,7 +117,11 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
         while (!File.Exists(path))
         {
             string failure = Path.Combine(_directory, "failure.json");
-            if (File.Exists(failure)) throw new InvalidOperationException(File.ReadAllText(failure));
+            if (File.Exists(failure))
+            {
+                var detail = JsonSerializer.Deserialize<Failure>(File.ReadAllText(failure), Json);
+                throw new InvalidOperationException("Native bridge failure; evidence: " + failure + "; " + detail?.error);
+            }
             if (_process.HasExited) throw new InvalidOperationException("Native player exited: " + _process.ExitCode);
             if (timer.Elapsed.TotalSeconds > seconds) throw new TimeoutException("Uncertain native reply: " + name);
             Thread.Sleep(2);

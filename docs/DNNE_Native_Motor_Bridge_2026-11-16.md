@@ -119,3 +119,68 @@ verified both prerequisite reviews, unchanged qualified cores and all 48 asset
 metadata files / 35 scripts. This is the only pending completion report.
 No test, Unity build, native run or analysis outcome has been inspected after
 launch; do not monitor. Wait for the operator to report completion.
+
+## First bridge failure: exact clock rejected after nine quiet steps
+
+The operator reported `223098` FAILED. All 75 regressions and the native Unity
+build passed. The driver completed nine stationary quiet steps, then native
+request 33 (the tenth physical step) was rejected by the combined effort-ID /
+endpoint-time check. The failure record says physics was not attempted for that
+request, and its observed native state exactly matches the preceding reply.
+No one-sided response case, malformed-command case or completed bridge analysis
+was reached. The .NET driver's unhandled exception produced `-532462766`.
+
+`review-native-motor-bridge-failure-20261116.py` verifies all 2,449 C:/D: files
+(192,112,136 bytes), all 1,610 frozen Git files, test/probe/player binaries,
+all 35 compiled Unity C# inputs, metadata and exact 75-case regression coverage.
+The capture manifest is
+`38E1488428D9C89820B917DD772459CEF6329856359C9311CD28C9D742891568`.
+The one-file derived review `artifacts/native-motor-bridge-failure-review-20261116`
+has its own verified D: copy. The failed package remains untouched.
+
+The saved request has a fresh valid effort GUID and the exactly correct endpoint
+`1.2500000593718141` ms, binary64 bits `3FF400000FF00000`. The original failure did
+not record Unity's decoded request bits, so decimal decoder disagreement is a
+specific hypothesis, not yet an established cause. No physical or clock bound
+is changed to accommodate it. The old package is no longer pending.
+
+## Version 2 wire and native diagnosis before retry
+
+The shared wire now represents each mechanical scalar as a canonical 16-digit
+uppercase IEEE-754 hexadecimal string inside a `bits` field. This includes
+start/end times, step duration, tendon tensions and measured lengths/velocities
+in both directions. The native rest-length argument uses the same exact format.
+The wire version changes from 1 to 2; muscle dynamics, event timing, integer
+physical steps, geometry, forces, anatomical assumptions and acceptance bounds
+are unchanged. Decoding rejects malformed encodings, infinities and NaNs. Signed
+zero and finite subnormals retain their original bits. Ordinary muscle traces
+still contain readable numeric values. Driver failures now exit 1 with the error
+and evidence path rather than embedding entire body observations in an unhandled
+exception.
+
+Before any physical retry, the native player runs without physical bodies:
+
+- Replays the exact original failed request through Unity's decimal parser and
+  records the parsed start/end bits, expected bits and both effort-ID predicates.
+  It must reproduce the endpoint decoding mismatch while retaining the correct
+  start time and valid fresh ID. Otherwise it stops and preserves the diagnosis.
+- Checks all 1,025 represented clock endpoints plus 15 scalar cases, including
+  the original tension, initial path length, adjacent representable values,
+  signed zeros, subnormals and finite extremes. Every bit pattern must survive
+  host-to-native decoding and native-to-host return: 1,040 exact round trips.
+- Rejects ten malformed/nonfinite scalar encodings on both sides. Extreme values
+  exercise only the codec; they are never physical force inputs. Decimal parser
+  diagnostics are separate and do not require decimal handling of subnormals or
+  double extrema.
+
+Only after those checks pass does the original four-case muscle experiment and
+eight native command-rejection controls run. The independent Python audit checks
+the encoded forms, exact original request, complete round-trip matrix and decoded
+physical evidence. This is a candidate transport repair, not a new tolerance.
+Both authoring builds pass with zero warnings/errors; syntax and metadata checks
+pass. Native diagnosis, codec acceptance and physical retry await execution in
+the independent visible PowerShell window. Consult the next launch record.
+
+Unity's [FromJson documentation](https://docs.unity.com/en-us/engine/6000.3/script-reference/unityengine/jsonutility/fromjson)
+identifies its serializer, but does not prove this numerical diagnosis. The
+retained original request and native replay determine the result.

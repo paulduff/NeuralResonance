@@ -1462,3 +1462,15 @@ is launched in visible task `DNNE-Native-Motor-Bridge-c5b38826821e`. Its 1,617
 initial files plus manifest are D: verified and rechecked at launch. This is the
 only pending completion report. No post-launch outcome has been inspected;
 wait for the operator and do not monitor.
+
+Native motor/body bridge `223098` subsequently reported FAILED and is reviewed:
+75 regressions and Unity build passed; nine quiet steps completed. Request 33
+was rejected before physics by the effort/endpoint check despite an exactly
+correct saved timestamp and fresh GUID. Native decoded bits were not recorded,
+so decimal parsing is suspected, not confirmed. All C:/D:/source/binary evidence
+verifies; `native-motor-bridge-failure-review-20261116` is D: backed. The candidate
+v2 wire preserves exact binary64 bits and first reproduces the original parser
+failure with zero physical bodies, then checks 1,040 exact scalar round trips
+and ten malformed encodings before any physical retry. No timing/physical bound
+or muscle model changed. See `docs/DNNE_Native_Motor_Bridge_2026-11-16.md` and later
+launch records; the failed `223098` report is no longer pending.

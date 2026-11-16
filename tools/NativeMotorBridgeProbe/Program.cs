@@ -8,6 +8,8 @@ using static Nre.UnityWorld.MuscleHingeWire;
 using Path=System.IO.Path;
 
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+try
+{
 if (args.Length != 3 || args.Any(a => !Path.IsPathFullyQualified(a)) || Directory.Exists(args[2]))
     throw new ArgumentException("Supply absolute native player, frozen muscle parameter input and NEW output paths.");
 var parameterJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -15,6 +17,7 @@ var spec = JsonSerializer.Deserialize<Parameters>(File.ReadAllText(args[1]), par
 Require(spec != null && spec.CandidateVersion == AvatarCausalMotorPlant.Version && spec.MuscleVersion == AvatarDynamicMuscle.Version &&
     spec.ParameterRows[0].Calcium == MotorUnitCalciumParameters.NagamoriSlowUnit1, "Qualified muscle parameters required.");
 Directory.CreateDirectory(args[2]);
+WirePreflight.Run(args[0], Path.GetDirectoryName(args[1]), args[2]);
 var results = new List<object>(); var angles = new Dictionary<string, double>();
 string[] positive = ["quiet", "left", "right", "balanced"];
 string[] negative = ["session", "sequence", "clock", "state", "plant", "duplicate", "negative", "inspect-force"];
@@ -25,7 +28,7 @@ foreach (string scenario in positive.Concat(negative.Select(n => "reject-" + n))
     string bridge = Path.Combine(output, "bridge"); Guid session = Guid.NewGuid();
     var start = new ProcessStartInfo(args[0]) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetDirectoryName(args[0]) };
     foreach (string arg in new[] { "-batchmode", "-nographics", "-logFile", Path.Combine(output, "player.log"),
-        "--motor-bridge", bridge, "--motor-session", session.ToString("N"), "--motor-rest-length", spec.RestPathLengthMeters.ToString("R") }) start.ArgumentList.Add(arg);
+        "--motor-bridge", bridge, "--motor-session", session.ToString("N"), "--motor-rest-length-bits", Encode(spec.RestPathLengthMeters) }) start.ArgumentList.Add(arg);
     using var process = Process.Start(start) ?? throw new InvalidOperationException("Player did not start.");
     try
     {
@@ -98,6 +101,12 @@ NativeHingeBody.Write(Path.Combine(args[2], "results.json"), new { completed = t
     physiologicalCalibrationQualified = false, avatarRecoveryAssessed = false });
 Require(response, "Native opposing-muscle response criteria failed; preserve the original bounds.");
 Console.WriteLine("4 causal native muscle cases and 8 native rejection controls complete.");
+}
+catch (Exception error)
+{
+    Console.Error.WriteLine("NATIVE MOTOR BRIDGE FAILED: " + error);
+    Environment.ExitCode = 1;
+}
 
 internal sealed record ParameterRow(int Row, MotorUnitCalciumParameters Calcium, double LengthGainAboveOptimal, double LengthGainBelowOptimal);
 internal sealed record Parameters(string CandidateVersion, string MuscleVersion, DynamicMuscleGeometry Geometry,

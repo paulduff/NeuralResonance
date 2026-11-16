@@ -3,6 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+if($configuration.ExactScalarWireVersion -ne 2 -or $configuration.ExpectedExactScalarRoundTrips -ne 1040 -or -not $configuration.RequireOriginalDecimalFailureReproduction){throw 'Require exact scalar wire and original decoder preflight.'}
 if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 75 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
@@ -156,6 +157,7 @@ try {
  if((File-Sha256 $configuration.PythonExecutable) -ne $configuration.PythonExecutableSha256){throw 'Saved-data analysis Python changed after preparation.'}
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/analyse-native-motor-bridge.py'),$package) 'bridge-analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'bridge-analysis.json') -Raw | ConvertFrom-Json
+ if($analysis.wire.exactScalarRoundTrips -ne 1040 -or $analysis.wire.malformedScalarsRejectedEachSide -ne 10 -or -not $analysis.wire.originalDecimalFailureReproduced){throw 'Exact scalar or original failure evidence incomplete.'}
  if(-not $analysis.completed -or -not $analysis.originalCriteriaPassed -or $analysis.independentlyAuditedCases -ne 12 -or $analysis.actualPhysicsSteps -ne 4096 -or $analysis.fixtureEventsExactlyDelivered -ne 8 -or $analysis.testsOrPhysicsExecutedByAnalysis -or $analysis.coupledTrajectoryAccuracyQualified -or $analysis.physiologicalCalibrationQualified -or $analysis.avatarRecoveryAssessed){throw 'Native bridge evidence analysis incomplete or scope changed.'}
  Assert-Package
  foreach($entry in @($playerFiles)+@($probeFiles)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Built binary changed: '+$entry.Path)}}

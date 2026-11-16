@@ -19,6 +19,15 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
   public bool gravity=false,rootImmovable=true;public float damping=0,friction=0,driveForce=0;
  }
  [Serializable] public sealed class State {public double angle,speed;public BodyState[] m0,m1;}
+ [Serializable] public sealed class WireSample {public string key,expectedBits;public double decimalValue;public Real exactValue;public bool compareDecimal;}
+ [Serializable] public sealed class WireInput {public WireSample[] samples;public string[] invalidBits;public string legacyRequestJson,legacyLastEffortId;}
+ [Serializable] public sealed class LegacyClock {public double startTimeMs,endTimeMs;public string effortId;}
+ [Serializable] public sealed class WireResult {public string key,expectedBits,decimalParsedBits,exactDecodedBits;public Real returnedExact;public bool compareDecimal;}
+ [Serializable] public sealed class WireReport {
+  public string unity,error,legacyStartBits,legacyEndBits,expectedStartBits,expectedEndBits;
+  public bool completed,passed,legacyGuidValid,legacyFreshEffort,legacyStartExact,legacyEndExact,physicsExecuted=false;
+  public int exactCases,decimalDifferences,rejectedMalformedScalars;public WireResult[] cases;
+ }
  ArticulationBody root,child;Vector3[][] anchors;AvatarMusclePath[] paths;
  string directory,session,geometry,bodyFingerprint;Reply last;bool physicsAttempted;long actualSteps;
  readonly System.Collections.Generic.HashSet<string> effortIds=new System.Collections.Generic.HashSet<string>();
@@ -62,12 +71,16 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
    physicsStep=step,physicsStepMs=StepMs,physicalTimeMs=step*StepMs,isolated=true,paused=true,paths=measurements};
  }
  IEnumerator Start(){
+  if(Argument("--wire-input")!=null){
+   int exit=1;try{WirePreflight(Argument("--wire-input"),Argument("--wire-output"));exit=0;}catch(Exception e){Debug.LogException(e);}
+   Application.Quit(exit);yield break;
+  }
   bool ready=false;
   try {
    directory=Argument("--motor-bridge");session=Argument("--motor-session");
    Require(!string.IsNullOrWhiteSpace(directory)&&!Directory.Exists(directory)&&GuidN(session),"Fresh isolated bridge directory/session required.");
    Require(FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None).All(b=>b==this)&&FindObjectsByType<ArticulationBody>(FindObjectsSortMode.None).Length==0,"Empty isolated scene required.");
-   double rest=double.Parse(Argument("--motor-rest-length"),CultureInfo.InvariantCulture);Require(Finite(rest)&&rest>.1&&rest<1,"Invalid synthetic rest length.");
+   double rest=Decode(Argument("--motor-rest-length-bits"));Require(rest>.1&&rest<1,"Invalid synthetic rest length.");
    Directory.CreateDirectory(directory);Physics.simulationMode=SimulationMode.Script;Physics.gravity=Vector3.zero;QualitySettings.vSyncCount=0;Application.targetFrameRate=-1;
    root=Make("fixed-root",null);child=Make("hinge-child",root.transform);
    float z=(float)Math.Sqrt(rest*rest-Math.Pow((double).4f-(double).3f,2));
@@ -110,6 +123,35 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
    }catch(Exception e){Fail(e);failed=true;}
    if(failed||stop){Application.Quit(failed?1:0);yield break;}
   }
+ }
+ void WirePreflight(string inputFile,string outputFile){
+  Require(!string.IsNullOrWhiteSpace(outputFile)&&!File.Exists(outputFile),"Fresh wire preflight output required.");
+  var report=new WireReport{unity=Application.unityVersion};
+  try {
+   Physics.simulationMode=SimulationMode.Script;
+   Require(FindObjectsByType<ArticulationBody>(FindObjectsSortMode.None).Length==0,"Wire preflight must have no physical bodies.");
+   var input=JsonUtility.FromJson<WireInput>(File.ReadAllText(inputFile));
+   Require(input.samples!=null&&input.samples.Length==1040&&input.invalidBits!=null&&input.invalidBits.Length==10,"Unexpected frozen wire matrix.");
+   report.cases=input.samples.Select(sample=>{
+    double value=sample.exactValue;string exact=Encode(value);Require(exact==sample.expectedBits,"Exact scalar changed in native decoding.");
+    string legacy=BitConverter.DoubleToInt64Bits(sample.decimalValue).ToString("X16",CultureInfo.InvariantCulture);
+    report.exactCases++;if(sample.compareDecimal&&legacy!=sample.expectedBits)report.decimalDifferences++;
+    return new WireResult{key=sample.key,expectedBits=sample.expectedBits,decimalParsedBits=legacy,exactDecodedBits=exact,returnedExact=value,compareDecimal=sample.compareDecimal};
+   }).ToArray();
+   foreach(string bad in input.invalidBits){bool rejected=false;try{Decode(bad);}catch(InvalidOperationException){rejected=true;}
+    Require(rejected,"Malformed/nonfinite wire scalar accepted.");report.rejectedMalformedScalars++;}
+   var old=JsonUtility.FromJson<LegacyClock>(input.legacyRequestJson);
+   report.legacyGuidValid=GuidN(old.effortId);report.legacyFreshEffort=old.effortId!=input.legacyLastEffortId;
+   report.legacyStartBits=BitConverter.DoubleToInt64Bits(old.startTimeMs).ToString("X16",CultureInfo.InvariantCulture);
+   report.legacyEndBits=BitConverter.DoubleToInt64Bits(old.endTimeMs).ToString("X16",CultureInfo.InvariantCulture);
+   report.expectedStartBits=Encode(9*StepMs);report.expectedEndBits=Encode(10*StepMs);
+   report.legacyStartExact=report.legacyStartBits==report.expectedStartBits;report.legacyEndExact=report.legacyEndBits==report.expectedEndBits;
+   report.completed=true;
+   // Establish the proposed cause before allowing a physical retry. Never
+   // quietly accept a different cause or waive the original exact-clock rule.
+   report.passed=report.legacyGuidValid&&report.legacyFreshEffort&&report.legacyStartExact&&!report.legacyEndExact;
+  }catch(Exception e){report.error=e.ToString();}
+  WriteNew(outputFile,report);Require(report.completed&&report.passed,"Wire preflight failed or decimal-decoder diagnosis was not confirmed.");
  }
  void Fail(Exception e){Debug.LogException(e);if(!string.IsNullOrWhiteSpace(directory)&&Directory.Exists(directory)){
   Reply observed=null;try{if(last!=null)observed=Capture("failure",last.sequence,actualSteps,last.plantFingerprint,last.lastAppliedEffortId);}catch{}

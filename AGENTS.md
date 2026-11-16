@@ -1661,3 +1661,24 @@ outputs or processes have been inspected. Do not monitor. No coupled neuronal
 recruitment, independent receptor reference, physiology or recovery is qualified
 by preparing or launching this component. Consult the receptor document and
 inspect saved evidence only after the operator reports completion.
+
+The receptor-to-membrane candidate is now authored in
+`docs/DNNE_Receptor_Driven_Motor_Cell_2026-11-16.md`. A private neuronal owner
+retains original input batches, explicit completeness and per-contact state,
+splits release boundaries, and evaluates point currents at all RK4 stages.
+The shared motor-cell integrator has an explicit new input path; do not claim
+the source file is unchanged or reuse an unchanged-core preparer on this HEAD.
+The old input arithmetic is retained, but complete five-condition source-trace
+reproduction and the 97-case inventory are prospective. Fifteen new cases are
+authored; builds pass with zero warnings/errors. No test/model ran during this
+authoring and no fourth window was opened. Review pending receptor `501da5`
+before launching the next explicit candidate package. The other pending reports
+remain observed/native `bb10dc` and spindle `18ec5e`; do not monitor any of them.
+
+The final authoring capture is `receptor-membrane-authoring-20261116-r2`
+(9 files plus manifest, D: verified); the earlier 11-file authoring capture
+is retained. The new scheduler derives exact endpoint differences and limits
+early interval growth; its exact-binary accounting test remains prospective.
+All 97 method/case declarations were counted statically, supporting source
+files and parameter declarations are preserved, and the latest build passes.
+This is compilation/source evidence only, not a passed neuronal experiment.

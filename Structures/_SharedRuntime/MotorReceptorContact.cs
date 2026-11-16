@@ -96,21 +96,8 @@ internal sealed class MotorReceptorContact
 
     internal MotorReceptorReceipt Release(Guid sourceSessionId, SpikeMessage original)
     {
-        RequireOperational(); ArgumentNullException.ThrowIfNull(original);
-        if (sourceSessionId != _session || original.MessageId == Guid.Empty || original.SourceInstanceKey != _definition.SourceInstance ||
-            original.SourceStructure != _definition.SourceStructure || original.SourceNeuronId != _definition.SourceNeuron ||
-            original.SynapseId != _definition.SourceSynapse || original.ProjectionId != _definition.Projection ||
-            original.TargetStructure != StructureId.SpinalCordMotor || original.TargetNeuronId != _definition.TargetNeuron ||
-            original.Neurotransmitter != _definition.Transmitter || original.IsSyntheticBackground ||
-            original.IsFeedback != _definition.IsFeedback || !double.IsFinite(original.TimestampMs) || original.TimestampMs < 0)
-            throw new ArgumentException("Require the original identified event for this declared receptor contact.");
-        double arrival = original.TimestampMs + _definition.AxonalDelayMs;
-        if (!double.IsFinite(arrival) || (_definition.AxonalDelayMs > 0 && arrival <= original.TimestampMs))
-            throw new ArgumentException("Axonal delay is not representable on this source clock.");
-        // Hash the original complete message, including metadata not used as a
-        // conductance. Do not reinterpret VesicleQuanta or ModulationContext.
-        string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(original)));
-        var receipt = new MotorReceptorReceipt(_session, _definition.ContactId, original.MessageId, digest, original.TimestampMs, arrival);
+        var receipt = DescribeOriginal(sourceSessionId, original);
+        double arrival = receipt.ArrivedAtMs;
         if (_receipts.TryGetValue(original.MessageId, out var prior))
         {
             if (prior != receipt) throw new ArgumentException("Conflicting original event replay.");
@@ -130,6 +117,28 @@ internal sealed class MotorReceptorContact
             return receipt;
         }
         catch { _faulted = true; throw; }
+    }
+
+    // Pure admission validation for the owning input queue. This is not release
+    // or input completeness, and it does not alter occupancy or replay history.
+    internal MotorReceptorReceipt DescribeOriginal(Guid sourceSessionId, SpikeMessage original)
+    {
+        RequireOperational(); ArgumentNullException.ThrowIfNull(original);
+        if (sourceSessionId != _session || original.MessageId == Guid.Empty || original.SourceInstanceKey != _definition.SourceInstance ||
+            original.SourceStructure != _definition.SourceStructure || original.SourceNeuronId != _definition.SourceNeuron ||
+            original.SynapseId != _definition.SourceSynapse || original.ProjectionId != _definition.Projection ||
+            original.TargetStructure != StructureId.SpinalCordMotor || original.TargetNeuronId != _definition.TargetNeuron ||
+            original.Neurotransmitter != _definition.Transmitter || original.IsSyntheticBackground ||
+            original.IsFeedback != _definition.IsFeedback || !double.IsFinite(original.TimestampMs) || original.TimestampMs < 0)
+            throw new ArgumentException("Require the original identified event for this declared receptor contact.");
+        double arrival = original.TimestampMs + _definition.AxonalDelayMs;
+        if (!double.IsFinite(arrival) || (_definition.AxonalDelayMs > 0 && arrival <= original.TimestampMs))
+            throw new ArgumentException("Axonal delay is not representable on this source clock.");
+        // Hash the original complete message, including metadata not used as a
+        // conductance. Do not reinterpret VesicleQuanta or ModulationContext.
+        string digest = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(original)));
+        RequireClock(arrival); RequireClock(arrival + PulseDurationMs);
+        return new(_session, _definition.ContactId, original.MessageId, digest, original.TimestampMs, arrival);
     }
 
     // Conditional analytic evaluation of ALREADY ACCEPTED release history.

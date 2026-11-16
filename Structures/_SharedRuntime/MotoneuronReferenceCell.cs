@@ -59,9 +59,10 @@ internal sealed class MotoneuronReferenceCell
     private readonly MotoneuronReferenceParameters _parameters;
     private readonly MotoneuronDiagnosticBlock _block;
     private readonly List<double> _spikes = [];
-    private bool _faulted;
+    private bool _faulted, _receptorInputUsed;
     public MotoneuronAccumulation Accumulation { get; }
-    public string IntegrationVersion => Accumulation == MotoneuronAccumulation.Compensated ? CompensatedVersion : Version;
+    public string IntegrationVersion => (Accumulation == MotoneuronAccumulation.Compensated ? CompensatedVersion : Version) +
+        (_receptorInputUsed ? "+point-receptors-stage-evaluated-v1" : "");
     public double TimeMs { get; private set; }
     public double SomaVoltageMv => _state[0];
     public double CalciumMm => _state[14];
@@ -135,20 +136,40 @@ internal sealed class MotoneuronReferenceCell
     // must split at real input changes. Inputs are physical transduction, not
     // prescribed spike times, a firing-rate model or a balance controller.
     public void Advance(double dtMs, double somaCurrentPa = 0, double dendriteExcitatoryNs = 0, double dendriteInhibitoryNs = 0)
+        => AdvanceCore(dtMs, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, null);
+
+    // Only the isolated synaptic owner uses this entry point. It must establish
+    // complete input and split at every release and pulse-end boundary before
+    // calling. The membrane receives actual compartment-local conductances at
+    // all four RK stages, with each stage's voltage determining current.
+    internal void AdvanceWithReceptors(double dtMs, IReadOnlyList<MotorReceptorContact> contacts)
+    {
+        ArgumentNullException.ThrowIfNull(contacts);
+        if (contacts.Any(c => c is null || c.Capture().Value.TimeMs != TimeMs) ||
+            contacts.Distinct().Count() != contacts.Count)
+            throw new ArgumentException("Require distinct receptor contacts on this membrane's clock.");
+        AdvanceCore(dtMs, 0, 0, 0, contacts);
+    }
+
+    private void AdvanceCore(double dtMs, double somaCurrentPa, double dendriteExcitatoryNs,
+        double dendriteInhibitoryNs, IReadOnlyList<MotorReceptorContact>? contacts)
     {
         if (_faulted) throw new InvalidOperationException("Faulted motor-cell candidate cannot resume.");
         if (!double.IsFinite(dtMs) || dtMs <= 0 || dtMs > MaximumStepMs || !double.IsFinite(TimeMs + dtMs) || TimeMs + dtMs == TimeMs ||
             !double.IsFinite(somaCurrentPa) || !double.IsFinite(dendriteExcitatoryNs) || dendriteExcitatoryNs < 0 ||
             !double.IsFinite(dendriteInhibitoryNs) || dendriteInhibitoryNs < 0)
             throw new ArgumentException("Finite bounded step/current and nonnegative conductance required.");
+        double middle = TimeMs + dtMs / 2, end = TimeMs + dtMs;
+        if (contacts is not null && (middle <= TimeMs || middle >= end))
+            throw new ArgumentException("The source clock cannot resolve receptor solver stages.");
         try
         {
             Span<double> a = stackalloc double[30], b = stackalloc double[30], c = stackalloc double[30], d = stackalloc double[30];
             Span<double> temporary = stackalloc double[30], next = stackalloc double[30], nextError = stackalloc double[30];
-            Derivative(_state, a, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
-            Offset(_state, a, dtMs / 2, temporary); Derivative(temporary, b, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
-            Offset(_state, b, dtMs / 2, temporary); Derivative(temporary, c, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
-            Offset(_state, c, dtMs, temporary); Derivative(temporary, d, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs);
+            Derivative(_state, a, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, TimeMs, contacts);
+            Offset(_state, a, dtMs / 2, temporary); Derivative(temporary, b, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, middle, contacts);
+            Offset(_state, b, dtMs / 2, temporary); Derivative(temporary, c, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, middle, contacts);
+            Offset(_state, c, dtMs, temporary); Derivative(temporary, d, somaCurrentPa, dendriteExcitatoryNs, dendriteInhibitoryNs, end, contacts);
             for (int i = 0; i < 30; ++i)
             {
                 double increment = dtMs / 6 * (a[i] + 2 * b[i] + 2 * c[i] + d[i]);
@@ -173,6 +194,7 @@ internal sealed class MotoneuronReferenceCell
             if (_state[0] < SpikeThresholdMv && next[0] >= SpikeThresholdMv)
                 _spikes.Add(TimeMs + dtMs * (SpikeThresholdMv - _state[0]) / (next[0] - _state[0]));
             next.CopyTo(_state); nextError.CopyTo(_additionError); TimeMs += dtMs;
+            _receptorInputUsed |= contacts is not null;
         }
         catch { _faulted = true; throw; }
     }
@@ -190,9 +212,21 @@ internal sealed class MotoneuronReferenceCell
         if (state[14] < 0) throw new InvalidOperationException("Negative local calcium; no floor.");
     }
 
-    private void Derivative(ReadOnlySpan<double> y, Span<double> dy, double currentPa, double excitationNs, double inhibitionNs)
+    private void Derivative(ReadOnlySpan<double> y, Span<double> dy, double currentPa, double excitationNs, double inhibitionNs,
+        double stageTimeMs = 0, IReadOnlyList<MotorReceptorContact>? contacts = null)
     {
         RequireState(y); dy.Clear();
+        Span<double> synapticPa = stackalloc double[5];
+        synapticPa.Clear();
+        if (contacts is not null)
+            foreach (var contact in contacts)
+            {
+                var value = contact.EvaluateKnownReleaseAt(stageTimeMs);
+                int compartment = value.ElectricalCompartment;
+                synapticPa[compartment] += value.InwardCurrentPa(y[compartment]);
+                if (!double.IsFinite(synapticPa[compartment]))
+                    throw new InvalidOperationException("Nonfinite summed synaptic current.");
+            }
         var p = _parameters; var cp = p.Channels;
         Span<MotoneuronGateRate> rates = stackalloc MotoneuronGateRate[9];
         MotoneuronChannelKinetics.Soma(y[0], y[14], cp, rates);
@@ -225,6 +259,7 @@ internal sealed class MotoneuronReferenceCell
                         (_block == MotoneuronDiagnosticBlock.WithoutCalciumL ? 0 : calciumL * y[start] * y[start + 1] * (voltage - MotoneuronChannelKinetics.CalciumLReversalMv));
             }
             double outsidePa = (i == 0 ? currentPa : -excitationNs * voltage - inhibitionNs * (voltage + 80)) - density * _area[i] * 10;
+            if (synapticPa[i] != 0) outsidePa += synapticPa[i];
             dy[29] += outsidePa;
             double netPa = outsidePa;
             for (int j = 0; j < 5; ++j) netPa -= _coupling[i, j] * (voltage - y[j]);

@@ -1786,3 +1786,22 @@ See `docs/DNNE_Body_Spindle_Receptor_Results_2026-11-16.md` and later records.
 The verified receptor review now permits preparation of the 111-case gate; no
 new body's result is presumed by that dependency. Subsequent launched studies
 still require their own completion reports; do not monitor them.
+
+All three reported captures are now reviewed and their separate reviews D:
+verified. The native-body `bb10dc` evidence verifies all 89,458 files per copy,
+160 cases, seven physical conditions, 14,336 steps and twelve independent
+references. Saved source/native analyses reproduce exactly; 14 delivered events
+drive the isolated native hinge over approximately 128 ms per condition. Packet
+cadence/retries preserve state bitwise. This is injected-current reference-cell
+causality, not live DNNE authority, physiological calibration or Avatar recovery.
+The review's nominal-duration assertion was corrected to verify the actual
+binary32 Unity clock in every case; no numerical comparison bound changed.
+
+The next 111-case/five-source gate is now launched:
+`receptor-membrane-20261116-f2c9a7`, frozen revision
+`2453007fad2c1acdfff476fb7a70dc2ff46f5d2f`, visible task
+`DNNE-Receptor-Membrane-5ad21bf3811c`. Its initial 1,712 files plus manifest were
+D: verified before launch. This is the only pending operator completion report.
+No post-launch outputs/status/processes were inspected; do not monitor it.
+The 18 raw/36 active-output/18 independent-reference comparison remains deferred
+until this gate is reported complete, successfully reviewed and D: backed.

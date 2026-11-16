@@ -3,8 +3,9 @@
 The new isolated owner connects identified presynaptic events to contact-local
 receptor conductance and then to the five-compartment motor membrane. This is
 code awaiting tests, not demonstrated neuronal recruitment. It is not selected
-by a live structure, Avatar, Unity or the editor. The three previously launched
-studies remain frozen and are not inspected while awaiting operator reports.
+by a live structure, Avatar, Unity or the editor. The three preceding studies
+have now been reported complete and reviewed. The next 111-case gate is running;
+its result remains uninspected until the operator reports completion.
 
 ## Membrane boundary
 
@@ -84,12 +85,15 @@ Fifteen new cases are authored in `ReceptorDrivenMotoneuronTests`:
   equilibria.
 
 Together with the receptor, original motor-cell, motor-axon, replay-buffer,
-observed-source and solution-manifest cases, the next focused inventory is
-**97 cases**. None were executed during authoring. The test project builds with
-zero warnings/errors, which is only compilation evidence.
+observed-source and solution-manifest cases, the original focused inventory was
+97 cases. The outgoing receptor motor source adds 14 cases, making the current
+gate **111 cases**; see `DNNE_Receptor_Motor_Output_2026-11-16.md`. None were
+executed during authoring. The test project builds with zero warnings/errors,
+which is only compilation evidence.
 
-Before a coupled numerical study, review the pending receptor gate `501da5`.
-The next visible-window package must run the complete 97-case inventory and
+The preceding receptor component `501da5` has passed its reported saved-data
+review. Before a coupled numerical study, the next visible-window package must
+pass the complete 111-case inventory and
 rerun all five existing six-second observed-source conditions against the
 original exact traces, events and delivery accounting. The old source/receptor
 preparers correctly require an unchanged membrane; they must not be bypassed
@@ -110,8 +114,9 @@ by this candidate. Avatar's existing mechanisms and old saves remain preserved.
 ## Deferred verification rig
 
 `tools/receptor_membrane_gate.py` and
-`tools/start-receptor-membrane-window.ps1` implement the next package. They are
-authored only; no package or fourth PowerShell window has been created.
+`tools/start-receptor-membrane-window.ps1` implement the next package. The
+prerequisite review is complete and the new gate has been launched; see the
+execution record below.
 
 After the operator reports the receptor component complete, the explicit
 `review-component PACKAGE NEW_REVIEW --operator-reported-complete` command
@@ -130,7 +135,7 @@ files are verified unchanged. The current authoring source must match its saved
 capture. Preparation does not execute tests or integrations.
 
 The independent visible launcher requires the initial verified D: copy. It
-builds frozen binaries and then runs the complete 97-case inventory. Case count,
+builds frozen binaries and then runs the complete 111-case inventory. Case count,
 class count and individual method multiplicity are checked against both the
 frozen source and the configuration. Only then does it build/run the five full
 source conditions and independently audit all saved original traces, spike
@@ -142,3 +147,15 @@ Passing this gate would establish the component controls and preservation of
 the old source trajectory. Its status deliberately leaves independent coupled
 accuracy, physiological calibration and Avatar recovery unqualified. It runs
 no Unity player and selects no live brain.
+
+## Execution record
+
+`receptor-membrane-20261116-f2c9a7` was frozen at
+`2453007fad2c1acdfff476fb7a70dc2ff46f5d2f`. Its initial 1,712-file D: copy plus
+manifest was verified before launching the independent visible PowerShell task
+`DNNE-Receptor-Membrane-5ad21bf3811c`. It runs 111 cases and five original source
+conditions. No post-launch status, output or process has been inspected.
+Await the operator's completion report before `review-gate`; this launch does
+not constitute a passing result. The numerical comparison remains deferred.
+The three preceding reviews are recorded in
+`DNNE_Body_Spindle_Receptor_Results_2026-11-16.md`.

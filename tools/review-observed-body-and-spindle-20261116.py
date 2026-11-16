@@ -85,7 +85,11 @@ def body():
         for key in analysis['cases'][0]['comparisons'][0]['errors']}
     spec = common.read(capture / 'neuronal-hinge-input.json')
     body_duration = 2048 * spec['nativeGeometry']['stepSeconds'] * 1000
-    assert body_duration == 128
+    # Unity records a binary32 physical step; retain its actual clock instead
+    # of assuming that the nominal 128 ms duration is exactly representable.
+    for condition in ('quiet', 'left', 'right', 'balanced', 'left-fast', 'left-slow', 'left-retry'):
+        final_native = audit.read(capture / 'native-bridge' / condition / 'final.json')['native']
+        assert final_native['physicsStep'] == 2048 and final_native['physicalTimeMs'] == body_duration
     membrane = 'Structures/_SharedRuntime/MotoneuronReferenceCell.cs'
     current_membrane_same = (ROOT / membrane).read_text(encoding='utf-8-sig') == common.io(capture / 'source' / membrane).read_text(encoding='utf-8-sig')
     report.update(passedTests=160, compiledUnitySourceFilesVerified=compiled, sourceConditions=5,

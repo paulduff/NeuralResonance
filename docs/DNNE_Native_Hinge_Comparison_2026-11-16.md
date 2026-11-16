@@ -110,3 +110,13 @@ Authoring validation: six Python files parse, the PowerShell launcher parses,
 and all four completed native traces decode to 1,025 ordered samples with exact
 event identities and times. No new numerical solve or test has been executed
 during authoring. Consult the launch record below for pending work.
+
+## Launch record
+
+`native-hinge-comparison-20261116-967542`, frozen revision
+`9d6aca66712e9c207cbdc6a3ad4ebadfaf7296ef`, is launched in independent visible
+PowerShell task `DNNE-Native-Hinge-Comparison-553670a7b85c`. All 1,657 initial
+files plus manifest are verified on D: and rechecked by the launcher. The
+qualified numerical environment and unchanged reference/candidate source passed
+preparation checks. This is the only pending operator completion report. No
+post-launch controls, solves or analysis have been inspected; do not monitor.

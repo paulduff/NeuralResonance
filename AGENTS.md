@@ -1514,3 +1514,11 @@ method controls and 12 adaptive references reusing saved native data. Physical
 and muscle step refinement remain explicitly unassessed. Scripts parse and saved
 inputs decode; no new solve has run. Consult later launch records, use visible
 PowerShell and no live monitoring, and preserve the original bounds/evidence.
+
+Captured native trajectory comparison `native-hinge-comparison-20261116-967542`,
+frozen `9d6aca6`, is launched in visible task
+`DNNE-Native-Hinge-Comparison-553670a7b85c`. All 1,657 initial files plus manifest
+are D: verified and rechecked at launch. This is the only pending operator
+report. No reference control/solve/analysis has been inspected; do not monitor.
+It reuses completed native captures and cannot qualify physical/muscle step
+refinement, live neuronal authority, physiology or Avatar recovery.

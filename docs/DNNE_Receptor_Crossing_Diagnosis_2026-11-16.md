@@ -83,3 +83,17 @@ and explicitly versioned compatibility; it would not retrospectively turn
 The separate spindle population transport component is preserved as an
 unexecuted candidate in `DNNE_Spindle_Population_Transport_2026-11-16.md`.
 Its comparison rig is unfinished and no transport experiment has been launched.
+
+## Launch record
+
+The saved-endpoint package is `receptor-crossing-20261116-c099e3`, frozen from
+`8a6b4c4431d62d2715258ef46bd7bbece1b3d3ad`. It contains all 27 recorded spike
+brackets across the 18 conditions and requires five analytic controls. Its
+1,713 initial files plus manifest were D: verified before launch. The independent
+visible task is `DNNE-Receptor-Crossing-03729f91bef1`. No post-launch output,
+status or process has been inspected; await the operator's completion report.
+
+The eight-file `receptor-and-transport-authoring-20261116` capture is also D:
+verified. It records Python/PowerShell syntax checks and the unexecuted source
+snapshot. No test, new crossing estimate or model ran during preparation.
+Only this new crossing diagnostic now awaits an operator completion report.

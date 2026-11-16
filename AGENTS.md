@@ -1913,3 +1913,13 @@ cell-mass interpretation changes the source's interpolation convention. The
 required comparison rig remains unfinished; do not call the candidate tested or
 promote it to Avatar. Requirements and preserved Avatar boundaries are in
 `docs/DNNE_Spindle_Population_Transport_2026-11-16.md`.
+
+The saved-endpoint crossing diagnostic is now launched as
+`receptor-crossing-20261116-c099e3`, frozen at
+`8a6b4c4431d62d2715258ef46bd7bbece1b3d3ad`, visible task
+`DNNE-Receptor-Crossing-03729f91bef1`. All 1,713 initial files plus manifest are
+D: verified; the eight-file authoring capture is separately D: verified. It
+checks five analytic controls and all 27 saved brackets from 18 conditions,
+evaluating derivatives but advancing no neuron/ODE or live body. This is the
+only pending operator report. No post-launch output/status/process was inspected;
+do not monitor it. The spindle transport rig remains unfinished and unlaunched.

@@ -1682,3 +1682,17 @@ early interval growth; its exact-binary accounting test remains prospective.
 All 97 method/case declarations were counted statically, supporting source
 files and parameter declarations are preserved, and the latest build passes.
 This is compilation/source evidence only, not a passed neuronal experiment.
+
+The deferred receptor/membrane verification rig is now authored in
+`tools/receptor_membrane_gate.py` and `tools/start-receptor-membrane-window.ps1`.
+After the operator reports receptor `501da5` complete, use the explicit
+`review-component` acknowledgement path; do not run it early. A passing review
+and its verified D: copy are mandatory inputs to `prepare`. The new package
+will run all 97 cases and all five full original source conditions. It declares
+the changed membrane and source-ownership extension, preserves the other
+source/reference files and retains original exact-trace requirements. No new
+package/window was created. Native probe build and syntax checks pass; the
+TRX reader was checked only against already reported/reviewed `badc1b` (66
+saved passing cases), without rerunning tests. The five-file
+`receptor-membrane-rig-authoring-20261116` capture is D: verified. Pending reports
+remain `bb10dc`, `18ec5e`, and `501da5`; none of their outputs were read.

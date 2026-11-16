@@ -102,3 +102,39 @@ kinetics in `DNNE_Motor_Receptor_Contacts_2026-11-16.md`, not calibrated spinal
 contacts. No live recruitment, glycinergic/NMDA input, contact-local learning,
 sensory closure, physiology, GPU speedup, balance or fall recovery is qualified
 by this candidate. Avatar's existing mechanisms and old saves remain preserved.
+
+## Deferred verification rig
+
+`tools/receptor_membrane_gate.py` and
+`tools/start-receptor-membrane-window.ps1` implement the next package. They are
+authored only; no package or fourth PowerShell window has been created.
+
+After the operator reports the receptor component complete, the explicit
+`review-component PACKAGE NEW_REVIEW --operator-reported-complete` command
+checks its terminal success status, all C:/D: files, frozen Git archive, test
+binaries, exact 74-case inventory and protected motor core. It writes a new
+review and does not rerun tests or solve a model. A failed component needs
+diagnosis; this command cannot turn its completion into a passing review.
+
+After that review is backed up to D:, `prepare --receptor-review REVIEW_FOLDER`
+requires a clean pushed checkout, the reviewed receptor result, the completed
+observed-source review and the D:-verified authoring capture. It freezes the
+candidate and copies the original six-second reference traces. The modified
+membrane and earlier source-ownership extension are explicitly recorded as
+changed source files; the original channel, clock, transport and reference-study
+files are verified unchanged. The current authoring source must match its saved
+capture. Preparation does not execute tests or integrations.
+
+The independent visible launcher requires the initial verified D: copy. It
+builds frozen binaries and then runs the complete 97-case inventory. Case count,
+class count and individual method multiplicity are checked against both the
+frozen source and the configuration. Only then does it build/run the five full
+source conditions and independently audit all saved original traces, spike
+identities and motor deliveries. Source and binary integrity are checked again,
+including on a failed exit, before final backup. PowerShell stays visible and
+the operator reports its outcome; there is no agent monitoring.
+
+Passing this gate would establish the component controls and preservation of
+the old source trajectory. Its status deliberately leaves independent coupled
+accuracy, physiological calibration and Avatar recovery unqualified. It runs
+no Unity player and selects no live brain.

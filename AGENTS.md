@@ -1859,3 +1859,18 @@ with synthetic input and unresolved version/license details; the calyx source
 lead requires COMSOL and was inspected only at tree/README/license level. Do not
 substitute either for the missing qualified afferent, or claim open-loop source
 lookahead works unchanged in a closed brain/body sensory loop.
+
+The version-2 spindle window is now launched as
+`spindle-slack-roots-20261116-ba3c0c`, frozen at
+`e09d37db87b91a0e8df43f6db4fd66124be9228c`, visible task
+`DNNE-Spindle-Slack-2bb1c5df9d5a`. All 1,746 initial files plus manifest were D:
+verified. The seven-file `spindle-knot-repair-authoring-20261116` capture is also
+D: verified, with parsed syntax and unchanged bounds but no inline controls or
+queries. Exact near-knot interval classification retains roots even when their
+floating representation lands on a knot; the separate reference reconstructs
+near-knot affine force from two rational interior queries. Never use a distance
+threshold to merge mathematically distinct roots.
+Only two reports are now pending: receptor comparison `f7ece6` and spindle force
+replacement `ba3c0c`. Neither output/status/process was inspected after launch;
+do not monitor. The failed `527839` and successful `f2c9a7` captures are reviewed,
+preserved and no longer pending.

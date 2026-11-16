@@ -79,3 +79,17 @@ sides of a knot within 1e-9 nm. The latter prevents a false repair by blanket
 deduplication. It then repeats all 2,812 force queries from immutable recorded
 states, without rerunning kinetics. The preparer requires the D:-verified failed
 review and original failure record. No repaired test or root query runs inline.
+
+## Replacement launch
+
+The repaired source and rig pass syntax parsing; the acceptance dictionary is
+statically identical to the failed version. Seven authoring files plus manifest
+are D: verified in `spindle-knot-repair-authoring-20261116`. These are authoring
+checks only; the eight controls and full query matrix remain prospective.
+
+`spindle-slack-roots-20261116-ba3c0c` is frozen at
+`e09d37db87b91a0e8df43f6db4fd66124be9228c`, with 1,746 initial files plus manifest
+D: verified before launch. Its visible task is `DNNE-Spindle-Slack-2bb1c5df9d5a`.
+No post-launch output or process was inspected. The only two pending operator
+reports are this replacement and receptor comparison `f7ece6`. Keep both
+unmonitored until their respective completion reports arrive.

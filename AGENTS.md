@@ -1981,3 +1981,14 @@ files, all 124 cases and five exactly reproduced original source conditions.
 The two-file review is D: verified; no model/test ran during review. The optional
 cubic component gate passes, but the full receptor/reference/source-output
 matrix for cubic mode is still required. No completion report is now pending.
+
+The independent retained-interval spindle candidate and its comparison rig are
+authored in `tools/spindle_characteristic_transport.py` and
+`docs/DNNE_Spindle_Retained_Transport_2026-11-16.md`. Grid observation never becomes
+state; movement retains material-coordinate intervals and explicit absorbing
+outflow. The prospective run has 12 controls, 25,308 saved translations, 144
+exact-shape histories and 96 movement-cadence comparisons, plus the 31 original
+no-root-state continuity probes. No kinetics, live sensory source or root branch
+selection is implemented. Even success requires separate coupled attachment,
+detachment, actin/overlap and sensory-membrane qualification. No test/comparison
+has executed during authoring; launch separately and await the operator report.

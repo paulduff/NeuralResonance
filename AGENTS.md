@@ -1416,3 +1416,8 @@ hinge candidate is documented in `docs/DNNE_Native_Muscle_Hinge_2026-11-16.md`:
 joint-angle/pose/velocity consistency and force clearing. Fixed-root diagnostics
 are isolated fixtures, never live balance mechanisms. Independent saved-data
 analysis and frozen visible runner are implemented; consult later launch records.
+
+Hinge package `native-muscle-hinge-20261116-de7da9`, frozen `301fbfd`, is now
+launched in visible task `DNNE-Native-Muscle-Hinge-c0f66b95c7c7`. All 1,598 initial
+files plus manifest are D: verified and rechecked at launch. This is the only
+pending operator report. Do not monitor; no build/native outcome is inspected.

@@ -459,3 +459,9 @@ candidate, separate physical-unit checks, joint-angle/pose consistency and
 independent saved-data analysis. Its authoring compilation and syntax checks pass;
 the 24-case/72-step native run still needs its launch record and operator report.
 The live brain, Avatar and World remain unchanged.
+
+The hinge package `native-muscle-hinge-20261116-de7da9`, frozen `301fbfd`, is now
+launched in visible task `DNNE-Native-Muscle-Hinge-c0f66b95c7c7`. Initial D:
+backup verifies 1,598 files plus manifest and was rechecked at launch. This is
+the only pending operator report. No result has been inspected; no monitoring.
+The code, free-root checker repair and evidence documentation are committed/pushed.

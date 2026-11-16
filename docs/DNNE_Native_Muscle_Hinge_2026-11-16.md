@@ -87,3 +87,13 @@ observations and exact effort receipts. That requires a coupled trajectory
 comparison and feedback delivery before live Avatar promotion. Calibrated
 anatomical paths, fiber/tendon parameters, afferent physiology and whole-body
 recovery remain open; synthetic hinge success cannot substitute for them.
+
+## Launch record
+
+`native-muscle-hinge-20261116-de7da9`, frozen revision
+`301fbfd4fc37f9ee1add8abb1176fc5dd4058b5e`, was launched in independent visible
+PowerShell task `DNNE-Native-Muscle-Hinge-c0f66b95c7c7`. All 1,598 initial files
+plus manifest were verified on D: and rechecked at launch. The preparer verified
+the reviewed native point-force prerequisite and unchanged qualified cores.
+This is the only pending operator completion report. No test/build/native
+outcome has been inspected; do not monitor or infer qualification from launch.

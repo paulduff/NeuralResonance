@@ -113,3 +113,14 @@ axonal/NMJ physiology, sensory return, live DNNE recruitment, balance and fall
 recovery remain separate requirements. The reference pairing is still cat MG
 neurons with a human TA slow-unit parameter row and a synthetic hinge. No live
 DNNE, Avatar, World, editor or old save is selected or changed.
+
+## Launch record
+
+`observed-native-body-20261116-bb10dc`, frozen revision
+`f9322f1c222186084b156bd34306e58582761cd8`, is launched in independent visible
+PowerShell task `DNNE-Observed-Native-Body-b834d2a0e6db`. All 1,666 initial files
+plus manifest are D: verified and rechecked by the launcher. Preparation verified
+the reviewed source/native captures, unchanged cell/muscle/native/reference
+cores, exact numerical dependency environment, Unity metadata and 160-case
+method coverage. This is the only pending operator report. No post-launch test,
+source, native or reference output has been inspected; do not monitor.

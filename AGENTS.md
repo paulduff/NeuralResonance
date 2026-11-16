@@ -1597,3 +1597,12 @@ source gate before native connection. Source lookahead is allowed only for this
 declared open-loop reference; it does not implement a closed sensory loop or live
 DNNE authority. Consult later launch records, preserve original bounds and old
 saves, run only in visible PowerShell without live monitoring.
+
+Observed neuronal/native study `observed-native-body-20261116-bb10dc`, frozen
+`f9322f1`, is launched in visible task `DNNE-Observed-Native-Body-b834d2a0e6db`.
+All 1,666 initial files plus manifest are D: verified and rechecked at launch.
+This is the only pending operator report; no post-launch output has been
+inspected. Require all 160 tests, the five full source conditions, seven native
+conditions and 12 independent references with original bounds before interpreting
+this coupled candidate. Never treat running reference cells under injection as
+qualified live DNNE recruitment, sensory feedback, physiology or recovery.

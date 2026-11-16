@@ -1627,3 +1627,14 @@ this comparison and `observed-native-body-20261116-bb10dc`. Do not monitor eithe
 Require six analytic controls, the Jacobian check, 18 independent solves,
 18 reference contrasts and 54 native/reference comparisons with original bounds.
 No live body, sensory transducer, brain, editor selection or old save was changed.
+
+The follow-up Ia source audit is `docs/DNNE_Afferent_Source_Gap_2026-11-16.md`.
+Public ModelDB catalogues now returned 1,931 entries; four pinned author trees
+and six Git-blob-verified Kim model files were inspected. The Housley Ia membrane
+was not located (absence is not proven); Dryad's public download returned 403.
+Kim's inspected Ia inputs are preset/sinusoidal conductances, not a sensory
+membrane, and are not adopted. Preserve the biological sensory objective rather
+than substitute those inputs or generic HH/rate encoding. The 30-file source
+review is D: backed; no models/tests ran and neither pending output was read.
+Do not repeat identical source searches without new evidence. The two reports
+remain `bb10dc` and `18ec5e`; no third window has launched.

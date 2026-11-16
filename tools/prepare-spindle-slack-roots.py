@@ -106,7 +106,7 @@ def main():
     parsed = audit.validate(package)
     with (package / 'preparation-capture-check.json').open('x', encoding='utf-8') as stream:
         json.dump(dict(modelExecuted=False, captures=[dict(label=c['label'], samples=len(c['states']),
-            forceReconstructionErrorPa=c['reconstructionErrorPa']) for c in parsed]), stream, indent=2)
+            forceReconstructionErrorPa=c['forceReconstructionErrorPa']) for c in parsed]), stream, indent=2)
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(io(package)).as_posix(), Sha256=digest(p)) for p in sorted(io(package).rglob('*')) if p.is_file()]
     configuration = dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(), PackageFiles=files,

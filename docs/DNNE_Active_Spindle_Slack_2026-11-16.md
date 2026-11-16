@@ -95,3 +95,15 @@ admissible branch or needs additional mechanics. Moving-trajectory accuracy,
 continuous-time slack dynamics, fusimotor recruitment, sensory membrane firing,
 live brain authority, physiological calibration and Avatar recovery remain
 unqualified. The receptor/motor gate is independent and remains unmonitored.
+
+## Authoring and preparation
+
+Three Python files and the visible PowerShell launcher pass syntax parsing.
+`spindle-slack-authoring-20261116` preserves six files plus manifest on D:;
+no control, root search or kinetics ran during authoring. The first preparation
+parsed all twelve reported traces successfully, then exposed a field-name
+mismatch while writing its preparation report. The corrected preparer reads
+`forceReconstructionErrorPa`. Its partial package `9e00e9` is preserved and D:
+verified (1,740 files plus manifest), with no window launched. The two-file
+`spindle-slack-authoring-20261116-r2` records the correction and is D: verified.
+A new package is required; the partial package is not reused.

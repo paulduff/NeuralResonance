@@ -1805,3 +1805,16 @@ D: verified before launch. This is the only pending operator completion report.
 No post-launch outputs/status/processes were inspected; do not monitor it.
 The 18 raw/36 active-output/18 independent-reference comparison remains deferred
 until this gate is reported complete, successfully reviewed and D: backed.
+
+The next independent spindle work is documented in
+`docs/DNNE_Active_Spindle_Slack_2026-11-16.md`. Avatar's existing muscle transducer
+and legacy/dynamic muscle boundaries were inspected first. Twelve previously
+reported moving MAT traces retain populations but permit negative imposed stress;
+their experiment deliberately omitted slack handling. The new pure trial-force
+component enumerates all roots on the source's positive-overlap domain, keeping
+finite-support discontinuities and inadmissible/multiple roots explicit. It does
+not select an equilibrium, clip force, reset state or install a sensory membrane.
+Six analytic controls and all 2,812 saved-state comparisons belong to the new
+visible-window rig; authoring/preparation executes no controls or new kinetics.
+Do not infer active slack trajectories or biological afference from a successful
+root enumeration. Preserve original bounds and the separate receptor gate.

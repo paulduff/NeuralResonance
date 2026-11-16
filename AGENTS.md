@@ -1923,3 +1923,14 @@ checks five analytic controls and all 27 saved brackets from 18 conditions,
 evaluating derivatives but advancing no neuron/ODE or live body. This is the
 only pending operator report. No post-launch output/status/process was inspected;
 do not monitor it. The spindle transport rig remains unfinished and unlaunched.
+
+The spindle transport rig is now authored: ten analytic controls, 25,308 saved
+state translations, probes of every sign-changing jump in the 31 no-root states,
+and 144 analytic histories with 36 spatial-refinement contrasts. Its source and
+requirements are in `docs/DNNE_Spindle_Population_Transport_2026-11-16.md`.
+Preparation only parses reported records; all numerical execution belongs to
+the separate visible launcher. The candidate changes the boundary interpretation
+to cell mass with explicit outflow, so do not claim exact old-rule preservation,
+physical detachment calibration, complete actin/overlap state evolution, a
+selected slack equilibrium or sensory firing from arithmetic success. The
+receptor crossing window `c099e3` remains pending and must not be monitored.

@@ -1934,3 +1934,24 @@ to cell mass with explicit outflow, so do not claim exact old-rule preservation,
 physical detachment calibration, complete actin/overlap state evolution, a
 selected slack equilibrium or sensory firing from arithmetic success. The
 receptor crossing window `c099e3` remains pending and must not be monitored.
+
+Both subsequent windows are now operator-reported and reviewed. Crossing
+`c099e3` verifies 1,718 C:/D: files, five controls, 27 brackets/54 polynomials,
+18 conditions and twelve passing original refinement checks. Its D:-backed
+`receptor-crossing-review-20261116` qualifies saved-endpoint interpolation only;
+some coarse absolute errors worsen when cancellation is removed. Next implement
+an explicitly versioned optional native estimator with preserved linear-mode
+regressions and qualify actual event production/causal delivery. The original
+full comparison remains FAILED; no current native implementation changed.
+
+Spindle transport `ba9648` was launched from `6c7788c6f6f4e2734702069486bf0d2704c5b20a`
+as visible task `DNNE-Spindle-Transport-326b0f581194`, initially 1,740 D:-verified
+files. Its completed review verifies 2,110 C:/D: files, ten controls, 25,308
+translations, 31 continuity probes, 144 histories and 36 spatial comparisons.
+The review `spindle-transport-review-20261116` is D: backed. Same-grid arithmetic
+passes, but force-moment bias, repeated-remapping diffusion and strong range
+sensitivity remain. Even tiny force error can hide a distorted population.
+See the completed transport document; investigate retained characteristics/
+moving intervals and explicit domain/kinetic accounting before live promotion.
+Both experiments were inspected only after their operator reports. There are
+now no pending completion reports. The full brain/body/world goal is unfinished.

@@ -46,8 +46,9 @@ coefficient 69,000 and power stroke 2.5 nm are preserved for these comparisons.
 
 ## Frozen comparison rig
 
-The component and comparison rig are authored but **unexecuted and unqualified**.
-The prospective protocol declares ten analytic controls, nine translations of
+The component and comparison rig were frozen before numerical execution. Their
+completed result is recorded below; they remain unqualified for coupled kinetics,
+slack trajectories or live Avatar. The protocol declares ten analytic controls, nine translations of
 each of the 2,812 saved states (25,308 queries), and separate
 range/resolution/history checks.
 The arithmetic limits retain 1e-10 population/conservation, 1e-7 Pa force and
@@ -107,6 +108,64 @@ the protected package/dependencies, and verifies the final D: backup.
 Only after these checks should a candidate replace distribution translation in
 an isolated coupled-kinetics comparison. Root continuation, imposed geometry,
 slack history, physiological calibration, sensory firing and Avatar recovery
-remain separate requirements. The receptor crossing diagnostic `c099e3` remains
-unmonitored and requires its own operator completion report. No native C#,
+remain separate requirements. The receptor crossing diagnostic `c099e3` has
+since been separately reported and reviewed. No native C#,
 Avatar, Unity, receptor equations or preserved old force rule changed here.
+
+## Launch and completed review
+
+`spindle-transport-20261116-ba9648` was frozen at
+`6c7788c6f6f4e2734702069486bf0d2704c5b20a`. The 1,740 initial files plus manifest
+were D: verified before launching visible task `DNNE-Spindle-Transport-326b0f581194`.
+The seven-file authoring capture `spindle-transport-authoring-20261116` is also
+D: verified. No post-launch state or output was inspected until the operator
+reported completion.
+
+Completed review verifies 2,110 files per C:/D: copy, 101,685,131 bytes, 1,739
+protected files and 1,697 frozen Git files, with unchanged numerical dependencies.
+`tools/review-spindle-transport-20261116.py` reconciles saved population arrays,
+force/flux summaries, continuity records, endpoint history ledgers, final
+distributions and refinement decisions. It does not execute transport, a new
+history, kinetics or root search. The separate
+`artifacts/spindle-transport-review-20261116/review.json` is D: backed.
+
+All ten controls, 25,308 saved-state translations, 31 discontinuity probes,
+144 histories and 36 spatial comparisons pass their declared checks. Candidate
+and independent rebinned-force results agree exactly in the saved matrix;
+maximum population difference is 8.674e-19 and conservation residual 2.221e-16.
+The original occupied-edge jump is absent under the new mass-cell convention.
+No force-balance roots were recalculated and no slack branch was selected.
+
+## What the passing result does not fix
+
+The same-grid comparison is not a continuum accuracy claim. The largest
+difference between rebinned force and the exact retained distribution moment
+is **1,219.30 Pa** in the saved-state queries. Across the prescribed histories,
+maximum force error reaches 6,283.14 Pa; these errors remain visible rather than
+being judged against the separate 1e-7 Pa same-discretization arithmetic bound.
+
+Spatial refinement reduces population error under the declared ratio, but
+repeated projection still diffuses the distribution. On the finest 0.0625 nm
+grid with 64 steps per leg and the wider range, a right-edge forward/return
+history has maximum population L1 error about 0.06514 for initial total bound
+mass 0.2. Its maximum force error is only about 1.23e-10 Pa. Conserved total mass
+and accurate first-moment force therefore conceal a materially changed shape.
+The preserved second-moment and population errors expose it.
+
+Boundary treatment is consequential too. The finest narrow-range edge return
+retains about 0.125001 of the original 0.2 mass, matching its absorbing-domain
+reference closely, whereas the wider range retains 0.2. The narrow-range edge
+force error still reaches roughly 145 Pa. This demonstrates sensitivity to the
+chosen numerical boundary; it does not identify a biological detachment length.
+
+Before coupled-kinetics integration, investigate transport that retains the
+advected distribution without reconstructing a uniform bin at every small
+movement—for example, characteristics or retained moving intervals—together
+with explicit attachment/detachment and domain accounting. Any such candidate
+must preserve this completed comparison as a baseline and demonstrate population
+shape as well as force accuracy. Do not install repeated first-order remapping
+in live Avatar merely because its conservation and continuity checks pass.
+
+Both this window and the crossing diagnostic `c099e3` have been reported and
+reviewed. No experiment now awaits an operator completion report. Physiological
+calibration, moving/slack kinetics, afferent firing and Avatar recovery remain open.

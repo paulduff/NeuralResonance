@@ -80,9 +80,9 @@ and qualifying a native event-estimator candidate, including causal publication
 and explicitly versioned compatibility; it would not retrospectively turn
 `f7ece6` into a pass or qualify live DNNE authority, physiology or Avatar recovery.
 
-The separate spindle population transport component is preserved as an
-unexecuted candidate in `DNNE_Spindle_Population_Transport_2026-11-16.md`.
-Its comparison rig is unfinished and no transport experiment has been launched.
+The separate spindle population transport work is recorded in
+`DNNE_Spindle_Population_Transport_2026-11-16.md`. Its later completed numerical
+comparison and limitations are documented there; it remains isolated from Avatar.
 
 ## Launch record
 
@@ -97,3 +97,39 @@ The eight-file `receptor-and-transport-authoring-20261116` capture is also D:
 verified. It records Python/PowerShell syntax checks and the unexecuted source
 snapshot. No test, new crossing estimate or model ran during preparation.
 Only this new crossing diagnostic now awaits an operator completion report.
+
+## Completed crossing diagnostic
+
+The operator subsequently reported `c099e3` complete. Its review verifies 1,718
+C:/D: files per copy, 58,398,460 bytes, 1,712 protected files and 1,694 frozen Git
+files. The current pinned dependency fingerprint matches the captured one.
+`tools/review-receptor-crossing-20261116.py` reconciles the saved polynomial
+coefficients, bracket membership, residuals, strictly positive derivative bounds,
+timestamp errors and all aggregation/refinement records. It evaluates no neuronal
+derivative, performs no root search and executes no test.
+
+All five analytic controls, 27 endpoint pairs (54 candidate/reference polynomials),
+18 conditions and twelve original refinement checks pass. Maximum cubic timing
+error against the independent event is 8.0256e-5 ms (80.256 ns); the largest
+reference-state cubic error is 5.4969e-8 ms (about 0.055 ns). All original
+candidate/reference timing limits and refinement bounds remain unchanged.
+
+This is not pointwise improvement everywhere. Distributed excitation at the
+coarsest step changes from maximum error 42.802 ns to 80.256 ns, exposing the
+trajectory error previously reduced by cancellation. Its middle/fine cubic
+errors are 64.363 and 1.278 ns, and satisfy the declared refinement ratio.
+Local excitation at the middle step also increases slightly, from 9.443 to
+9.563 ns. Report these outcomes rather than calling the estimator uniformly
+more accurate. At the finest step, all excited cases improve in this capture.
+
+`artifacts/receptor-crossing-review-20261116/review.json` is D: backed. The
+original `f7ece6` capture remains FAILED. A native implementation is the next
+receptor step: explicitly version the optional crossing estimator, retain the
+existing linear mode and its saved regressions, and use actual endpoint
+derivatives with fail-closed rejection of ambiguous brackets. Then qualify
+native event production, unchanged physical trajectories, source identity and
+causal publication/receiver delivery before using it in a connected circuit.
+No C# estimator or live neuronal source has changed in this review.
+
+The operator has also reported the subsequent spindle transport window complete.
+Both windows are now reviewed; neither remains pending or is being monitored.

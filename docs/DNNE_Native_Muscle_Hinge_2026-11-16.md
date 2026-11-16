@@ -97,3 +97,30 @@ plus manifest were verified on D: and rechecked at launch. The preparer verified
 the reviewed native point-force prerequisite and unchanged qualified cores.
 This is the only pending operator completion report. No test/build/native
 outcome has been inspected; do not monitor or infer qualification from launch.
+
+## First build failure and metadata repair
+
+The operator reported `de7da9` FAILED. All 75 regression cases passed, but Unity
+ignored `MuscleHingeBuild.cs`: its `.meta` GUID contained 33 characters rather
+than 32. The build log explicitly rejects that metadata and subsequently cannot
+find the execute-method class. The saved editor compiler response file includes
+the older build entries and omits this one. The player build entry and hinge
+physics never ran; this is not a failed mechanical criterion.
+
+`review-native-hinge-build-20261116.py` verifies all 1,989 C:/D: files
+(94,447,393 bytes), 1,594 Git files, test binaries and complete 75-case method
+coverage. Its derived review preserves the build-workspace compiler response,
+compilation graph, editor/runtime assemblies and original bad metadata. Those
+seven files plus manifest have a verified D: copy at
+`artifacts/native-hinge-build-review-20261116`. Original capture manifest:
+`C0D4B50F9D5AC843FDDF46E040A09D81C95BC5DF37CC49A2F9672F3D12ADA376`.
+
+The GUID is corrected to `1c5e2ff46336504cab0c6e2cfcbe5b11`.
+`unity_metadata.py` now checks nonzero, unique 32-character hexadecimal GUIDs
+and stable metadata sidecars for all C# sources. Both native muscle preparers
+validate working inputs before packaging and frozen inputs before launch, storing
+the metadata report among the protected package files. The new static preflight
+rejects the original malformed capture and accepts all 45 current metadata files
+and 32 scripts. It is an asset-identity check, not full YAML or Unity validation.
+The hinge runtime, build-entry C#, analytic comparison and physical bounds are
+unchanged. Preserve the original failed package; use a fresh frozen retry.

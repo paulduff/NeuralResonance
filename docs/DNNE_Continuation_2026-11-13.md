@@ -465,3 +465,12 @@ launched in visible task `DNNE-Native-Muscle-Hinge-c0f66b95c7c7`. Initial D:
 backup verifies 1,598 files plus manifest and was rechecked at launch. This is
 the only pending operator report. No result has been inspected; no monitoring.
 The code, free-root checker repair and evidence documentation are committed/pushed.
+
+Hinge `de7da9` was reported FAILED and reviewed. Its 75 regressions pass, but a
+33-character GUID in `MuscleHingeBuild.cs.meta` caused Unity to omit the build
+entry. No player or native hinge physics ran. Full C:/D:/Git/test evidence and
+the compiler inputs verify; the derived seven-file review is D: backed.
+The identifier is corrected and native muscle preparers now validate unique
+32-character nonzero GUIDs plus C# sidecars before freezing/launching. Runtime
+equations and numerical bounds are unchanged. No earlier report remains pending;
+consult the next fresh launch record.

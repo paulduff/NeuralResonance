@@ -1421,3 +1421,12 @@ Hinge package `native-muscle-hinge-20261116-de7da9`, frozen `301fbfd`, is now
 launched in visible task `DNNE-Native-Muscle-Hinge-c0f66b95c7c7`. All 1,598 initial
 files plus manifest are D: verified and rechecked at launch. This is the only
 pending operator report. Do not monitor; no build/native outcome is inspected.
+
+Hinge `de7da9` subsequently reported FAILED and is fully reviewed: 75 regressions
+pass; a malformed 33-character editor-script GUID prevented Unity from finding
+`MuscleHingeBuild`. No native physics ran. All original capture/source/test data
+verify; `native-hinge-build-review-20261116` preserves compiler evidence with a
+verified D: copy. The corrected GUID and `tools/unity_metadata.py` preflight
+protect native muscle packages. Require valid unique asset identities and C#
+sidecars; do not alter mechanical bounds for this import failure. Consult later
+launch records; this failed package is no longer pending.

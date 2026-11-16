@@ -24,6 +24,8 @@ def main():
     helper = module('package_helpers', ROOT / 'tools/prepare-causal-motor.py')
     assert not helper.git('status', '--porcelain'), 'Commit clean source first.'
     revision = helper.git('rev-parse', 'HEAD'); assert revision == helper.git('rev-parse', 'origin/main'), 'Push first.'
+    metadata = module('unity_metadata', ROOT / 'tools/unity_metadata.py')
+    metadata.validate(ROOT / 'UnityWorld')
     review_folder = ROOT / 'artifacts/native-muscle-path-review-20261113-verified'
     helper.verify(review_folder, ['review.json']); review = helper.read(review_folder / 'review.json')
     assert review['operatorReportedCompletion'] and review['savedDataCriteriaPassed'] and review['nativePointForceChecksPassed']
@@ -64,6 +66,7 @@ def main():
                 with target.open('xb') as stream:
                     stream.write(archive.read(entry))
     (package / 'reference').mkdir()
+    (package / 'unity-metadata.json').write_text(json.dumps(metadata.validate(package / 'source/UnityWorld'), indent=2) + '\n')
     shutil.copyfile(review_folder / 'review.json', package / 'reference/native-point-force-review.json')
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(helper.io(package)).as_posix(), Sha256=helper.digest(p))

@@ -1554,3 +1554,14 @@ No new model/test/native run has been launched. The source gate must reproduce
 all 30 state traces and exact event identities/timing before the adapter reaches
 native moving muscles; it does not qualify live spinal or human motor authority.
 The only pending operator report remains `421387`; do not inspect its outputs.
+
+The operator has now reported refinement `421387` complete. Its saved status
+reports all 93 tests and the full native resolution matrix passing. A read-only
+full C:/D:/binary and saved-analysis review is in progress using
+`tools/review-native-hinge-refinement-20261116.py`; consult the later results
+record before claiming this review complete. The observed motor-source gate has
+its own frozen preparer, 66-test/five-condition visible PowerShell launcher and
+independent saved-event audit, documented in
+`docs/DNNE_Observed_Motor_Source_2026-11-16.md`. It uses already reviewed neuronal
+reference traces and starts no Unity or live brain. Consult later launch records;
+no newly launched study may be monitored before the operator reports completion.

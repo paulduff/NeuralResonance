@@ -85,11 +85,30 @@ This is source provenance, not execution of the new adapter.
 Authoring builds are recorded under `artifacts/observed-motor-source-authoring`.
 Both builds succeeded with zero warnings and zero errors. The adapter and tests
 are compiled preparation; no new test, source trajectory,
-muscle solve or native run has been executed. The only pending operator report
-remains native refinement `native-hinge-refinement-20261116-421387`. It has not
-been monitored. Freeze and back up the next experiment before running it in a
+muscle solve or native run has been executed. The operator has since reported
+native refinement `native-hinge-refinement-20261116-421387` complete; consult its
+separate review. Freeze and back up the source experiment before running it in a
 visible independent PowerShell window; inspect outcomes only after the operator
 reports completion.
+
+The source gate now has a frozen-package preparer
+`tools/prepare-observed-motor-source.py`, a visible-window launcher
+`tools/start-observed-motor-source-window.ps1`, and an independent saved-data
+auditor `tools/analyse-observed-motor-source.py`. They preserve the source inputs
+and original reference CSVs from the reviewed circuit capture, verify selected
+C:/D: bytes and unchanged cell/transport source, and require a clean pushed
+revision before freezing. The 66-case focused suite comprises six new ownership
+checks, 32 transport, 16 replay, 11 motor-cell and one solution-manifest check;
+the exact per-method multiplicities are checked in the TRX report.
+
+The visible run executes those tests and the five full source conditions, then
+independently checks the saved CSV hashes, baseline crossing times, packet
+ordering, cell/contact identity, declared conduction delay, exact replay records
+and complete event accounting. It captures built binaries and final protected
+file hashes and verifies D: backup on success or failure. It does not start
+Unity, integrate muscle dynamics or rerun an independent ODE reference. The
+earlier isometric circuit remains valid evidence; this gate checks the newly
+factored ownership/publication adapter before reusing it with moving muscles.
 
 The source is a cat MG reference under current injection; the previous recipient
 uses a human tibialis-anterior slow-unit row. This mixed pairing tests interfaces

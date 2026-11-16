@@ -136,7 +136,7 @@ def prepare(review_folder):
         assert (ROOT / name).read_text(encoding='utf-8-sig') == h.io(capture / 'source' / name).read_text(encoding='utf-8-sig'), name
     expected_adapter = subprocess.check_output(['git', 'show', SOURCE_EXTENSION_REVISION + ':' + SOURCE_ADAPTER], cwd=ROOT).decode('utf-8-sig')
     assert (ROOT / SOURCE_ADAPTER).read_text(encoding='utf-8-sig') == expected_adapter.replace('\r\n', '\n')
-    authoring = ROOT / 'artifacts/receptor-membrane-authoring-20261116-r2'
+    authoring = ROOT / 'artifacts/receptor-membrane-authoring-20261116-r3'
     authoring_names = [row['Path'].replace('\\', '/') for row in h.read(authoring / 'backup-manifest.json')['Files']]
     h.verify(authoring, authoring_names)
     author = h.read(authoring / 'authoring-review.json')

@@ -1696,3 +1696,25 @@ TRX reader was checked only against already reported/reviewed `badc1b` (66
 saved passing cases), without rerunning tests. The five-file
 `receptor-membrane-rig-authoring-20261116` capture is D: verified. Pending reports
 remain `bb10dc`, `18ec5e`, and `501da5`; none of their outputs were read.
+
+The independent coupled comparison is authored in
+`docs/DNNE_Receptor_Membrane_Numerics_2026-11-16.md`: six conditions at three
+candidate resolutions and three independent reference settings, retaining all
+accepted endpoints, 648 contact deliveries and original membrane bounds. The
+reference integrates receptor occupancies as ODE states instead of using the
+candidate's analytic evaluator. Six analytic and 36 Jacobian controls are
+prospective; no new ODE/test ran. The soma stress input is a numerical fixture,
+not an anatomical default. A comparison package/visible launcher is still to
+be prepared after the prerequisite 97-case/five-source-condition gate passes.
+
+Source review also found a one-ULP tail hazard in the new owner scheduler.
+It now repartitions the preceding interval so both RK midpoints are representable,
+without shifting an input boundary or losing duration; the existing clock case
+now covers that scenario. The 97-case inventory is unchanged. Its latest
+authoring capture is `receptor-membrane-authoring-20261116-r3` (7 files plus
+manifest, D: verified), and `receptor_membrane_gate.py` now requires r3. Older
+captures are preserved. Test-project and recorder builds pass with zero warnings
+or errors. `receptor-coupled-authoring-20261116` (11 files plus manifest) is also
+D: verified; it records syntax/input checks and reconstruction of 30 identities
+from already completed `badc1b`, not new tests. No new study package or window
+was launched; the three pending operator reports remain unchanged. Do not monitor.

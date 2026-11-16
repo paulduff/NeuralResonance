@@ -59,6 +59,10 @@ the endpoint subtraction is exact; the supplied duration equals the clock
 advance. An exact-binary integer accounting check is included prospectively.
 An interval too small to resolve its RK midpoint stops rather than shifting an
 original event or pretending the skipped duration was integrated.
+Before such a tail is created, the scheduler shortens the preceding interval
+by one representable endpoint when necessary. Both intervals are integrated;
+the original release/observation time and total duration stay unchanged. The
+clock case includes a boundary just one ULP beyond a nominal maximum step.
 
 The isolated owner has no soma-current injection API and does not prescribe
 motor crossings. Its tests do supply explicit presynaptic events as fixtures.

@@ -186,9 +186,15 @@ internal sealed class ReceptorDrivenMotoneuron
         double bound = from == 0 ? maximum : Math.Min(maximum, from);
         double end = Math.Min(until, from + bound);
         if (end - from > bound) end = Math.BitDecrement(end);
+        // Do not leave a one-ULP tail whose RK midpoint is unrepresentable.
+        // Shorten the preceding interval by one representable endpoint instead;
+        // the tail is still integrated and the original boundary is unchanged.
+        if (end < until && (end + (until - end) / 2 <= end || end + (until - end) / 2 >= until))
+            end = Math.BitDecrement(end);
         double duration = end - from;
         if (!double.IsFinite(end) || end <= from || duration <= 0 || duration > maximum ||
-            from + duration != end || (from > 0 && end - from > from))
+            from + duration != end || (from > 0 && end - from > from) ||
+            from + duration / 2 <= from || from + duration / 2 >= end)
             throw new InvalidOperationException("Cannot represent a duration-preserving neural interval.");
         return duration;
     }

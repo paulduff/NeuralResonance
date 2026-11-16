@@ -201,6 +201,18 @@ public sealed class ReceptorDrivenMotoneuronTests
                 supplied += Units(dt); time += dt;
                 Assert.Equal(Units(time), supplied);
             }
+        // A maximum step followed by a one-ULP remainder must be repartitioned,
+        // retaining all elapsed time and a representable midpoint in both steps.
+        time = 1; supplied = Units(time); double closeBoundary = Math.BitIncrement(1.0078125);
+        while (time < closeBoundary)
+        {
+            double dt = ReceptorDrivenMotoneuron.BoundaryDuration(time, closeBoundary, .0078125);
+            double end = time + dt, middle = time + dt / 2;
+            Assert.True(time < middle && middle < end);
+            Assert.InRange(dt, double.Epsilon, .0078125);
+            Assert.Equal(Units(dt), Units(end) - Units(time));
+            supplied += Units(dt); time = end; Assert.Equal(Units(time), supplied);
+        }
         var d = Definition() with { AxonalDelayMs = 0 }; var cell = Cell(d);
         cell.Admit(Session, d.ContactId, 1, 1, [Event(d, .000001)]); cell.AdvanceTo(.2);
         Assert.Equal(.2, cell.Capture().TimeMs); Assert.Equal(1, cell.Capture().DeliveredEvents);

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NRE.SimAvatar;
+using Nre.UnityWorld;
 using static Nre.UnityWorld.MuscleHingeWire;
 using Path=System.IO.Path;
 
@@ -14,6 +15,7 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     private readonly string _directory, _session;
     private readonly Process _process;
     private readonly int _owner = Environment.CurrentManagedThreadId;
+    private readonly bool _exerciseReadLock;
     private Reply _last;
     private bool _faulted;
     private readonly string _geometry, _fingerprint;
@@ -23,9 +25,10 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
     public long CompletedPhysicsStep => _last.physicsStep;
     public double PhysicsStepMs => StepMs;
     internal bool Faulted => _faulted;
-    internal NativeHingeBody(string directory, Guid session, Process process)
+    internal NativeHingeBody(string directory, Guid session, Process process, bool exerciseReadLock = false)
     {
         _directory = directory; _session = session.ToString("N"); _process = process;
+        _exerciseReadLock = exerciseReadLock;
         _last = Wait("hello.json", 180);
         Check(_last, "hello", 0, 0, "", "");
         _geometry = _last.geometryJson; _fingerprint = _last.bodyFingerprint;
@@ -69,7 +72,8 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
         {
             Validate(request, _last);
             Write(Path.Combine(_directory, "request-" + request.sequence.ToString("D6") + ".json"), request);
-            var reply = Wait("reply-" + request.sequence.ToString("D6") + ".json", 30);
+            var reply = Wait("reply-" + request.sequence.ToString("D6") + ".json", 30,
+                _exerciseReadLock && request.operation == "step" && request.expectedStep == 0);
             string effort = request.operation == "step" ? request.effortId : _last.lastAppliedEffortId;
             long step = _last.physicsStep + (request.operation == "step" ? 1 : 0);
             Check(reply, request.operation, request.sequence, step, request.plantFingerprint, effort);
@@ -104,29 +108,67 @@ internal sealed class NativeHingeBody : IAvatarMotorMechanicalBody
         Write(Path.Combine(_directory, "request-" + (_last.sequence + 1).ToString("D6") + ".json"), request);
         if (!_process.WaitForExit(30000)) throw new TimeoutException("Native negative control did not terminate.");
         Require(_process.ExitCode == 1, "Malformed native command unexpectedly succeeded.");
-        var failure = JsonSerializer.Deserialize<Failure>(File.ReadAllText(Path.Combine(_directory, "failure.json")), Json);
+        var failure = JsonSerializer.Deserialize<Failure>(DiagnosticBridgeFiles.ReadPublished(Path.Combine(_directory, "failure.json"), 30000), Json);
         Require(failure != null && failure.sessionId == _session && failure.sequence == _last.sequence &&
             failure.physicsStep == 0 && !failure.physicsAttempted && !string.IsNullOrWhiteSpace(failure.error) &&
             failure.observed != null && failure.observed.stateHash == _last.stateHash && failure.observed.physicsStep == 0,
             "Invalid command moved or failed to preserve the native state.");
         return failure;
     }
-    private Reply Wait(string name, int seconds)
+    private Reply Wait(string name, int seconds, bool exerciseLock = false)
     {
         string path = Path.Combine(_directory, name); var timer = Stopwatch.StartNew();
-        while (!File.Exists(path))
+        FileStream injected = null; int injectedRejections = 0, observedContentions = 0;
+        bool injectionComplete = !exerciseLock;
+        try
         {
-            string failure = Path.Combine(_directory, "failure.json");
-            if (File.Exists(failure))
+            while (true)
             {
-                var detail = JsonSerializer.Deserialize<Failure>(File.ReadAllText(failure), Json);
-                throw new InvalidOperationException("Native bridge failure; evidence: " + failure + "; " + detail?.error);
+                if (exerciseLock && !injectionComplete && injected is null)
+                {
+                    try { injected = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None); }
+                    catch (FileNotFoundException) { }
+                    catch (DirectoryNotFoundException) { }
+                    catch (IOException error) when (DiagnosticBridgeFiles.IsSharingViolation(error)) { }
+                }
+                var outcome = DiagnosticBridgeFiles.TryRead(path, out string text);
+                if (outcome == BridgeReadOutcome.SharingViolation)
+                {
+                    ++observedContentions;
+                    if (injected is not null && ++injectedRejections == 2)
+                    {
+                        injected.Dispose(); injected = null; injectionComplete = true;
+                    }
+                }
+                if (outcome == BridgeReadOutcome.Ready && injectionComplete)
+                {
+                    var reply = JsonSerializer.Deserialize<Reply>(text, Json) ?? throw new InvalidOperationException("Missing reply.");
+                    if (exerciseLock)
+                    {
+                        Require(injectedRejections == 2 && reply.operation == "step" && reply.physicsStep == 1,
+                            "Controlled completed-reply lock was not exercised.");
+                        Write(Path.Combine(_directory, "host-reply-lock-control.json"), new { replyFile = name, reply.sequence,
+                            reply.physicsStep, reply.lastAppliedEffortId, injectedReadRejections = injectedRejections,
+                            observedContentions, commandResent = false, physicalStepRepeated = false });
+                    }
+                    return reply;
+                }
+                string failure = Path.Combine(_directory, "failure.json");
+                var failureRead = DiagnosticBridgeFiles.TryRead(failure, out string failureText);
+                if (failureRead == BridgeReadOutcome.Ready)
+                {
+                    var detail = JsonSerializer.Deserialize<Failure>(failureText, Json);
+                    throw new InvalidOperationException("Native bridge failure; evidence: " + failure + "; " + detail?.error);
+                }
+                // A published reply may still be locked after the player exits.
+                // Wait for that SAME file within the original deadline.
+                if (_process.HasExited && outcome == BridgeReadOutcome.Missing && failureRead == BridgeReadOutcome.Missing)
+                    throw new InvalidOperationException("Native player exited: " + _process.ExitCode);
+                if (timer.Elapsed.TotalSeconds > seconds) throw new TimeoutException("Uncertain native reply; command was not resent: " + name);
+                Thread.Sleep(2);
             }
-            if (_process.HasExited) throw new InvalidOperationException("Native player exited: " + _process.ExitCode);
-            if (timer.Elapsed.TotalSeconds > seconds) throw new TimeoutException("Uncertain native reply: " + name);
-            Thread.Sleep(2);
         }
-        return JsonSerializer.Deserialize<Reply>(File.ReadAllText(path), Json) ?? throw new InvalidOperationException("Missing reply.");
+        finally { injected?.Dispose(); }
     }
     private void Check(Reply r, string operation, long sequence, long step, string plant, string effort)
     {

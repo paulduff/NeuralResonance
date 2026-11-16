@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Nre.UnityWorld;
 using static Nre.UnityWorld.MuscleHingeWire;
 using Path=System.IO.Path;
 
@@ -10,14 +11,14 @@ internal static class WirePreflight
     internal static void Run(string player, string reference, string output)
     {
         Console.WriteLine("NATIVE WIRE PREFLIGHT: replay failed decimal timestamp and verify 1,040 exact scalar round trips before physics.");
-        string legacyText = File.ReadAllText(Path.Combine(reference, "failed-request-000033.json"));
+        string legacyText = DiagnosticBridgeFiles.ReadPublished(Path.Combine(reference, "failed-request-000033.json"), 30000);
         using var legacy = JsonDocument.Parse(legacyText);
-        using var previous = JsonDocument.Parse(File.ReadAllText(Path.Combine(reference, "last-reply-000032.json")));
+        using var previous = JsonDocument.Parse(DiagnosticBridgeFiles.ReadPublished(Path.Combine(reference, "last-reply-000032.json"), 30000));
         Require(legacy.RootElement.GetProperty("endTimeMs").GetDouble() == 10 * StepMs &&
             previous.RootElement.GetProperty("physicsStep").GetInt64() == 9, "Original failure evidence differs.");
         string oldEffort = previous.RootElement.GetProperty("lastAppliedEffortId").GetString();
         double tension = legacy.RootElement.GetProperty("tensions")[0].GetProperty("axialNewtons").GetDouble();
-        using var parameters = JsonDocument.Parse(File.ReadAllText(Path.Combine(reference, "muscle-input.json")));
+        using var parameters = JsonDocument.Parse(DiagnosticBridgeFiles.ReadPublished(Path.Combine(reference, "muscle-input.json"), 30000));
         double rest = parameters.RootElement.GetProperty("restPathLengthMeters").GetDouble();
         var samples = Enumerable.Range(0, 1025).Select(i => Make("clock-" + i, i * StepMs, true)).ToList();
         // Extreme/subnormal values exercise the binary codec only. They are not
@@ -43,7 +44,7 @@ internal static class WirePreflight
         {
             if (!process.WaitForExit(180000)) throw new TimeoutException("Native wire preflight timed out.");
             Require(process.ExitCode == 0, "Native wire preflight failed; inspect preserved decoder evidence before a physical retry.");
-            using var document = JsonDocument.Parse(File.ReadAllText(resultFile)); var result = document.RootElement;
+            using var document = JsonDocument.Parse(DiagnosticBridgeFiles.ReadPublished(resultFile, 30000)); var result = document.RootElement;
             Require(result.GetProperty("completed").GetBoolean() && result.GetProperty("passed").GetBoolean() &&
                 !result.GetProperty("physicsExecuted").GetBoolean() && result.GetProperty("exactCases").GetInt32() == 1040 &&
                 result.GetProperty("rejectedMalformedScalars").GetInt32() == 10 && result.GetProperty("unity").GetString() == "6000.3.19f1",

@@ -3,8 +3,9 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+if(-not $configuration.RequireCompletedReplyLockControl){throw 'Require completed-reply lock control.'}
 if($configuration.ExactScalarWireVersion -ne 2 -or $configuration.ExpectedExactScalarRoundTrips -ne 1040 -or -not $configuration.RequireOriginalDecimalFailureReproduction){throw 'Require exact scalar wire and original decoder preflight.'}
-if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 75 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
+if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 81 -or -not $configuration.IsolatedNativeMuscleBridge -or -not $configuration.GeneratedUnitySource -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.NativeUnityQualified -or $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated muscle geometry configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -79,7 +80,7 @@ try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE native motor and muscle bridge'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '75 geometry/motor regressions, then 4 causal native muscle cases and 8 rejection controls. No DNNE or live Avatar. Report completion to Orion.'
+ Write-Host '81 geometry/motor/read regressions, then 4 causal native muscle cases and 8 rejection controls. No DNNE or live Avatar. Report completion to Orion.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/muscle-path-tests'
@@ -100,7 +101,7 @@ try {
  $ns=[Xml.XmlNamespaceManager]::new($trx.NameTable);$ns.AddNamespace('t','http://microsoft.com/schemas/VisualStudio/TeamTest/2010')
  $results=@($trx.SelectNodes('//t:UnitTestResult',$ns))
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
- $requiredCounts=@{MusclePathGeometryTests=31;CausalMotorPlantTests=27;DynamicMuscleTests=16;SolutionManifestTests=1}
+ $requiredCounts=@{MusclePathGeometryTests=31;CausalMotorPlantTests=27;DynamicMuscleTests=16;DiagnosticBridgeFileTests=6;SolutionManifestTests=1}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count
@@ -158,6 +159,7 @@ try {
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/analyse-native-motor-bridge.py'),$package) 'bridge-analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'bridge-analysis.json') -Raw | ConvertFrom-Json
  if($analysis.wire.exactScalarRoundTrips -ne 1040 -or $analysis.wire.malformedScalarsRejectedEachSide -ne 10 -or -not $analysis.wire.originalDecimalFailureReproduced){throw 'Exact scalar or original failure evidence incomplete.'}
+ if(-not $analysis.completedReplyLockControlPassed){throw 'Completed physical reply lock control did not pass.'}
  if(-not $analysis.completed -or -not $analysis.originalCriteriaPassed -or $analysis.independentlyAuditedCases -ne 12 -or $analysis.actualPhysicsSteps -ne 4096 -or $analysis.fixtureEventsExactlyDelivered -ne 8 -or $analysis.testsOrPhysicsExecutedByAnalysis -or $analysis.coupledTrajectoryAccuracyQualified -or $analysis.physiologicalCalibrationQualified -or $analysis.avatarRecoveryAssessed){throw 'Native bridge evidence analysis incomplete or scope changed.'}
  Assert-Package
  foreach($entry in @($playerFiles)+@($probeFiles)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Built binary changed: '+$entry.Path)}}

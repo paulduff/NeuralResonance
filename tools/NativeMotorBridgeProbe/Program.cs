@@ -13,7 +13,7 @@ try
 if (args.Length != 3 || args.Any(a => !Path.IsPathFullyQualified(a)) || Directory.Exists(args[2]))
     throw new ArgumentException("Supply absolute native player, frozen muscle parameter input and NEW output paths.");
 var parameterJson = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-var spec = JsonSerializer.Deserialize<Parameters>(File.ReadAllText(args[1]), parameterJson);
+var spec = JsonSerializer.Deserialize<Parameters>(Nre.UnityWorld.DiagnosticBridgeFiles.ReadPublished(args[1], 30000), parameterJson);
 Require(spec != null && spec.CandidateVersion == AvatarCausalMotorPlant.Version && spec.MuscleVersion == AvatarDynamicMuscle.Version &&
     spec.ParameterRows[0].Calcium == MotorUnitCalciumParameters.NagamoriSlowUnit1, "Qualified muscle parameters required.");
 Directory.CreateDirectory(args[2]);
@@ -32,7 +32,7 @@ foreach (string scenario in positive.Concat(negative.Select(n => "reject-" + n))
     using var process = Process.Start(start) ?? throw new InvalidOperationException("Player did not start.");
     try
     {
-        var body = new NativeHingeBody(bridge, session, process);
+        var body = new NativeHingeBody(bridge, session, process, exerciseReadLock: scenario == "quiet");
         var clock = new PhysicalSampleClock(session, "native-opposing-hinge", "muscle-paths", 0, StepMs, 0, 0);
         var motorClock = new MotorAxonClock(session, 0, 0);
         var contacts = Enumerable.Range(0, 2).Select(i => MotorAxonContact.Create("native-bridge-fixture-" + i, "fixture-cell-" + i,

@@ -197,10 +197,18 @@ def audit(package):
         complete_events += len(expected); angles[name] = json.loads(final['native']['stateJson'])['angle']
         assert final['native']['stateHash'] == previous['stateHash'] and not final['plant']['faulted'] and not final['plant']['running']
     assert total == 4096 and complete_events == 8
+    control = read(folder / 'quiet/bridge/host-reply-lock-control.json')
+    assert control['injectedReadRejections'] == 2 and control['observedContentions'] >= 2
+    assert control['physicsStep'] == 1 and not control['commandResent'] and not control['physicalStepRepeated']
+    controlled = read(folder / 'quiet/bridge' / control['replyFile'])
+    assert controlled['sequence'] == control['sequence'] and controlled['physicsStep'] == 1
+    assert controlled['lastAppliedEffortId'] == control['lastAppliedEffortId']
+    first_requests = [read(file) for file in (folder / 'quiet/bridge').glob('request-*.json')]
+    assert sum(r['operation'] == 'step' and r['expectedStep'] == 0 for r in first_requests) == 1
     assert abs(angles['quiet']) <= 1e-5 and abs(angles['balanced']) <= 1e-5
     assert angles['left'] > 1e-7 and angles['right'] < -1e-7 and abs(angles['left'] + angles['right']) <= 1e-5
     return dict(completed=True, originalCriteriaPassed=True, independentlyAuditedCases=12, actualPhysicsSteps=total, wire=wire,
-        fixtureEventsExactlyDelivered=complete_events, angles=angles, maximumStepImpulseError=maximum_impulse_error,
+        fixtureEventsExactlyDelivered=complete_events, completedReplyLockControlPassed=True, angles=angles, maximumStepImpulseError=maximum_impulse_error,
         maximumStepAngleError=maximum_angle_error, testsOrPhysicsExecutedByAnalysis=False,
         coupledTrajectoryAccuracyQualified=False, physiologicalCalibrationQualified=False, avatarRecoveryAssessed=False)
 

@@ -1481,3 +1481,16 @@ initial files plus manifest are D: verified and rechecked at launch. This is the
 only pending operator report; native decimal diagnosis, codec and physical
 outcomes have not been inspected. Do not monitor. Preserve original bounds and
 require the native zero-body preflight before interpreting the physical retry.
+
+Bridge `bd7079` subsequently FAILED and is fully reviewed. Native preflight
+confirms the original decimal parser was one ULP wrong; all 1,040 exact-wire
+round trips and ten malformed encodings per side pass. Quiet/left complete;
+right native step 240 completes but its inspect reply is locked on host read,
+leaving plant step 239. Do not repeat that physical command. All C:/D: evidence
+verifies; `native-bridge-read-failure-review-20261116` is D: backed. The locking
+process is unknown. Shared bounded immutable-file reading now retries only
+missing/sharing-conflict reads, never force commands; other errors stay fatal.
+Six file checks raise the focused suite to 81. A deliberate completed-reply
+lock in the quiet case must recover with exactly one native step. Builds/static
+checks pass; execution awaits the next launch record. No live Avatar selection
+or dynamics/bounds changed. The failed `bd7079` report is no longer pending.

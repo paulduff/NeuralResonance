@@ -192,3 +192,65 @@ plus manifest are verified on D: and rechecked at launch, including the original
 failed request/reply and verified failure review. This is the only pending
 operator report. No test, native preflight or physical outcome has been inspected
 after launch. Do not monitor or infer that the candidate repair has passed.
+
+## Exact wire passes; completed reply temporarily locked
+
+The operator reported `bd7079` FAILED. The native preflight confirms the original
+decimal diagnosis: the saved timestamp should decode as `3FF400000FF00000`, but
+Unity's decimal path decodes it as `3FF400000FEFFFFF`, one representable double
+below the correct value. There are 153 decimal differences in the declared
+comparison samples. All 1,040 exact-bit round trips and ten malformed/nonfinite
+rejections on each side pass. These results qualify the tested wire cases,
+without changing the original exact-clock rule.
+
+All 75 regressions and the Unity build pass. Quiet and left cases complete all
+1,024 native and muscle steps; quiet remains at zero angle, and left ends at
+0.0001710321375867352 rad with both fixture arrivals delivered. Right reaches
+native step 240, but the host cannot open `reply-000724.json` because another
+process has it locked. Its post-step inspect reply is complete and retained.
+The muscle plant has completed only step 239. Total native steps are 2,288;
+completed plant steps are 2,287. Repeating the physical command would be wrong.
+The locking process is not identified; this is not evidence that Avast caused it.
+Balanced and the eight rejection cases are not reached, so the bridge study is
+still incomplete and its full accuracy analysis does not pass by implication.
+
+`review-native-bridge-read-failure-20261116.py` verifies all 16,166 files in each
+C:/D: copy (247,035,232 bytes), 1,612 Git source files, test/probe/player binaries,
+all 35 compiled Unity sources and complete regression coverage. It independently
+replays the saved codec analysis and checks the retained physical/command prefix,
+state geometry and delivered event boundaries without running a model.
+Capture manifest:
+`6F139886E737645C7C2CBBF1294E898A148A1FB1E504A85DF7379685E0DFC35B`.
+The derived one-file `native-bridge-read-failure-review-20261116` is D: backed.
+The original failed capture is unchanged and no longer pending.
+
+## Bounded immutable-file read repair
+
+`DiagnosticBridgeFiles` is shared verbatim by Unity, the .NET driver and tests.
+It distinguishes missing files and Windows sharing/region-lock errors (32/33)
+from other errors. It opens completed evidence for reading, permits deletion
+sharing, and denies concurrent writes. Only unavailable reads are retried;
+malformed JSON/UTF-8, permission failures and other I/O failures remain errors.
+Each host reply uses its original 30-second deadline (180 seconds for startup),
+including time spent waiting on a published locked file. Native request reads
+yield without stepping and stop after a 30-second lock wait. Startup and failure
+evidence reads also have finite deadlines. No physical request is resubmitted,
+no receipt is invented and no step/time/force bound is relaxed.
+
+Six new file tests cover missing evidence, exact UTF-8 content, two conflicting
+sharing modes with recovery, permanent-lock timeout and a nonretryable access
+error. The focused suite now contains 81 cases. In the quiet native case the
+driver deliberately holds the first completed physical reply exclusively until
+two actual read attempts encounter sharing violations, then reads that same
+reply after release. A saved control record and independent analysis require
+exactly one corresponding physical command and no repeated step. This exercises
+the specific boundary that failed. Native request contention is handled by the
+same helper but is not separately forced in this matrix.
+
+All three authoring builds (native code, driver, unit assembly) pass with zero
+warnings/errors; syntax and 49 asset identities / 36 script sidecars validate.
+These are compilation/static results, not executed regression or integration
+results. The next fresh visible PowerShell run repeats the codec diagnosis,
+the 81 focused tests, four causal native cases and eight rejection controls.
+No live monitoring; consult the next launch record. The prospective independent
+nonlinear trajectory reference remains future work; no model was run for it.

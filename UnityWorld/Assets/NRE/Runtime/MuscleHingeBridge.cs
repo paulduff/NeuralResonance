@@ -96,15 +96,24 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
   yield return null; // Register components, with zero physical steps and no time advance.
   try {last=Capture("hello",0,0,"","");Require(child.jointPosition[0]==0&&child.jointVelocity[0]==0,"Unevolved initial hinge required.");WriteNew(System.IO.Path.Combine(directory,"hello.json"),last);}
   catch(Exception e){Fail(e);Application.Quit(1);yield break;}
-  var waiting=System.Diagnostics.Stopwatch.StartNew();
+  var waiting=System.Diagnostics.Stopwatch.StartNew();System.Diagnostics.Stopwatch readLock=null;
   while(true){
+   physicsAttempted=false;
    string file=System.IO.Path.Combine(directory,"request-"+(last.sequence+1).ToString("D6")+".json");
-   if(!File.Exists(file)){if(waiting.Elapsed.TotalMinutes>5){Fail(new TimeoutException("No command for five minutes."));Application.Quit(1);yield break;}yield return null;continue;}
+   BridgeReadOutcome readOutcome=BridgeReadOutcome.Missing;string commandText=null;Exception readError=null;
+   try{readOutcome=DiagnosticBridgeFiles.TryRead(file,out commandText);}catch(Exception e){readError=e;}
+   if(readError!=null){Fail(readError);Application.Quit(1);yield break;}
+   if(readOutcome!=BridgeReadOutcome.Ready){
+    if(readOutcome==BridgeReadOutcome.SharingViolation&&readLock==null)readLock=System.Diagnostics.Stopwatch.StartNew();
+    if((readLock!=null&&readLock.Elapsed.TotalSeconds>30)||waiting.Elapsed.TotalMinutes>5){Fail(new TimeoutException("Command unavailable; no physics or command retry performed."));Application.Quit(1);yield break;}
+    yield return null;continue;
+   }
+   readLock=null;
    bool stop=false,failed=false;physicsAttempted=false;
    try {
     var current=Capture(last.operation,last.sequence,last.physicsStep,last.plantFingerprint,last.lastAppliedEffortId);
     Require(current.stateHash==last.stateHash,"Native state changed without an owned step.");
-    var request=JsonUtility.FromJson<Request>(File.ReadAllText(file));Validate(request,current);
+    var request=JsonUtility.FromJson<Request>(commandText);Validate(request,current);
     long step=last.physicsStep;string plant=last.plantFingerprint,effort=last.lastAppliedEffortId;
     if(request.operation=="bind")plant=request.plantFingerprint;
     if(request.operation=="step"){
@@ -130,7 +139,7 @@ public sealed class MuscleHingeBridge : MonoBehaviour {
   try {
    Physics.simulationMode=SimulationMode.Script;
    Require(FindObjectsByType<ArticulationBody>(FindObjectsSortMode.None).Length==0,"Wire preflight must have no physical bodies.");
-   var input=JsonUtility.FromJson<WireInput>(File.ReadAllText(inputFile));
+   var input=JsonUtility.FromJson<WireInput>(DiagnosticBridgeFiles.ReadPublished(inputFile,30000));
    Require(input.samples!=null&&input.samples.Length==1040&&input.invalidBits!=null&&input.invalidBits.Length==10,"Unexpected frozen wire matrix.");
    report.cases=input.samples.Select(sample=>{
     double value=sample.exactValue;string exact=Encode(value);Require(exact==sample.expectedBits,"Exact scalar changed in native decoding.");

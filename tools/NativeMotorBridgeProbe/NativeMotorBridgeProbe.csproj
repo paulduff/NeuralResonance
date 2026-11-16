@@ -7,5 +7,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
     <Compile Include="../../UnityWorld/Assets/NRE/Runtime/MuscleHingeWire.cs" Link="MuscleHingeWire.cs" />
+    <Compile Include="../../UnityWorld/Assets/NRE/Runtime/DiagnosticBridgeFiles.cs" Link="DiagnosticBridgeFiles.cs" />
   </ItemGroup>
 </Project>

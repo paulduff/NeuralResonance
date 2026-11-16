@@ -12,7 +12,7 @@ import uuid
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-COUNTS = dict(MusclePathGeometryTests=31, CausalMotorPlantTests=27, DynamicMuscleTests=16, SolutionManifestTests=1)
+COUNTS = dict(MusclePathGeometryTests=31, CausalMotorPlantTests=27, DynamicMuscleTests=16, DiagnosticBridgeFileTests=6, SolutionManifestTests=1)
 
 
 def module(name, path):
@@ -61,6 +61,12 @@ def main():
     failure_inputs = {'failed-request-000033.json': 'native-bridge/quiet/bridge/request-000033.json',
         'last-reply-000032.json': 'native-bridge/quiet/bridge/reply-000032.json'}
     helper.verify(failure_capture, list(failure_inputs.values()))
+    read_review_folder = ROOT / 'artifacts/native-bridge-read-failure-review-20261116'
+    helper.verify(read_review_folder, ['review.json'])
+    read_review = helper.read(read_review_folder / 'review.json')
+    assert read_review['operatorReportedCompletion'] and read_review['wire']['originalDecimalFailureReproduced']
+    assert read_review['wire']['exactScalarRoundTrips'] == 1040 and read_review['nativeReplyPreserved']
+    assert read_review['nativeSteps'] == 2288 and read_review['completedPlantSteps'] == 2287
     generated = module('unity_path_generator', ROOT / 'tools/prepare-unity-muscle-paths.py').generate(ROOT)
     assert generated == (ROOT / 'UnityWorld/Assets/NRE/Runtime/MusclePathGeometry.cs').read_text(encoding='utf-8-sig')
     methods = {}
@@ -94,6 +100,7 @@ def main():
     shutil.copyfile(muscle_review_folder / 'review.json', package / 'reference/causal-motor-review.json')
     shutil.copyfile(muscle_capture / 'causal-input.json', package / 'reference/muscle-input.json')
     shutil.copyfile(failure_review_folder / 'review.json', package / 'reference/failed-bridge-review.json')
+    shutil.copyfile(read_review_folder / 'review.json', package / 'reference/read-failure-review.json')
     for name, source in failure_inputs.items(): shutil.copyfile(failure_capture / source, package / 'reference' / name)
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(helper.io(package)).as_posix(), Sha256=helper.digest(p))
@@ -114,6 +121,7 @@ def main():
         UnityBuildWorkspace=str(workspace), ExpectedUnityVersion='6000.3.19f1',
         SessionId=uuid.uuid4().hex, ExpectedNativeCases=12, ExpectedNativePhysicsSteps=4096,
         ExactScalarWireVersion=2, ExpectedExactScalarRoundTrips=1040, RequireOriginalDecimalFailureReproduction=True,
+        RequireCompletedReplyLockControl=True,
         PythonExecutable=sys.executable, PythonExecutableSha256=helper.digest(sys.executable))
     (package / 'configuration.json').write_text(json.dumps(config, indent=2) + '\n')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True, NoLiveMonitoring=True,

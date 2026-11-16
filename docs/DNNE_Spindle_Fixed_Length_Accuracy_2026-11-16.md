@@ -109,3 +109,15 @@ unexecuted until the separately recorded window launch.
 The neuronal/native body study `observed-native-body-20261116-bb10dc` remains
 unmonitored while this work is prepared. Its result cannot be inferred from any
 spindle preparation check. Neither experiment qualifies balance or fall recovery.
+
+## Launch
+
+`spindle-fixed-20261116-18ec5e` is frozen from
+`7cce1244227399f598ff4e90e9621d10e7de2414`. All 1,714 initial files plus manifest
+have a verified D: copy, rechecked at launch. The independent visible task is
+`DNNE-Spindle-Fixed-98ac11033347`. No post-launch output has been inspected.
+Await the operator's completion report before reading the outcome.
+
+There are now two pending reports: this fixed-length comparison and
+`observed-native-body-20261116-bb10dc`. Their outcomes remain separate; neither
+window is being monitored. No older experiment is pending.

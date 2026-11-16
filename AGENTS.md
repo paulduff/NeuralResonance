@@ -1618,3 +1618,12 @@ review is D: backed. Consult the subsequent launch record before expecting a
 window. Keep all original bounds; fixed-length accuracy does not qualify moving
 or slack mechanics, afferent membrane firing, live sensory integration or recovery.
 The existing Avatar sensor path is preserved. Do not monitor `bb10dc`.
+
+Fixed-length spindle comparison `spindle-fixed-20261116-18ec5e`, frozen
+`7cce124`, is launched in visible task `DNNE-Spindle-Fixed-98ac11033347`.
+All 1,714 initial files plus manifest are D: verified and rechecked at launch.
+No post-launch outputs have been inspected. Two operator reports are pending:
+this comparison and `observed-native-body-20261116-bb10dc`. Do not monitor either.
+Require six analytic controls, the Jacobian check, 18 independent solves,
+18 reference contrasts and 54 native/reference comparisons with original bounds.
+No live body, sensory transducer, brain, editor selection or old save was changed.

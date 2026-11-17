@@ -33,6 +33,7 @@ gate = prior.gate
 h = gate.helper()
 COUNTS = dict(prior.COUNTS, IsolatedRubralSourceTests=12)
 DECLARED_COUNTS = dict(COUNTS, DeclaredSynapticTargetTests=8, DeclaredRubralInputTests=6)
+TEN_COUNTS = dict(DECLARED_COUNTS, RubralConvergenceTests=5)
 CASES = {'no-evoked-drive': 0, 'drive-quarter': .25, 'drive-1': 1, 'drive-4': 4}
 BRANCHES = {'packets1': 1, 'packets17': 17, 'contacts-disabled': 17}
 FALSE_CLAIMS = ['upstreamNumericalAccuracyQualified', 'upstreamPhysiologyQualified',
@@ -47,7 +48,8 @@ def text_hash(value):
     return sha256(value.encode('utf-8')).hexdigest().upper()
 
 
-def prepare(declared=False):
+def prepare(declared=False, convergent=False):
+    assert not convergent or declared
     assert not h.git('status', '--porcelain'), 'Commit clean source first.'
     revision = h.git('rev-parse', 'HEAD')
     assert revision == h.git('rev-parse', 'origin/main'), 'Push frozen source first.'
@@ -79,9 +81,9 @@ def prepare(declared=False):
     h.verify(baseline, ['source/' + n for n in preserved] + ['managed-runtime-before.json'])
     for name in preserved:
         assert h.io(ROOT / name).read_text(encoding='utf-8-sig') == h.io(baseline / 'source' / name).read_text(encoding='utf-8-sig'), name
-    counts = DECLARED_COUNTS if declared else COUNTS
+    counts = TEN_COUNTS if convergent else DECLARED_COUNTS if declared else COUNTS
     methods = gate.inventory(ROOT, counts)
-    assert sum(counts.values()) == (150 if declared else 136)
+    assert sum(counts.values()) == (155 if convergent else 150 if declared else 136)
     completed = None
     if declared:
         folder = ROOT / 'artifacts/rubral-motor-review-20261117'; h.verify(folder, ['review.json'])
@@ -94,7 +96,19 @@ def prepare(declared=False):
         routing = h.read(routing_folder / 'review.json')
         assert routing['operatorReportedCompletion'] and routing['selectedSourceReceivedNoInput']
         assert routing['recipientMappingIdenticalAcrossDriveStrengths'] and not routing['plasticStructuralRewiringDemonstrated']
-    prefix = 'rubral-declared-' if declared else 'rubral-motor-'
+    declared_review = None
+    if convergent:
+        review_folder = ROOT / 'artifacts/rubral-declared-review-20261117'
+        h.verify(review_folder, ['review.json']); declared_review = h.read(review_folder / 'review.json')
+        assert declared_review['operatorReportedCompletion'] and declared_review['savedAnalysisExactlyReproduced']
+        assert declared_review['passedTests'] == 150 and not declared_review['neuronalMotorResponseObserved']
+        assert declared_review['analysis']['actualFixtureDeliveryVerified']
+        original_declared = Path(declared_review['capture'])
+        assert h.digest(original_declared / 'backup-manifest.json') == declared_review['manifestSha256']
+        baseline_files = [f'study/{key}/{name}' for key in CASES
+                          for name in ('source-frames.jsonl.gz','packets1/trajectory.csv','topology.json')]
+        h.verify(original_declared, baseline_files)
+    prefix = 'rubral-ten-' if convergent else 'rubral-declared-' if declared else 'rubral-motor-'
     package = ROOT / 'artifacts' / (prefix + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
     assert not package.exists() and not backup.exists(); package.mkdir()
@@ -113,12 +127,18 @@ def prepare(declared=False):
     shutil.copyfile(h.io(baseline / 'managed-runtime-before.json'), reference / 'qualified-managed-runtime.json')
     save(package / 'provenance.json', dict(review=review, preservedFailedCaptureReview=failed_review, preservedSourceFiles=preserved,
         declaredInputContacts=declared, changedSharedRuntimeFiles=allowed, completedRubralReview=completed,
+        completedDeclaredReview=declared_review, tenConvergentInputs=convergent,
         testsExecutedDuringPreparation=False, modelsExecutedDuringPreparation=False,
         liveSelectionChanged=False, originalCubicCapturePreserved=True))
     if declared:
         save(reference / 'original-input-routing-review.json', routing)
         shutil.copyfile(h.io(Path(completed['capture']) / 'study/no-evoked-drive/source-frames.jsonl.gz'),
                         reference / 'original-quiet-frames.jsonl.gz')
+    if convergent:
+        for name in baseline_files:
+            destination = h.io(reference / 'declared-baseline' / name)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(h.io(original_declared / name), destination)
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(h.io(package)).as_posix(), Sha256=h.digest(p))
              for p in sorted(h.io(package).rglob('*')) if p.is_file()]
@@ -128,8 +148,8 @@ def prepare(declared=False):
     save(package / 'configuration.json', dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         PackageFiles=files, DotnetExecutable=dotnet, DotnetExecutableSha256=h.digest(dotnet),
         PythonExecutable=str(python), PythonExecutableSha256=h.digest(python), BackupDestination=str(backup),
-        NoLiveMonitoring=True, IsolatedRubralMotor=True, DeclaredRubralInput=declared,
-        ExpectedConditions=4, ExpectedBranches=12, ExpectedTestCases=sum(counts.values()),
+        NoLiveMonitoring=True, IsolatedRubralMotor=True, DeclaredRubralInput=declared, TenConvergentInputs=convergent,
+        ExpectedConditions=4, ExpectedBranches=16 if convergent else 12, ExpectedTestCases=sum(counts.values()),
         ExpectedClassCounts=counts, ExpectedTestMethods=methods,
         TestFilter='|'.join('FullyQualifiedName~' + c for c in counts), NativePhysicsRequested=False,
         UpstreamNumericalAccuracyQualified=False, PhysiologyQualified=False, AvatarRecoveryAssessed=False))
@@ -145,11 +165,12 @@ def records(path):
             yield json.loads(line)
 
 
-def audit(package, declared=False):
-    tests = gate.check_tests(package, DECLARED_COUNTS if declared else COUNTS)
+def audit(package, declared=False, convergent=False):
+    assert not convergent or declared
+    tests = gate.check_tests(package, TEN_COUNTS if convergent else DECLARED_COUNTS if declared else COUNTS)
     study = package / 'study'; results = h.read(study / 'results.json')
     protocol = h.read(study / 'protocol.json')
-    assert protocol['version'] == ('isolated-rubral-declared-input-study-v1' if declared else 'isolated-rubral-receptor-motor-study-v1')
+    assert protocol['version'] == ('isolated-rubral-ten-input-study-v1' if convergent else 'isolated-rubral-declared-input-study-v1' if declared else 'isolated-rubral-receptor-motor-study-v1')
     if declared: assert protocol['inputContactsDeclared']
     assert protocol['sourceSampleMs'] == .125 and protocol['sourceCells'] == 256 and protocol['durationMs'] == 1500
     assert protocol['sourceModel'] == 'Izhikevich' and protocol['sourcePlasticity'] == 'STDP'
@@ -179,6 +200,16 @@ def audit(package, declared=False):
         else: assert routes == previous_routes
         target = min(r['TargetNeuron'] for r in routes.values())
         selected = [r for r in routes.values() if r['TargetNeuron'] == target]
+        if convergent:
+            projection = h.read(folder / 'output-anatomy.json')
+            assert projection['sources'] == list(range(81,91)) and projection['targetIndex'] == 2
+            assert len(projection['fingerprint']) == 64 and projection['version'] == 'isolated-declared-rubral-projection-v1'
+            assert target == 'auto-SpinalCordMotor-002' and [r['SourceIndex'] for r in selected] == list(range(81,91))
+            original_topology = h.read(package / f'reference/declared-baseline/study/{key}/topology.json')
+            original_routes = {r['SourceNeuron']: r for r in original_topology['allRoutes']}
+            for source, route in routes.items():
+                if route['SourceIndex'] not in range(82,91): assert route == original_routes[source]
+            baseline_frames = iter(records(package / f'reference/declared-baseline/study/{key}/source-frames.jsonl.gz'))
         assert selected == topology['selected'] and topology['identity']['Neuron'] == target
         contacts = dict(zip(topology['contactIds'],topology['contacts'],strict=True))
         assert len(contacts) == len(selected) > 0
@@ -201,6 +232,11 @@ def audit(package, declared=False):
             assert frame['Sequence'] == n and frame['Session'] == fixture['session'] and frame['CompleteThroughMs'] == n * .125
             assert text_hash(frame['CanonicalJson']) == frame['Sha256']
             body = json.loads(frame['CanonicalJson']); observation = body['Observation']
+            if convergent:
+                previous = json.loads(next(baseline_frames)['CanonicalJson'])
+                assert observation == previous['Observation'] and body['Energy'] == previous['Energy']
+                assert [(e['SourceNeuronId'], e['TimestampMs']) for e in body['OriginalEvents']] == \
+                    [(e['SourceNeuronId'], e['TimestampMs']) for e in previous['OriginalEvents']]
             assert body['Sequence'] == n and body['Session'] == frame['Session'] and body['CompleteThroughMs'] == frame['CompleteThroughMs']
             assert body['TimingConvention'] == 'existing-DNNE-completed-integration-substep'
             assert observation['CompletedTick'] == n and observation['TickTimestampMs'] == n * .125
@@ -237,6 +273,7 @@ def audit(package, declared=False):
             frames[n] = frame_ids
         assert len(frames) == result['sourceFrames'] == 12000 and len(originals) == result['sourceEvents']
         assert len(selected_ids) == result['selectedEvents'] and admitted == len(fixture['originalEvents'])
+        if convergent: assert next(baseline_frames, None) is None
         if declared:
             assert set(delivered) == set(fixture_by_id) and result['declaredInputContacts']
             assert result['deliveredFixtureEvents'] == len(delivered)
@@ -254,8 +291,11 @@ def audit(package, declared=False):
         assert status['ProducedEvents'] == len(originals) and status['AdmittedFixtureEvents'] == admitted
         assert not status['Faulted'] and not status['HasPendingFrame']
         assert result['sourceBackpressureChecks'] == 12000//113 + 1
-        finals = {}; branch_audits = []
-        for branch, cadence in BRANCHES.items():
+        finals = {}; branch_audits = []; all_contacts = contacts
+        branches = dict(BRANCHES, **{'single-contact': 17}) if convergent else BRANCHES
+        for branch, cadence in branches.items():
+            contacts = {k:c for k,c in all_contacts.items() if c['SourceNeuron'] == 'n-081'} if branch == 'single-contact' else all_contacts
+            branch_selected = [eid for eid in selected_ids if any(originals[eid]['SourceNeuronId'] == c['SourceNeuron'] for c in contacts.values())]
             root = folder / branch; disabled = branch == 'contacts-disabled'
             initial = h.read(root / 'initial.json'); final = h.read(root / 'final.json'); finals[branch] = final
             assert initial['cadence'] == cadence and initial['disabled'] == disabled
@@ -284,7 +324,7 @@ def audit(package, declared=False):
             batches = math.ceil(12000/cadence)
             assert contact_sequences == Counter({c: batches for c in contacts}) and final['inputBatches'] == batches
             assert seen == Counter({n: len(contacts) for n in frames})
-            assert Counter(seen_events) == Counter([] if disabled else selected_ids)
+            assert Counter(seen_events) == Counter([] if disabled else branch_selected)
             assert cell['AdmittedEvents'] == len(seen_events)
             eligible_inputs = sum(originals[eid]['TimestampMs']+.125 <= 1500 for eid in seen_events)
             assert cell['DeliveredEvents'] == eligible_inputs
@@ -329,45 +369,54 @@ def audit(package, declared=False):
             assert final['receiverCompleteThroughMs'] == 1500 and len(pending)+len(arrived) == len(emissions)
             with h.io(root / 'trajectory.csv').open(newline='',encoding='utf-8-sig') as stream:
                 reader = csv.reader(stream); header = next(reader); rows = 0
+                peak_soma = -float('inf'); peak_receptor = 0.
                 assert len(header) == 34+len(contacts)
                 for rows, row in enumerate(reader, 1):
                     values = [float(x) for x in row]
                     assert len(values) == len(header) and all(math.isfinite(x) for x in values)
                     assert values[0] == (rows-1)*.1
+                    if values[0] >= 1000: peak_soma = max(peak_soma, values[1])
+                    peak_receptor = max(peak_receptor, max(values[31:-3]))
                 assert rows == 15001
                 assert values[1:31] == cell['MembraneState']
                 assert values[-3:] == [cell['IntegrationSteps'],cell['DeliveredEvents'],len(cell['Crossings'])]
             if disabled: assert not emissions and not seen_events
             branch_audits.append(dict(branch=branch,admittedEvents=len(seen_events),deliveredInputs=eligible_inputs,
                 motorEvents=len(emissions),received=len(arrived),retainedBeyondHorizon=len(pending),samples=15001))
+            if convergent: branch_audits[-1].update(maximumSampledSomaVoltageAfter1000Ms=peak_soma,
+                maximumSampledReceptorOccupancy=peak_receptor)
         fast = finals['packets1']['source']; slow = finals['packets17']['source']
         assert fast['Emissions'] == slow['Emissions'] and fast['Cell']['MembraneState'] == slow['Cell']['MembraneState']
         assert h.digest(folder / 'packets1/trajectory.csv') == h.digest(folder / 'packets17/trajectory.csv') == result['trajectoryHash']
         assert result['packetCadenceExact'] and result['receiverDeliveryExact']
+        if convergent:
+            assert h.digest(folder / 'single-contact/trajectory.csv') == h.digest(package / f'reference/declared-baseline/study/{key}/packets1/trajectory.csv')
         response = bool(selected_ids and fast['Emissions'])
         assert result['observedNeuronalMotorResponse'] == response and result['motorEvents'] == len(fast['Emissions'])
         outcomes.append(dict(key=key,sourceEvents=len(originals),selectedEvents=len(selected_ids),
             observedNeuronalMotorResponse=response,branches=branch_audits))
     assert results['observedNeuronalMotorResponse'] == any(c['observedNeuronalMotorResponse'] for c in outcomes)
-    result = dict(completed=True,tests=tests,cases=outcomes,originalFrames=48000,branches=12,
+    result = dict(completed=True,tests=tests,cases=outcomes,originalFrames=48000,branches=16 if convergent else 12,
         componentCausalityChecksPassed=True,observedNeuronalMotorResponse=results['observedNeuronalMotorResponse'],
         upstreamNumericalAccuracyQualified=False,upstreamPhysiologyQualified=False,learnedContactEfficacyTransferred=False,
         liveBrainAccessed=False,nativePhysicsExecuted=False,muscleDynamicsExecuted=False,avatarRecoveryAssessed=False)
     if declared: result.update(actualFixtureDeliveryVerified=True, deliveredFixtureEvents=15360,
         declaredRecipientsPerActiveCondition=256, originalQuietObservationsPreserved=True)
+    if convergent: result.update(tenDistinctOriginalSources=True, originalSourceActivityPreserved=True,
+        originalSingleContactTrajectoriesPreserved=True, contactConductanceNs=50, targetSelectedBeforeActivity=True)
     return result
 
 
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['prepare','prepare-declared','check-tests','check-tests-declared','audit','audit-declared'])
+    parser.add_argument('command',choices=['prepare','prepare-declared','prepare-ten','check-tests','check-tests-declared','check-tests-ten','audit','audit-declared','audit-ten'])
     parser.add_argument('package',type=Path,nargs='?'); args = parser.parse_args()
-    declared = args.command.endswith('-declared')
-    if args.command.startswith('prepare'): prepare(declared)
+    convergent = args.command.endswith('-ten'); declared = convergent or args.command.endswith('-declared')
+    if args.command.startswith('prepare'): prepare(declared,convergent)
     else:
         assert args.package is not None; package = args.package.resolve()
-        if args.command.startswith('check-tests'): print(json.dumps(gate.check_tests(package,DECLARED_COUNTS if declared else COUNTS),indent=2),flush=True)
+        if args.command.startswith('check-tests'): print(json.dumps(gate.check_tests(package,TEN_COUNTS if convergent else DECLARED_COUNTS if declared else COUNTS),indent=2),flush=True)
         else:
-            result = audit(package,declared); assert not (package / 'analysis.json').exists()
+            result = audit(package,declared,convergent); assert not (package / 'analysis.json').exists()
             save(package / 'analysis.json',result); print(json.dumps(result,indent=2),flush=True)

@@ -2257,3 +2257,22 @@ strength and single-input/disconnected controls. Declare anatomy before firing;
 preserve original emitted events and old captures. No live projection is changed.
 The vestibular launcher Python/PowerShell syntax and 62-case static inventory
 passed; it remains unlaunched until a clean pushed frozen package is backed up.
+
+Vestibular `f21f4b` launched from 36df4f0b5425319d086a1de9a1becfafd8304563,
+visible task DNNE-Vestibular-Numerics-8ef9874a48a1, with 1,755 initial files D:
+verified. No monitoring occurred. The operator has now reported completion
+(twice, the same capture): 20 conditions/40 native/60 references, 2,506 final
+files. Its saved-data review is pending and is authorized by that report.
+
+The user requested ten distinct converging neuronal inputs. The fresh isolated
+projection fixes n-081..n-090 to original spinal cell 2 before activity; preserves
+the original n-081 contact and all unrelated routes; fingerprints the anatomy;
+and emits original correctly addressed messages. No live map or biological
+parameter changes. Four source conditions now have four branches (16 total):
+ten inputs with packets1/17, disconnected and the original single contact.
+The audit requires preserved original source observations/firing times and
+byte-identical original single-contact trajectories, 50 nS per contact and full
+arrival/receiver accounting. No firing threshold/gain is tuned for a pass.
+Five new cases plus the 150 existing cases are prospective. Static inventory,
+Python/PowerShell syntax and both authoring builds pass; no tests/models run
+inline. Freeze/push/D-backup and launch visibly before awaiting the operator.

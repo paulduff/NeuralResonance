@@ -35,6 +35,7 @@ public sealed partial class StructureEngine
                 if (n.PreferredTarget != StructureId.SpinalCordMotor || n.PreferredNt != NTEnum.GLUTAMATE)
                     throw new InvalidOperationException("Rubral primary projection changed; review its contact mapping.");
                 int index = _kernel.ResolveOutboundTargetIndex(n, n.PreferredTarget, _circuit);
+                index = ResolveDeclaredRubralOutput(n.Index, n.PreferredTarget, false, index);
                 string target = $"auto-{n.PreferredTarget}-{index:000}";
                 string key = n.Id + "|" + n.PreferredTarget + "|" + target + "|" + n.PreferredNt + "|N";
                 Guid synapse = _outboundSynapses.TryGetValue(key, out var existing) ? existing.SynapseId :
@@ -110,7 +111,8 @@ internal sealed class IsolatedRubralSource : IDisposable
     internal string? InputTargetFingerprint => _declaredTargets?.Fingerprint;
 
     internal IsolatedRubralSource(Guid session, string instance, string stateDirectory, double durationMs,
-        IReadOnlyList<SpikeMessage> fixtureInput, IsolatedSynapticTargets? declaredTargets = null)
+        IReadOnlyList<SpikeMessage> fixtureInput, IsolatedSynapticTargets? declaredTargets = null,
+        IsolatedRubralProjection? declaredProjection = null)
     {
         ArgumentNullException.ThrowIfNull(fixtureInput);
         if (session == Guid.Empty || string.IsNullOrWhiteSpace(instance) || instance != instance.Trim() ||
@@ -149,7 +151,7 @@ internal sealed class IsolatedRubralSource : IDisposable
                 Environment.SetEnvironmentVariable("SERVICE_INSTANCE", instance);
                 _engine = new(new StructureProfile(StructureId.RedNucleus, "Izhikevich", "STDP",
                     "Isolated execution of the existing rubral neuronal source; physiology not qualified.", new DelayWindow(3, 9)),
-                    null, diagnosticSynapticTargets: declaredTargets);
+                    null, diagnosticSynapticTargets: declaredTargets, diagnosticRubralProjection: declaredProjection);
             }
             finally
             {

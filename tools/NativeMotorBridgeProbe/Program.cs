@@ -25,6 +25,11 @@ if (args.Length == 2 && args[0] == "--rubral-declared-input")
     RubralMotorStudy.Run(args[1], declaredInputs: true);
     return;
 }
+if (args.Length == 2 && args[0] == "--rubral-ten-inputs")
+{
+    RubralMotorStudy.Run(args[1], declaredInputs: true, tenInputs: true);
+    return;
+}
 if (args.Length == 5 && args[0] == "--receptor-motor-output")
 {
     ReceptorMotorOutputStudy.Run(args[1], args[2], args[3], args[4]);

@@ -4,11 +4,14 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 $declared=($configuration.PSObject.Properties.Name -contains 'DeclaredRubralInput') -and [bool]$configuration.DeclaredRubralInput
-$testCount=if($declared){150}else{136}
-$testCommand=if($declared){'check-tests-declared'}else{'check-tests'}
-$auditCommand=if($declared){'audit-declared'}else{'audit'}
-$probeCommand=if($declared){'--rubral-declared-input'}else{'--rubral-motor-input'}
-if(-not $configuration.IsolatedRubralMotor -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 4 -or $configuration.ExpectedBranches -ne 12 -or $configuration.ExpectedTestCases -ne $testCount -or $configuration.NativePhysicsRequested -or $configuration.UpstreamNumericalAccuracyQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral motor configuration.'}
+$ten=($configuration.PSObject.Properties.Name -contains 'TenConvergentInputs') -and [bool]$configuration.TenConvergentInputs
+if($ten -and -not $declared){throw 'Ten-input mode requires declared input anatomy.'}
+$branchCount=if($ten){16}else{12}
+$testCount=if($ten){155}elseif($declared){150}else{136}
+$testCommand=if($ten){'check-tests-ten'}elseif($declared){'check-tests-declared'}else{'check-tests'}
+$auditCommand=if($ten){'audit-ten'}elseif($declared){'audit-declared'}else{'audit'}
+$probeCommand=if($ten){'--rubral-ten-inputs'}elseif($declared){'--rubral-declared-input'}else{'--rubral-motor-input'}
+if(-not $configuration.IsolatedRubralMotor -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 4 -or $configuration.ExpectedBranches -ne $branchCount -or $configuration.ExpectedTestCases -ne $testCount -or $configuration.NativePhysicsRequested -or $configuration.UpstreamNumericalAccuracyQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral motor configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -27,7 +30,7 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
- $taskName=$(if($declared){'DNNE-Rubral-Declared-'}else{'DNNE-Rubral-Motor-'})+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskName=$(if($ten){'DNNE-Rubral-Ten-'}elseif($declared){'DNNE-Rubral-Declared-'}else{'DNNE-Rubral-Motor-'})+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -76,7 +79,8 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE neuronal source to receptor and Avatar receiver'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host ($testCount.ToString()+' focused checks; four fresh 256-cell red nucleus conditions, each with three motor/receiver branches. No live brain or Unity.')
+ Write-Host ($testCount.ToString()+' focused checks; four fresh 256-cell red nucleus conditions, '+$branchCount+' motor/receiver branches. No live brain or Unity.')
+ if($ten){Write-Host 'Ten distinct original neuronal inputs, 50 nS per synapse. Single-contact and disconnected controls; no gain change.'}
  if($declared){Write-Host 'Each fixture synapse has one explicit receiving neuron. Actual event delivery is checked before motor response.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
@@ -102,7 +106,8 @@ try{
  Invoke-Logged $configuration.DotnetExecutable @($probe,$probeCommand,(Join-Path $package 'study')) 'study.log'
  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/rubral_motor_gate.py'),$auditCommand,$package) 'analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
- if(-not $analysis.completed -or -not $analysis.componentCausalityChecksPassed -or $analysis.cases.Count -ne 4 -or $analysis.branches -ne 12 -or $analysis.originalFrames -ne 48000 -or $analysis.upstreamNumericalAccuracyQualified -or $analysis.upstreamPhysiologyQualified -or $analysis.learnedContactEfficacyTransferred -or $analysis.liveBrainAccessed -or $analysis.nativePhysicsExecuted -or $analysis.muscleDynamicsExecuted -or $analysis.avatarRecoveryAssessed){throw 'Source/receiver accounting incomplete or scope changed.'}
+ if(-not $analysis.completed -or -not $analysis.componentCausalityChecksPassed -or $analysis.cases.Count -ne 4 -or $analysis.branches -ne $branchCount -or $analysis.originalFrames -ne 48000 -or $analysis.upstreamNumericalAccuracyQualified -or $analysis.upstreamPhysiologyQualified -or $analysis.learnedContactEfficacyTransferred -or $analysis.liveBrainAccessed -or $analysis.nativePhysicsExecuted -or $analysis.muscleDynamicsExecuted -or $analysis.avatarRecoveryAssessed){throw 'Source/receiver accounting incomplete or scope changed.'}
+ if($ten -and (-not $analysis.tenDistinctOriginalSources -or -not $analysis.originalSourceActivityPreserved -or -not $analysis.originalSingleContactTrajectoriesPreserved -or $analysis.contactConductanceNs -ne 50 -or -not $analysis.targetSelectedBeforeActivity)){throw 'Ten-input source/anatomy/control verification failed.'}
  if($declared){
   if(-not $analysis.actualFixtureDeliveryVerified -or $analysis.deliveredFixtureEvents -ne 15360 -or $analysis.declaredRecipientsPerActiveCondition -ne 256 -or -not $analysis.originalQuietObservationsPreserved){throw 'Declared recipient delivery or preserved quiet observations failed.'}
   $status.ActualFixtureDeliveryVerified=$true
@@ -112,8 +117,9 @@ try{
  $status['ManagedRuntimePreserved']=$true
  $status.ComponentCausalityChecksPassed=$true;$status.ObservedNeuronalMotorResponse=[bool]$analysis.observedNeuronalMotorResponse
  $status['SuccessfulConditions']=4;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
- Write-Host ('Observed neuronal-to-motor response: '+$status.ObservedNeuronalMotorResponse) -ForegroundColor Yellow
- Write-Host 'A completed accounting experiment with no motor response does not demonstrate neuronal motor authority.'
+ Write-Host ('Observed motor spike output: '+$status.ObservedNeuronalMotorResponse) -ForegroundColor Yellow
+ if($ten){$analysis.cases | ForEach-Object {Write-Host $_.key; $_.branches | Format-Table branch,deliveredInputs,motorEvents,maximumSampledSomaVoltageAfter1000Ms | Out-Host}}
+ Write-Host 'Electrical responses below firing threshold are separate from emitted motor spikes and Avatar control.'
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red

@@ -172,3 +172,14 @@ otolith coordinates m/s^2. These are numerical engineering bounds, not a
 physiological sensitivity threshold. The rig requires all 60 reference,
 60 candidate and twelve native subdivision contrasts to meet the unchanged
 bounds. No result has been observed yet and no live selector changes.
+
+## Launch and operator report
+
+Launched as `vestibular-numerics-20261117-f21f4b` from
+`36df4f0b5425319d086a1de9a1becfafd8304563`, visible task
+`DNNE-Vestibular-Numerics-8ef9874a48a1`, after verifying all 1,755 initial files
+plus manifest on D:. No post-launch output or process was monitored. The operator
+has now reported DIAGNOSTICS_COMPLETE, with 20 conditions, 40 native captures,
+60 references and a final 2,506-file backup. The duplicate pasted report names
+the same run. Its saved-data review remains pending; no physiological or live
+balance qualification is inferred from that message.

@@ -186,11 +186,23 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	internal StructureEngine(StructureProfile profile, int? isolatedNeuronCount, double? diagnosticIntegrationStepMs = null,
 		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false,
 		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false,
-		bool diagnosticCorticalPrecision = false, bool diagnosticCorticalWarmStart = false)
+		bool diagnosticCorticalPrecision = false, bool diagnosticCorticalWarmStart = false,
+		IsolatedRubralProjection? diagnosticRubralProjection = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (diagnosticRubralProjection is not null)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (profile.StructureId != StructureId.RedNucleus || isolatedNeuronCount is not null ||
+				diagnosticCorticalWarmStart || string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
+				File.Exists(directory) || (Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Declared rubral output requires a fresh full-size isolated nucleus.");
+			diagnosticRubralProjection.ValidateFor(_circuit.NeuronCount, _circuit.TargetMapModulo);
+			_diagnosticRubralProjection = diagnosticRubralProjection;
+		}
 		if (diagnosticCorticalWarmStart && !diagnosticCorticalPrecision)
 			throw new ArgumentException("Explicit cortical warm start requires the precision mode.");
 		_diagnosticCorticalPrecision = diagnosticCorticalPrecision;
@@ -278,6 +290,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				_diagnosticSynapticTargets.Fingerprint).ToString("N");
 		if (_diagnosticCorticalPrecision)
 			fingerprint = StableNeuralIdentity.Create(fingerprint, CorticalPrecisionMode.Version, CorticalContactNumerics.Version).ToString("N");
+		if (_diagnosticRubralProjection is not null)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedRubralProjection.Version, _diagnosticRubralProjection.Fingerprint).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint,
 			_diagnosticCorticalPrecision ? profile.PlasticityRule : null);
 		try
@@ -1491,6 +1505,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 				target,
 				isFeedback ? 191 : 187)
 			: _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
+		num = ResolveDeclaredRubralOutput(source.Index, target, isFeedback, num);
 		string targetNeuronId = $"auto-{target}-{num:000}";
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
 

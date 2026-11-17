@@ -34,10 +34,11 @@ internal static class RubralMotorStudy
         })).ToArray();
     }
 
-    internal static void Run(string output, bool declaredInputs = false)
+    internal static void Run(string output, bool declaredInputs = false, bool tenInputs = false)
     {
+        Require(!tenInputs || declaredInputs, "Ten-input comparison requires declared input anatomy.");
         Require(!Directory.Exists(output),"Preserve earlier study results.");Directory.CreateDirectory(output);
-        Save(Path.Combine(output,"protocol.json"),new {version=declaredInputs?"isolated-rubral-declared-input-study-v1":Version,
+        Save(Path.Combine(output,"protocol.json"),new {version=tenInputs?"isolated-rubral-ten-input-study-v1":declaredInputs?"isolated-rubral-declared-input-study-v1":Version,
             inputContactsDeclared=declaredInputs,sourceVersion=IsolatedRubralSource.Version,
             sourceStructure=StructureId.RedNucleus,sourceModel="Izhikevich",sourcePlasticity="STDP",sourceCells=256,
             sourceSampleMs=IsolatedRubralSource.SampleMs,durationMs=DurationMs,
@@ -46,7 +47,7 @@ internal static class RubralMotorStudy
             motorSourceVersion=ReceptorMotorSource.CubicVersion,motorMaximumStepMs=.003125,motorSampleMs=.1,
             targetSelection="lexicographically first existing primary spinal target, before observing activity",
             inputConductanceNs=50.0,inputDelayMs=.125,outputDelayMs=2.0625,
-            branches=new[]{"packets1","packets17","contacts-disabled"},
+            branches=tenInputs?new[]{"packets1","packets17","contacts-disabled","single-contact"}:new[]{"packets1","packets17","contacts-disabled"},
             sourceTimingConvention=IsolatedRubralSource.TimingConvention,
             contactSemantics="original payload retained; fixed reference conductance/unit pulse; source quanta/modulation not mapped to efficacy",
             presynapticNeuronsExecuted=true,liveBrainAccessed=false,nativePhysicsExecuted=false,muscleDynamicsExecuted=false,
@@ -64,12 +65,19 @@ internal static class RubralMotorStudy
             // existing fixture identities, stimulation and output target stay fixed.
             var anatomy=declaredInputs?new IsolatedSynapticTargets(Input(1).Take(256)
                 .Select((message,index)=>IsolatedSynapticTarget.From(message,index)),256):null;
-            using var source=new IsolatedRubralSource(session,instance,Path.GetFullPath(Path.Combine(folder,"source-state")),DurationMs,inputs,anatomy);
+            // Fixed before observing any activity: original n-081 and its next
+            // nine indexed neighbours converge on the original spinal cell 2.
+            var projection=tenInputs?new IsolatedRubralProjection(Enumerable.Range(81,10),2):null;
+            using var source=new IsolatedRubralSource(session,instance,Path.GetFullPath(Path.Combine(folder,"source-state")),DurationMs,inputs,anatomy,projection);
+            if(projection is not null) Save(Path.Combine(folder,"output-anatomy.json"),new{version=IsolatedRubralProjection.Version,
+                fingerprint=projection.Fingerprint,sources=projection.Sources,targetIndex=projection.TargetIndex,
+                selection="n-081 through n-090 fixed before neuronal execution; no activity-based selection"});
             if(anatomy is not null) Save(Path.Combine(folder,"input-anatomy.json"),new{version=IsolatedSynapticTargets.Version,
                 fingerprint=source.InputTargetFingerprint,entries=anatomy.Entries,actualDeliveryVerificationRequired=true});
             string target=source.Routes.Select(r=>r.TargetNeuron).Order(StringComparer.Ordinal).First();
             var selected=source.Routes.Where(r=>r.TargetNeuron==target).OrderBy(r=>r.SourceIndex).ToArray();
             Require(selected.Length>0,"No declared rubral recipient.");
+            if(tenInputs) Require(target=="auto-SpinalCordMotor-002"&&selected.Select(r=>r.SourceIndex).SequenceEqual(Enumerable.Range(81,10)),"Ten-input anatomy changed.");
             var identity=new ReceptorMotorIdentity("isolated-rubral-motor",target,
                 StableNeuralIdentity.Create(Version,session,"motor-projection"),StableNeuralIdentity.Create(Version,session,"motor-synapse"));
             var contacts=selected.Select(r=>new MotorReceptorDefinition(r.SourceInstance,StructureId.RedNucleus,r.SourceNeuron,r.Synapse,r.Projection,
@@ -78,7 +86,8 @@ internal static class RubralMotorStudy
             using var fast=new Branch(folder,"packets1",1,false,session,identity,contacts);
             using var slow=new Branch(folder,"packets17",17,false,session,identity,contacts);
             using var disabled=new Branch(folder,"contacts-disabled",17,true,session,identity,contacts);
-            var branches=new[]{fast,slow,disabled};long sourceEvents=0,selectedEvents=0,blocked=0,deliveredFixtures=0;
+            using var single=tenInputs?new Branch(folder,"single-contact",17,false,session,identity,contacts.Where(c=>c.SourceNeuron=="n-081").ToArray()):null;
+            var branches=tenInputs?new[]{fast,slow,disabled,single}:new[]{fast,slow,disabled};long sourceEvents=0,selectedEvents=0,blocked=0,deliveredFixtures=0;
             try
             {
                 using(var frames=Compressed(Path.Combine(folder,"source-frames.jsonl.gz")))

@@ -148,3 +148,34 @@ control, and keep each contact at 50 nS. Original events must be generated with
 their declared recipients; do not rewrite completed messages or duplicate one
 source spike into ten independent neurons. This is a prospective isolated
 connectivity experiment, not an approved live wiring or physiological calibration.
+
+## Ten-input implementation
+
+`IsolatedRubralProjection` declares cells n-081 through n-090 to spinal target
+`auto-SpinalCordMotor-002` before source construction. This includes the original
+n-081 contact and nine additional cells selected by index, without activity-based
+selection. Other primary routes stay unchanged. Each firing cell generates its
+original event with the declared target, projection and synapse. No completed
+message is rewritten, copied into another neuron or assigned a synthetic time.
+The immutable projection participates in the fresh source's save fingerprint;
+public/live construction does not select it and old state cannot be loaded.
+
+Each contact retains 50 nS maximum conductance, the same unit transmitter pulse,
+0.125 ms axonal delay, and the existing `1 + sourceIndex % 4` dendritic placement.
+This gives three contacts on dendrites 2/3 and two on dendrites 1/4. Receptor,
+membrane, plasticity and upstream input parameters are unchanged. This indexed
+anatomy and synchronized presynaptic fixture are diagnostic approximations.
+
+The new `--rubral-ten-inputs` probe retains the four source conditions and adds
+a single-contact branch alongside delivery groups 1/17 and disconnected control:
+sixteen motor branches total. The audit checks complete original event identity,
+all declared arrivals, original source observations/firing times against the
+completed declared capture, and byte-identical single-contact trajectories against
+that capture. The ten-input branches must agree across packet cadence; motor
+spiking remains a separately reported outcome, never a mandatory forced pass.
+
+Five new focused tests cover immutable bounded anatomy, fingerprints, preservation
+of the original/other routes, actual neuronal event targets and preserved saves.
+The 155-case source inventory, Python/PowerShell syntax, and Release test/probe
+builds pass with zero compiler warnings/errors. No test or model has executed
+inline. Freeze and D:-verify a clean pushed capture before its visible launch.

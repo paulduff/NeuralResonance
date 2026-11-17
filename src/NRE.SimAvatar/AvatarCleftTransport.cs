@@ -45,6 +45,19 @@ public readonly record struct AvatarCleftSite(double PotentialMv, double Potassi
 public readonly record struct AvatarCleftConcentrationRates(double LeftPotassiumMmPerMs,
     double RightPotassiumMmPerMs, double LeftSodiumMmPerMs, double RightSodiumMmPerMs);
 
+// A surface transfer has no reservoir volume. A finite receiving compartment
+// converts this amount/current into state; a held bath records the exchange.
+public readonly record struct AvatarCleftFaceFlux(double PotassiumAttomolesPerMs,
+    double SodiumAttomolesPerMs, double OtherIonCurrentPa,
+    double PotassiumElectrochemicalDropMv, double SodiumElectrochemicalDropMv, double PotentialDropMv)
+{
+    public double PotassiumCurrentPa => AvatarCleftEdgeKernel.ChargePaPerAttomolePerMs * PotassiumAttomolesPerMs;
+    public double SodiumCurrentPa => AvatarCleftEdgeKernel.ChargePaPerAttomolePerMs * SodiumAttomolesPerMs;
+    public double TotalCurrentPa => PotassiumCurrentPa + SodiumCurrentPa + OtherIonCurrentPa;
+    public double DissipationFw => PotassiumCurrentPa * PotassiumElectrochemicalDropMv +
+        SodiumCurrentPa * SodiumElectrochemicalDropMv + OtherIonCurrentPa * PotentialDropMv;
+}
+
 // Positive flux/current goes left -> right. mM*um^3 is attomoles; conversion
 // to pA is 96.485 for monovalent ions. Other ions carry current but their
 // concentrations are not explicit state in the deposited reduction.
@@ -87,23 +100,33 @@ public sealed class AvatarCleftEdgeKernel
 
     public AvatarCleftEdgeFlux Evaluate(AvatarCleftSite left, AvatarCleftSite right)
     {
+        var f = EvaluateFace(Material,_potassiumMobility,_sodiumMobility,_otherConductance,left,right);
+        var rates = new AvatarCleftConcentrationRates(-f.PotassiumAttomolesPerMs / Geometry.LeftVolumeCubicMicrometers,
+            f.PotassiumAttomolesPerMs / Geometry.RightVolumeCubicMicrometers, -f.SodiumAttomolesPerMs / Geometry.LeftVolumeCubicMicrometers,
+            f.SodiumAttomolesPerMs / Geometry.RightVolumeCubicMicrometers);
+        ReadOnlySpan<double> values = [rates.LeftPotassiumMmPerMs,rates.RightPotassiumMmPerMs,rates.LeftSodiumMmPerMs,rates.RightSodiumMmPerMs];
+        foreach (double value in values) CleftNumbers.Finite(value);
+        return new(f.PotassiumAttomolesPerMs,f.SodiumAttomolesPerMs,f.OtherIonCurrentPa,rates,
+            f.PotassiumElectrochemicalDropMv,f.SodiumElectrochemicalDropMv,f.PotentialDropMv);
+    }
+
+    internal static AvatarCleftFaceFlux EvaluateFace(AvatarCleftMaterial material,
+        double potassiumMobility, double sodiumMobility, double otherConductance,
+        AvatarCleftSite left, AvatarCleftSite right)
+    {
         left.Validate(); right.Validate();
         double drop = left.PotentialMv - right.PotentialMv;
         CleftNumbers.Finite(drop);
-        double psi = -drop / Material.ThermalVoltageMv;
+        double psi = -drop / material.ThermalVoltageMv;
         CleftNumbers.Finite(psi);
-        double k = Flow(left.PotassiumMm, right.PotassiumMm, psi, _potassiumMobility);
-        double na = Flow(left.SodiumMm, right.SodiumMm, psi, _sodiumMobility);
-        var rates = new AvatarCleftConcentrationRates(-k / Geometry.LeftVolumeCubicMicrometers,
-            k / Geometry.RightVolumeCubicMicrometers, -na / Geometry.LeftVolumeCubicMicrometers,
-            na / Geometry.RightVolumeCubicMicrometers);
-        var result = new AvatarCleftEdgeFlux(k, na, _otherConductance * drop, rates,
-            Material.ThermalVoltageMv * (Math.Log(left.PotassiumMm) - Math.Log(right.PotassiumMm)) + drop,
-            Material.ThermalVoltageMv * (Math.Log(left.SodiumMm) - Math.Log(right.SodiumMm)) + drop, drop);
+        double k = Flow(left.PotassiumMm, right.PotassiumMm, psi, potassiumMobility);
+        double na = Flow(left.SodiumMm, right.SodiumMm, psi, sodiumMobility);
+        var result = new AvatarCleftFaceFlux(k, na, otherConductance * drop,
+            material.ThermalVoltageMv * (Math.Log(left.PotassiumMm) - Math.Log(right.PotassiumMm)) + drop,
+            material.ThermalVoltageMv * (Math.Log(left.SodiumMm) - Math.Log(right.SodiumMm)) + drop, drop);
         ReadOnlySpan<double> values = [k, na, result.OtherIonCurrentPa, result.TotalCurrentPa,
             result.PotassiumCurrentPa, result.SodiumCurrentPa, result.DissipationFw,
-            result.PotassiumElectrochemicalDropMv, result.SodiumElectrochemicalDropMv,
-            rates.LeftPotassiumMmPerMs, rates.RightPotassiumMmPerMs, rates.LeftSodiumMmPerMs, rates.RightSodiumMmPerMs];
+            result.PotassiumElectrochemicalDropMv, result.SodiumElectrochemicalDropMv];
         foreach (double value in values) CleftNumbers.Finite(value);
         return result;
     }
@@ -133,7 +156,7 @@ public sealed class AvatarCleftEdgeKernel
         return x * e / (1 - e);
     }
 
-    private static double Scale(double value, double ratio)
+    internal static double Scale(double value, double ratio)
     {
         if (value == 0) return 0;
         double result = value * ratio; CleftNumbers.Positive(result); return result;

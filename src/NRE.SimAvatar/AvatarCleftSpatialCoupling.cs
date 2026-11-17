@@ -20,6 +20,8 @@ public readonly record struct AvatarCleftCompartmentDerivative(string Id, double
     double CleftChargeFc, double CalyxChargeFc, double CleftChargeRatePa, double CalyxChargeRatePa);
 public readonly record struct AvatarCleftConnectionTransfer(string Id, string LeftId, string RightId,
     AvatarCleftEdgeFlux Cleft, double CalyxCurrentLeftToRightPa);
+internal readonly record struct CleftBoundaryOutgoing(string CompartmentId,
+    double PotassiumAttomolesPerMs, double SodiumAttomolesPerMs, double CurrentPa);
 public sealed record AvatarCleftSpatialEvaluation(double HairMvPerMs,
     double HairChargeFc, double EndolymphChargeFc, double PerilymphChargeFc,
     double HairChargeRatePa, double EndolymphChargeRatePa, double PerilymphChargeRatePa,
@@ -112,6 +114,14 @@ public sealed class AvatarCleftSpatialCoupling
     public AvatarCleftSpatialEvaluation Evaluate(double hairMv, double endolymphMv, double perilymphMv,
         double hairToEndolymphPa, double hairToPerilymphPa,
         IReadOnlyList<AvatarCleftCompartmentState> states, IReadOnlyList<AvatarCleftMembranePort> membranePorts)
+        => EvaluateWithBoundary(hairMv,endolymphMv,perilymphMv,hairToEndolymphPa,hairToPerilymphPa,states,membranePorts,[]);
+
+    // Only the open-cleft owner supplies these independently identified physical
+    // transfers. A boundary is not a fictitious membrane or neuronal drive.
+    internal AvatarCleftSpatialEvaluation EvaluateWithBoundary(double hairMv, double endolymphMv, double perilymphMv,
+        double hairToEndolymphPa, double hairToPerilymphPa,
+        IReadOnlyList<AvatarCleftCompartmentState> states, IReadOnlyList<AvatarCleftMembranePort> membranePorts,
+        IReadOnlyList<CleftBoundaryOutgoing> outgoing)
     {
         ReadOnlySpan<double> global = [hairMv,endolymphMv,perilymphMv,hairToEndolymphPa,hairToPerilymphPa];
         foreach (double value in global) CleftNumbers.Finite(value);
@@ -155,6 +165,14 @@ public sealed class AvatarCleftSpatialCoupling
             dk[e.Left] += f.ConcentrationRates.LeftPotassiumMmPerMs; dk[e.Right] += f.ConcentrationRates.RightPotassiumMmPerMs;
             dna[e.Left] += f.ConcentrationRates.LeftSodiumMmPerMs; dna[e.Right] += f.ConcentrationRates.RightSodiumMmPerMs;
             transfers[i] = new(e.Definition.Id,e.Definition.LeftId,e.Definition.RightId,f,axial);
+        }
+        foreach (var flow in outgoing)
+        {
+            int i = Index(flow.CompartmentId);
+            CleftNumbers.Finite(flow.CurrentPa); CleftNumbers.Finite(flow.PotassiumAttomolesPerMs); CleftNumbers.Finite(flow.SodiumAttomolesPerMs);
+            rs[i] -= flow.CurrentPa;
+            dk[i] -= flow.PotassiumAttomolesPerMs / Compartments[i].VolumeCubicMicrometers;
+            dna[i] -= flow.SodiumAttomolesPerMs / Compartments[i].VolumeCubicMicrometers;
         }
         // Eliminate each calyx voltage, then its cleft voltage, leaving ONE
         // shared hair-cell equation. The apical/exposed capacitance occurs once.

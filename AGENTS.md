@@ -2651,3 +2651,19 @@ All three reviews have verified D: copies. No numerical model/test was executed
 inline while repairing the two pipeline faults; Python/PowerShell syntax passes.
 Do not confuse either launch or 40 previous cleft unit passes with reference
 agreement, integrated receptor dynamics, sensory firing or Avatar balance.
+
+Independent open-boundary authoring after the frozen retries adds
+AvatarCleftOpenCoupling: named perilymph reservoir, explicit area and centre-to-
+boundary distance, conservative K/Na/current transfer, and distinct capacitor,
+direct membrane and external holding-current ledgers. Source wb/cons1 holds the
+aperture at bath K/Na/voltage; do not clamp the neighbouring finite compartment,
+invent a bath volume or substitute a neuronal/membrane drive. Shared face flux
+is factored from the existing edge expression; original closed API/results and
+fingerprint convention remain, but regression against completed closed evidence
+is required. Open owner has its own version/fingerprint; no live/editor caller.
+Eleven prospective CleftOpenBoundaryTests and both test/probe projects build with
+zero warnings/errors; no test/model/reference executed. The current 40-case
+cleft 3076da window predates this code and cannot qualify it. Await reports for
+3076da, rubral 30755e and skull 1e2f21; none inspected. Next independent open-graph
+comparison must retain closed regression evidence, followed by actual channels,
+stationary initialization/time integration and afferent qualification. Goal active.

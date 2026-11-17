@@ -133,10 +133,11 @@ observable, including charge delivered to the two held bath potentials.
 
 The assembly is a derivative evaluator. It does not yet own channel gates,
 integrate a receptor trajectory, solve stationary initial state or implement
-the open cleft-apex boundary and afferent cable. In particular, current fixtures
+an afferent cable. The subsequently authored open-boundary owner is described
+below. In particular, current fixtures
 are explicit membrane-port inputs, not new neuronal observations or a live
 replacement. The next integration must evaluate actual local hair/calyx currents,
-add the named perilymph boundary/its ion ledger, and qualify space/time refinement.
+qualify the open boundary and its ion ledger, and qualify space/time refinement.
 
 ## Verification and remaining work
 
@@ -251,3 +252,70 @@ were D: verified before visible task `DNNE-Cleft-Coupling-4a1705e0b117` launched
 The source equation files, 468/60/96 inputs and reference limits are unchanged.
 No post-launch output/status/process has been inspected; await the operator's
 report before reviewing its numerical outcome.
+
+## Open cleft-apex owner: authored after the frozen comparison
+
+`AvatarCleftOpenCoupling` composes the same spatial capacitance system with a
+named held perilymph reservoir and explicit opening faces. This implements the
+deposited `wb/cons1` boundary convention: K = 5 mM, Na = 140 mM, cleft potential
+equal to perilymph at the aperture. Those concentrations are explicit constructor
+values, not silent defaults. Other values remain distinguishable fixtures.
+
+The reservoir has no invented finite volume. Each face supplies area perpendicular
+to transport and distance from the finite compartment centre to the bath boundary.
+The bath is a Dirichlet boundary at the face; the adjacent finite compartment
+retains its own concentrations and voltage. A finite-volume half-cell distance
+must be supplied for a uniform mesh, not a full centre-to-centre spacing. Actual
+aperture area, mesh and anatomical calibration are still unresolved.
+
+The existing constant-field electrodiffusion expression is extracted into an
+internal face evaluator. Interior edges still convert its amounts into both
+finite-volume concentration rates. The open owner subtracts the same signed
+amount/current from the owning cleft compartment and records the delivered
+amount/current in its reservoir exchange. Positive flow is cleft to bath;
+negative flow is bath to cleft. There is no concentration reset, clipping,
+fabricated bath volume, neuronal input or membrane-current substitution.
+
+The spatial solver receives an explicit internal boundary-transfer list. Its
+original public `Evaluate` passes an empty list; its original outputs and
+fingerprint convention remain unchanged. The open owner's version/fingerprint
+includes `shared-hair-open-cleft-perilymph-v1`, the spatial fingerprint, reservoir
+identity/composition and all canonical face identities/geometries. The shared
+face refactor preserves the expression and operation order, but still needs
+regression comparison against the completed closed capture before qualification.
+
+The reservoir exchange keeps these distinct:
+
+- K/Na amounts through the cleft aperture, in attomoles/ms.
+- Total aperture current, including the reduced other-ion conductivity.
+- Direct hair/calyx membrane current into perilymph, in pA.
+- The perilymph side's capacitor charge rate, in pA.
+- External holding current supplied into the maintained bath.
+
+For that sign convention:
+
+```
+perilymphHolding = perilymphCapacitiveRate - directMembraneCurrent - apertureCurrent
+endolymphHolding = endolymphCapacitiveRate - hairToEndolymphCurrent
+```
+
+With all named terminals accounted for, their sum equals the external outgoing
+axon current. A held bath's capacitor charge rate is not automatically equal to
+the direct current delivered to that bath. The electrical energy check retains
+both held-bath capacitor terms. This is not a complete metabolic/thermodynamic
+model: outer membrane ports do not yet report every ionic species, and the bath
+is maintained externally. Aperture K/Na accounting is explicitly limited to that
+opening; it is not presented as a complete reservoir chemical balance.
+
+Eleven new `CleftOpenBoundaryTests` cases cover equal-state inactivity, analytic
+Fick/drift limits, inward supply, the unit-capacitor graph response, holding-current
+signs, split-opening invariance, whole-network charge/species accounting, gauge
+shifts/input order, electrical energy and invalid/mutable identity. Test and probe
+authoring builds pass with zero warnings/errors. **No new tests or model/reference
+evaluation have run.** The pending `3076da` package predates this code and cannot
+qualify it. No live Avatar, editor or Unity caller selects the open owner.
+
+Next prepare an independent open-graph comparison retaining the original closed
+vectors/results as regression evidence, then couple actual local membrane currents
+and gates, stationary initialization and time integration. The aperture derivative
+alone does not establish free-cell sensory dynamics or afferent firing.

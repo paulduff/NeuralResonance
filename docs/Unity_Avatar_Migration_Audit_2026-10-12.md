@@ -1211,3 +1211,13 @@ and captures all 624 component records; its independent comparison stops at an
 unexpected three derived JSON port fields. The analyser now validates those
 fields explicitly, without changing Avatar equations, live/editor selection or
 the original numerical bounds. Free sensory dynamics and balance remain open.
+
+An open-cleft derivative owner is now authored after the frozen `3076da` run:
+`AvatarCleftOpenCoupling` adds explicit apex-to-perilymph faces, K/Na/current
+exchange and separate bath capacitor/holding-current accounting. It uses the
+existing spatial capacitance solve and a shared face flux expression; neither
+an aperture compartment clamp nor a fabricated bath volume is introduced.
+Original closed outputs/fingerprints are retained, with refactor regression still
+required. Eleven prospective tests compile; no test/reference execution or live
+editor/Unity/Avatar selection occurred. See the cleft document for the maintained
+bath approximation and missing anatomical, membrane/time and afferent integration.

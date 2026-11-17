@@ -72,3 +72,55 @@ verified on D: before launch. The authoring build succeeded without warnings or
 errors; only source/syntax/metadata checks and input preparation occurred inline.
 No post-launch outputs, status or processes were inspected. The operator's
 completion report is pending; the full goal remains active and unfinished.
+
+## Completed numerical review
+
+The operator reported `94d05d` complete. The saved-data review
+`tools/review-receptor-cubic-20261117.py` verifies 2,560 files and 5,698,456,654
+bytes per C:/D: copy, all 1,746 protected package files, both binary manifests
+and 1,715 frozen Git files. Managed runtime and numerical dependencies are
+preserved. The separate one-file `artifacts/receptor-cubic-review-20261117`
+review is D: verified. No tests, model integrations or root searches were rerun
+during review.
+
+All 124 focused cases pass with their exact expected method multiplicities.
+The five original six-second motor-source conditions reproduce exactly.
+Every one of the eighteen accepted receptor/membrane trajectory CSVs has the
+same SHA-256 as the original linear-mode capture. Thus the new crossing mode
+changes event localization and identity/versioning without changing those
+physical trajectories.
+
+The saved candidate/source audits reproduce exactly: eighteen raw conditions,
+5,310,498 accepted endpoints, 648 input-contact deliveries, and 36 source/receiver
+conditions with 540,036 observations and 1,296 input-contact deliveries.
+Actual Avatar receiver delivery, publication-cadence equivalence, retries and
+backpressure checks pass. All 27 native cubic timestamps equal their reviewed
+saved-endpoint predictions exactly in binary64; the prospective 1e-9 ms
+consistency bound therefore passes with zero discrepancy.
+
+All six analytic and 36 Jacobian controls are recorded passing. All eighteen
+independent reference contrasts, eighteen candidate/reference contrasts and
+twelve original refinement checks reconcile and pass. Maximum candidate errors
+over the complete matrix are:
+
+| Quantity | Maximum error | Original limit |
+| --- | ---: | ---: |
+| Voltage | 0.0085492803 mV | 0.05 mV |
+| Channel gate fraction | 0.00013033191 | 0.0005 |
+| Calcium | 1.6414244e-8 mM | 5e-7 mM |
+| Receptor occupancy | 2.9238167e-11 | 1e-6 |
+| Crossing time | 8.0255719e-5 ms | 0.01 ms |
+
+The earlier distributed-excitation crossing refinement failure is resolved
+for this matrix. Its largest crossing errors decrease from about 80.256 ns
+to 64.363 ns to 1.278 ns across the three steps. These are numerical comparisons
+with the independent reference, not physiological timing precision. The
+original `f7ece6` capture remains FAILED and immutable; its criteria are unchanged.
+
+The next motor-side integration must supply actually observed presynaptic
+neuronal events, with explicit input completeness, before claiming upstream
+DNNE authority. The present fixtures specify input firing times. This result
+does not qualify a live host switch, spinal physiological calibration, moving
+muscles/Unity, sensory feedback or Avatar recovery. Linear remains the legacy
+default; cubic stays explicitly selected and versioned. All current completion
+reports are now reviewed, including spindle coupling `85ae1d`.

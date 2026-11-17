@@ -2075,3 +2075,18 @@ its discretization accuracy; do not tune biology or promote the finest sampled
 step on self-agreement alone. See the completed coupled-chemistry document.
 Only receptor cubic `94d05d` remains pending; do not inspect it without its own
 operator completion report. The full goal is active and unfinished.
+
+The operator has now reported receptor cubic `94d05d` complete. Review
+`receptor-cubic-review-20261117` verifies 2,560 C:/D: files, 1,715 Git files,
+124 focused cases, five exact legacy source regressions and eighteen byte-exact
+original accepted-state trajectories. All 27 cubic event predictions match
+exactly; all eighteen candidate/reference, eighteen independent-reference and
+twelve original refinement checks pass without changed bounds. The 36 source/
+Avatar receiver cases reproduce their saved audits. The one-file review is D:
+verified; no model/root/test reran. The original `f7ece6` remains FAILED.
+There are now NO pending operator reports. See the completed cubic comparison
+document and `docs/DNNE_Neuronal_Motor_Input_Review_2026-11-17.md` for the next
+source-ownership gap: actual upstream DNNE events, explicit completeness and
+faithful per-contact semantics are still required. Do not promote the isolated
+reference cells or infer whole-brain authority/physiology from this numerical
+pass. The spindle's independent moving reference also remains outstanding.

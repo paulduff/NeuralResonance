@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
@@ -12,9 +13,15 @@ internal sealed record RubralCellObservation(string Neuron, bool ActiveAtObserva
 // the owner's successfully validated frame establish completion.
 internal sealed record RubralPopulationObservation(double? TickTimestampMs, long CompletedTick,
     IReadOnlyList<RubralCellObservation> Cells);
+internal sealed record RubralInputDelivery(Guid OriginalMessageId, Guid ReceivingContactId,
+    string NamedTarget, string ActualTarget, int ActualTargetIndex, double ArrivalAtMs,
+    double AppliedAtMs, string OriginalJson);
 
 public sealed partial class StructureEngine
 {
+    // Only the isolated owner installs this observer. Capture actual recipient
+    // and original message after receptor integration, before learning.
+    internal Action<RubralInputDelivery>? RubralInputObserver { get; set; }
     // Observation only. No synapse is created, stabilized or learned here. This
     // restricted descriptor is not a general projection/topology export API.
     internal IReadOnlyList<RubralOutputRoute> DescribeRubralPrimaryOutputs()
@@ -71,7 +78,8 @@ internal sealed record RubralSourceStatus(long CompletedSamples, double? ActualC
     double? EngineTickTimestampMs, long EngineCompletedTick, string? UndrainedOriginalJson);
 internal sealed record RubralSourcePayload(Guid Session, long Sequence, double CompleteThroughMs,
     string TimingConvention, int FiredCount, int AdmittedFixtureEvents, IReadOnlyList<SpikeMessage> OriginalEvents,
-    RubralPopulationObservation Observation, NeuralEnergyDiagnostics? Energy);
+    RubralPopulationObservation Observation, NeuralEnergyDiagnostics? Energy,
+    [property:JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<RubralInputDelivery>? InputDeliveries = null);
 
 // Owns an actual, full-size DNNE RedNucleus engine, with the service's existing
 // Izhikevich/STDP profile. External input is an explicitly declared diagnostic
@@ -87,6 +95,10 @@ internal sealed class IsolatedRubralSource : IDisposable
     private readonly double _duration;
     private readonly SpikeMessage[] _inputs;
     private readonly Dictionary<string, RubralOutputRoute> _routes;
+    private readonly IsolatedSynapticTargets? _declaredTargets;
+    private readonly List<RubralInputDelivery> _deliveries = new();
+    private readonly HashSet<Guid> _deliveredIds = new();
+    private readonly Dictionary<Guid, SpikeMessage> _originalInputs;
     private readonly int _owner = Environment.CurrentManagedThreadId;
     private long _samples, _produced;
     private int _nextInput;
@@ -95,9 +107,10 @@ internal sealed class IsolatedRubralSource : IDisposable
     private bool _faulted, _disposed;
     private string? _fault;
     internal IReadOnlyList<RubralOutputRoute> Routes { get; }
+    internal string? InputTargetFingerprint => _declaredTargets?.Fingerprint;
 
     internal IsolatedRubralSource(Guid session, string instance, string stateDirectory, double durationMs,
-        IReadOnlyList<SpikeMessage> fixtureInput)
+        IReadOnlyList<SpikeMessage> fixtureInput, IsolatedSynapticTargets? declaredTargets = null)
     {
         ArgumentNullException.ThrowIfNull(fixtureInput);
         if (session == Guid.Empty || string.IsNullOrWhiteSpace(instance) || instance != instance.Trim() ||
@@ -112,6 +125,15 @@ internal sealed class IsolatedRubralSource : IDisposable
             inputs.Select(e => e.MessageId).Distinct().Count() != inputs.Length ||
             inputs.Zip(inputs.Skip(1)).Any(pair => pair.First.TimestampMs > pair.Second.TimestampMs))
             throw new ArgumentException("Require unique, ordered, valid original diagnostic inputs to this source.");
+        if (declaredTargets is not null)
+        {
+            declaredTargets.ValidateFor(256);
+            foreach (var input in inputs)
+                if (!declaredTargets.TryResolve(input, out int target) || input.TargetNeuronId != $"n-{target:000}")
+                    throw new ArgumentException("Every fixture contact must name its exact declared receiving cell; no routing fallback.");
+        }
+        _declaredTargets = declaredTargets;
+        _originalInputs = inputs.ToDictionary(e => e.MessageId);
         // This process-global configuration is changed only for construction and
         // restored immediately. The visible rig is serial; tests use its existing
         // process-environment collection. State paths are captured by the store.
@@ -126,7 +148,8 @@ internal sealed class IsolatedRubralSource : IDisposable
                 Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR", stateDirectory);
                 Environment.SetEnvironmentVariable("SERVICE_INSTANCE", instance);
                 _engine = new(new StructureProfile(StructureId.RedNucleus, "Izhikevich", "STDP",
-                    "Isolated execution of the existing rubral neuronal source; physiology not qualified.", new DelayWindow(3, 9)));
+                    "Isolated execution of the existing rubral neuronal source; physiology not qualified.", new DelayWindow(3, 9)),
+                    null, diagnosticSynapticTargets: declaredTargets);
             }
             finally
             {
@@ -139,6 +162,7 @@ internal sealed class IsolatedRubralSource : IDisposable
         {
             Routes = _engine.DescribeRubralPrimaryOutputs();
             _routes = Routes.ToDictionary(r => r.SourceNeuron, StringComparer.Ordinal);
+            if (declaredTargets is not null) _engine.RubralInputObserver = delivery => _deliveries.Add(delivery);
         }
         catch { _engine.Dispose(); throw; }
     }
@@ -152,6 +176,10 @@ internal sealed class IsolatedRubralSource : IDisposable
     }
 
     internal RubralSourceFrame? Pending() { RequireOwner(); return _pending; }
+    // Includes the failed step's delivered prefix, even if it never published a
+    // valid frame. Acknowledgement clears only successfully published receipts.
+    internal IReadOnlyList<RubralInputDelivery> PendingInputDeliveries()
+    { RequireOwner(); return Array.AsReadOnly(_deliveries.ToArray()); }
 
     internal RubralSourceFrame AdvanceOneSample()
     {
@@ -176,12 +204,24 @@ internal sealed class IsolatedRubralSource : IDisposable
             // Retain the drained original output before validating it. A fault
             // must not erase evidence or permit a later acknowledgement/resume.
             var payload = new RubralSourcePayload(_session, next, through, TimingConvention,
-                result.Ack.SpikeCount, _nextInput, result.OutboundSpikes, observation, result.Ack.SynapticLearningDiagnostics?.Energy);
+                result.Ack.SpikeCount, _nextInput, result.OutboundSpikes, observation, result.Ack.SynapticLearningDiagnostics?.Energy,
+                _declaredTargets is null ? null : Array.AsReadOnly(_deliveries.ToArray()));
             string json = JsonSerializer.Serialize(payload);
             _pending = new(_session, next, through, json, Hash(json));
             if (observation.TickTimestampMs != through || observation.CompletedTick != next ||
                 result.Ack.Tick != next || result.Ack.SpikeCount != result.OutboundSpikes.Count)
                 throw new InvalidOperationException("Source tick, firing and completed observation do not agree.");
+            foreach (var delivered in _deliveries)
+            {
+                if (!_originalInputs.TryGetValue(delivered.OriginalMessageId, out var original) ||
+                    _declaredTargets is null || !_declaredTargets.TryResolve(original, out int target) ||
+                    delivered.ActualTargetIndex != target || delivered.ActualTarget != $"n-{target:000}" ||
+                    delivered.NamedTarget != original.TargetNeuronId || delivered.ReceivingContactId == Guid.Empty ||
+                    delivered.OriginalJson != JsonSerializer.Serialize(original) ||
+                    delivered.AppliedAtMs != delivered.ArrivalAtMs || delivered.ArrivalAtMs < original.TimestampMs ||
+                    delivered.AppliedAtMs > through || !_deliveredIds.Add(delivered.OriginalMessageId))
+                    throw new InvalidOperationException("Actual fixture delivery differs from declared synaptic anatomy or original event.");
+            }
             foreach (var e in result.OutboundSpikes)
             {
                 if (!_routes.TryGetValue(e.SourceNeuronId, out var route) || e.SourceInstanceKey != route.SourceInstance ||
@@ -205,7 +245,7 @@ internal sealed class IsolatedRubralSource : IDisposable
         if (_lastReceipt == receipt) return receipt;
         if (_pending is null || _pending.Session != session || _pending.Sequence != sequence || _pending.Sha256 != sha256)
             throw new ArgumentException("Acknowledgement must name the retained original frame.");
-        _lastReceipt = receipt; _pending = null; return receipt;
+        _lastReceipt = receipt; _pending = null; _deliveries.Clear(); return receipt;
     }
 
     internal static RubralSourcePayload Decode(RubralSourceFrame frame)

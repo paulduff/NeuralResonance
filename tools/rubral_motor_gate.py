@@ -32,6 +32,7 @@ prior = module('rubral_prior_gate', ROOT / 'tools/native_crossing_gate.py')
 gate = prior.gate
 h = gate.helper()
 COUNTS = dict(prior.COUNTS, IsolatedRubralSourceTests=12)
+DECLARED_COUNTS = dict(COUNTS, DeclaredSynapticTargetTests=8, DeclaredRubralInputTests=6)
 CASES = {'no-evoked-drive': 0, 'drive-quarter': .25, 'drive-1': 1, 'drive-4': 4}
 BRANCHES = {'packets1': 1, 'packets17': 17, 'contacts-disabled': 17}
 FALSE_CLAIMS = ['upstreamNumericalAccuracyQualified', 'upstreamPhysiologyQualified',
@@ -46,7 +47,7 @@ def text_hash(value):
     return sha256(value.encode('utf-8')).hexdigest().upper()
 
 
-def prepare():
+def prepare(declared=False):
     assert not h.git('status', '--porcelain'), 'Commit clean source first.'
     revision = h.git('rev-parse', 'HEAD')
     assert revision == h.git('rev-parse', 'origin/main'), 'Push frozen source first.'
@@ -64,20 +65,37 @@ def prepare():
     baseline = Path(review['capture'])
     assert h.digest(baseline / 'backup-manifest.json') == review['manifestSha256']
     # Preserve every existing shared-runtime implementation, including the
-    # qualified motor core and the actual upstream DNNE model. Only the added
-    # ownership/observation file differs. This is source preservation, not a
+    # qualified motor core and the actual upstream DNNE model. Declared mode
+    # separately records the recipient guard and delivery-observer changes.
+    # This is source preservation, not a
     # claim that all those existing models are physiologically qualified.
     preserved = [p.relative_to(h.io(baseline / 'source')).as_posix()
                  for p in sorted(h.io(baseline / 'source/Structures/_SharedRuntime').rglob('*.cs'))]
     preserved += ['Structures/RedNucleus/Program.cs', 'Protocol/MotorAxonProtocol.cs',
         'Protocol/MotorAxonPublisher.cs', 'Protocol/MotorAxonReplayBuffer.cs',
         'src/NRE.SimAvatar/AvatarMotorAxonReceiver.cs']
+    allowed = ['Structures/_SharedRuntime/StructureEngine.cs', 'Structures/_SharedRuntime/IsolatedSynapticTargets.cs'] if declared else []
+    preserved = [name for name in preserved if name not in allowed]
     h.verify(baseline, ['source/' + n for n in preserved] + ['managed-runtime-before.json'])
     for name in preserved:
         assert h.io(ROOT / name).read_text(encoding='utf-8-sig') == h.io(baseline / 'source' / name).read_text(encoding='utf-8-sig'), name
-    methods = gate.inventory(ROOT, COUNTS)
-    assert sum(COUNTS.values()) == 136
-    package = ROOT / 'artifacts' / ('rubral-motor-' + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6])
+    counts = DECLARED_COUNTS if declared else COUNTS
+    methods = gate.inventory(ROOT, counts)
+    assert sum(counts.values()) == (150 if declared else 136)
+    completed = None
+    if declared:
+        folder = ROOT / 'artifacts/rubral-motor-review-20261117'; h.verify(folder, ['review.json'])
+        completed = h.read(folder / 'review.json')
+        assert completed['operatorReportedCompletion'] and completed['passedTests'] == 136 and not completed['neuronalMotorResponseObserved']
+        assert completed['savedAnalysisExactlyReproduced']
+        assert h.digest(Path(completed['capture']) / 'backup-manifest.json') == completed['manifestSha256']
+        h.verify(Path(completed['capture']), ['study/no-evoked-drive/source-frames.jsonl.gz'])
+        routing_folder = ROOT / 'artifacts/rubral-input-routing-review-20261117'; h.verify(routing_folder, ['review.json'])
+        routing = h.read(routing_folder / 'review.json')
+        assert routing['operatorReportedCompletion'] and routing['selectedSourceReceivedNoInput']
+        assert routing['recipientMappingIdenticalAcrossDriveStrengths'] and not routing['plasticStructuralRewiringDemonstrated']
+    prefix = 'rubral-declared-' if declared else 'rubral-motor-'
+    package = ROOT / 'artifacts' / (prefix + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
     assert not package.exists() and not backup.exists(); package.mkdir()
     subprocess.run(['git', 'archive', '--format=zip', '--output=' + str(package / 'source.zip'), revision], cwd=ROOT, check=True)
@@ -94,8 +112,13 @@ def prepare():
     reference = package / 'reference'; reference.mkdir()
     shutil.copyfile(h.io(baseline / 'managed-runtime-before.json'), reference / 'qualified-managed-runtime.json')
     save(package / 'provenance.json', dict(review=review, preservedFailedCaptureReview=failed_review, preservedSourceFiles=preserved,
+        declaredInputContacts=declared, changedSharedRuntimeFiles=allowed, completedRubralReview=completed,
         testsExecutedDuringPreparation=False, modelsExecutedDuringPreparation=False,
         liveSelectionChanged=False, originalCubicCapturePreserved=True))
+    if declared:
+        save(reference / 'original-input-routing-review.json', routing)
+        shutil.copyfile(h.io(Path(completed['capture']) / 'study/no-evoked-drive/source-frames.jsonl.gz'),
+                        reference / 'original-quiet-frames.jsonl.gz')
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
     files = [dict(Path=p.relative_to(h.io(package)).as_posix(), Sha256=h.digest(p))
              for p in sorted(h.io(package).rglob('*')) if p.is_file()]
@@ -105,9 +128,10 @@ def prepare():
     save(package / 'configuration.json', dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         PackageFiles=files, DotnetExecutable=dotnet, DotnetExecutableSha256=h.digest(dotnet),
         PythonExecutable=str(python), PythonExecutableSha256=h.digest(python), BackupDestination=str(backup),
-        NoLiveMonitoring=True, IsolatedRubralMotor=True, ExpectedConditions=4, ExpectedBranches=12, ExpectedTestCases=136,
-        ExpectedClassCounts=COUNTS, ExpectedTestMethods=methods,
-        TestFilter='|'.join('FullyQualifiedName~' + c for c in COUNTS), NativePhysicsRequested=False,
+        NoLiveMonitoring=True, IsolatedRubralMotor=True, DeclaredRubralInput=declared,
+        ExpectedConditions=4, ExpectedBranches=12, ExpectedTestCases=sum(counts.values()),
+        ExpectedClassCounts=counts, ExpectedTestMethods=methods,
+        TestFilter='|'.join('FullyQualifiedName~' + c for c in counts), NativePhysicsRequested=False,
         UpstreamNumericalAccuracyQualified=False, PhysiologyQualified=False, AvatarRecoveryAssessed=False))
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True, NoLiveMonitoring=True,
         Launcher=str(package / 'source/tools/start-rubral-motor-window.ps1'))
@@ -121,11 +145,12 @@ def records(path):
             yield json.loads(line)
 
 
-def audit(package):
-    tests = gate.check_tests(package, COUNTS)
+def audit(package, declared=False):
+    tests = gate.check_tests(package, DECLARED_COUNTS if declared else COUNTS)
     study = package / 'study'; results = h.read(study / 'results.json')
     protocol = h.read(study / 'protocol.json')
-    assert protocol['version'] == 'isolated-rubral-receptor-motor-study-v1'
+    assert protocol['version'] == ('isolated-rubral-declared-input-study-v1' if declared else 'isolated-rubral-receptor-motor-study-v1')
+    if declared: assert protocol['inputContactsDeclared']
     assert protocol['sourceSampleMs'] == .125 and protocol['sourceCells'] == 256 and protocol['durationMs'] == 1500
     assert protocol['sourceModel'] == 'Izhikevich' and protocol['sourcePlasticity'] == 'STDP'
     assert results['completed'] and results['componentCausalityChecksPassed'] and results['presynapticNeuronsExecuted']
@@ -164,7 +189,14 @@ def audit(package):
             assert contact['Projection'] == route['Projection'] and contact['TargetNeuron'] == target
             assert contact['MaximumConductanceNs'] == 50 and contact['AxonalDelayMs'] == .125
             assert contact['ElectricalCompartment'] == 1 + route['SourceIndex'] % 4
-        originals = {}; selected_ids = []; frames = {}; admitted = 0
+        originals = {}; selected_ids = []; frames = {}; admitted = 0; delivered = {}; receiving_contacts = {}
+        fixture_by_id = {e['MessageId']: e for e in fixture['originalEvents']}
+        if declared:
+            anatomy = h.read(folder / 'input-anatomy.json')
+            assert anatomy['actualDeliveryVerificationRequired'] and len(anatomy['entries']) == 256
+            assert {e['TargetCell'] for e in anatomy['entries']} == set(range(256))
+            assert all(e['SourceNeuron'] == f"fixture-{e['TargetCell']:03d}" for e in anatomy['entries'])
+            if key == 'no-evoked-drive': quiet_reference = iter(records(package / 'reference/original-quiet-frames.jsonl.gz'))
         for n, frame in enumerate(records(folder / 'source-frames.jsonl.gz'), 1):
             assert frame['Sequence'] == n and frame['Session'] == fixture['session'] and frame['CompleteThroughMs'] == n * .125
             assert text_hash(frame['CanonicalJson']) == frame['Sha256']
@@ -176,6 +208,21 @@ def audit(package):
             assert all(math.isfinite(c[field]) for c in observation['Cells'] for field in ['VoltageMv', 'NetCurrent', 'FiringRateHz', 'ActivityTrace'])
             while admitted < len(fixture['originalEvents']) and fixture['originalEvents'][admitted]['TimestampMs'] <= n * .125: admitted += 1
             assert body['AdmittedFixtureEvents'] == admitted and body['FiredCount'] == len(body['OriginalEvents'])
+            if declared:
+                if key == 'no-evoked-drive':
+                    baseline_body = json.loads(next(quiet_reference)['CanonicalJson'])
+                    assert body['Observation'] == baseline_body['Observation'] and body['Energy'] == baseline_body['Energy']
+                for delivery in body['InputDeliveries']:
+                    eid = delivery['OriginalMessageId']; assert eid in fixture_by_id and eid not in delivered
+                    original = fixture_by_id[eid]; target_index = int(original['TargetNeuronId'][2:])
+                    assert json.loads(delivery['OriginalJson']) == original
+                    assert delivery['NamedTarget'] == delivery['ActualTarget'] == original['TargetNeuronId']
+                    assert delivery['ActualTargetIndex'] == target_index
+                    assert delivery['ArrivalAtMs'] == delivery['AppliedAtMs']
+                    assert original['TimestampMs'] <= delivery['ArrivalAtMs'] and (n-1)*.125 < delivery['AppliedAtMs'] <= n*.125
+                    contact = delivery['ReceivingContactId']; assert contact != '00000000-0000-0000-0000-000000000000'
+                    if target_index in receiving_contacts: assert receiving_contacts[target_index] == contact
+                    receiving_contacts[target_index] = contact; delivered[eid] = delivery
             frame_ids = []
             for event in body['OriginalEvents']:
                 route = routes[event['SourceNeuronId']]
@@ -190,6 +237,17 @@ def audit(package):
             frames[n] = frame_ids
         assert len(frames) == result['sourceFrames'] == 12000 and len(originals) == result['sourceEvents']
         assert len(selected_ids) == result['selectedEvents'] and admitted == len(fixture['originalEvents'])
+        if declared:
+            assert set(delivered) == set(fixture_by_id) and result['declaredInputContacts']
+            assert result['deliveredFixtureEvents'] == len(delivered)
+            assert len(receiving_contacts) == len(set(receiving_contacts.values())) == (256 if quanta else 0)
+            if not quanta: assert next(quiet_reference, None) is None
+            persisted = h.read(folder / 'source-state/isolated-rubral-study.synapses.json')
+            assert len(persisted['Inbound']) == (256 if quanta else 0)
+            for contact in persisted['Inbound']:
+                target_index = int(contact['SourceNeuronId'][-3:])
+                assert contact['LastTargetNeuronIndex'] == target_index
+                assert contact['SynapseId'] == receiving_contacts[target_index]
         status = result['source']
         assert status['CompletedSamples'] == status['EngineCompletedTick'] == 12000
         assert status['ActualCompletedThroughMs'] == status['EngineTickTimestampMs'] == 1500
@@ -291,21 +349,25 @@ def audit(package):
         outcomes.append(dict(key=key,sourceEvents=len(originals),selectedEvents=len(selected_ids),
             observedNeuronalMotorResponse=response,branches=branch_audits))
     assert results['observedNeuronalMotorResponse'] == any(c['observedNeuronalMotorResponse'] for c in outcomes)
-    return dict(completed=True,tests=tests,cases=outcomes,originalFrames=48000,branches=12,
+    result = dict(completed=True,tests=tests,cases=outcomes,originalFrames=48000,branches=12,
         componentCausalityChecksPassed=True,observedNeuronalMotorResponse=results['observedNeuronalMotorResponse'],
         upstreamNumericalAccuracyQualified=False,upstreamPhysiologyQualified=False,learnedContactEfficacyTransferred=False,
         liveBrainAccessed=False,nativePhysicsExecuted=False,muscleDynamicsExecuted=False,avatarRecoveryAssessed=False)
+    if declared: result.update(actualFixtureDeliveryVerified=True, deliveredFixtureEvents=15360,
+        declaredRecipientsPerActiveCondition=256, originalQuietObservationsPreserved=True)
+    return result
 
 
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['prepare','check-tests','audit'])
+    parser.add_argument('command',choices=['prepare','prepare-declared','check-tests','check-tests-declared','audit','audit-declared'])
     parser.add_argument('package',type=Path,nargs='?'); args = parser.parse_args()
-    if args.command == 'prepare': prepare()
+    declared = args.command.endswith('-declared')
+    if args.command.startswith('prepare'): prepare(declared)
     else:
         assert args.package is not None; package = args.package.resolve()
-        if args.command == 'check-tests': print(json.dumps(gate.check_tests(package,COUNTS),indent=2),flush=True)
+        if args.command.startswith('check-tests'): print(json.dumps(gate.check_tests(package,DECLARED_COUNTS if declared else COUNTS),indent=2),flush=True)
         else:
-            result = audit(package); assert not (package / 'analysis.json').exists()
+            result = audit(package,declared); assert not (package / 'analysis.json').exists()
             save(package / 'analysis.json',result); print(json.dumps(result,indent=2),flush=True)

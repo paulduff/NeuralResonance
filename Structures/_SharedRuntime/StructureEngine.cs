@@ -207,11 +207,12 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		if (diagnosticSynapticTargets is not null)
 		{
 			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
-			if (isolatedNeuronCount is not null || !CorticalLaminarTopology.IsCorticalStructure(profile.StructureId) ||
+			if (isolatedNeuronCount is not null ||
+				(!CorticalLaminarTopology.IsCorticalStructure(profile.StructureId) && profile.StructureId != StructureId.RedNucleus) ||
 				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
 				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) ||
 				(!diagnosticCorticalWarmStart && Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
-				throw new InvalidOperationException("Declared synaptic recipients require fresh isolated cortex or an explicit compatible precision warm start.");
+				throw new InvalidOperationException("Declared synaptic recipients require fresh isolated cortex/rubral state or an explicit compatible cortical precision warm start.");
 			diagnosticSynapticTargets.ValidateFor(_circuit.NeuronCount);
 			_diagnosticSynapticTargets = diagnosticSynapticTargets;
 		}
@@ -981,6 +982,9 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			IntegrateCorticalPrecision(message, synapse, modelNeuron, envelope.DeliverAtTimestampMs,
 				tickSignal.TimestampMs, integrationStepMilliseconds);
 		else modelNeuron.Integrate(effectiveMessage, integrationStepMilliseconds);
+		RubralInputObserver?.Invoke(new RubralInputDelivery(message.MessageId, synapse.SynapseId,
+			message.TargetNeuronId, modelNeuron.Id, modelNeuron.Index, envelope.DeliverAtTimestampMs,
+			tickSignal.TimestampMs, System.Text.Json.JsonSerializer.Serialize(message)));
 		InboundIntegrationObserver?.Invoke(new InboundSynapticObservation(
 			envelope.DeliverAtTimestampMs, tickSignal.TimestampMs, message.SourceStructure,
 			modelNeuron.Index, message.Neurotransmitter, message.VesicleQuanta,

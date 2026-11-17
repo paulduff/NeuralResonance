@@ -2,8 +2,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using NeuralResonanceEngine.Protocol;
 
-// Explicit recipient anatomy for a fresh isolated cortical comparison. This is
-// not a fitted cortical arbor or a service configuration option. Unlisted input
+// Explicit recipient anatomy for fresh isolated cortical/rubral comparisons.
+// This is not a fitted biological arbor or a service configuration option. Unlisted input
 // retains existing routing; an exact declared contact must not be remapped.
 internal sealed record IsolatedSynapticTarget(string SourceInstance, StructureId Source,
     string SourceNeuron, Guid Projection, NTEnum Neurotransmitter, bool Feedback,

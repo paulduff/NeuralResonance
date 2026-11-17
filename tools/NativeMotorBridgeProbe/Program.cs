@@ -10,9 +10,19 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 3 && args[0] == "--vestibular-mechanics")
+{
+    VestibularMechanicsStudy.Run(args[1], args[2]);
+    return;
+}
 if (args.Length == 2 && args[0] == "--rubral-motor-input")
 {
     RubralMotorStudy.Run(args[1]);
+    return;
+}
+if (args.Length == 2 && args[0] == "--rubral-declared-input")
+{
+    RubralMotorStudy.Run(args[1], declaredInputs: true);
     return;
 }
 if (args.Length == 5 && args[0] == "--receptor-motor-output")

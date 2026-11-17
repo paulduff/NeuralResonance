@@ -34,10 +34,11 @@ internal static class RubralMotorStudy
         })).ToArray();
     }
 
-    internal static void Run(string output)
+    internal static void Run(string output, bool declaredInputs = false)
     {
         Require(!Directory.Exists(output),"Preserve earlier study results.");Directory.CreateDirectory(output);
-        Save(Path.Combine(output,"protocol.json"),new {version=Version,sourceVersion=IsolatedRubralSource.Version,
+        Save(Path.Combine(output,"protocol.json"),new {version=declaredInputs?"isolated-rubral-declared-input-study-v1":Version,
+            inputContactsDeclared=declaredInputs,sourceVersion=IsolatedRubralSource.Version,
             sourceStructure=StructureId.RedNucleus,sourceModel="Izhikevich",sourcePlasticity="STDP",sourceCells=256,
             sourceSampleMs=IsolatedRubralSource.SampleMs,durationMs=DurationMs,
             cases=new[]{new{key="no-evoked-drive",quanta=0f},new{key="drive-quarter",quanta=.25f},new{key="drive-1",quanta=1f},new{key="drive-4",quanta=4f}},
@@ -59,7 +60,13 @@ internal static class RubralMotorStudy
             // anatomical/input identities. Quantal drive is the declared change.
             string instance="isolated-rubral-study";var inputs=Input(quanta);
             Save(Path.Combine(folder,"input.json"),new{session,instance,quanta,originalEvents=inputs});
-            using var source=new IsolatedRubralSource(session,instance,Path.GetFullPath(Path.Combine(folder,"source-state")),DurationMs,inputs);
+            // Declare the same 256 contacts even in the quiet condition. The
+            // existing fixture identities, stimulation and output target stay fixed.
+            var anatomy=declaredInputs?new IsolatedSynapticTargets(Input(1).Take(256)
+                .Select((message,index)=>IsolatedSynapticTarget.From(message,index)),256):null;
+            using var source=new IsolatedRubralSource(session,instance,Path.GetFullPath(Path.Combine(folder,"source-state")),DurationMs,inputs,anatomy);
+            if(anatomy is not null) Save(Path.Combine(folder,"input-anatomy.json"),new{version=IsolatedSynapticTargets.Version,
+                fingerprint=source.InputTargetFingerprint,entries=anatomy.Entries,actualDeliveryVerificationRequired=true});
             string target=source.Routes.Select(r=>r.TargetNeuron).Order(StringComparer.Ordinal).First();
             var selected=source.Routes.Where(r=>r.TargetNeuron==target).OrderBy(r=>r.SourceIndex).ToArray();
             Require(selected.Length>0,"No declared rubral recipient.");
@@ -71,7 +78,7 @@ internal static class RubralMotorStudy
             using var fast=new Branch(folder,"packets1",1,false,session,identity,contacts);
             using var slow=new Branch(folder,"packets17",17,false,session,identity,contacts);
             using var disabled=new Branch(folder,"contacts-disabled",17,true,session,identity,contacts);
-            var branches=new[]{fast,slow,disabled};long sourceEvents=0,selectedEvents=0,blocked=0;
+            var branches=new[]{fast,slow,disabled};long sourceEvents=0,selectedEvents=0,blocked=0,deliveredFixtures=0;
             try
             {
                 using(var frames=Compressed(Path.Combine(folder,"source-frames.jsonl.gz")))
@@ -81,6 +88,7 @@ internal static class RubralMotorStudy
                         var frame=source.AdvanceOneSample();var payload=IsolatedRubralSource.Decode(frame);
                         frames.WriteLine(Bytes(frame));sourceEvents+=payload.FiredCount;
                         selectedEvents+=payload.OriginalEvents.Count(e=>e.TargetNeuronId==target);
+                        deliveredFixtures+=payload.InputDeliveries?.Count??0;
                         if(step%113==0||step==12000)
                         {
                             string before=Bytes(source.Capture());bool rejected=false;
@@ -99,7 +107,9 @@ internal static class RubralMotorStudy
                 Require(cut.Emissions.Count==0&&cut.Cell.AdmittedEvents==0,"Contact-disabled branch generated a motor event.");
                 Require(a.Cell.AdmittedEvents==selectedEvents&&b.Cell.AdmittedEvents==selectedEvents,"Selected source events were lost or fabricated.");
                 bool response=selectedEvents>0&&a.Emissions.Count>0;demonstrated|=response;
+                Require(!declaredInputs||deliveredFixtures==inputs.Length,"Not every declared fixture event actually reached its receiving neuron.");
                 var result=new{key,completed=true,sourceEvents,selectedEvents,sourceFrames=12000,sourceBackpressureChecks=blocked,
+                    declaredInputContacts=declaredInputs,deliveredFixtureEvents=deliveredFixtures,
                     source=source.Capture(),motorEvents=a.Emissions.Count,disabledMotorEvents=cut.Emissions.Count,
                     trajectoryHash=Hash(fast.TrajectoryPath),packetCadenceExact=true,observedNeuronalMotorResponse=response,
                     receiverDeliveryExact=fast.Received==slow.Received&&fast.Pending==slow.Pending&&fast.Received+fast.Pending==a.Emissions.Count,
@@ -111,6 +121,7 @@ internal static class RubralMotorStudy
             catch(Exception error)
             {
                 Save(Path.Combine(folder,"failure.json"),new{error=error.ToString(),source=source.Capture(),pending=source.Pending(),
+                    pendingInputDeliveries=source.PendingInputDeliveries(),
                     motor=branches.Select(b=>new{b.Name,state=b.Lane.CaptureSource()}).ToArray()});throw;
             }
         }

@@ -3,7 +3,12 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedRubralMotor -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 4 -or $configuration.ExpectedBranches -ne 12 -or $configuration.ExpectedTestCases -ne 136 -or $configuration.NativePhysicsRequested -or $configuration.UpstreamNumericalAccuracyQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral motor configuration.'}
+$declared=($configuration.PSObject.Properties.Name -contains 'DeclaredRubralInput') -and [bool]$configuration.DeclaredRubralInput
+$testCount=if($declared){150}else{136}
+$testCommand=if($declared){'check-tests-declared'}else{'check-tests'}
+$auditCommand=if($declared){'audit-declared'}else{'audit'}
+$probeCommand=if($declared){'--rubral-declared-input'}else{'--rubral-motor-input'}
+if(-not $configuration.IsolatedRubralMotor -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedConditions -ne 4 -or $configuration.ExpectedBranches -ne 12 -or $configuration.ExpectedTestCases -ne $testCount -or $configuration.NativePhysicsRequested -or $configuration.UpstreamNumericalAccuracyQualified -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral motor configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -22,7 +27,7 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
- $taskName='DNNE-Rubral-Motor-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskName=$(if($declared){'DNNE-Rubral-Declared-'}else{'DNNE-Rubral-Motor-'})+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -64,13 +69,15 @@ $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revis
  ModelExecutionAttempted=$false;StudyExecutionAttempted=$false;UpstreamNumericalAccuracyQualified=$false;
  LearnedContactEfficacyTransferred=$false;NativePhysicsExecuted=$false;MuscleDynamicsExecuted=$false;
  PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
+if($declared){$status['ActualFixtureDeliveryVerified']=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBinaries=@();$probeBinaries=@()
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite earlier results.'}
 try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE neuronal source to receptor and Avatar receiver'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '136 focused checks; four fresh 256-cell red nucleus conditions, each with three motor/receiver branches. No live brain or Unity.'
+ Write-Host ($testCount.ToString()+' focused checks; four fresh 256-cell red nucleus conditions, each with three motor/receiver branches. No live brain or Unity.')
+ if($declared){Write-Host 'Each fixture synapse has one explicit receiving neuron. Actual event delivery is checked before motor response.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  $build=Join-Path $package 'source/artifacts/rubral-motor-tests'
@@ -83,8 +90,8 @@ try{
  $testBinaries=Capture-Binaries $assembly 'test-binaries.json'
  $status.ModelExecutionAttempted=$true
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
- Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/rubral_motor_gate.py'),'check-tests',$package) 'test-inventory.log'
- $status['PassedFocusedTests']=136;$status.FocusedTestsPassed=$true
+ Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/rubral_motor_gate.py'),$testCommand,$package) 'test-inventory.log'
+ $status['PassedFocusedTests']=$testCount;$status.FocusedTestsPassed=$true
  $probeBuild=Join-Path $package 'source/artifacts/rubral-motor-probe'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'
@@ -92,10 +99,14 @@ try{
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-before.json')) 'managed-runtime-before.log'
  if((File-Sha256 (Join-Path $package 'reference/qualified-managed-runtime.json')) -ne (File-Sha256 (Join-Path $package 'managed-runtime-before.json'))){throw 'Runtime differs from the qualified cubic capture; review before integrating.'}
  $status.StudyExecutionAttempted=$true
- Invoke-Logged $configuration.DotnetExecutable @($probe,'--rubral-motor-input',(Join-Path $package 'study')) 'study.log'
- Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/rubral_motor_gate.py'),'audit',$package) 'analysis.log'
+ Invoke-Logged $configuration.DotnetExecutable @($probe,$probeCommand,(Join-Path $package 'study')) 'study.log'
+ Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/rubral_motor_gate.py'),$auditCommand,$package) 'analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
  if(-not $analysis.completed -or -not $analysis.componentCausalityChecksPassed -or $analysis.cases.Count -ne 4 -or $analysis.branches -ne 12 -or $analysis.originalFrames -ne 48000 -or $analysis.upstreamNumericalAccuracyQualified -or $analysis.upstreamPhysiologyQualified -or $analysis.learnedContactEfficacyTransferred -or $analysis.liveBrainAccessed -or $analysis.nativePhysicsExecuted -or $analysis.muscleDynamicsExecuted -or $analysis.avatarRecoveryAssessed){throw 'Source/receiver accounting incomplete or scope changed.'}
+ if($declared){
+  if(-not $analysis.actualFixtureDeliveryVerified -or $analysis.deliveredFixtureEvents -ne 15360 -or $analysis.declaredRecipientsPerActiveCondition -ne 256 -or -not $analysis.originalQuietObservationsPreserved){throw 'Declared recipient delivery or preserved quiet observations failed.'}
+  $status.ActualFixtureDeliveryVerified=$true
+ }
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-after.json')) 'managed-runtime-after.log'
  if((File-Sha256 (Join-Path $package 'managed-runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'managed-runtime-after.json'))){throw 'Managed runtime dependencies changed during the study.'}
  $status['ManagedRuntimePreserved']=$true

@@ -2180,3 +2180,43 @@ in a future visible, frozen, D:-backed window before considering promotion.
 No third study has launched. Rubral `844975` and spindle `f0020c` remain the two
 pending operator reports; do not read their post-launch output/status/process.
 No paused goal or completion is implied; the full usability goal stays active.
+
+The operator has now reported BOTH rubral `844975` and continuous spindle
+`f0020c` complete. Their separate reviews are D: verified. Rubral: 2,360 files
+per copy, 136 cases, 48,000 frames and twelve branches reconcile; active source
+event counts are 261/1178/5710, but zero events reach the selected motor target.
+The independently D:-verified routing review shows 256 input contacts reach only
+172 cells; 84 receive no input. Named target n-081 actually routes to n-034,
+and selected source n-081 has no receiving contact or synaptic current. All
+three strengths retain the same recipient mapping. This was a fixture targeting
+assumption error, not demonstrated structural plasticity or motor-cell failure.
+See `docs/DNNE_Rubral_Input_Recipients_2026-11-17.md`. The operator explicitly
+accepts simpler mechanisms that remain close to biology: each synaptic contact
+should have an explicit receiving neuron while ordinary strength learning stays
+local; structural rewiring must be a distinct, explicit anatomy change.
+
+Spindle: 2,184 files per copy, 9,168 sampled endpoints and 47,179 accepted nodes
+reconcile. Temporal and domain-range contrasts pass, all six finest spatial
+pairs fail: population L1 up to .00483166 and stress 44.9948 Pa, with unchanged
+1e-5/.01 bounds. This first-order upwind reference is not accurate enough to
+qualify the retained-interval candidate. Improve spatial transport rather than
+tightening the ODE or changing physiology/bounds. See the completed continuous
+results document. No new spindle model has run.
+
+The next rubral candidate reuses IsolatedSynapticTargets for a fresh full-size
+RedNucleus. Default/live routing and biological equations remain unchanged.
+Its owner rejects missing/contradictory contact anatomy and retains actual
+original-event/contact/cell/arrival/application receipts through acknowledgement
+or failure. The four-condition declared rig keeps the original fixture identities,
+stimulation, selected output target and motor parameters, requires all 15,360
+active inputs to reach their exact 256 recipients, and compares complete quiet
+observations with the original capture. Authoring builds pass; 150 focused cases
+are prospective and must run only in a new visible frozen D:-backed window.
+No result is pending until that launch is recorded. Never imply live routing,
+upstream physiological calibration or Avatar recovery is repaired by the fixture.
+
+The vestibular comparison draft is saved in the probe and three Python tools;
+its visible launcher remains unauthored, preparation deliberately refuses it,
+and no vestibular experiment ran. Finish/review it later; the operator's completed
+results and explicit wiring simplification took priority. No pending reports
+remain from the old two windows. The full goal remains active and unfinished.

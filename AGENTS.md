@@ -1,5 +1,11 @@
 # Avatar and environment work
 
+Latest pause/resume checkpoint: `docs/DNNE_Checkpoint_2026-11-17.md`.
+The operator requested a pause until tomorrow. Do not launch the prepared
+open-cleft package or inspect still-pending windows until the corresponding
+resume/completion instructions arrive. Historical entries below remain evidence;
+the checkpoint identifies the current pending and reviewed packages.
+
 DNNE's biological mechanisms are a correctness requirement, not a naming or
 presentation theme. Learning must be implemented at individual synaptic contacts
 using the actual connected neurons' activity, biological timing, appropriate
@@ -2711,3 +2717,13 @@ failure. Operator says a window is still working: rubral 30755e and skull 1e2f21
 remain pending and uninspected. Next freeze/backup/launch the authored open-cleft
 51-test/192-open/624-closed workflow visibly, without live monitoring. Actual
 membrane coupling remains authored/unrun and outside that qualification scope.
+
+End-of-day checkpoint: operator requested notes and pause. Open-cleft package
+cleft-open-20261117-db4794 is frozen at 04c4fd61f4df36ba438dfff26b41db28d278d625;
+1,848 initial files plus manifest D: verified. It is NOT launched. Its 51 tests,
+624 closed replay records and 192 open cases await tomorrow's visible launch.
+Use the pinned numerical-reference Python; initial general-Python preparation
+failed before package creation due to absent SciPy, without dependency changes.
+Rubral 30755e and skull 1e2f21 remain uninspected pending operator confirmation.
+See DNNE_Checkpoint_2026-11-17.md for launch command, reviewed evidence, the
+authored/unrun membrane derivative stage and subsequent acceptance work.

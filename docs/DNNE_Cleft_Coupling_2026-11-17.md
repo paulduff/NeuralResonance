@@ -393,3 +393,14 @@ as `AvatarVestibularCleftMembranes`; see
 `DNNE_Cleft_Membrane_Coupling_2026-11-17.md`. It is not selected by this component
 workflow. Its 12 new cases and independent coupled derivative/time qualification
 remain unrun/unimplemented as detailed there.
+
+## End-of-day preparation and pause
+
+The operator requested a pause before the next launch. Open package
+`cleft-open-20261117-db4794` is prepared from pushed
+`04c4fd61f4df36ba438dfff26b41db28d278d625`, with all 1,848 initial files plus
+manifest verified on D:. No window, test or comparison was started for it.
+Preparation used the preserved numerical-reference interpreter after an initial
+general-Python invocation failed before package creation because SciPy was absent.
+No dependency changed. Resume instructions and outstanding reports are recorded
+in `DNNE_Checkpoint_2026-11-17.md`.

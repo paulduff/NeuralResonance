@@ -2035,3 +2035,17 @@ status or processes were inspected. Do not monitor it or assume any stage passed
 The operator's resume remains effective; the goal stays active. Independent
 spindle coupled-kinetics source/design work can continue without inspecting this
 window. No live brain/body/world was started by this isolated comparison.
+
+The independent coupled spindle candidate is now authored in
+`tools/spindle_coupled_population.py`; see
+`docs/DNNE_Spindle_Coupled_Chemistry_2026-11-17.md`. It retains interval shape,
+splits at declared strain-rate faces, integrates attachment births with detached
+myosin/active actin, and accounts separately for absorbing numerical outflow.
+Its prospective visible-window study has twelve controls, eighteen fixed cases
+against 54 saved independent contrasts, and 36 moving cases. Complete interval
+shape, physical endpoints and accepted reaction states are retained. Temporal
+and range differences are diagnostic; moving independent accuracy, physiology,
+sensory firing and Avatar recovery stay unqualified. No live selector changed.
+Source/syntax review is not execution. Keep the original reference bounds and
+licenses, freeze clean pushed source and D: backups, then launch separately.
+The receptor cubic report `94d05d` is still pending; do not inspect its outputs.

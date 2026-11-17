@@ -166,6 +166,19 @@ def reference_controls(package):
     check_reference_controls(package)
 
 
+def load_reference(package):
+    # This study has an explicit interpreter-transition policy. The historical
+    # observed-body loader intentionally requires its original interpreter and
+    # must not be reused here or weakened for its existing callers.
+    preflight(package)
+    check_reference_controls(package)
+    base=module('rubral_hinge_comparison',package/'source/tools/analyse-native-hinge-comparison.py')
+    bridge=module('rubral_native_mechanics',package/'source/tools/analyse-native-motor-bridge.py')
+    review=h.read(package/'reference/hinge-refinement-review.json')
+    assert review['operatorReportedCompletion'] and review['savedAnalysisExactlyReproduced'] and review['numericalCriteriaPassed']
+    return base,bridge
+
+
 def check_reference_controls(package):
     summary=h.read(package/'reference-controls-summary.json');result=h.read(package/'reference-controls/controls.json')
     config=h.read(package/'configuration.json')

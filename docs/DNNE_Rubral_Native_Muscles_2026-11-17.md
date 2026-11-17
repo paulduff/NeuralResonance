@@ -178,3 +178,49 @@ D: verified before opening independent visible task
 inspected. The numerical controls, 281 tests, seven native conditions and fifteen
 full references are pending the operator's completion report; no success is
 inferred from launch. Native skull retry `1e2f21` also remains pending.
+
+## Reported completion: comparison loader failure
+
+The operator reported the final FAILED footer and verified D: backup for
+`rubral-native-20261117-4cdba5` (360,428 files plus manifest). Its saved status
+records all 281 focused cases passed, a successful Unity build and completed
+native driver. The saved native summary contains all seven cases and 55,993
+physical steps. Quiet and cut cases end at zero angle; unit-left ends at
+0.00020332417625468224 rad, strong-left at 0.0011702291667461395 rad, and
+strong-right at the equal opposite angle. Fast/retry summaries match strong-left.
+These are recorded candidate results awaiting the complete independent audit,
+not a numerical or physiological qualification.
+
+The reference failed before its first solve. `native_audit` delegated loading to
+the preserved `analyse-observed-native-body.py` loader. That older experiment
+requires exact equality with its historical Python binaries. The new rubral
+preflight correctly accepts only the explicitly declared three-binary transition,
+but the downstream historical loader does not know that policy. Both checks
+behaved as coded; reusing the old loader in the new study was the integration bug.
+The captured current/previous inventories differ only in the three already
+declared Python binaries. All ten transition controls and the 49 geometry, six
+mechanical and three cross-method controls have saved passing reports.
+
+The repair uses a rubral-specific `load_reference` that runs the existing full
+rubral preflight and saved-control verification before loading the unchanged
+comparison/mechanics modules and checking the original hinge review. The older
+loader remains unchanged for its callers. No historical interpreter equivalence
+is asserted and no numerical acceptance bound changes.
+
+`rubral_native_continuation.py` prepares a fresh comparison package from clean
+pushed source, copying the original references/controls and exact current runtime
+inventory. It binds the original capture by absolute path, Git revision and backup
+manifest SHA. It never writes into that capture or repeats its neural/native run.
+The independent visible `start-rubral-comparison-window.ps1` first verifies every
+original file against both C:/D: copies, all original Git files, binaries and exact
+281-test inventory. Only then does it reproduce the old loader failure, exercise
+the repaired production loader with the actual package, and rerun ten transition
+fixtures. These checks execute in the window, not during authoring.
+
+The continuation then audits the complete saved neuronal/native records, solves
+the missing fifteen references and compares every endpoint using unchanged
+equations/settings/bounds. The full original file audit runs again afterward;
+new outputs receive their own verified D: backup. Both old and new status remain
+visible and separate. A failed comparison cannot be converted into a pass by
+changing the old capture. The complete read audit and new numerical work remain
+pending until the operator reports this continuation finished.

@@ -149,8 +149,17 @@ def source_and_packets(package,folder,condition,initial,final,ms):
 
 
 def native_audit(package):
-    old=module('rubral_native_prior',package/'source/tools/analyse-observed-native-body.py');base,b=old.load(package)
-    root=package/'native-bridge';protocol=read(root/'protocol.json');result=read(root/'results.json')
+    from rubral_native_gate import load_reference
+    base,b=load_reference(package)
+    config=read(package/'configuration.json')
+    capture=Path(config.get('NativeCapture',str(package)))
+    if capture != package:
+        from rubral_native_continuation import require_review
+        require_review(package)
+        controls=read(package/'loader-controls.json')
+        assert controls['completed'] and controls['repairedProductionLoaderAccepted'] and controls['historicalLoaderReproducedFailure']
+        assert not controls['modelExecuted'] and not controls['historicalRuntimeEquivalenceEstablished']
+    root=capture/'native-bridge';protocol=read(root/'protocol.json');result=read(root/'results.json')
     assert protocol['version']=='rubral-neuronal-native-hinge-v1' and protocol['circuitVersion']=='owned-rubral-motor-circuit-v1'
     assert protocol['steps']==STEPS and protocol['physicsResolution']==1 and protocol['muscleSubsteps']==2
     assert protocol['neuralEpochMs']==1000 and protocol['physicalEpochMs']==0 and protocol['sourceFrames']==12000 and protocol['motorSamples']==15000 and protocol['warmFrames']==8000
@@ -158,7 +167,7 @@ def native_audit(package):
     assert result['completed'] and result['sourceBodyAccountingPassed'] and result['observedNeuronalMuscleMovement'] and result['actualPhysicsSteps']==7*STEPS
     assert [r['condition'] for r in result['cases']]==[c[0] for c in CONDITIONS]
     assert not protocol['oldRecordsDriveModel'] and not protocol['liveBrainAccessed'] and not protocol['sensoryFeedbackImplemented'] and not protocol['physiologyQualified'] and not protocol['avatarRecoveryAssessed']
-    wire=b.audit_wire(package);spec=deepcopy(read(package/'reference/qualified-hinge-input.json'));spec['cases']=[]
+    wire=b.audit_wire(capture);spec=deepcopy(read(package/'reference/qualified-hinge-input.json'));spec['cases']=[]
     data={};reports=[];h=b.H*.5;ms=h*1000;geometry_text=None
     assert STEPS*ms==protocol['durationMs']<500<(STEPS+1)*ms
     assert protocol['minimumStrongResponseRadians']==1e-7 and protocol['quietAndMirrorBoundRadians']==1e-5

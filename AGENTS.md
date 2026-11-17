@@ -2547,3 +2547,18 @@ explicitly confirmed the rubral run still running; do not infer completion
 from the seven printed condition names. Hair-cell 959475 is fully reviewed.
 The next sensory implementation requires shared cleft/membrane charge balance
 and actual afferent dynamics; do not promote current/clamp success to that scope.
+
+The operator has now reported the final FAILED footer/D: backup for rubral-native
+4cdba5. Saved status records 281 passing focused tests, successful native driver
+and seven cases/55,993 steps. The comparison failed before any independent solve:
+native_audit reused the historical observed-body loader, which rejects the already
+declared three-Python-binary transition accepted by the rubral preflight. Preserve
+the historical loader and capture. New rubral-specific load_reference reuses the
+strict declared-transition preflight/control checks; equations/bounds are unchanged.
+See DNNE_Rubral_Native_Muscles_2026-11-17.md. A separate reference-only continuation
+verifies all 360,428 C:/D: files, Git/binaries/tests before reading original native
+data, tests the actual repaired loader and old failure, then solves fifteen missing
+references. Full preservation is reverified afterward. All controls/solves run in
+its visible PowerShell window, no live monitoring. No native rerun or candidate
+change is needed. Until launch the continuation is authored only. Calyx 920328 and
+native skull 1e2f21 still await reports; do not inspect them. Full goal is unfinished.

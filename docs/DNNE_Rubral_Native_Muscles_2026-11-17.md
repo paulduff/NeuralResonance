@@ -224,3 +224,10 @@ new outputs receive their own verified D: backup. Both old and new status remain
 visible and separate. A failed comparison cannot be converted into a pass by
 changing the old capture. The complete read audit and new numerical work remain
 pending until the operator reports this continuation finished.
+
+The continuation is now launched as `rubral-comparison-20261117-a6b77a`, frozen
+from pushed revision `509c3b8400a54ec43a51f535990d916b2a7aa47f`. All 1,846 initial
+files plus manifest were D: verified before opening visible task
+`DNNE-Rubral-Comparison-fccfb9b34200`. Preparation checked saved metadata and source
+preservation only. Full input verification, loader controls and numerical work
+belong to that window; no post-launch output/status/process has been inspected.

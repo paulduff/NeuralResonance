@@ -2562,3 +2562,10 @@ references. Full preservation is reverified afterward. All controls/solves run i
 its visible PowerShell window, no live monitoring. No native rerun or candidate
 change is needed. Until launch the continuation is authored only. Calyx 920328 and
 native skull 1e2f21 still await reports; do not inspect them. Full goal is unfinished.
+
+Reference-only continuation launched: rubral-comparison-20261117-a6b77a, revision
+509c3b8400a54ec43a51f535990d916b2a7aa47f, visible task
+DNNE-Rubral-Comparison-fccfb9b34200. Initial 1,846 files plus manifest D: verified.
+No post-launch outputs/status/process read. Await this report, calyx 920328 and
+native skull 1e2f21. Original native 4cdba5 is completed/failed and preserved;
+its complete C:/D: review runs in the continuation window before any references.

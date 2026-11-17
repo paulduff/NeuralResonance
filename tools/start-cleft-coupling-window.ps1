@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedCleftConstitutive -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 26 -or $configuration.ExpectedEdgeRows -ne 468 -or $configuration.ExpectedChargeRows -ne 60 -or ($configuration.ExpectedDecimalPrecisions -join ',') -ne '60,90' -or $configuration.TimeIntegrated -or $configuration.SpatialGeometryCalibrated -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated cleft configuration.'}
+if(-not $configuration.IsolatedCleftConstitutive -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 40 -or $configuration.ExpectedEdgeRows -ne 468 -or $configuration.ExpectedChargeRows -ne 60 -or $configuration.ExpectedSpatialRows -ne 96 -or ($configuration.ExpectedDecimalPrecisions -join ',') -ne '60,90' -or $configuration.TimeIntegrated -or $configuration.SpatialGeometryCalibrated -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated cleft configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -72,7 +72,7 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE cleft ion transport and membrane charge checks'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '26 focused checks, 468 ion-transfer cases and 60 capacitor cases. Independent 60/90-digit references; no time integration.'
+ Write-Host '40 focused checks, 468 ion-transfer, 60 local capacitor and 96 spatial cases. Independent 60/90-digit references; no time integration.'
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package;Python-Stage 'preflight'
  $build=Join-Path $package 'source/artifacts/cleft-tests'
@@ -84,7 +84,7 @@ try{
  $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
  $testBinaries=Capture-Binaries $assembly 'test-binaries.json'
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
- Python-Stage 'check-tests';$status['PassedFocusedTests']=26;$status.FocusedTestsPassed=$true
+ Python-Stage 'check-tests';$status['PassedFocusedTests']=40;$status.FocusedTestsPassed=$true
  $probeBuild=Join-Path $package 'source/artifacts/cleft-probe'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release/NeuralResonanceEngine.DNNE.Tests.dll'
@@ -95,7 +95,7 @@ try{
  $status.ConstitutiveArithmeticEvaluated=$true
  Python-Stage 'compare'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
- if(-not $analysis.completed -or -not $analysis.numericalComponentCriteriaPassed -or $analysis.counts.edges -ne 468 -or $analysis.counts.charges -ne 60 -or $analysis.tests.passedCases -ne 26 -or ($analysis.decimalPrecisions -join ',') -ne '60,90'){throw 'Cleft comparison failed or incomplete.'}
+ if(-not $analysis.completed -or -not $analysis.numericalComponentCriteriaPassed -or $analysis.counts.edges -ne 468 -or $analysis.counts.charges -ne 60 -or $analysis.counts.spatial -ne 96 -or $analysis.tests.passedCases -ne 40 -or ($analysis.decimalPrecisions -join ',') -ne '60,90'){throw 'Cleft comparison failed or incomplete.'}
  foreach($flag in @('timeIntegrated','spatialGeometryCalibrated','physiologyQualified','avatarRecoveryAssessed','originalBoundsChanged')){if($analysis.$flag){throw ('Unexpected qualification or changed bound: '+$flag)}}
  $status.NumericalCriteriaPassed=$true;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{

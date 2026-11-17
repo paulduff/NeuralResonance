@@ -1194,3 +1194,12 @@ have no time integrator or live/Unity/editor caller; existing Avatar sensory
 mechanisms and numerical captures are preserved. See
 `DNNE_Cleft_Coupling_2026-11-17.md` for equations, prospective tests and remaining
 spatial/coupled/afferent qualification. Calyx 920328 still awaits its report.
+
+AvatarCleftSpatialCoupling now assembles the local equations into explicitly
+identified cleft/calyx compartments sharing one hair-cell voltage. Internal K/Na
+and axial electrical transfers preserve endpoint accounting; apical/uncovered
+capacitance is counted once. It receives declared membrane currents, with no
+time/channel integration or live/editor caller. Open-apex boundary, anatomical
+mesh, actual membrane coupling and afferent cable remain unqualified. The
+unlaunched cleft study adds 14 spatial cases and 96 full-graph comparisons under
+unchanged original bounds; see the cleft document. Pending runs stay untouched.

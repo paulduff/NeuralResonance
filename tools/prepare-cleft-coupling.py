@@ -48,7 +48,7 @@ def prepare(review_folder):
         assert (ROOT/name).read_text(encoding='utf-8-sig')==h.io(capture/'source'/name).read_text(encoding='utf-8-sig'),name
     environment=module('cleft_prepare_environment',ROOT/'tools/golgi-reference-resume.py').environment()
     assert environment==h.read(capture/'preparation-environment.json'),'Qualified runtime changed; inspect explicitly before preparation.'
-    methods=gate.inventory(ROOT,COUNTS);assert sum(methods.values())==sum(COUNTS.values())==26
+    methods=gate.inventory(ROOT,COUNTS);assert sum(methods.values())==sum(COUNTS.values())==40
     evidence_root=h.io(capture/'source-evidence')
     evidence=['source-evidence/'+p.relative_to(evidence_root).as_posix() for p in evidence_root.rglob('*') if p.is_file()]
     h.verify(capture,evidence)
@@ -80,8 +80,8 @@ def prepare(review_folder):
     dotnet=shutil.which('dotnet');assert dotnet
     save(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,
         DotnetExecutable=dotnet,DotnetExecutableSha256=h.digest(dotnet),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
-        BackupDestination=str(backup),IsolatedCleftConstitutive=True,NoLiveMonitoring=True,ExpectedTestCases=26,ExpectedClassCounts=COUNTS,
-        ExpectedTestMethods=methods,TestFilter='|'.join('FullyQualifiedName~'+c for c in COUNTS),ExpectedEdgeRows=468,ExpectedChargeRows=60,
+        BackupDestination=str(backup),IsolatedCleftConstitutive=True,NoLiveMonitoring=True,ExpectedTestCases=40,ExpectedClassCounts=COUNTS,
+        ExpectedTestMethods=methods,TestFilter='|'.join('FullyQualifiedName~'+c for c in COUNTS),ExpectedEdgeRows=468,ExpectedChargeRows=60,ExpectedSpatialRows=96,
         ExpectedDecimalPrecisions=[60,90],LiveSelectionChanged=False,TimeIntegrated=False,SpatialGeometryCalibrated=False,
         AfferentFiringQualified=False,PhysiologyQualified=False,AvatarRecoveryAssessed=False))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,NoLiveMonitoring=True,

@@ -2606,3 +2606,18 @@ of the reviewer, preparer, launcher, tests or equations has run. Calyx 920328's
 completion is requested asynchronously; no answer yet. Rubral comparison a6b77a
 and skull 1e2f21 also await reports. Do not inspect any pending outputs/processes.
 The full goal remains active; spatial receptor/afferent integration is unfinished.
+
+Next independent authoring adds AvatarCleftSpatialCoupling: immutable named
+compartments/edges, conservative internal K/Na transfer, calyx axial current and
+one shared hair-cell capacitance solve. Actual membrane currents are explicit
+ports; no time/gate integration or live sensory selection exists. Open-apex bath
+boundary/ion ledger and anatomical mesh still need implementation/qualification.
+No duplicate apical capacitance, invented afferent spike or geometry fit.
+The unlaunched cleft protocol is explicitly v2: old 468 edge/60 local vectors and
+all bounds unchanged, plus 96 spatial inputs and 14 unit cases (40 total with
+manifest). Independent 60/90-digit reference builds the entire capacitor graph
+and uses dense elimination. Native capture, preparer and visible pipeline now
+require this full scope. Test/probe authoring builds pass with zero warnings/
+errors; static input preservation, inventories and syntax pass. No test/model/
+reference/launcher executed; no pending capture inspected. Calyx 920328 report
+remains requested but unanswered; rubral a6b77a and skull 1e2f21 also await reports.

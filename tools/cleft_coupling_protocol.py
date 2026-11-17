@@ -1,7 +1,8 @@
 """Prospective constitutive inputs and bounds; no equations are evaluated here."""
 from itertools import product
+from cleft_spatial_protocol import cases as spatial_cases
 
-COUNTS = dict(CleftCouplingTests=25, SolutionManifestTests=1)
+COUNTS = dict(CleftCouplingTests=25, CleftSpatialCouplingTests=14, SolutionManifestTests=1)
 
 
 def protocol():
@@ -31,10 +32,12 @@ def protocol():
         [[-70.,3.,-60.,5.,0.],[-54.,19.,-44.,21.,16.],[5.,5.,5.,5.,5.],[12.,-4.,-20.,5.,2.]]):
         charge_cases.append(dict(index=len(charge_cases),capacitances=dict(zip(cap_names,caps,strict=True)),
             ports=dict(zip(port_names,ports,strict=True)),potentials=dict(zip(voltage_names,voltage,strict=True))))
-    return dict(version='cleft-constitutive-comparison-v1',
+    return dict(version='cleft-constitutive-comparison-v2',
         edgeVersion='cleft-monovalent-scharfetter-gummel-edge-v1',
         chargeVersion='hair-cleft-calyx-capacitance-block-v1',
+        spatialVersion='shared-hair-spatial-cleft-calyx-coupling-v1',
         edgeCases=edge_cases,chargeCases=charge_cases,expectedEdges=468,expectedCharges=60,
+        spatialCases=spatial_cases(),expectedSpatial=96,
         decimalPrecisions=[60,90],referenceAbsoluteTolerance='1e-40',referenceRelativeTolerance='1e-40',
         candidateAbsoluteTolerance='2e-10',candidateRelativeTolerance='2e-12',
         spatialGeometryCalibrated=False,timeIntegrated=False,physiologyQualified=False,avatarRecoveryAssessed=False)

@@ -9,6 +9,7 @@ import importlib.util
 import json
 from pathlib import Path
 from cleft_coupling_protocol import validate, COUNTS
+from cleft_spatial_reference import evaluate as spatial_reference
 
 ROOT = Path(__file__).resolve().parents[1]
 read = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
@@ -83,10 +84,18 @@ def charge(row):
 
 
 def decimal_strings(value):
-    return {k:decimal_strings(v) for k,v in value.items()} if isinstance(value,dict) else str(value)
+    if isinstance(value,dict): return {k:decimal_strings(v) for k,v in value.items()}
+    if isinstance(value,list): return [decimal_strings(v) for v in value]
+    return str(value)
 
 
 def compare_values(actual,expected,absolute,relative,location=''):
+    if isinstance(expected,str):
+        assert actual==expected,location
+        return Decimal(0)
+    if isinstance(expected,list):
+        assert isinstance(actual,list) and len(actual)==len(expected),location
+        return max((compare_values(a,b,absolute,relative,location+'/'+str(i)) for i,(a,b) in enumerate(zip(actual,expected,strict=True))),default=Decimal(0))
     if isinstance(expected,dict):
         assert actual.keys()==expected.keys(),location
         return max(compare_values(actual[k],v,absolute,relative,location+'/'+k) for k,v in expected.items())
@@ -104,8 +113,8 @@ def preflight(package):
     validate(read(package/'cleft-input.json'));current=environment()
     assert current==read(package/'preparation-environment.json')
     config=read(package/'configuration.json');review=read(package/'qualified-calyx-review.json');provenance=read(package/'provenance.json')
-    assert config['IsolatedCleftConstitutive'] and config['NoLiveMonitoring'] and config['ExpectedTestCases']==26
-    assert config['ExpectedEdgeRows']==468 and config['ExpectedChargeRows']==60 and config['ExpectedDecimalPrecisions']==[60,90]
+    assert config['IsolatedCleftConstitutive'] and config['NoLiveMonitoring'] and config['ExpectedTestCases']==40
+    assert config['ExpectedEdgeRows']==468 and config['ExpectedChargeRows']==60 and config['ExpectedSpatialRows']==96 and config['ExpectedDecimalPrecisions']==[60,90]
     assert review['operatorReportedCompletion'] and review['independentSavedComparisonsRechecked'] and review['savedAnalysisExactlyReproduced']
     assert review['numericalCriteriaPassed'] and review['passedTests']==23 and not review['analysis']['originalBoundsChanged']
     assert review['capture']==provenance['qualifiedCapture'] and review['manifestSha256']==provenance['qualifiedCaptureManifestSha256']
@@ -124,17 +133,20 @@ def compare(package):
     spec=validate(read(package/'cleft-input.json'));assert environment()==read(package/'reference-preflight.json')['environment']
     tests=module('cleft_exact_tests',ROOT/'tools/receptor_membrane_gate.py').check_tests(package,COUNTS)
     captured=read(package/'study/input.json')
-    assert captured=={k:spec[k] for k in ('version','edgeVersion','chargeVersion','edgeCases','chargeCases','expectedEdges','expectedCharges')}
+    assert captured=={k:spec[k] for k in ('version','edgeVersion','chargeVersion','spatialVersion','edgeCases','chargeCases','spatialCases','expectedEdges','expectedCharges','expectedSpatial')}
     result=read(package/'study/results.json')
-    assert result==dict(completed=True,edgeRows=468,chargeRows=60,timeIntegrated=False,
+    assert result==dict(completed=True,edgeRows=468,chargeRows=60,spatialRows=96,timeIntegrated=False,
         spatialGeometryCalibrated=False,physiologyQualified=False,avatarRecoveryAssessed=False)
     fingerprints={};maximum=Decimal(0);counts={}
-    for label,key,fn in [('edges','edgeCases',edge),('charges','chargeCases',charge)]:
+    for label,key,fn in [('edges','edgeCases',edge),('charges','chargeCases',charge),
+                         ('spatial','spatialCases',lambda row:spatial_reference(row,edge,dense_solve))]:
         count=0
         with (package/'study'/(label+'.jsonl')).open() as source,(package/('independent-'+label+'.jsonl')).open('x') as target:
             for expected,line in zip(spec[key],source,strict=True):
                 row=json.loads(line);assert set(row)=={'input','fingerprint','evaluation'} and row['input']==expected
-                identity=json.dumps([expected[k] for k in (('material','geometry') if label=='edges' else ('capacitances',))],sort_keys=True)
+                identity_keys=dict(edges=('material','geometry'),charges=('capacitances',),
+                    spatial=('hairCellId','hairApicalPf','hairPerilymphPf','material','compartments','connections'))[label]
+                identity=json.dumps([expected[k] for k in identity_keys],sort_keys=True)
                 assert len(row['fingerprint'])==64
                 assert fingerprints.setdefault((label,identity),row['fingerprint'])==row['fingerprint']
                 references=[]
@@ -150,12 +162,12 @@ def compare(package):
                     expected=[decimal_strings(r) for r in references],maximumAllowedFraction=str(ratio)),allow_nan=False)+'\n')
                 count+=1
         counts[label]=count
-    assert counts==dict(edges=468,charges=60)
+    assert counts==dict(edges=468,charges=60,spatial=96)
     assert len(set(fingerprints.values()))==len(fingerprints),'Different material/geometry identities collapsed.'
     save(package/'analysis.json',dict(completed=True,numericalComponentCriteriaPassed=True,tests=tests,counts=counts,
         maximumAllowedFraction=str(maximum),decimalPrecisions=spec['decimalPrecisions'],originalBoundsChanged=False,
         timeIntegrated=False,spatialGeometryCalibrated=False,physiologyQualified=False,avatarRecoveryAssessed=False))
-    print('468 edge and 60 capacitance cases reconciled against 60/90-digit references; no time integration.',flush=True)
+    print('468 edge, 60 local capacitance and 96 spatial cases reconciled against 60/90-digit references; no time integration.',flush=True)
 
 
 if __name__=='__main__':

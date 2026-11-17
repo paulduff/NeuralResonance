@@ -2,7 +2,8 @@
 
 The next sensory step needs a shared electrical and chemical environment between
 the hair cell and calyx. `AvatarCleftEdgeKernel` and `AvatarCleftChargeBalance`
-provide its local constitutive equations. They do not advance time, set anatomical
+provide its local constitutive equations. `AvatarCleftSpatialCoupling` assembles
+them around one shared hair-cell voltage. They do not advance time, set anatomical
 geometry, choose initial equilibrium, emit spikes or replace Avatar's live sensory
 path. The hair-cell and calyx kernels remain unchanged. Calyx component result
 `920328` must still be reported and reviewed before coupled use.
@@ -82,8 +83,9 @@ The axon port is a required explicit current if used, not an implemented axon.
 Whole-membrane geometry maps to 3 pF apical, 0.4558 pF uncovered hair,
 2.9463 pF hair facing cleft, 2.9463 pF calyx facing cleft and 2.8833 pF outer calyx.
 This is a bookkeeping map of declared areas, not a calibrated single-compartment
-replacement for the source's spatial cleft. A future spatial assembly must share
-the hair-cell voltage and distribute area/capacitance without counting it twice.
+replacement for the source's spatial cleft. The authored spatial assembly shares
+the hair-cell voltage and accepts explicit per-patch capacitances without copying
+the apical/uncovered capacitance into each patch.
 Nonmatching facing patch areas are rejected by the convenience mapper.
 
 All five capacitor charges and stored energy are available for accounting.
@@ -91,6 +93,50 @@ All five capacitor charges and stored energy are available for accounting.
 capacitive current into held baths. It covers these electrical elements only;
 it does not claim a complete thermodynamic balance of pumps, maintained ion
 reservoirs, chemical sources or a freely integrated sensory neuron.
+
+## Spatial assembly with one shared hair cell
+
+`AvatarCleftSpatialCoupling` owns an immutable, explicitly named set of
+compartments and internal connections. Each compartment supplies its volume,
+hair-facing and calyx capacitances; each connection supplies cleft face area,
+distance and calyx axial conductance. Identified input states and membrane-current
+ports must cover every compartment exactly once. Duplicate/unknown identities,
+repeated faces and nonfinite input fail explicitly. Canonical ordinal ordering
+makes caller ordering and reversed connection declarations represent the same
+topology/fingerprint. No anatomical geometry is inferred from the fixture graph.
+
+Every connection transfers K/Na amount and electrical current between its two
+cleft sites; calyx current is the declared axial conductance times the difference
+of the two calyx potentials. Each transfer is applied with opposite signs at the
+two endpoints. Membrane K/Na fluxes remain separate from net electrical current,
+including electrically neutral transport. Inner currents feed the local cleft;
+outer/axon currents remain named external ports. A missing chemical species
+is not invented from net current.
+
+For patch `i`, eliminate its calyx voltage using `alpha_i=Ci/(Ci+Co)` and define
+`g_i=alpha_i*Co`, `D_i=Ch+g_i`, `beta_i=Ch/D_i`. With local charge-rate right-hand
+sides `rS_i`, `rC_i` and one whole-hair right-hand side `rH`:
+
+```
+t_i = rS_i + alpha_i*rC_i
+dH = (rH + sum(beta_i*t_i)) / (Ca + Cb + sum(beta_i*g_i))
+dS_i = t_i/D_i + beta_i*dH
+dC_i = rC_i/(Ci+Co) + alpha_i*dS_i
+```
+
+This eliminates the same complete capacitance system without a dense solve or
+subtraction of nearly equal positive capacitances. The apical and uncovered
+hair capacitance occurs once. Even with no spatial connection between two patches,
+they remain capacitively connected through their shared hair-cell voltage.
+All capacitor charges, charge rates, stored electrical energy and power remain
+observable, including charge delivered to the two held bath potentials.
+
+The assembly is a derivative evaluator. It does not yet own channel gates,
+integrate a receptor trajectory, solve stationary initial state or implement
+the open cleft-apex boundary and afferent cable. In particular, current fixtures
+are explicit membrane-port inputs, not new neuronal observations or a live
+replacement. The next integration must evaluate actual local hair/calyx currents,
+add the named perilymph boundary/its ion ledger, and qualify space/time refinement.
 
 ## Verification and remaining work
 
@@ -102,8 +148,12 @@ Kirchhoff equations, an independently solvable unit-capacitance circuit, interna
 current cancellation, bath charges, energy/power and large capacitance ratios.
 These tests execute only in a visible independent PowerShell window.
 
-There are 25 prospective component cases in 21 test methods, plus the solution
-manifest for a 26-case focused suite. The authoring test-project build succeeds
+There are 25 prospective local component cases in 21 methods and 14 spatial
+cases in 12 methods, plus the solution manifest for a 40-case focused suite.
+Spatial tests check one-patch reduction, uniform subdivision at 2/8/32 patches,
+species/charge conservation, current direction, neutral transport, shared-cell
+coupling, input-order independence, gauge shifts, energy/power and identity errors.
+The authoring test-project build succeeds
 with zero warnings/errors; no tests ran. The probe authoring build also succeeds
 with zero warnings/errors. Static Python syntax checks pass.
 
@@ -116,6 +166,12 @@ span three capacitance sets, five directed-current patterns and four electrical
 reference configurations. Neither geometry nor voltage extremes are asserted
 to be physiological operating conditions.
 
+The unlaunched protocol is now explicitly version 2. It retains every original
+edge/local input and numerical bound unchanged, and adds 96 spatial cases:
+1/2/4/8 compartments, uniform/graded synthetic geometry, four electrical/chemical
+state patterns and quiet/localized/distributed membrane-port inputs. No previous
+capture was edited or run under the changed protocol.
+
 `analyse-cleft-coupling.py` independently evaluates the direct exponential flux
 and builds a complete five-node capacitor graph, solving its three dynamic-node
 matrix by pivoted elimination instead of the candidate's Schur formula. Each
@@ -125,6 +181,11 @@ candidate tolerance is 2e-10 absolute plus 2e-12 relative. It compares every
 reported quantity, reconciles the exact input/test inventory and checks runtime
 preservation. References use the exact binary64 inputs, avoiding a different
 rounded-input problem. No reference arithmetic has executed during authoring.
+For spatial inputs, `cleft_spatial_reference.py` constructs the entire
+`(1+2N+2)`-node graph, includes all conserved transfers, solves the `1+2N` dynamic
+voltages by dense elimination and compares every voltage/concentration rate,
+charge, charge rate, energy and connection transfer. It does not reuse the
+candidate's shared-hair elimination.
 
 No new window is launched while the current calyx qualification awaits its
 operator report. The prerequisite reviewer, frozen preparer and independent
@@ -151,7 +212,7 @@ sensory return and Avatar balance/recovery remain unresolved.
    executes no tests or constitutive equations.
 4. Back up the new package and invoke its frozen
    `start-cleft-coupling-window.ps1 -PackageDirectory PACKAGE`. Only that visible
-   window builds and executes the 26 tests, native arithmetic capture and two
+   window builds and executes the 40 tests, native arithmetic capture and two
    high-precision references. It verifies prerequisite metadata, exact test
    multiplicities, immutable inputs, numerical and managed runtimes, and final
    C:/D: preservation. It cannot resume an already launched package in place.

@@ -2136,3 +2136,18 @@ The corrected rubral replacement is now launched as
 verified. This is the only pending operator report. No post-launch output/status/
 process was inspected; do not monitor it. Old `e42efc` is already reported and
 reviewed, not another pending result. The full goal remains active and unfinished.
+
+The independent continuous-motion spindle reference candidate is authored in
+`tools/spindle_eulerian_reference.py`; see
+`docs/DNNE_Spindle_Continuous_Reference_2026-11-17.md`. It evolves fixed-grid
+cell masses with simultaneous upwind transport, attachment/detachment and actin
+kinetics, preserving the same piecewise biological rate surface and absorbing
+boundary accounting. Upwind diffusion is explicitly unresolved: require its
+own temporal/spatial/range comparisons, never label it exact by construction.
+The visible rig has twelve controls, six fixed reductions/18 saved contrasts,
+42 moving solves, 12 temporal/18 spatial/six range contrasts, and 18 comparisons
+with saved retained-interval candidates. No candidate rerun or live selection
+change. Syntax checks are not numerical execution. Freeze clean pushed source
+and D: backups before launch. Report reference discretization separately from
+diagnostic completion; candidate accuracy, sensory physiology and recovery stay
+unqualified. Rubral replacement `844975` remains pending and must not be monitored.

@@ -105,9 +105,9 @@ afferent axonal events must be modeled and qualified separately.
 * Static gravity, unnormalized mechanical coordinates and fault preservation.
 
 The test project builds in Release with zero warnings and errors. **These tests
-have not executed.** No numerical calculation or model ran inline. No third
-PowerShell study was launched for this candidate while the rubral replacement
-and continuous spindle reference await operator reports.
+have not executed.** No numerical calculation or model ran inline. The rubral
+replacement and continuous spindle reference have since been reported and
+reviewed separately; the new declared-recipient rubral study is pending.
 
 The next vestibular qualification must run visibly in a frozen, D:-backed
 PowerShell capture. It should execute these ownership cases and an independent
@@ -124,14 +124,14 @@ reviews in `DNNE_Vestibular_Source_Candidates_2026-11-16.md` and
 `DNNE_Afferent_Source_Gap_2026-11-16.md` still apply. Do not substitute generic
 population-generated spikes for the missing receptor/afferent qualification.
 
-## Comparison draft checkpoint
+## Prepared numerical comparison
 
-An unlaunched comparison draft now exists in `VestibularMechanicsStudy.cs`,
+The comparison is implemented in `VestibularMechanicsStudy.cs`,
 `vestibular_numerics_protocol.py`, `analyse-vestibular-numerics.py` and
 `prepare-vestibular-numerics.py`. It specifies 62 component/regression cases,
 twenty prescribed histories, two native delivery groups, six reference controls,
 a matrix exponential and two DOP853 tolerances. All accepted ODE nodes and native
-inputs/receipts would be retained. The numerical bounds are declared in the
+inputs/receipts are retained by the rig. The numerical bounds are declared in the
 protocol; none has been exercised or adjusted against results.
 
 The reference uses the documented general matrix-exponential algorithm and a
@@ -141,8 +141,34 @@ and [ODE integration documentation](https://docs.scipy.org/doc/scipy-1.16.0/refe
 The installed numerical environment remains pinned separately to NumPy 2.2.6
 and SciPy 1.16.3.
 
-**The visible launcher is not yet authored, and preparation explicitly refuses
-to create a package without it.** The operator's completed spindle/rubral
-reports and request for simpler explicit synaptic wiring took priority. Finish
-and review this draft before claiming an executable vestibular comparison;
-no vestibular study or live selection has been launched.
+`start-vestibular-numerics-window.ps1` now runs the full sequence in a visible
+independent PowerShell window: source/dependency preflight, 62 focused tests,
+six reference controls, forty native captures, sixty reference trajectories,
+saved-state comparisons, dependency postflight and verified D: backup. The
+window remains open for the operator. The runner rejects reuse of an earlier
+package. It records built binary hashes and managed-runtime dependencies and
+preserves failed prefixes. No live brain/body service or save is accessed.
+
+The six main histories are quiet, constant rotation, stopping, reversal,
+otolith-vector changes and paired canal cancellation. Each uses 0.125, 1 and
+4 ms physical intervals over 64 ms, with input changes aligned at 16 ms
+boundaries. Two additional histories cover 1 ns intervals (64 intervals) and
+10 s intervals (four intervals). These are numerical stress conditions, not
+proposed human sensory sampling rates. Delivery groups of one and seventeen
+retain byte-identical expected input/receipt histories; each original sample
+also receives one exact retry without advancing the organ again.
+
+DOP853 uses relative/absolute tolerances 1e-11/1e-13 with a 25 ms maximum step
+and 1e-12/1e-14 with a 12.5 ms maximum step. Every input discontinuity is an
+integration boundary. Continuation uses accepted ODE endpoints, while interior
+comparison samples use its dense output. The independent matrix exponential
+uses the stated affine differential system directly; the ODE derivative is
+written separately from that matrix.
+
+Prospective absolute bounds are 1e-10 for independent reference contrasts,
+1e-9 for candidate/reference contrasts, and 1e-11 for controls and native
+subdivision contrasts. Canal/adaptation coordinates have rad/s units and
+otolith coordinates m/s^2. These are numerical engineering bounds, not a
+physiological sensitivity threshold. The rig requires all 60 reference,
+60 candidate and twelve native subdivision contrasts to meet the unchanged
+bounds. No result has been observed yet and no live selector changes.

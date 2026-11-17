@@ -110,3 +110,41 @@ Python/PowerShell syntax and the 150-case source inventory passed without
 executing a test or model inline. This is the only pending operator report.
 No post-launch output, status or process has been inspected. The vestibular
 comparison remains an unlaunched draft, and no further spindle study has started.
+
+## Completed declared-recipient review
+
+The operator reported `3e3db0` complete. The extended saved-data reviewer verifies
+all 2,384 C:/D: files, frozen Git source, both binary manifests, unchanged managed
+runtime and all 150 focused cases. The saved analysis reproduces exactly, including
+48,000 original source frames, twelve motor branches, all 15,360 actual fixture
+deliveries to their declared cells, and preserved original quiet observations.
+The separate `artifacts/rubral-declared-review-20261117/review.json` is D: verified.
+No neuron, numerical integration or test executed during review.
+
+The wiring correction works for this fixture. Selected cell n-081 now fires
+five original events under unit drive and 23 under four-quanta drive. Every one
+reaches the declared motor contact in both packet-cadence branches. Quarter
+drive reaches the cell and depolarizes it but produces no selected event.
+
+The motor cell is not electrically unresponsive. Its sampled soma voltage differs
+from the disconnected control by up to 1.22035 mV and 2.86817 mV in the two active
+conditions. The stimulated second dendritic compartment differs by up to 6.68124
+and 10.09266 mV. Maximum sampled soma voltages after 1,000 ms are -66.35669 and
+-64.70887 mV. The unchanged cell records zero crossings of its -20 mV observation
+threshold. Receptor occupancy becomes nonzero; quiet and quarter-drive motor
+trajectories remain equal to the disconnected control. The motor-output flag
+therefore means no emitted motor spike, not no postsynaptic electrical effect.
+
+This single 50 nS diagnostic contact produces a subthreshold response under the
+specified source activity. That does not establish defective plasticity, calibrated
+spinal physiology, or that every single afferent should trigger a motor spike.
+The model's source study examines nonlinear responses to combinations of synaptic
+drive; it does not prescribe this artificial rubral anatomy or contact strength
+([Powers and Heckman, 2017](https://pubmed.ncbi.nlm.nih.gov/28053245/)).
+
+The operator requested ten converging neuronal inputs next. Declare that anatomy
+before activity, retain the existing n-081 single-input control and disconnected
+control, and keep each contact at 50 nS. Original events must be generated with
+their declared recipients; do not rewrite completed messages or duplicate one
+source spike into ten independent neurons. This is a prospective isolated
+connectivity experiment, not an approved live wiring or physiological calibration.

@@ -2231,3 +2231,29 @@ output/status/process has been inspected; do not monitor it. The vestibular
 comparison draft has no launcher and remains unlaunched. The next spindle work
 must address spatial transport error; the current upwind reference is unqualified.
 No whole-brain, physiological or Avatar usability success is implied.
+
+The vestibular comparison draft now has its visible launcher,
+`tools/start-vestibular-numerics-window.ps1`. It runs the existing prospective
+62-case inventory, six controls, twenty histories/two native delivery groups,
+and matrix-exponential plus two ODE references. All 60 reference, 60 candidate
+and twelve subdivision contrasts retain their original numerical bounds.
+Source/executable/build/runtime hashes, accepted nodes, complete inputs/receipts
+and failure prefixes are preserved with final D: verification. The unchanged
+mechanical candidate is still isolated; no model/test has executed inline.
+Freeze/push/backup before launch and await the operator's report without polling.
+Rubral declared `3e3db0` remains pending; no output/status/process was inspected.
+
+The operator reported declared rubral `3e3db0` complete, then paused for a harness
+update and explicitly resumed the goal. Its completed saved-data review now
+verifies 2,384 files per C:/D: copy, 150 tests, all 15,360 literal input deliveries,
+48,000 frames and twelve motor branches. n-081 emits five/23 original spikes in
+the two stronger conditions; all reach the motor receptor. Sampled soma response
+is 1.22035/2.86817 mV above the disconnected control, but no motor spike occurs.
+This is subthreshold excitation, not zero electrical response. The one-file
+rubral-declared-review-20261117 is D: verified; no model/test was rerun in review.
+All prior reports are reviewed. The operator requested TEN converging neuronal
+inputs, interpreted explicitly as ten distinct sources with unchanged per-contact
+strength and single-input/disconnected controls. Declare anatomy before firing;
+preserve original emitted events and old captures. No live projection is changed.
+The vestibular launcher Python/PowerShell syntax and 62-case static inventory
+passed; it remains unlaunched until a clean pushed frozen package is backed up.

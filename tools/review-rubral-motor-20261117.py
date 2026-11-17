@@ -1,6 +1,7 @@
 """Review the operator-reported rubral capture; replay no neuron or test."""
 import argparse
 from collections import Counter
+import csv
 from datetime import datetime, timezone
 import importlib.util
 import json
@@ -14,12 +15,15 @@ def module(name, path):
     result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result); return result
 
 
-def main():
-    capture = ROOT / 'artifacts/rubral-motor-20261117-844975'
-    output = ROOT / 'artifacts/rubral-motor-review-20261117'; assert not output.exists()
+def main(declared=False):
+    capture = ROOT / ('artifacts/rubral-declared-20261117-3e3db0' if declared else 'artifacts/rubral-motor-20261117-844975')
+    output = ROOT / ('artifacts/rubral-declared-review-20261117' if declared else 'artifacts/rubral-motor-review-20261117')
+    assert not output.exists()
+    revision = '149e5ea778878dded50bb8d867292c9f5a367a6d' if declared else '621109a7604c95bd4278a5a9c2efe779a41be2fb'
+    expected_tests = 150 if declared else 136
     common = module('rubral_review_integrity', ROOT / 'tools/review-olive-and-motor-20261109.py')
     print('Verifying reported rubral C:/D: files and source...', flush=True)
-    review = common.verify(capture, ['test-binaries.json', 'probe-binaries.json'], '621109a7604c95bd4278a5a9c2efe779a41be2fb')
+    review = common.verify(capture, ['test-binaries.json', 'probe-binaries.json'], revision)
     archive = module('rubral_review_archive', ROOT / 'tools/review-spindle-root-and-causal-motor-20261113.py')
     review['verifiedGitFiles'] = archive.source_archive(common, capture, review['sourceRevision'])
     audit = module('rubral_completed_audit', capture / 'source/tools/rubral_motor_gate.py')
@@ -52,8 +56,8 @@ def main():
             eventsByTarget=dict(sorted(targets.items())), cells=dict(sorted(cells.items())),
             selectedTelemetry={name: cells[name] for name in selected})
     audit.records = observed_records
-    analysis = audit.audit(capture)
-    assert analysis == common.read(capture / 'analysis.json') and analysis['tests']['passedCases'] == 136
+    analysis = audit.audit(capture, declared=True) if declared else audit.audit(capture)
+    assert analysis == common.read(capture / 'analysis.json') and analysis['tests']['passedCases'] == expected_tests
     assert all(s['totalOriginalEvents'] == row['sourceEvents'] for row in analysis['cases'] for key, s in summaries.items() if key == row['key'])
     assert len(summaries) == 4 and all(len(s['cells']) == 256 for s in summaries.values())
     for summary in summaries.values(): assert all(c['samples'] == 12000 for c in summary['cells'].values())
@@ -65,18 +69,46 @@ def main():
     for key in ('LiveBrainAccessed', 'OldSavesLoaded', 'UpstreamNumericalAccuracyQualified', 'LearnedContactEfficacyTransferred',
                 'NativePhysicsExecuted', 'MuscleDynamicsExecuted', 'PhysiologyQualified', 'AvatarRecoveryAssessed', 'FullUnitSuitePassed'):
         assert status[key] is False
+    motor_summaries = {}
+    if declared:
+        assert status['ActualFixtureDeliveryVerified'] and analysis['deliveredFixtureEvents'] == 15360
+        for key in summaries:
+            folder = capture / 'study' / key
+            with common.io(folder / 'packets1/trajectory.csv').open(newline='', encoding='utf-8-sig') as active, \
+                 common.io(folder / 'contacts-disabled/trajectory.csv').open(newline='', encoding='utf-8-sig') as disabled:
+                on = csv.DictReader(active); off = csv.DictReader(disabled)
+                assert on.fieldnames == off.fieldnames
+                receptors = [name for name in on.fieldnames if name.startswith('receptor_')]
+                assert len(receptors) == 1
+                maxima = [-float('inf')] * 5; delta = [0.] * 5
+                peak = 0.; first = None; samples = 0
+                for a, b in zip(on, off, strict=True):
+                    assert a['timeMs'] == b['timeMs']; t = float(a['timeMs']); samples += 1
+                    differences = [float(a[f'state{i}']) - float(b[f'state{i}']) for i in range(5)]
+                    if any(x != 0 for x in differences) and first is None: first = t
+                    for i in range(5):
+                        delta[i] = max(delta[i], abs(differences[i]))
+                        if t >= 1000: maxima[i] = max(maxima[i], float(a[f'state{i}']))
+                    peak = max(peak, float(a[receptors[0]]))
+                assert samples == 15001
+                motor_summaries[key] = dict(samples=samples, firstVoltageDifferenceFromDisabledMs=first,
+                    maximumAbsoluteVoltageDifferenceFromDisabledMv=delta,
+                    maximumVoltageAfter1000Ms=maxima, maximumSavedReceptorState=peak,
+                    voltageIndices='soma followed by four dendritic compartments; verify against frozen cell source')
     review.update(reviewedUtc=datetime.now(timezone.utc).isoformat(), operatorReportedCompletion=True,
         savedAnalysisExactlyReproduced=True, analysis=analysis, populationObservationSummary=summaries,
-        passedTests=136, originalFrames=48000, observedCellsPerFrame=256, roundedTelemetryIsCompleteState=False,
+        passedTests=expected_tests, originalFrames=48000, observedCellsPerFrame=256, roundedTelemetryIsCompleteState=False,
+        declaredInputContacts=declared, motorTrajectorySummary=motor_summaries,
         numericalModelExecutedDuringReview=False, testsExecutedDuringReview=False,
         neuronalMotorResponseObserved=analysis['observedNeuronalMotorResponse'], physiologyQualified=False, avatarRecoveryAssessed=False)
     output.mkdir(); (output / 'review.json').write_text(json.dumps(review, indent=2)+'\n', encoding='utf-8')
     print(json.dumps(dict(review=review['verifiedFilesPerCopy'], cases={key: {k:v for k,v in summary.items()
-        if k not in ('cells', 'eventsByTarget')} for key, summary in summaries.items()}), indent=2), flush=True)
+        if k not in ('cells', 'eventsByTarget')} for key, summary in summaries.items()}, motor=motor_summaries), indent=2), flush=True)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('--operator-reported-complete', action='store_true'); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument('--operator-reported-complete', action='store_true')
+    parser.add_argument('--declared', action='store_true'); args = parser.parse_args()
     if not args.operator_reported_complete: raise RuntimeError('Wait for the operator report before reading the capture.')
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
-    main()
+    main(args.declared)

@@ -28,7 +28,7 @@ def save(path, value):
 
 def main():
     assert (ROOT / 'tools/start-vestibular-numerics-window.ps1').is_file(), \
-        'Vestibular comparison is an unlaunched draft; finish and review its visible launcher before freezing.'
+        'The frozen vestibular comparison requires its visible PowerShell launcher.'
     h = module('vestibular_package_helpers', ROOT / 'tools/prepare-causal-motor.py')
     gate = module('vestibular_inventory', ROOT / 'tools/receptor_membrane_gate.py')
     assert not h.git('status', '--porcelain'), 'Commit clean source first.'

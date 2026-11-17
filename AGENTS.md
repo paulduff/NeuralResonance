@@ -2640,3 +2640,14 @@ need freezing/backup/visible launch; none launched yet. Skull 1e2f21 still await
 its operator report and stays untouched. Open-apex boundary work is deferred;
 deposited wb/cons1 holds K=5, Na=140 and cleft potential at perilymph at the apex.
 The full goal remains active; component successes do not establish sensory firing.
+
+Fresh retries are now launched from pushed c53783a17e9ab26ab5968bca5d267d0c1a277fa5:
+cleft-coupling-20261117-3076da (initial 1,829 files D: verified), visible task
+DNNE-Cleft-Coupling-4a1705e0b117; rubral-comparison-20261117-30755e (initial 1,861
+files D: verified), visible task DNNE-Rubral-Comparison-4a71b0b7b7c4. No post-launch
+outputs/status/process inspected. These TWO plus skull 1e2f21 await reports.
+Earlier calyx 920328 is reviewed/passing; ca4412 and a6b77a are reviewed/failed.
+All three reviews have verified D: copies. No numerical model/test was executed
+inline while repairing the two pipeline faults; Python/PowerShell syntax passes.
+Do not confuse either launch or 40 previous cleft unit passes with reference
+agreement, integrated receptor dynamics, sensory firing or Avatar balance.

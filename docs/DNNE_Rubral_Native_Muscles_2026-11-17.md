@@ -249,3 +249,10 @@ pinned reference archive. Source comparison now runs before the much larger
 native-file audit, so missing source dependencies fail early. Full C:/D: file
 verification still runs before and after the reference work. Neither failed
 package, the original native outputs, nor any numerical equation/bound is changed.
+
+The corrected continuation `rubral-comparison-20261117-30755e` is frozen at
+`c53783a17e9ab26ab5968bca5d267d0c1a277fa5`. Its initial 1,861 files plus manifest
+were D: verified before visible task `DNNE-Rubral-Comparison-4a71b0b7b7c4`
+launched. The original `4cdba5` capture stays read-only. No post-launch output,
+status or process has been inspected; all source verification, loader controls
+and missing reference calculations await the operator's completion report.

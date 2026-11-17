@@ -244,3 +244,10 @@ Open-apex reservoir/ion accounting was inspected in deposited `wb/cons1`
 (`ck-5`, `cna-140`, `V_cleft`, `0`) but is not implemented in this frozen study.
 That extension, actual channel/cleft integration and spatial/time refinement
 remain subsequent work; a closed component graph is not the completed receptor.
+
+The corrected package `cleft-coupling-20261117-3076da` is frozen at
+`c53783a17e9ab26ab5968bca5d267d0c1a277fa5`. Its initial 1,829 files plus manifest
+were D: verified before visible task `DNNE-Cleft-Coupling-4a1705e0b117` launched.
+The source equation files, 468/60/96 inputs and reference limits are unchanged.
+No post-launch output/status/process has been inspected; await the operator's
+report before reviewing its numerical outcome.

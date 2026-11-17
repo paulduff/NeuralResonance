@@ -2433,3 +2433,23 @@ decoder extension is the documented explicit 7999-step acceptance; old defaults
 are unchanged. NO reviewer, preparation, test, model or launcher was executed
 for pending runs. No pending outputs/status/processes were inspected. Still only
 skull 1e2f21 and circuit 7fc785 await the operator. Full goal remains active.
+
+The operator has now reported circuit 7fc785 complete. All 2,451 C:/D: files,
+1,769 Git source files, binaries/runtime, 161 exact tests and the full saved audit
+reconcile. Ten conditions preserve 120,000 source frames and 150,010 motor CSV
+rows. Unit/strong produce 1/12 motor events at both cadences; quiet/quarter/cut
+produce zero. Deliberate blocked advances/retries preserve state and once-only
+delivery. Separate rubral-circuit-review-20261117 is D: verified. No model/test
+rerun during review. Native muscle packaging may now proceed from clean pushed
+source. Skull 1e2f21 is still pending; no output/status/process inspected.
+
+Independent vestibular source review: DNNE_Vestibular_Equation_Audit_2026-11-17.md
+records visual PDF/XML discrepancies, disabled adaptation/quantal branches and
+temperature/species limits. Both pinned template and original Draft 12 Roles
+models have 279 scoped definitions; 15 lexical differences do not establish
+model equivalence. The static inspector executes no source equations. The
+48-file vestibular-calyx-equations-20261117 artifact is D: verified, with all
+32 page renders (only pages 2, 8–22, 26 visually reviewed), source hashes, original
+paper model/license, full selected XML sections and immutable review snapshots.
+No model/test/new sensory experiment or live implementation ran. Do not mix
+printed and stored channel equations or assume function defaults were resolved.

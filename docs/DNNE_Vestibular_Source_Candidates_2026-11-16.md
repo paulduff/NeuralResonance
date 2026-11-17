@@ -98,3 +98,8 @@ visual PDF review, correspondence to active XML features and reconciliation of
 the candidate's mechanism/units. Extracted text alone is not evidence that its
 mathematics has been correctly interpreted. The completed spindle force review
 took priority when its operator report arrived.
+
+The subsequent visual supplement/XML review, original Draft 12 source capture
+and material equation discrepancies are recorded in
+`DNNE_Vestibular_Equation_Audit_2026-11-17.md`. Neither downloaded model is yet a
+qualified portable numerical reference. No sensory implementation was adopted.

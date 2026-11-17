@@ -122,9 +122,12 @@ numerical dependencies even on failure, and performs the final verified D:
 backup. The window remains available for the operator; no live monitoring is
 authorized. Failed evidence is never retried in place.
 
-The circuit review, actual package preparation and launch remain pending the
-operator's completion report. The separate skull retry remains pending too.
-Neither report has been inferred from a status file or process check.
+The operator has now reported circuit `7fc785` complete. Its independent review
+and D: backup passed: 2,451 files per copy, 161 exact test cases, all 120,000 source
+frames/150,010 motor CSV rows and preserved runtime/source activity. See
+`DNNE_Rubral_Body_Ownership_2026-11-17.md`. This satisfies the prerequisite for
+package preparation/launch. Native skull retry `1e2f21` still awaits the operator;
+its outputs/status/process have not been inspected.
 
 This remains an isolated open-loop joint experiment. Upstream rubral numerical
 accuracy and physiological calibration are open; fixed reference contact efficacy

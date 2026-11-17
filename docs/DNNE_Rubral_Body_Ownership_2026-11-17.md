@@ -85,3 +85,32 @@ inline. The visible comparison was launched as
 verified on D:. Its outcomes await the operator; no post-launch output, status
 or process was inspected. This and native skull retry `1e2f21` are the two
 pending completion reports. Neither prospective result is qualified yet.
+
+## Completed source gate, independently reviewed
+
+The operator reported `7fc785` complete. The saved-data review verified all
+2,451 files in each C:/D: copy (1,293,960,165 bytes per copy), 1,769 Git source
+files, compiled binaries, unchanged managed runtime, exact 161-case inventory
+and the complete reproduced audit. Review artifact
+`rubral-circuit-review-20261117/review.json` is separately D: verified. Its capture
+manifest SHA-256 is
+`DBF1F39FDD86EED51886391E379931CB9C5317F4DEE75309546B6F2D4272FFAB`.
+No model/test was rerun during this review.
+
+All ten conditions preserve the original neuronal activity and motor trajectories:
+120,000 upstream frames and 150,010 motor CSV rows. Quiet/quarter input produces
+zero motor events. Unit input has 50 selected receptor events and one motor
+event; strong input has 230 selected receptor events and twelve motor events.
+The cut control preserves those 230 upstream events but admits none and produces
+no motor events. Both publication cadences give the same underlying results.
+
+At cadence one, each condition exercises 36 blocked advances and 109 delivery
+retries; cadence seventeen exercises three and seven. These are deliberate
+transport controls. They leave neuronal state unchanged and produce no duplicate
+motor events. Binding after quiet priming therefore passes this source-preservation
+gate. It does not qualify muscles, native motion, upstream numerical accuracy,
+physiology or Avatar recovery. Proceed to the frozen native-muscle comparison
+described in `DNNE_Rubral_Native_Muscles_2026-11-17.md`.
+
+Only native skull retry `1e2f21` still awaits an operator report at this checkpoint;
+it was not inspected as part of the circuit review.

@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 4 && args[0] == "--cleft-open")
+{
+    CleftOpenStudy.Run(args[1], args[2], args[3]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--cleft-coupling")
 {
     CleftCouplingStudy.Run(args[1], args[2]);

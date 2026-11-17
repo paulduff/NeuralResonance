@@ -2667,3 +2667,19 @@ cleft 3076da window predates this code and cannot qualify it. Await reports for
 3076da, rubral 30755e and skull 1e2f21; none inspected. Next independent open-graph
 comparison must retain closed regression evidence, followed by actual channels,
 stationary initialization/time integration and afferent qualification. Goal active.
+
+Open qualification workflow is now authored, not run: cleft_open_protocol.py
+declares 192 cases (96 original spatial inputs with single/split aperture),
+CleftOpenStudy/--cleft-open captures them and repeats all 624 original closed
+records. analyse-cleft-open.py requires those five closed files byte-identical
+and every open value to match independent dense full-graph/direct-exponential
+references at 60/90 digits under the unchanged limits. review-cleft-coupling.py
+is saved-data-only and requires operator completion, full C:/D:/source/runtime/
+40-test preservation and reproducing all original comparisons. Its passing
+D:-verified review gates prepare-cleft-open.py and start-cleft-open-window.ps1
+(51 tests, old replay, new references, final backup; no live monitoring).
+Capture authoring build passes zero warnings/errors; Python/PowerShell syntax
+and static input/inventory checks pass. No new reviewer/preparer/launcher/test/
+model/reference executed. An async completion question for 3076da, 30755e and
+1e2f21 awaits the operator; no pending capture inspected. Do not confuse this
+operator qualification with coupled channel/time dynamics or sensory firing.

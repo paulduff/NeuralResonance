@@ -319,3 +319,53 @@ Next prepare an independent open-graph comparison retaining the original closed
 vectors/results as regression evidence, then couple actual local membrane currents
 and gates, stationary initialization and time integration. The aperture derivative
 alone does not establish free-cell sensory dynamics or afferent firing.
+
+## Independent open-boundary qualification workflow
+
+The new workflow is authored but not executed. `cleft_open_protocol.py` retains
+each of the 96 original synthetic spatial inputs with either one opening face
+or two half-area faces at the last compartment: 192 complete cases. Total aperture
+area is 0.02 um², centre-to-boundary distance 0.25 um, and the explicitly named
+perilymph reservoir has K=5/Na=140 mM. These are declared numerical fixtures,
+not an anatomical aperture calibration or a new physiological fit. Original
+closed inputs and all absolute/relative limits remain unchanged.
+
+`CleftOpenStudy` / `--cleft-open CLOSED_INPUT OPEN_INPUT NEW_OUTPUT` records the
+complete open evaluations and re-evaluates the original 468 edge, 60 local charge
+and 96 spatial cases. `analyse-cleft-open.py` requires all five closed output files
+(input, summary and three record streams) to match the reviewed capture byte for
+byte, including fingerprints and floating values. This is a separate regression
+criterion; a tolerance match cannot replace it silently.
+
+For each new open case, `cleft_open_reference.py` independently constructs the
+entire capacitor graph and solves its dynamic-node matrix by dense elimination.
+Aperture flux uses the direct exponential expression and explicit face geometry,
+without a reservoir volume or the candidate's stable Bernoulli/Schur evaluation.
+Both 60- and 90-digit references are retained. Every reported voltage/concentration
+rate, charge/rate, electrical energy, internal/aperture transfer and reservoir
+holding-current quantity is compared. Reference agreement uses 1e-40 absolute
+plus relative; candidate agreement uses 2e-10 absolute plus 2e-12 relative.
+
+The sequence is:
+
+1. After the operator reports closed-cleft completion, `review-cleft-coupling.py`
+   verifies full C:/D: files, frozen source/binaries, runtime, exact 40-test
+   inventory and all saved 60/90-digit/native comparison values. It reproduces
+   the saved analysis without reevaluating a candidate or reference equation.
+2. Back up that new review to D:. `prepare-cleft-open.py CLOSED_REVIEW` requires
+   its passing outcome and pinned source revision, preserved original inputs,
+   closed evaluator/reference/test sources, existing hair/calyx/live sensory
+   sources and exact runtime equality. The transport/spatial extension is qualified
+   through the required closed replay plus new open cases, not claimed unchanged.
+3. From clean pushed source, freeze the new package and verify its initial D:
+   backup. `start-cleft-open-window.ps1` owns 51 focused cases, 624 closed replay
+   records, 192 open evaluations, both independent precisions and final backups.
+   It starts a separate visible PowerShell window with no live monitoring.
+
+The capture project builds with zero warnings/errors; five Python files and the
+PowerShell launcher parse, and static inputs/test inventory match 192/51. None
+of this new reviewer, preparer, launcher, unit tests or numerical reference has
+executed. Reports for closed `3076da`, rubral `30755e` and skull `1e2f21` remain
+requested but unanswered. No pending output/status/process was inspected.
+Passing this workflow would qualify an instantaneous open spatial operator and
+closed-code preservation, not a time-integrated receptor, afferent or balance.

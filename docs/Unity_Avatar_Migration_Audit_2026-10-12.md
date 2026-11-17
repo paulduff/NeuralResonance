@@ -1221,3 +1221,11 @@ Original closed outputs/fingerprints are retained, with refactor regression stil
 required. Eleven prospective tests compile; no test/reference execution or live
 editor/Unity/Avatar selection occurred. See the cleft document for the maintained
 bath approximation and missing anatomical, membrane/time and afferent integration.
+
+Open-boundary qualification now has an authored frozen workflow: 51 focused
+cases, all 624 original closed records required byte-identical, and 192 open
+graphs compared with independent full-matrix/direct-exponential references at
+60/90 digits. The operator-completed closed review and its D: backup are required
+before preparation. Capture build and static script/inventory checks pass; no
+new window/model/test ran. Actual local channel coupling, stationary state,
+time integration, afferent firing and live editor/body selection remain absent.

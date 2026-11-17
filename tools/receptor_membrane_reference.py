@@ -202,7 +202,8 @@ def meets(error, criteria, prefix):
 def main(package):
     if not __debug__: raise RuntimeError('Numerical acceptance assertions must remain enabled.')
     assert Path(__file__).resolve() == (package / 'source/tools/receptor_membrane_reference.py').resolve(), 'Execute the frozen reference source.'
-    spec = read(package / 'receptor-membrane-input.json'); assert spec == protocol()
+    from receptor_membrane_protocol import crossing_mode
+    spec = read(package / 'receptor-membrane-input.json'); crossing_mode(spec)
     config = read(package / 'configuration.json')
     assert config['IsolatedReceptorMembraneComparison'] and config['NoLiveMonitoring']
     assert config['MotorSourceRevision'] == spec['motorSourceRevision'] and config['ReceptorSourceRevision'] == spec['receptorSourceRevision']

@@ -7,7 +7,7 @@ import re
 import sys
 import uuid
 import numpy as np
-from receptor_membrane_protocol import protocol
+from receptor_membrane_protocol import protocol, crossing_mode, cell_version
 
 read = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
 GATES = np.r_[np.arange(5, 14), np.arange(15, 27)]
@@ -52,11 +52,20 @@ def units(time):
 
 def audit(package):
     if not __debug__: raise RuntimeError('Audit assertions must remain enabled.')
-    spec = read(package / 'receptor-membrane-input.json'); assert spec == protocol()
+    spec = read(package / 'receptor-membrane-input.json'); mode = crossing_mode(spec)
+    predictions = None
+    if mode == 'CubicHermite':
+        config = read(package / 'configuration.json')
+        assert config['IsolatedReceptorCubicComparison'] and config['CrossingLocalizationToleranceMs'] == 1e-9
+        assert read(package / 'legacy-state-analysis.json')['passed'], 'Require exact original endpoint trajectories first.'
+        predictions = read(package / 'reference/saved-endpoint-crossings.json')['rows']
+        assert len(predictions) == 27
+        legacy_hashes = {r['key']:r['trajectorySha256'] for r in read(package / 'reference/legacy-trajectories.json')}
+        assert len(legacy_hashes) == 18
     study = package / 'membrane-study'; meta = read(study / 'protocol.json'); results = read(study / 'results.json')
     assert meta['inputSha256'] == digest(package / 'receptor-membrane-input.json')
     assert meta['specification'] == {key: spec[key] for key in meta['specification']}
-    version = 'isolated-motoneuron-five-compartment-rk4-compensated-v2+point-receptors-stage-evaluated-v1'
+    version = cell_version(spec)
     assert meta['candidateVersion'] == version and meta['contactVersion'] == 'isolated-motor-receptor-two-state-v1'
     assert results['completed'] and results['expectedConditions'] == len(results['cases']) == spec['candidateConditions'] == 18
     assert results['numericalAccuracyQualified'] is False
@@ -119,6 +128,7 @@ def audit(package):
             if original_ids is None: original_ids = event_sets
             else: assert event_sets == original_ids
             path = folder / 'trajectory.csv'; assert digest(path) == outcome['trajectorySha256']
+            if mode == 'CubicHermite': assert outcome['trajectorySha256'] == legacy_hashes[outcome['key']]
             with path.open() as stream: header = stream.readline().strip().split(',')
             assert header == ['timeMs','dtMs'] + ['state'+str(i) for i in range(30)] + ['receptor_'+c for c in order]
             data = np.loadtxt(path, delimiter=',', skiprows=1, ndmin=2)
@@ -137,9 +147,20 @@ def audit(package):
             assert np.all((trajectory[:,30:]>=0)&(trajectory[:,30:]<=1)) and np.all(trajectory[0,:5]==spec['initialVoltageMv'])
             assert np.all(trajectory[0,30:]==0) and np.array_equal(trajectory[-1,:30],state['membraneState'])
             crossing_rows=np.flatnonzero((trajectory[:-1,0]<spec['thresholdMv'])&(trajectory[1:,0]>=spec['thresholdMv']))
-            crossings=np.array([float(time[i])+float(dt[i+1])*(spec['thresholdMv']-float(trajectory[i,0]))/
-                (float(trajectory[i+1,0])-float(trajectory[i,0])) for i in crossing_rows])
-            assert np.array_equal(crossings,state['crossings']) and len(crossings)==outcome['crossings']
+            if mode == 'Linear':
+                crossings=np.array([float(time[i])+float(dt[i+1])*(spec['thresholdMv']-float(trajectory[i,0]))/
+                    (float(trajectory[i+1,0])-float(trajectory[i,0])) for i in crossing_rows])
+                assert np.array_equal(crossings,state['crossings'])
+            else:
+                crossings=np.asarray(state['crossings'],dtype=float)
+                expected=sorted((r for r in predictions if r['scenario']==scenario['key'] and r['maximumStepMs']==maximum),key=lambda r:r['ordinal'])
+                assert len(expected)==len(crossings)==len(crossing_rows)
+                assert [r['ordinal'] for r in expected]==list(range(len(expected)))
+                assert np.isfinite(crossings).all() and np.all(np.diff(crossings)>0)
+                for at,index,prior in zip(crossings,crossing_rows,expected):
+                    assert time[index]<=at<=time[index+1], 'A published event must lie in its completed threshold bracket.'
+                    assert abs(at-prior['estimates']['candidate']['timeMs'])<=1e-9, 'Native event differs from the reviewed endpoint cubic.'
+            assert len(crossings)==outcome['crossings']
             delivered=sum(len(c['sourceTimesMs']) for c in contacts)
             assert not state['faulted'] and state['timeMs']==spec['durationMs'] and state['integrationVersion']==version
             assert state['integrationSteps']==len(time)-1 and final['rows']==len(time)

@@ -7,6 +7,7 @@ import re
 import sys
 import numpy as np
 from receptor_motor_output_protocol import protocol
+from receptor_membrane_protocol import crossing_mode
 
 read = lambda p: json.loads(p.read_text(encoding='utf-8-sig'))
 
@@ -27,8 +28,8 @@ def audit(package, candidate=None):
     if not __debug__: raise RuntimeError('Saved-data acceptance assertions must remain enabled.')
     base = module('motor_output_baseline_audit', Path(__file__).with_name('audit-receptor-membrane.py'))
     if candidate is None: candidate = base.audit(package)
-    spec = read(package / 'receptor-motor-output-input.json'); assert spec == protocol()
     membrane = read(package / 'receptor-membrane-input.json')
+    spec = read(package / 'receptor-motor-output-input.json'); assert spec == protocol(crossing_mode(membrane))
     config = read(package / 'configuration.json')
     assert config['IsolatedReceptorMembraneComparison'] and config['SourceOutputComparisonRequested']
     assert config['ExpectedSourceOutputConditions'] == spec['sourceConditions'] == 36

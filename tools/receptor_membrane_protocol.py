@@ -1,7 +1,8 @@
 """Prospective receptor/motor numerical protocol; no model execution on import."""
 
 
-def protocol():
+def protocol(crossing='Linear'):
+    assert crossing in ('Linear', 'CubicHermite')
     excitation = [1000.125 + 10 * i for i in range(20)]
     inhibition = [1050.375 + 20 * i for i in range(8)]
 
@@ -12,7 +13,7 @@ def protocol():
     def distributed():
         return [contact('exc-' + str(i), i, 'AMPA', 50, excitation) for i in range(1, 5)]
 
-    return dict(version='receptor-membrane-comparison-v1', durationMs=1500, sampleMs=.1,
+    spec = dict(version='receptor-membrane-comparison-v1', durationMs=1500, sampleMs=.1,
         initialVoltageMv=-65, stepsMs=[.0125, .00625, .003125], stateAccumulation='Compensated',
         motorSourceRevision='0d11354490fad5fcd940d016a8d69b000693fd81',
         receptorSourceRevision='937ed5d0d04519d4cd7af474a0f6c53a6e437e06',
@@ -36,3 +37,17 @@ def protocol():
         presynapticEventsAreFixtures=True, presynapticNeuronsExecuted=False,
         allCandidateAcceptedEndpointsCompared=True, nativePhysicsExecuted=False,
         liveBrainAccessed=False, physiologicalCalibrationComplete=False, avatarRecoveryAssessed=False)
+    # Preserve every legacy input field and all numerical acceptance criteria.
+    if crossing == 'CubicHermite': spec['crossingInterpolation'] = crossing
+    return spec
+
+
+def crossing_mode(spec):
+    mode = spec.get('crossingInterpolation', 'Linear')
+    assert mode in ('Linear', 'CubicHermite') and spec == protocol(mode)
+    return mode
+
+
+def cell_version(spec):
+    suffix = '+cubic-hermite-crossings-v1' if crossing_mode(spec) == 'CubicHermite' else ''
+    return 'isolated-motoneuron-five-compartment-rk4-compensated-v2' + suffix + '+point-receptors-stage-evaluated-v1'

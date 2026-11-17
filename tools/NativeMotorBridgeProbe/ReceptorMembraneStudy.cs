@@ -17,11 +17,27 @@ internal static class ReceptorMembraneStudy
     private static void Save(string path, object value) => File.WriteAllText(path, JsonSerializer.Serialize(value, Json));
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 
+    internal static MotoneuronCrossingInterpolation CrossingMode(string input)
+    {
+        using var document = JsonDocument.Parse(File.ReadAllBytes(input));
+        if (!document.RootElement.TryGetProperty("crossingInterpolation", out var mode))
+            return MotoneuronCrossingInterpolation.Linear;
+        Require(mode.ValueKind == JsonValueKind.String && mode.GetString() == "CubicHermite",
+            "Only the explicit CubicHermite extension or original absent-field linear protocol is supported.");
+        return MotoneuronCrossingInterpolation.CubicHermite;
+    }
+
+    internal static string CellVersion(MotoneuronCrossingInterpolation mode) =>
+        MotoneuronReferenceCell.CompensatedVersion +
+        (mode == MotoneuronCrossingInterpolation.CubicHermite ? MotoneuronCrossing.CubicVersionSuffix : "") +
+        "+point-receptors-stage-evaluated-v1";
+
     internal static void Run(string input, string output)
     {
         Require(Path.IsPathFullyQualified(input) && File.Exists(input) && Path.IsPathFullyQualified(output) && !Directory.Exists(output),
             "Require a frozen absolute input and new output folder.");
         byte[] bytes = File.ReadAllBytes(input); string inputHash = Convert.ToHexString(SHA256.HashData(bytes));
+        var crossing = CrossingMode(input);
         var spec = JsonSerializer.Deserialize<Specification>(bytes, Json);
         Require(spec is not null && spec.Version == "receptor-membrane-comparison-v1" && spec.DurationMs == 1500 && spec.SampleMs == .1 &&
             spec.InitialVoltageMv == -65 && spec.StateAccumulation == "Compensated" && spec.Cell == "FivecomptcMG_0" &&
@@ -34,7 +50,7 @@ internal static class ReceptorMembraneStudy
         Directory.CreateDirectory(output); var outcomes = new List<object>();
         Save(Path.Combine(output, "protocol.json"), new { inputSha256 = inputHash, specification = spec,
             motorParameters = MotoneuronReferenceParameters.CatLowThreshold,
-            candidateVersion = MotoneuronReferenceCell.CompensatedVersion + "+point-receptors-stage-evaluated-v1",
+            candidateVersion = CellVersion(crossing),
             contactVersion = MotorReceptorContact.Version, presynapticEventsAreFixtures = true,
             postsynapticNeuronExecutionRequested = true,
             presynapticNeuronsExecuted = false, nativePhysicsExecuted = false, liveBrainAccessed = false,
@@ -61,7 +77,8 @@ internal static class ReceptorMembraneStudy
                         c.Kind == "AMPA" ? MotorReceptorKind.AmpaReference : MotorReceptorKind.GabaAReference,
                         c.MaximumConductanceNs, c.AxonalDelayMs);
                 }).ToArray();
-                var cell = new ReceptorDrivenMotoneuron(MotoneuronReferenceParameters.CatLowThreshold, definitions, session, spec.InitialVoltageMv);
+                var cell = new ReceptorDrivenMotoneuron(MotoneuronReferenceParameters.CatLowThreshold, definitions, session,
+                    spec.InitialVoltageMv, crossingInterpolation: crossing);
                 var admissions = new List<object>(); var boundaries = new SortedSet<double> { spec.DurationMs };
                 long expectedEvents = 0;
                 for (int i = 0; i < definitions.Length; ++i)

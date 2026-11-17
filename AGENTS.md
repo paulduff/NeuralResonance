@@ -2013,3 +2013,16 @@ No reports are pending. The operator requested notes and a pause until tomorrow;
 `docs/DNNE_Checkpoint_2026-11-16.md` records the source findings and next spindle/
 native-timing work. Finish committing/pushing this checkpoint and pause the goal;
 do not start another run until the operator resumes.
+
+On 17 November the operator explicitly resumed the goal; it is active again.
+The clean checkpoint was inspected. The next authored work is the full native
+cubic receptor/motor comparison in `docs/DNNE_Cubic_Receptor_Comparison_2026-11-17.md`.
+Only two probe adapters select the existing optional timing mode; the neuron and
+receptor equations are unchanged. Its single visible window must rebuild/pass
+124 cases and five original regressions, preserve all 18 original raw state CSVs
+exactly, then run 36 source/receiver cases and the full independent comparison.
+All 27 native event times must also match the reviewed endpoint cubic within the
+prospective 1e-9 ms consistency limit; original numerical bounds are unchanged.
+Build/syntax checks are complete, with no inline tests or model integration.
+Spindle coupled attachment/detachment remains open. No current reports are pending
+until this new comparison is separately launched; do not infer success from setup.

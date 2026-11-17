@@ -64,7 +64,9 @@ internal static class ReceptorMotorOutputStudy
             File.Exists(membraneInput) && File.Exists(outputInput) && Directory.Exists(baseline) &&
             !Directory.Exists(output) && !File.Exists(output), "Require frozen absolute inputs and a new output directory.");
         var spec = Read<Specification>(outputInput);
-        Require(spec is not null && spec.Version == "receptor-motor-output-comparison-v1" && spec.SourceVersion == ReceptorMotorSource.Version &&
+        var crossing = ReceptorMembraneStudy.CrossingMode(membraneInput);
+        string sourceVersion = crossing == MotoneuronCrossingInterpolation.CubicHermite ? ReceptorMotorSource.CubicVersion : ReceptorMotorSource.Version;
+        Require(spec is not null && spec.Version == "receptor-motor-output-comparison-v1" && spec.SourceVersion == sourceVersion &&
             spec.BaselineConditions == 18 && spec.SourceConditions == 36 && spec.SampleMs == .1 && spec.DurationMs == 1500 &&
             spec.PublicationEverySamples.SequenceEqual(new[] { 1, 17 }) && spec.RetryEveryBatches == 37 &&
             spec.BackpressureEveryBatches == 113 && spec.MotorUnit == "fixture-motor-unit" && spec.ConductionDelayMs == 2.0625,
@@ -72,6 +74,7 @@ internal static class ReceptorMotorOutputStudy
         using var meta = JsonDocument.Parse(File.ReadAllText(Path.Combine(baseline, "protocol.json")));
         using var results = JsonDocument.Parse(File.ReadAllText(Path.Combine(baseline, "results.json")));
         Require(meta.RootElement.GetProperty("inputSha256").GetString() == Hash(membraneInput) &&
+            meta.RootElement.GetProperty("candidateVersion").GetString() == ReceptorMembraneStudy.CellVersion(crossing) &&
             results.RootElement.GetProperty("completed").GetBoolean() && results.RootElement.GetProperty("cases").GetArrayLength() == 18,
             "Require the completed raw candidate recorder from these exact inputs.");
         Directory.CreateDirectory(output); var outcomes = new List<object>(); bool excitedCrossings = false;
@@ -101,13 +104,14 @@ internal static class ReceptorMotorOutputStudy
                     string folder = Path.Combine(output, key); Directory.CreateDirectory(folder);
                     var target = inputs.Admissions[0].Definition;
                     var identity = new ReceptorMotorIdentity(target.TargetInstance, target.TargetNeuron,
-                        StableNeuralIdentity.Create(ReceptorMotorSource.Version, "projection", inputs.Session, target.TargetInstance, target.TargetNeuron),
-                        StableNeuralIdentity.Create(ReceptorMotorSource.Version, "synapse", inputs.Session, target.TargetInstance, target.TargetNeuron));
+                        StableNeuralIdentity.Create(sourceVersion, "projection", inputs.Session, target.TargetInstance, target.TargetNeuron),
+                        StableNeuralIdentity.Create(sourceVersion, "synapse", inputs.Session, target.TargetInstance, target.TargetNeuron));
                     var anatomy = new MotorAxonAnatomy([MotorAxonContact.Create(identity.Instance, identity.Neuron, identity.Projection,
                         spec.MotorUnit, spec.ConductionDelayMs)]);
                     var clock = new MotorAxonClock(inputs.Session, 0, 0);
                     var source = new ReceptorMotorSource(MotoneuronReferenceParameters.CatLowThreshold,
-                        inputs.Admissions.Select(a => a.Definition).ToArray(), inputs.Session, identity, inputs.MaximumStepMs);
+                        inputs.Admissions.Select(a => a.Definition).ToArray(), inputs.Session, identity, inputs.MaximumStepMs,
+                        crossingInterpolation: crossing);
                     var lane = new ReceptorMotorLane(source, anatomy, clock, maximumBatches: 1);
                     var receiver = new AvatarMotorAxonReceiver(anatomy, clock);
                     foreach (var admission in inputs.Admissions)

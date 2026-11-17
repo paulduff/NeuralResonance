@@ -84,20 +84,47 @@ motion at one resolution, not a new step-convergence demonstration.
 
 ## Current state and remaining launch requirements
 
-The driver, complete trace recorder and independent audit/reference workflow are
-authored. The Release probe build passes with zero warnings/errors; both Python
-files pass syntax parsing. No new model, test, Unity player or reference solve has
-run. Existing pending packages were not inspected or changed.
+The driver, trace recorder, independent audit/reference workflow and frozen
+PowerShell pipeline are authored. The Release probe build passes with zero
+warnings/errors. Python/PowerShell syntax and the static combined inventory pass:
+281 cases in 21 distinct classes, including the 161 circuit cases and existing
+muscle/path/plant/calcium/clock/read regressions. Source inspection confirms all
+20 reused body/reference files match the completed native-body capture. The only
+decoder difference is the explicit additional step-count argument described above.
+No new model, test, Unity player or reference solve has run. Existing pending
+packages were not inspected or changed.
 
-Do not launch this driver from the working checkout. First review the operator-
-reported circuit gate and preserve its verified source/binary/runtime evidence.
-The remaining work is to package the native study: freeze a clean pushed source,
-copy the reviewed circuit and original motor/muscle/native references, verify
-unchanged core implementations and numerical dependencies, define the combined
-exact focused-test inventory, build a separate player, and launch the full
-pipeline in one visible independent PowerShell window with initial/final D:
-verification and no live monitoring. The current driver entry point checks the
-gate's complete analysis, but it does not replace that provenance/packaging work.
+Do not launch this driver from the working checkout. The explicit sequence is:
+
+1. After the operator reports circuit completion, use
+   `review-rubral-circuit.py CAPTURE NEW_REVIEW --operator-reported-complete`.
+   It verifies complete C:/D: files, frozen Git, binaries, exact tests, the full
+   saved circuit audit and preserved runtime. It runs no neurons or tests and
+   refuses to overwrite a review. A failed capture needs diagnosis instead.
+2. Back up and verify that new review with `backup-unity-run.ps1`.
+3. Run `rubral_native_gate.py prepare NEW_REVIEW` using the pinned numerical
+   environment (`artifacts/numerical-reference-env-20261102/Scripts/python.exe`,
+   with `-B`). Preparation requires clean pushed source and the verified completed
+   review. It checks shared neuronal/core, existing native/muscle/reference source
+   preservation, the exact documented decoder extension and pinned dependency
+   hashes before copying the original references into a fresh source archive.
+   This is metadata preparation, not test/model execution.
+4. Back up and verify the prepared package, then invoke its frozen
+   `start-rubral-native-window.ps1 -PackageDirectory PACKAGE`.
+
+The launcher verifies both initial copies before opening an independent visible
+PowerShell window. Inside that window it checks metadata/dependencies, builds the
+test and probe assemblies, verifies the managed runtime before model execution,
+runs the exact 281-case suite, builds a separate Unity player, executes seven
+native conditions and all fifteen references, and audits every endpoint. It
+preserves compiled source/player/binary inventories, rechecks runtime and
+numerical dependencies even on failure, and performs the final verified D:
+backup. The window remains available for the operator; no live monitoring is
+authorized. Failed evidence is never retried in place.
+
+The circuit review, actual package preparation and launch remain pending the
+operator's completion report. The separate skull retry remains pending too.
+Neither report has been inferred from a status file or process check.
 
 This remains an isolated open-loop joint experiment. Upstream rubral numerical
 accuracy and physiological calibration are open; fixed reference contact efficacy

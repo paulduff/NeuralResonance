@@ -2417,3 +2417,19 @@ Before launch, review the operator-reported 7fc785 gate and finish frozen packag
 combined exact focused-test inventory, dependency/core preservation and visible
 PowerShell pipeline with D: verification. Current CLI gate checks do not replace
 that missing packaging/provenance work. Both pending reports remain unchanged.
+
+The pending native muscle packaging is now authored: review-rubral-circuit.py
+requires an explicit operator-complete flag and verifies all C:/D: evidence,
+Git/binaries, exact tests and reproduced saved audit without model execution.
+rubral_native_gate.py prepare requires that NEW D:-verified passing review, clean
+pushed source and preserved neuronal/body/reference sources. It freezes original
+references and verifies numerical dependencies. start-rubral-native-window.ps1
+then verifies initial backup, builds/checks managed runtime, runs the exact 281
+cases (21 classes), builds a separate Unity player, executes seven native trials
+and fifteen independent references, checks all endpoints and backs up even on
+failure. Syntax/static inventory pass; all 20 reused body/reference sources were
+read against the already reported bb10dc capture and remain unchanged. The only
+decoder extension is the documented explicit 7999-step acceptance; old defaults
+are unchanged. NO reviewer, preparation, test, model or launcher was executed
+for pending runs. No pending outputs/status/processes were inspected. Still only
+skull 1e2f21 and circuit 7fc785 await the operator. Full goal remains active.

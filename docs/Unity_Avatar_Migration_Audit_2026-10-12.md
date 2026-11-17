@@ -1151,3 +1151,9 @@ physical step covered by it. Independent source/force/reference audits are autho
 none have run and packaging remains to be completed after the pending circuit gate
 is reported/reviewed. See `DNNE_Rubral_Native_Muscles_2026-11-17.md`. No live Avatar,
 sensory mechanism, editor selection or world-start behavior changes.
+
+The native rubral package/launcher is now authored, with a required reviewed
+circuit pass, exact 281-case inventory, unchanged body/reference source checks,
+runtime/dependency preservation and separate Unity build. Its seven native trials
+and fifteen independent references remain unexecuted. No package was prepared
+and no extra window was launched while the two operator reports are pending.

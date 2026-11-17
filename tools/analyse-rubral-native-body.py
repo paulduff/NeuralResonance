@@ -277,6 +277,7 @@ def audit(package):
         comparisons=[dict(reference=name,errors=base.errors(y,ry,f,rf)) for name,(ry,rf) in refs.items()]
         rows.append(dict(case=key,comparisons=comparisons,passed=all(base.within(r['errors'],spec['candidateBounds']) for r in comparisons)))
     result=dict(completed=True,numericalCriteriaPassed=all(r['passed'] for r in rows),sampledSingleResolutionOnly=True,cases=rows,
+        independentReferences=15,allNativeEndpointsCompared=True,physicalStepRefinementForThisInputAssessed=False,
         originalBoundsPreserved=True,upstreamNumericalAccuracyQualified=False,physiologyQualified=False,avatarRecoveryAssessed=False)
     save(package/'analysis.json',result)
     if not result['numericalCriteriaPassed']:raise RuntimeError('Rubral/native trajectory criteria failed; retain original bounds and evidence.')

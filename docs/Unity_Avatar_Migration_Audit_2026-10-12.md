@@ -1129,3 +1129,16 @@ unit scale, while retaining computed scale and old-guard outcome as diagnostics.
 Existing coordinate/velocity bounds and actual physical dynamics are unchanged.
 Thirty-three native transform controls and the full capture must run again in a
 fresh visible window; no full native head qualification has yet passed.
+
+## Rubral circuit ownership before muscle coupling — 17 November
+
+The reviewed ten-input circuit now emits original motor spikes. Before joining
+the existing observed-neuron/native-muscle path, an isolated RubralMotorCircuit
+owns the upstream DNNE population and receiving motor cell together. Its proposed
+body epoch retains the entire quiet 1,000 ms prefix; unacknowledged output holds
+both neurons. Existing Avatar motor anatomy, receiver, muscle plant, mechanics
+and sensory code remain unchanged. The prospective 161-case/ten-condition gate
+must preserve complete original trajectories and event accounting. See
+`DNNE_Rubral_Body_Ownership_2026-11-17.md`. It has no live/editor selection and
+does not yet qualify moving-muscle coupling or sensory return. The separate
+native skull retry still awaits the operator's completion report.

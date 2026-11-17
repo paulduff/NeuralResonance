@@ -2377,3 +2377,16 @@ No post-launch output/status/process inspected. This is the ONE pending report;
 do not inspect it until the operator reports completion. Native hierarchy controls
 and sampling remain unqualified. Failed 733e7c and its separate review are preserved
 and D: verified. Main goal stays active and unfinished.
+
+Independent motor continuation while skull 1e2f21 awaits the operator: inspected
+the existing observed-neuron/native body, Avatar receiver/causal muscle plant and
+native hinge implementations. New isolated RubralMotorCircuit owns the actual
+ten-input source and receptor motor cell together, retains quiet priming, binds
+an explicit body epoch and holds both neurons on unacknowledged output. No live
+host or biological model changes. Its source gate compares ten fresh conditions
+against the completed authoritative ten-input capture: 120,000 source frames,
+150,010 motor CSV rows and all original events; 161 focused cases are prospective.
+See DNNE_Rubral_Body_Ownership_2026-11-17.md. No model/test executes inline; use a
+fresh frozen D:-verified visible window and await its operator report. Native
+muscle execution, sensory return and recovery remain later gates. Never inspect
+the pending head retry as part of motor preparation.

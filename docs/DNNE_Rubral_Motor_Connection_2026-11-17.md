@@ -94,3 +94,14 @@ changes, and no World/Unity process is started.
 Authoring: source builds and Python/PowerShell syntax checks are separate from
 the pending tests. The independent continuously moving spindle reference remains
 the other outstanding numerical task.
+
+## Launch record
+
+Launched as `rubral-motor-20261117-e42efc`, frozen at
+`4cffbcc2a05e8e8233131c01c7c22b7e0975fee9`, in independent visible task
+`DNNE-Rubral-Motor-f79577aed07e`. The initial 1,734 files plus manifest were
+verified on D:. The authoring probe/test projects built with zero warnings or
+errors; Python/PowerShell syntax and the 136-case source inventory were checked.
+These checks did not execute tests or neuronal integrations. No post-launch
+output, status or process has been inspected. This is the only pending operator
+completion report; the goal remains active and unfinished.

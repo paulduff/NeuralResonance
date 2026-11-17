@@ -2105,3 +2105,14 @@ accuracy, physiology and learned efficacy are not qualified by this connection.
 Build/syntax checks are not execution. Freeze clean pushed source and D: backups,
 launch visibly and await the operator; no live monitoring. A completed accounting
 study with ObservedNeuronalMotorResponse=false is not motor-authority success.
+
+The rubral experiment is now launched as `rubral-motor-20261117-e42efc`, frozen
+at `4cffbcc2a05e8e8233131c01c7c22b7e0975fee9`, visible task
+`DNNE-Rubral-Motor-f79577aed07e`. Its 1,734 initial files plus manifest are D:
+verified. Authoring builds and syntax/inventory checks completed without inline
+model/test execution. This is the only pending operator report. No post-launch
+output/status/process has been inspected; do not monitor it. The actual source
+uses 0.25/1/4 fixture quanta, identical anatomical/input identities across fresh
+conditions, and original source substep times. Full payloads, terminal pending
+events and disabled-contact evidence must be reviewed after completion. The
+moving spindle reference and full neuronal brain/body/world goal remain open.

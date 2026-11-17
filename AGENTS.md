@@ -2060,3 +2060,18 @@ after launch. Review only on operator completion. The whole goal stays active;
 moving spindle accuracy, physiology, live neural authority and Avatar recovery
 remain unqualified. Next decisions must use full saved distributions, not force
 or grid totals alone, and keep frozen failures/reference limits unchanged.
+
+The operator has now reported spindle coupling `85ae1d` complete. Review
+`spindle-coupling-review-20261117` verifies 1,992 C:/D: files, 1,720 Git files,
+twelve controls, eighteen fixed cases/54 independent contrasts and 36 moving
+cases. All 7,614 physical endpoints and 32,561 accepted reaction nodes reconcile;
+ledger errors are below 9.33e-15. Fixed state/stress errors are at most 2.37e-12
+and 4.10e-7 Pa. The one-file review is D: verified; no model was rerun.
+Moving full-distribution discrepancy is still up to 0.01497 (about 3.37% of
+the attached population in the worst shape case); force discrepancy reaches
+20.92 Pa across tested time steps. Doubling the domain barely changes these
+short trials. Next establish an independent continuous-movement reference and
+its discretization accuracy; do not tune biology or promote the finest sampled
+step on self-agreement alone. See the completed coupled-chemistry document.
+Only receptor cubic `94d05d` remains pending; do not inspect it without its own
+operator completion report. The full goal is active and unfinished.

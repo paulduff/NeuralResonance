@@ -104,3 +104,54 @@ transport or integration executed during authoring/preparation. This run and
 `receptor-cubic-20261117-94d05d` await operator completion reports. Neither was
 monitored after launch. Do not infer a test pass or running/completed state from
 this launch record. The full goal remains active and unfinished.
+
+## Completed review
+
+The operator subsequently reported `85ae1d` complete. The saved-data review in
+`tools/review-spindle-coupling-20261117.py` verifies 1,992 files and 141,653,085
+bytes per C:/D: copy, 1,789 protected package files and 1,720 frozen Git files.
+The numerical environment matches preparation and both completed reference
+studies. The separate one-file `artifacts/spindle-coupling-review-20261117`
+review is D: verified. No model, control, transport or integration was rerun
+during review; the reviewer rejects candidate construction/integration.
+
+All twelve controls passed. All eighteen fixed-length cases agree with the
+three independently solved references (54 contrasts). Maximum state difference
+is 2.3652746428126648e-12 and maximum cross-bridge stress difference is
+4.099420038983226e-7 Pa, inside the unchanged original bounds.
+
+All 36 prescribed moving cases completed. The reviewer reconciles all 7,614
+fixed/moving physical endpoints, all 15,120 reaction operators and 32,561
+accepted reaction nodes. Maximum myosin/actin ledger discrepancy is
+9.325873406851315e-15; no accepted domain violation is observed. Every saved
+interval distribution reconstructs its mass, force and first/second moments.
+Input calcium, prescribed movement and reaction order also reconcile.
+
+Movement remains sensitive to integration resolution. Comparing 1,000 us
+steps with 250 us steps gives a maximum full-distribution L1 difference of
+0.01497073601286544 and a maximum stress difference of 20.91927192811272 Pa.
+For the Bag shortening/return case, the maximum shape difference occurs at
+30 ms, with attached fraction 0.4437927445850332: the difference is about 3.37%
+of that attached population. This is distribution discrepancy, not material
+loss. Reducing to 500 us roughly halves the shape differences against 250 us;
+force differences are around one fifth as large. Comparisons against a common
+finite-resolution result do not establish an asymptotic order or exact solution.
+
+Doubling the strain-domain half-range changes full-distribution L1 by at most
+2.5540090203511457e-15 and force by 4.94765117764473e-10 Pa in these short,
+initially detached trials. This gives no reason to enlarge the domain to repair
+the observed time-step discrepancy. It does not qualify boundary behavior for
+preloaded, larger or prolonged excursions. The retained representation reaches
+6,440 intervals in the wide-domain fine-step stretch case. Recorded elapsed
+times are not standalone performance measurements.
+
+The next numerical question is the moving reaction/transport composition:
+compare against an independently implemented continuous-movement reference,
+checking reference discretization as well as candidate refinement. Preserve
+the current source, fixed-length references and full distributions. Do not
+change physiological rates to compensate for numerical splitting error or
+promote the present 250 us setting merely because it is the finest sampled.
+Independent moving accuracy, spatial/temporal convergence, slack mechanics,
+afferent firing, physiological calibration and native/live Avatar integration
+remain unqualified. The receptor cubic report `94d05d` is still pending and
+has not been monitored.

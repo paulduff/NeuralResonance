@@ -124,3 +124,9 @@ The candidate and native capture builds succeed with zero warnings/errors.
 Python and PowerShell syntax and the 47-case static inventory pass. These are
 authoring checks; no new model/test has run inline. Numerical results are pending
 execution and subsequent operator-reported review.
+
+The study is now launched as `vestibular-hair-cell-20261117-959475`, frozen at
+revision `59b586bdb85a190797b077a9644b2e88496012f0`, in visible task
+`DNNE-Hair-Cell-47ad90abec01`. Its initial 1,801 files plus manifest were verified
+on D:. No post-launch output, status or process has been inspected. Await the
+operator's completion report before reading results; launch is not a pass.

@@ -2502,3 +2502,12 @@ preserved. Both authoring builds, syntax and static inventory pass, but no new
 model/test has executed inline. Freeze/push/back up before the visible window;
 inspect only after the operator reports completion. The native skull 1e2f21 and
 rubral-native 4cdba5 outputs/status/processes remain untouched and pending.
+
+Hair-cell study is now frozen/launched as vestibular-hair-cell-20261117-959475,
+revision 59b586bdb85a190797b077a9644b2e88496012f0, visible task
+DNNE-Hair-Cell-47ad90abec01. Initial 1,801 files plus manifest D: verified.
+Preparation ran metadata/static checks only; all models/tests belong to that
+independent window. No post-launch outputs/status/processes inspected. THREE
+reports now await the operator: hair cell 959475, native skull retry 1e2f21,
+rubral/native muscle 4cdba5. Circuit 7fc785 remains completed and reviewed.
+Do not poll these windows. The full goal remains active and unfinished.

@@ -102,3 +102,18 @@ the original analysis from all saved native/independent current and clamp pairs.
 It does not evaluate a new channel state or clamp. The new review must receive
 its own verified D: backup before `prepare-cleft-coupling.py` can use it.
 Neither reviewer nor dependent preparation has run while `920328` is pending.
+
+## Completed component review
+
+The operator reported the final footer and backup for `920328`. The review in
+`artifacts/calyx-membrane-review-20261117/review.json` verifies all 2,365 files
+on both drives, all 1,797 Git source files, both binary inventories, unchanged
+managed/numerical runtimes and the exact 23 passing tests. All 15,984 saved
+current/gate pairs and 224 clamp/subdivision records reproduce the original
+passing analysis with its original limits. No new channel or clamp evaluation
+ran during review; the review has its own verified D: copy.
+
+This qualifies the declared membrane-current/gate arithmetic and analytic
+voltage clamps. It does not qualify free voltage, spatial cleft dynamics,
+afferent firing or Avatar balance. The dependent cleft component study has now
+run; see `DNNE_Cleft_Coupling_2026-11-17.md` for its separate outcome.

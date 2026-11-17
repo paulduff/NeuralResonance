@@ -13,11 +13,15 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def source_archive(common, package, revision):
-    archive = subprocess.check_output(['git', 'archive', '--format=zip', revision], cwd=ROOT)
+def source_archive(common, package, revision, *, reference_archive=None):
+    # Independent windows can use an archive generated from Git at preparation,
+    # bound by their immutable package manifest. No PATH/Git dependency then.
+    archive = (subprocess.check_output(['git', 'archive', '--format=zip', revision], cwd=ROOT)
+               if reference_archive is None else common.io(reference_archive).read_bytes())
     count = 0
     with ZipFile(BytesIO(archive)) as git, ZipFile(package / 'source.zip') as frozen:
-        assert frozen.comment.decode().strip() == revision and git.namelist() == frozen.namelist()
+        assert git.comment.decode().strip() == frozen.comment.decode().strip() == revision
+        assert git.namelist() == frozen.namelist()
         for entry in frozen.infolist():
             assert git.read(entry.filename) == frozen.read(entry)
             if not entry.is_dir():

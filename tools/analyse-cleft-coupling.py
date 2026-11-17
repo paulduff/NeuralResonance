@@ -89,6 +89,17 @@ def decimal_strings(value):
     return str(value)
 
 
+def captured_charge_input(row):
+    # System.Text.Json includes the three read-only derived port properties.
+    # Validate their values as well as the seven declared currents; do not
+    # discard extra fields or weaken the exact input inventory.
+    ports=row['ports']
+    return dict(row,ports=dict(ports,
+        hairChargeRatePa=-(ports['hairToEndolymphPa']+ports['hairToPerilymphPa']+ports['hairToCleftPa']),
+        cleftChargeRatePa=ports['hairToCleftPa']+ports['calyxToCleftPa']-ports['cleftOutgoingPa'],
+        calyxChargeRatePa=-(ports['calyxToCleftPa']+ports['calyxToPerilymphPa']+ports['calyxToAxonPa'])))
+
+
 def compare_values(actual,expected,absolute,relative,location=''):
     if isinstance(expected,str):
         assert actual==expected,location
@@ -133,7 +144,9 @@ def compare(package):
     spec=validate(read(package/'cleft-input.json'));assert environment()==read(package/'reference-preflight.json')['environment']
     tests=module('cleft_exact_tests',ROOT/'tools/receptor_membrane_gate.py').check_tests(package,COUNTS)
     captured=read(package/'study/input.json')
-    assert captured=={k:spec[k] for k in ('version','edgeVersion','chargeVersion','spatialVersion','edgeCases','chargeCases','spatialCases','expectedEdges','expectedCharges','expectedSpatial')}
+    expected_capture={k:spec[k] for k in ('version','edgeVersion','chargeVersion','spatialVersion','edgeCases','chargeCases','spatialCases','expectedEdges','expectedCharges','expectedSpatial')}
+    expected_capture['chargeCases']=[captured_charge_input(row) for row in spec['chargeCases']]
+    assert captured==expected_capture,'Captured protocol or derived port properties differ.'
     result=read(package/'study/results.json')
     assert result==dict(completed=True,edgeRows=468,chargeRows=60,spatialRows=96,timeIntegrated=False,
         spatialGeometryCalibrated=False,physiologyQualified=False,avatarRecoveryAssessed=False)
@@ -143,7 +156,8 @@ def compare(package):
         count=0
         with (package/'study'/(label+'.jsonl')).open() as source,(package/('independent-'+label+'.jsonl')).open('x') as target:
             for expected,line in zip(spec[key],source,strict=True):
-                row=json.loads(line);assert set(row)=={'input','fingerprint','evaluation'} and row['input']==expected
+                row=json.loads(line);assert set(row)=={'input','fingerprint','evaluation'}
+                assert row['input']==(captured_charge_input(expected) if label=='charges' else expected)
                 identity_keys=dict(edges=('material','geometry'),charges=('capacitances',),
                     spatial=('hairCellId','hairApicalPf','hairPerilymphPf','material','compartments','connections'))[label]
                 identity=json.dumps([expected[k] for k in identity_keys],sort_keys=True)

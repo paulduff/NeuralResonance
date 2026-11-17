@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.ReferenceOnlyContinuation -or -not $configuration.OperatorReportedCompletion -or -not $configuration.NoLiveMonitoring -or $configuration.NativePhysicsRerun -or $configuration.NeuronalCandidateRerun -or $configuration.OriginalBoundsChanged -or $configuration.ExpectedIndependentReferences -ne 15 -or $configuration.ExpectedNativePhysicsSteps -ne 55993){throw 'Unexpected reference continuation configuration.'}
+if(-not $configuration.ReferenceOnlyContinuation -or -not $configuration.OperatorReportedCompletion -or -not $configuration.SelfContainedSourceArchive -or -not $configuration.NoLiveMonitoring -or $configuration.NativePhysicsRerun -or $configuration.NeuronalCandidateRerun -or $configuration.OriginalBoundsChanged -or $configuration.ExpectedIndependentReferences -ne 15 -or $configuration.ExpectedNativePhysicsSteps -ne 55993){throw 'Unexpected reference continuation configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}

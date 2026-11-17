@@ -231,3 +231,21 @@ files plus manifest were D: verified before opening visible task
 `DNNE-Rubral-Comparison-fccfb9b34200`. Preparation checked saved metadata and source
 preservation only. Full input verification, loader controls and numerical work
 belong to that window; no post-launch output/status/process has been inspected.
+
+## Continuation packaging repair
+
+The operator reported `a6b77a` FAILED. Its saved traceback ends in `WinError 2`
+when source verification invokes `git archive`: Git is not on the scheduled
+PowerShell window's PATH. No loader controls or reference integration began.
+The completed review `artifacts/rubral-comparison-review-20261117/review.json`
+verifies all 1,851 C:/D: files and 1,799 frozen Git files; it has its own D: copy.
+
+The preparer now generates `capture-git-reference.zip` independently from the
+original Git commit and binds its SHA, commit comment and provenance into the
+new immutable package. The window compares its complete contents with the
+original `source.zip` and extracted source without invoking Git. The shared
+archive reviewer keeps its existing Git path for callers that do not supply a
+pinned reference archive. Source comparison now runs before the much larger
+native-file audit, so missing source dependencies fail early. Full C:/D: file
+verification still runs before and after the reference work. Neither failed
+package, the original native outputs, nor any numerical equation/bound is changed.

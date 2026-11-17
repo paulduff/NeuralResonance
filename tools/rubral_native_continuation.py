@@ -54,6 +54,12 @@ def prepare(capture, reported):
     package = ROOT/'artifacts'/('rubral-comparison-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists(); package.mkdir()
+    # Generate this independently from Git, never by copying the capture's zip.
+    # The visible window verifies it without depending on its inherited PATH.
+    git_reference = package/'capture-git-reference.zip'
+    subprocess.run(['git', 'archive', '--format=zip', '--output='+str(git_reference), FAILED_REVISION], cwd=ROOT, check=True)
+    with ZipFile(git_reference) as archive:
+        assert archive.comment.decode().strip() == FAILED_REVISION
     subprocess.run(['git', 'archive', '--format=zip', '--output='+str(package/'source.zip'), revision], cwd=ROOT, check=True)
     with ZipFile(package/'source.zip') as archive:
         for entry in archive.infolist():
@@ -85,6 +91,8 @@ def prepare(capture, reported):
         assert h.io(package/'source'/name).read_bytes() == h.io(capture/'source'/name).read_bytes(), name
     save(package/'continuation-input.json', dict(operatorReportedCompletion=True,
         capture=str(capture), captureManifestSha256=h.digest(capture/'backup-manifest.json'),
+        gitReferenceArchive=dict(path=git_reference.name, sha256=h.digest(git_reference), revision=FAILED_REVISION,
+                                 generatedFromGitDuringPreparation=True),
         captureRevision=FAILED_REVISION, copiedFiles=[dict(path=n, sha256=h.digest(package/n)) for n in copied],
         unchangedNumericalSources=[dict(path=n, sha256=h.digest(package/'source'/n)) for n in same],
         originalBoundsChanged=False, modelsExecutedDuringPreparation=False, testsExecutedDuringPreparation=False))
@@ -95,7 +103,7 @@ def prepare(capture, reported):
         'ExpectedIndependentReferences', 'EnvironmentTransitionDeclared', 'ExpectedEnvironmentControls',
         'ExpectedReferenceControlCounts')}
     config.update(Revision=revision, PackageFiles=files, BackupDestination=str(backup),
-        NativeCapture=str(capture), ReferenceOnlyContinuation=True, OperatorReportedCompletion=True,
+        NativeCapture=str(capture), ReferenceOnlyContinuation=True, OperatorReportedCompletion=True, SelfContainedSourceArchive=True,
         PythonExecutable=sys.executable, PythonExecutableSha256=h.digest(sys.executable),
         NativePhysicsRerun=False, NeuronalCandidateRerun=False, OriginalBoundsChanged=False,
         PhysiologyQualified=False, AvatarRecoveryAssessed=False)
@@ -120,16 +128,35 @@ def require_review(package):
     return report
 
 
+def verify_archive(package):
+    config = h.read(package/'configuration.json'); inputs = h.read(package/'continuation-input.json')
+    assert config['SelfContainedSourceArchive'] and config['ReferenceOnlyContinuation']
+    assert inputs['operatorReportedCompletion'] and config['OperatorReportedCompletion']
+    capture = Path(config['NativeCapture']); assert str(capture) == inputs['capture']
+    assert h.digest(capture/'backup-manifest.json') == inputs['captureManifestSha256']
+    reference = inputs['gitReferenceArchive']
+    assert reference['path'] == 'capture-git-reference.zip' and reference['revision'] == FAILED_REVISION
+    assert reference['generatedFromGitDuringPreparation']
+    assert h.digest(package/reference['path']) == reference['sha256']
+    entry = next(e for e in config['PackageFiles'] if e['Path'] == reference['path'])
+    assert entry['Sha256'] == reference['sha256']
+    common = module('continuation_archive_io', ROOT/'tools/review-olive-and-motor-20261109.py')
+    archive = module('continuation_archive', ROOT/'tools/review-spindle-root-and-causal-motor-20261113.py')
+    return archive.source_archive(common, capture, FAILED_REVISION, reference_archive=package/reference['path'])
+
+
 def verify_input(package, final=False):
     config = h.read(package/'configuration.json'); inputs = h.read(package/'continuation-input.json')
     assert config['ReferenceOnlyContinuation'] and config['OperatorReportedCompletion'] and inputs['operatorReportedCompletion']
     capture = Path(config['NativeCapture'])
     assert str(capture) == inputs['capture'] and h.digest(capture/'backup-manifest.json') == inputs['captureManifestSha256']
+    # Resolve every source dependency before the much larger native-file audit.
+    git_files = verify_archive(package)
+    print(f'{git_files} original Git/source files reconciled without invoking Git.', flush=True)
     common = module('continuation_integrity', ROOT/'tools/review-olive-and-motor-20261109.py')
     print('Verifying every saved native file on C: and D:; no simulation is running in this stage.', flush=True)
     result = common.verify(capture, ['test-binaries.json', 'probe-binaries.json'], FAILED_REVISION, 'FAILED', 1)
-    archive = module('continuation_archive', ROOT/'tools/review-spindle-root-and-causal-motor-20261113.py')
-    result['verifiedGitFiles'] = archive.source_archive(common, capture, FAILED_REVISION)
+    result['verifiedGitFiles'] = git_files
     for entry in h.read(capture/'player-files.json'):
         path = Path(entry['Path']); path.relative_to(capture/'player')
         assert h.digest(path) == entry['Sha256']

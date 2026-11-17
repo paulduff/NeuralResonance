@@ -6,7 +6,7 @@ provide its local constitutive equations. `AvatarCleftSpatialCoupling` assembles
 them around one shared hair-cell voltage. They do not advance time, set anatomical
 geometry, choose initial equilibrium, emit spikes or replace Avatar's live sensory
 path. The hair-cell and calyx kernels remain unchanged. Calyx component result
-`920328` must still be reported and reviewed before coupled use.
+`920328` is now reported and reviewed; its current/gate and clamp checks pass.
 
 ## Source and explicit reduction
 
@@ -187,9 +187,8 @@ voltages by dense elimination and compares every voltage/concentration rate,
 charge, charge rate, energy and connection transfer. It does not reuse the
 candidate's shared-hair elimination.
 
-No new window is launched while the current calyx qualification awaits its
-operator report. The prerequisite reviewer, frozen preparer and independent
-PowerShell pipeline are now authored as described below. Then choose an
+The prerequisite reviewer, frozen preparer and independent PowerShell pipeline
+are implemented as described below. After component qualification, choose an
 explicit spatial discretization and qualify coupled trajectories/refinement.
 Free afferent firing, physical-to-bundle conversion, physiological calibration,
 sensory return and Avatar balance/recovery remain unresolved.
@@ -217,8 +216,31 @@ sensory return and Avatar balance/recovery remain unresolved.
    multiplicities, immutable inputs, numerical and managed runtimes, and final
    C:/D: preservation. It cannot resume an already launched package in place.
 
-Python/PowerShell syntax and static input counts pass. The reviewer/preparer/
-launcher have not been executed: the calyx report is still required. No pending
-window's logs, status or process have been inspected. The check proves at most
+Python/PowerShell syntax and static input counts pass. No pending window's logs,
+status or process have been inspected. The check proves at most
 local constitutive arithmetic; no source flag can promote it to integrated
 sensory physiology or balance.
+
+## First completed run: input schema mismatch
+
+After the calyx review and its D: backup passed, `cleft-coupling-20261117-ca4412`
+was frozen at `49382968fa151341aa3abd1fb4d6e1ff93c5afa8` and launched in visible
+task `DNNE-Cleft-Coupling-8b8a3e51fb91`. The operator subsequently reported its
+FAILED footer. `artifacts/cleft-input-review-20261117/review.json` verifies all
+2,380 C:/D: files, 1,813 Git files, preserved binaries/runtimes and all 40 passing
+focused cases. Native output contains all 468 edge, 60 charge and 96 spatial
+records. No independent reference evaluation began.
+
+System.Text.Json serialized three read-only port properties in every charge
+input: `hairChargeRatePa`, `cleftChargeRatePa`, `calyxChargeRatePa`. The analyser
+incorrectly required a seven-field-only port object. The repair constructs the
+expected serialized object explicitly, verifying those three derived values
+alongside all seven declared currents, both in the protocol and per-row input.
+It does not ignore arbitrary fields. Candidate equations, original input vectors,
+fingerprints and numerical bounds remain unchanged. A fresh isolated window
+will exercise the repaired comparison. The failed capture remains preserved.
+
+Open-apex reservoir/ion accounting was inspected in deposited `wb/cons1`
+(`ck-5`, `cna-140`, `V_cleft`, `0`) but is not implemented in this frozen study.
+That extension, actual channel/cleft integration and spatial/time refinement
+remain subsequent work; a closed component graph is not the completed receptor.

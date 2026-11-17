@@ -1203,3 +1203,11 @@ time/channel integration or live/editor caller. Open-apex boundary, anatomical
 mesh, actual membrane coupling and afferent cable remain unqualified. The
 unlaunched cleft study adds 14 spatial cases and 96 full-graph comparisons under
 unchanged original bounds; see the cleft document. Pending runs stay untouched.
+
+The operator has reported calyx `920328` and cleft `ca4412`. Full saved-data
+reviews verify both C:/D: copies, Git/binaries/runtime inventories. Calyx passes
+23 tests, 15,984 current/gate pairs and 224 analytic clamps. Cleft passes 40 tests
+and captures all 624 component records; its independent comparison stops at an
+unexpected three derived JSON port fields. The analyser now validates those
+fields explicitly, without changing Avatar equations, live/editor selection or
+the original numerical bounds. Free sensory dynamics and balance remain open.

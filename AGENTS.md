@@ -2621,3 +2621,22 @@ require this full scope. Test/probe authoring builds pass with zero warnings/
 errors; static input preservation, inventories and syntax pass. No test/model/
 reference/launcher executed; no pending capture inspected. Calyx 920328 report
 remains requested but unanswered; rubral a6b77a and skull 1e2f21 also await reports.
+
+The operator has now reported final footers for calyx 920328, rubral comparison
+a6b77a and the subsequent cleft ca4412. These are completed, not pending.
+Calyx full review verifies 2,365 C:/D: files, 1,797 Git files, 23 tests and all
+15,984/224 saved comparisons within original bounds; its review is D: backed.
+Cleft was frozen at 4938296, initial 1,829 files D: verified and launched visibly.
+Its completed review verifies 2,380 files per copy, 1,813 Git files, 40 passing
+tests and 468/60/96 native records. Comparison failed before any reference due
+to three serialized read-only port properties. Validate their signed values
+explicitly; do not ignore extra fields or alter candidate equations/bounds.
+Rubral a6b77a failed when git archive was unavailable on scheduled-window PATH;
+full review verifies 1,851 files per copy/1,799 Git files, no references attempted.
+Preparation now independently freezes the original commit's Git archive, pins
+its hash/comment, and the window verifies all source contents without Git before
+the complete native C:/D: audit. Failed packages remain preserved. Fresh retries
+need freezing/backup/visible launch; none launched yet. Skull 1e2f21 still awaits
+its operator report and stays untouched. Open-apex boundary work is deferred;
+deposited wb/cons1 holds K=5, Na=140 and cleft potential at perilymph at the apex.
+The full goal remains active; component successes do not establish sensory firing.

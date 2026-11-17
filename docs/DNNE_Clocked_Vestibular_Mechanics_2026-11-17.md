@@ -123,3 +123,26 @@ firing, learned vestibular circuits, balance or Avatar recovery. The source
 reviews in `DNNE_Vestibular_Source_Candidates_2026-11-16.md` and
 `DNNE_Afferent_Source_Gap_2026-11-16.md` still apply. Do not substitute generic
 population-generated spikes for the missing receptor/afferent qualification.
+
+## Comparison draft checkpoint
+
+An unlaunched comparison draft now exists in `VestibularMechanicsStudy.cs`,
+`vestibular_numerics_protocol.py`, `analyse-vestibular-numerics.py` and
+`prepare-vestibular-numerics.py`. It specifies 62 component/regression cases,
+twenty prescribed histories, two native delivery groups, six reference controls,
+a matrix exponential and two DOP853 tolerances. All accepted ODE nodes and native
+inputs/receipts would be retained. The numerical bounds are declared in the
+protocol; none has been exercised or adjusted against results.
+
+The reference uses the documented general matrix-exponential algorithm and a
+separately written derivative, rather than copying the candidate's scalar
+transition. See the official SciPy [matrix exponential documentation](https://docs.scipy.org/doc/scipy-1.16.0/reference/generated/scipy.linalg.expm.html)
+and [ODE integration documentation](https://docs.scipy.org/doc/scipy-1.16.0/reference/generated/scipy.integrate.solve_ivp.html).
+The installed numerical environment remains pinned separately to NumPy 2.2.6
+and SciPy 1.16.3.
+
+**The visible launcher is not yet authored, and preparation explicitly refuses
+to create a package without it.** The operator's completed spindle/rubral
+reports and request for simpler explicit synaptic wiring took priority. Finish
+and review this draft before claiming an executable vestibular comparison;
+no vestibular study or live selection has been launched.

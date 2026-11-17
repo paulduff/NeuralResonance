@@ -93,3 +93,14 @@ independent visible PowerShell window. Do not inspect that window's outputs or
 processes until the operator reports completion. A passing component run would
 still leave moving numerical accuracy, sensory membrane firing, physiological
 calibration, native integration and Avatar recovery to demonstrate.
+
+## Launch record
+
+The study is launched as `spindle-coupling-20261117-85ae1d`, frozen at
+`0398904f04e58ec99e588cf05b841f799eea32ba`, visible task
+`DNNE-Spindle-Coupling-0ed3065e5ae7`. All 1,790 initial files plus manifest
+were D: verified. Python/PowerShell syntax was parsed; no control, derivative,
+transport or integration executed during authoring/preparation. This run and
+`receptor-cubic-20261117-94d05d` await operator completion reports. Neither was
+monitored after launch. Do not infer a test pass or running/completed state from
+this launch record. The full goal remains active and unfinished.

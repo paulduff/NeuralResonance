@@ -2049,3 +2049,14 @@ sensory firing and Avatar recovery stay unqualified. No live selector changed.
 Source/syntax review is not execution. Keep the original reference bounds and
 licenses, freeze clean pushed source and D: backups, then launch separately.
 The receptor cubic report `94d05d` is still pending; do not inspect its outputs.
+
+The coupled spindle study is now launched as `spindle-coupling-20261117-85ae1d`,
+revision `0398904f04e58ec99e588cf05b841f799eea32ba`, visible task
+`DNNE-Spindle-Coupling-0ed3065e5ae7`. Its 1,790 initial files plus manifest
+were D: verified. Python/PowerShell syntax was checked; no tests or model work
+executed inline. There are now TWO pending operator reports: this spindle run
+and receptor cubic `94d05d`. Neither output/status/process has been inspected
+after launch. Review only on operator completion. The whole goal stays active;
+moving spindle accuracy, physiology, live neural authority and Avatar recovery
+remain unqualified. Next decisions must use full saved distributions, not force
+or grid totals alone, and keep frozen failures/reference limits unchanged.

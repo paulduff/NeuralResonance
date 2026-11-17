@@ -2026,3 +2026,12 @@ prospective 1e-9 ms consistency limit; original numerical bounds are unchanged.
 Build/syntax checks are complete, with no inline tests or model integration.
 Spindle coupled attachment/detachment remains open. No current reports are pending
 until this new comparison is separately launched; do not infer success from setup.
+
+The full cubic comparison is now launched as `receptor-cubic-20261117-94d05d`,
+frozen at `b0e011be405c85eee437966e1954e45ea730a454`, visible task
+`DNNE-Receptor-Cubic-061aa8e40ec1`. Its 1,747 initial files plus manifest were
+D: verified. This is the only pending operator report. No post-launch outputs,
+status or processes were inspected. Do not monitor it or assume any stage passed.
+The operator's resume remains effective; the goal stays active. Independent
+spindle coupled-kinetics source/design work can continue without inspecting this
+window. No live brain/body/world was started by this isolated comparison.

@@ -64,3 +64,11 @@ Passing this run would qualify these isolated receptor/membrane/event numerical
 conditions. Presynaptic events are fixtures. Live DNNE authority, physiological
 calibration, moving-body coupling, sensory feedback and Avatar recovery are
 separate unfinished requirements; no world is opened by this comparison.
+
+The comparison was launched as `receptor-cubic-20261117-94d05d` from revision
+`b0e011be405c85eee437966e1954e45ea730a454`, visible task
+`DNNE-Receptor-Cubic-061aa8e40ec1`. All 1,747 initial files plus manifest were
+verified on D: before launch. The authoring build succeeded without warnings or
+errors; only source/syntax/metadata checks and input preparation occurred inline.
+No post-launch outputs, status or processes were inspected. The operator's
+completion report is pending; the full goal remains active and unfinished.

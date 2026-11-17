@@ -2276,3 +2276,21 @@ arrival/receiver accounting. No firing threshold/gain is tuned for a pass.
 Five new cases plus the 150 existing cases are prospective. Static inventory,
 Python/PowerShell syntax and both authoring builds pass; no tests/models run
 inline. Freeze/push/D-backup and launch visibly before awaiting the operator.
+
+Ten-input experiment launched as rubral-ten-20261117-0419e8, revision
+9621023d3cd2569fe5cf355b5091f4bfbb5baa30, visible task
+DNNE-Rubral-Ten-c3f078c97378. All 1,770 initial files plus manifest are D:
+verified. This is the ONE pending report; do not inspect post-launch outputs,
+status or process until the operator reports completion. The 155 cases and
+actual motor response remain unassessed; no live host/Unity session was started.
+
+Vestibular f21f4b is now fully reviewed: all 2,506 C:/D: files, frozen Git,
+binaries/runtime/dependencies, 62 tests, 7,280 original records and 5,549 accepted
+ODE nodes reconcile. The saved analysis reproduces exactly with numerical
+execution functions disabled. All 60 reference/60 candidate/12 subdivision
+contrasts pass unchanged bounds; maxima 1.82058e-11/1.81684e-11/1.45717e-14.
+The separate vestibular-numerics-review-20261117 is D: verified. This supports
+only tested isolated reduced mechanics/held-input timing, not head transforms,
+hair cells, afferent firing, physiology or Avatar balance. Both rubral-declared
+3e3db0 and vestibular f21f4b are completed/reviewed, not pending windows.
+The full DNNE/Avatar/World goal remains active and unfinished.

@@ -179,3 +179,11 @@ of the original/other routes, actual neuronal event targets and preserved saves.
 The 155-case source inventory, Python/PowerShell syntax, and Release test/probe
 builds pass with zero compiler warnings/errors. No test or model has executed
 inline. Freeze and D:-verify a clean pushed capture before its visible launch.
+
+The ten-input experiment is launched as `rubral-ten-20261117-0419e8`, frozen at
+`9621023d3cd2569fe5cf355b5091f4bfbb5baa30`, visible task
+`DNNE-Rubral-Ten-c3f078c97378`. All 1,770 initial files plus manifest are verified
+on D:. Preparation only checked metadata and copied previously reported evidence.
+No post-launch output, status or process has been inspected. This is the only
+pending operator report; the completed vestibular comparison is separately
+reviewed. The 155 cases and neuronal response are not yet assessed for this run.

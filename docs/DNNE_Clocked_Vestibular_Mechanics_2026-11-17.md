@@ -183,3 +183,30 @@ has now reported DIAGNOSTICS_COMPLETE, with 20 conditions, 40 native captures,
 60 references and a final 2,506-file backup. The duplicate pasted report names
 the same run. Its saved-data review remains pending; no physiological or live
 balance qualification is inferred from that message.
+
+## Completed saved-data review
+
+`review-vestibular-numerics-20261117.py` verifies all 2,506 C:/D: files, frozen
+Git source, both binary manifests, the managed runtime and numerical dependency
+fingerprints. All 62 focused cases have the expected method multiplicities.
+The original saved analysis reproduces exactly across 7,280 input/receipt/state
+records, 5,549 accepted ODE nodes, all twenty conditions and both delivery groups.
+The six original controls are recorded passing; the reviewer does not rerun
+controls, matrix exponentials, ODEs or native code. Its integration entry points
+are disabled. The separate one-file review is backed up and verified on D:.
+
+All sixty reference contrasts, sixty candidate/reference contrasts and twelve
+subdivision contrasts pass their unchanged limits:
+
+| Comparison | Maximum absolute coordinate difference | Original limit |
+| --- | ---: | ---: |
+| Independent references | 1.82058e-11 | 1e-10 |
+| Candidate/reference | 1.81684e-11 | 1e-9 |
+| Native subdivision | 1.45717e-14 | 1e-11 |
+
+Coordinates retain their respective rad/s or m/s^2 units; these maxima are
+numerical error checks, not physiological thresholds. This qualifies the tested
+reduced linear mechanics and held-input/clock bookkeeping. It does not qualify
+continuous head sampling, body-to-skull transformation, hair-cell transduction,
+vestibular-nerve firing, learned balance or recovery. The candidate remains
+isolated and the existing live path is unchanged.

@@ -2401,3 +2401,19 @@ TWO reports are pending: this gate and native skull retry unity-skull-20261117-
 operator reports; preserve previous captures. The next motor stage is original
 rubral events through the existing muscle/native hinge path once ownership is
 qualified. No moving muscles, live authority, physiology or recovery claim yet.
+
+While both reports remain pending, authored RubralNativeBodyStudy and a complete
+RubralCircuitTrace recorder plus analyse-rubral-native-body.py. Seven prospective
+conditions carry fresh original rubral/receptor motor events through the existing
+Avatar calcium/dynamic-muscle/causal plant into actual native point forces. The
+opposing source is an actually integrated quiet neuron. Preserve the full 1500 ms
+neural horizon; 7999 unchanged fine native steps stop below body 500 ms, before the
+next step would exceed source coverage. The independent audit checks all original
+source/arrival data, start-state tendon forces, native impulses, packet/retry
+invariance and 15 continuous reference solves under existing bounds. All remain
+UNEXECUTED. Release probe build is clean; Python syntax only was parsed. No pending
+run output/status/process was read. See DNNE_Rubral_Native_Muscles_2026-11-17.md.
+Before launch, review the operator-reported 7fc785 gate and finish frozen packaging,
+combined exact focused-test inventory, dependency/core preservation and visible
+PowerShell pipeline with D: verification. Current CLI gate checks do not replace
+that missing packaging/provenance work. Both pending reports remain unchanged.

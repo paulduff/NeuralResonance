@@ -59,10 +59,10 @@ def postflight(package):
     if not unchanged: raise RuntimeError('Numerical dependencies changed during the study.')
 
 
-def candidate_data(folder, case):
+def candidate_data(folder, case, *, allowed_steps=(512,1024,2048)):
     initial = read(folder/'initial.json'); final = read(folder/'final.json')
     rows = [decode(json.loads(line)) for line in (folder/'steps.jsonl').read_text().splitlines()]
-    assert len(rows) == case['physicalSteps'] and case['physicalSteps'] in (512,1024,2048)
+    assert len(rows) == case['physicalSteps'] and case['physicalSteps'] in allowed_steps
     entries = [(initial['initial'], initial['muscles'], initial['native'])]
     events = []; previous = initial['initial']
     for index, row in enumerate(rows, 1):

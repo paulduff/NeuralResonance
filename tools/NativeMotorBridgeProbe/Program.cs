@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 5 && args[0] == "--rubral-native-body")
+{
+    RubralNativeBodyStudy.Run(args[1], args[2], args[3], args[4]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--rubral-body-source")
 {
     RubralMotorCircuitStudy.Run(args[1], args[2]);

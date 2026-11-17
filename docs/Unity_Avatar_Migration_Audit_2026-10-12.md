@@ -1142,3 +1142,12 @@ must preserve complete original trajectories and event accounting. See
 `DNNE_Rubral_Body_Ownership_2026-11-17.md`. It has no live/editor selection and
 does not yet qualify moving-muscle coupling or sensory return. The separate
 native skull retry still awaits the operator's completion report.
+
+The next actual rubral-to-muscle/native hinge driver is now authored separately
+in RubralNativeBodyStudy. It preserves existing calcium, dynamic muscle, receiver,
+causal plant, native force and read-only geometry mechanisms. Seven prospective
+conditions retain the full original neuronal horizon and stop at the last complete
+physical step covered by it. Independent source/force/reference audits are authored;
+none have run and packaging remains to be completed after the pending circuit gate
+is reported/reviewed. See `DNNE_Rubral_Native_Muscles_2026-11-17.md`. No live Avatar,
+sensory mechanism, editor selection or world-start behavior changes.

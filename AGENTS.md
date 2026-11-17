@@ -2116,3 +2116,15 @@ uses 0.25/1/4 fixture quanta, identical anatomical/input identities across fresh
 conditions, and original source substep times. Full payloads, terminal pending
 events and disabled-contact evidence must be reviewed after completion. The
 moving spindle reference and full neuronal brain/body/world goal remain open.
+
+The operator reported rubral `e42efc` FAILED. The D:-verified
+`rubral-output-failure-review-20261117` verifies 2,294 files per copy, all 136
+focused cases and the complete quiet prefix: 12,000 source frames, three
+15,001-state motor branches, zero events and byte-identical trajectories.
+None of the stimulated conditions executed. The failure was `File.OpenRead`
+attempting a checksum while its trajectory writer was still open. Close all
+completed branch writers before hashing; preserve the old FAILED capture and
+all numerical/model parameters. The correction builds without warnings/errors;
+it has not executed inline. No report remains pending until the fresh replacement
+is launched. Independent moving-spindle work remains open; do not infer motor
+authority from the quiet prefix or change physiological parameters for this I/O bug.

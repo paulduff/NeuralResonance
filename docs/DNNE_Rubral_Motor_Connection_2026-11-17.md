@@ -105,3 +105,22 @@ errors; Python/PowerShell syntax and the 136-case source inventory were checked.
 These checks did not execute tests or neuronal integrations. No post-launch
 output, status or process has been inspected. This is the only pending operator
 completion report; the goal remains active and unfinished.
+
+## First capture: output-file lifecycle failure
+
+The operator reported `e42efc` FAILED. Its separate D:-verified review
+`rubral-output-failure-review-20261117` verifies all 2,294 files/180,642,805 bytes
+per C:/D: copy, 1,729 frozen Git files and all 136 focused cases. The no-evoked
+condition completed 12,000 source frames and three 15,001-state motor branches.
+There were no source or motor events; all three saved trajectories are byte
+identical. The three stimulated conditions never started. This is a completed
+quiet prefix, not a completed four-condition experiment or motor response.
+
+The harness then attempted `File.OpenRead` for a trajectory checksum while its
+`StreamWriter` still held the write handle. `Flush` had written the data but had
+not closed that handle. Windows rejected the incompatible sharing modes. The
+correction closes the finished branch's writers (including gzip trailers) before
+checksums. It changes no neuronal model, contact parameter, sampling time,
+acceptance bound or live selector. The original failed capture remains intact.
+The new package preserves the failure review in its provenance and reruns all
+four conditions and 136 checks from fresh state in a separate visible window.

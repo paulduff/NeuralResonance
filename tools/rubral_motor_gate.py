@@ -55,6 +55,12 @@ def prepare():
     assert review['operatorReportedCompletion'] and review['passedTests'] == 124
     assert review['savedNumericalContrastsReproduced'] and not review['originalBoundsChanged']
     assert review['originalAcceptedStateTrajectoriesPreserved'] == 18
+    failed_folder = ROOT / 'artifacts/rubral-output-failure-review-20261117'
+    h.verify(failed_folder, ['review.json']); failed_review = h.read(failed_folder / 'review.json')
+    assert failed_review['operatorReportedCompletion'] and failed_review['originalStatus'] == 'FAILED'
+    assert failed_review['passedTests'] == 136 and failed_review['activeConditionsExecuted'] == 0
+    assert failed_review['savedQuietTrajectoriesExactlyEqual'] and not failed_review['fullExperimentComplete']
+    assert h.digest(Path(failed_review['capture']) / 'backup-manifest.json') == failed_review['manifestSha256']
     baseline = Path(review['capture'])
     assert h.digest(baseline / 'backup-manifest.json') == review['manifestSha256']
     # Preserve every existing shared-runtime implementation, including the
@@ -87,7 +93,7 @@ def prepare():
                 with target.open('xb') as stream: stream.write(archive.read(entry))
     reference = package / 'reference'; reference.mkdir()
     shutil.copyfile(h.io(baseline / 'managed-runtime-before.json'), reference / 'qualified-managed-runtime.json')
-    save(package / 'provenance.json', dict(review=review, preservedSourceFiles=preserved,
+    save(package / 'provenance.json', dict(review=review, preservedFailedCaptureReview=failed_review, preservedSourceFiles=preserved,
         testsExecutedDuringPreparation=False, modelsExecutedDuringPreparation=False,
         liveSelectionChanged=False, originalCubicCapturePreserved=True))
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')

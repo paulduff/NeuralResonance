@@ -217,7 +217,10 @@ internal static class RubralMotorStudy
                 receiverCompleteThroughMs=_receiver.CompleteThroughBodyMs,receiverPending=_receiver.PendingEvents,receiverDelivered=_receiver.DeliveredEvents});
             Require(_receiver.PendingEvents==pending.Length&&Received+pending.Length==Lane.CaptureSource().Emissions.Count,
                 "Lost or duplicated motor events at the accounted horizon.");
-            _trajectory.Flush();_transport.Flush();_admissions.Flush();_finished=true;
+            // File.OpenRead also specifies its own sharing mode. Flushing an
+            // open writer does not release that handle on Windows; finalize all
+            // output (including gzip trailers) before hashing completed files.
+            Dispose();_finished=true;
         }
         public void Dispose(){_trajectory.Dispose();_transport.Dispose();_admissions.Dispose();}
     }

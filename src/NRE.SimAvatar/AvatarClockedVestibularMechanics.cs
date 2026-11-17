@@ -37,24 +37,33 @@ public sealed class AvatarClockedVestibularMechanics
     private readonly PhysicalSampleClock _clock;
     private readonly int _owner = Environment.CurrentManagedThreadId;
     private readonly double _seconds;
+    private readonly long _firstObservationStep;
     private AvatarVestibularKinematics? _held;
     private AvatarVestibularMechanicalReceipt? _receipt;
     private AvatarVestibularMechanicalState _state;
     public string Fingerprint { get; }
 
-    public AvatarClockedVestibularMechanics(PhysicalSampleClock clock)
+    public AvatarClockedVestibularMechanics(PhysicalSampleClock clock, long? firstObservationStep = null)
     {
         ArgumentNullException.ThrowIfNull(clock);clock.Validate();
         _seconds=clock.PhysicsStepMs/1000;
         if (!double.IsFinite(_seconds)||_seconds<=0)
             throw new ArgumentException("Physical step cannot be represented in seconds.");
         _clock=clock;
+        _firstObservationStep=firstObservationStep??clock.InitialPhysicsStep;
+        _=clock.AtStep(_firstObservationStep);
         Fingerprint=Hash(JsonSerializer.Serialize(new{Version,Clock=clock.Fingerprint,CupulaSeconds,
             AdaptationSeconds,OtolithSeconds,InputConvention="previous endpoint held over next physical interval",
             Initialization="zero canal state; otolith explicitly initialized to first observed vector; no elapsed time",
             Axes="pitch/yaw/roll; LARP=(pitch-roll)/sqrt(2); RALP=(pitch+roll)/sqrt(2)"}));
+        string version=Version;
+        if(_firstObservationStep!=clock.InitialPhysicsStep)
+        {
+            version+="+declared-later-initial-observation-v1";
+            Fingerprint=Hash(JsonSerializer.Serialize(new{Base=Fingerprint,version,FirstObservationStep=_firstObservationStep}));
+        }
         var zero=new AvatarVestibularCanals(0,0,0,0,0,0);
-        _state=new(Version,Fingerprint,null,null,null,0,zero,zero,new(0,0,0),false,null);
+        _state=new(version,Fingerprint,null,null,null,0,zero,zero,new(0,0,0),false,null);
     }
 
     public AvatarVestibularMechanicalState Capture() { RequireOwner();return _state; }
@@ -70,7 +79,7 @@ public sealed class AvatarClockedVestibularMechanics
             if (_receipt.InputSha256!=digest) throw new ArgumentException("Conflicting physical input replay.");
             return _receipt;
         }
-        long next=_state.CompletedThroughStep is { } previous ? checked(previous+1) : _clock.InitialPhysicsStep;
+        long next=_state.CompletedThroughStep is { } previous ? checked(previous+1) : _firstObservationStep;
         if(input.PhysicsStep!=next) throw new ArgumentException("Require the original next physical sample; missing/reversed steps cannot reset the organ.");
         var time=_clock.AtStep(input.PhysicsStep);
         AvatarVestibularMechanicalState updated;

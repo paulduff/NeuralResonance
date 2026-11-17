@@ -2294,3 +2294,18 @@ only tested isolated reduced mechanics/held-input timing, not head transforms,
 hair cells, afferent firing, physiology or Avatar balance. Both rubral-declared
 3e3db0 and vestibular f21f4b are completed/reviewed, not pending windows.
 The full DNNE/Avatar/World goal remains active and unfinished.
+
+Independent work while ten-input 0419e8 awaits the operator: the head-coordinate
+candidate is in AvatarSkullKinematics plus a dormant Unity SkullMotionCapture
+helper. Existing Avatar/Unity/body/transducer code was inspected first. Differentiate
+actual material-point world velocities before projecting into measured skull axes;
+do not mistake rotating pelvis components for inertial acceleration. First-sample
+acceleration is unavailable, so optional later mechanics initialization retains
+the SAME original clock, with a distinct version/fingerprint and no invented time.
+Default mechanics must reproduce the reviewed f21f4b bytes. See the skull document
+and migration audit. Twelve new cases plus the original 62 form a prospective
+74-case visible regression; all 61 original default output files must match exactly.
+No new tests/models run inline; authoring builds and static syntax/inventory pass.
+The Unity helper has not been built/executed and native head sampling/afferent
+physiology/balance are unqualified. No live/editor activation or old schema change.
+The rubral-ten capture remains pending and must not be monitored.

@@ -1094,3 +1094,20 @@ references remain unqualified until a reported-complete run is reviewed. It
 does not replace Avatar's existing vestibular, proprioceptive, contact, fatigue
 or supply mechanisms. No live world/editor selection changes: sensory return,
 live recruitment, per-muscle anatomy, balance and fall recovery remain open.
+
+## Head-coordinate vestibular candidate — 17 November
+
+The isolated clocked reduced vestibular mechanics now has a completed numerical
+review (f21f4b): 62 cases, forty C# captures and independent matrix/ODE agreement.
+The next adapter uses actual head point motion rather than differentiating
+pelvis-local velocities. `AvatarSkullKinematics` retains raw head endpoints,
+computes world acceleration before skull projection, and leaves first-sample
+acceleration unavailable. An explicit later mechanics start preserves the original
+physical clock. See `DNNE_Skull_Kinematics_2026-11-17.md`.
+
+`SkullMotionCapture` is an authored, read-only Unity helper for the existing head
+body. It has no live caller and no native qualification yet. The prospective
+74-case component/default-regression rig does not run Unity. Native physical-owner
+capture, anatomical point placement, sampling convergence and real afferent firing
+still precede any live/editor promotion. Old body/contact encodings and Avatar
+sensory, muscle, fatigue and supply mechanisms are preserved.

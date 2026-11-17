@@ -2569,3 +2569,27 @@ DNNE-Rubral-Comparison-fccfb9b34200. Initial 1,846 files plus manifest D: verifi
 No post-launch outputs/status/process read. Await this report, calyx 920328 and
 native skull 1e2f21. Original native 4cdba5 is completed/failed and preserved;
 its complete C:/D: review runs in the continuation window before any references.
+
+Independent work while these three reports await the operator: authored pure
+AvatarCleftEdgeKernel and AvatarCleftChargeBalance with prospective conservation,
+direction, equilibrium, capacitance and energy tests. No new test/model/window
+or pending output inspection. Source material uses K/Na drift/diffusion plus
+600 nS/um other-ion conductivity; do not double-count the K/Na contribution by
+adding the full 1,000 value. Explicit face/volume geometry is not anatomical
+calibration. Hair apical endolymph and exposed perilymph potentials/charges stay
+separate; simultaneous local capacitance is required. No time integration,
+spatial assembly, live/editor caller or afferent event source is introduced.
+See DNNE_Cleft_Coupling_2026-11-17.md. Review calyx 920328 before coupled use;
+next author independent high-precision capture/reference, then spatial assembly
+and coupled trajectory qualification. Goal remains active and unfinished.
+
+Cleft constitutive authoring now includes 25 component cases (26 with solution
+manifest), CleftCouplingStudy/--cleft-coupling native capture, 468 prospective
+edge inputs and 60 charge inputs. Independent Decimal reference uses direct
+exponentials and full five-node capacitance graph/pivoted solve at 60/90 digits,
+retaining every expected value with original prospective bounds. Test/probe
+authoring builds both pass with zero warnings/errors; Python syntax/static
+inventory pass. NO test, candidate evaluation, reference or new window ran.
+Frozen preparation/visible pipeline still need authoring after the calyx report.
+Do not mistake pure constitutive equations for a spatial/time-integrated receptor
+or emitted sensory afferent. All three pending reports remain untouched.

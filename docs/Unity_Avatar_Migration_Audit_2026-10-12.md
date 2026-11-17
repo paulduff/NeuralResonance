@@ -1185,3 +1185,12 @@ It uses the explicitly documented deposited-source convention, not a blended
 paper/XML model. Its pending 23-case/current/clamp study is documented in
 `DNNE_Calyx_Membranes_2026-11-17.md`. No free membrane, cleft or axon integration,
 live transducer replacement or editor selection is introduced at this stage.
+
+The next authored sensory components are AvatarCleftEdgeKernel and
+AvatarCleftChargeBalance. They retain K/Na amount/charge transfer and simultaneous
+hair/cleft/calyx capacitance, with separate held endolymph/perilymph references.
+Geometry is explicit, not an anatomical fit. These pure constitutive components
+have no time integrator or live/Unity/editor caller; existing Avatar sensory
+mechanisms and numerical captures are preserved. See
+`DNNE_Cleft_Coupling_2026-11-17.md` for equations, prospective tests and remaining
+spatial/coupled/afferent qualification. Calyx 920328 still awaits its report.

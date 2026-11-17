@@ -1173,3 +1173,15 @@ The prospective 47-case/18-capture/18-reference rig is documented in
 replacement is selected before numerical and coupled sensory qualification.
 The earlier circuit gate has now been reviewed; actual rubral muscle trial
 4cdba5 and native skull retry 1e2f21 await the operator's reports.
+
+The hair-cell result is now reviewed: 47 tests, 18 native captures and eighteen
+references satisfy all prospective limits, with all 2,472 C:/D: files verified.
+See `DNNE_Vestibular_Hair_Cell_Results_2026-11-17.md`. This qualifies the isolated
+fixed-bath numerical component, not live sensory physiology or balance.
+
+AvatarCalyxKernel now preserves separate inner/outer nerve-ending currents,
+voltage references and gate kinetics, plus the electrically neutral KCC ion flux.
+It uses the explicitly documented deposited-source convention, not a blended
+paper/XML model. Its pending 23-case/current/clamp study is documented in
+`DNNE_Calyx_Membranes_2026-11-17.md`. No free membrane, cleft or axon integration,
+live transducer replacement or editor selection is introduced at this stage.

@@ -2511,3 +2511,29 @@ independent window. No post-launch outputs/status/processes inspected. THREE
 reports now await the operator: hair cell 959475, native skull retry 1e2f21,
 rubral/native muscle 4cdba5. Circuit 7fc785 remains completed and reviewed.
 Do not poll these windows. The full goal remains active and unfinished.
+
+The operator reported hair-cell 959475 complete. Full review now verifies all
+2,472 files per C:/D: copy, 1,787 Git files, binaries/runtime, 47 exact cases and
+the saved comparison without ODE/test execution. Eighteen native captures and
+eighteen references (103,366 accepted nodes) pass all original bounds/refinements.
+Maximum finest voltage error is 2.0021e-6 mV; charge ledger is 1.1801e-9 fC.
+Separate vestibular-hair-cell-review-20261117 is D: verified. See result document.
+This fixed-bath receptor component is numerically qualified, not a live afferent.
+
+The next isolated AvatarCalyxKernel and complete visible study are authored.
+Separate inner/outer voltages and gates retain Kv7.4, HCN2, pumps, inner KCC and
+outer unassigned leak. Choose the deposited model's 3.7 nS HCN2/sign convention
+explicitly; do not call it printed-supplement equivalence. Preserve its literal
+outer reversal constants and room-temperature/fixed-reservoir assumptions.
+KCC cancels electrically but its K/Cl flux must remain visible. No free voltage,
+shared cleft, axon or event generator exists in this kernel. Before coupled use,
+review 23 tests, 15,984 independent current cases and 224 analytic voltage clamps.
+Both authoring builds and static syntax/inventory pass; no new calyx test/model
+executed inline. Preparation requires the reviewed/D:-verified hair-cell pass,
+clean pushed source and initial backup. See DNNE_Calyx_Membranes_2026-11-17.md.
+
+The operator provided progress text for rubral-native 4cdba5 and explicitly said
+IT HAS NOT FINISHED. Do not inspect its outputs/status/process. Native skull
+retry 1e2f21 also still awaits a completion report. Hair-cell 959475 is completed
+and reviewed, no longer pending. No calyx window is launched until preparation
+and backup are finished. Full DNNE/Avatar/World goal remains active.

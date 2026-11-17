@@ -130,3 +130,7 @@ revision `59b586bdb85a190797b077a9644b2e88496012f0`, in visible task
 `DNNE-Hair-Cell-47ad90abec01`. Its initial 1,801 files plus manifest were verified
 on D:. No post-launch output, status or process has been inspected. Await the
 operator's completion report before reading results; launch is not a pass.
+
+The operator subsequently reported completion. Full C:/D:, source/runtime and
+saved numerical review passed without model/test reruns. Results and remaining
+scope are in `DNNE_Vestibular_Hair_Cell_Results_2026-11-17.md`.

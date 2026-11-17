@@ -2478,3 +2478,27 @@ operator: this run and native skull retry 1e2f21. Circuit 7fc785 is completed,
 fully reviewed and no longer pending. Full goal remains active and unfinished;
 source-preserving clock attachment is qualified, moving-muscle numerical/physical
 outcomes are not yet known. Preserve all failed packages and old saves.
+
+The next isolated sensory candidate is AvatarVestibularHairCell, documented in
+DNNE_Vestibular_Hair_Cell_2026-11-17.md. It independently expresses the reconciled
+MET/K,L/Ca/HCN1/pump subset of the pinned source, with explicit fixed bath and
+room-temperature kinetics. Physical displacement is in nm; the existing cupula
+output is rad/s and cannot be passed through as though equivalent. No live
+Avatar/editor/calyx/afferent selection or generated sensory spike is introduced.
+Clocked RK4 preserves local integer steps, channel probabilities without clipping,
+ionic charge ledgers and rejected failure candidates. Gate-conditioned initial
+state is NOT a settled electrical equilibrium. No checkpoint loader exists.
+
+The complete prospective rig is authored: 47 exact tests, 7,260 clamp arithmetic
+cases, six histories at three native steps, twelve independent controls and
+eighteen DOP853/tighter/Radau references. Preserve every accepted node, original
+input boundary, charge state and prospective bound. Radau has an explicit
+complex-step Jacobian rather than numerical perturbation growth in charge
+columns. Reference comparisons cover every state; refinement cannot be inferred
+from host partition invariance. Preparation freezes current runtime as an
+explicit new baseline; it never claims equivalence to older Python binaries.
+Original source/licensing evidence and old Avatar paths are D:-verified and
+preserved. Both authoring builds, syntax and static inventory pass, but no new
+model/test has executed inline. Freeze/push/back up before the visible window;
+inspect only after the operator reports completion. The native skull 1e2f21 and
+rubral-native 4cdba5 outputs/status/processes remain untouched and pending.

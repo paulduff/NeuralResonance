@@ -1157,3 +1157,19 @@ circuit pass, exact 281-case inventory, unchanged body/reference source checks,
 runtime/dependency preservation and separate Unity build. Its seven native trials
 and fifteen independent references remain unexecuted. No package was prepared
 and no extra window was launched while the two operator reports are pending.
+
+## Isolated vestibular receptor candidate — 17 November
+
+Avatar's existing clocked cupula signal is in rad/s and cannot be treated as
+nanometres of hair-bundle displacement. The new AvatarVestibularHairCell therefore
+accepts explicit physical displacement in an isolated fixture. It integrates
+MET/K,L/Ca/HCN1/pump currents, voltage and channel gates with a charge ledger;
+it produces no sensory spikes. Existing live labyrinth/transducer and physical
+sample implementations are preserved. Fixed reservoirs, source room-temperature
+kinetics and absent cleft/calyx/afferent mechanisms remain explicit.
+
+The prospective 47-case/18-capture/18-reference rig is documented in
+`DNNE_Vestibular_Hair_Cell_2026-11-17.md`. No editor activity or live sensory
+replacement is selected before numerical and coupled sensory qualification.
+The earlier circuit gate has now been reviewed; actual rubral muscle trial
+4cdba5 and native skull retry 1e2f21 await the operator's reports.

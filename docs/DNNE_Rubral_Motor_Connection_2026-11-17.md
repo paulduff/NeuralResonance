@@ -124,3 +124,10 @@ checksums. It changes no neuronal model, contact parameter, sampling time,
 acceptance bound or live selector. The original failed capture remains intact.
 The new package preserves the failure review in its provenance and reruns all
 four conditions and 136 checks from fresh state in a separate visible window.
+
+The replacement is launched as `rubral-motor-20261117-844975`, frozen at
+`621109a7604c95bd4278a5a9c2efe779a41be2fb`, visible task
+`DNNE-Rubral-Motor-5b35bbfc07b0`. Its 1,735 initial files plus manifest are
+verified on D:. No post-launch outputs, status or processes were inspected.
+This replacement is the sole pending operator report; the old failure remains
+reported, reviewed and preserved.

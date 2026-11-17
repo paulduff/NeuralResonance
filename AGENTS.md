@@ -2128,3 +2128,11 @@ all numerical/model parameters. The correction builds without warnings/errors;
 it has not executed inline. No report remains pending until the fresh replacement
 is launched. Independent moving-spindle work remains open; do not infer motor
 authority from the quiet prefix or change physiological parameters for this I/O bug.
+
+The corrected rubral replacement is now launched as
+`rubral-motor-20261117-844975`, revision
+`621109a7604c95bd4278a5a9c2efe779a41be2fb`, visible task
+`DNNE-Rubral-Motor-5b35bbfc07b0`. The 1,735 initial files plus manifest are D:
+verified. This is the only pending operator report. No post-launch output/status/
+process was inspected; do not monitor it. Old `e42efc` is already reported and
+reviewed, not another pending result. The full goal remains active and unfinished.

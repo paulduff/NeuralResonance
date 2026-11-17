@@ -2369,3 +2369,11 @@ native-skull-failure-review-20261117; the retry requires it D: verified and the
 physical sources unchanged. Compile/static checks only until visible launch.
 Motor-to-body continuation remains next; this turn inspected its existing Avatar
 and native bridge implementations but has not authored or launched that study.
+
+Replacement skull capture launched: unity-skull-20261117-1e2f21, revision
+3c385fcb04f39a4eacb68dbd3d401b32c316c37f, visible task
+DNNE-Unity-Skull-3bad563dbfa3. Initial 1,771 files plus manifest are D: verified.
+No post-launch output/status/process inspected. This is the ONE pending report;
+do not inspect it until the operator reports completion. Native hierarchy controls
+and sampling remain unqualified. Failed 733e7c and its separate review are preserved
+and D: verified. Main goal stays active and unfinished.

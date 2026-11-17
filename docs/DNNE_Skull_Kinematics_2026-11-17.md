@@ -206,3 +206,10 @@ hierarchies must reject. These temporary transforms have no physics components
 and do not change Avatar. The original 74 focused tests and full 201-step study
 then run normally. The reviewed failure and unchanged physical sources are new
 preparation prerequisites. No test or native control has executed during authoring.
+
+The replacement is launched as `unity-skull-20261117-1e2f21`, revision
+`3c385fcb04f39a4eacb68dbd3d401b32c316c37f`, visible task
+`DNNE-Unity-Skull-3bad563dbfa3`. Initial 1,771 files plus manifest are D: verified.
+The .NET authoring build, syntax, static inventory and source prerequisites passed;
+the native controls/full sampling result awaits the operator. No live monitoring
+or post-launch inspection occurred. `733e7c` remains the reviewed failed capture.

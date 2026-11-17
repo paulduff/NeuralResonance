@@ -73,3 +73,15 @@ All old captures and saves are preserved, and each new package receives a
 verified initial/final D: backup. The full brain/body/world goal remains active:
 native muscle coupling, coupled numerical accuracy, sensory return, physiological
 calibration, live neuronal authority and Avatar recovery remain open.
+
+## Launch record
+
+Release probe/test authoring builds passed with zero warnings/errors, as did
+Python/PowerShell syntax and the static 161-case inventory. No test/model ran
+inline. The visible comparison was launched as
+`rubral-circuit-20261117-7fc785`, revision
+`fb9fb5aad960c7c5c203759efc993828a0c1119f`, task
+`DNNE-Rubral-Circuit-2f631e84a0fd`. All 1,796 initial files plus manifest are
+verified on D:. Its outcomes await the operator; no post-launch output, status
+or process was inspected. This and native skull retry `1e2f21` are the two
+pending completion reports. Neither prospective result is qualified yet.

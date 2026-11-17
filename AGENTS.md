@@ -2390,3 +2390,14 @@ See DNNE_Rubral_Body_Ownership_2026-11-17.md. No model/test executes inline; use
 fresh frozen D:-verified visible window and await its operator report. Native
 muscle execution, sensory return and recovery remain later gates. Never inspect
 the pending head retry as part of motor preparation.
+
+Rubral circuit/body-clock gate launched as rubral-circuit-20261117-7fc785,
+revision fb9fb5aad960c7c5c203759efc993828a0c1119f, visible task
+DNNE-Rubral-Circuit-2f631e84a0fd. Initial 1,796 files plus manifest D: verified.
+Both authoring builds passed with zero warnings/errors, plus static syntax and
+161-case inventory; tests/model comparisons execute only in the new window.
+TWO reports are pending: this gate and native skull retry unity-skull-20261117-
+1e2f21. No post-launch output/status/process inspected for either. Await their
+operator reports; preserve previous captures. The next motor stage is original
+rubral events through the existing muscle/native hinge path once ownership is
+qualified. No moving muscles, live authority, physiology or recovery claim yet.

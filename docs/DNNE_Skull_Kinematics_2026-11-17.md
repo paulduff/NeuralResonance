@@ -95,3 +95,13 @@ Qualify the body-to-skull transform and sampling before coupling any receptor.
 Hair-cell currents, release, vestibular afferent firing, neuronal balance control
 and fall recovery remain separate unfinished requirements. The point locations
 and inherited reduced mechanical constants are not calibrated human anatomy.
+
+## Launch record
+
+Launched as `skull-kinematics-20261117-f740bd`, frozen at
+`5aa5f28c2fc0a2252c64a02defa098902a141e26`, visible task
+`DNNE-Skull-Kinematics-92195589d752`. All 1,826 initial files plus manifest are
+verified on D:. The 74-case source inventory, Python/PowerShell syntax and both
+.NET builds passed without inline model/test execution. No post-launch output,
+status or process has been inspected. This run and rubral-ten `0419e8` await
+separate operator completion reports; neither is live-monitored.

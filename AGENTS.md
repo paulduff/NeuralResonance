@@ -2309,3 +2309,14 @@ No new tests/models run inline; authoring builds and static syntax/inventory pas
 The Unity helper has not been built/executed and native head sampling/afferent
 physiology/balance are unqualified. No live/editor activation or old schema change.
 The rubral-ten capture remains pending and must not be monitored.
+
+Skull component/default regression launched as skull-kinematics-20261117-f740bd,
+revision 5aa5f28c2fc0a2252c64a02defa098902a141e26, visible task
+DNNE-Skull-Kinematics-92195589d752. All 1,826 initial files plus manifest are D:
+verified. The 74-case static inventory, Python/PowerShell syntax and .NET test/
+probe builds pass; no tests/models were executed inline. TWO reports now remain:
+this skull run and rubral-ten-20261117-0419e8. No post-launch outputs/status/
+processes were read. Native Unity head capture remains a future isolated physical-
+owner qualification; the helper has no live caller and was not built/executed.
+Do not inspect pending captures without their operator reports, or equate a
+component pass with afferent physiology, live brain authority or Avatar recovery.

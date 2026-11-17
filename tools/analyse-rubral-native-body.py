@@ -234,6 +234,8 @@ def native_audit(package):
 
 
 def solve(package):
+    from rubral_native_gate import check_reference_controls
+    check_reference_controls(package)
     base,spec,data,evidence=native_audit(package);save(package/'rubral-hinge-input.json',spec);save(package/'native-source-analysis.json',evidence)
     output=package/'rubral-reference';output.mkdir();execution=[];geometry=HingeGeometry(spec['nativeGeometry'])
     for case in spec['cases'][:5]:
@@ -249,6 +251,8 @@ def solve(package):
 
 
 def audit(package):
+    from rubral_native_gate import check_reference_controls
+    check_reference_controls(package)
     base,spec,data,evidence=native_audit(package)
     assert spec==read(package/'rubral-hinge-input.json') and evidence==read(package/'native-source-analysis.json')
     geometry=HingeGeometry(spec['nativeGeometry']);references={};execution=read(package/'rubral-reference/execution.json')

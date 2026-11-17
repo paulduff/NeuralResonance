@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedRubralNative -or -not $configuration.NoLiveMonitoring -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.ExpectedTestCases -ne 281 -or $configuration.ExpectedNativeCases -ne 7 -or $configuration.ExpectedNativePhysicsSteps -ne 55993 -or $configuration.ExpectedIndependentReferences -ne 15 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1' -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral/native configuration.'}
+if(-not $configuration.IsolatedRubralNative -or -not $configuration.NoLiveMonitoring -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.ExpectedTestCases -ne 281 -or $configuration.ExpectedNativeCases -ne 7 -or $configuration.ExpectedNativePhysicsSteps -ne 55993 -or $configuration.ExpectedIndependentReferences -ne 15 -or $configuration.ExpectedEnvironmentControls -ne 10 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1' -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral/native configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -75,6 +75,7 @@ function Capture-Tree([string]$Directory,[string]$Name){
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
  FocusedTestsPassed=$false;ModelExecutionAttempted=$false;NativePhysicsAttempted=$false;NativeDriverSucceeded=$false;
  IndependentReferencesAttempted=$false;NumericalCriteriaPassed=$false;LiveUnityIntegrated=$false;TimingMeasured=$false;
+ ReferenceControlsAttempted=$false;ReferenceControlsPassed=$false;EnvironmentTransitionDeclared=$configuration.EnvironmentTransitionDeclared;
  UpstreamNumericalAccuracyQualified=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testFiles=@();$probeFiles=@();$playerFiles=@();$probe=$null
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite earlier results.'}
@@ -87,6 +88,10 @@ try{
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_native_gate.py'),'preflight',$package) 'reference-preflight.log'
+ $status.ReferenceControlsAttempted=$true
+ Write-Host 'Checking the declared Python runtime: ten metadata controls, 49 geometry cases, six method integrations and three cross-method comparisons.' -ForegroundColor Cyan
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_native_gate.py'),'reference-controls',$package) 'reference-controls.log'
+ $status.ReferenceControlsPassed=$true
  $build=Join-Path $package 'source/artifacts/rubral-native-tests'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
  $assembly=Join-Path $build 'bin/NeuralResonanceEngine.DNNE.Tests/release/NeuralResonanceEngine.DNNE.Tests.dll'

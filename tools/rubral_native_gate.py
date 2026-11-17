@@ -19,6 +19,7 @@ def module(name,path):
 
 prior=module('rubral_native_source_gate',ROOT/'tools/rubral_circuit_gate.py');h=prior.h;gate=prior.gate
 native=module('rubral_native_previous_packager',ROOT/'tools/prepare-native-motor-bridge.py')
+transition=module('rubral_explicit_environment',ROOT/'tools/rubral_reference_environment.py')
 COUNTS=dict(prior.COUNTS)
 for name,count in dict(native.COUNTS,MotorUnitCalciumTests=13,IsometricMotorUnitPlantTests=15).items():
     assert name not in COUNTS or COUNTS[name]==count
@@ -37,7 +38,7 @@ def load_review(folder):
     return r,capture
 
 
-def prepare(review_folder):
+def prepare(review_folder,environment_review=None):
     assert not h.git('status','--porcelain'),'Commit clean source first.'
     revision=h.git('rev-parse','HEAD');assert revision==h.git('rev-parse','origin/main'),'Push first.'
     source_review,source_capture=load_review(review_folder)
@@ -75,7 +76,16 @@ def prepare(review_folder):
     assert code.count(new_signature)==code.count(new_guard)==1
     assert code.replace(new_signature,old_signature).replace(new_guard,old_guard)==h.io(body_capture/'source'/extended).read_text(encoding='utf-8-sig'),extended
     environment=module('rubral_reference_environment',ROOT/'tools/golgi-reference-resume.py').environment()
-    assert environment==h.read(body_capture/'reference/qualified-environment.json'),'Qualified numerical dependencies changed.'
+    previous_environment=h.read(body_capture/'reference/qualified-environment.json')
+    declaration=None
+    if environment_review is None:
+        assert environment==previous_environment,'Qualified numerical dependencies changed; inspect and declare the transition explicitly.'
+    else:
+        h.verify(environment_review,['qualified-environment.json','current-environment.json','transition-declaration.json'])
+        assert previous_environment==h.read(environment_review/'qualified-environment.json')
+        assert environment==h.read(environment_review/'current-environment.json')
+        declaration=h.read(environment_review/'transition-declaration.json')
+        transition.validate(previous_environment,environment,declaration)
     methods=gate.inventory(ROOT,COUNTS);assert sum(methods.values())==sum(COUNTS.values())
     package=ROOT/'artifacts'/('rubral-native-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6])
     backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name;workspace=ROOT/'artifacts'/(package.name+'-build-work')
@@ -98,17 +108,20 @@ def prepare(review_folder):
     copy(source_capture/'analysis.json','reference/circuit-gate/analysis.json');copy(review_folder/'review.json','reference/circuit-review.json')
     copy(source_capture/'managed-runtime-before.json','reference/qualified-managed-runtime.json')
     copy(body_review_folder/'review.json','reference/observed-body-review.json')
+    if declaration is not None:copy(environment_review/'transition-declaration.json','reference/environment-transition.json')
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
     save(package/'preparation-environment.json',environment)
     save(package/'unity-metadata.json',metadata.validate(package/'source/UnityWorld'))
     save(package/'provenance.json',dict(sourceReview=source_review,bodyReview=body_review,preservedSources=preserved,
         comparisonDecoderExtension=dict(path=extended,qualifiedSha256=h.digest(body_capture/'source'/extended),defaultAcceptedStepCountsUnchanged=True,newExplicitStepCount=7999),
-        modelsExecutedDuringPreparation=False,testsExecutedDuringPreparation=False))
+        environmentTransition=declaration,modelsExecutedDuringPreparation=False,testsExecutedDuringPreparation=False))
     dotnet=shutil.which('dotnet');unity=Path('C:/Program Files/Unity/Hub/Editor/6000.3.19f1/Editor/Unity.exe');assert dotnet and unity.is_file()
     files=[dict(Path=p.relative_to(h.io(package)).as_posix(),Sha256=h.digest(p)) for p in sorted(h.io(package).rglob('*')) if p.is_file()]
     save(package/'configuration.json',dict(Revision=revision,PackageFiles=files,BackupDestination=str(backup),NoLiveMonitoring=True,
         IsolatedRubralNative=True,QualifiedCouplingCorePreserved=True,ExpectedTestCases=sum(COUNTS.values()),ExpectedClassCounts=COUNTS,ExpectedTestMethods=methods,
         TestFilter='|'.join('FullyQualifiedName~'+name for name in COUNTS),ExpectedNativeCases=7,ExpectedNativePhysicsSteps=55993,ExpectedIndependentReferences=15,
+        EnvironmentTransitionDeclared=declaration is not None,ExpectedEnvironmentControls=10,
+        ExpectedReferenceControlCounts=dict(geometryCases=49,mechanicalMethodChecks=6,crossMethodChecks=3),
         ExpectedUnityVersion='6000.3.19f1',UnityBuildWorkspace=str(workspace),UnityExecutable=str(unity),UnityExecutableSha256=h.digest(unity),
         DotnetExecutable=dotnet,DotnetExecutableSha256=h.digest(dotnet),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
         LiveBodySelected=False,NoTimingMeasured=True,PhysiologyQualified=False,AvatarRecoveryAssessed=False))
@@ -126,14 +139,52 @@ def preflight(package):
     assert review['operatorReportedCompletion'] and review['savedAnalysisExactlyReproduced'] and review['bodyEpochSourceGatePassed'] and review['analysis']==analysis
     assert analysis['bodyEpochSourceGatePassed'] and analysis['tests']['passedCases']==161
     environment=module('rubral_native_preflight_environment',package/'source/tools/golgi-reference-resume.py').environment()
-    assert environment==h.read(package/'preparation-environment.json')==h.read(package/'reference/qualified-environment.json')
-    print('Reviewed circuit, preserved source and numerical environment verified; no model or test executed.',flush=True)
+    assert environment==h.read(package/'preparation-environment.json')
+    previous=h.read(package/'reference/qualified-environment.json')
+    if config['EnvironmentTransitionDeclared']:
+        transition.validate(previous,environment,h.read(package/'reference/environment-transition.json'))
+    else:assert environment==previous
+    assert config['ExpectedEnvironmentControls']==10 and config['ExpectedReferenceControlCounts']==dict(geometryCases=49,mechanicalMethodChecks=6,crossMethodChecks=3)
+    print('Reviewed circuit, preserved source and declared numerical environment verified; no model or test executed.',flush=True)
+
+
+def reference_controls(package):
+    # All numeric controls and transition fixtures execute only in the visible
+    # window, including the independent mechanical integrator's six solves.
+    preflight(package)
+    environment_controls=transition.controls()
+    spec=h.read(package/'reference/qualified-hinge-input.json')
+    runner=module('rubral_fresh_reference_controls',package/'source/tools/native_hinge_reference_controls.py')
+    result=runner.run_controls(spec,spec['nativeGeometry'],package/'reference-controls')
+    counts=dict(geometryCases=49,mechanicalMethodChecks=6,crossMethodChecks=3)
+    assert result['completed'] and result['passed'] and not result['biologicalDynamicsIntegrated'] and not result['nativePhysicsExecuted']
+    assert all(len(result[k])==n and all(r['passed'] for r in result[k]) for k,n in counts.items())
+    save(package/'reference-controls-summary.json',dict(completed=True,passed=True,environmentControls=environment_controls,
+        referenceControlCounts=counts,controlsSha256=h.digest(package/'reference-controls/controls.json'),
+        environmentTransitionDeclared=h.read(package/'configuration.json')['EnvironmentTransitionDeclared'],
+        historicalRuntimeEquivalenceEstablished=False,physiologyQualified=False))
+    check_reference_controls(package)
+
+
+def check_reference_controls(package):
+    summary=h.read(package/'reference-controls-summary.json');result=h.read(package/'reference-controls/controls.json')
+    config=h.read(package/'configuration.json')
+    assert summary['completed'] and summary['passed'] and summary['environmentControls']==transition.CONTROL_NAMES
+    assert summary['referenceControlCounts']==config['ExpectedReferenceControlCounts']
+    assert summary['environmentTransitionDeclared']==config['EnvironmentTransitionDeclared']
+    assert not summary['historicalRuntimeEquivalenceEstablished'] and not summary['physiologyQualified']
+    assert summary['controlsSha256']==h.digest(package/'reference-controls/controls.json')
+    assert result['completed'] and result['passed'] and not result['biologicalDynamicsIntegrated'] and not result['nativePhysicsExecuted']
+    assert all(len(result[k])==n and all(r['passed'] for r in result[k]) for k,n in summary['referenceControlCounts'].items())
+    return summary
 
 
 if __name__=='__main__':
     if not __debug__:raise RuntimeError('Assertions must remain enabled.')
-    parser=argparse.ArgumentParser();parser.add_argument('command',choices=['prepare','preflight','check-tests']);parser.add_argument('path',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('command',choices=['prepare','preflight','check-tests','reference-controls']);parser.add_argument('path',type=Path)
+    parser.add_argument('--environment-review',type=Path);args=parser.parse_args()
     path=args.path.resolve()
-    if args.command=='prepare':prepare(path)
+    if args.command=='prepare':prepare(path,args.environment_review.resolve() if args.environment_review else None)
     elif args.command=='preflight':preflight(path)
+    elif args.command=='reference-controls':reference_controls(path)
     else:print(json.dumps(gate.check_tests(path,COUNTS),indent=2),flush=True)

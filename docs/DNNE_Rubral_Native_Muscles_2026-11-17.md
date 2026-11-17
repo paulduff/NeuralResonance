@@ -134,3 +134,35 @@ accuracy and physiological calibration are open; fixed reference contact efficac
 does not transfer learned upstream strength. Sensory feedback, live recruitment,
 full-body anatomy, balance, recovery and locomotion still require the continuing
 DNNE/Avatar/World work. No completed component or movement result is claimed here.
+
+## Explicit numerical-runtime transition before launch
+
+Preparation at `c192c8c` stopped before package creation or any model/test because
+the historical numerical-runtime inventory no longer matched this machine.
+`rubral-native-preparation-20261117` preserves both complete inventories, their
+comparison and the failure record (five files plus manifest, D: verified).
+The exact changes are `python.exe`, `python3.dll` and `python312.dll` in the primary
+runtime directory. Python's reported version remains 3.12.14; all 2,433 other
+recorded dependency files, including NumPy 2.2.6 and SciPy 1.16.3, match by hash.
+This inspection does not establish numerical equivalence of the interpreters.
+
+Preparation now optionally accepts `--environment-review` naming that D:-verified
+declaration. With no declaration it still requires exact historical equality.
+With one, the historical source inventory, current full inventory and each of
+the three old/new hashes must match the recorded declaration; changed versions,
+numerical libraries, paths or extra/missing dependencies are rejected. The old
+`reference/qualified-environment.json` stays unchanged. A separate declaration
+and current preparation inventory are frozen into the new package; all later
+checks require that exact current environment throughout the run.
+
+`rubral_reference_environment.py` provides ten prospective validation controls,
+including rejection of undeclared/partial runtime changes, changed numerical
+libraries, duplicates and altered paths. The visible PowerShell window runs
+those and the unchanged independent hinge controls (49 geometry cases, six
+mechanical integrations, three cross-method comparisons) before the .NET/native
+experiment. The fifteen full references still run at their three original
+settings with unchanged bounds. Both solving and final analysis require the
+saved control report. Numerical compatibility with the historical interpreter
+is not assumed or reported as proved. Any future numerical pass applies to the
+tested comparison under the newly declared runtime. No controls or numerical
+models run inline.

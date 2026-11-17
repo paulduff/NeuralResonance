@@ -2453,3 +2453,17 @@ model equivalence. The static inspector executes no source equations. The
 paper model/license, full selected XML sections and immutable review snapshots.
 No model/test/new sensory experiment or live implementation ran. Do not mix
 printed and stored channel equations or assume function defaults were resolved.
+
+Native preparation at c192c8c stopped before package creation: the primary
+Python executable/python3.dll/python312.dll hashes changed, although versions
+and all 2,433 other dependency hashes match. Five-file metadata evidence in
+rubral-native-preparation-20261117 is D: verified; no test/model ran. The native
+packager now requires an explicit --environment-review for this transition,
+preserving historical inventory and checking the complete declared new inventory
+before/after the run. No relaxed version-only comparison. Ten transition-control
+fixtures and unchanged 49 geometry/six mechanical/three cross-method controls
+must run in the visible window before native work; both full-reference solve
+and analysis require their evidence. All original biological/numerical bounds
+and reference/core sources remain unchanged. See native-muscle doc; preparation
+must use clean pushed source and the D:-verified declaration. Skull 1e2f21 is
+still the only pending report until the new native package is actually launched.

@@ -156,3 +156,11 @@ The visible-window runner repeats the 74-case suite, builds an isolated Unity
 player, executes the native study, checks the saved observations and backs up the
 result. Authoring compilation and syntax checks are separate from execution;
 native sampling remains unqualified until the operator reports its outcome.
+
+The native study is launched as `unity-skull-20261117-733e7c`, revision
+`8734689b82aee169dd346911e3bb354b0e8dcda8`, visible task
+`DNNE-Unity-Skull-c31b288fda04`. All 1,770 initial files plus manifest are verified
+on D:. The .NET authoring build has zero warnings/errors; static inventory and
+Python/PowerShell syntax passed. No new test, physics or model ran inline.
+No post-launch status, output or process was inspected. This is the only pending
+operator report; both earlier skull and ten-input captures are reviewed.

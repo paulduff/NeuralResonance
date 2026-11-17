@@ -2343,3 +2343,13 @@ execute only in a fresh frozen, D:-verified visible PowerShell window. No native
 outcome is known before the operator report. Prospective bounds and the exact
 CoreCLR subset dependency check are in the skull document/native_skull_gate.py.
 Continuous-motion accuracy, point anatomy, afferent firing and balance remain open.
+
+Native head study launched: unity-skull-20261117-733e7c, source revision
+8734689b82aee169dd346911e3bb354b0e8dcda8, visible task
+DNNE-Unity-Skull-c31b288fda04. Initial 1,770 files plus manifest are D: verified.
+Authoring build/syntax/static 74-case inventory passed; tests and native execution
+belong to the independent window only. This is the ONE pending operator report.
+Do not inspect its outputs/status/process until reported complete. Both previous
+skull f740bd and rubral-ten 0419e8 are complete/reviewed; the authoritative ten-input
+v2 review and preserved earlier review are separately D: backed. The full goal
+remains active, with actual muscle/body use of the new motor output still open.

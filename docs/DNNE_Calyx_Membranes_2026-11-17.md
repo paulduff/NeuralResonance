@@ -94,3 +94,11 @@ at revision `635508a1d6d8dcaba156004d50d3e67e620b9acd`, in visible task
 on D:. No post-launch output/status/process has been inspected. Await the
 operator's report; channel arithmetic and analytic clamps are not free-cell
 or coupled sensory qualification.
+
+The completed-result reviewer is now authored as `review-calyx-membrane.py`.
+It requires an explicit operator completion report before reading a capture,
+verifies full C:/D: and Git/binary/runtime/test provenance, and reconstructs
+the original analysis from all saved native/independent current and clamp pairs.
+It does not evaluate a new channel state or clamp. The new review must receive
+its own verified D: backup before `prepare-cleft-coupling.py` can use it.
+Neither reviewer nor dependent preparation has run while `920328` is pending.

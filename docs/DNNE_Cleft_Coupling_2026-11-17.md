@@ -127,8 +127,37 @@ preservation. References use the exact binary64 inputs, avoiding a different
 rounded-input problem. No reference arithmetic has executed during authoring.
 
 No new window is launched while the current calyx qualification awaits its
-operator report. Frozen preparation, prerequisite review and the visible
-PowerShell pipeline remain to be completed. Then choose an explicit spatial
-discretization and qualify coupled trajectories/refinement.
+operator report. The prerequisite reviewer, frozen preparer and independent
+PowerShell pipeline are now authored as described below. Then choose an
+explicit spatial discretization and qualify coupled trajectories/refinement.
 Free afferent firing, physical-to-bundle conversion, physiological calibration,
 sensory return and Avatar balance/recovery remain unresolved.
+
+## Review and launch sequence
+
+1. Wait for the operator to report the calyx window's final footer and completed
+   backup. `review-calyx-membrane.py CAPTURE NEW_REVIEW --operator-reported-complete`
+   checks every C:/D: file, source archive, binaries, runtime, exact 23-case suite
+   and all 15,984/224 saved comparison pairs. It reconstructs the original report
+   using saved independent values; it does not evaluate channels or clamps again.
+   A failed/incomplete capture is rejected and requires diagnosis.
+2. Back up the new review with `backup-unity-run.ps1`, retaining the original
+   capture and its review separately.
+3. From clean pushed source, run `prepare-cleft-coupling.py CALYX_REVIEW` in the
+   pinned numerical environment. It verifies the review's D: copy and capture
+   identity, existing Avatar/hair/calyx source preservation, and exact runtime
+   equality with the reviewed calyx study. It freezes the new protocol, source,
+   original source/licensing evidence, review and binary inventories. Preparation
+   executes no tests or constitutive equations.
+4. Back up the new package and invoke its frozen
+   `start-cleft-coupling-window.ps1 -PackageDirectory PACKAGE`. Only that visible
+   window builds and executes the 26 tests, native arithmetic capture and two
+   high-precision references. It verifies prerequisite metadata, exact test
+   multiplicities, immutable inputs, numerical and managed runtimes, and final
+   C:/D: preservation. It cannot resume an already launched package in place.
+
+Python/PowerShell syntax and static input counts pass. The reviewer/preparer/
+launcher have not been executed: the calyx report is still required. No pending
+window's logs, status or process have been inspected. The check proves at most
+local constitutive arithmetic; no source flag can promote it to integrated
+sensory physiology or balance.

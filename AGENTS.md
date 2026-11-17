@@ -2593,3 +2593,16 @@ inventory pass. NO test, candidate evaluation, reference or new window ran.
 Frozen preparation/visible pipeline still need authoring after the calyx report.
 Do not mistake pure constitutive equations for a spatial/time-integrated receptor
 or emitted sensory afferent. All three pending reports remain untouched.
+
+Cleft packaging/review continuation is now authored. review-calyx-membrane.py
+requires the operator-completed flag and full C:/D:/Git/binary/runtime/test
+verification, then reproduces the original summary from all saved independent
+current/clamp values without evaluating channels or clamps. Its NEW D:-verified
+review is required by prepare-cleft-coupling.py, which preserves existing Avatar/
+hair/calyx sources and requires exact reviewed runtime equality. The frozen
+start-cleft-coupling-window.ps1 owns 26 tests, 468 edge/60 capacitance captures,
+60/90-digit references and final backups. Syntax/static inventories pass; none
+of the reviewer, preparer, launcher, tests or equations has run. Calyx 920328's
+completion is requested asynchronously; no answer yet. Rubral comparison a6b77a
+and skull 1e2f21 also await reports. Do not inspect any pending outputs/processes.
+The full goal remains active; spatial receptor/afferent integration is unfinished.

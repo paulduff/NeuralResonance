@@ -103,6 +103,14 @@ def environment(): return module('cleft_dependencies',ROOT/'tools/golgi-referenc
 def preflight(package):
     validate(read(package/'cleft-input.json'));current=environment()
     assert current==read(package/'preparation-environment.json')
+    config=read(package/'configuration.json');review=read(package/'qualified-calyx-review.json');provenance=read(package/'provenance.json')
+    assert config['IsolatedCleftConstitutive'] and config['NoLiveMonitoring'] and config['ExpectedTestCases']==26
+    assert config['ExpectedEdgeRows']==468 and config['ExpectedChargeRows']==60 and config['ExpectedDecimalPrecisions']==[60,90]
+    assert review['operatorReportedCompletion'] and review['independentSavedComparisonsRechecked'] and review['savedAnalysisExactlyReproduced']
+    assert review['numericalCriteriaPassed'] and review['passedTests']==23 and not review['analysis']['originalBoundsChanged']
+    assert review['capture']==provenance['qualifiedCapture'] and review['manifestSha256']==provenance['qualifiedCaptureManifestSha256']
+    assert review['sourceRevision']==provenance['qualifiedSourceRevision']=='635508a1d6d8dcaba156004d50d3e67e620b9acd'
+    assert provenance['runtimeMatchesQualifiedCalyx'] and not provenance['modelsExecutedDuringPreparation'] and not provenance['testsExecutedDuringPreparation']
     save(package/'reference-preflight.json',dict(environment=current,modelsExecuted=False,testsExecuted=False))
 
 
@@ -152,5 +160,7 @@ def compare(package):
 
 if __name__=='__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=['preflight','compare','postflight']);parser.add_argument('package',type=Path)
-    args=parser.parse_args();dict(preflight=preflight,compare=compare,postflight=postflight)[args.command](args.package.resolve())
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=['preflight','compare','postflight','check-tests']);parser.add_argument('package',type=Path)
+    args=parser.parse_args()
+    if args.command=='check-tests': print(module('cleft_test_inventory',ROOT/'tools/receptor_membrane_gate.py').check_tests(args.package.resolve(),COUNTS))
+    else: dict(preflight=preflight,compare=compare,postflight=postflight)[args.command](args.package.resolve())

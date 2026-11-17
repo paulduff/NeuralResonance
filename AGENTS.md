@@ -2090,3 +2090,18 @@ source-ownership gap: actual upstream DNNE events, explicit completeness and
 faithful per-contact semantics are still required. Do not promote the isolated
 reference cells or infer whole-brain authority/physiology from this numerical
 pass. The spindle's independent moving reference also remains outstanding.
+
+The actual DNNE rubral source/isolated motor rig is now authored; see
+`docs/DNNE_Rubral_Motor_Connection_2026-11-17.md`. A private fresh 256-cell existing
+Izhikevich/STDP RedNucleus emits original messages, with acknowledged immutable
+frames and explicit completeness, into the preserved cubic receptor/motor source
+and actual Avatar receiver. Four source conditions each feed two packet cadences
+and a contact-disabled branch; prospective focused inventory is 136 cases.
+Source substep timing, fixed unit receptor efficacy and reference bath remain
+explicit approximations. Preserve all original payloads, failed prefixes and
+pending events beyond the proven horizon; never invent silence to empty queues.
+No live host/Avatar/editor selector changed, and the upstream source's numerical
+accuracy, physiology and learned efficacy are not qualified by this connection.
+Build/syntax checks are not execution. Freeze clean pushed source and D: backups,
+launch visibly and await the operator; no live monitoring. A completed accounting
+study with ObservedNeuronalMotorResponse=false is not motor-authority success.

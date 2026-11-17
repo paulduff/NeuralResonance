@@ -25,12 +25,14 @@ VECTORS = ('localPointMeters', 'originWorldMeters', 'rightWorld', 'upWorld', 'fo
 
 
 def protocol():
-    return dict(version='native-skull-sampling-study-v1', points=POINTS, physicalEndpoints=201,
+    return dict(version='native-skull-sampling-study-v2', points=POINTS, physicalEndpoints=201,
                 actualPhysicalSteps=201, finalDeliveredStep=200, actualNativeGridEndpoints=202,
                 sidecars=207, pointReceipts=603, heldInspections=4,
                 basisAbsoluteBound=1e-5, positionAbsoluteBoundMeters=1e-5,
                 pointVelocityAbsoluteBoundMetersPerSecond=1e-5, pointVelocityRelativeBound=1e-6,
                 derivedAbsoluteBound=1e-8, derivedRelativeBound=1e-10,
+                scalePolicy='exact unit local scale at every physical ancestor', nativeScaleControls=33,
+                legacyScaleSquaredBound=1e-12, legacyScaleGuardIsDiagnosticOnly=True,
                 minimumHeadRotationRadiansPerSecond=.01, minimumOffsetSpeedDifferenceMetersPerSecond=.0001,
                 initialAccelerationUnavailable=True, nativeSensorLocationsAnatomicallyCalibrated=False,
                 continuousMotionAccuracyQualified=False, physiologyQualified=False, avatarRecoveryAssessed=False)
@@ -47,7 +49,17 @@ def prerequisite():
     h.verify(baseline, ['source/' + name for name in names] + ['managed-runtime-before.json'])
     for name in names:
         assert h.io(ROOT / name).read_text(encoding='utf-8-sig') == h.io(baseline / 'source' / name).read_text(encoding='utf-8-sig'), name
-    return review
+    failure_folder = ROOT / 'artifacts/native-skull-failure-review-20261117'
+    h.verify(failure_folder, ['review.json']); failed = h.read(failure_folder / 'review.json')
+    assert failed['operatorReportedCompletion'] and failed['passedTests'] == 74 and failed['failedPhysicsStep'] == 178
+    assert not failed['failingScaleWasSaved'] and not failed['nativeSamplingQualified']
+    failure = Path(failed['capture']); assert h.digest(failure / 'backup-manifest.json') == failed['manifestSha256']
+    preserved = ['UnityWorld/Assets/NRE/Runtime/'+n+'.cs' for n in ('ArticulatedAvatar','WorldController','SensoryFrames')]
+    preserved += ['tools/UnityPhysicalSampleProbe/UnityPhysicalSampleBody.cs','src/NRE.SimAvatar/AvatarPhysicalSampleProducer.cs']
+    h.verify(failure, ['source/'+name for name in preserved])
+    for name in preserved:
+        assert h.io(ROOT / name).read_text(encoding='utf-8-sig') == h.io(failure / 'source' / name).read_text(encoding='utf-8-sig'), name
+    return dict(review, nativeScaleFailureReview=failed, unchangedPhysicalSources=preserved)
 
 
 def digest(text): return sha256(text.encode('utf-8')).hexdigest().upper()
@@ -89,6 +101,17 @@ def compare(package):
     config = h.read(package / 'configuration.json'); assert config['NativeSkullCapture'] and config['NoLiveMonitoring']
     managed = runtime(package)
     study = package / 'study'; clock = h.read(study / 'clock.json')
+    controls = h.read(study / 'skull-scale-controls.json')
+    assert controls['version'] == 'native-head-scale-controls-v1' and len(controls['controls']) == 33
+    invalid = [[2,2,2],[.5,1,1],[-1,1,1],[1.0000001192092896,1,1],[.9999999403953552,1,1],[0,1,1]]
+    for index, control in enumerate(controls['controls']):
+        assert [n['name'] for n in control['hierarchy']] == ['scale-head','scale-chest','scale-root']
+        scales = [vector(n['localScale']) for n in control['hierarchy']]
+        if index < 15: assert control['key'] == f'unit-rotation-{index}' and scales == [[1,1,1]]*3 and not control['rejected']
+        else:
+            level, kind = divmod(index-15, 6); expected = [[1,1,1] for _ in range(3)]; expected[level] = invalid[kind]
+            assert control['key'] == f'reject-level-{level}-kind-{kind}' and scales == expected and control['rejected']
+        vector(control['lossyScale'])
     result = h.read(study / 'study-result.json')
     assert result['completed'] and result['exitCode'] == 0 and result['skullSampleEndpoints'] == 201
     assert result['actualPhysicsSteps'] == 201 and result['completeThroughStep'] == 200
@@ -103,6 +126,7 @@ def compare(package):
     prior = {}; identities = {}; held = 0; sidecars = {}; receipts = 0
     max_velocity_error = max_position_error = max_basis_error = max_rotation = max_offset_difference = max_derived_error = 0.
     previous_step = 0
+    legacy_scale_rejections = []; maximum_scale_deviation = 0.
     for sequence, path in enumerate(paths):
         assert path.name == f'skull-{sequence:06}.json'
         raw = path.read_text(encoding='utf-8-sig'); source = json.loads(raw)
@@ -133,11 +157,16 @@ def compare(package):
             assert step not in sidecars; sidecars[step] = (source, raw, reply_name)
         point_vectors = {}
         for snapshot in source['samples']:
-            assert set(snapshot) == set(VECTORS) | {'version', 'headBodyId', 'sensorId', 'physicsStep', 'rotation'}
-            assert snapshot['version'] == 'native-head-material-point-v1' and snapshot['headBodyId'] == 'head'
+            assert set(snapshot) == set(VECTORS) | {'version', 'headBodyId', 'sensorId', 'physicsStep', 'rotation','hierarchy','legacyScaleGuardPassed'}
+            assert snapshot['version'] == 'native-head-material-point-v2' and snapshot['headBodyId'] == 'head'
             assert snapshot['physicsStep'] == step
             v = {k: vector(snapshot[k]) for k in VECTORS}; name = snapshot['sensorId']; point_vectors[name] = v
-            assert v['localPointMeters'] == POINTS[name] and sum((x-1)**2 for x in v['scale']) <= 1e-12
+            assert v['localPointMeters'] == POINTS[name]
+            assert [n['name'] for n in snapshot['hierarchy']] == ['head','chest','pelvis']
+            assert all(vector(n['localScale']) == [1,1,1] for n in snapshot['hierarchy'])
+            scale_error = sum((x-1)**2 for x in v['scale']); maximum_scale_deviation = max(maximum_scale_deviation,scale_error)
+            assert snapshot['legacyScaleGuardPassed'] == (scale_error <= bounds['legacyScaleSquaredBound'])
+            if not snapshot['legacyScaleGuardPassed']: legacy_scale_rejections.append(dict(sequence=sequence,step=step,sensor=name,squaredDeviation=scale_error))
             x, y, z, w = vector(snapshot['rotation'], ('x', 'y', 'z', 'w'))
             axes = [[1-2*(y*y+z*z), 2*(x*y+z*w), 2*(x*z-y*w)],
                     [2*(x*y-z*w), 1-2*(x*x+z*z), 2*(y*z+x*w)],
@@ -213,6 +242,9 @@ def compare(package):
     assert max_offset_difference > bounds['minimumOffsetSpeedDifferenceMetersPerSecond'], 'Off-centre motion was not exercised.'
     analysis = dict(completed=True, nativeHeadSamplingChecksPassed=True, tests=tests, sidecars=len(paths), pointReceipts=receipts,
                     managedRuntime=managed,
+                    nativeScaleControls=33, configuredPhysicalScaleExactlyUnit=True,
+                    maximumReportedScaleSquaredDeviation=maximum_scale_deviation, legacyScaleGuardRejections=legacy_scale_rejections,
+                    scaleAcceptancePolicyChanged=True, originalCoordinateAndVelocityBoundsChanged=False,
                     completeThroughStep=200, heldInspections=held, nativeGridEndpoints=202,
                     maximumPointVelocityErrorMetersPerSecond=max_velocity_error, maximumPointGeometryErrorMeters=max_position_error,
                     maximumBasisError=max_basis_error, maximumDerivedError=max_derived_error,

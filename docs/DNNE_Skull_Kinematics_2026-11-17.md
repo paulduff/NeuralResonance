@@ -164,3 +164,45 @@ on D:. The .NET authoring build has zero warnings/errors; static inventory and
 Python/PowerShell syntax passed. No new test, physics or model ran inline.
 No post-launch status, output or process was inspected. This is the only pending
 operator report; both earlier skull and ten-input captures are reviewed.
+
+## Native scale-guard failure and corrected capture
+
+The operator reported `733e7c` failed. The separate
+`artifacts/native-skull-failure-review-20261117/review.json` verifies all 3,403
+C:/D: files, frozen Git source, built Unity scripts/player, 74 focused tests and
+unchanged managed files. Unity compiled and executed 178 physical steps. There
+are 178 acknowledged endpoints (0..177), 534 typed point receipts and three held
+inspections. The next capture failed after physical step 178, before reply 181;
+the command was not retried. No completed sampling qualification is claimed.
+
+The failing guard required `(lossyScale - one).sqrMagnitude <= 1e-12`. The largest
+retained pre-failure squared deviation was 8.810729923425242e-13 at step 153.
+Retained point-velocity, position and quaternion-axis discrepancies were at most
+2.5193605157625143e-7 m/s, 1.6452348150508556e-7 m and
+7.02933746765666e-8 respectively, inside the original coordinate/velocity bounds.
+The rejected step's scale and ancestor scales were not retained, so its exact
+value and cause cannot be reconstructed from this capture.
+
+Unity's [lossyScale documentation](https://docs.unity3d.com/kr/6000.0/ScriptReference/Transform-lossyScale.html)
+describes a world-scale convenience representation; configured scale is local to
+the parent. The Avatar physical hierarchy is created independently of its scaled
+visual mesh, with head/chest/pelvis GameObjects initially at unit local scale.
+The small retained deviations suggest float transform composition, but do not
+prove the missing endpoint's cause. The corrected capture tests the intended
+precondition directly: every physical ancestor must retain exactly unit local
+scale. It records the hierarchy, computed world scale and whether the old guard
+would reject, without changing or normalizing the physical measurements.
+
+This is an explicit scale-acceptance policy change in snapshot/study v2, not a
+claim that the failed v1 condition passed. Quaternion, point-coordinate, point-
+velocity and derived arithmetic bounds remain unchanged. An actual hierarchy
+rejection now includes its raw snapshot in the saved failure. The retry must
+show all configured scales, including at the previously missing endpoint.
+
+Thirty-three native transform controls precede capture: fifteen rotated unit
+hierarchies and six non-unit scales at each of three levels, including one-float-
+step deviations, reflection, zero and nonuniform scale. All eighteen invalid
+hierarchies must reject. These temporary transforms have no physics components
+and do not change Avatar. The original 74 focused tests and full 201-step study
+then run normally. The reviewed failure and unchanged physical sources are new
+preparation prerequisites. No test or native control has executed during authoring.

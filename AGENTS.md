@@ -2353,3 +2353,19 @@ Do not inspect its outputs/status/process until reported complete. Both previous
 skull f740bd and rubral-ten 0419e8 are complete/reviewed; the authoritative ten-input
 v2 review and preserved earlier review are separately D: backed. The full goal
 remains active, with actual muscle/body use of the new motor output still open.
+
+Operator reported native skull 733e7c FAILED. All 3,403 C:/D: files, frozen/built
+source/player, 74 tests and unchanged managed runtime are reviewed. It failed the
+lossyScale guard after physical step 178; 178 endpoints/534 point receipts survived
+through step 177. The failed scale/ancestor scales were not saved. Retained
+coordinate/velocity errors are inside the unchanged bounds; float composition is
+plausible, not proven for the missing endpoint. No pending window remains here.
+The v2 repair records head/chest/pelvis local scales, requires each exactly one,
+and preserves computed lossyScale plus old-guard outcome. This changes the scale
+acceptance policy explicitly; it does not declare the old guard passed. Thirty-
+three native hierarchy controls must reject all eighteen actual non-unit cases.
+No body dynamics, coordinates or accuracy bounds change. Review is
+native-skull-failure-review-20261117; the retry requires it D: verified and the
+physical sources unchanged. Compile/static checks only until visible launch.
+Motor-to-body continuation remains next; this turn inspected its existing Avatar
+and native bridge implementations but has not authored or launched that study.

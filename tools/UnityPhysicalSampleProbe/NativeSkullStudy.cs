@@ -9,13 +9,14 @@ namespace UnityPhysicalSampleProbe;
 internal sealed class NativeSkullStudy
 {
     internal sealed record Quaternion(double X, double Y, double Z, double W);
+    internal sealed record ScaleNode(string Name, AvatarSkullVector LocalScale);
     internal sealed record Snapshot(string Version, string HeadBodyId, string SensorId, long PhysicsStep,
         AvatarSkullVector LocalPointMeters, AvatarSkullVector OriginWorldMeters,
         AvatarSkullVector RightWorld, AvatarSkullVector UpWorld, AvatarSkullVector ForwardWorld,
         AvatarSkullVector PointWorldMeters, AvatarSkullVector PointVelocityWorldMetersPerSecond,
         AvatarSkullVector AngularVelocityWorldRadiansPerSecond, AvatarSkullVector GravityWorldMetersPerSecondSquared,
         AvatarSkullVector CenterOfMassWorldMeters, AvatarSkullVector CenterOfMassVelocityWorldMetersPerSecond,
-        Quaternion Rotation, AvatarSkullVector Scale);
+        Quaternion Rotation, AvatarSkullVector Scale, ScaleNode[] Hierarchy, bool LegacyScaleGuardPassed);
     internal sealed record Sidecar(string Version, string SessionId, string Operation, long Sequence, long PhysicsStep, Snapshot[] Samples);
     private readonly string _output;
     private readonly PhysicalSampleClock _clock;
@@ -43,7 +44,9 @@ internal sealed class NativeSkullStudy
             throw new InvalidOperationException("Native head sidecar identity or endpoint differs.");
         foreach (var point in source.Samples)
         {
-            if (point.Version != "native-head-material-point-v1" || point.PhysicsStep != body.PhysicsStep)
+            if (point.Version != "native-head-material-point-v2" || point.PhysicsStep != body.PhysicsStep ||
+                point.Hierarchy is null || !point.Hierarchy.Select(n => n.Name).SequenceEqual(new[] { "head", "chest", "pelvis" }) ||
+                point.Hierarchy.Any(n => n.LocalScale != new AvatarSkullVector(1, 1, 1)))
                 throw new InvalidOperationException("Unexpected native material point.");
             var observation = new AvatarSkullObservation(point.PhysicsStep, PhysicalSampleProtocol.Identity(_clock, point.PhysicsStep),
                 point.HeadBodyId, point.SensorId, point.LocalPointMeters, point.OriginWorldMeters,

@@ -36,7 +36,9 @@ public static class PhysicalSampleQualification {
     throw new InvalidOperationException("Bridge requires a paused fresh muscular Avatar without DNNE.");
    string skullMode=WorldController.Argument("--skull-motion-capture");
    if(skullMode!=null&&skullMode!="material-points-v1")throw new InvalidOperationException("Unknown isolated skull capture mode.");
-   Directory.CreateDirectory(directory);world.ClaimPhysicalSampleOwnership(owner);
+   Directory.CreateDirectory(directory);
+   if(skullMode=="material-points-v1")WriteNew(Path.Combine(world.outputDirectory,"skull-scale-controls.json"),JsonUtility.ToJson(SkullMotionCapture.RunScaleControls(),true));
+   world.ClaimPhysicalSampleOwnership(owner);
    try {world.Step();}catch(InvalidOperationException){directRejected=true;}
    try {world.StepForPhysicalSample(new object());}catch(InvalidOperationException){wrongRejected=true;}
    if(!directRejected||!wrongRejected||world.physicsSteps!=0)throw new InvalidOperationException("Competing physical step was not rejected.");

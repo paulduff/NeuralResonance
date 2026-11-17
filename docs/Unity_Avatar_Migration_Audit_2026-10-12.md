@@ -1120,3 +1120,12 @@ retain redundant COM/quaternion/velocity data and 603 typed receipts; an
 independent saved-data audit checks point motion, coordinate conversion and held
 physics. No live/editor caller, afferent membrane or world-start change is added.
 See the skull document for prospective bounds and remaining motion/anatomy gates.
+
+Native capture `733e7c` failed its computed-world-scale guard at physical step
+178 after 178 retained endpoints; 74 tests and Unity build passed. All 3,403
+files are reviewed with D: verification. The rejected scale was not retained.
+Capture v2 records the physical ancestor scales and requires exact configured
+unit scale, while retaining computed scale and old-guard outcome as diagnostics.
+Existing coordinate/velocity bounds and actual physical dynamics are unchanged.
+Thirty-three native transform controls and the full capture must run again in a
+fresh visible window; no full native head qualification has yet passed.

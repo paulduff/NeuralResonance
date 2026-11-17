@@ -2537,3 +2537,13 @@ IT HAS NOT FINISHED. Do not inspect its outputs/status/process. Native skull
 retry 1e2f21 also still awaits a completion report. Hair-cell 959475 is completed
 and reviewed, no longer pending. No calyx window is launched until preparation
 and backup are finished. Full DNNE/Avatar/World goal remains active.
+
+Calyx study now launched as calyx-membrane-20261117-920328, frozen revision
+635508a1d6d8dcaba156004d50d3e67e620b9acd, visible task
+DNNE-Calyx-Membrane-ed9d3e8d93fa. Initial 1,812 files plus manifest D: verified.
+No post-launch output/status/process inspected. THREE reports now await the
+operator: calyx 920328, native skull 1e2f21, rubral-native 4cdba5. The operator
+explicitly confirmed the rubral run still running; do not infer completion
+from the seven printed condition names. Hair-cell 959475 is fully reviewed.
+The next sensory implementation requires shared cleft/membrane charge balance
+and actual afferent dynamics; do not promote current/clamp success to that scope.

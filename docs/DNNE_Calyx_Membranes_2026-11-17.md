@@ -87,3 +87,10 @@ Nodal sodium/cable discrepancies from the source audit remain to be resolved.
 Authoring builds pass with zero warnings/errors; Python/PowerShell syntax and
 the static 23-case inventory pass. Tests and model arithmetic have not executed
 inline. No production host, editor or saved brain selects this candidate.
+
+The prospective study is now launched as `calyx-membrane-20261117-920328`, frozen
+at revision `635508a1d6d8dcaba156004d50d3e67e620b9acd`, in visible task
+`DNNE-Calyx-Membrane-ed9d3e8d93fa`. Initial 1,812 files plus manifest are verified
+on D:. No post-launch output/status/process has been inspected. Await the
+operator's report; channel arithmetic and analytic clamps are not free-cell
+or coupled sensory qualification.

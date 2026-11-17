@@ -99,3 +99,14 @@ sensory feedback, balance or recovery is qualified by this experiment.
 Authoring builds and syntax/inventory checks execute no tests or neurons. Launch
 only clean frozen pushed source with an initial verified D: backup in visible
 PowerShell, and inspect output only after the operator reports completion.
+
+## Launch record
+
+Launched as `rubral-declared-20261117-3e3db0`, frozen at
+`149e5ea778878dded50bb8d867292c9f5a367a6d`, visible task
+`DNNE-Rubral-Declared-35778cc76b5f`. The initial 1,755 files plus manifest are
+verified on D:. Test and probe authoring builds have zero warnings/errors;
+Python/PowerShell syntax and the 150-case source inventory passed without
+executing a test or model inline. This is the only pending operator report.
+No post-launch output, status or process has been inspected. The vestibular
+comparison remains an unlaunched draft, and no further spindle study has started.

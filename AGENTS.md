@@ -2220,3 +2220,14 @@ its visible launcher remains unauthored, preparation deliberately refuses it,
 and no vestibular experiment ran. Finish/review it later; the operator's completed
 results and explicit wiring simplification took priority. No pending reports
 remain from the old two windows. The full goal remains active and unfinished.
+
+The declared-recipient rubral comparison is now launched as
+`rubral-declared-20261117-3e3db0`, revision
+`149e5ea778878dded50bb8d867292c9f5a367a6d`, visible task
+`DNNE-Rubral-Declared-35778cc76b5f`. All 1,755 initial files plus manifest are
+D: verified. Test/probe builds and syntax/source-inventory checks passed without
+inline execution. This is the ONE pending operator report. No post-launch
+output/status/process has been inspected; do not monitor it. The vestibular
+comparison draft has no launcher and remains unlaunched. The next spindle work
+must address spatial transport error; the current upwind reference is unqualified.
+No whole-brain, physiological or Avatar usability success is implied.

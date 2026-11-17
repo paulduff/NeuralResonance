@@ -166,3 +166,15 @@ saved control report. Numerical compatibility with the historical interpreter
 is not assumed or reported as proved. Any future numerical pass applies to the
 tested comparison under the newly declared runtime. No controls or numerical
 models run inline.
+
+## Visible launch record
+
+Prepared from clean pushed revision
+`827f04554fb61191ae2cf489b3aa54618f76c4c0`, using the D:-verified circuit review
+and explicit runtime declaration. All 1,819 initial files plus manifest were
+D: verified before opening independent visible task
+`DNNE-Rubral-Native-149a80212e4b` for
+`rubral-native-20261117-4cdba5`. No post-launch output/status/process has been
+inspected. The numerical controls, 281 tests, seven native conditions and fifteen
+full references are pending the operator's completion report; no success is
+inferred from launch. Native skull retry `1e2f21` also remains pending.

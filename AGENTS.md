@@ -2467,3 +2467,14 @@ and analysis require their evidence. All original biological/numerical bounds
 and reference/core sources remain unchanged. See native-muscle doc; preparation
 must use clean pushed source and the D:-verified declaration. Skull 1e2f21 is
 still the only pending report until the new native package is actually launched.
+
+Native rubral/muscle trial is now launched as rubral-native-20261117-4cdba5,
+revision 827f04554fb61191ae2cf489b3aa54618f76c4c0, visible task
+DNNE-Rubral-Native-149a80212e4b. Initial 1,819 files plus manifest D: verified.
+Preparation/static syntax passed; all controls, 281 tests, seven native trials
+and fifteen full reference integrations belong to the independent window.
+No post-launch output/status/process inspected. TWO reports now await the
+operator: this run and native skull retry 1e2f21. Circuit 7fc785 is completed,
+fully reviewed and no longer pending. Full goal remains active and unfinished;
+source-preserving clock attachment is qualified, moving-muscle numerical/physical
+outcomes are not yet known. Preserve all failed packages and old saves.

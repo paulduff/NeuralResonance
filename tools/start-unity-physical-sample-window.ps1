@@ -4,7 +4,9 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 $combined=$configuration.CombinedBodyContacts -eq $true
-$expectedCases=if($combined){74}else{39}
+$skull=($configuration.PSObject.Properties.Name -contains 'NativeSkullCapture') -and $configuration.NativeSkullCapture -eq $true
+if($combined -and $skull){throw 'Select one isolated native study mode.'}
+$expectedCases=if($combined -or $skull){74}else{39}
 if($combined -and ($configuration.ExpectedContactObservations -ne 3015 -or $configuration.ObservationProtocolVersion -ne 2)){throw 'Unexpected combined native observation scope.'}
 if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne $expectedCases -or $configuration.LiveBodySelected -or -not $configuration.ActualUnityPhysicsRequired -or -not $configuration.NoTimingMeasured){throw 'Unexpected Unity physical-sample configuration.'}
 if($configuration.ExpectedBodySamples -ne 201 -or $configuration.ExpectedActualPhysicsSteps -ne 201 -or $configuration.ExpectedFinalCompleteStep -ne 200 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1'){throw 'Unexpected physical study scope.'}
@@ -28,7 +30,7 @@ if(-not $InWindow){
  foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
   if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial backup or source differs: '+$entry.Path)}
  }}
- $taskPrefix=if($combined){'DNNE-Unity-Body-Contacts-'}else{'DNNE-Unity-Samples-'}
+ $taskPrefix=if($skull){'DNNE-Unity-Skull-'}elseif($combined){'DNNE-Unity-Body-Contacts-'}else{'DNNE-Unity-Samples-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -84,15 +86,18 @@ function Capture-Tree([string]$Directory,[string]$Name){
 }
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
  ProducerAndTransportChecksPassed=$false;NeuronalModelExecuted=$false;LiveUnityIntegrated=$false;UnityBuildSucceeded=$false;PhysicsStudyAttempted=$false;UnityPhysicsChecksPassed=$false;TimingMeasured=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
-$statusPath=Join-Path $package 'window-status.json';$transcribing=$false
+$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$probe='';$testBinaries=@();$probeBinaries=@();$playerFiles=@()
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier result.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle=if($combined){'DNNE actual Unity complete body/contact checks'}else{'DNNE actual Unity step and body sample checks'}
+ $Host.UI.RawUI.WindowTitle=if($skull){'DNNE actual Avatar head sampling'}elseif($combined){'DNNE actual Unity complete body/contact checks'}else{'DNNE actual Unity step and body sample checks'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host ($expectedCases.ToString()+' focused checks, a frozen Unity build and 201 real physical steps. No DNNE connection; no live monitoring. Report completion to Orion.')
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package
+ if($skull){
+  foreach($kind in @('Python','Dotnet')){if((File-Sha256 $configuration.($kind+'Executable')) -ne $configuration.($kind+'ExecutableSha256')){throw ('Executable changed: '+$kind)}}
+ }
  [ordered]@{CapturedUtc=[DateTime]::UtcNow.ToString('o');Cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors);OperatingSystem=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,TotalVisibleMemorySize,FreePhysicalMemory} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $package 'platform.json') -Encoding UTF8
  $build=Join-Path $package 'source/artifacts/unity-physical-sample-tests'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
@@ -109,12 +114,14 @@ try {
  if($results.Count -ne $configuration.ExpectedTestCases -or @($results | Where-Object {$_.outcome -ne 'Passed'}).Count){throw 'Focused tests failed or coverage was incomplete.'}
  $requiredCounts=@{PhysicalSampleProducerTests=16;PhysicalSampleTransportTests=22;SolutionManifestTests=1}
  if($combined){$requiredCounts.PhysicalObservationTests=31;$requiredCounts.UnityBodyEncodingTests=4}
+ if($skull){$requiredCounts.SkullKinematicsTests=12;$requiredCounts.ClockedVestibularMechanicsTests=16;$requiredCounts.VestibularLabyrinthTransducerTests=7}
  foreach($class in $requiredCounts.Keys){
   if($configuration.ExpectedClassCounts.$class -ne $requiredCounts[$class]){throw ('Unexpected class count: '+$class)}
   $actual=@($results | Where-Object {$_.testName -like ('NeuralResonanceEngine.DNNE.Tests.'+$class+'.*')}).Count
   if($actual -ne $requiredCounts[$class]){throw ('Incorrect test coverage: '+$class)}
  }
  if(@($results.testName | Select-Object -Unique).Count -ne $results.Count){throw 'Repeated test names cannot replace missing checks.'}
+ if($skull){Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_skull_gate.py'),'check-tests',$package) 'test-inventory.log'}
  $status['PassedFocusedTests']=$results.Count
  Assert-Package
  foreach($entry in @($testBinaries)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Binary changed: '+$entry.Path)}}
@@ -151,11 +158,16 @@ try {
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/UnityPhysicalSampleProbe/UnityPhysicalSampleProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
  $probe=Join-Path $probeBuild 'bin/UnityPhysicalSampleProbe/release/UnityPhysicalSampleProbe.dll'
  $probeBinaries=Capture-Binaries $probe 'probe-binaries.json'
+ if($skull){
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-before.json')) 'managed-runtime-before.log'
+  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_skull_gate.py'),'runtime',$package) 'runtime-preflight.log'
+ }
  $study=Join-Path $package 'study'
  Write-Host 'Running actual physical steps, bounded sample delivery, pauses and an explicit capture-failure intervention...' -ForegroundColor Cyan
  $status.PhysicsStudyAttempted=$true
  $studyArguments=@($probe)
  if($combined){$studyArguments+='--combined'}
+ if($skull){$studyArguments+='--skull'}
  $studyArguments+=@((Join-Path $playerOutput 'DNNE Unity World.exe'),$study,$configuration.SessionId)
  Invoke-Logged $configuration.DotnetExecutable $studyArguments 'study.log'
  $result=Get-Content -LiteralPath (Join-Path $study 'study-result.json') -Raw | ConvertFrom-Json
@@ -175,6 +187,13 @@ try {
      -not $analysis.missingContactInjectionRejected -or $analysis.nativeSourceActuallyLostContact){throw 'Complete native body/contact criteria failed.'}
   $status['CompleteBodyContactChecksPassed']=$true;$status['DeliveredContactObservations']=3015
  } elseif(-not $result.stepAndBodyDeliveryChecksPassed -or $analysis.heldBodyInspections -ne 4){throw 'Body-only native criteria failed.'}
+ if($skull){
+  if($result.skullSampleEndpoints -ne 201 -or $configuration.ExpectedSkullPointReceipts -ne 603){throw 'Incomplete native head delivery.'}
+  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_skull_gate.py'),'compare',$package) 'skull-analysis.log'
+  $head=Get-Content -LiteralPath (Join-Path $package 'skull-analysis.json') -Raw | ConvertFrom-Json
+  if(-not $head.nativeHeadSamplingChecksPassed -or $head.pointReceipts -ne 603){throw 'Native skull criteria failed.'}
+  $status['NativeHeadSamplingChecksPassed']=$true
+ }
  foreach($entry in @($testBinaries)+@($probeBinaries)+@($playerFiles)){
   if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Executed binary/player input changed: '+$entry.Path)}
  }
@@ -185,6 +204,19 @@ try {
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 } finally {
+ if($skull){
+  try {
+   if($probe -and (Test-Path -LiteralPath (Join-Path $package 'managed-runtime-before.json'))){
+    Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-after.json')) 'managed-runtime-after.log'
+    if((File-Sha256 (Join-Path $package 'managed-runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'managed-runtime-after.json'))){throw 'Managed runtime changed.'}
+    Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_skull_gate.py'),'runtime',$package) 'runtime-postflight.log'
+    $status['ManagedRuntimePreserved']=$true
+   }
+   Assert-Package
+   foreach($entry in @($testBinaries)+@($probeBinaries)+@($playerFiles)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Executed binary changed: '+$entry.Path)}}
+   $status['FrozenPackageUnchanged']=$true
+  } catch {$status.Status='FAILED';$status.ExitCode=1;$status['IntegrityError']=$_.Exception.ToString();Write-Host ('INTEGRITY FAILED: '+$_.Exception.Message) -ForegroundColor Red}
+ }
  if($status.Status -eq 'RUNNING'){$status.Status='INTERRUPTED';$status.ExitCode=2;$status['Error']='Pipeline ended before completing checks; cause not established.'}
  $status['CompletedUtc']=[DateTime]::UtcNow.ToString('o')
  if($transcribing){Stop-Transcript | Out-Null}
@@ -193,7 +225,8 @@ try {
  catch {$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
- if($combined){Write-Host 'Tell Orion the actual Unity body/contact outcome. Complete endpoint delivery, afferent physiology and Avatar recovery are separate.'}
+ if($skull){Write-Host 'Tell Orion the actual skull sampling outcome. Native head measurements, continuous-motion accuracy, afferent physiology and Avatar balance are separate.'}
+ elseif($combined){Write-Host 'Tell Orion the actual Unity body/contact outcome. Complete endpoint delivery, afferent physiology and Avatar recovery are separate.'}
  else {Write-Host 'Tell Orion the actual Unity sample outcome. Physical step/capture integration, live neural coupling, afferent physiology and Avatar recovery are separate.'}
  Write-Host ('Results: '+$package)
 }

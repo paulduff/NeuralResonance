@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 namespace Nre.UnityWorld {
-// Read-only capture for a future isolated physical-owner qualification. This
+// Read-only capture for the isolated physical-owner qualification. This
 // helper neither steps physics nor sends a receptor/brain message. Live sensory
 // encoding and its previous captures remain unchanged.
 public static class SkullMotionCapture {

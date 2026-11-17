@@ -1111,3 +1111,12 @@ body. It has no live caller and no native qualification yet. The prospective
 capture, anatomical point placement, sampling convergence and real afferent firing
 still precede any live/editor promotion. Old body/contact encodings and Avatar
 sensory, muscle, fatigue and supply mechanisms are preserved.
+
+The skull component run `f740bd` is now reviewed: 74 cases passed, 61 original
+vestibular files preserved exactly, and all 2,430 files verified on C:/D:.
+The native sampling candidate attaches the read-only head helper to the existing
+isolated physical owner through separate sidecar files. Three declared points
+retain redundant COM/quaternion/velocity data and 603 typed receipts; an
+independent saved-data audit checks point motion, coordinate conversion and held
+physics. No live/editor caller, afferent membrane or world-start change is added.
+See the skull document for prospective bounds and remaining motion/anatomy gates.

@@ -14,7 +14,7 @@ internal static class RuntimeFingerprint
             ?? throw new InvalidOperationException("Runtime did not declare its platform assemblies.");
         var folders = trusted.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
             .Select(Path.GetFullPath).Where(p => !p.StartsWith(app, StringComparison.OrdinalIgnoreCase))
-            .Select(Path.GetDirectoryName).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
+            .Select(p => Path.GetDirectoryName(p)!).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
         if (folders.Length == 0) throw new InvalidOperationException("No external runtime dependency directories found.");
         string Hash(string path)
         {
@@ -37,7 +37,7 @@ internal static class RuntimeFingerprint
             appLocalDependenciesExcluded = true, appLocalFilesRequireSeparateBinaryManifest = true,
             modelsExecuted = false, testsExecuted = false
         };
-        Directory.CreateDirectory(Path.GetDirectoryName(output));
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
         File.WriteAllText(output, JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine("Recorded managed runtime dependencies; no model or test executed.");
     }

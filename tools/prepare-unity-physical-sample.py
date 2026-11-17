@@ -7,6 +7,8 @@ from pathlib import Path, PurePosixPath
 import shutil
 import subprocess
 import uuid
+import sys
+import importlib.util
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +19,13 @@ def io_path(path):
     return Path('\\\\?\\' + str(path)) if os.name == 'nt' and not str(path).startswith('\\\\?\\') else path
 
 
-def main(combined=False):
+def main(combined=False, skull=False):
+    assert not (combined and skull), 'Select one isolated study mode.'
+    skull_gate = None
+    if skull:
+        spec = importlib.util.spec_from_file_location('native_skull_gate', ROOT / 'tools/native_skull_gate.py')
+        skull_gate = importlib.util.module_from_spec(spec); spec.loader.exec_module(skull_gate)
+        skull_review = skull_gate.prerequisite()
     def git(*args):
         return subprocess.check_output(['git', *args], cwd=ROOT, encoding='utf-8').strip()
     if git('status', '--porcelain'):
@@ -29,7 +37,7 @@ def main(combined=False):
     if not dotnet:
         raise RuntimeError('No dotnet executable.')
     stamp = datetime.now(timezone.utc).strftime('%Y%m%d')
-    package = ROOT / 'artifacts' / (('unity-body-contact-' if combined else 'unity-physical-sample-') + stamp + '-' + uuid.uuid4().hex[:6])
+    package = ROOT / 'artifacts' / (('unity-skull-' if skull else 'unity-body-contact-' if combined else 'unity-physical-sample-') + stamp + '-' + uuid.uuid4().hex[:6])
     backup = Path('D:/DNNE-desktop-runs/UnityWorld') / package.name
     if package.exists() or backup.exists():
         raise RuntimeError('Fresh capture required.')
@@ -63,11 +71,16 @@ def main(combined=False):
     if workspace.exists():
         raise RuntimeError('Fresh Unity build workspace required.')
     shutil.copyfile(package / 'source/tools/backup-unity-run.ps1', package / 'backup-run.ps1')
+    if skull:
+        (package / 'skull-prerequisite.json').write_text(json.dumps(skull_review, indent=2)+'\n', encoding='utf-8')
+        (package / 'skull-protocol.json').write_text(json.dumps(skull_gate.protocol(), indent=2)+'\n', encoding='utf-8')
+        shutil.copyfile(Path(skull_review['capture']) / 'managed-runtime-before.json', package / 'qualified-managed-runtime.json')
     files = [dict(Path=p.relative_to(io_path(package)).as_posix(), Sha256=sha256(p.read_bytes()).hexdigest().upper())
              for p in sorted(io_path(package).rglob('*')) if p.is_file()]
     counts = dict(PhysicalSampleProducerTests=16, PhysicalSampleTransportTests=22, SolutionManifestTests=1)
     if combined:
         counts.update(PhysicalObservationTests=31, UnityBodyEncodingTests=4)
+    if skull: counts = skull_gate.COUNTS
     configuration = dict(Revision=revision, PreparedUtc=datetime.now(timezone.utc).isoformat(),
         PackageFiles=files, DotnetExecutable=dotnet, BackupDestination=str(backup),
         NoLiveMonitoring=True, ExpectedTestCases=sum(counts.values()), ExpectedClassCounts=counts,
@@ -79,6 +92,11 @@ def main(combined=False):
         ExpectedFinalCompleteStep=200, CombinedBodyContacts=combined,
         ExpectedContactObservations=3015 if combined else 0,
         ObservationProtocolVersion=2 if combined else 1)
+    if skull:
+        configuration.update(NativeSkullCapture=True, ExpectedSkullPointReceipts=603,
+            ExpectedTestMethods=skull_gate.gate.inventory(ROOT, counts),
+            PythonExecutable=sys.executable, PythonExecutableSha256=sha256(Path(sys.executable).read_bytes()).hexdigest().upper(),
+            DotnetExecutableSha256=sha256(Path(dotnet).read_bytes()).hexdigest().upper())
     (package / 'configuration.json').write_text(json.dumps(configuration, indent=2) + '\n', encoding='utf-8')
     pointer = dict(Package=str(package), Backup=str(backup), Revision=revision, PreparedOnly=True,
                    NoLiveMonitoring=True, Launcher=str(package / 'source/tools/start-unity-physical-sample-window.ps1'))
@@ -91,4 +109,5 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--combined', action='store_true')
-    main(parser.parse_args().combined)
+    parser.add_argument('--skull', action='store_true'); args = parser.parse_args()
+    main(args.combined, args.skull)

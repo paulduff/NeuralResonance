@@ -13,6 +13,9 @@ static class Program
 
     public static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--runtime-fingerprint") { RuntimeFingerprint.Write(args[1]); return 0; }
+        bool skull = args.Length == 4 && args[0] == "--skull";
+        if (skull) args = args[1..];
         if (args.Length == 4 && args[0] == "--combined") return CombinedStudy.Run(args[1..]);
         if (args.Length == 2 && args[0] == "--audit-combined")
         {
@@ -40,11 +43,13 @@ static class Program
                 WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Path.GetDirectoryName(player)! };
             foreach (string arg in new[] { "-batchmode", "-nographics", "--physical-sample-qualify", session.ToString("N"),
                 "--muscles", "--output", output, "-logFile", Path.Combine(output, "unity.log") }) start.ArgumentList.Add(arg);
+            if (skull) { start.ArgumentList.Add("--skull-motion-capture"); start.ArgumentList.Add("material-points-v1"); }
             process = Process.Start(start) ?? throw new InvalidOperationException("Unity did not start.");
             body = new UnityPhysicalSampleBody(output, session, process);
             report["unity"] = body.LastStep.Unity;
             var clock = new PhysicalSampleClock(session, "isolated-unity-avatar", "avatar_unity_body", 0, body.PhysicsStepMs, 0, 1000);
             UnityPhysicalSampleBody.WriteNew(Path.Combine(output, "clock.json"), clock);
+            var head = skull ? new NativeSkullStudy(output, clock) : null;
             var producer = new AvatarPhysicalSampleProducer(clock, body, maximumSamples: 4);
             var receiver = new AvatarPhysicalSampleReceiver(clock, maximumSamples: 4);
             var expected = new List<PhysicalBodySample>(); var consumed = new List<PhysicalBodySample>();
@@ -54,6 +59,7 @@ static class Program
             void RecordSource()
             {
                 expected.Add(PhysicalSampleProtocol.Capture(clock, body.CompletedPhysicsStep, body.CaptureObservation()));
+                head?.Capture(body.LastStep);
                 maxDisplacement = Math.Max(maxDisplacement, Math.Abs(body.LastStep.PelvisHeightMeters - initialHeight));
                 foreach (string text in body.LastStep.ContactsJson)
                     maximumContactForce = Math.Max(maximumContactForce,
@@ -109,6 +115,8 @@ static class Program
             while (producer.State.UnsentSamples > 0) Drain(4);
             Require(expected.SequenceEqual(consumed) && consumed.Count == 201 && receiver.AcceptedSamples == 201 &&
                 receiver.ConsumedSamples == 201 && producer.State.RetainedSamples == 0, "Body delivery differs from original fixed-grid observations.");
+            head?.Complete();
+            if (head is not null) report["skullSampleEndpoints"] = head.Endpoints;
             Require(maxDisplacement > .05f && maximumContactForce > 0, "No qualifying actual motion/contact evidence.");
             // Explicit failure intervention after one real additional movement.
             body.InjectNextCaptureFailure = true; bool injectionObserved = false;

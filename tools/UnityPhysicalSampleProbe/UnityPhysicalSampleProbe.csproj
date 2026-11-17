@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../NativeMotorBridgeProbe/RuntimeFingerprint.cs" Link="RuntimeFingerprint.cs" />
     <ProjectReference Include="../../src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
   </ItemGroup>
 </Project>

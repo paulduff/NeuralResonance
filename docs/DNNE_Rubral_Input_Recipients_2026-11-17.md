@@ -187,3 +187,41 @@ on D:. Preparation only checked metadata and copied previously reported evidence
 No post-launch output, status or process has been inspected. This is the only
 pending operator report; the completed vestibular comparison is separately
 reviewed. The 155 cases and neuronal response are not yet assessed for this run.
+
+## Completed ten-input review
+
+The operator reported `0419e8` complete. All 2,423 files on C: and D:, frozen
+Git source, executed binaries, managed runtime and 155 exact test cases reconcile.
+The saved audit reproduces exactly from 48,000 original frames and all 16 motor
+branches. Source observations and original firing times match the earlier
+declared-input experiment; its single-contact trajectories remain byte-identical.
+
+| Source drive | Selected original inputs | Ten-contact motor spikes | Single-contact spikes | Disconnected spikes |
+| --- | ---: | ---: | ---: | ---: |
+| Quiet | 0 | 0 | 0 | 0 |
+| Quarter | 0 | 0 | 0 | 0 |
+| Unit | 50 | 1 | 0 | 0 |
+| Four | 230 | 12 | 0 | 0 |
+
+Each motor spike arrives at the isolated motor-unit receiver exactly once.
+Both packet cadences produce identical trajectories and emissions. The unit
+condition fires at 1223.7222994456993 ms; the stronger condition's twelve spikes
+span 1031.018596925541 to 1469.660520732152 ms. Sampled soma peaks are
+10.50777821282527 and 12.843047465952496 mV. The 50 nS individual contact strength,
+membrane equations and crossing criterion were unchanged.
+
+This is evidence of neuronal summation causing motor output in the declared
+isolated circuit. The previous single contact was insufficient under these
+conditions. It does not establish a plasticity defect, ten as an anatomical
+optimum, physiological rubrospinal calibration or live brain authority. The
+upstream source is still a reduced DNNE population under prescribed input;
+moving muscles/body and sensory return were not executed. Next motor work should
+carry these original emissions through the existing qualified muscle/body path,
+preserving disconnected controls and assessing numerical accuracy separately.
+
+The authoritative review is `artifacts/rubral-ten-review-20261117-v2/review.json`.
+The first review's optional population summary was overwritten by its traversal
+of the copied single-contact baseline. Its main analysis and motor counts were
+correct; v2 restricts summaries to the current study and checks all ten named
+sources. Both review artifacts are preserved. No neuron, model or test was rerun
+during either saved-data review.

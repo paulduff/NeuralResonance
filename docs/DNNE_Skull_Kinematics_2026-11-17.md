@@ -105,3 +105,54 @@ verified on D:. The 74-case source inventory, Python/PowerShell syntax and both
 .NET builds passed without inline model/test execution. No post-launch output,
 status or process has been inspected. This run and rubral-ten `0419e8` await
 separate operator completion reports; neither is live-monitored.
+
+## Completed component review and native sampling candidate
+
+The operator reported `f740bd` complete. All 2,430 C:/D: files, frozen Git,
+binaries and managed runtime reconcile. All 74 exact test cases passed and all
+61 original default vestibular output files are byte-identical. The saved audit
+reproduces without executing a model or test. The separate review is
+`artifacts/skull-kinematics-review-20261117/review.json`, verified on D:.
+
+The next native sampling candidate extends only the isolated physical-sample
+probe. `--skull-motion-capture material-points-v1` makes Unity retain a separate
+head observation file before each normal bridge reply. The body/contact wire
+schema is unchanged. The actual Avatar head supplies its origin, basis,
+quaternion, centre of mass, world linear/angular velocities and `GetPointVelocity`
+at three material points: centre and local X = +/-0.0625 m. These binary-exact
+offsets exercise rigid-body kinematics; they are not calibrated labyrinth anatomy.
+
+The existing falling-body experiment retains pause, backpressure, owner rejection
+and post-movement capture-failure checks. There are 201 delivered endpoints
+(0..200), an additional preserved failure endpoint 201, four held inspections
+and a stop: 207 native sidecars. Three adapters preserve 603 endpoint receipts,
+with no acceleration assigned at step zero. Every later derivative names both
+original endpoints. No vestibular mechanics, afferent membrane or DNNE executes.
+
+An independent Python audit checks every sidecar and adapter receipt against:
+
+- Quaternion-derived head axes and material-point world location.
+- `v_point = v_COM + omega cross (point - COM)` using redundant native data.
+- Unchanged head measurements during all held inspections and stop.
+- Native/typed hashes, original sample identity and both clock epochs.
+- World velocity differences, `g-a`, and projection into the current head axes.
+
+Prospective bounds are in `skull-protocol.json`: 1e-5 basis and position bounds;
+point velocity 1e-5 m/s plus 1e-6 relative; derived arithmetic 1e-8 plus 1e-10
+relative. Motion must exercise angular velocity above .01 rad/s and point-speed
+difference above .0001 m/s. Missing motion fails coverage; bounds are not changed
+after observing the run. These checks concern sampled coordinates and ownership,
+not independent continuous physics accuracy. Prescribed tilt/free-fall/rotation
+controls, step refinement and sensor anatomy remain later qualification work.
+
+The new probe needs only CoreCLR; the previous motor probe also loaded ASP.NET.
+The gate requires exactly the reviewed CoreCLR directory and identical host,
+runtime options and hashes, while also rechecking all original ASP.NET files used
+by the test project. Before/after runtime inventories of the new probe must
+match exactly. No existing dependency manifest is normalized or overwritten.
+
+Preparation requires the reviewed component gate and unchanged adapter source.
+The visible-window runner repeats the 74-case suite, builds an isolated Unity
+player, executes the native study, checks the saved observations and backs up the
+result. Authoring compilation and syntax checks are separate from execution;
+native sampling remains unqualified until the operator reports its outcome.

@@ -19,6 +19,10 @@ public static class PhysicalSampleQualification {
   public bool directStepRejected,wrongOwnerRejected;
  }
  [Serializable] sealed class Failure {public string error,sessionId;public long physicsStep,expectedSequence;}
+ [Serializable] sealed class SkullReply {
+  public string version="native-skull-sidecar-v1",sessionId,operation;public long sequence,physicsStep;
+  public SkullMotionCapture.Snapshot[] samples;
+ }
 
  public static IEnumerator Run(WorldController world) {
   yield return null;
@@ -30,6 +34,8 @@ public static class PhysicalSampleQualification {
    if(!Guid.TryParseExact(session,"N",out _)||Directory.Exists(directory))throw new InvalidOperationException("Fresh declared bridge session required.");
    if(!world.IsolatedQualification||world.Connected||world.Running||world.physicsSteps!=0||!world.Avatar.MusclesEnabled)
     throw new InvalidOperationException("Bridge requires a paused fresh muscular Avatar without DNNE.");
+   string skullMode=WorldController.Argument("--skull-motion-capture");
+   if(skullMode!=null&&skullMode!="material-points-v1")throw new InvalidOperationException("Unknown isolated skull capture mode.");
    Directory.CreateDirectory(directory);world.ClaimPhysicalSampleOwnership(owner);
    try {world.Step();}catch(InvalidOperationException){directRejected=true;}
    try {world.StepForPhysicalSample(new object());}catch(InvalidOperationException){wrongRejected=true;}
@@ -64,6 +70,15 @@ public static class PhysicalSampleQualification {
 
  static Reply Capture(WorldController world,string session,long sequence,string operation,bool directRejected,bool wrongRejected){
   var body=world.Avatar;
+  // Optional independent evidence file; the existing body/contact wire schema
+  // stays unchanged. Capture at the completed physical endpoint before replying.
+  if(WorldController.Argument("--skull-motion-capture")=="material-points-v1"){
+   var skull=new SkullReply{sessionId=session,sequence=sequence,operation=operation,physicsStep=world.physicsSteps,
+    samples=new[]{SkullMotionCapture.Capture(body,world.physicsSteps,"centre",Vector3.zero),
+     SkullMotionCapture.Capture(body,world.physicsSteps,"left",new Vector3(-.0625f,0,0)),
+     SkullMotionCapture.Capture(body,world.physicsSteps,"right",new Vector3(.0625f,0,0))}};
+   WriteNew(Path.Combine(world.outputDirectory,"bridge","skull-"+sequence.ToString("D6")+".json"),JsonUtility.ToJson(skull,true));
+  }
   return new Reply{sessionId=session,sequence=sequence,operation=operation,unity=Application.unityVersion,
    physicsStep=world.physicsSteps,physicsStepMs=(double)WorldController.StepSeconds*1000,
    bodyJson=JsonUtility.ToJson(BodyFrame.Capture(body,world.physicsSteps)),

@@ -2320,3 +2320,26 @@ processes were read. Native Unity head capture remains a future isolated physica
 owner qualification; the helper has no live caller and was not built/executed.
 Do not inspect pending captures without their operator reports, or equate a
 component pass with afferent physiology, live brain authority or Avatar recovery.
+
+Both reported Nov17 captures are now reviewed. Skull f740bd: all 2,430 C:/D:
+files, frozen source/binaries/runtime, 74 exact cases and all 61 original default
+vestibular files reconcile. Its separate skull-kinematics-review-20261117 is D:
+verified. Ten-input rubral 0419e8: 2,423 files, 155 cases, 48,000 original frames
+and 16 branches reconcile. Quiet/quarter produce no motor spikes; unit gives one,
+four gives twelve; single-contact and disconnected controls remain silent.
+Packet cadences and the original single-contact trajectories match exactly.
+Individual strength remains 50 nS. This is isolated neuronal summation/output,
+not calibrated anatomy, learned efficacy, live authority or Avatar control.
+Use rubral-ten-review-20261117-v2: the first review's auxiliary population summary
+was overwritten by traversal of the copied baseline; v2 restricts summaries to
+the current capture. Both are preserved; the core saved analysis was unchanged.
+
+Next native skull candidate: optional separate sidecars in the existing isolated
+physical-owner bridge, actual head centre and +/-0.0625 m local-X points, 603
+adapter receipts, independent quaternion/point-velocity/projection audit and
+preserved pause/backpressure/failure checks. No live or editor selection. The
+reviewed component gate is a preparation prerequisite; 74 tests and Unity must
+execute only in a fresh frozen, D:-verified visible PowerShell window. No native
+outcome is known before the operator report. Prospective bounds and the exact
+CoreCLR subset dependency check are in the skull document/native_skull_gate.py.
+Continuous-motion accuracy, point anatomy, afferent firing and balance remain open.

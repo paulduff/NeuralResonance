@@ -2164,3 +2164,19 @@ infer completion from elapsed time. Assess the reference's full spatial and
 temporal errors before interpreting candidate differences or physiological
 mechanisms; preserve all historical bounds and failures. The full goal remains
 active and unfinished.
+
+An isolated physical-clock vestibular mechanics candidate is now authored in
+`src/NRE.SimAvatar/AvatarClockedVestibularMechanics.cs`; see
+`docs/DNNE_Clocked_Vestibular_Mechanics_2026-11-17.md` and the updated Avatar
+migration audit. It preserves existing reduced constants/axes but removes
+invented initial elapsed time, applies a causal previous-endpoint hold, solves
+the stated coupled linear filters analytically, and rejects gaps/replays that
+would reset state. Its Cupula coordinate has rad/s units, not displacement;
+the observation hash does not validate the skull transformation. No hair-cell
+membrane, neural firing, live host or editor selector is added. Sixteen tests
+are authored and the Release test project builds cleanly, but NONE of those
+new tests or comparisons has run. Prepare an independent numerical comparison
+in a future visible, frozen, D:-backed window before considering promotion.
+No third study has launched. Rubral `844975` and spindle `f0020c` remain the two
+pending operator reports; do not read their post-launch output/status/process.
+No paused goal or completion is implied; the full usability goal stays active.

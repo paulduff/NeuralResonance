@@ -250,8 +250,25 @@ The corrected package `cleft-coupling-20261117-3076da` is frozen at
 `c53783a17e9ab26ab5968bca5d267d0c1a277fa5`. Its initial 1,829 files plus manifest
 were D: verified before visible task `DNNE-Cleft-Coupling-4a1705e0b117` launched.
 The source equation files, 468/60/96 inputs and reference limits are unchanged.
-No post-launch output/status/process has been inspected; await the operator's
-report before reviewing its numerical outcome.
+The operator subsequently reported its completed footer. The saved-data review
+below verifies its outcome; the earlier failed `ca4412` remains preserved.
+
+## Corrected closed-cleft result
+
+`cleft-coupling-review-20261117/review.json` verifies all 2,384 files in each
+C:/D: copy, 1,813 Git source files, frozen binaries and unchanged runtimes.
+All 40 focused cases passed with exact expected method multiplicities. All
+468 edge, 60 local capacitance and 96 spatial cases reconciled against both
+60- and 90-digit independent references under the original bounds. The largest
+candidate error consumed about 1.524% of its allowed absolute/relative error.
+Every saved comparison and the analysis summary were reproduced from retained
+values; the review executed no model equations or tests. The new review has its
+own verified D: backup.
+
+This qualifies the tested closed constitutive/spatial calculations, not open
+boundary exchange, coupled channel trajectories, physiological calibration,
+afferent firing or Avatar balance. The repeated `ca4412` failure message refers
+to the older input-serialization failure, not a regression in this corrected run.
 
 ## Open cleft-apex owner: authored after the frozen comparison
 
@@ -312,7 +329,7 @@ Fick/drift limits, inward supply, the unit-capacitor graph response, holding-cur
 signs, split-opening invariance, whole-network charge/species accounting, gauge
 shifts/input order, electrical energy and invalid/mutable identity. Test and probe
 authoring builds pass with zero warnings/errors. **No new tests or model/reference
-evaluation have run.** The pending `3076da` package predates this code and cannot
+evaluation had run at authoring.** The reviewed `3076da` package predates this code and cannot
 qualify it. No live Avatar, editor or Unity caller selects the open owner.
 
 Next prepare an independent open-graph comparison retaining the original closed
@@ -363,9 +380,16 @@ The sequence is:
    It starts a separate visible PowerShell window with no live monitoring.
 
 The capture project builds with zero warnings/errors; five Python files and the
-PowerShell launcher parse, and static inputs/test inventory match 192/51. None
-of this new reviewer, preparer, launcher, unit tests or numerical reference has
-executed. Reports for closed `3076da`, rubral `30755e` and skull `1e2f21` remain
-requested but unanswered. No pending output/status/process was inspected.
+PowerShell launcher parse, and static inputs/test inventory match 192/51.
+The closed reviewer has now passed as recorded above; preparation and visible
+launch follow from that reviewed evidence. Rubral `30755e` and skull `1e2f21`
+still await confirmed completion. The operator says a window remains working;
+no pending output/status/process was inspected.
 Passing this workflow would qualify an instantaneous open spatial operator and
 closed-code preservation, not a time-integrated receptor, afferent or balance.
+
+The subsequent actual membrane-current/gate assembly is now authored separately
+as `AvatarVestibularCleftMembranes`; see
+`DNNE_Cleft_Membrane_Coupling_2026-11-17.md`. It is not selected by this component
+workflow. Its 12 new cases and independent coupled derivative/time qualification
+remain unrun/unimplemented as detailed there.

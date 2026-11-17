@@ -1229,3 +1229,19 @@ graphs compared with independent full-matrix/direct-exponential references at
 before preparation. Capture build and static script/inventory checks pass; no
 new window/model/test ran. Actual local channel coupling, stationary state,
 time integration, afferent firing and live editor/body selection remain absent.
+
+`AvatarVestibularCleftMembranes` now assembles actual local hair/calyx currents,
+seven local gate derivatives and the open spatial voltage/K/Na derivative in one
+evaluation. Source inspection confirmed active hair channels only within the
+calyx and passive uncovered capacitance. MET is counted once; inner/outer calyx
+states stay separate; explicit KCC and calcium electrical accounting remain.
+No time integrator, equilibrium/axon, live body conversion or editor selection
+is added. Twelve prospective cases compile (zero warnings/errors) but have not
+run; they are separate from the earlier open workflow. See the membrane coupling
+document for fixed chemistry, terminal ports and the subsequent reference plan.
+
+Corrected closed-cleft capture `3076da` is now reviewed: all 40 focused cases and
+624 retained numerical cases pass, with full C:/D:/source/runtime verification.
+The saved-data review is separately backed up. This advances closed component
+accuracy only; open exchange and actual coupled membrane dynamics are later
+qualification stages. No live transducer/editor/body selection changed.

@@ -2683,3 +2683,31 @@ and static input/inventory checks pass. No new reviewer/preparer/launcher/test/
 model/reference executed. An async completion question for 3076da, 30755e and
 1e2f21 awaits the operator; no pending capture inspected. Do not confuse this
 operator qualification with coupled channel/time dynamics or sensory firing.
+
+Independent actual-membrane authoring now adds AvatarVestibularCleftMembranes.
+Both pinned XML inventories were checked: hair var4 J_mh/gKL/gCa/gHCN1 are zero,
+var5 active densities divide by cleft-facing ai, g_klmaxh=80; preserve passive
+uncovered capacitance. New owner computes local hair/calyx currents and seven
+gate derivatives from the same current voltage/ion/gate state, then supplies
+the open spatial solve. One MET port only, local K/Na feedback, separate inner/
+outer calyx gates, explicit neutral KCC/Ca electrical accounting, required axon
+terminal currents (zero explicitly means sealed). No gate resetting, clock,
+time integration, axon shortcut or live/editor selection. Fixed intracellular
+ions/Ca and source outer bath/reversals remain declared restrictions.
+See DNNE_Cleft_Membrane_Coupling_2026-11-17.md. Twelve prospective cases in eleven
+methods compile with zero warnings/errors; no tests/model/reference executed.
+These twelve are NOT covered by the earlier 51-case open-boundary workflow.
+Next qualify complete coupled derivatives against independent equations, then
+stationary initialization/joint time integration. At authoring, 3076da, 30755e,
+1e2f21 remained untouched awaiting reports. Full goal remains active.
+
+Operator now reports corrected cleft 3076da complete. Saved-data review verifies
+2,384 files per C:/D: copy, 1,813 Git files, all 40 tests and all 468/60/96 saved
+native/reference cases. Original 60/90-digit bounds pass; maximum allowed-error
+fraction is 0.0152364146983926. Analysis reproduced exactly without model/test
+execution. New cleft-coupling-review-20261117 has verified D: backup. Repeated
+ca4412 FAILED text is the earlier preserved failure, not a new corrected-run
+failure. Operator says a window is still working: rubral 30755e and skull 1e2f21
+remain pending and uninspected. Next freeze/backup/launch the authored open-cleft
+51-test/192-open/624-closed workflow visibly, without live monitoring. Actual
+membrane coupling remains authored/unrun and outside that qualification scope.

@@ -115,3 +115,17 @@ disputed downstream equation before comparison, without tuning it for balance.
 No vestibular experimental window was launched. Reported motor/head outcomes
 retain priority. Physiological sensory firing, closed-loop authority and Avatar
 balance/recovery remain open.
+
+## Follow-up: spatial membrane-current ownership
+
+Before implementing joint membrane/cleft derivatives, both retained XML
+inventories were checked for the hair membrane locations. `var4` sets the
+uncovered net current and KL/Ca/HCN1 conductance densities to zero; `var5`
+normalizes the active conductances by cleft-facing `ai`, with `g_klmaxh=80`.
+`var6` and `bode2/dode1` use the local transmembrane voltage and independent
+gate state. This supports distributing the active whole-cell currents across
+cleft-facing patches while retaining uncovered capacitance. It does not support
+spreading the same active density over the entire basolateral area.
+The new assembly and remaining numerical/physiological limits are recorded in
+`DNNE_Cleft_Membrane_Coupling_2026-11-17.md`. This source inspection evaluates no
+equations and does not establish free sensory-cell operation.

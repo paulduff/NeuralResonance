@@ -112,3 +112,14 @@ The separate visible launcher performs all controls, integrations and comparison
 then preserves results with a verified D: backup. No live monitoring is allowed;
 review only after the operator reports completion. Concurrent study timing is
 not a benchmark or evidence for CPU/CUDA speedup.
+
+## Launch record
+
+Launched as `spindle-eulerian-20261117-f0020c`, frozen at
+`857518d9048c0c50a81d43540e7f95cac461bb8a`, in independent visible task
+`DNNE-Spindle-Eulerian-b17aecc18cf3`. Its 1,859 initial files plus manifest
+were verified on D:. Python/PowerShell syntax was parsed before packaging;
+no controls, derivatives, integrations or comparisons executed inline.
+No post-launch outputs, status or processes were inspected. This spindle run
+and rubral replacement `rubral-motor-20261117-844975` await separate operator
+completion reports. The broader brain/body/world goal remains active.

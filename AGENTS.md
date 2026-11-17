@@ -2151,3 +2151,16 @@ change. Syntax checks are not numerical execution. Freeze clean pushed source
 and D: backups before launch. Report reference discretization separately from
 diagnostic completion; candidate accuracy, sensory physiology and recovery stay
 unqualified. Rubral replacement `844975` remains pending and must not be monitored.
+
+The continuous spindle study is now launched as
+`spindle-eulerian-20261117-f0020c`, revision
+`857518d9048c0c50a81d43540e7f95cac461bb8a`, visible task
+`DNNE-Spindle-Eulerian-b17aecc18cf3`. All 1,859 initial files plus manifest are
+D: verified. Preparation checked source/evidence/dependency metadata only;
+Python/PowerShell syntax checks executed no numerical work. TWO reports are
+pending: this spindle study and rubral replacement `844975`. Neither window's
+post-launch output/status/process has been inspected. Do not monitor them or
+infer completion from elapsed time. Assess the reference's full spatial and
+temporal errors before interpreting candidate differences or physiological
+mechanisms; preserve all historical bounds and failures. The full goal remains
+active and unfinished.

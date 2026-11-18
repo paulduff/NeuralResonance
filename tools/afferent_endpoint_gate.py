@@ -16,7 +16,7 @@ from cleft_trajectory_reference import base
 
 ROOT=Path(__file__).resolve().parents[1]
 h=precision.h;read=precision.read;save=precision.save;inventory=precision.inventory
-COUNTS=dict(bundle.COUNTS,AfferentActivationContinuationTests=15)
+COUNTS=dict(bundle.COUNTS,AfferentActivationContinuationTests=16)
 CHANGED=['src/NRE.SimAvatar/AvatarVestibularAfferentMembrane.cs','src/NRE.SimAvatar/AvatarVestibularAfferentCable.cs',
     'tools/afferent_numerical_reference.py','tools/NativeMotorBridgeProbe/AfferentTrajectoryStudy.cs','tools/NativeMotorBridgeProbe/Program.cs']
 PRESERVED=sorted((set(precision.PRESERVED)|set(bundle.PRESERVED))-set(CHANGED))
@@ -35,11 +35,16 @@ def decisions(original):
 def prepare(review_folder):
     assert not h.git('status','--porcelain'),'Commit first.'
     revision=h.git('rev-parse','HEAD');assert revision==h.git('rev-parse','origin/main'),'Push first.'
-    assert shutil.disk_usage(ROOT).free>=6*1024**3 and shutil.disk_usage('D:/').free>=8*1024**3
+    assert shutil.disk_usage('D:/').free>=8*1024**3
     h.verify(review_folder,['review.json']);review=read(review_folder/'review.json')
     assert review['operatorReportedCompletion'] and review['savedAnalysisExactlyReproduced'] and review['originalFailurePreserved']
     assert not review['numericalTrajectoryCriteriaPassed'] and review['passedTests']==181 and review['spectrumControlsPassed']==8
     capture=Path(review['capture']);assert h.digest(capture/'backup-manifest.json')==review['manifestSha256']
+    failure_review=ROOT/'artifacts/afferent-endpoint-20261118-2b5a68-review'
+    h.verify(failure_review,['review.json']);failure=read(failure_review/'review.json')
+    assert failure['operatorReportedCompletion'] and failure['originalFailurePreserved'] and failure['passedTests']==331 and failure['failedTests']==1
+    assert not any(failure[k] for k in ('originalReplayStarted','candidateTrajectoriesStarted','independentReferencesStarted'))
+    assert h.digest(Path(failure['capture'])/'backup-manifest.json')==failure['manifestSha256']
     bundle_review=ROOT/'artifacts/vestibular-bundle-20261118-092238-review'
     h.verify(bundle_review,['review.json']);br=read(bundle_review/'review.json');bc=Path(br['capture'])
     assert br['operatorReportedCompletion'] and br['savedAnalysisExactlyReproduced'] and br['bundleInputChecksPassed'] and br['passedTests']==317
@@ -54,9 +59,17 @@ def prepare(review_folder):
         for tick in spec['stepTicks']:
             replay+=['study/'+case['key']+'-ticks'+str(tick)+'/'+n for n in ('initial.json','final.json','initial-derivative.json','trajectory.csv')]
     h.verify(capture,evidence+replay+['source/'+n for n in CHANGED])
+    native_bytes=sum(h.io(capture/n).stat().st_size for n in replay)
+    # The old total already contains one native set, references and builds.
+    # This rig adds a preserved baseline plus a separately executed legacy set.
+    projected=review['verifiedBytesPerCopy']+2*native_bytes
+    budget=dict(originalTotalBytes=review['verifiedBytesPerCopy'],originalNativeBytes=native_bytes,
+        projectedPackageBytes=projected,projectionSafetyFactor=2,reserveBytes=2*1024**3,
+        requiredBeforePreparationBytes=2*projected+2*1024**3,availableBeforePreparationBytes=shutil.disk_usage(ROOT).free)
+    assert budget['availableBeforePreparationBytes']>=budget['requiredBeforePreparationBytes'],'Insufficient space for projected package, doubled allowance and reserve.'
     assert base.environment()==read(capture/'preparation-environment.json')
     assert h.digest(capture/'trajectory-analysis.json')==review['analysisSha256']
-    methods=inventory.inventory(ROOT,COUNTS);assert sum(methods.values())==332
+    methods=inventory.inventory(ROOT,COUNTS);assert sum(methods.values())==333
     package=ROOT/'artifacts'/('afferent-endpoint-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6])
     backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists();package.mkdir()
@@ -80,8 +93,10 @@ def prepare(review_folder):
     for n in ('trajectory-input.json','preparation-environment.json'):copy(capture/n,n)
     copy(capture/'managed-runtime-before.json','qualified-managed-runtime.json')
     copy(review_folder/'review.json','reviewed-precision.json');copy(bundle_review/'review.json','reviewed-bundle.json')
+    copy(failure_review/'review.json','reviewed-component-failure.json')
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
     save(package/'source-decisions.json',decisions(read(capture/'source-decisions.json')))
+    save(package/'storage-budget.json',budget)
     save(package/'provenance.json',dict(originalRevision=review['sourceRevision'],originalManifestSha256=review['manifestSha256'],
         bundleRevision=br['sourceRevision'],bundleManifestSha256=br['manifestSha256'],
         preservedSources=[dict(path=n,sha256=h.digest(bc/'source'/n)) for n in PRESERVED],
@@ -92,7 +107,7 @@ def prepare(review_folder):
     dotnet=shutil.which('dotnet');assert dotnet
     save(package/'configuration.json',dict(Revision=revision,PreparedUtc=datetime.now(timezone.utc).isoformat(),PackageFiles=files,
         DotnetExecutable=dotnet,DotnetExecutableSha256=h.digest(dotnet),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
-        BackupDestination=str(backup),IsolatedAfferentEndpoint=True,FastTransientOnly=True,NoLiveMonitoring=True,ExpectedTestCases=332,
+        BackupDestination=str(backup),IsolatedAfferentEndpoint=True,FastTransientOnly=True,NoLiveMonitoring=True,ExpectedTestCases=333,
         ExpectedClassCounts=COUNTS,ExpectedTestMethods=methods,TestFilter='|'.join('FullyQualifiedName~'+c for c in COUNTS),
         ExpectedNativeRuns=21,ExpectedOriginalReplayRuns=21,ExpectedReferences=21,ExpectedSpectrumControls=8,
         IndependentCoupledTrajectoryQualified=False,StationaryInitializationQualified=False,SpatialGeometryCalibrated=False,
@@ -103,13 +118,22 @@ def prepare(review_folder):
 
 def prerequisites(package):
     cfg=read(package/'configuration.json');v=read(package/'provenance.json');review=read(package/'reviewed-precision.json');br=read(package/'reviewed-bundle.json')
+    failure=read(package/'reviewed-component-failure.json')
+    assert failure['operatorReportedCompletion'] and failure['originalFailurePreserved'] and failure['passedTests']==331 and failure['failedTests']==1
+    assert 'IndexOutOfRangeException' in failure['failureMessage']
+    assert not any(failure[k] for k in ('originalReplayStarted','candidateTrajectoriesStarted','independentReferencesStarted'))
     assert cfg['IsolatedAfferentEndpoint'] and cfg['NoLiveMonitoring'] and cfg['FastTransientOnly']
-    assert cfg['ExpectedTestCases']==332 and cfg['ExpectedClassCounts']==COUNTS
+    assert cfg['ExpectedTestCases']==333 and cfg['ExpectedClassCounts']==COUNTS
     assert cfg['ExpectedNativeRuns']==cfg['ExpectedReferences']==cfg['ExpectedOriginalReplayRuns']==21
     assert cfg['ExpectedSpectrumControls']==8 and v['candidateModel']==MODEL and v['newKineticAssumption']
     assert review['operatorReportedCompletion'] and review['savedAnalysisExactlyReproduced'] and review['originalFailurePreserved']
     assert review['sourceRevision']==v['originalRevision'] and review['manifestSha256']==v['originalManifestSha256']
     assert h.digest(package/'baseline/trajectory-analysis.json')==review['analysisSha256']
+    budget=read(package/'storage-budget.json')
+    assert budget['originalTotalBytes']==review['verifiedBytesPerCopy'] and budget['reserveBytes']==2*1024**3 and budget['projectionSafetyFactor']==2
+    assert budget['projectedPackageBytes']==budget['originalTotalBytes']+2*budget['originalNativeBytes']
+    assert budget['requiredBeforePreparationBytes']==2*budget['projectedPackageBytes']+budget['reserveBytes']
+    assert budget['availableBeforePreparationBytes']>=budget['requiredBeforePreparationBytes']
     assert br['operatorReportedCompletion'] and br['bundleInputChecksPassed'] and br['passedTests']==317
     assert br['sourceRevision']==v['bundleRevision'] and br['manifestSha256']==v['bundleManifestSha256']
     spec=read(package/'trajectory-input.json');assert spec==precision.protocol()==read(package/'baseline/trajectory-input.json')
@@ -132,6 +156,17 @@ def preflight(package):
 
 def runtime(package):
     preflight(package);assert read(package/'managed-runtime-before.json')==read(package/'qualified-managed-runtime.json')
+
+
+def storage(package):
+    prerequisites(package);b=read(package/'storage-budget.json');free=shutil.disk_usage(package).free
+    # Conservative at each new model phase: retain space for the entire projected
+    # package again, plus reserve, even though some results are already present.
+    required=b['projectedPackageBytes']+b['reserveBytes']
+    save(package/('storage-check-'+str(len(list(package.glob('storage-check-*.json')))+1)+'.json'),
+        dict(availableBytes=free,requiredBytes=required,passed=free>=required,modelsExecuted=False))
+    assert free>=required,'Insufficient free space before new model phase; completed evidence retained.'
+    print('Storage reserve verified before new model phase: '+str(free)+' bytes free.',flush=True)
 
 
 def check_tests(package):
@@ -208,6 +243,6 @@ def compare(package):
 
 if __name__=='__main__':
     if not __debug__:raise RuntimeError('Assertions must remain enabled.')
-    p=argparse.ArgumentParser();p.add_argument('command',choices=['prepare','preflight','postflight','runtime','check-tests','controls','replay','reference','compare']);p.add_argument('path',type=Path)
-    a=p.parse_args();dict(prepare=prepare,preflight=preflight,postflight=preflight,runtime=runtime,controls=controls,replay=replay,reference=reference,compare=compare,
+    p=argparse.ArgumentParser();p.add_argument('command',choices=['prepare','preflight','postflight','runtime','storage','check-tests','controls','replay','reference','compare']);p.add_argument('path',type=Path)
+    a=p.parse_args();dict(prepare=prepare,preflight=preflight,postflight=preflight,runtime=runtime,storage=storage,controls=controls,replay=replay,reference=reference,compare=compare,
         **{'check-tests':check_tests})[a.command](a.path.resolve())

@@ -111,3 +111,33 @@ inferred. Original defaults, failed captures, saves and live selection remain.
 The operator has now reported older motor `e9bed6` complete; its saved review is
 underway. Exactly ONE completion report is pending: new sensory `2b5a68`.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+
+The operator reported sensory activation window `2b5a68` FAILED. Its completed
+review verifies 2,609 C:/D: files, exact 332-case inventory (331 pass, one fail),
+eight spectrum controls, frozen source/binaries and runtime. The one-file review
+is D: verified. No original replay, candidate trajectory or independent reference
+started. The failed case is the one-ULP interior neighbour of +60 mV: subtraction
+rounds the last interval index up to the final knot, then indexes beyond the
+array. This defect exists in the shared original table lookup and was exposed
+by the new boundary control; it is not a candidate trajectory outcome.
+The repair bounds the interval index to the final valid segment, preserving
+voltage, knots, interpolation, outside continuation and scientific limits.
+A second regression checks both activation/inactivation tables and both policies.
+The retry now has 333 focused cases; the original boundary test remains intact.
+Its original 21-trajectory byte replay still guards previously successful v1.
+No tests/models executed during authoring. No completion report is pending
+before retry launch; all older windows are reviewed.
+
+
+Retry storage admission uses the reviewed capture sizes rather than the former
+unmeasured 6 GiB threshold: old total 719,985,914 bytes, native set 509,984,161
+bytes. The new final footprint is projected as old total plus two native sets
+(preserved baseline and original replay), or 1,739,954,236 bytes. Preparation
+requires twice that projection plus a 2 GiB reserve: 5,627,392,120 bytes. Measured
+available space before authoring was 6,245,572,608 bytes. The frozen package
+records its actual admission values. Each new model phase also requires the
+entire projected footprint plus the reserve still free, and saves a separate
+check receipt. D: retains its 8 GiB minimum. This is evidence-based capacity
+planning; no files, old results or saves are deleted, and no numerical acceptance
+bound changes. The unrelated 8 GiB motor capture guard remains unchanged.

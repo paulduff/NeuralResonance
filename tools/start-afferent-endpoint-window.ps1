@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedAfferentEndpoint -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 332 -or -not $configuration.FastTransientOnly -or $configuration.ExpectedNativeRuns -ne 21 -or $configuration.ExpectedReferences -ne 21 -or $configuration.IndependentCoupledTrajectoryQualified -or $configuration.StationaryInitializationQualified -or $configuration.SpatialGeometryCalibrated -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected joint sensory nerve trajectory configuration.'}
+if(-not $configuration.IsolatedAfferentEndpoint -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 333 -or -not $configuration.FastTransientOnly -or $configuration.ExpectedNativeRuns -ne 21 -or $configuration.ExpectedReferences -ne 21 -or $configuration.IndependentCoupledTrajectoryQualified -or $configuration.StationaryInitializationQualified -or $configuration.SpatialGeometryCalibrated -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected joint sensory nerve trajectory configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -78,7 +78,7 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE sensory nerve activation continuation comparison'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '8 eigen-witness controls, 332 focused checks, 21 exact original replays, 21 candidate trajectories and 21 new independent references. Longer dynamics, sensory firing and physiology remain separate.'
+ Write-Host '8 eigen-witness controls, 333 focused checks, 21 exact original replays, 21 candidate trajectories and 21 new independent references. Longer dynamics, sensory firing and physiology remain separate.'
  Save-Status 'preflight';Assert-Package;Python-Stage 'preflight'
  $build=Join-Path $package 'source/artifacts/afferent-trajectory-tests'
  Save-Status 'build-tests'
@@ -100,12 +100,15 @@ try{
  $status.TestExecutionAttempted=$true;Save-Status 'focused-tests'
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
  Python-Stage 'check-tests'
- $status['PassedFocusedTests']=332;$status.ComponentChecksPassed=$true;$status.AfferentDynamicsChecksPassed=$true
+ $status['PassedFocusedTests']=333;$status.ComponentChecksPassed=$true;$status.AfferentDynamicsChecksPassed=$true
+ Python-Stage 'storage'
  Save-Status 'original-native-replay'
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--afferent-trajectories',(Join-Path $package 'trajectory-input.json'),(Join-Path $package 'original-study')) 'original-native.log'
  Python-Stage 'replay';$status['OriginalNativeReplayByteIdentical']=$true
+ Python-Stage 'storage'
  Save-Status 'native-trajectories'
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--afferent-endpoint-hold-trajectories',(Join-Path $package 'trajectory-input.json'),(Join-Path $package 'study')) 'native-trajectories.log'
+ Python-Stage 'storage'
  Save-Status 'independent-references';Python-Stage 'reference'
  Save-Status 'compare';Python-Stage 'compare'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'trajectory-analysis.json') -Raw | ConvertFrom-Json

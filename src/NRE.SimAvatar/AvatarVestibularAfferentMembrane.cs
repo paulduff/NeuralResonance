@@ -139,7 +139,9 @@ public sealed class AvatarAfferentMembraneKernel
         double end=start+5*(values.Length-1);
         if(fixedOutside&&(v<start||v>end))return .2;
         // Explicit endpoint secants, not an inferred COMSOL interpolation default.
-        int i=v<=start?0:v>=end?values.Length-2:(int)Math.Floor((v-start)/5);
+        // Subtraction can round a voltage one ULP below end to the final knot.
+        // Select the last valid interval; do not clamp voltage or change the curve.
+        int i=v<=start?0:v>=end?values.Length-2:Math.Min(values.Length-2,(int)Math.Floor((v-start)/5));
         double fraction=(v-(start+5*i))/5;
         return values[i]+fraction*(values[i+1]-values[i]);
     }

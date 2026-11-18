@@ -84,6 +84,25 @@ public sealed class AfferentActivationContinuationTests
         Assert.Throws<ArgumentOutOfRangeException>(()=>AvatarAfferentCable.ReferenceChain(1,invalid));
     }
     [Fact]
+    public void OriginalAndCandidateInterpolateLastIntervalWithoutIndexOverflow()
+    {
+        // Both source tables end at +60 mV. Subtracting their negative starts
+        // rounds this representable interior voltage to the final knot index.
+        double v=Math.BitDecrement(60d);
+        foreach(var policy in new[] { Original,Hold })
+        {
+            var r=AvatarAfferentMembraneKernel.Rates(v,policy);
+            foreach(var pair in new[] { (AvatarAfferentMembraneKernel.SodiumActivationTable,r.SodiumActivation),
+                (AvatarAfferentMembraneKernel.SodiumInactivationTable,r.SodiumInactivation) })
+            {
+                var table=pair.Item1;var a=table[^2];var b=table[^1];
+                double expected=b.TauMs+(b.VoltageMv-v)*(a.TauMs-b.TauMs)/(b.VoltageMv-a.VoltageMv);
+                Assert.InRange(Math.Abs(pair.Item2.TauMs-expected),0,1e-15);
+                Assert.InRange(pair.Item2.TauMs,Math.Min(a.TauMs,b.TauMs),Math.Max(a.TauMs,b.TauMs));
+            }
+        }
+    }
+    [Fact]
     public void EquilibriumGatesRemainStationaryForBothPolicies()
     {
         foreach(double v in new[] { -80d,-55,0,60,80 })

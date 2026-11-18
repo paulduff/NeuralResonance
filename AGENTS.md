@@ -3205,3 +3205,20 @@ do not bypass that gate or delete old evidence. D: had 253.12 GiB free.
 Exactly ONE pending completion report: sensory candidate `2b5a68`, unmonitored.
 The bundle and precision reports are both reviewed, not pending. Code/notes are
 committed and pushed regularly. Full DNNE/Avatar/World goal active, unfinished.
+
+
+The operator reported sensory activation window `2b5a68` FAILED. Its completed
+review verifies 2,609 C:/D: files, exact 332-case inventory (331 pass, one fail),
+eight spectrum controls, frozen source/binaries and runtime. The one-file review
+is D: verified. No original replay, candidate trajectory or independent reference
+started. The failed case is the one-ULP interior neighbour of +60 mV: subtraction
+rounds the last interval index up to the final knot, then indexes beyond the
+array. This defect exists in the shared original table lookup and was exposed
+by the new boundary control; it is not a candidate trajectory outcome.
+The repair bounds the interval index to the final valid segment, preserving
+voltage, knots, interpolation, outside continuation and scientific limits.
+A second regression checks both activation/inactivation tables and both policies.
+The retry now has 333 focused cases; the original boundary test remains intact.
+Its original 21-trajectory byte replay still guards previously successful v1.
+No tests/models executed during authoring. No completion report is pending
+before retry launch; all older windows are reviewed.

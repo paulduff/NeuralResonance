@@ -3435,3 +3435,18 @@ component tests and 196 root tests are reused. Probe build passes with zero
 warnings/errors; Python/PowerShell/fixture checks pass without model execution.
 No new window launched yet. Exactly ONE report remains pending: full refined
 motor `5bdd81`, untouched since launch. Full goal remains active/unfinished.
+
+
+Loaded sensory continuation is now launched as `afferent-loaded-20261118-cd9fba`,
+workspace `D:/DNNE-build-work/afferent-loaded-20261118-cd9fba`, frozen at pushed
+revision `8c9b28cce57660f9402c2dcea53ee9da33a648a3`. Static frozen preflight
+passed; 2,020 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/afferent-loaded-20261118-cd9fba` before visible
+task `DNNE-Afferent-Loaded-66866bb1eb52` started. Launch returned successfully.
+No post-launch output, status or process inspected. Twelve native trajectories
+and twelve independent references execute only in that window. Earlier roots,
+failed searches, short trajectories, defaults, equations and acceptance limits
+remain preserved. Quiet drift/return observations are separate from numerical
+agreement and physiological rest. Exactly TWO completion reports are pending:
+loaded sensory `cd9fba` and full refined motor `5bdd81`. No pending run monitored.
+Full DNNE/Avatar/World goal remains active and unfinished.

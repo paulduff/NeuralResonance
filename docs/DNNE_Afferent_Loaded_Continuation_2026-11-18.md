@@ -1,7 +1,13 @@
 # Connected sensory nerve continuation from checked rest
 
-Status: authored; not yet launched. The separate full refined motor window
-`refined-motor-20261118-5bdd81` remains pending and has not been monitored.
+Status: launched in independent visible PowerShell as
+`afferent-loaded-20261118-cd9fba`, frozen at
+`8c9b28cce57660f9402c2dcea53ee9da33a648a3`. Static frozen preflight passed;
+2,020 initial files plus manifest were verified in the D: backup before task
+`DNNE-Afferent-Loaded-66866bb1eb52` started. Launch returned successfully.
+No post-launch status, output or process inspected. The separate full refined
+motor window `refined-motor-20261118-5bdd81` also remains pending and untouched.
+There are exactly TWO pending completion reports; no result is inferred.
 
 The previous successful EndpointHold trajectories lasted at most 0.0625 ms.
 This study tests four milliseconds from a retained resting state, with all
@@ -53,3 +59,11 @@ Build/static checks run during authoring; all model evaluation belongs to the
 independent visible PowerShell window. No live monitoring, world, brain service,
 old save or editor selection is involved. Workspace and verified backup use
 separate D: directories; both copies share one physical drive.
+
+
+Authoring probe build passed with zero warnings/errors. Four Python modules,
+PowerShell syntax, all four fixture/state layouts and the 114,688-step inventory
+passed static checks without evaluating equations. The saved stopping review
+has its own three-file verified D: copy. Package workspace is
+`D:/DNNE-build-work/afferent-loaded-20261118-cd9fba`; backup is
+`D:/DNNE-desktop-runs/UnityWorld/afferent-loaded-20261118-cd9fba`.

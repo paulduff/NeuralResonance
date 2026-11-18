@@ -9,7 +9,7 @@ public sealed class AfferentEventObserverTests
     private static readonly Guid Cell=Guid.Parse("b0fc3e62-ebc2-4a8d-bbf9-3ed25f22a5d6");
     private static AvatarAfferentObservationSite Site(double threshold=-60)=>new("isolated-vestibular","afferent-001","a",threshold);
     private static string Bytes(AvatarAfferentDynamicsState value)=>JsonSerializer.Serialize(value);
-    private static AvatarVestibularAfferentDynamics Model(double step=.001,bool passive=true,double bath=0,double capacitance=.01,Guid? session=null)
+    internal static AvatarVestibularAfferentDynamics Model(double step=.001,bool passive=true,double bath=0,double capacitance=.01,Guid? session=null)
     {
         var hp=AvatarHairCellParameters.TypeIReference;var cp=AvatarCalyxParameters.DepositedReference;
         var ap=AvatarAfferentMembraneParameters.NodeReference;

@@ -1,5 +1,11 @@
 # Afferent event observation: unrun source checkpoint
 
+Subsequent update: the observation cases are now included in the isolated
+264-case ingress workflow described in `DNNE_Observed_Sensory_Ingress_Review_2026-11-18.md`.
+They remain unrun until that window executes; no physiological or live selection
+is implied. The original source-checkpoint description below records its stage
+before the packet/receiving connection was authored.
+
 `AvatarAfferentCrossing` and `AvatarAfferentEventObserver` are isolated drafts.
 The full test project builds with zero warnings/errors in
 `D:/DNNE-build-work/afferent-observation-authoring-20261118`. Twenty prospective

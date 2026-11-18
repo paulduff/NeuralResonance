@@ -647,3 +647,18 @@ status or process was inspected. The window performs saved-data review and
 Exactly TWO pending completion reports: motor `e9bed6` and sensory precision
 `ddef1a`. Earlier `b224a6` is failed/reviewed, not pending. All original evidence
 and bounds remain preserved; full DNNE/Avatar/World goal active and unfinished.
+
+
+Observed sensory packet/receiving ingress is now authored, with a clean full
+project authoring build (zero warnings/errors). It preserves original crossing
+IDs/times, quiet source progress, exact retries, bounded acknowledged outbox,
+explicit target contacts and remaining fractional delays. The isolated target
+cannot advance beyond the known sensory horizon. Fresh vestibular-only opt-in;
+no live service selector or duplicate legacy input. Cell/learning equations are
+unchanged. See `docs/DNNE_Observed_Sensory_Ingress_Review_2026-11-18.md`.
+A 264-case visible component workflow is prepared in source, including the
+previously unrun 20 observation cases and 20 new ingress cases. Static inventory,
+48 preserved sources, Python/PowerShell parsing and build checks pass; tests
+have NOT executed. This checks connection mechanics, not physiological firing,
+loaded rest, spatial calibration or Avatar balance. Older windows `e9bed6` and
+`ddef1a` are still the TWO pending reports and remain untouched. Full goal active.

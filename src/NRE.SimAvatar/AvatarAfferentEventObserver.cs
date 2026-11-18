@@ -18,7 +18,7 @@ public sealed record AvatarAfferentObserverState(string Version,string Fingerpri
 // compartment. Numerical accuracy and physiological spike identity are separate.
 public sealed class AvatarAfferentEventObserver
 {
-    public const string Version="isolated-afferent-completed-step-observer-v1";
+    public const string Version=ObservedAfferentSource.ObserverVersion;
     private readonly int _owner=Environment.CurrentManagedThreadId;
     private readonly AvatarVestibularAfferentDynamics _model;
     private readonly AvatarAfferentObservationSite _site;
@@ -30,6 +30,7 @@ public sealed class AvatarAfferentEventObserver
     private AvatarAfferentObservationReceipt? _receipt;
     private AvatarAfferentObservationFailure? _failure;
     public string Fingerprint { get; }
+    public ObservedAfferentSource Source { get; }
 
     public AvatarAfferentEventObserver(AvatarVestibularAfferentDynamics model,AvatarAfferentObservationSite site)
     {
@@ -44,6 +45,8 @@ public sealed class AvatarAfferentEventObserver
         _labels=(string[])state.StateLabels.Clone();_indices=_labels.Select((n,i)=>(n,i)).ToDictionary(x=>x.n,x=>x.i,StringComparer.Ordinal);
         Fingerprint=CleftNumbers.Fingerprint(new { Version,Crossing=AvatarAfferentCrossing.Version,state.Fingerprint,site,
             Ownership="one complete source step; actual endpoint derivatives; no reset, current injection, firing-rate encoding or refractory suppression" });
+        Source=new(_session,_cell,site.SourceInstanceKey,site.SourceNeuronId,site.CableNodeId,Fingerprint,state.EpochMs,state.Settings.StepMs);
+        Source.Validate();
         // No kernel evaluation or advance during attachment.
     }
 

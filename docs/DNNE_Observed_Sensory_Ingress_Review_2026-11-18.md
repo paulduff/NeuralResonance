@@ -1,5 +1,8 @@
 # Actual sensory events: remaining DNNE ingress boundary
 
+An isolated implementation now follows this audit; see the final section below.
+Live service integration and physiological qualification remain incomplete.
+
 Static source inspection while sensory precision `ddef1a` was pending found
 the following integration requirements. No pending output/process was inspected,
 and no model, test, live transducer or service was run or changed.
@@ -61,3 +64,80 @@ The operator's completed motor-review failure interrupted implementation at this
 source-audit stage. No new projection or receiving ingress has been implemented
 in this checkpoint. Resume after the review workflow repair, without treating
 these design requirements or the draft observer as tested integration.
+
+## Subsequent isolated implementation
+
+The following code is authored and builds with zero warnings/errors. Its
+prospective controls are being prepared for a visible independent window;
+no test or model has run inline.
+
+`ObservedAfferentPacket` carries a declared source epoch/cell/site/fingerprint,
+an integer completed-step interval, and the original ordered event IDs and
+crossing times. An empty event list explicitly conveys a quiet completed
+interval. Construction defensively copies events, validates each crossing's
+completed step and binds the entire packet to a content fingerprint.
+
+`AvatarAfferentPacketSource` owns the existing actual-event observer, retains
+events in a bounded outbox and seals an immutable packet. It stops source
+advancement on backpressure until the exact packet is acknowledged. Retries
+do not advance the membrane or append events again. A failed later observation
+does not erase an earlier completed, publishable prefix. The new source identity
+property does not change the observer's original identity algorithm or equations.
+
+`IsolatedAfferentIngress` attaches only to a fresh full-size vestibular nucleus
+with explicit receiving-instance identity and empty isolated save directory.
+The source and route fingerprints enter the engine's isolated fingerprint.
+Existing service constructors do not select it. No second afferent is simulated
+in the VestibularAfferents service.
+
+Each declared branch retains the original source event and crossing time while
+obtaining its own delivery ID and receiving contact ID. Its delay is explicitly
+the remaining path beyond the measured axonal site. The queue uses this exact
+double arrival time; it does not add the existing generic integer tract delay.
+Source/target identity is checked at admission and recipient selection, so an
+explicit receiving contact is not topographically remapped.
+
+Packet admission validates the whole interval, event sequence, all branches and
+capacity before committing queue entries and source progress together. Exact
+last-packet retries return the same receipt even after target advancement;
+changed or older packets are rejected. An overload leaves both queue and source
+watermark unchanged. Legacy spike-batch admission is disabled only for this
+explicitly isolated owner, preventing duplicate parallel input paths.
+
+Receiving ticks must be contiguous and cannot exceed the completed source time
+plus the shortest declared remaining delay. Arrival at the current boundary is
+permitted; an arrival in already elapsed receiving biology is rejected. This is
+a one-source coupling control, not a complete multiple-source cluster scheduler.
+The packet contract is currently used in process; no live RPC is added here.
+
+The actual receiving neuron and learning equations are preserved. Its existing
+LIF/receptor approximations and explicitly supplied release/delay parameters
+remain uncalibrated; successful contact delivery is not proof of physiological
+vestibular response. Mechanical head sampling through sensory firing, loaded
+rest, multi-source modulation and the complete World feedback owner remain open.
+Avatar carries the new outbox, but no Unity/editor live mode is promoted by
+these component changes. Receipt fields retain source/arrival/contact evidence
+for subsequent integration and observation.
+
+## Prospective component window
+
+`afferent_ingress_gate.py` and `start-afferent-ingress-window.ps1` freeze and run
+264 cases: the earlier 181 sensory components, 20 observation cases, 20 new
+packet/receiving cases, 8 declared-target, 15 connected-timing and 20 neuronal
+righting regressions. The twenty observation cases are now included for their
+component semantics; this does not depend on declaring the pending active
+sensory precision run successful.
+
+New cases include immutable/JSON packet round trips, source epochs, routing,
+quiet progress, causal horizon rejection before mutation, exact and changed
+retries, missing events, atomic overload, actual fractional-time synaptic
+delivery, branch identity, cancellation, isolation, packet partition invariance,
+outbox backpressure and an observed passive voltage crossing reaching an actual
+receiving contact. That passive control is explicitly not afferent firing.
+
+The authoring build is at
+`D:/DNNE-build-work/afferent-ingress-authoring-20261118`. Static checks verify
+the test inventory and unchanged sensory, receiving-cell and learning sources
+against the completed component evidence. All test execution occurs visibly,
+with complete binary/runtime evidence and D: backup. The existing motor `e9bed6`
+and sensory precision `ddef1a` windows remain pending and untouched.

@@ -404,3 +404,13 @@ Preparation used the preserved numerical-reference interpreter after an initial
 general-Python invocation failed before package creation because SciPy was absent.
 No dependency changed. Resume instructions and outstanding reports are recorded
 in `DNNE_Checkpoint_2026-11-17.md`.
+
+The operator resumed on 18 November; `db4794` launched visibly and was later
+reported complete. Review verifies all 2,404 files per C:/D: copy, 51 tests,
+624 byte-identical closed regression records and 192 open evaluations against
+both saved 60/90-digit references. Maximum allowed-error fraction is
+0.0106938600316206; original bounds are unchanged. The saved analysis reproduces
+exactly without model/test execution, and the new `cleft-open-review-20261118`
+has its own verified D: backup. Open spatial arithmetic is now qualified at the
+tested inputs; actual membrane dynamics/time integration, afferent physiology
+and Avatar balance are still separate unfinished work.

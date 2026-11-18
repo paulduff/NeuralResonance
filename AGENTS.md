@@ -2755,3 +2755,19 @@ status or process inspected. These TWO plus open-cleft db4794 await operator
 reports. Older 30755e/1e2f21 are stopped and reviewed as detailed above; do not
 confuse old failed/stale-status messages with the new packages. No tests/models
 ran inline. Full goal active; new launch is not numerical/physiological success.
+
+Operator has now reported ac78c5 FAILED and db4794 DIAGNOSTICS_COMPLETE. Both
+are reviewed, no longer pending. Skull: 80 tests, 2,626 C:/D: files verified;
+new lock-control guard failed after first step. Counters were not saved. Source
+allows a ready request to bypass unfinished lock injection if publication races
+the earlier file open. V4 holds even Ready until control completion and deliberately
+exercises a readable-but-unlocked request at step zero; then two lock failures
+and exactly one step are required. No physics/bounds change. Separate skull-lock-
+admission-review-20261118 is D: verified and now a preparation prerequisite.
+Open cleft: all 51 tests, 624 byte-identical closed records and 192 high-precision
+comparisons pass; 2,404 C:/D: files verified and saved analysis reproduced exactly.
+New cleft-open-review-20261118 is D: verified. Maximum allowed fraction .01069386.
+No test/model executed during reviews. Rubral f5e01c remains uninspected pending
+operator completion. Fresh skull v4 package awaits freeze/backup/visible launch.
+The complete derivative reference remains next authoring work; no such new
+protocol/reference files were written before prioritizing these reported outcomes.

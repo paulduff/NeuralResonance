@@ -104,3 +104,54 @@ two and open-cleft `db4794` await operator completion reports. The user requeste
 the rubral repeat with its original bounds; its previous yield-state failure
 remains evidence even if a new process completes. The skull repair's new native
 controls and 80 focused cases remain unqualified until the saved run is reviewed.
+
+## Reported skull retry: lock-control admission defect
+
+The operator reported `unity-skull-20261118-ac78c5` FAILED. Saved-data review
+verifies all 2,626 C:/D: files, frozen source/player/test/probe binaries, unchanged
+managed runtime and all 80 passing focused cases. Unity produced the initial
+inspection and first physical step, then its new guard raised “Native request
+lock control incomplete.” Sequence 2's request, reply and skull sidecar are
+retained at physical step 1. No successful request/reply lock-control record was
+written. This is a failed diagnostic fixture, not a head-kinematics result.
+
+The counters were not included in the saved failure, so their values cannot be
+reconstructed. Source inspection identifies an admission race: `FileStream.Open`
+can see a missing request, then `TryRead` can see the newly published complete
+file. The previous branch admitted any Ready result even if the injected-lock
+test had not finished. The completion guard was too late, after the physical
+step. This is a fixture integration defect; no physiological cause is inferred.
+
+The v4 repair holds sequence 2 before execution until its control is complete.
+It deliberately observes at least one readable request without the injected
+lock and verifies the physical step remains zero. Only afterward may it acquire
+the exclusive lock, observe two real sharing violations, release it and admit
+the unchanged request. A second guard checks all conditions before physics.
+The retained control includes the number of readable-but-held observations;
+the independent audit requires at least one, two lock rejections, and a single
+step from zero to one. The host's existing locked-reply control still applies.
+
+Original 80 focused cases, 33 scale controls, 201 physical steps, all coordinate/
+velocity bounds, body mechanics and source identities are unchanged. The new
+protocol declares the added admission requirement explicitly. The completed
+failed capture and its separately backed-up review remain prerequisites for a
+fresh run. Static syntax/protocol/inventory checks pass; native behavior awaits
+the next independent visible PowerShell run. No model or test ran inline.
+
+## Open-cleft result verified
+
+The operator reported `cleft-open-20261117-db4794` complete. Its new
+`artifacts/cleft-open-review-20261118/review.json` verifies all 2,404 C:/D: files,
+frozen Git source/binaries, unchanged runtimes and 51 passing focused cases.
+All five closed output files preserve the original 624 records byte for byte.
+Every one of the 192 open evaluations matches the saved independent 60/90-digit
+references under the original limits; the maximum error uses about 1.0694% of
+its allowed bound. The saved analysis was reproduced exactly without executing
+model equations or tests. Both this review and the separate skull admission
+failure review have verified D: copies.
+
+This qualifies the tested instantaneous open-boundary calculations and closed
+regression. It does not qualify the later local membrane-current assembly,
+coupled trajectories, sensory firing or Avatar balance. Open `db4794` and failed
+skull `ac78c5` are now reviewed, not pending. Rubral `f5e01c` alone still awaits
+its completion report until the new skull retry launches.

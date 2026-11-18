@@ -220,3 +220,11 @@ violation at step 198, after all 74 focused cases passed. The new v3 diagnostic
 read repair, actual request/reply lock controls, unchanged measurement bounds and
 80-case rerun are described in `DNNE_Continuation_2026-11-18.md`. The old failed
 capture is preserved and is not promoted to a sampling qualification.
+
+The operator subsequently reported `ac78c5` FAILED after 80 passing focused
+cases. Full 2,626-file C:/D: review identifies the new lock fixture's admission
+guard failing after the first step. Its v4 correction holds a readable request
+until the lock control completes, deliberately exercising publication before
+lock acquisition and checking the body remains at step zero. Original physical
+and sampling criteria are retained. See the continuation document for the
+source-level race, missing saved counters and separate preserved failure review.

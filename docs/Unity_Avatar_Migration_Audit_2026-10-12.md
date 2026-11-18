@@ -1256,3 +1256,10 @@ Body mechanics, physical producer, live DNNE/Avatar/editor selection and numeric
 bounds are unchanged. Authoring build passes; native qualification awaits the
 visible rerun. See `DNNE_Continuation_2026-11-18.md` for preserved stopped evidence
 and the separate rubral yield-state numerical failure.
+
+Native retry ac78c5 passed 80 focused tests but failed its added request-lock
+fixture after step one. The v4 diagnostic admission guard now holds even a ready
+request until lock-control completion; a deliberately readable-before-lock
+condition must remain at step zero. This changes test admission only, retaining
+actual body mechanics and all measurement bounds. The failed run is preserved;
+new native controls remain unqualified until the operator reports their result.

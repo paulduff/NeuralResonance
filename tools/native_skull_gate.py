@@ -26,7 +26,7 @@ VECTORS = ('localPointMeters', 'originWorldMeters', 'rightWorld', 'upWorld', 'fo
 
 
 def protocol():
-    return dict(version='native-skull-sampling-study-v3', points=POINTS, physicalEndpoints=201,
+    return dict(version='native-skull-sampling-study-v4', points=POINTS, physicalEndpoints=201,
                 actualPhysicalSteps=201, finalDeliveredStep=200, actualNativeGridEndpoints=202,
                 sidecars=207, pointReceipts=603, heldInspections=4,
                 basisAbsoluteBound=1e-5, positionAbsoluteBoundMeters=1e-5,
@@ -34,6 +34,7 @@ def protocol():
                 derivedAbsoluteBound=1e-8, derivedRelativeBound=1e-10,
                 scalePolicy='exact unit local scale at every physical ancestor', nativeScaleControls=33,
                 nativeRequestLockRejections=2, hostReplyLockRejections=2, requestOrStepResent=False,
+                readableRequestMustWaitForLockControl=True, minimumUnlockedReadyDeferrals=1,
                 legacyScaleSquaredBound=1e-12, legacyScaleGuardIsDiagnosticOnly=True,
                 minimumHeadRotationRadiansPerSecond=.01, minimumOffsetSpeedDifferenceMetersPerSecond=.0001,
                 initialAccelerationUnavailable=True, nativeSensorLocationsAnatomicallyCalibrated=False,
@@ -67,7 +68,14 @@ def prerequisite():
     assert stopped['operatorReportedStopped'] and lock_failure['requestReadSharingViolation']
     assert lock_failure['passedTests'] == 74 and lock_failure['failedPhysicsStep'] == 198 and lock_failure['failedRequestSequence'] == 202
     assert h.digest(Path(lock_failure['capture'])/'backup-manifest.json') == lock_failure['manifestSha256']
+    admission_folder = ROOT/'artifacts/skull-lock-admission-review-20261118'
+    h.verify(admission_folder, ['review.json']); admission = h.read(admission_folder/'review.json')
+    assert admission['operatorReportedCompletion'] and admission['passedTests'] == 80
+    assert admission['failedAtLockControlAdmission'] and admission['failedPhysicsStep'] == 1
+    assert not admission['nativeSamplingQualified']
+    assert h.digest(Path(admission['capture'])/'backup-manifest.json') == admission['manifestSha256']
     return dict(review, nativeScaleFailureReview=failed, nativeReadLockFailureReview=lock_failure,
+                nativeLockAdmissionFailureReview=admission,
                 unchangedPhysicalSources=preserved, diagnosticFileReadPolicyChanged=True)
 
 
@@ -112,8 +120,10 @@ def compare(package):
     study = package / 'study'; clock = h.read(study / 'clock.json')
     request_lock = h.read(study/'bridge/native-request-lock-control.json')
     reply_lock = h.read(study/'bridge/host-reply-lock-control.json')
+    deferrals = request_lock['unlockedReadyDeferrals']
+    assert type(deferrals) is int and deferrals >= bounds['minimumUnlockedReadyDeferrals']
     assert request_lock == dict(requestFile='request-000002.json', sequence=2, physicsStepBefore=0, physicsStepAfter=1,
-                               injectedReadRejections=2, commandResent=False, physicalStepRepeated=False)
+                               injectedReadRejections=2, unlockedReadyDeferrals=deferrals, commandResent=False, physicalStepRepeated=False)
     assert reply_lock == dict(replyFile='reply-000002.json', sequence=2, physicsStep=1,
                              injectedReadRejections=2, commandResent=False, physicalStepRepeated=False)
     controls = h.read(study / 'skull-scale-controls.json')
@@ -259,6 +269,7 @@ def compare(package):
                     managedRuntime=managed,
                     nativeScaleControls=33, configuredPhysicalScaleExactlyUnit=True,
                     nativeRequestReadLockPassed=True, hostReplyReadLockPassed=True, requestOrStepResent=False,
+                    readableRequestHeldBeforeLockControl=True, unlockedReadyDeferrals=deferrals,
                     maximumReportedScaleSquaredDeviation=maximum_scale_deviation, legacyScaleGuardRejections=legacy_scale_rejections,
                     scaleAcceptancePolicyChanged=True, originalCoordinateAndVelocityBoundsChanged=False,
                     completeThroughStep=200, heldInspections=held, nativeGridEndpoints=202,

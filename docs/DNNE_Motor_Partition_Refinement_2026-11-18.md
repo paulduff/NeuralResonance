@@ -85,3 +85,16 @@ frozen source and recordings remain on C:, with a separate verified D: copy.
 Preparation/start require 8 GiB free on C: and 20 GiB on D:. The native driver
 stops before beginning another epoch if less than 2 GiB remains, preserving all
 completed conditions. No old evidence, saves or working directories are deleted.
+
+Motor partition diagnosis launched as `rubral-refinement-20261118-3d8835`, frozen
+at pushed revision `778c7f2fddcd385922fc62e95719bb0e3754f88d`. All 1,947 initial
+files plus manifest verified on D: before visible task
+`DNNE-Rubral-Refinement-561e9ba124b9` was started. Build scratch is the fresh
+`D:/DNNE-build-work/rubral-refinement-20261118-3d8835` directory. No post-launch
+outputs, status or processes have been inspected; await operator completion.
+
+There is ONE pending window: this five-epoch strong-left motor diagnosis.
+Sensory `884934` is fully reviewed/passing, and old motor `f5e01c` is reviewed
+with its original yield failure retained. No separate sensory or stationary
+window is pending. Full goal remains active; physiological resting state,
+afferent return, complete feedback, balance and recovery are still open.

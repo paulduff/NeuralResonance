@@ -2878,3 +2878,8 @@ partition diagnosis is authored; see `docs/DNNE_Motor_Partition_Refinement_2026-
 Five strong-left epochs separate body and muscle clocks; preserve all other
 controls as earlier evidence, not newly qualified finer cases. No old files
 deleted. No new test/model run inline. Full goal active.
+
+Current pending window: ONE motor partition study `3d8835`, frozen
+`778c7f2fddcd385922fc62e95719bb0e3754f88d`, initial 1,947 files D: verified.
+Visible task `DNNE-Rubral-Refinement-561e9ba124b9`; await operator report without
+post-launch inspection. Sensory `884934` is already fully reviewed/passing.

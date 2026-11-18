@@ -353,3 +353,16 @@ Source-only authoring builds and static checks pass; no new model/test has run.
 No full-direction or physiological qualification is implied. C: space is limited;
 new build scratch uses D:, and prospective free-space guards retain old evidence.
 No pending runs at this preparation checkpoint. Full goal remains active.
+
+Motor partition diagnosis launched as `rubral-refinement-20261118-3d8835`, frozen
+at pushed revision `778c7f2fddcd385922fc62e95719bb0e3754f88d`. All 1,947 initial
+files plus manifest verified on D: before visible task
+`DNNE-Rubral-Refinement-561e9ba124b9` was started. Build scratch is the fresh
+`D:/DNNE-build-work/rubral-refinement-20261118-3d8835` directory. No post-launch
+outputs, status or processes have been inspected; await operator completion.
+
+There is ONE pending window: this five-epoch strong-left motor diagnosis.
+Sensory `884934` is fully reviewed/passing, and old motor `f5e01c` is reviewed
+with its original yield failure retained. No separate sensory or stationary
+window is pending. Full goal remains active; physiological resting state,
+afferent return, complete feedback, balance and recovery are still open.

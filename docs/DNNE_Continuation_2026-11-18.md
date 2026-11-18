@@ -411,3 +411,19 @@ or process was inspected. There are now THREE pending reports: motor partition
 `3d8835`, sensory rest `760702`, and nerve components `d3fbc9`. Await operator
 completion. The full goal remains active; component construction and test
 launch do not establish independent coupled accuracy, firing or Avatar balance.
+
+Independent nerve derivative workflow is now authored, not launched. See
+`DNNE_Afferent_Numerics_2026-11-18.md`: 1,686 native prescribed cases, complete
+60/90-digit independent witnesses, channel/clamp/cable/joint comparisons and
+explicit charge/power accounting. Candidate biology and earlier sensory
+equations remain unchanged. The new component reviewer requires an operator
+completion report; the freezer requires its passing, D:-verified review.
+The probe builds with zero warnings/errors, and Python fixture/inventory and
+PowerShell static checks pass. No model, test or numerical control ran inline.
+
+Still THREE pending reports: motor partition `3d8835`, sensory rest `760702`,
+nerve components `d3fbc9`. None has been inspected since launch. No fourth
+window or numerical package was started. Review reported results next, then
+freeze/backup/launch the derivative comparison if the component gate passes.
+Free sensory trajectories, loaded rest, firing, physiology and Avatar usability
+remain open; the full goal stays active.

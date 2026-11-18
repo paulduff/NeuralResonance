@@ -2913,3 +2913,12 @@ Nerve components now launched: `d3fbc9`, frozen
 D: verified, visible task `DNNE-Afferent-Components-3cde74ea5376`. THREE pending
 reports: motor `3d8835`, rest `760702`, components `d3fbc9`. No post-launch
 inspection of any pending run; await operator completion. Full goal active.
+
+Independent sensory nerve derivative rig authored but NOT launched; see
+`DNNE_Afferent_Numerics_2026-11-18.md`. It has 1,686 native cases, 60/90-digit
+references and explicit saved current/power accounting, preserving original
+biology and prospective bounds. Source-only build/static checks pass; no new
+model/test executed inline. Preparation requires reported/reviewed passing
+`d3fbc9` and its verified D: review. THREE windows still pending (`3d8835`,
+`760702`, `d3fbc9`), all untouched since launch. No fourth window. Full goal
+active; physiological rest, afferent firing and usable Avatar remain open.

@@ -2746,3 +2746,12 @@ zero warnings/errors; no tests/native controls executed inline. See continuation
 notes. Open-cleft db4794 was launched visibly as DNNE-Cleft-Open-12f472eca915;
 no post-launch outputs/status/process inspected. Other reruns await fresh freeze,
 backup and launch. Full goal remains active and unqualified for Avatar recovery.
+
+Fresh reruns now launched from 40a78fd9f2cf30d29c4d67452fc3b84f5491d935:
+rubral-comparison-20261118-f5e01c (initial 1,876 files D: verified), visible task
+DNNE-Rubral-Comparison-d305b8b7b292; unity-skull-20261118-ac78c5 (initial 1,836
+files D: verified), task DNNE-Unity-Skull-3ea6546f0be2. No post-launch output,
+status or process inspected. These TWO plus open-cleft db4794 await operator
+reports. Older 30755e/1e2f21 are stopped and reviewed as detailed above; do not
+confuse old failed/stale-status messages with the new packages. No tests/models
+ran inline. Full goal active; new launch is not numerical/physiological success.

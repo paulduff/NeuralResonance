@@ -87,3 +87,20 @@ preserved trajectories and declared refinement, rather than changing acceptance
 bounds. These reruns and the open-cleft study do not establish usable sensory
 feedback, neuronal balance or recovery. The authored local membrane/cleft
 derivative assembly remains a separate unrun stage as noted yesterday.
+
+## Fresh reruns launched
+
+Both packages are frozen at pushed revision
+`40a78fd9f2cf30d29c4d67452fc3b84f5491d935`:
+
+| Package | Initial D:-verified files | Visible task |
+|---|---:|---|
+| `rubral-comparison-20261118-f5e01c` | 1,876 plus manifest | `DNNE-Rubral-Comparison-d305b8b7b292` |
+| `unity-skull-20261118-ac78c5` | 1,836 plus manifest | `DNNE-Unity-Skull-3ea6546f0be2` |
+
+The launchers verified initial copies and opened independent visible PowerShell
+windows. No post-launch results, status or processes have been inspected. These
+two and open-cleft `db4794` await operator completion reports. The user requested
+the rubral repeat with its original bounds; its previous yield-state failure
+remains evidence even if a new process completes. The skull repair's new native
+controls and 80 focused cases remain unqualified until the saved run is reviewed.

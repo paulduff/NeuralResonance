@@ -1153,3 +1153,12 @@ Avatar, Unity or editor selection changed. The current handoff is
 `DNNE_Checkpoint_2026-11-18.md`: await the final motor report, review/preserve its
 outcome, finish the notes and commit/push, then pause the goal at the operator's
 request. The goal remains active and unfinished until that stopping condition.
+
+The operator subsequently explicitly chose "Pause now; review tomorrow".
+That replaces the conditional stopping point above. The current checkpoint is
+saved and pushed, and the goal is to be paused immediately afterwards. Motor
+`5bdd81` continues independently, untouched and unmonitored; its final outcome
+will be reviewed after the operator resumes and reports completion. No new
+experiment or process shutdown is requested. Coordinate and loaded-sensory
+reviews are complete with separate verified D: backups; the clock candidate
+remains unexecuted. The full biological brain/body/world goal is unfinished.

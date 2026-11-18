@@ -1,14 +1,14 @@
 # DNNE / Avatar / World checkpoint — 18 November 2026
 
-## Wind-down requested; final motor report pending
+## Pause requested now; motor continues independently
 
-The operator requested notes and a goal pause once the final two PowerShell
-windows complete or fail. No further experiments are to be launched before that
-pause. Loaded sensory `cd9fba` has now reported completion; refined motor
-`5bdd81` is still pending. The full goal is unfinished and has not yet been
-marked paused. Complete the final evidence reviews and commit/push the notes,
-then explicitly pause the goal. A future continuation requires the operator's
-resume instruction.
+The operator first requested notes and a goal pause after the final two windows,
+then explicitly chose "Pause now; review tomorrow". This supersedes the earlier
+conditional stopping point. Save and push this checkpoint, pause the goal and
+stop work. Leave the motor window running independently; no monitoring, process
+termination, restart or new experiment is requested. Loaded sensory `cd9fba` is
+reviewed; refined motor `5bdd81` still awaits its final report and review. The
+full goal remains unfinished. Resume only on an explicit operator instruction.
 
 All tests and model/reference executions remain in visible independent
 PowerShell windows without live monitoring. At the operator's explicit question

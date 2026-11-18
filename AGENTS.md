@@ -1,11 +1,12 @@
 # Avatar and environment work
 
 Latest wind-down checkpoint: `docs/DNNE_Checkpoint_2026-11-18.md`.
-The operator requested a pause after the final two windows complete or fail.
-Do not launch further studies during this wind-down. Loaded sensory `cd9fba`
-has reported completion; motor `5bdd81` still needs its final report and review.
-The goal is not yet paused. A requested one-off stall check found the motor
-publisher active after its first completed condition; do not resume monitoring.
+The operator explicitly chose "Pause now; review tomorrow", leaving the motor
+window running independently. Stop goal work after saving this checkpoint;
+resume only on an explicit operator instruction. Loaded sensory `cd9fba` is
+reviewed; motor `5bdd81` still needs its final report and review. Do not launch
+studies, stop/restart its process or monitor it during the pause. A requested
+one-off stall check found its publisher active after the first condition.
 Head-coordinate `a80ee0` retained its original FAILED status; a scalar-index
 repair passes the saved 600-input comparison with unchanged bounds and a
 separate verified review. Loaded sensory `cd9fba` has been fully reviewed:

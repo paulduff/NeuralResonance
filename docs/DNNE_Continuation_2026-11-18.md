@@ -583,3 +583,12 @@ checks passed; no root, eigen solve, equation or control ran inline. See
 isolated visible window. Motor `b224a6` and trajectories `cf2f38` remain the TWO
 pending reports, untouched. Full goal active; no live selection changes or
 physiological/Avatar qualification.
+
+Connected active rest is now launched as `afferent-rest-20261118-62949f` from
+pushed revision `2923baf4ede902ad174ba72deb5d2f202e030ed7`. Its initial 1,936 files
+plus manifest were D: verified before task `DNNE-Afferent-Rest-ebea164525b3`
+started. The launch command returned successfully; no post-launch output,
+status or process was inspected. Exactly THREE pending reports: `b224a6`,
+`cf2f38`, `62949f`. Component `54d343` is fully reviewed/passing. No simulation,
+root/eigen solve or test ran inline, and no live selection or old evidence was
+changed. Full goal remains active and unfinished.

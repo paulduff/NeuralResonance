@@ -3014,3 +3014,11 @@ No new model/test executed inline. The existing biological kernels remain
 unchanged. Prepare/backup/launch this next; `b224a6` and `cf2f38` remain the TWO
 pending reports and have not been inspected. Full goal active, no firing,
 physiology or Avatar usability qualification.
+
+Connected active rest is now launched: `62949f`, frozen
+`2923baf4ede902ad174ba72deb5d2f202e030ed7`, 1,936 initial D:-verified files plus
+manifest, task `DNNE-Afferent-Rest-ebea164525b3`. Exactly THREE pending reports:
+motor `b224a6`, fast trajectories `cf2f38`, connected rest `62949f`. No post-launch
+outputs, status or processes inspected. Component `54d343` is reviewed/passing,
+not pending. Full goal active; root/stability calculations remain separate from
+free firing, physiological calibration, sensory DNNE return and Avatar recovery.

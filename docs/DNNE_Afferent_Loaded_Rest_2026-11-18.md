@@ -9,7 +9,9 @@ has its own verified D: copy. No model/test reran during review.
 The active loaded-root/free-gate comparison is now authored; see
 `DNNE_Afferent_Active_Rest_2026-11-18.md`. Earlier prospective text below describes
 the component design. Current pending windows remain fast trajectories `cf2f38`
-and saved motor comparison `b224a6`, untouched this turn.
+and saved motor comparison `b224a6`, untouched this turn. The active connected
+rest study is now also launched as `62949f`; see its document for the frozen
+revision and verified initial backup. Three completion reports are pending.
 
 The reviewed sealed sensory roots cannot simply initialize an attached active
 nerve. Cable membrane current loads the calyx, changing its voltage and the

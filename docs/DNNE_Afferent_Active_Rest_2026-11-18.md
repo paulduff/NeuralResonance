@@ -1,7 +1,10 @@
 # Active connected sensory nerve resting-state comparison
 
-Status: complete isolated workflow authored and statically checked, not yet
-prepared or launched at this checkpoint. Its stationary component prerequisite
+Status: **launched visibly**, awaiting the operator's completion report.
+Package `afferent-rest-20261118-62949f` is frozen at
+`2923baf4ede902ad174ba72deb5d2f202e030ed7`; all 1,936 initial files plus manifest
+are verified on D:. Task: `DNNE-Afferent-Rest-ebea164525b3`. No post-launch
+outputs, status or process inspected. Its stationary component prerequisite
 `54d343` is operator-reported and fully reviewed: 2,472 C:/D: files, 196 focused
 cases and exact saved-analysis reproduction. The review folder
 `artifacts/afferent-stationary-20261118-54d343-review` has a verified D: copy.

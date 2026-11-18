@@ -92,3 +92,16 @@ input receipts, qualify physical and sensory sampling, and check active firing.
 The two older windows, sensory precision `ddef1a` and motor comparison `e9bed6`,
 remain pending and untouched. Physiological rest, mechanical calibration,
 continuous sensory firing, closed-loop balance and fall recovery remain open.
+
+
+The physical bundle component window is now launched as
+`vestibular-bundle-20261118-092238`, frozen at pushed revision
+`2debce1486ded90f94d3f585f8fa07b2a71b4f94`. Frozen static preflight passed;
+1,959 initial files plus manifest were D: verified before visible task
+`DNNE-Vestibular-Bundle-471197ff7f26` started. Launch returned successfully.
+No post-launch output, status or process was inspected. All 317 declared cases
+execute only in that independent PowerShell window; no success is inferred.
+Exactly THREE pending reports: bundle `092238`, sensory precision `ddef1a` and
+saved motor comparison `e9bed6`. Ingress `d519cf` is reviewed/passing, not pending.
+No physiological calibration or live brain/body selection changed. Full goal
+remains active and unfinished; retain all original evidence and saves.

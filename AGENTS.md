@@ -2853,3 +2853,14 @@ No post-launch output/status/process inspected. TWO pending reports: 87562a and
 rubral f5e01c. Dynamics ca2f31, membranes 74e956 and skull 0ada47 are reviewed/
 passing within their stated scopes. Full goal active and unqualified for usable
 brain-body sensory return, afferent physiology, balance or recovery.
+
+18 November completed comparison checkpoint: sensory `87562a` and rubral
+`f5e01c` have both been operator-reported and reviewed. See
+`docs/DNNE_Coupled_Outcomes_2026-11-18.md` and the continuation log. Sensory
+eight-patch error exceeds its original accuracy bound but converges about 4x
+per halving; all reference/conservation criteria pass. Motor only misses yield
+fraction under strong drive, in the opposite passive muscle. Preserve both
+failures and every bound. A finer sensory workflow reuses the 21 completed
+references. New stationary-search controls are part of its 132-case suite; the
+trajectory initial states remain unchanged. No physiological rest/stability or
+Avatar qualification, no live selection changes. No inline models/tests.

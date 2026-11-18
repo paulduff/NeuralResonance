@@ -1294,3 +1294,15 @@ at three step sizes and uses independent Decimal/full-matrix Radau/BDF reference
 It adds no live body/editor selection or physiological qualification. See the
 18 November trajectory document for prospective error/refinement/conservation
 criteria and the remaining stationary-state and afferent work.
+
+## 18 November: completed coupled accuracy outcomes
+
+Sensory `87562a` and motor `f5e01c` are reviewed, including verified C:/D: evidence.
+Six sensory conditions pass; the eight-patch initial transient requires finer
+accuracy despite passing conservation and expected sampled refinement. The motor
+comparison narrowly fails passive-muscle yield under strong opposite drive.
+Source causality is not revoked by a coupled accuracy failure, but neither result
+qualifies physiological balance. Details and the finer sensory workflow are in
+`DNNE_Coupled_Outcomes_2026-11-18.md`. Stationary search is isolated, explicitly
+unqualified for stable physiological rest, and not selected by Avatar/Unity or
+the editor. No live World, brain, save or editor selection changed.

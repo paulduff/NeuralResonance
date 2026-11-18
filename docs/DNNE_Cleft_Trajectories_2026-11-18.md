@@ -109,3 +109,12 @@ manifest are verified on D:. The launcher opened visible task
 `DNNE-Cleft-Trajectories-8ff1f1475f1e` and returned successfully. No post-launch
 outputs/status/processes have been inspected; await the operator's completion
 report before reviewing or claiming numerical success.
+
+## Completed result and finer follow-up
+
+The operator-completed `87562a` was fully reviewed with C:/D: verification.
+Six conditions pass; `bundle-eight` misses finest accuracy while references,
+conservation and halving behavior pass in every condition. Detailed original
+errors and the unchanged-bound follow-up are in `DNNE_Coupled_Outcomes_2026-11-18.md`.
+The follow-up reuses completed references, halves the finest step to 0.00025 ms,
+and leaves initial states and biological equations unchanged.

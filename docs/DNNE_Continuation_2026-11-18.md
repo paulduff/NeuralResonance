@@ -295,3 +295,23 @@ post-launch outputs/status/process inspection. TWO reports are pending: this new
 trajectory comparison and rubral `f5e01c`. Dynamics `ca2f31`, membranes `74e956`
 and skull `0ada47` are reviewed/passing within their separate scopes. Full goal
 active; stationary physiology, afferent return, balance and recovery remain open.
+
+## Both pending comparisons completed and reviewed
+
+The operator reported sensory `87562a` and rubral `f5e01c` finished. Both are now
+reviewed; neither is pending. See `DNNE_Coupled_Outcomes_2026-11-18.md` for the
+verified saved-data results and D: review backups. Sensory passes six of seven
+conditions; eight-patch apex-charge error falls about fourfold per halving but
+remains 1.501873 times its bound. All reference/refinement/conservation checks
+pass. Motor fails only yield fraction, about 3.94% over its limit under strong
+drive, peaking in the opposite passive muscle. Original failures/bounds remain.
+
+A finer sensory workflow is authored, reusing all completed references and
+preserving every equation/initial state/limit. It captures 0.001/0.0005/0.00025 ms
+and exactly compares overlapping saved metrics. The stationary-search initializer
+and twelve analytic/failure controls are also authored; the combined workflow
+runs 132 focused cases before trajectories. No active root, stability or
+physiological rest claim is made. See `DNNE_Cleft_Stationary_Search_2026-11-18.md`.
+Authoring builds pass with zero warnings/errors; no new test/model has yet run.
+No motor rerun is launched: next separate physical/muscle step refinements to
+distinguish partition error from muscle integration error. Full goal active.

@@ -21,8 +21,10 @@ internal static class CleftTrajectoryStudy
         if (!Path.IsPathFullyQualified(input) || !Path.IsPathFullyQualified(output) || Directory.Exists(output) || File.Exists(output))
             throw new ArgumentException("Absolute frozen protocol and new output required.");
         var p=JsonSerializer.Deserialize<Protocol>(File.ReadAllText(input),Json);
-        if (p is null || p.Version!="joint-cleft-trajectory-comparison-v1" || p.KernelVersion!=AvatarVestibularCleftDynamics.Version ||
-            p.SessionId==Guid.Empty || p.TicksPerMs!=2000 || p.SampleTicks!=20 || !p.StepTicks.SequenceEqual(new[] { 4,2,1 }) ||
+        bool clock=p is not null && ((p.Version=="joint-cleft-trajectory-comparison-v1" && p.TicksPerMs==2000 && p.SampleTicks==20) ||
+            (p.Version=="joint-cleft-trajectory-refinement-v1" && p.TicksPerMs==4000 && p.SampleTicks==40));
+        if (p is null || !clock || p.KernelVersion!=AvatarVestibularCleftDynamics.Version ||
+            p.SessionId==Guid.Empty || !p.StepTicks.SequenceEqual(new[] { 4,2,1 }) ||
             p.ExpectedCases!=7 || p.ExpectedNativeRuns!=21 || p.ExpectedReferences!=21 || p.Cases.Length!=7)
             throw new ArgumentException("Unexpected complete-trajectory protocol.");
         Directory.CreateDirectory(output);WriteNew(Path.Combine(output,"input.json"),p);int completed=0;var failures=new List<string>();

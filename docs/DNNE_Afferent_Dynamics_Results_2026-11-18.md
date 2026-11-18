@@ -15,8 +15,9 @@ loading, local accounting and declared component controls. They do not establish
 independent active trajectory accuracy, connected physiological rest, afferent
 firing or Avatar balance.
 
-The next prepared direction is the authored fast joint trajectory comparison:
+The fast joint trajectory comparison is now launched as `cf2f38`:
 seven conditions at three native resolutions, compared with 21 independent
 reference trajectories under unchanged prospective bounds. It runs in a frozen
 visible PowerShell window, with no live monitoring. The separate connected
 stationary component study is also unlocked, but has not run at this checkpoint.
+See `DNNE_Afferent_Fast_Transient_2026-11-18.md` for the frozen launch details.

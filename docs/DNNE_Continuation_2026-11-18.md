@@ -550,3 +550,18 @@ motor continuation and the already-authored sensory trajectory study, then
 launch both visibly without polling. Connected resting-state component work
 is also unlocked but remains unrun here. Full goal remains active; numerical
 trajectory accuracy, sensory firing, physiology and Avatar usability are open.
+
+Launch checkpoint: both new windows are now started from pushed revision
+`c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`. Saved motor comparison
+`rubral-epoch-comparison-20261118-b224a6` has 1,923 initial files plus manifest
+D: verified; task `DNNE-Rubral-Epoch-704c9ee951ce`. Sensory comparison
+`afferent-trajectories-20261118-cf2f38` has 1,930 initial files plus manifest
+D: verified; task `DNNE-Afferent-Trajectories-dbc29d955f18`. Both launch commands
+returned successfully. No post-launch outputs, status or processes inspected.
+
+Exactly TWO pending completion reports. The motor window performs the large
+original file audit, twelve mapping controls and saved-record comparisons;
+it launches no model. The sensory window performs the prospective short joint
+trajectory study, not a firing or physiological qualification. Loaded stationary
+components remain authored and unlocked but unprepared/unrun. No old evidence
+or save was deleted or overwritten. Full goal remains active and unfinished.

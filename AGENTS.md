@@ -2993,3 +2993,11 @@ mapping, twelve controls and all old bounds; no native/model rerun or original
 capture mutation. Static/import checks pass, controls not executed inline.
 Next freeze/backup/launch the saved motor comparison and fast sensory
 trajectory comparison in visible PowerShell. No physiological promotion.
+
+Both are now launched at revision `c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`:
+saved motor `b224a6` (1,923 initial D:-verified files, task
+`DNNE-Rubral-Epoch-704c9ee951ce`) and sensory trajectories `cf2f38` (1,930 files,
+task `DNNE-Afferent-Trajectories-dbc29d955f18`). Exactly TWO pending reports.
+No post-launch outputs/status/processes inspected. The large original motor
+audit executes in its visible window; no additional native/neuronal run.
+Stationary components are unlocked but still unprepared/unrun. Full goal active.

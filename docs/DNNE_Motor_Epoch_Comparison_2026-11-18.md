@@ -1,5 +1,12 @@
 # Saved motor partition comparison
 
+Status: **launched visibly**, awaiting the operator's completion report.
+New package `rubral-epoch-comparison-20261118-b224a6`, revision
+`c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, has 1,923 initial files plus manifest
+verified on D:. Task: `DNNE-Rubral-Epoch-704c9ee951ce`. No post-launch result,
+status or process inspected; the original full audit and corrected accuracy
+outcome remain pending.
+
 The operator reported the final FAILED footer and verified D: backup for
 `rubral-refinement-20261118-3d8835`: 583,562 files plus manifest. All five native
 conditions completed (95,988 physical steps), and the recorded 287 focused

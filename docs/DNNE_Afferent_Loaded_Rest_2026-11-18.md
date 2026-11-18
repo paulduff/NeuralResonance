@@ -3,8 +3,10 @@
 Status: native search and its guarded component workflow authored; build and
 static checks pass. **No new model, analytic control or test has run.** The
 active loaded-root comparison and full free-gate stability study remain to be
-authored. Existing windows `0e0e99` and `3d8835` remain awaiting final operator
-reports; neither was inspected during this authoring turn.
+authored. Prerequisite dynamics `0e0e99` is now reported/reviewed and passing;
+its review is D: verified, so this component workflow can be prepared next.
+No stationary package or window has been started. Current pending windows
+are fast nerve trajectories `cf2f38` and saved motor comparison `b224a6`.
 
 The reviewed sealed sensory roots cannot simply initialize an attached active
 nerve. Cable membrane current loads the calyx, changing its voltage and the

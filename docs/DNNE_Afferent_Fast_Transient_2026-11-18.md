@@ -1,9 +1,11 @@
 # Joint sensory nerve fast-transient comparison
 
-Status: complete comparison workflow authored and statically checked; **not
-prepared or executed**. The derivative study is reviewed/passing. The immediate
-execution step is the joint dynamics component study. Its reported, reviewed
-and D:-verified passing result is required before this comparison can freeze.
+Status: **launched visibly**, awaiting the operator's completion report.
+Package `afferent-trajectories-20261118-cf2f38`, revision
+`c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, has 1,930 initial files plus manifest
+verified on D:. Task: `DNNE-Afferent-Trajectories-dbc29d955f18`.
+The prerequisite dynamics `0e0e99` passed its reported/reviewed 181-case gate
+and its review is D: verified. No post-launch result, status or process inspected.
 
 `tools/afferent_trajectory_protocol.py` declares seven conditions: matched
 quiet/bundle single-patch states, initially loaded and reverse-current states,

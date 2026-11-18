@@ -2845,3 +2845,11 @@ halving and conservation criteria are prospective and separate. Build/static
 checks pass; no model/reference/control/test executed inline. See
 DNNE_Cleft_Trajectories_2026-11-18.md. Prepare/backup/visible launch next, without
 live monitoring. Stationarity, physiology, afferents and balance remain open.
+
+Complete sensory trajectory comparison launched: cleft-trajectories-20261118-
+87562a, frozen at 22148e322fe862e8b69c2f42388aa26534b8539a, initial 1,866 files
+plus manifest D: verified, visible task DNNE-Cleft-Trajectories-8ff1f1475f1e.
+No post-launch output/status/process inspected. TWO pending reports: 87562a and
+rubral f5e01c. Dynamics ca2f31, membranes 74e956 and skull 0ada47 are reviewed/
+passing within their stated scopes. Full goal active and unqualified for usable
+brain-body sensory return, afferent physiology, balance or recovery.

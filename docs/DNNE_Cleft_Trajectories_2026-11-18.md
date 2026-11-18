@@ -102,3 +102,10 @@ tests have been executed inline. Runtime costs are not benchmarks.
 A pass would establish sampled numerical accuracy for these declared trajectories.
 Stationary initialization and stability, longer transients, anatomical calibration,
 afferent firing, measured head-to-bundle coupling and Avatar balance remain open.
+
+Launched 18 November as `cleft-trajectories-20261118-87562a`, frozen at pushed
+revision `22148e322fe862e8b69c2f42388aa26534b8539a`. Initial 1,866 files plus
+manifest are verified on D:. The launcher opened visible task
+`DNNE-Cleft-Trajectories-8ff1f1475f1e` and returned successfully. No post-launch
+outputs/status/processes have been inspected; await the operator's completion
+report before reviewing or claiming numerical success.

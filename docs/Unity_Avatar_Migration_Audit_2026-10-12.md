@@ -1245,3 +1245,14 @@ Corrected closed-cleft capture `3076da` is now reviewed: all 40 focused cases an
 The saved-data review is separately backed up. This advances closed component
 accuracy only; open exchange and actual coupled membrane dynamics are later
 qualification stages. No live transducer/editor/body selection changed.
+
+18 November: the completed native skull retry failed on a locked request file
+at physical step 198, not on the scale or coordinate checks. The isolated native
+request reader, host reply wait and skull sidecar reader now reuse the existing
+bounded immutable-file reader. Requests/physics are never resent; the new native
+study requires two real exclusive-lock rejections on both request/reply paths,
+plus all original measurements and six reader tests (80 focused cases total).
+Body mechanics, physical producer, live DNNE/Avatar/editor selection and numerical
+bounds are unchanged. Authoring build passes; native qualification awaits the
+visible rerun. See `DNNE_Continuation_2026-11-18.md` for preserved stopped evidence
+and the separate rubral yield-state numerical failure.

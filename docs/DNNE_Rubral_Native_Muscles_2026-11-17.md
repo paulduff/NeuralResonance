@@ -256,3 +256,11 @@ were D: verified before visible task `DNNE-Rubral-Comparison-4a71b0b7b7c4`
 launched. The original `4cdba5` capture stays read-only. No post-launch output,
 status or process has been inspected; all source verification, loader controls
 and missing reference calculations await the operator's completion report.
+
+On 18 November the operator reported this window stopped/disappeared and asked
+for a rerun. All fifteen references and analysis were saved before the final
+preservation audit stopped. The strong conditions fail the original yieldFraction
+bound; final preservation is incomplete and the old RUNNING status is stale.
+All existing files have a separately D:-verified immutable snapshot. See
+`DNNE_Continuation_2026-11-18.md` for the exact error, fresh same-bounds rerun,
+stage/progress reporting and required follow-up. No failed bound was changed.

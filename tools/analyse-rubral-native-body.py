@@ -288,6 +288,11 @@ def audit(package):
         assert all(candidate['recordedLedgers'][k]<=spec[v] for k,v in [('calciumLedger','calciumLedgerAbsolute'),('fiberMomentumLedger','fiberMomentumLedgerNewtonSeconds'),('fiberKineticLedger','fiberKineticLedgerJoules')])
         refs=references['strong-left' if key in ('strong-fast','strong-retry') else key]
         comparisons=[dict(reference=name,errors=base.errors(y,ry,f,rf)) for name,(ry,rf) in refs.items()]
+        for comparison in comparisons:
+            comparison['failedMetrics']={metric:dict(error=error,bound=spec['candidateBounds'][metric])
+                for metric,error in comparison['errors'].items() if error>spec['candidateBounds'][metric]}
+            if comparison['failedMetrics']:
+                print('OUTSIDE ORIGINAL BOUNDS '+key+' '+comparison['reference']+' '+json.dumps(comparison['failedMetrics']),flush=True)
         rows.append(dict(case=key,comparisons=comparisons,passed=all(base.within(r['errors'],spec['candidateBounds']) for r in comparisons)))
     result=dict(completed=True,numericalCriteriaPassed=all(r['passed'] for r in rows),sampledSingleResolutionOnly=True,cases=rows,
         independentReferences=15,allNativeEndpointsCompared=True,physicalStepRefinementForThisInputAssessed=False,

@@ -155,7 +155,7 @@ def verify_input(package, final=False):
     print(f'{git_files} original Git/source files reconciled without invoking Git.', flush=True)
     common = module('continuation_integrity', ROOT/'tools/review-olive-and-motor-20261109.py')
     print('Verifying every saved native file on C: and D:; no simulation is running in this stage.', flush=True)
-    result = common.verify(capture, ['test-binaries.json', 'probe-binaries.json'], FAILED_REVISION, 'FAILED', 1)
+    result = common.verify(capture, ['test-binaries.json', 'probe-binaries.json'], FAILED_REVISION, 'FAILED', 1, progress_every=10000)
     result['verifiedGitFiles'] = git_files
     for entry in h.read(capture/'player-files.json'):
         path = Path(entry['Path']); path.relative_to(capture/'player')

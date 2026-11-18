@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using NeuralResonanceEngine.Shared.Contracts;
 using NRE.SimAvatar;
+using Nre.UnityWorld;
 
 namespace UnityPhysicalSampleProbe;
 
@@ -17,6 +18,7 @@ public sealed record BridgeReply(int Version, string SessionId, string Operation
 // Once a command outcome becomes uncertain, the adapter never retries a step.
 public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatarPhysicalObservationBody
 {
+    private readonly bool _exerciseReadLock;
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, WriteIndented = true };
     private readonly string _directory, _session;
@@ -31,8 +33,9 @@ public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatar
     public double PhysicsStepMs => _lastStep.PhysicsStepMs;
     public BridgeReply LastStep => _lastStep;
 
-    public UnityPhysicalSampleBody(string output, Guid session, Process process)
+    public UnityPhysicalSampleBody(string output, Guid session, Process process, bool exerciseReadLock = false)
     {
+        _exerciseReadLock = exerciseReadLock;
         _directory = Path.Combine(output, "bridge"); _session = session.ToString("N"); _process = process;
         _lastStep = WaitForReply("hello.json", 180);
         Validate(_lastStep, "hello", 0, 0);
@@ -79,7 +82,8 @@ public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatar
             long sequence = checked(_sequence + 1);
             var request = new { version = 1, sessionId = _session, operation, sequence, expectedStep = CompletedPhysicsStep };
             WriteNew(Path.Combine(_directory, "request-" + sequence.ToString("D6") + ".json"), request);
-            var reply = WaitForReply("reply-" + sequence.ToString("D6") + ".json", 30);
+            var reply = WaitForReply("reply-" + sequence.ToString("D6") + ".json", 30,
+                _exerciseReadLock && operation == "step" && expectedResultStep == 1);
             Validate(reply, operation, sequence, expectedResultStep);
             _sequence = sequence;
             return reply;
@@ -87,19 +91,49 @@ public sealed class UnityPhysicalSampleBody : IAvatarPhysicalSampleBody, IAvatar
         catch { ProtocolFaulted = true; throw; }
     }
 
-    private BridgeReply WaitForReply(string name, int seconds)
+    private BridgeReply WaitForReply(string name, int seconds, bool exerciseLock = false)
     {
         var elapsed = Stopwatch.StartNew(); string path = Path.Combine(_directory, name);
-        while (!File.Exists(path))
+        FileStream? injected = null; int rejected = 0; bool injectionComplete = !exerciseLock;
+        try
         {
-            string failure = Path.Combine(_directory, "failure.json");
-            if (File.Exists(failure)) throw new InvalidOperationException("Unity bridge failed: " + File.ReadAllText(failure));
-            if (_process.HasExited) throw new InvalidOperationException("Unity exited before its reply, code " + _process.ExitCode);
-            if (elapsed.Elapsed.TotalSeconds > seconds) throw new TimeoutException("Uncertain Unity request: " + name);
-            Thread.Sleep(10);
+            while (true)
+            {
+                if (exerciseLock && !injectionComplete && injected is null)
+                {
+                    try { injected = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None); }
+                    catch (FileNotFoundException) { }
+                    catch (DirectoryNotFoundException) { }
+                    catch (IOException error) when (DiagnosticBridgeFiles.IsSharingViolation(error)) { }
+                }
+                var outcome = DiagnosticBridgeFiles.TryRead(path, out string text);
+                if (injected is not null)
+                {
+                    if (outcome != BridgeReadOutcome.SharingViolation) throw new InvalidOperationException("Reply lock was not exercised.");
+                    if (++rejected == 2) { injected.Dispose(); injected = null; injectionComplete = true; }
+                }
+                if (outcome == BridgeReadOutcome.Ready && injectionComplete)
+                {
+                    var reply = JsonSerializer.Deserialize<BridgeReply>(text, Json) ?? throw new InvalidOperationException("Missing Unity bridge reply.");
+                    if (exerciseLock)
+                    {
+                        if (rejected != 2 || reply.Operation != "step" || reply.Sequence != 2 || reply.PhysicsStep != 1)
+                            throw new InvalidOperationException("Reply lock control incomplete.");
+                        WriteNew(Path.Combine(_directory, "host-reply-lock-control.json"), new { replyFile = name,
+                            reply.Sequence, reply.PhysicsStep, injectedReadRejections = rejected,
+                            commandResent = false, physicalStepRepeated = false });
+                    }
+                    return reply;
+                }
+                var failureRead = DiagnosticBridgeFiles.TryRead(Path.Combine(_directory, "failure.json"), out string failure);
+                if (failureRead == BridgeReadOutcome.Ready) throw new InvalidOperationException("Unity bridge failed: " + failure);
+                if (_process.HasExited && outcome == BridgeReadOutcome.Missing && failureRead == BridgeReadOutcome.Missing)
+                    throw new InvalidOperationException("Unity exited before its reply, code " + _process.ExitCode);
+                if (elapsed.Elapsed.TotalSeconds > seconds) throw new TimeoutException("Same Unity reply unavailable; command not resent: " + name);
+                Thread.Sleep(10);
+            }
         }
-        return JsonSerializer.Deserialize<BridgeReply>(File.ReadAllText(path), Json)
-            ?? throw new InvalidOperationException("Missing Unity bridge reply.");
+        finally { injected?.Dispose(); }
     }
 
     private void Validate(BridgeReply reply, string operation, long sequence, long step)

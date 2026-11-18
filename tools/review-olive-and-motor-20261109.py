@@ -21,16 +21,19 @@ def digest(path):
 def module(name,path):
     spec=importlib.util.spec_from_file_location(name,path); result=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(result); return result
-def verify(capture,binaries,revision,expected_status='DIAGNOSTICS_COMPLETE',expected_exit=0):
+def verify(capture,binaries,revision,expected_status='DIAGNOSTICS_COMPLETE',expected_exit=0,progress_every=0):
     manifest=read(capture/'backup-manifest.json'); backup=Path(manifest['Destination'])
     assert digest(capture/'backup-manifest.json')==digest(backup/'backup-manifest.json')
     names={e['Path'].replace('\\','/') for e in manifest['Files']}; assert len(names)==len(manifest['Files'])
     for folder in (capture,backup):
+        if progress_every: print(f'Checking complete file inventory: {folder}',flush=True)
         root=io(folder)
         assert {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}==names|{'backup-manifest.json'}
-        for entry in manifest['Files']:
+        for index,entry in enumerate(manifest['Files'],1):
             path=folder/entry['Path']
             assert io(path).stat().st_size==entry['Bytes'] and digest(path)==entry['Sha256'],str(path)
+            if progress_every and (index%progress_every==0 or index==len(names)):
+                print(f'Verified {index:,} / {len(names):,} files: {folder}',flush=True)
     config=read(capture/'configuration.json'); status=read(capture/'window-status.json')
     assert status['Status']==expected_status and status['ExitCode']==expected_exit
     assert config['Revision']==status['Revision']==revision

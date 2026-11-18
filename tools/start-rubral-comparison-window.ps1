@@ -57,6 +57,13 @@ $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revis
  LiveBrainAccessed=$false;OldSavesLoaded=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite earlier results.'}
+function Save-Stage([string]$Stage){
+ $status['Stage']=$Stage;$status['UpdatedUtc']=[DateTime]::UtcNow.ToString('o')
+ $temporary=$statusPath+'.tmp'
+ $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $temporary -Encoding UTF8
+ Move-Item -LiteralPath $temporary -Destination $statusPath -Force
+ Write-Host ('Stage: '+$Stage)
+}
 $continuation=Join-Path $package 'source/tools/rubral_native_continuation.py'
 $analysisScript=Join-Path $package 'source/tools/analyse-rubral-native-body.py'
 try{
@@ -65,14 +72,17 @@ try{
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host 'The original native run is preserved. This window verifies its files and runs the missing reference comparison.'
  Write-Host 'Full verification reads 360,428 files on each drive and may take time. No live monitoring; report the final footer to Orion.'
- $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
+ Save-Stage 'input preservation'
  Assert-Package
  Invoke-Logged @('-B',$continuation,'verify-input',$package) 'input-review.log'
  $status.NativeCaptureVerified=$true
+ Save-Stage 'loader controls'
  Invoke-Logged @('-B',$continuation,'loader-controls',$package) 'loader-controls.log'
  $status.LoaderControlsPassed=$true
  $status.IndependentReferencesAttempted=$true
+ Save-Stage 'independent reference solves'
  Invoke-Logged @('-B',$analysisScript,'solve',$package) 'coupled-reference.log'
+ Save-Stage 'trajectory comparison'
  Invoke-Logged @('-B',$analysisScript,'analyse',$package) 'coupled-analysis.log'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
  $native=Get-Content -LiteralPath (Join-Path $package 'native-source-analysis.json') -Raw | ConvertFrom-Json
@@ -83,18 +93,22 @@ try{
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
  Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
+ Save-Stage 'failed stage recorded; final preservation still required'
 }finally{
  if($status.Status -eq 'RUNNING'){$status.Status='INTERRUPTED';$status.ExitCode=2}
+ Save-Stage 'final runtime preservation'
  try{
   Assert-Package
   Invoke-Logged @('-B',(Join-Path $package 'source/tools/rubral_native_gate.py'),'preflight',$package) 'reference-postflight.log'
   $status['ReferenceEnvironmentPreserved']=$true
   if($status.NativeCaptureVerified){
+   Save-Stage 'final original C:/D: preservation'
    Invoke-Logged @('-B',$continuation,'postflight',$package) 'input-postflight.log'
    $status.OriginalCaptureUnchanged=$true
   }
  }catch{$status.Status='FAILED';$status.ExitCode=1;$status['PreservationError']=$_.Exception.ToString();Write-Host ('PRESERVATION FAILED: '+$_.Exception.Message) -ForegroundColor Red}
  $status['CompletedUtc']=[DateTime]::UtcNow.ToString('o')
+ Save-Stage 'final result backup'
  if($transcribing){Stop-Transcript | Out-Null}
  $status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8
  try{& (Join-Path $package 'backup-run.ps1') -Source $package -Destination $configuration.BackupDestination}

@@ -213,3 +213,10 @@ The replacement is launched as `unity-skull-20261117-1e2f21`, revision
 The .NET authoring build, syntax, static inventory and source prerequisites passed;
 the native controls/full sampling result awaits the operator. No live monitoring
 or post-launch inspection occurred. `733e7c` remains the reviewed failed capture.
+
+On 18 November the operator reported the replacement window stopped/disappeared
+and requested a rerun. Its 3,505-file C:/D: review shows a request-file sharing
+violation at step 198, after all 74 focused cases passed. The new v3 diagnostic
+read repair, actual request/reply lock controls, unchanged measurement bounds and
+80-case rerun are described in `DNNE_Continuation_2026-11-18.md`. The old failed
+capture is preserved and is not promoted to a sampling qualification.

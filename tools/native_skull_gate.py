@@ -17,7 +17,8 @@ def module(name, path):
 h = module('native_skull_helpers', ROOT / 'tools/prepare-causal-motor.py')
 gate = module('native_skull_inventory', ROOT / 'tools/receptor_membrane_gate.py')
 COUNTS = dict(PhysicalSampleProducerTests=16, PhysicalSampleTransportTests=22, SolutionManifestTests=1,
-              SkullKinematicsTests=12, ClockedVestibularMechanicsTests=16, VestibularLabyrinthTransducerTests=7)
+              SkullKinematicsTests=12, ClockedVestibularMechanicsTests=16, VestibularLabyrinthTransducerTests=7,
+              DiagnosticBridgeFileTests=6)
 POINTS = dict(centre=[0, 0, 0], left=[-.0625, 0, 0], right=[.0625, 0, 0])
 VECTORS = ('localPointMeters', 'originWorldMeters', 'rightWorld', 'upWorld', 'forwardWorld',
            'pointWorldMeters', 'pointVelocityWorldMetersPerSecond', 'angularVelocityWorldRadiansPerSecond',
@@ -25,13 +26,14 @@ VECTORS = ('localPointMeters', 'originWorldMeters', 'rightWorld', 'upWorld', 'fo
 
 
 def protocol():
-    return dict(version='native-skull-sampling-study-v2', points=POINTS, physicalEndpoints=201,
+    return dict(version='native-skull-sampling-study-v3', points=POINTS, physicalEndpoints=201,
                 actualPhysicalSteps=201, finalDeliveredStep=200, actualNativeGridEndpoints=202,
                 sidecars=207, pointReceipts=603, heldInspections=4,
                 basisAbsoluteBound=1e-5, positionAbsoluteBoundMeters=1e-5,
                 pointVelocityAbsoluteBoundMetersPerSecond=1e-5, pointVelocityRelativeBound=1e-6,
                 derivedAbsoluteBound=1e-8, derivedRelativeBound=1e-10,
                 scalePolicy='exact unit local scale at every physical ancestor', nativeScaleControls=33,
+                nativeRequestLockRejections=2, hostReplyLockRejections=2, requestOrStepResent=False,
                 legacyScaleSquaredBound=1e-12, legacyScaleGuardIsDiagnosticOnly=True,
                 minimumHeadRotationRadiansPerSecond=.01, minimumOffsetSpeedDifferenceMetersPerSecond=.0001,
                 initialAccelerationUnavailable=True, nativeSensorLocationsAnatomicallyCalibrated=False,
@@ -55,11 +57,18 @@ def prerequisite():
     assert not failed['failingScaleWasSaved'] and not failed['nativeSamplingQualified']
     failure = Path(failed['capture']); assert h.digest(failure / 'backup-manifest.json') == failed['manifestSha256']
     preserved = ['UnityWorld/Assets/NRE/Runtime/'+n+'.cs' for n in ('ArticulatedAvatar','WorldController','SensoryFrames')]
-    preserved += ['tools/UnityPhysicalSampleProbe/UnityPhysicalSampleBody.cs','src/NRE.SimAvatar/AvatarPhysicalSampleProducer.cs']
+    preserved += ['src/NRE.SimAvatar/AvatarPhysicalSampleProducer.cs']
     h.verify(failure, ['source/'+name for name in preserved])
     for name in preserved:
         assert h.io(ROOT / name).read_text(encoding='utf-8-sig') == h.io(failure / 'source' / name).read_text(encoding='utf-8-sig'), name
-    return dict(review, nativeScaleFailureReview=failed, unchangedPhysicalSources=preserved)
+    repair_folder = ROOT/'artifacts/stopped-studies-review-20261118'
+    h.verify(repair_folder, ['review.json']); stopped = h.read(repair_folder/'review.json')
+    lock_failure = stopped['skull']
+    assert stopped['operatorReportedStopped'] and lock_failure['requestReadSharingViolation']
+    assert lock_failure['passedTests'] == 74 and lock_failure['failedPhysicsStep'] == 198 and lock_failure['failedRequestSequence'] == 202
+    assert h.digest(Path(lock_failure['capture'])/'backup-manifest.json') == lock_failure['manifestSha256']
+    return dict(review, nativeScaleFailureReview=failed, nativeReadLockFailureReview=lock_failure,
+                unchangedPhysicalSources=preserved, diagnosticFileReadPolicyChanged=True)
 
 
 def digest(text): return sha256(text.encode('utf-8')).hexdigest().upper()
@@ -101,6 +110,12 @@ def compare(package):
     config = h.read(package / 'configuration.json'); assert config['NativeSkullCapture'] and config['NoLiveMonitoring']
     managed = runtime(package)
     study = package / 'study'; clock = h.read(study / 'clock.json')
+    request_lock = h.read(study/'bridge/native-request-lock-control.json')
+    reply_lock = h.read(study/'bridge/host-reply-lock-control.json')
+    assert request_lock == dict(requestFile='request-000002.json', sequence=2, physicsStepBefore=0, physicsStepAfter=1,
+                               injectedReadRejections=2, commandResent=False, physicalStepRepeated=False)
+    assert reply_lock == dict(replyFile='reply-000002.json', sequence=2, physicsStep=1,
+                             injectedReadRejections=2, commandResent=False, physicalStepRepeated=False)
     controls = h.read(study / 'skull-scale-controls.json')
     assert controls['version'] == 'native-head-scale-controls-v1' and len(controls['controls']) == 33
     invalid = [[2,2,2],[.5,1,1],[-1,1,1],[1.0000001192092896,1,1],[.9999999403953552,1,1],[0,1,1]]
@@ -243,6 +258,7 @@ def compare(package):
     analysis = dict(completed=True, nativeHeadSamplingChecksPassed=True, tests=tests, sidecars=len(paths), pointReceipts=receipts,
                     managedRuntime=managed,
                     nativeScaleControls=33, configuredPhysicalScaleExactlyUnit=True,
+                    nativeRequestReadLockPassed=True, hostReplyReadLockPassed=True, requestOrStepResent=False,
                     maximumReportedScaleSquaredDeviation=maximum_scale_deviation, legacyScaleGuardRejections=legacy_scale_rejections,
                     scaleAcceptancePolicyChanged=True, originalCoordinateAndVelocityBoundsChanged=False,
                     completeThroughStep=200, heldInspections=held, nativeGridEndpoints=202,

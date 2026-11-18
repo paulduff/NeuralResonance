@@ -45,7 +45,7 @@ static class Program
                 "--muscles", "--output", output, "-logFile", Path.Combine(output, "unity.log") }) start.ArgumentList.Add(arg);
             if (skull) { start.ArgumentList.Add("--skull-motion-capture"); start.ArgumentList.Add("material-points-v1"); }
             process = Process.Start(start) ?? throw new InvalidOperationException("Unity did not start.");
-            body = new UnityPhysicalSampleBody(output, session, process);
+            body = new UnityPhysicalSampleBody(output, session, process, exerciseReadLock: skull);
             report["unity"] = body.LastStep.Unity;
             var clock = new PhysicalSampleClock(session, "isolated-unity-avatar", "avatar_unity_body", 0, body.PhysicsStepMs, 0, 1000);
             UnityPhysicalSampleBody.WriteNew(Path.Combine(output, "clock.json"), clock);

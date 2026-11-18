@@ -1,10 +1,10 @@
 # Avatar and environment work
 
 Latest pause/resume checkpoint: `docs/DNNE_Checkpoint_2026-11-17.md`.
-The operator requested a pause until tomorrow. Do not launch the prepared
-open-cleft package or inspect still-pending windows until the corresponding
-resume/completion instructions arrive. Historical entries below remain evidence;
-the checkpoint identifies the current pending and reviewed packages.
+The operator resumed the goal on 18 November and requested reruns of the two
+older studies, explicitly confirming their windows stopped/disappeared. See
+`docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.
+Historical entries below remain evidence; do not infer completion for new runs.
 
 DNNE's biological mechanisms are a correctness requirement, not a naming or
 presentation theme. Learning must be implemented at individual synaptic contacts
@@ -2727,3 +2727,22 @@ failed before package creation due to absent SciPy, without dependency changes.
 Rubral 30755e and skull 1e2f21 remain uninspected pending operator confirmation.
 See DNNE_Checkpoint_2026-11-17.md for launch command, reviewed evidence, the
 authored/unrun membrane derivative stage and subsequent acceptance work.
+
+18 November: operator resumed and then requested rubral/skull reruns, reporting
+both older windows stopped/disappeared. A one-time restart ownership check found
+no matching old process. Read-only review verifies skull 1e2f21 FAILED on request
+202 at physical step 198 (Windows sharing violation), 74 tests and 3,505 C:/D:
+files intact. Rubral 30755e completed 15 references and saved numerical failure
+for yieldFraction (max 1.039360238175302e-5 vs original 1e-5), then stopped during
+final preservation with stale RUNNING status. Its 1,907 existing files, including
+old status/initial manifest, are copied untouched under the new stopped-studies-
+review-20261118; all 1,908 review/snapshot files plus manifest are D: verified.
+Do not claim its interrupted final audit passed. Exact same-bounds rerun requested.
+Skull repair uses existing DiagnosticBridgeFiles for locked request/reply/sidecar
+reads, no command/step resend; two actual lock rejections on both ends at the
+first step are required. Original 74 cases plus six reader cases = 80; original
+33 scale controls and all sampling/bounds remain. Probe authoring build passes
+zero warnings/errors; no tests/native controls executed inline. See continuation
+notes. Open-cleft db4794 was launched visibly as DNNE-Cleft-Open-12f472eca915;
+no post-launch outputs/status/process inspected. Other reruns await fresh freeze,
+backup and launch. Full goal remains active and unqualified for Avatar recovery.

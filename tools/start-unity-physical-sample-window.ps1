@@ -6,7 +6,7 @@ $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json'
 $combined=$configuration.CombinedBodyContacts -eq $true
 $skull=($configuration.PSObject.Properties.Name -contains 'NativeSkullCapture') -and $configuration.NativeSkullCapture -eq $true
 if($combined -and $skull){throw 'Select one isolated native study mode.'}
-$expectedCases=if($combined -or $skull){74}else{39}
+$expectedCases=if($skull){80}elseif($combined){74}else{39}
 if($combined -and ($configuration.ExpectedContactObservations -ne 3015 -or $configuration.ObservationProtocolVersion -ne 2)){throw 'Unexpected combined native observation scope.'}
 if(-not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne $expectedCases -or $configuration.LiveBodySelected -or -not $configuration.ActualUnityPhysicsRequired -or -not $configuration.NoTimingMeasured){throw 'Unexpected Unity physical-sample configuration.'}
 if($configuration.ExpectedBodySamples -ne 201 -or $configuration.ExpectedActualPhysicsSteps -ne 201 -or $configuration.ExpectedFinalCompleteStep -ne 200 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1'){throw 'Unexpected physical study scope.'}

@@ -19,6 +19,10 @@ public static class PhysicalSampleQualification {
   public bool directStepRejected,wrongOwnerRejected;
  }
  [Serializable] sealed class Failure {public string error,sessionId;public long physicsStep,expectedSequence;}
+ [Serializable] sealed class ReadLockControl {
+  public string requestFile;public long sequence,physicsStepBefore,physicsStepAfter;
+  public int injectedReadRejections;public bool commandResent,physicalStepRepeated;
+ }
  [Serializable] sealed class SkullReply {
   public string version="native-skull-sidecar-v1",sessionId,operation;public long sequence,physicsStep;
   public SkullMotionCapture.Snapshot[] samples;
@@ -30,6 +34,8 @@ public static class PhysicalSampleQualification {
   string session=WorldController.Argument("--physical-sample-qualify");
   object owner=new object();long sequence=1;bool failed=false,done=false;
   bool directRejected=false,wrongRejected=false;
+  bool lockControl=WorldController.Argument("--skull-motion-capture")=="material-points-v1";
+  FileStream injectedLock=null;int injectedRejections=0;bool injectionComplete=!lockControl;
   try {
    if(!Guid.TryParseExact(session,"N",out _)||Directory.Exists(directory))throw new InvalidOperationException("Fresh declared bridge session required.");
    if(!world.IsolatedQualification||world.Connected||world.Running||world.physicsSteps!=0||!world.Avatar.MusclesEnabled)
@@ -48,13 +54,29 @@ public static class PhysicalSampleQualification {
   float waitStarted=Time.realtimeSinceStartup;
   while(!done&&!failed){
    string requestPath=Path.Combine(directory,"request-"+sequence.ToString("D6")+".json");
-   if(!File.Exists(requestPath)){
-    if(Time.realtimeSinceStartup-waitStarted>180){SaveFailure(world,directory,session,sequence,new TimeoutException("No next bridge request; physics remains paused."));failed=true;break;}
+   BridgeReadOutcome readOutcome=BridgeReadOutcome.Missing;string requestText=null;Exception readError=null;
+   try {
+    // The first physical step follows the initial held inspection. Exercise
+    // the actual Unity reader under an exclusive lock before any step occurs.
+    if(lockControl&&sequence==2&&!injectionComplete&&injectedLock==null){
+     try{injectedLock=new FileStream(requestPath,FileMode.Open,FileAccess.Read,FileShare.None);}
+     catch(FileNotFoundException){}catch(DirectoryNotFoundException){}
+     catch(IOException e) when(DiagnosticBridgeFiles.IsSharingViolation(e)){}
+    }
+    readOutcome=DiagnosticBridgeFiles.TryRead(requestPath,out requestText);
+    if(injectedLock!=null){
+     if(readOutcome!=BridgeReadOutcome.SharingViolation||world.physicsSteps!=0)throw new InvalidOperationException("Native request lock did not hold the original physical endpoint.");
+     if(++injectedRejections==2){injectedLock.Dispose();injectedLock=null;injectionComplete=true;}
+    }
+   }catch(Exception e){readError=e;}
+   if(readError!=null){SaveFailure(world,directory,session,sequence,readError);failed=true;break;}
+   if(readOutcome!=BridgeReadOutcome.Ready){
+    if(Time.realtimeSinceStartup-waitStarted>180){SaveFailure(world,directory,session,sequence,new TimeoutException("Same bridge request remains unavailable; no physics or command retry performed."));failed=true;break;}
     yield return null;continue;
    }
    try {
     if(sequence>1000)throw new InvalidOperationException("Diagnostic request bound exceeded.");
-    var request=JsonUtility.FromJson<Request>(File.ReadAllText(requestPath));
+    var request=JsonUtility.FromJson<Request>(requestText);
     if(request==null||request.version!=ProtocolVersion||request.sessionId!=session||request.sequence!=sequence||request.expectedStep!=world.physicsSteps)
      throw new InvalidOperationException("Bridge identity, sequence or expected physical step differs.");
     if(request.operation=="step")world.StepForPhysicalSample(owner);
@@ -63,10 +85,17 @@ public static class PhysicalSampleQualification {
     var reply=Capture(world,session,sequence,request.operation,directRejected,wrongRejected);
     if(!reply.finite||reply.connected||!reply.paused||!reply.isolated)throw new InvalidOperationException("Physical state or isolation was lost.");
     WriteNew(Path.Combine(directory,"reply-"+sequence.ToString("D6")+".json"),JsonUtility.ToJson(reply,true));
+    if(lockControl&&sequence==2){
+     if(!injectionComplete||injectedRejections!=2||request.operation!="step"||world.physicsSteps!=1)throw new InvalidOperationException("Native request lock control incomplete.");
+     WriteNew(Path.Combine(directory,"native-request-lock-control.json"),JsonUtility.ToJson(new ReadLockControl{
+      requestFile=Path.GetFileName(requestPath),sequence=sequence,physicsStepBefore=0,physicsStepAfter=world.physicsSteps,
+      injectedReadRejections=injectedRejections,commandResent=false,physicalStepRepeated=false},true));
+    }
     sequence++;waitStarted=Time.realtimeSinceStartup;
    }catch(Exception e){SaveFailure(world,directory,session,sequence,e);failed=true;}
    yield return null;
   }
+  if(injectedLock!=null)injectedLock.Dispose();
   Application.Quit(failed?1:0);
  }
 

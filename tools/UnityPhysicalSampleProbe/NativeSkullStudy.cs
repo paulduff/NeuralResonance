@@ -34,7 +34,7 @@ internal sealed class NativeSkullStudy
     public void Capture(BridgeReply body)
     {
         string relative = "bridge/skull-" + body.Sequence.ToString("D6") + ".json";
-        string raw = File.ReadAllText(Path.Combine(_output, relative));
+        string raw = Nre.UnityWorld.DiagnosticBridgeFiles.ReadPublished(Path.Combine(_output, relative), 30000);
         var source = JsonSerializer.Deserialize<Sidecar>(raw, UnityPhysicalSampleBody.Json)
             ?? throw new InvalidOperationException("Missing actual head sample.");
         if (source.Version != "native-skull-sidecar-v1" || source.SessionId != _clock.SessionId.ToString("N") ||

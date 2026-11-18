@@ -2980,3 +2980,16 @@ reported/reviewed passing dynamics first. No new package/window. Existing
 `0e0e99` and `3d8835` remain pending and uninspected this turn. Active loaded
 roots, full free-gate stability with eigenvector witnesses and usable Avatar
 remain unqualified; no live/Unity/editor selection changed. Full goal active.
+
+Operator reported both pending footers. Joint dynamics `0e0e99` is fully
+reviewed/passing: all 2,459 C:/D: files, 181 cases, exact saved analysis; its
+review is D: verified. See `DNNE_Afferent_Dynamics_Results_2026-11-18.md`.
+Motor `3d8835` finished its 583,562-file backup but analysis failed before new
+error metrics: raw contact IDs were incorrectly compared across fresh sessions.
+See `DNNE_Motor_Epoch_Comparison_2026-11-18.md`. All five native runs completed;
+full original file audit and corrected accuracy outcome remain pending. The
+new saved-only workflow validates each epoch's identity, exact physical event
+mapping, twelve controls and all old bounds; no native/model rerun or original
+capture mutation. Static/import checks pass, controls not executed inline.
+Next freeze/backup/launch the saved motor comparison and fast sensory
+trajectory comparison in visible PowerShell. No physiological promotion.

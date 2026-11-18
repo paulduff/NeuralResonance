@@ -528,3 +528,25 @@ passing reviewed `0e0e99` first. Active loaded-root independent comparison and
 full free-gate stability (including retained eigenvectors) are still future work.
 TWO pending reports remain `0e0e99` and motor `3d8835` final backup; neither
 was inspected this turn. This is source progress; the full goal remains active.
+
+The operator has now reported both final footers. Joint nerve dynamics
+`0e0e99` passed its completed-data review: 2,459 files in each C:/D: copy,
+181 focused cases, exact saved analysis, source/binary/runtime preservation.
+Its new review is D: verified; see `DNNE_Afferent_Dynamics_Results_2026-11-18.md`.
+
+Motor `3d8835` finished the 583,562-file backup with an analysis failure. The
+five native conditions and 287 tests completed, but the analyser demanded equal
+contact IDs across fresh sessions. Source and six saved initial/topology records
+confirm those IDs must differ. The complete original audit and corrected
+accuracy outcome remain pending. A new saved-only continuation preserves all
+original IDs and bounds, validates the per-session identity derivation, and
+compares physical source/target/event timing exactly. Twelve prospective
+controls execute visibly before full saved-record comparison. No simulation
+needs rerunning. See `DNNE_Motor_Epoch_Comparison_2026-11-18.md`.
+
+Python AST/import graphs, PowerShell parsing and diff checks pass authoring
+validation. No model or control executed inline. Prepare and back up the new
+motor continuation and the already-authored sensory trajectory study, then
+launch both visibly without polling. Connected resting-state component work
+is also unlocked but remains unrun here. Full goal remains active; numerical
+trajectory accuracy, sensory firing, physiology and Avatar usability are open.

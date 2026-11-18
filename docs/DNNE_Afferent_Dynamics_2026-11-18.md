@@ -1,12 +1,13 @@
 # Joint sensory nerve time evolution
 
-Status: **launched visibly**, awaiting the operator's completion report.
+Status: **operator-reported and reviewed**, all 181 component cases passed.
 Package `afferent-dynamics-20261118-0e0e99` is frozen at
-`f7c0ae8697e21f9f0f1107abc9d9c107f0fec501`; initial 1,915 files plus manifest
-have a verified D: copy. Task: `DNNE-Afferent-Dynamics-2761f19f203e`.
-No post-launch results, status or process were inspected. The prerequisite
-derivative comparison `4ab20e` is reviewed/passing; see
-`DNNE_Afferent_Numerical_Results_2026-11-18.md`.
+`f7c0ae8697e21f9f0f1107abc9d9c107f0fec501`; all 2,459 files per C:/D: copy
+and the saved analysis were verified. Its review has a verified D: copy too.
+See `DNNE_Afferent_Dynamics_Results_2026-11-18.md`. The earlier authoring
+account below describes the prospective design, not the current execution
+status. Independent active trajectory accuracy and physiological firing remain
+unqualified.
 
 ## Why this is needed
 

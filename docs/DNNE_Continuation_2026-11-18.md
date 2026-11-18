@@ -706,3 +706,20 @@ Exactly THREE pending reports: bundle `092238`, sensory precision `ddef1a` and
 saved motor comparison `e9bed6`. Ingress `d519cf` is reviewed/passing, not pending.
 No physiological calibration or live brain/body selection changed. Full goal
 remains active and unfinished; retain all original evidence and saves.
+
+
+Independent mechanical source review is complete while all THREE reports
+(`092238`, `ddef1a`, `e9bed6`) remain pending and untouched. See
+`docs/DNNE_Vestibular_Mechanical_Source_Audit_2026-11-18.md`. Five original article
+bodies and source equations are retained in the 36-file D:-verified artifact
+`vestibular-mechanics-source-20261118`. A static hash-bound transcription saves
+Ifediba 2007's three 6x6 matrices/three forcing columns and exact decimal SI
+conversions in `docs/reference-data/vestibular-ifediba-2007.json`.
+No model, test, root, eigensystem, trajectory or benchmark executed. No live
+consumer or calibration preset was added. Cupula mechanical relaxation must
+remain distinct from neuronal adaptation; a gain on the inherited 5 s/45 ms
+filters is insufficient physiological calibration. The inherited 80 ms otolith
+filter likewise is not qualified by the literature. Source prime directions,
+posterior/right/superior axial-vector conventions, bilateral placement and local
+bundle deformation remain explicit next-model requirements. The turtle otolith
+measurements are not human calibration. Full goal active and unfinished.

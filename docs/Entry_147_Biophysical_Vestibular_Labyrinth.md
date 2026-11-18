@@ -113,6 +113,14 @@ Automated tests establish that:
 This is a biologically motivated simulation, not a clinically validated human
 labyrinth model.
 
+Later mechanical source review (18 November 2026):
+`DNNE_Vestibular_Mechanical_Source_Audit_2026-11-18.md` distinguishes cupula
+relaxation from afferent adaptation and identifies the dimensional/calibration
+gap in these reduced filters. The historical automated checks above establish
+the implemented behavior, not measured organ mechanics or observed axonal firing.
+Published coupled canal equations are retained as source evidence for a separate
+candidate; neither that catalog nor new dimensional fixture gains are live presets.
+
 ## Live acceptance gates
 
 - Ordinary head turns produce clear bilateral canal opposition without a

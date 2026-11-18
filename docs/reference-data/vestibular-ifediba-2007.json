@@ -1,0 +1,459 @@
+{
+  "version": "ifediba-2007-published-matrix-transcription-v1",
+  "doi": "10.1007/s10439-007-9277-y",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3005417/",
+  "retainedHtmlSha256": "07724245a89d5bf4959de50181830d932f70ad15ba402c6ffaef00dc2f0db1e2",
+  "specimen": "Published labyrinth 1; right human labyrinth; not Avatar anatomy",
+  "stateOrder": [
+    "endolymph-HC",
+    "endolymph-AC",
+    "endolymph-PC",
+    "cupula-HC",
+    "cupula-AC",
+    "cupula-PC"
+  ],
+  "equation": "M d2Q/dt2 + C dQ/dt + K Q = F; Q in m^3, t in seconds, F in Pa after conversion",
+  "matrices": {
+    "mass": {
+      "sourceEquation": "FD23",
+      "sourceUnits": "g/cm^4",
+      "sourceDecimalStrings": [
+        [
+          "1134",
+          "18.6",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "18.6",
+          "1165",
+          "38.2",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "38.2",
+          "1517",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "2.39",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "2.37",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2.98"
+        ]
+      ],
+      "siUnits": "kg/m^4",
+      "exactUnitFactor": "100000",
+      "siDecimalStrings": [
+        [
+          "113400000",
+          "1860000.0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "1860000.0",
+          "116500000",
+          "3820000.0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "3820000.0",
+          "151700000",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "239000.00",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "237000.00",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "298000.00"
+        ]
+      ]
+    },
+    "damping": {
+      "sourceEquation": "FD24",
+      "sourceUnits": "dyn*s/cm^5",
+      "sourceDecimalStrings": [
+        [
+          "2.19e6",
+          "287",
+          "0",
+          "-2e6",
+          "0",
+          "0"
+        ],
+        [
+          "287",
+          "2.21e6",
+          "1105",
+          "0",
+          "-2e6",
+          "0"
+        ],
+        [
+          "0",
+          "1105",
+          "2.26e6",
+          "0",
+          "0",
+          "-2e6"
+        ],
+        [
+          "-2e6",
+          "0",
+          "0",
+          "2e6",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "-2e6",
+          "0",
+          "0",
+          "2e6",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "-2e6",
+          "0",
+          "0",
+          "2e6"
+        ]
+      ],
+      "siUnits": "Pa*s/m^3",
+      "exactUnitFactor": "100000",
+      "siDecimalStrings": [
+        [
+          "2.1900000E+11",
+          "28700000",
+          "0",
+          "-2.00000E+11",
+          "0",
+          "0"
+        ],
+        [
+          "28700000",
+          "2.2100000E+11",
+          "110500000",
+          "0",
+          "-2.00000E+11",
+          "0"
+        ],
+        [
+          "0",
+          "110500000",
+          "2.2600000E+11",
+          "0",
+          "0",
+          "-2.00000E+11"
+        ],
+        [
+          "-2.00000E+11",
+          "0",
+          "0",
+          "2.00000E+11",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "-2.00000E+11",
+          "0",
+          "0",
+          "2.00000E+11",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "-2.00000E+11",
+          "0",
+          "0",
+          "2.00000E+11"
+        ]
+      ]
+    },
+    "stiffness": {
+      "sourceEquation": "FD25",
+      "sourceUnits": "dyn/cm^5",
+      "sourceDecimalStrings": [
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "17016",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "16715",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "26522"
+        ]
+      ],
+      "siUnits": "Pa/m^3",
+      "exactUnitFactor": "100000",
+      "siDecimalStrings": [
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "1701600000",
+          "0",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "1671500000",
+          "0"
+        ],
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2652200000"
+        ]
+      ]
+    }
+  },
+  "forcing": {
+    "sourceEquation": "FD26",
+    "sourceUnits": "dyn/cm^2 per (rad/s^2)",
+    "siUnits": "Pa per (rad/s^2)",
+    "exactUnitFactor": "0.1",
+    "sourceDecimalStrings": [
+      [
+        "-0.6107",
+        "-0.000348",
+        "-0.000348"
+      ],
+      [
+        "-0.00757",
+        "0.6399",
+        "0.00906"
+      ],
+      [
+        "-0.00480",
+        "0.00981",
+        "0.7991"
+      ],
+      [
+        "0.00990",
+        "0.00115",
+        "0.00364"
+      ],
+      [
+        "0.00606",
+        "0.00393",
+        "-0.00522"
+      ],
+      [
+        "0.00423",
+        "-0.00559",
+        "-0.0106"
+      ]
+    ],
+    "siDecimalStrings": [
+      [
+        "-0.06107",
+        "-0.0000348",
+        "-0.0000348"
+      ],
+      [
+        "-0.000757",
+        "0.06399",
+        "0.000906"
+      ],
+      [
+        "-0.000480",
+        "0.000981",
+        "0.07991"
+      ],
+      [
+        "0.000990",
+        "0.000115",
+        "0.000364"
+      ],
+      [
+        "0.000606",
+        "0.000393",
+        "-0.000522"
+      ],
+      [
+        "0.000423",
+        "-0.000559",
+        "-0.00106"
+      ]
+    ],
+    "columnOrder": [
+      "HC-prime",
+      "AC-prime",
+      "PC-prime"
+    ]
+  },
+  "primeDirections": {
+    "source": "Paragraph after equation 26; rounded published literals",
+    "sourceFrame": [
+      "posterior",
+      "right lateral",
+      "superior"
+    ],
+    "vectors": [
+      [
+        "-0.064",
+        "0.042",
+        "-0.997"
+      ],
+      [
+        "0.702",
+        "0.699",
+        "-0.136"
+      ],
+      [
+        "0.857",
+        "-0.557",
+        "-0.103"
+      ]
+    ],
+    "axesNormalized": false,
+    "forcingComponentInterpretationQualified": false,
+    "avatarAngularConventionQualified": false
+  },
+  "qualifications": {
+    "literalTranscriptionChecked": true,
+    "exactCgsSiConversionRecorded": true,
+    "matrixSpectrumComputed": false,
+    "trajectoriesComputed": false,
+    "independentNumericalAccuracyQualified": false,
+    "localBundleDisplacementMapQualified": false,
+    "avatarAnatomyCalibrated": false,
+    "afferentFiringQualified": false,
+    "balanceQualified": false,
+    "liveParameterPreset": false
+  },
+  "limitations": [
+    "Rounded printed coefficients, not original high precision author data.",
+    "Published prime directions are not silently treated as an orthonormal Avatar basis.",
+    "Native axial-vector conventions, source forcing components and bilateral placement need explicit checks.",
+    "Cupula volume or mean displacement is not an individual hair bundle displacement.",
+    "No scalar viscosity was imported from dimensionally suspect table text.",
+    "Rigid duct approximation does not establish responses above the low/mid frequency domain."
+  ]
+}

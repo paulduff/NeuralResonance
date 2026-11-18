@@ -792,3 +792,18 @@ The retry now has 333 focused cases; the original boundary test remains intact.
 Its original 21-trajectory byte replay still guards previously successful v1.
 No tests/models executed during authoring. No completion report is pending
 before retry launch; all older windows are reviewed.
+
+
+The boundary-index repair retry is launched as
+`afferent-endpoint-20261118-501244`, frozen at pushed revision
+`a3474953a1aff5b26c63cffce3eaaab884b902ef`. Full test-project authoring build
+passed with zero warnings/errors; static 333-case inventory, Python/PowerShell
+parsing, original protocol identity and 56 protected-source comparisons passed.
+Frozen preflight passed and 2,069 initial files plus manifest were D: verified
+before visible task `DNNE-Afferent-Endpoint-11b2b1598b62` started. Launch returned
+successfully. No post-launch output, status or process inspected. All tests and
+models execute only in the independent PowerShell window. Exactly ONE pending
+completion report: retry `501244`. Failed `2b5a68`, precision `ddef1a`, bundle
+`092238` and motor `e9bed6` are all reviewed, not pending. Failed traces, old
+saves, original successful-replay requirement and numerical limits remain.
+Full DNNE/Avatar/World goal remains active and unfinished.

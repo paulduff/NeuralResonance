@@ -1,6 +1,6 @@
 # Saved motor partition comparison
 
-Status: **corrected comparison reported complete; original failures preserved**.
+Status: **corrected comparison fully reviewed and passing; original failures preserved**.
 Package `rubral-epoch-comparison-20261118-b224a6`, revision
 `c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, failed before identity controls or
 numerical comparison. Its independent window could not find `git` when the

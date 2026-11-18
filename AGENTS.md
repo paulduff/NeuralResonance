@@ -3256,3 +3256,19 @@ while the original independent C:/D: raw copies remain untouched. This avoids
 consuming the pending sensory run's reserved C: space. Source and failed-prefix
 preservation remain mandatory. Only ONE pending completion report before launch:
 sensory `501244`, never inspected. Full goal active; no blocked audit applies.
+
+
+Compact evidence qualification is launched as `native-evidence-20261118-bc0501`,
+with workspace `D:/DNNE-build-work/native-evidence-20261118-bc0501`, frozen at
+pushed revision `9eff479fb3ceb01dbe429e7941c61335ea248422`. Static frozen
+preflight passed; 1,976 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/native-evidence-20261118-bc0501` before visible
+task `DNNE-Native-Evidence-956f6d8a1733` started. These new qualification copies
+share D:; the original raw motor captures still retain their C:/D: copies.
+Launch returned successfully. No post-launch status, output or process inspected.
+The window runs 24 recording controls and the two completed-capture comparisons;
+no neural/Unity/ODE model reruns. No success, size reduction or integration is
+inferred. Exact file bytes and decoded arrays must pass before adoption.
+Exactly TWO completion reports are now pending: sensory `501244` and compact
+evidence `bc0501`. All older windows are reviewed. Original records and saves
+remain untouched. Full DNNE/Avatar/World goal remains active and unfinished.

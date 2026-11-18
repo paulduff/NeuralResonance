@@ -228,3 +228,20 @@ until the lock control completes, deliberately exercising publication before
 lock acquisition and checking the body remains at step zero. Original physical
 and sampling criteria are retained. See the continuation document for the
 source-level race, missing saved counters and separate preserved failure review.
+
+The v4 `unity-skull-20261118-0ada47` capture is now operator-completed and
+reviewed. All 3,598 C:/D: files, frozen source, native/player binaries and runtime
+are verified. All 80 tests and 33 scale controls pass. Saved analysis reproduces
+exactly: 201 physical steps, 201 delivered endpoints, 207 sidecars, 603 receipts
+and four unchanged held inspections. The deliberate readable request remains
+at step zero, both request/reply paths reject two real locks, and the command
+then produces exactly one step. No command or step is resent.
+
+Maximum point-velocity/position errors are `2.5193605157625143e-7 m/s` and
+`1.844757985258738e-7 m`, under the original limits. Step 178 retains the old
+scale-rule rejection while all configured physical ancestors are exactly unit
+scale; the declared policy change is visible. The separate D:-verified review
+is `artifacts/native-skull-review-20261118/review.json`. This qualifies the
+sampled native measurements and isolated transport, not continuous-time motion,
+anatomical placement, sensory physiology or Avatar balance. No physics or test
+was rerun during this review.

@@ -2779,3 +2779,21 @@ status or process inspected. TWO pending reports: this skull retry and rubral
 f5e01c. Open db4794 is reviewed/passing; ac78c5 reviewed/failed and preserved.
 Next independent authoring may use the D:-verified open review for complete
 local membrane derivative qualification, then simultaneous time integration.
+
+Operator now reports skull v4 0ada47 complete. Full saved-data review verifies
+3,598 files per C:/D: copy, frozen source/player/binaries/runtime, all 80 tests,
+33 native scale controls, 201 physics steps and 603 receipts. Both real read-lock
+controls pass, including a readable request held at step zero before exactly one
+step. No resend. Saved analysis exactly reproduced; new native-skull-review-
+20261118 has verified D: copy. Sampling bounds unchanged; continuous-motion,
+sensor anatomy, sensory physiology and Avatar balance remain unqualified.
+Only rubral f5e01c remains pending/uninspected at this checkpoint.
+
+The complete membrane derivative workflow is now authored: 108 focused cases,
+624 closed and 192 open byte-identical regression records, 216 complete local
+membrane/gate/spatial evaluations against independent 60/90-digit expressions.
+Reference currents are independently calculated, not copied from candidate
+ports. Reviewed open source/regression and exact Python/.NET runtimes are pinned.
+No candidate biology/previous bounds changed. Capture build passes, zero warnings/
+errors; static checks only inline. Preparation/visible launch are next. Do not
+qualify time integration, afferent firing or live selection from this study.

@@ -7,6 +7,10 @@ It does not advance a clock, initialize equilibrium, generate afferent events
 or replace the live Avatar transducer. Its 12 prospective component cases compile;
 no new test, model evaluation or independent comparison has executed.
 
+The earlier open-cleft prerequisite is now reviewed and passing. The complete
+derivative comparison described below is authored for an independent visible
+PowerShell run; its results remain pending execution and operator review.
+
 ## Source layout checked before coupling
 
 The pinned deposited template and paper-role XML inventories both specify:
@@ -94,3 +98,42 @@ qualify stationary initialization and a joint voltage/ion/gate time integrator,
 including complete state, positivity/failure handling, charge/species ledgers
 and step refinement. Running separate fixed-bath hair and voltage-clamped calyx
 steps in sequence is not the coupled evolution implemented by these derivatives.
+
+## Prospective complete derivative qualification, 18 November
+
+`cleft_membrane_protocol.py` declares 216 numerical fixtures: three patch counts
+(one, two, eight), uniform/graded geometry, twelve state/terminal conditions and
+three channel conditions (baseline, no MET, passive). Gates include zero, one
+and mixed actual values. Potentials and K/Na vary independently, graded patches
+have distinct local states, and every other input reverses state/gate ordering.
+The explicit inward/outward axon current is a terminal fixture, not an afferent
+cable. Geometry and extreme states are accuracy controls, not calibrated anatomy.
+
+`CleftMembraneStudy` first reproduces all 624 closed and 192 open records, with
+all eight saved output files required byte-identical to the reviewed open run.
+It then captures every local membrane current, gate target/time/derivative,
+current port, spatial voltage/ion derivative, charge and bath ledger. The 108
+focused cases include the earlier 51, twelve coupled-membrane cases, 23 hair-cell
+cases and 22 calyx cases. Original biological kernels and tests are preserved.
+
+`cleft_membrane_reference.py` evaluates the declared membrane equations using
+Decimal at 60 and 90 digits. Direct exponential channel/transport expressions
+and a full capacitance matrix provide a separately evaluated reference. Its
+current ports come from its own membrane calculations. Binary64 input/constants
+are represented exactly before high-precision operations. Every numeric field
+must meet `2e-10 + 2e-12*abs(reference)`; the two precision references must agree
+within `1e-40 + 1e-40*abs(reference)`. These are prospective complete-derivative
+criteria, without changing any previous qualification's bounds.
+
+Preparation requires the D:-verified open review, preserves its regression and
+attributed source evidence, pins source/binaries and checks the exact numerical
+environment. The visible runner also requires the same managed runtime as the
+reviewed open capture and verifies it again after execution. All runs use a new
+frozen folder with initial/final D: copies and keep the terminal visible. The
+authoring build and static checks have passed; no new tests or model/reference
+evaluations have run inline.
+
+A pass would qualify the sampled instantaneous coupled equations. It would not
+establish stationary initialization, free sensory trajectories, afferent firing
+or balance. The next numerical step remains joint time integration of voltages,
+ions and gates with explicit state/charge/species accounting and refinement.

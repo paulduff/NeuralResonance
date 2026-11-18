@@ -1263,3 +1263,17 @@ request until lock-control completion; a deliberately readable-before-lock
 condition must remain at step zero. This changes test admission only, retaining
 actual body mechanics and all measurement bounds. The failed run is preserved;
 new native controls remain unqualified until the operator reports their result.
+
+The operator has now reported native skull v4 `0ada47` complete. Saved-data review
+verifies all 3,598 C:/D: files, 80 tests, 33 scale controls, 201 physical steps and
+603 point receipts. Both real read-lock controls pass without resending commands
+or advancing physics while admission is held. Sampling bounds are unchanged;
+anatomy, continuous-motion accuracy, sensory firing and balance remain open.
+The review is separately backed up; the older failures remain preserved.
+
+The complete hair/cleft/calyx derivative comparison is authored for a new visible
+window: 108 tests, 624 closed plus 192 open byte-identical regression records,
+216 independent 60/90-digit current/gate/spatial evaluations. The biological
+kernels are unchanged. No new time integration, afferent cable or live Avatar/
+Unity/editor selection is introduced. See the membrane coupling and continuation
+documents for the frozen workflow, reviewed prerequisites and pending execution.

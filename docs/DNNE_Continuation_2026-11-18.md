@@ -162,3 +162,60 @@ were D: verified before visible task `DNNE-Unity-Skull-e4ffd1a3a92f` opened.
 No post-launch outputs, status or processes were inspected. Only this new skull
 run and rubral `f5e01c` now await operator reports; the open-cleft result is fully
 reviewed. New skull launch is not proof that its native admission controls pass.
+
+## Native skull sampling verified
+
+The operator reported `unity-skull-20261118-0ada47` complete. The saved-data
+review in `artifacts/native-skull-review-20261118/review.json` verifies all
+3,598 files on both C: and D:, the frozen Git source, built Unity scripts/player,
+test/probe binaries and unchanged managed runtime. All 80 focused cases pass.
+Recomputing the saved kinematic/accounting checks exactly reproduces
+`skull-analysis.json`, without rerunning physics or tests.
+
+All 33 scale controls pass. The native request fixture deliberately observes a
+readable request once while keeping physics at step zero, then records two real
+sharing violations before admitting that same command. The host independently
+records two locked-reply rejections. There is exactly one transition from step
+zero to one; no command or physical step is resent. The full capture retains
+201 physical steps, 201 delivered endpoints through step 200, 207 skull sidecars,
+603 point receipts and four unchanged held inspections.
+
+Maximum point-velocity discrepancy is `2.5193605157625143e-7 m/s`; maximum
+point-position discrepancy is `1.844757985258738e-7 m`. The original coordinate,
+velocity and derived arithmetic limits pass unchanged. At step 178 the old
+computed-scale rule would reject all three sensor snapshots with squared
+deviation `1.8332002582610585e-12`, while every configured physical ancestor
+remains exactly unit scale. This is evidence for the declared local-scale policy;
+it does not retrospectively make the original failed rule pass.
+
+The review has its own verified D: copy. Native head sampling and its isolated
+file transport are qualified for this study. Continuous-motion accuracy,
+anatomical sensor placement, sensory firing and Avatar balance remain open.
+`0ada47` is no longer pending. Rubral comparison `f5e01c` still awaits the
+operator and has not been inspected.
+
+## Complete sensory-membrane derivative comparison prepared in source
+
+The next authored workflow combines the already declared hair-cell, calyx and
+open-cleft equations in one instantaneous comparison. It retains 108 focused
+cases (including the twelve previously unrun membrane-coupling cases), requires
+all 624 closed and 192 open regression records to remain byte-identical, and
+compares 216 complete current/gate/voltage/ion derivatives against independent
+60/90-digit equations and a full capacitance-matrix solve. The reference derives
+its own currents; it does not use the candidate's current ports as reference
+inputs. The new reference and candidate limits are declared before execution;
+no earlier model, source constant or bound is changed.
+
+Fixtures cover one/two/eight patches, uniform/graded geometry and local states,
+gate extremes, shifted voltages and chemistry, MET/active-current removals,
+opposite explicit terminal currents and reversed input order. The prescribed
+state and geometric extremes are numerical fixtures, not physiological claims.
+The reviewed open capture supplies the preserved source, regression records,
+attributed biological source evidence and exact Python/.NET runtime fingerprints.
+
+The capture authoring build has zero warnings/errors. Python/PowerShell syntax,
+fixture shape and static test inventory checks are authoring checks only. The
+visible frozen workflow will execute all tests and equations; no new numerical
+comparison, test or model has run inline. See
+`DNNE_Cleft_Membrane_Coupling_2026-11-17.md` for scope and the subsequent joint
+time-integration requirement. No live Avatar, World or editor selection changes.

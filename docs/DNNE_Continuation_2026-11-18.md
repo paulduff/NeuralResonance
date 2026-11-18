@@ -565,3 +565,21 @@ it launches no model. The sensory window performs the prospective short joint
 trajectory study, not a firing or physiological qualification. Loaded stationary
 components remain authored and unlocked but unprepared/unrun. No old evidence
 or save was deleted or overwritten. Full goal remains active and unfinished.
+
+The next stationary component window was launched as `54d343` at revision
+`f8b5bf77863f719cb918ad0c30245d1ef1cd8ba7`, with 1,928 initial D:-verified files
+and task `DNNE-Afferent-Stationary-4cff47bb0de6`. The operator then reported
+completion. Its full saved-data review verified 2,472 files per C:/D: copy,
+196 focused cases, exact analysis and source/binary/runtime preservation.
+The new review folder has a verified D: copy. No model/test reran in review.
+
+Active connected rest is now fully authored: eighteen native searches and
+eighteen independent 60-digit derivative/90-digit witness comparisons from
+three guesses per geometry. All actual cable gates are included in the free
+dynamic Jacobian, with retained eigenvectors and saved-matrix audits. Original
+bounds and failed/alternative outcomes remain visible. Source build and static
+checks passed; no root, eigen solve, equation or control ran inline. See
+`DNNE_Afferent_Active_Rest_2026-11-18.md`. Next freeze, back up and launch its
+isolated visible window. Motor `b224a6` and trajectories `cf2f38` remain the TWO
+pending reports, untouched. Full goal active; no live selection changes or
+physiological/Avatar qualification.

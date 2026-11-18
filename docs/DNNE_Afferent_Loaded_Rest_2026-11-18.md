@@ -1,12 +1,15 @@
 # Connected sensory nerve stationary search
 
-Status: native search and its guarded component workflow authored; build and
-static checks pass. **No new model, analytic control or test has run.** The
-active loaded-root comparison and full free-gate stability study remain to be
-authored. Prerequisite dynamics `0e0e99` is now reported/reviewed and passing;
-its review is D: verified, so this component workflow can be prepared next.
-No stationary package or window has been started. Current pending windows
-are fast nerve trajectories `cf2f38` and saved motor comparison `b224a6`.
+Status: **operator-reported and reviewed**, all 196 component checks passed.
+`afferent-stationary-20261118-54d343` was launched from pushed revision
+`f8b5bf77863f719cb918ad0c30245d1ef1cd8ba7`, with 1,928 initial D:-verified files,
+task `DNNE-Afferent-Stationary-4cff47bb0de6`. After the final operator report,
+all 2,472 files in each C:/D: copy and the saved analysis verified; the review
+has its own verified D: copy. No model/test reran during review.
+The active loaded-root/free-gate comparison is now authored; see
+`DNNE_Afferent_Active_Rest_2026-11-18.md`. Earlier prospective text below describes
+the component design. Current pending windows remain fast trajectories `cf2f38`
+and saved motor comparison `b224a6`, untouched this turn.
 
 The reviewed sealed sensory roots cannot simply initialize an attached active
 nerve. Cable membrane current loads the calyx, changing its voltage and the
@@ -67,19 +70,20 @@ runtime, source decisions and the exact 196-case inventory. Initial verified
 D: backup precedes `start-afferent-stationary-window.ps1`; final evidence and
 backup remain visible in its independent PowerShell window. No live monitoring.
 `review-afferent-stationary.py` reviews saved evidence only after operator
-completion. This workflow has not been prepared or launched.
+completion. Its completed component outcome is recorded above.
 
 Authoring build of the full test project succeeded with zero warnings/errors at
 `D:/DNNE-build-work/afferent-stationary-authoring-20261118`. Static Python and
 PowerShell syntax, the 15/196-case inventory and preserved source paths pass.
-Source inspection finds callers only in the new test class. No live Avatar,
+At component authoring, callers existed only in the new test class. The active
+rest comparison now adds an explicit isolated probe entry. No live Avatar,
 Unity, DNNE host or editor selection changed.
 
 ## Following evidence required
 
-The fast joint trajectory comparison remains the next time-integration study
-after the pending dynamics review. The stationary controls can be qualified
-separately from it. An active loaded-root study must then use independent
+The fast joint trajectory comparison is pending. The stationary controls are
+now qualified separately within their declared scope. The active loaded-root
+study uses independent
 equations/searches and multiple starting guesses, retaining alternative roots
 and nonconvergence. Full local stability must include actual free gate state,
 not the gate-eliminated algebraic Jacobian. Retain eigenvectors as well as

@@ -3001,3 +3001,16 @@ task `DNNE-Afferent-Trajectories-dbc29d955f18`). Exactly TWO pending reports.
 No post-launch outputs/status/processes inspected. The large original motor
 audit executes in its visible window; no additional native/neuronal run.
 Stationary components are unlocked but still unprepared/unrun. Full goal active.
+
+Stationary components `54d343` were subsequently launched (revision
+`f8b5bf77863f719cb918ad0c30245d1ef1cd8ba7`, 1,928 initial D:-verified files,
+task `DNNE-Afferent-Stationary-4cff47bb0de6`), then operator-reported complete.
+Full review passes: 2,472 C:/D: files, 196 cases, exact saved analysis; review
+itself D: verified. See `DNNE_Afferent_Loaded_Rest_2026-11-18.md`.
+The active connected rest workflow is now authored/static-checked, including
+native capture, independent roots, full free-gate matrices/eigenvector witnesses,
+saved analysis and guarded freezer/runner. See `DNNE_Afferent_Active_Rest_2026-11-18.md`.
+No new model/test executed inline. The existing biological kernels remain
+unchanged. Prepare/backup/launch this next; `b224a6` and `cf2f38` remain the TWO
+pending reports and have not been inspected. Full goal active, no firing,
+physiology or Avatar usability qualification.

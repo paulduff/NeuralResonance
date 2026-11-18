@@ -1306,3 +1306,14 @@ qualifies physiological balance. Details and the finer sensory workflow are in
 `DNNE_Coupled_Outcomes_2026-11-18.md`. Stationary search is isolated, explicitly
 unqualified for stable physiological rest, and not selected by Avatar/Unity or
 the editor. No live World, brain, save or editor selection changed.
+
+A targeted motor/body clock matrix is now authored in
+`docs/DNNE_Motor_Partition_Refinement_2026-11-18.md`: five strong-left neuronal
+epochs, 95,988 native steps, 287 focused cases, unchanged biological equations
+and original accuracy bounds, and three copied completed references. Physical
+step refinement is separated from muscle substep refinement at a common duration.
+The original seven-case saved accounting must reproduce before new execution.
+Source-only authoring builds and static checks pass; no new model/test has run.
+No full-direction or physiological qualification is implied. C: space is limited;
+new build scratch uses D:, and prospective free-space guards retain old evidence.
+No pending runs at this preparation checkpoint. Full goal remains active.

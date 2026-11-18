@@ -46,7 +46,7 @@ def records(path):
         for line in f:yield json.loads(line)
 
 
-def source_and_packets(package,folder,condition,initial,final,ms):
+def source_and_packets(package,folder,condition,initial,final,ms,steps=STEPS):
     key,reference,quanta,cut,active,cadence,retry=condition
     root=folder/'neuronal';baseline=package/'reference/rubral/study'/reference
     fixture=read(root/'input.json');prior_fixture=read(baseline/'input.json');topology=read(root/'topology.json');prior_topology=read(baseline/'topology.json')
@@ -123,7 +123,7 @@ def source_and_packets(package,folder,condition,initial,final,ms):
             boundaries.append(sample*.1)
     packets=iter(records(folder/'packets.jsonl.gz'));previous=1000.;seen=[];retries=0
     for sequence,through in enumerate(boundaries,1):
-        tick=min(STEPS,int(np.count_nonzero(np.arange(STEPS+1)*ms<=previous-1000)-1))
+        tick=min(steps,int(np.count_nonzero(np.arange(steps+1)*ms<=previous-1000)-1))
         for source in range(2):
             p=next(packets);batch=p['batch'];receipt=p['receipt'];c=contact if source==0 else initial['quietContact']
             assert p['action']=='accept' and p['sourceIndex']==source and p['bodyStepAtReceipt']==tick
@@ -144,7 +144,7 @@ def source_and_packets(package,folder,condition,initial,final,ms):
     assert final['motorClock']==initial['motorClock']==dict(sessionId=session,neuralEpochMs=1000,bodyEpochMs=0)
     arrivals=[dict(sessionId=session,sourceInstanceKey=e['sourceInstanceKey'],messageId=e['messageId'],ordinal=e['ordinal'],sourceNeuronId=e['sourceNeuronId'],
         projectionId=e['projectionId'],sourceSynapseId=e['sourceSynapseId'],contactId=contact['contactId'],motorUnitId=contact['motorUnitId'],
-        firedAtNeuralMs=e['firedAtNeuralMs'],arrivalAtBodyMs=e['firedAtNeuralMs']-1000+contact['conductionDelayMs']) for e in events if e['firedAtNeuralMs']-1000+contact['conductionDelayMs']<=STEPS*ms]
+        firedAtNeuralMs=e['firedAtNeuralMs'],arrivalAtBodyMs=e['firedAtNeuralMs']-1000+contact['conductionDelayMs']) for e in events if e['firedAtNeuralMs']-1000+contact['conductionDelayMs']<=steps*ms]
     return arrivals,boundaries,dict(selectedEvents=selected,motorEvents=len(events),received=len(arrivals),sourceFrames=12000,motorRows=15001)
 
 
@@ -159,21 +159,32 @@ def native_audit(package):
         controls=read(package/'loader-controls.json')
         assert controls['completed'] and controls['repairedProductionLoaderAccepted'] and controls['historicalLoaderReproducedFailure']
         assert not controls['modelExecuted'] and not controls['historicalRuntimeEquivalenceEstablished']
+    return audit_at(package,capture,base,b)
+
+
+def audit_at(package,capture,base,b,physics_resolution=1,muscle_substeps=2,strong_left_only=False):
+    # Both entry points validate their own frozen dependencies before entering
+    # this saved-record audit. Original calls still require the full v1 matrix.
+    assert (physics_resolution,muscle_substeps) in ((1,2),(1,4),(2,2),(3,1),(3,2))
+    steps=STEPS*(2**(physics_resolution-1))
+    conditions=[c for c in CONDITIONS if c[0]=='strong-left'] if strong_left_only else CONDITIONS
     root=capture/'native-bridge';protocol=read(root/'protocol.json');result=read(root/'results.json')
     assert protocol['version']=='rubral-neuronal-native-hinge-v1' and protocol['circuitVersion']=='owned-rubral-motor-circuit-v1'
-    assert protocol['steps']==STEPS and protocol['physicsResolution']==1 and protocol['muscleSubsteps']==2
+    assert protocol.get('strongLeftOnly',False)==strong_left_only
+    assert protocol['steps']==steps and protocol['physicsResolution']==physics_resolution and protocol['muscleSubsteps']==muscle_substeps
     assert protocol['neuralEpochMs']==1000 and protocol['physicalEpochMs']==0 and protocol['sourceFrames']==12000 and protocol['motorSamples']==15000 and protocol['warmFrames']==8000
-    assert [(c['key'],c['referenceKey'],c['quanta'],c['disconnected'],c['activeMuscle'],c['packetFrames'],c['retry']) for c in protocol['conditions']]==CONDITIONS
-    assert result['completed'] and result['sourceBodyAccountingPassed'] and result['observedNeuronalMuscleMovement'] and result['actualPhysicsSteps']==7*STEPS
-    assert [r['condition'] for r in result['cases']]==[c[0] for c in CONDITIONS]
+    assert [(c['key'],c['referenceKey'],c['quanta'],c['disconnected'],c['activeMuscle'],c['packetFrames'],c['retry']) for c in protocol['conditions']]==conditions
+    assert result['completed'] and result['sourceBodyAccountingPassed'] and result['observedNeuronalMuscleMovement'] and result['actualPhysicsSteps']==len(conditions)*steps
+    assert [r['condition'] for r in result['cases']]==[c[0] for c in conditions]
     assert not protocol['oldRecordsDriveModel'] and not protocol['liveBrainAccessed'] and not protocol['sensoryFeedbackImplemented'] and not protocol['physiologyQualified'] and not protocol['avatarRecoveryAssessed']
     wire=b.audit_wire(capture);spec=deepcopy(read(package/'reference/qualified-hinge-input.json'));spec['cases']=[]
-    data={};reports=[];h=b.H*.5;ms=h*1000;geometry_text=None
-    assert STEPS*ms==protocol['durationMs']<500<(STEPS+1)*ms
+    data={};reports=[];h=b.H/(2**physics_resolution);ms=h*1000;geometry_text=None
+    assert steps*ms==protocol['durationMs']==STEPS*b.H*.5*1000<500
+    assert (STEPS+1)*b.H*.5*1000>500
     assert protocol['minimumStrongResponseRadians']==1e-7 and protocol['quietAndMirrorBoundRadians']==1e-5
-    for condition in CONDITIONS:
+    for condition in conditions:
         key=condition[0];folder=root/key;initial=read(folder/'initial.json');final=read(folder/'final.json');clock=initial['clock']
-        assert initial['scenario']==key and initial['actualSteps']==STEPS and initial['muscleSubsteps']==2 and initial['neuronalModelExecuted'] and not initial['syntheticMotorEvents']
+        assert initial['scenario']==key and initial['actualSteps']==steps and initial['muscleSubsteps']==muscle_substeps and initial['neuronalModelExecuted'] and not initial['syntheticMotorEvents']
         assert clock['sessionId']==initial['session'] and clock['initialPhysicsStep']==0 and clock['physicalEpochMs']==0 and clock['neuralEpochMs']==1000 and clock['physicsStepMs']==ms
         descriptor=json.loads(initial['native']['geometryJson']);original=deepcopy(spec['nativeGeometry']);original['stepSeconds']=h;assert descriptor==original
         if geometry_text is None:geometry_text=initial['native']['geometryJson']
@@ -182,10 +193,10 @@ def native_audit(package):
             assert d['muscleId']=='m'+str(i) and d['geometry']==spec['geometry'] and d['initialFiberLengthMeters']==spec['initialFiberLengthMeters'] and d['initialFiberVelocityMetersPerSecond']==0 and len(d['units'])==1
             unit=d['units'][0];assert unit['contact']==initial['activeContact' if i==condition[4] else 'quietContact'] and unit['contact']['conductionDelayMs']==2.0625
             assert all(unit[k]==spec['parameterRows'][0][k] for k in ('calcium','lengthGainAboveOptimal','lengthGainBelowOptimal'))
-        expected,boundaries,source_report=source_and_packets(package,folder,condition,initial,final,ms)
-        case=dict(key=key,durationMs=STEPS*ms,physicalStepMs=ms,physicalSteps=STEPS,initialAngleRadians=0,initialSpeedRadiansPerSecond=0,
+        expected,boundaries,source_report=source_and_packets(package,folder,condition,initial,final,ms,steps)
+        case=dict(key=key,durationMs=steps*ms,physicalStepMs=ms,physicalSteps=steps,initialAngleRadians=0,initialSpeedRadiansPerSecond=0,
             events=[dict(muscleIndex=condition[4],arrivalAtMs=a['arrivalAtBodyMs'],originalMessageId=a['messageId'],originalSourceNeuronId=a['sourceNeuronId'],originalContactId=a['contactId']) for a in expected])
-        spec['cases'].append(case);data[key]=base.candidate_data(folder,case,allowed_steps=(STEPS,))
+        spec['cases'].append(case);data[key]=base.candidate_data(folder,case,allowed_steps=(steps,))
         bridge=folder/'bridge';previous=read(bridge/'hello.json');before=b.state(previous,ms)
         assert previous['operation']=='hello' and previous['sequence']==previous['physicsStep']==0 and before['angle']==before['speed']==0
         requests=sorted(bridge.glob('request-*.json'));replies=sorted(bridge.glob('reply-*.json'));assert len(requests)==len(replies)
@@ -213,7 +224,7 @@ def native_audit(package):
                 assert command['endTimeMs']==reply['physicalTimeMs']==previous['physicalTimeMs'] and reply['stateHash']==previous['stateHash']
                 assert reply['stateJson']==previous['stateJson'] and reply['paths']==previous['paths'] and reply['lastAppliedEffortId']==previous['lastAppliedEffortId']
             previous=reply;before=after
-        assert len(receipts)==STEPS and previous['operation']=='stop' and previous['physicsStep']==STEPS and previous['stateHash']==final['native']['stateHash']
+        assert len(receipts)==steps and previous['operation']=='stop' and previous['physicsStep']==steps and previous['stateHash']==final['native']['stateHash']
         observed=[];previous_muscles=initial['muscles']
         for tick,line in enumerate((folder/'steps.jsonl').read_text().splitlines(),1):
             row=decode(json.loads(line));step=row['step'];command,reply=receipts[tick]
@@ -232,13 +243,16 @@ def native_audit(package):
         reports.append(dict(case=key,**source_report,maximumStepImpulseError=max_impulse,maximumStepAngleError=max_angle))
     spec['nativeGeometry']=json.loads(geometry_text);spec['nativeGeometryJson']=geometry_text
     for key in ('strong-fast','strong-retry'):
+        if key not in data:continue
         for field in ('timeMs','forces','path','release','arrivals'):assert np.array_equal(data[key][field],data['strong-left'][field]),(key,field)
         assert np.array_equal(data[key]['state'][:,base.OBSERVED],data['strong-left']['state'][:,base.OBSERVED])
     angles={key:float(value['state'][-1,0]) for key,value in data.items()}
-    assert abs(angles['quiet'])<=1e-5 and abs(angles['strong-cut'])<=1e-5 and angles['strong-left']>1e-7 and angles['strong-right']< -1e-7 and abs(angles['strong-left']+angles['strong-right'])<=1e-5
-    control=read(root/'quiet/bridge/host-reply-lock-control.json');assert control['injectedReadRejections']==2 and control['physicsStep']==1 and not control['commandResent'] and not control['physicalStepRepeated']
+    if strong_left_only:assert angles['strong-left']>1e-7
+    else:
+        assert abs(angles['quiet'])<=1e-5 and abs(angles['strong-cut'])<=1e-5 and angles['strong-left']>1e-7 and angles['strong-right']< -1e-7 and abs(angles['strong-left']+angles['strong-right'])<=1e-5
+        control=read(root/'quiet/bridge/host-reply-lock-control.json');assert control['injectedReadRejections']==2 and control['physicsStep']==1 and not control['commandResent'] and not control['physicalStepRepeated']
     return base,spec,data,dict(completed=True,sourceBodyAccountingPassed=True,observedNeuronalMuscleMovement=True,cases=reports,wire=wire,
-        actualPhysicsSteps=7*STEPS,packetAndRetryStateBitwiseEqual=True,neuronalModelExecuted=True,nativePhysicsExecuted=True,
+        actualPhysicsSteps=len(conditions)*steps,packetAndRetryStateBitwiseEqual=not strong_left_only,neuronalModelExecuted=True,nativePhysicsExecuted=True,
         coupledTrajectoryAccuracyQualified=False,physiologyQualified=False,avatarRecoveryAssessed=False)
 
 

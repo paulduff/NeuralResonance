@@ -85,3 +85,20 @@ ODE reruns. No post-launch outputs, status or processes have been inspected.
 Await operator completion. No other study is pending: sensory `87562a` and rubral
 `f5e01c` are reviewed failures with original evidence preserved. No separate
 stationary or motor window launched. Full goal remains active.
+
+## Finer sensory result verified
+
+The operator reported `cleft-refinement-20261118-884934` complete. Review
+`artifacts/coupled-finer-review-20261118` verifies all 2,820 files on both C: and
+D:, frozen Git source/test/probe binaries, exact prior and unchanged runtime, and
+all 132 focused cases (including all twelve stationary controls). Recomputing
+only saved-array/accounting comparisons exactly reproduces the final analysis.
+The two-file review also has a verified D: copy.
+
+All seven numerical conditions pass at the finest 0.00025 ms step. Worst allowed
+fraction is `0.37435413377613114` for eight patches, down from
+`1.5018732660967322` at 0.0005 ms. All repeated overlapping metrics, independent
+reference, sampled refinement and ledger criteria pass unchanged. No fresh
+reference solve was needed. This confirms the diagnosed finite-step error for
+these sampled trajectories, not active physiological rest, afferent firing or
+balance. All previous studies are now reviewed; `884934` is no longer pending.

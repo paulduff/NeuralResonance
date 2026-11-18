@@ -29,7 +29,17 @@ internal static class RubralNativeBodyStudy
     private static string BodyBytes(object value)=>JsonSerializer.Serialize(value,NativeHingeBody.Json);
 
     internal static void Run(string player,string reference,string sourceGate,string output)
+        =>RunAt(player,reference,sourceGate,output,1,2);
+
+    // The original entry point retains its exact clock. Additional resolutions
+    // change only numerical coupling; the circuit, events and muscle parameters
+    // remain identical, and every condition covers the same physical duration.
+    internal static void RunAt(string player,string reference,string sourceGate,string output,int physicsResolution,int muscleSubsteps,bool strongLeftOnly=false)
     {
+        Require((physicsResolution,muscleSubsteps) is (1,2) or (1,4) or (2,2) or (3,1) or (3,2),
+            "Require a declared independent body/muscle refinement condition.");
+        int steps=checked(Steps*(1<<(physicsResolution-1)));
+        var conditions=strongLeftOnly?Conditions.Where(c=>c.Key=="strong-left").ToArray():Conditions;
         Require(new[]{player,reference,sourceGate,output}.All(Path.IsPathFullyQualified)&&File.Exists(player)&&
             Directory.Exists(reference)&&Directory.Exists(sourceGate)&&!Directory.Exists(output),"Require preserved references, qualified source gate and fresh output.");
         using var gate=JsonDocument.Parse(File.ReadAllText(Path.Combine(sourceGate,"analysis.json")));
@@ -41,20 +51,21 @@ internal static class RubralNativeBodyStudy
         var spec=JsonSerializer.Deserialize<Parameters>(File.ReadAllText(Path.Combine(reference,"muscle-input.json")),new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Require(spec is not null&&spec.CandidateVersion==AvatarCausalMotorPlant.Version&&spec.MuscleVersion==AvatarDynamicMuscle.Version&&
             spec.ParameterRows[0].Calcium==MotorUnitCalciumParameters.NagamoriSlowUnit1,"Require the qualified existing muscle parameters.");
-        double end=Steps*StepMsAt(1);
+        double end=steps*StepMsAt(physicsResolution);
         // Native float step size is preserved exactly. The next full step lies
         // beyond the proven 500 ms body horizon; never invent neuronal silence.
-        Require(end<500&&(Steps+1)*StepMsAt(1)>500,"Native/source horizon changed; re-declare coverage before executing.");
+        Require(end==Steps*StepMsAt(1)&&end<500&&(Steps+1)*StepMsAt(1)>500,
+            "Native/source horizon changed; re-declare coverage before executing.");
         Directory.CreateDirectory(output);
-        Save(Path.Combine(output,"protocol.json"),new{version=Version,circuitVersion=RubralMotorCircuit.Version,conditions=Conditions,
+        Save(Path.Combine(output,"protocol.json"),new{version=Version,circuitVersion=RubralMotorCircuit.Version,conditions,
             neuralEpochMs=NeuralEpochMs,physicalEpochMs=0,sourceFrames=SourceFrames,motorSamples=MotorSamples,warmFrames=WarmFrames,
-            steps=Steps,physicsResolution=1,muscleSubsteps=2,durationMs=end,neuronalHorizonMs=1500,
+            steps,physicsResolution,muscleSubsteps,durationMs=end,neuronalHorizonMs=1500,
             neuronalModelExecuted=true,presynapticInputIsFixture=true,oldRecordsDriveModel=false,nativePhysicsExecuted=true,
             liveBrainAccessed=false,sensoryFeedbackImplemented=false,physiologyQualified=false,avatarRecoveryAssessed=false,
-            minimumStrongResponseRadians=1e-7,quietAndMirrorBoundRadians=1e-5});
+            minimumStrongResponseRadians=1e-7,quietAndMirrorBoundRadians=1e-5,strongLeftOnly});
         WirePreflight.Run(player,reference,output);
         var rows=new List<object>();var angles=new Dictionary<string,double>();
-        foreach(var condition in Conditions)
+        foreach(var condition in conditions)
         {
             Console.WriteLine("RUBRAL NEURONS TO NATIVE MUSCLES "+condition.Key);
             string folder=Path.Combine(output,condition.Key);Directory.CreateDirectory(folder);Guid session=Guid.NewGuid();
@@ -96,19 +107,19 @@ internal static class RubralNativeBodyStudy
                 string bridge=Path.Combine(folder,"bridge");
                 var start=new ProcessStartInfo(player){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(player)};
                 foreach(string arg in new[]{"-batchmode","-nographics","-logFile",Path.Combine(folder,"player.log"),"--motor-bridge",bridge,
-                    "--motor-session",session.ToString("N"),"--motor-rest-length-bits",Encode(spec.RestPathLengthMeters),"--motor-resolution","1"})start.ArgumentList.Add(arg);
+                    "--motor-session",session.ToString("N"),"--motor-rest-length-bits",Encode(spec.RestPathLengthMeters),"--motor-resolution",physicsResolution.ToString(CultureInfo.InvariantCulture)})start.ArgumentList.Add(arg);
                 process=Process.Start(start)??throw new InvalidOperationException("Native player did not start.");
-                body=new(bridge,session,process,exerciseReadLock:condition.Key=="quiet",physicsResolution:1);
-                var clock=new PhysicalSampleClock(session,"native-rubral-hinge","muscle-paths",0,StepMsAt(1),0,NeuralEpochMs);
-                plant=new(clock,body,definitions,2);body.Bind(plant.Fingerprint);
+                body=new(bridge,session,process,exerciseReadLock:condition.Key=="quiet",physicsResolution:physicsResolution);
+                var clock=new PhysicalSampleClock(session,"native-rubral-hinge","muscle-paths",0,StepMsAt(physicsResolution),0,NeuralEpochMs);
+                plant=new(clock,body,definitions,muscleSubsteps);body.Bind(plant.Fingerprint);
                 var initial=plant.CaptureInitial();
                 Save(Path.Combine(folder,"initial.json"),new{scenario=condition.Key,condition,session,clock,motorClock,definitions,
                     anatomy=anatomy.Contacts,anatomyFingerprint=anatomy.Fingerprint,activeContact,quietContact,quietIdentity,
                     plantFingerprint=plant.Fingerprint,bodyFingerprint=body.Fingerprint,initial,muscles=plant.CaptureMuscles(),native=body.Last,
-                    primedSource,primedMotor,primedQuiet,muscleSubsteps=2,actualSteps=Steps,syntheticMotorEvents=false,neuronalModelExecuted=true});
+                    primedSource,primedMotor,primedQuiet,muscleSubsteps,actualSteps=steps,syntheticMotorEvents=false,neuronalModelExecuted=true});
                 Require(!plant.State.Running&&plant.TryAdvance().Outcome==CausalMotorAdvance.Paused&&body.CompletedPhysicsStep==0,"World must begin paused.");
                 plant.Resume();int published=0,retries=0,blocked=0,waiting=0;var delivered=new List<AvatarMotorAxonArrival>();
-                using(var steps=new StreamWriter(Path.Combine(folder,"steps.jsonl")))
+                using(var stepWriter=new StreamWriter(Path.Combine(folder,"steps.jsonl")))
                 using(var packets=new StreamWriter(new GZipStream(new FileStream(Path.Combine(folder,"packets.jsonl.gz"),FileMode.CreateNew),CompressionLevel.Fastest),new UTF8Encoding(false)))
                 {
                     for(int frame=WarmFrames+1;frame<=SourceFrames;++frame)
@@ -147,10 +158,10 @@ internal static class RubralNativeBodyStudy
                             if(source==0){Require(plant.TryAdvance().Outcome==CausalMotorAdvance.WaitingForNeuronalCompleteness&&body.CompletedPhysicsStep==beforeStep,"One source completed both motor routes.");++waiting;}
                         }
                         Require(held==Neurons(),"Body acceptance changed neuronal state.");
-                        while(plant.State.CompletedPhysicsStep<Steps&&clock.AtStep(plant.State.CompletedPhysicsStep+1).PhysicalMs<=plant.State.CompleteThroughBodyMs)
+                        while(plant.State.CompletedPhysicsStep<steps&&clock.AtStep(plant.State.CompletedPhysicsStep+1).PhysicalMs<=plant.State.CompleteThroughBodyMs)
                         {
                             var advance=plant.TryAdvance();Require(advance.Outcome==CausalMotorAdvance.Advanced&&advance.Step is not null,"Missing owned physical step.");
-                            delivered.AddRange(advance.Step.Arrivals);steps.WriteLine(BodyBytes(new{step=advance.Step,native=body.Last,sourceCompleteThroughBodyMs=plant.State.CompleteThroughBodyMs}));
+                            delivered.AddRange(advance.Step.Arrivals);stepWriter.WriteLine(BodyBytes(new{step=advance.Step,native=body.Last,sourceCompleteThroughBodyMs=plant.State.CompleteThroughBodyMs}));
                         }
                     }
                 }
@@ -161,19 +172,19 @@ internal static class RubralNativeBodyStudy
                 var expected=finalMotor.Emissions.Select(e=>new AvatarMotorAxonArrival(session,e.SourceInstanceKey,e.MessageId,e.Ordinal,e.SourceNeuronId,e.ProjectionId,
                     e.SourceSynapseId,activeContact.ContactId,activeContact.MotorUnitId,e.FiredAtNeuralMs,motorClock.ToBodyMs(e.FiredAtNeuralMs)+activeContact.ConductionDelayMs))
                     .Where(a=>a.ArrivalAtBodyMs<=end).OrderBy(a=>a.ArrivalAtBodyMs).ThenBy(a=>a.Ordinal).ToArray();
-                Require(delivered.SequenceEqual(expected)&&plant.State.CompletedPhysicsStep==Steps&&plant.State.BodyTimeMs==end&&
+                Require(delivered.SequenceEqual(expected)&&plant.State.CompletedPhysicsStep==steps&&plant.State.BodyTimeMs==end&&
                     plant.State.AcceptedEvents==finalMotor.Emissions.Count&&plant.State.DeliveredEvents==delivered.Count&&
                     plant.State.PendingEvents==finalMotor.Emissions.Count-expected.Length&&circuit.Unacknowledged().Count==0&&
                     quietLane.Unacknowledged().Count==0&&quietLane.UnpublishedEmissions==0,"Incomplete neuronal/muscle/body accounting.");
                 Require(waiting==2*published&&blocked==retries&&retries==(condition.Retry?2*((published/7)+(published%7==0?0:1)):0),"Incomplete retry/wait controls.");
                 plant.Pause();var final=body.Last;
-                Require(plant.TryAdvance().Outcome==CausalMotorAdvance.Paused&&body.CaptureGeometry().PhysicsStep==Steps&&body.Last.stateHash==final.stateHash,"Paused body moved.");
+                Require(plant.TryAdvance().Outcome==CausalMotorAdvance.Paused&&body.CaptureGeometry().PhysicsStep==steps&&body.Last.stateHash==final.stateHash,"Paused body moved.");
                 using var state=JsonDocument.Parse(final.stateJson);double angle=state.RootElement.GetProperty("angle").GetDouble();angles.Add(condition.Key,angle);
                 Save(Path.Combine(folder,"final.json"),new{plant=plant.State,muscles=plant.CaptureMuscles(),native=final,angle,arrivals=delivered.Count,
                     source=circuit.CaptureSource(),motor=finalMotor,quiet=finalQuiet,motorClock,published,retries,blocked,waiting,
                     originalRubralObservationsPreserved=true,originalMotorTrajectoryPreserved=true,quietPrefixPreserved=true,quietPrefixRows=quietRows});
                 body.Stop();Require(process.WaitForExit(30000)&&process.ExitCode==0,"Native player did not stop cleanly.");
-                rows.Add(new{condition=condition.Key,completed=true,physicsSteps=Steps,motorEvents=finalMotor.Emissions.Count,arrivals=delivered.Count,angle,published,retries});
+                rows.Add(new{condition=condition.Key,completed=true,physicsSteps=steps,motorEvents=finalMotor.Emissions.Count,arrivals=delivered.Count,angle,published,retries});
             }
             catch(Exception error)
             {
@@ -182,10 +193,12 @@ internal static class RubralNativeBodyStudy
             }
             finally{if(process is not null){if(!process.HasExited){process.Kill(true);process.WaitForExit();}process.Dispose();}}
         }
-        bool movement=Math.Abs(angles["quiet"])<=1e-5&&Math.Abs(angles["strong-cut"])<=1e-5&&angles["strong-left"]>1e-7&&
+        bool movement=strongLeftOnly?angles["strong-left"]>1e-7:
+            Math.Abs(angles["quiet"])<=1e-5&&Math.Abs(angles["strong-cut"])<=1e-5&&angles["strong-left"]>1e-7&&
             angles["strong-right"]< -1e-7&&Math.Abs(angles["strong-left"]+angles["strong-right"])<=1e-5;
         Save(Path.Combine(output,"results.json"),new{completed=true,sourceBodyAccountingPassed=true,observedNeuronalMuscleMovement=movement,
-            cases=rows,actualPhysicsSteps=Conditions.Length*Steps,neuronalModelExecuted=true,nativePhysicsExecuted=true,liveBrainAccessed=false,
+            cases=rows,actualPhysicsSteps=conditions.Length*steps,neuronalModelExecuted=true,nativePhysicsExecuted=true,liveBrainAccessed=false,
+            quietMirrorAndCutAssessed=!strongLeftOnly,
             coupledTrajectoryAccuracyQualified=false,physiologyQualified=false,avatarRecoveryAssessed=false});
         Require(movement,"Original qualitative movement bounds failed; preserve full completed accounting and motion.");
     }

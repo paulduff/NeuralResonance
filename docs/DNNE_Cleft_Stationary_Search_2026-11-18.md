@@ -40,3 +40,9 @@ states remain the original prescribed states: it does **not** use stationary
 search to soften the initial transient or improve the numerical comparison.
 `cleft_stationary_gate.py` and its launcher also support a separate component-only
 study, but no separate stationary window has been launched at this checkpoint.
+
+The completed finer study `884934` now verifies all twelve stationary controls,
+within its 132-case suite and complete C:/D: saved-data review. This qualifies the
+analytic component controls, not active-model stationary roots or their stability.
+Next stationary work remains independent active root checks and the full dynamic
+Jacobian/perturbation study, with the current channel equations preserved.

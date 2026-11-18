@@ -2869,3 +2869,12 @@ Current pending study: ONE visible PowerShell window, sensory refinement
 `884934`, frozen `fb61de2fd0af6b2ea01ec9b136c5e96fa0873415`, initial 2,185 files
 D: verified. Includes stationary component controls. Await operator completion;
 no post-launch inspection. Both previous comparisons are fully reviewed.
+
+Sensory refinement `884934` is now operator-reported, fully reviewed and passing:
+2,820 C:/D: files, 132 cases, all seven trajectories, exact overlap metrics and
+unchanged bounds. Worst fraction 0.374354 at 0.00025 ms; physiological rest and
+afferent/balance claims remain open. No sensory window is pending. New motor
+partition diagnosis is authored; see `docs/DNNE_Motor_Partition_Refinement_2026-11-18.md`.
+Five strong-left epochs separate body and muscle clocks; preserve all other
+controls as earlier evidence, not newly qualified finer cases. No old files
+deleted. No new test/model run inline. Full goal active.

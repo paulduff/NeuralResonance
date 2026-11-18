@@ -21,6 +21,8 @@ public class MuscleHingeClockTests
     [InlineData(-1, 512)]
     [InlineData(0, 1024)]
     [InlineData(1, 2048)]
+    [InlineData(2, 4096)]
+    [InlineData(3, 8192)]
     public void Exact_Clock_Preserves_Common_End_And_Accepts_One_Step(int resolution, int steps)
     {
         var (request, current) = Step(resolution);
@@ -34,6 +36,8 @@ public class MuscleHingeClockTests
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
     public void Rejects_Nominal_Decimal_Instead_Of_Actual_Native_Endpoint(int resolution)
     {
         var (request, current) = Step(resolution);
@@ -45,6 +49,8 @@ public class MuscleHingeClockTests
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
     public void Nonmoving_Read_Cannot_Advance_Any_Resolution(int resolution)
     {
         var (request, current) = Step(resolution);
@@ -56,7 +62,7 @@ public class MuscleHingeClockTests
 
     [Theory]
     [InlineData(-2)]
-    [InlineData(2)]
+    [InlineData(4)]
     public void Rejects_Unsupported_Resolution(int resolution) =>
         Assert.Throws<InvalidOperationException>(() => StepSecondsAt(resolution));
 

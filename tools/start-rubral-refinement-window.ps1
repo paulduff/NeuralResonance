@@ -1,0 +1,180 @@
+param([Parameter(Mandatory=$true)][string]$PackageDirectory,[switch]$InWindow,[string]$LaunchTaskName='')
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
+$package=(Resolve-Path -LiteralPath $PackageDirectory).Path
+$configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+if(-not $configuration.IsolatedRubralRefinement -or -not $configuration.NoLiveMonitoring -or -not $configuration.QualifiedCouplingCorePreserved -or $configuration.ExpectedTestCases -ne 287 -or $configuration.ExpectedNativeCases -ne 5 -or $configuration.ExpectedNativePhysicsSteps -ne 95988 -or $configuration.ExpectedSavedReferences -ne 3 -or $configuration.ExpectedEnvironmentControls -ne 10 -or $configuration.ExpectedUnityVersion -ne '6000.3.19f1' -or $configuration.LiveBodySelected -or -not $configuration.NoTimingMeasured -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected isolated rubral/native configuration.'}
+function Extended-Path([string]$Path){
+ if($Path.StartsWith('\\?\')){return $Path}
+ if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
+ return '\\?\'+[IO.Path]::GetFullPath($Path)
+}
+function File-Sha256([string]$Path){
+ $stream=[IO.File]::OpenRead((Extended-Path $Path));$algorithm=[Security.Cryptography.SHA256]::Create()
+ try{return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','')}
+ finally{$algorithm.Dispose();$stream.Dispose()}
+}
+function Assert-Package {
+ foreach($entry in $configuration.PackageFiles){if((File-Sha256 (Join-Path $package $entry.Path)) -ne $entry.Sha256){throw ('Frozen source/input changed: '+$entry.Path)}}
+ foreach($name in @('Dotnet','Python','Unity')){
+  $executable=$configuration.($name+'Executable');$expected=$configuration.($name+'ExecutableSha256')
+  if((File-Sha256 $executable) -ne $expected){throw ($name+' executable changed.')}
+ }
+}
+if(-not $InWindow){
+ if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
+ $manifestPath=Join-Path $package 'backup-manifest.json';$manifest=Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+ if($manifest.Destination -ne $configuration.BackupDestination){throw 'Initial backup destination differs.'}
+ if((File-Sha256 $manifestPath) -ne (File-Sha256 (Join-Path $configuration.BackupDestination 'backup-manifest.json'))){throw 'Initial backup manifests differ.'}
+ foreach($entry in $manifest.Files){foreach($directory in @($package,$configuration.BackupDestination)){
+  if((File-Sha256 (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
+ }}
+ Assert-Package
+ $taskName='DNNE-Rubral-Refinement-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $shell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+ $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
+ $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
+ $principal=New-ScheduledTaskPrincipal -UserId ([Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+ $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+ Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
+ [ordered]@{TaskName=$taskName;RequestedUtc=[DateTime]::UtcNow.ToString('o');Package=$package;NoLiveMonitoring=$true} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $package 'launch.json') -Encoding UTF8
+ Start-ScheduledTask -TaskName $taskName
+ Write-Host ('Started independent visible PowerShell task: '+$taskName)
+ Write-Host ('Results: '+$package)
+ return
+}
+function Invoke-Logged([string]$Executable,[string[]]$NativeArguments,[string]$LogName){
+ $writer=[IO.StreamWriter]::new((Join-Path $package $LogName),$false,[Text.UTF8Encoding]::new($false));$writer.AutoFlush=$true
+ $previous=$ErrorActionPreference
+ try{
+  $ErrorActionPreference='Continue'
+  & $Executable @NativeArguments 2>&1 | ForEach-Object {$line=[string]$_;$writer.WriteLine($line);Write-Host $line} -ErrorAction Stop
+  $nativeExit=$LASTEXITCODE
+ }finally{$writer.Dispose();$ErrorActionPreference=$previous}
+ if($nativeExit -ne 0){throw ($LogName+' exited '+$nativeExit)}
+}
+function Copy-Tree([string]$Source,[string]$Destination){
+ $sourceIo=Extended-Path $Source;$destinationIo=Extended-Path $Destination
+ if([IO.Directory]::Exists($destinationIo)){throw ('Preserve existing destination: '+$Destination)}
+ [IO.Directory]::CreateDirectory($destinationIo) | Out-Null
+ foreach($path in [IO.Directory]::EnumerateFiles($sourceIo,'*',[IO.SearchOption]::AllDirectories)){
+  $target=$destinationIo+$path.Substring($sourceIo.Length)
+  [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
+  [IO.File]::Copy($path,$target,$false)
+  if((File-Sha256 $path) -ne (File-Sha256 $target)){throw ('Copy differs: '+$path)}
+ }
+}
+function Capture-Tree([string]$Directory,[string]$Name){
+ $directoryIo=Extended-Path $Directory
+ $entries=@([IO.Directory]::EnumerateFiles($directoryIo,'*',[IO.SearchOption]::AllDirectories) | Sort-Object | ForEach-Object {
+  [ordered]@{Path=$Directory+$_.Substring($directoryIo.Length);Sha256=(File-Sha256 $_)}
+ })
+ ConvertTo-Json -InputObject @($entries) -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
+ return $entries
+}
+$status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;LiveBrainAccessed=$false;OldSavesLoaded=$false;
+ FocusedTestsPassed=$false;ModelExecutionAttempted=$false;NativePhysicsAttempted=$false;NativeDriverSucceeded=$false;
+ IndependentReferencesAttempted=$false;NumericalCriteriaPassed=$false;LiveUnityIntegrated=$false;TimingMeasured=$false;
+ ReferenceControlsAttempted=$false;SavedReferenceControlsVerified=$false;SavedReferencesReused=$false;EnvironmentTransitionDeclared=$configuration.EnvironmentTransitionDeclared;
+ UpstreamNumericalAccuracyQualified=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
+$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testFiles=@();$probeFiles=@();$playerFiles=@();$probe=$null
+if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite earlier results.'}
+function Save-Status([string]$Stage){
+ $status['Stage']=$Stage
+ $temporary=Join-Path $package 'window-status.tmp'
+ $status | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $temporary -Encoding UTF8
+ Move-Item -LiteralPath $temporary -Destination $statusPath -Force
+ Write-Host ('Stage: '+$Stage)
+}
+try{
+ Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
+ $Host.UI.RawUI.WindowTitle='DNNE neuronal motor partition diagnosis'
+ Write-Host ('Results: '+$package) -ForegroundColor Cyan
+ Write-Host '287 focused checks, five clock combinations with the original strong-left neuronal circuit. Three completed references are reused; no reference ODE rerun.'
+ Write-Host 'No live brain or Avatar; each isolated body starts paused. Report completion to Orion.'
+ Save-Status 'preflight'
+ Assert-Package
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_refinement_gate.py'),'preflight',$package) 'reference-preflight.log'
+ $status.SavedReferenceControlsVerified=$true
+ if([IO.DriveInfo]::new([IO.Path]::GetPathRoot($package)).AvailableFreeSpace -lt $configuration.MinimumFreeBytesBeforeRun){throw 'Require 8 GiB free before starting native recordings.'}
+ if([IO.DriveInfo]::new([IO.Path]::GetPathRoot($configuration.UnityBuildWorkspace)).AvailableFreeSpace -lt 20GB){throw 'Insufficient space for isolated build and D: backup.'}
+ Save-Status 'build-and-focused-tests'
+ $build=Join-Path $package 'source/artifacts/rubral-refinement-tests'
+ Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
+ $assembly=Join-Path $build 'bin/NeuralResonanceEngine.DNNE.Tests/release/NeuralResonanceEngine.DNNE.Tests.dll'
+ $testRoot=[IO.DirectoryInfo]::new((Split-Path -Parent $assembly))
+ while($null -ne $testRoot -and -not [IO.File]::Exists((Extended-Path (Join-Path $testRoot.FullName 'NeuralResonanceEngine.DNNE.slnx')))){$testRoot=$testRoot.Parent}
+ if($null -eq $testRoot -or -not $testRoot.FullName.Equals((Join-Path $package 'source'),[StringComparison]::OrdinalIgnoreCase)){throw 'Tests are not confined to frozen source.'}
+ $testFiles=Capture-Tree (Split-Path -Parent $assembly) 'test-binaries.json'
+ $probeBuild=Join-Path $package 'source/artifacts/rubral-refinement-probe'
+ Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tools/NativeMotorBridgeProbe/NativeMotorBridgeProbe.csproj'),'-c','Release','--artifacts-path',$probeBuild,'--nologo','-v','minimal') 'probe-build.log'
+ $probeDirectory=Join-Path $probeBuild 'bin/NativeMotorBridgeProbe/release';$probe=Join-Path $probeDirectory 'NeuralResonanceEngine.DNNE.Tests.dll'
+ $probeFiles=Capture-Tree $probeDirectory 'probe-binaries.json'
+ Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-before.json')) 'managed-runtime-before.log'
+ if((File-Sha256 (Join-Path $package 'managed-runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'reference/qualified-managed-runtime.json'))){throw 'Managed runtime differs from the reviewed circuit gate.'}
+ $status.ModelExecutionAttempted=$true
+ $testOutput=Join-Path $package 'test-results';New-Item -ItemType Directory -Path $testOutput | Out-Null
+ Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_refinement_gate.py'),'check-tests',$package) 'test-inventory.log'
+ $status.FocusedTestsPassed=$true;$status['PassedFocusedTests']=287
+ Save-Status 'reproduce-original-saved-accounting'
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_refinement_gate.py'),'baseline',$package) 'baseline-audit.log'
+ $status['OriginalSavedAccountingReproduced']=$true
+ Save-Status 'build-isolated-native-player'
+ Write-Host 'Building a separate Unity player for the original neuronal/muscle path...' -ForegroundColor Cyan
+ if(Test-Path -LiteralPath $configuration.UnityBuildWorkspace){throw 'Fresh dedicated build workspace required.'}
+ $workProject=Join-Path $configuration.UnityBuildWorkspace 'UnityWorld';Copy-Tree (Join-Path $package 'source/UnityWorld') $workProject
+ $playerOutput=Join-Path $package 'player';New-Item -ItemType Directory -Path $playerOutput | Out-Null
+ $priorOutput=[Environment]::GetEnvironmentVariable('NRE_UNITY_OUTPUT','Process')
+ try{
+  [Environment]::SetEnvironmentVariable('NRE_UNITY_OUTPUT',$playerOutput,'Process')
+  $arguments=@('-batchmode','-nographics','-projectPath',$workProject,'-executeMethod','Nre.UnityWorld.Editor.MuscleBridgeBuild.BuildWindows','-quit','-logFile',(Join-Path $playerOutput 'build.log'))
+  $editorProcess=Start-Process -FilePath $configuration.UnityExecutable -ArgumentList (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $workProject -WindowStyle Hidden -PassThru
+  if(-not $editorProcess.WaitForExit(1800000)){$editorProcess.Kill();throw 'Isolated Unity build exceeded 30 minutes.'}
+  if($editorProcess.ExitCode -ne 0){throw 'Native Unity build failed; inspect saved build.log.'}
+ }finally{[Environment]::SetEnvironmentVariable('NRE_UNITY_OUTPUT',$priorOutput,'Process')}
+ $buildResult=Get-Content -LiteralPath (Join-Path $playerOutput 'build-result.json') -Raw | ConvertFrom-Json
+ if($buildResult.result -ne 'Succeeded' -or $buildResult.errors -ne 0){throw 'Unity did not confirm build success.'}
+ $sourceUnityIo=Extended-Path (Join-Path $package 'source/UnityWorld')
+ foreach($path in [IO.Directory]::EnumerateFiles($sourceUnityIo,'*.cs',[IO.SearchOption]::AllDirectories)){
+  $relative=$path.Substring($sourceUnityIo.Length+1)
+  if((File-Sha256 $path) -ne (File-Sha256 (Join-Path $workProject $relative))){throw ('Compiled Unity source changed: '+$relative)}
+ }
+ foreach($folder in @('Assets','ProjectSettings','Packages')){Copy-Tree (Join-Path $workProject $folder) (Join-Path $package ('built-project/'+$folder))}
+ $playerFiles=Capture-Tree $playerOutput 'player-files.json';$status['UnityBuildSucceeded']=$true
+ $status.NativePhysicsAttempted=$true;Save-Status 'native-clock-matrix'
+ Invoke-Logged $configuration.DotnetExecutable @($probe,'--rubral-native-refinement',(Join-Path $playerOutput 'DNNE Muscle Bridge.exe'),(Join-Path $package 'reference'),(Join-Path $package 'reference/circuit-gate'),(Join-Path $package 'refinement')) 'rubral-refinement.log'
+ $status.NativeDriverSucceeded=$true;$status.SavedReferencesReused=$true
+ Save-Status 'audit-and-compare-saved-references'
+ Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/analyse-rubral-refinement.py'),$package) 'coupled-analysis.log'
+ $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
+ if(-not $analysis.completed -or -not $analysis.numericalCriteriaPassed -or $analysis.cases.Count -ne 5 -or $analysis.independentReferencesReused -ne 3 -or $analysis.newReferenceSolves -ne 0 -or -not $analysis.allNativeEndpointsReconciled -or -not $analysis.commonGridAccuracyOnly -or -not $analysis.originalBoundsPreserved -or $analysis.fullCaseMatrixAssessed -or $analysis.upstreamNumericalAccuracyQualified -or $analysis.physiologyQualified -or $analysis.avatarRecoveryAssessed){throw 'Partition evidence incomplete or scope changed.'}
+ $status.NumericalCriteriaPassed=$true;$status['ActualPhysicsSteps']=95988;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
+ $analysis.cases | Select-Object key,absoluteAccuracyPassed,maximumNormalizedByMetric | Format-Table | Out-Host
+}catch{
+ $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString()
+ Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
+}finally{
+ if($status.Status -eq 'RUNNING'){$status.Status='INTERRUPTED';$status.ExitCode=2;$status['Error']='Pipeline ended before completion; cause not established.'}
+ try{
+  Invoke-Logged $configuration.PythonExecutable @('-B',(Join-Path $package 'source/tools/rubral_refinement_gate.py'),'preflight',$package) 'reference-postflight.log'
+  $status['ReferenceEnvironmentPreserved']=$true
+ }catch{$status.Status='FAILED';$status.ExitCode=1;$status.NumericalCriteriaPassed=$false;$status['ReferenceEnvironmentError']=$_.Exception.ToString()}
+ if($probe -and (Test-Path -LiteralPath (Join-Path $package 'managed-runtime-before.json'))){
+  try{
+   Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-after.json')) 'managed-runtime-after.log'
+   if((File-Sha256 (Join-Path $package 'managed-runtime-before.json')) -ne (File-Sha256 (Join-Path $package 'managed-runtime-after.json'))){throw 'Managed runtime dependencies changed during the study.'}
+   $status['ManagedRuntimePreserved']=$true
+  }catch{$status.Status='FAILED';$status.ExitCode=1;$status.NumericalCriteriaPassed=$false;$status['ManagedRuntimeError']=$_.Exception.ToString()}
+ }
+ try{Assert-Package;foreach($entry in @($testFiles)+@($probeFiles)+@($playerFiles)){if((File-Sha256 $entry.Path) -ne $entry.Sha256){throw ('Built file changed: '+$entry.Path)}}}catch{$status.Status='FAILED';$status.ExitCode=1;$status.NumericalCriteriaPassed=$false;$status['FrozenSourceError']=$_.Exception.ToString()}
+ $status['CompletedUtc']=[DateTime]::UtcNow.ToString('o')
+ if($transcribing){Stop-Transcript | Out-Null}
+ Save-Status 'final-result-backup'
+ try{& (Join-Path $package 'backup-run.ps1') -Source $package -Destination $configuration.BackupDestination}
+ catch{$status.Status='FAILED';$status.ExitCode=1;$status['BackupError']=$_.Exception.ToString();$status | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $statusPath -Encoding UTF8;Write-Host ('BACKUP FAILED: '+$_.Exception.Message) -ForegroundColor Red}
+ if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
+ Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
+ Write-Host ('Results: '+$package)
+ Write-Host 'Tell Orion the motor partition outcome. Strong-left sampled accuracy, full-direction control, physiological calibration and Avatar recovery are separate.'
+}

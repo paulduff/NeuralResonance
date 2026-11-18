@@ -14,17 +14,38 @@ def module(name,path):
 def main(which,reported):
     assert reported,'An operator completion report is required.'
     names=dict(sensory=('cleft-trajectories-20261118-87562a','22148e322fe862e8b69c2f42388aa26534b8539a'),
+               finer=('cleft-refinement-20261118-884934','fb61de2fd0af6b2ea01ec9b136c5e96fa0873415'),
                motor=('rubral-comparison-20261118-f5e01c','40a78fd9f2cf30d29c4d67452fc3b84f5491d935'))
     name,revision=names[which];capture=ROOT/'artifacts'/name
     out=ROOT/'artifacts'/('coupled-'+which+'-review-20261118');assert not out.exists()
     files=module('completed_files',ROOT/'tools/review-olive-and-motor-20261109.py')
     archive=module('completed_git',ROOT/'tools/review-spindle-root-and-causal-motor-20261113.py')
-    result=files.verify(capture,['test-binaries.json','probe-binaries.json'] if which=='sensory' else [],revision,'FAILED',1)
+    result=files.verify(capture,['test-binaries.json','probe-binaries.json'] if which!='motor' else [],revision,
+        'DIAGNOSTICS_COMPLETE' if which=='finer' else 'FAILED',0 if which=='finer' else 1)
     result['verifiedGitFiles']=archive.source_archive(files,capture,revision)
     sys.path.insert(0,str(capture/'source/tools'))
     import numpy as np
     out.mkdir()
-    if which=='sensory':
+    if which=='finer':
+        import cleft_refinement_gate as gate
+        gate.runtime(capture);tests=gate.component.inventory.check_tests(capture,gate.COUNTS)
+        assert tests['passedCases']==132 and tests['passedClasses']['CleftStationarySearchTests']==12
+        assert files.read(capture/'managed-runtime-before.json')==files.read(capture/'managed-runtime-after.json')
+        assert files.read(capture/'reference-preflight.json')['environment']==files.read(capture/'reference-postflight.json')['environment']
+        class RedirectOutput:
+            def __truediv__(self,name):return (out if name=='trajectory-analysis.json' else capture)/name
+        gate.compare(RedirectOutput())
+        saved=files.read(capture/'trajectory-analysis.json');assert files.read(out/'trajectory-analysis.json')==saved
+        assert saved['numericalTrajectoryCriteriaPassed'] and saved['newReferenceSolves']==0 and saved['reusedReferences']==21
+        assert all(c['passed'] and c['overlappingMetricsExactlyReproduced'] for c in saved['cases'])
+        status=files.read(capture/'window-status.json')
+        assert status['PassedFocusedTests']==132 and status['StationarySearchComponentChecksPassed'] and status['SavedReferencesReused']
+        assert not status['IndependentReferencesAttempted'] and not status['StationaryInitializationQualified']
+        worst=max(saved['cases'],key=lambda c:c['candidates'][-1]['error']['maximumAllowedFraction'])
+        result.update(passedTests=132,stationaryComponentCases=12,savedAnalysisExactlyReproduced=True,numericalCriteriaPassed=True,
+            referenceCriteriaPassed=True,allSampledRefinementsPassed=True,allLedgerCriteriaPassed=True,analysis=saved,
+            worst=dict(case=worst['key'],allowedFraction=worst['candidates'][-1]['error']['maximumAllowedFraction']))
+    elif which=='sensory':
         import cleft_trajectory_gate as gate
         import cleft_trajectory_analysis as analysis
         gate.runtime(capture);protocol=gate.prerequisites(capture)
@@ -90,5 +111,5 @@ def main(which,reported):
 
 if __name__=='__main__':
     if not __debug__:raise RuntimeError('Assertions must remain enabled.')
-    p=argparse.ArgumentParser();p.add_argument('which',choices=['sensory','motor']);p.add_argument('--operator-reported-complete',action='store_true')
+    p=argparse.ArgumentParser();p.add_argument('which',choices=['sensory','finer','motor']);p.add_argument('--operator-reported-complete',action='store_true')
     a=p.parse_args();main(a.which,a.operator_reported_complete)

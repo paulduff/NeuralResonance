@@ -11,8 +11,8 @@ public static class MuscleHingeWire {
  // Exact powers of two preserve common physical endpoints across the isolated
  // refinement matrix. The default remains the previously qualified resolution.
  public static float StepSecondsAt(int resolution){
-  Require(resolution>=-1&&resolution<=1,"Unsupported isolated physical resolution.");
-  return resolution==-1?StepSeconds*2:resolution==1?StepSeconds/2:StepSeconds;
+  Require(resolution>=-1&&resolution<=3,"Unsupported isolated physical resolution.");
+  return resolution==-1?StepSeconds*2:StepSeconds/(1<<resolution);
  }
  public static double StepMsAt(int resolution)=>(double)StepSecondsAt(resolution)*1000;
  // JSON decimal parsers need not agree on the last binary bit. Mechanical
@@ -57,7 +57,8 @@ public static class MuscleHingeWire {
  public static bool Hash(string x)=>x!=null&&x.Length==64&&System.Linq.Enumerable.All(x,c=>(c>='0'&&c<='9')||(c>='A'&&c<='F'));
  public static void Require(bool value,string message){if(!value)throw new InvalidOperationException(message);}
  public static void Validate(Request r,Reply current) {
-  Require(current!=null&&(current.physicsStepMs==StepMsAt(-1)||current.physicsStepMs==StepMsAt(0)||current.physicsStepMs==StepMsAt(1)),
+  Require(current!=null&&(current.physicsStepMs==StepMsAt(-1)||current.physicsStepMs==StepMsAt(0)||current.physicsStepMs==StepMsAt(1)||
+   current.physicsStepMs==StepMsAt(2)||current.physicsStepMs==StepMsAt(3)),
    "Unsupported isolated physical clock.");
   Require(r!=null&&r.version==Version&&r.sessionId==current.sessionId&&r.sequence==checked(current.sequence+1),"Command identity/sequence differs.");
   Require(r.bodyFingerprint==current.bodyFingerprint&&r.expectedStep==current.physicsStep&&r.stateHash==current.stateHash,

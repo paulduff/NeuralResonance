@@ -620,3 +620,17 @@ The observer's 20 proposed cases remain unrun; it is excluded from this study's
 181 focused cases. Eight spectrum controls execute in the new window before
 trajectory comparisons. No live selection, old save or original bound changed.
 Full goal remains active and unfinished.
+
+
+Motor saved review `b224a6` was subsequently reported FAILED and complete.
+Its completed-failure audit verifies 1,929 C:/D: files and 1,919 Git source
+files; the review is D: verified. Both original 583,562-file hash loops appear
+complete in its preserved log, but the next source-archive stage could not
+spawn Git from the independent window PATH. No identity controls or numerical
+comparison executed. See `docs/DNNE_Motor_Epoch_Comparison_2026-11-18.md`.
+The freezer now packages an independent original-revision archive and checks
+it before the long audit, with separate phase receipts. Corrected retry is
+being prepared; no model or native Unity rerun is required. `ddef1a` is the
+ONLY pending report and remains untouched. Static sensory ingress findings
+are in `docs/DNNE_Observed_Sensory_Ingress_Review_2026-11-18.md`; no new ingress
+implementation or live selection change is claimed. Full goal active.

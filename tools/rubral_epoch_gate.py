@@ -52,6 +52,15 @@ def prepare(capture,reported):
     package=ROOT/'artifacts'/('rubral-epoch-comparison-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6])
     backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists();package.mkdir()
+    # Scheduled PowerShell inherits the desktop PATH, not Codex's bundled Git.
+    # Export the independent reference while Git is available, then bind it to
+    # this package. The window must never need to spawn Git for its source audit.
+    reference_archive=package/'original-source-reference.zip'
+    subprocess.run(['git','archive','--format=zip','--output='+str(reference_archive),REVISION],cwd=ROOT,check=True)
+    archive=module('epoch_prepare_archive',ROOT/'tools/review-spindle-root-and-causal-motor-20261113.py')
+    verified_sources=archive.source_archive(h,capture,REVISION,reference_archive=reference_archive)
+    save(package/'original-source-reference.json',dict(revision=REVISION,sha256=h.digest(reference_archive),
+        verifiedGitFiles=verified_sources,exportedFromRepository=str(ROOT),modelsExecuted=False,testsExecuted=False))
     subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.zip'),revision],cwd=ROOT,check=True)
     with ZipFile(package/'source.zip') as archive:
         for entry in archive.infolist():
@@ -70,6 +79,7 @@ def prepare(capture,reported):
         IsolatedSavedRubralEpochComparison=True,OperatorReportedCompletion=True,OriginalCapture=str(capture),OriginalRevision=REVISION,
         OriginalManifestSha256=h.digest(capture/'backup-manifest.json'),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
         ExpectedIdentityControls=12,ExpectedPriorTests=287,ExpectedNativeConditions=5,ExpectedSavedReferences=3,
+        OriginalSourceReferenceSha256=h.digest(reference_archive),WindowRequiresGit=False,
         ModelsWillExecute=False,NativePhysicsWillExecute=False,OriginalBoundsChanged=False,OriginalPackageWillBeModified=False))
     pointer=dict(Package=str(package),Backup=str(backup),Revision=revision,NoLiveMonitoring=True,Launcher=str(package/'source/tools/start-rubral-epoch-window.ps1'))
     save(package.parent/(package.name+'-prepared.json'),pointer);print(json.dumps(pointer,indent=2),flush=True)
@@ -84,6 +94,13 @@ def preflight(package):
     assert h.digest(capture/'backup-manifest.json')==cfg['OriginalManifestSha256']
     for entry in cfg['PackageFiles']:assert h.digest(package/entry['Path'])==entry['Sha256']
     assert h.digest(cfg['PythonExecutable'])==cfg['PythonExecutableSha256']
+    reference=read(package/'original-source-reference.json')
+    assert cfg['WindowRequiresGit'] is False and reference['revision']==REVISION
+    assert not reference['modelsExecuted'] and not reference['testsExecuted']
+    assert h.digest(package/'original-source-reference.zip')==reference['sha256']==cfg['OriginalSourceReferenceSha256']
+    # Fail on missing/mismatched archive before the 583,562-file audit begins.
+    archive=module('epoch_preflight_archive',package/'source/tools/review-spindle-root-and-causal-motor-20261113.py')
+    assert archive.source_archive(h,capture,REVISION,reference_archive=package/'original-source-reference.zip')==reference['verifiedGitFiles']
     _,status=require_original(capture);assert status==read(package/'original-status.json')
     old=module('qualified_motor_partition_gate',capture/'source/tools/rubral_refinement_gate.py');old.preflight(capture);old.check_tests(capture)
     return capture
@@ -93,8 +110,14 @@ def review(package):
     capture=preflight(package)
     files=module('epoch_original_review',package/'source/tools/review-olive-and-motor-20261109.py')
     archive=module('epoch_original_archive',package/'source/tools/review-spindle-root-and-causal-motor-20261113.py')
+    git_files=archive.source_archive(files,capture,REVISION,reference_archive=package/'original-source-reference.zip')
+    save(package/'source-archive-review.json',dict(sourceRevision=REVISION,verifiedGitFiles=git_files,
+        referenceArchiveSha256=h.digest(package/'original-source-reference.zip'),gitExecuted=False))
     result=files.verify(capture,['test-binaries.json','probe-binaries.json'],REVISION,expected_status='FAILED',expected_exit=1,progress_every=10000)
-    result['verifiedGitFiles']=archive.source_archive(files,capture,REVISION)
+    # Preserve completed phases even if a later phase fails; logs alone are not
+    # used as a substitute for a structured full-audit result on a future retry.
+    save(package/'verified-original-files.json',result)
+    result['verifiedGitFiles']=git_files
     for entry in read(capture/'player-files.json'):
         Path(entry['Path']).relative_to(capture/'player');assert h.digest(entry['Path'])==entry['Sha256']
     result.update(operatorReportedCompletion=True,fullCaptureVerified=True,passedTests=287,originalStatus='FAILED',originalFailurePreserved=True,

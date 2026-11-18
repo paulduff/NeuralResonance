@@ -1,11 +1,26 @@
 # Saved motor partition comparison
 
-Status: **launched visibly**, awaiting the operator's completion report.
-New package `rubral-epoch-comparison-20261118-b224a6`, revision
-`c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, has 1,923 initial files plus manifest
-verified on D:. Task: `DNNE-Rubral-Epoch-704c9ee951ce`. No post-launch result,
-status or process inspected; the original full audit and corrected accuracy
-outcome remain pending.
+Status: **operator-reported FAILED, reviewed; corrected retry being prepared**.
+Package `rubral-epoch-comparison-20261118-b224a6`, revision
+`c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, failed before identity controls or
+numerical comparison. Its independent window could not find `git` when the
+reviewer requested the original Git source archive. The exception was not a
+missing neuronal/native output file. Both 583,562-file hash loops completed in
+the preserved log, but no complete structured original-audit receipt was saved.
+Do not treat those log lines alone as the final full-audit result.
+
+Completed-failure review verifies 1,929 C:/D: files and 1,919 Git source files,
+the exact failure location, final preservation flags and absence of numerical
+analysis/control output. The review itself is D: verified. Original failed
+packages and their backups remain unchanged. No model/test ran during review.
+
+The corrected freezer exports an independent original-revision Git archive
+while preparing the package, pins its hash, and compares it with the original
+frozen source. The visible window uses that packaged archive explicitly; it
+does not require Git on the desktop PATH. Preflight checks this archive before
+the long file audit. Completed source and full-file phases now save separate
+receipts, so a later exception cannot discard their structured results.
+The retry still requires the full audit and all original numerical bounds.
 
 The operator reported the final FAILED footer and verified D: backup for
 `rubral-refinement-20261118-3d8835`: 583,562 files plus manifest. All five native

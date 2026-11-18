@@ -2771,3 +2771,11 @@ No test/model executed during reviews. Rubral f5e01c remains uninspected pending
 operator completion. Fresh skull v4 package awaits freeze/backup/visible launch.
 The complete derivative reference remains next authoring work; no such new
 protocol/reference files were written before prioritizing these reported outcomes.
+
+Skull v4 retry now launched: unity-skull-20261118-0ada47, frozen at
+f1ee1845b236afcce8171473be0e6cd6c5108424, initial 1,837 files plus manifest D:
+verified, visible task DNNE-Unity-Skull-e4ffd1a3a92f. No post-launch output,
+status or process inspected. TWO pending reports: this skull retry and rubral
+f5e01c. Open db4794 is reviewed/passing; ac78c5 reviewed/failed and preserved.
+Next independent authoring may use the D:-verified open review for complete
+local membrane derivative qualification, then simultaneous time integration.

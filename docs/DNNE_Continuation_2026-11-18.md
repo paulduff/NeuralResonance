@@ -155,3 +155,10 @@ regression. It does not qualify the later local membrane-current assembly,
 coupled trajectories, sensory firing or Avatar balance. Open `db4794` and failed
 skull `ac78c5` are now reviewed, not pending. Rubral `f5e01c` alone still awaits
 its completion report until the new skull retry launches.
+
+The v4 retry is now launched as `unity-skull-20261118-0ada47`, frozen at
+`f1ee1845b236afcce8171473be0e6cd6c5108424`. All 1,837 initial files plus manifest
+were D: verified before visible task `DNNE-Unity-Skull-e4ffd1a3a92f` opened.
+No post-launch outputs, status or processes were inspected. Only this new skull
+run and rubral `f5e01c` now await operator reports; the open-cleft result is fully
+reviewed. New skull launch is not proof that its native admission controls pass.

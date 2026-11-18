@@ -675,3 +675,21 @@ Exactly THREE pending reports: sensory ingress `d519cf`, sensory precision
 `ddef1a`, and saved motor comparison `e9bed6`. No completion or test success
 is inferred. Live sensory firing, physiological calibration, closed-loop
 World control and Avatar recovery remain unqualified. Full goal active.
+
+
+The operator reported sensory ingress `d519cf` complete. Its saved review
+verifies 2,497 C:/D: files, 1,944 Git files and all 264 focused cases, with exact
+analysis reproduction and preserved runtime/neuronal equations. The one-file
+review is D: verified. See the completed section of
+`docs/DNNE_Observed_Sensory_Ingress_Review_2026-11-18.md`. No model/test reran inline.
+Exactly TWO older reports remain pending: precision `ddef1a` and motor `e9bed6`.
+The repeated `b224a6` footer is the old reviewed Git/PATH failure, not the retry.
+
+New physical bundle input authoring is documented in
+`docs/DNNE_Vestibular_Bundle_Input_2026-11-18.md`. It requires explicit dimensional
+coefficients and provenance; none is a physiological preset. It preserves the
+existing mechanics, original samples and causal availability, and bounds pending
+physical intervals. Twenty-five new cases plus 28 skull/mechanics regressions
+join the reviewed 264 cases in a prospective 317-case visible workflow. Tests
+have NOT run during authoring. No live selection, save or physiology claim
+changed. Both pending captures remain untouched; full goal active.

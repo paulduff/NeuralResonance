@@ -154,3 +154,24 @@ Exactly THREE pending reports: sensory ingress `d519cf`, sensory precision
 `ddef1a`, and saved motor comparison `e9bed6`. No completion or test success
 is inferred. Live sensory firing, physiological calibration, closed-loop
 World control and Avatar recovery remain unqualified. Full goal active.
+
+## Completed ingress review
+
+The operator subsequently reported `d519cf` complete. Its review verified all
+2,497 files in each C:/D: copy, 1,944 archived Git source files, the frozen
+binaries/runtime and all 264 declared test cases. Saved analysis reproduces
+exactly. The separate one-file review is D: verified at
+`artifacts/afferent-ingress-20261118-d519cf-review/review.json`.
+
+The twenty observer controls and twenty receiving-ingress controls pass,
+including actual fractional-time receptor delivery, target isolation, original
+event/contact identity, exact retries, atomic rejection and bounded causal
+advancement. These are isolated component results; the passive crossing fixture
+is not physiological afferent firing. Full-unit-suite, live-world and balance
+qualification remain false. No model or test was rerun during review.
+
+Exactly TWO older reports remain pending: precision `ddef1a` and motor `e9bed6`.
+The operator's repeated `b224a6` footer was the already reviewed Git/PATH failure,
+not a result from its corrected retry. Neither pending capture was inspected.
+The physical conversion gap and next component are documented in
+`DNNE_Vestibular_Bundle_Input_2026-11-18.md`.

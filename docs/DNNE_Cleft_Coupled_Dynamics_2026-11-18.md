@@ -96,3 +96,10 @@ actual stationary solution and its stability rather than calling a fixed quiet
 duration equilibrium. Then add the supported afferent mechanism, qualify its
 firing and connect measured head motion. No live Avatar/World/editor selection
 or brain sensory stream changes in this stage; balance and recovery remain open.
+
+The 120-case component workflow is launched as `cleft-dynamics-20261118-ca2f31`,
+frozen at pushed revision `b4f0d57fa93fab7f935547345d8e078a05270608`. All 1,847
+initial files plus manifest are D: verified. Visible task:
+`DNNE-Cleft-Dynamics-9c501d09763f`. The launcher returned successfully; no
+post-launch output, status or process has been inspected. Await the operator's
+completion report before reviewing or claiming component success.

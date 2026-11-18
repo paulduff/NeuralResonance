@@ -257,3 +257,10 @@ cases (120 with earlier components) await a fresh visible workflow. See
 `DNNE_Cleft_Coupled_Dynamics_2026-11-18.md` for the solver, bookkeeping, exact
 scope and next independent trajectory/stationarity work. No model/test was run
 inline, and no pending study was read. Full goal remains active.
+
+Joint dynamics components are now launched as `cleft-dynamics-20261118-ca2f31`,
+frozen at `b4f0d57fa93fab7f935547345d8e078a05270608`; initial 1,847 files plus
+manifest D: verified. Visible task: `DNNE-Cleft-Dynamics-9c501d09763f`. No
+post-launch outputs/status/process inspection. Two reports are pending: this
+new 120-case component run and rubral `f5e01c`. Membrane `74e956` and skull
+`0ada47` are reviewed/passing within their stated scopes. Full goal active.

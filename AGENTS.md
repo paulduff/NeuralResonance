@@ -2822,3 +2822,11 @@ gate requires the reviewed membrane evidence, exact managed runtime and a fresh
 visible frozen run. See DNNE_Cleft_Coupled_Dynamics_2026-11-18.md. Independent
 active trajectories, stationary solution/stability, afferents and balance remain
 unqualified. Pending rubral capture remains untouched.
+
+Dynamics components launched: cleft-dynamics-20261118-ca2f31, frozen at
+b4f0d57fa93fab7f935547345d8e078a05270608, initial 1,847 files plus manifest D:
+verified, visible task DNNE-Cleft-Dynamics-9c501d09763f. No post-launch outputs,
+status or process inspected. TWO pending reports: ca2f31 and rubral f5e01c.
+Membrane 74e956 and skull 0ada47 are reviewed/passing at their stated scopes.
+Independent active time trajectories and stationary solution/stability are next
+after component review; no afferent physiology or Avatar balance qualified.

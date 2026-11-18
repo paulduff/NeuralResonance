@@ -45,9 +45,10 @@ def rates(v,source):
     return result
 
 
-def membrane(voltage,gates,parameters,source):
+def membrane(voltage,gates,parameters,source,*,allow_trial_gates=False):
     v=d(voltage);g={k:d(gates[k]) for k in GATES};p={k:d(x) for k,x in parameters.items()}
-    assert v.is_finite() and all(0<=x<=1 for x in g.values())
+    assert v.is_finite() and all(x.is_finite() for x in g.values())
+    assert allow_trial_gates or all(0<=x<=1 for x in g.values())
     r=rates(v,source);ek=p['thermalVoltageMv']*(p['outsidePotassiumMm']/p['insidePotassiumMm']).ln();ena=p['thermalVoltageMv']*(p['outsideSodiumMm']/p['insideSodiumMm']).ln()
     current=dict(sodiumPaPerSquareMicrometer=p['sodiumMaximumNsPerSquareMicrometer']*g['sodiumActivation']**3*g['sodiumInactivation']*(v-ena),
         kv1PotassiumPaPerSquareMicrometer=p['kv1MaximumNsPerSquareMicrometer']*g['kv1Activation']*(v-ek),
@@ -64,7 +65,7 @@ def clamp(case,source):
     return {k:r[k]['equilibrium']+(d(case['gates'][k])-r[k]['equilibrium'])*(-dt/r[k]['tauMs']).exp() for k in GATES}
 
 
-def cable(case,source):
+def cable(case,source,*,allow_trial_gates=False):
     topology=case['topology'];nodes=sorted(topology['nodes'],key=lambda n:n['id']);indices={n['id']:i for i,n in enumerate(nodes)}
     states={s['id']:s for s in case['states']};boundary={t['id']:d(t['potentialMv']) for t in case['terminalStates']};bath=d(case['perilymphMv']);n=len(nodes)
     voltage=[d(states[node['id']]['potentialMv']) for node in nodes];relative=[v-bath for v in voltage]
@@ -81,7 +82,7 @@ def cable(case,source):
     node_results=[];charges=[];membrane_power=Decimal(0);energy=Decimal(0)
     for i,node in enumerate(nodes):
         area=2*d(math.pi)*d(node['radiusMicrometers'])*d(node['lengthMicrometers']);cap=area*d(node['membrane']['specificCapacitancePfPerSquareMicrometer'])
-        evaluation=membrane(relative[i],states[node['id']]['gates'],node['membrane'],source);current=area*evaluation['currents']['totalOutwardPaPerSquareMicrometer']
+        evaluation=membrane(relative[i],states[node['id']]['gates'],node['membrane'],source,allow_trial_gates=allow_trial_gates);current=area*evaluation['currents']['totalOutwardPaPerSquareMicrometer']
         axial=sum(g*v for g,v in zip(laplacian[i],relative,strict=True))-inflow[i];dq=-current-axial;charges.append(dq)
         node_results.append(dict(id=node['id'],areaSquareMicrometers=area,capacitancePf=cap,membrane=evaluation,membraneOutwardPa=current,
             netAxialOutwardPa=axial,chargeRatePa=dq,potentialMvPerMs=dq/cap))
@@ -94,10 +95,10 @@ def cable(case,source):
         membranePowerFw=membrane_power,terminalPowerOutwardFw=terminal_power,axialDissipationFw=dissipation,powerResidualFw=energy_rate+membrane_power+terminal_power+dissipation)
 
 
-def joint(case,source):
+def joint(case,source,*,allow_trial_gates=False):
     f=deepcopy(case['sensory']);states={s['id']:s for s in f['states']};targets={a['terminalId']:a['cleftCompartmentId'] for a in case['attachments']}
     boundary=[dict(id=t['id'],potentialMv=states[targets[t['id']]]['calyxMv'] if t['id'] in targets else f['perilymphMv']) for t in case['cableTopology']['terminals']]
-    c=cable(dict(topology=case['cableTopology'],perilymphMv=f['perilymphMv'],states=case['cableStates'],terminalStates=boundary),source)
+    c=cable(dict(topology=case['cableTopology'],perilymphMv=f['perilymphMv'],states=case['cableStates'],terminalStates=boundary),source,allow_trial_gates=allow_trial_gates)
     outgoing={i:Decimal(0) for i in states};transfers=[];calyx_power=Decimal(0)
     for t in c['terminals']:
         if t['id'] not in targets:assert t['nodeToTerminalPa']==0;continue

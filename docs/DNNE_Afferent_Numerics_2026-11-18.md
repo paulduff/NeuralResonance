@@ -1,9 +1,11 @@
 # Sensory nerve derivative comparison
 
-Status: authored and statically checked; **not prepared or launched**. The
-component window `afferent-components-20261118-d3fbc9` is still awaiting an
-operator completion report. Its results have not been inspected. The full DNNE,
-Avatar and World goal remains active.
+Status: authored and statically checked; **ready for preparation and launch**.
+The operator reported `afferent-components-20261118-d3fbc9` complete. Its full
+saved-data review passed: 2,435 files per C:/D: copy and all 166 focused cases;
+the new review also has a verified D: copy. See
+`DNNE_Sensory_Rest_And_Nerve_Results_2026-11-18.md`. The full DNNE, Avatar and
+World goal remains active.
 
 The new nerve membrane and cable must calculate the intended electrical
 equations correctly before a coupled trajectory is interpreted as sensory

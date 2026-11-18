@@ -446,3 +446,20 @@ goal active. Next: review any operator-reported results, launch the already
 authored derivative study after its gate passes, then the joint dynamics
 components. Independent active trajectories/loaded rest and actual sensory
 spikes/declared DNNE delivery still follow before balance/recovery claims.
+
+Operator now reports nerve components `d3fbc9` and sensory rest `760702`
+complete, and confirms motor `3d8835` still running. Both completed results are
+fully reviewed; see `DNNE_Sensory_Rest_And_Nerve_Results_2026-11-18.md`.
+Nerve: 2,435 files per copy, 166 passing cases. Rest: 2,525 files, 132 passing
+cases, all eighteen native/independent roots agree and recorded local spectra
+are decaying estimates. Saved analysis/matrix checks reproduced without model,
+root/eigen solve or test reruns. New review folders are D: verified. Eigenvectors
+were not retained, so the review does not claim independent vector verification.
+The sealed terminal result does not initialize the newly attached active nerve.
+
+Only ONE prior window remains pending: motor `3d8835`, untouched. Prepare and
+launch the independent nerve derivative rig next. Before these reports arrived,
+fast-transient fixtures/native capture were authored; their independent driver,
+analysis and launcher remain unfinished. See `DNNE_Afferent_Fast_Transient_2026-11-18.md`.
+No transient package or test was run. Full goal active and unqualified for live
+afferent return, physiological rest, balance or recovery.

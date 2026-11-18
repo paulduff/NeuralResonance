@@ -2931,3 +2931,14 @@ checks pass. The dynamics freezer requires reviewed derivative accuracy first.
 THREE pending reports remain `3d8835`, `760702`, `d3fbc9`, untouched after
 launch. An async completion question is pending. No fourth window/package.
 Full goal active; no afferent firing, physiology or Avatar qualification.
+
+Operator reported `d3fbc9` and `760702` complete; both are now reviewed and
+passing within scope. Nerve: 2,435 C:/D: files, 166 tests. Sealed sensory rest:
+2,525 files, 132 tests, eighteen matching native/independent roots and locally
+decaying recorded estimates. Both review folders D: verified. See
+`DNNE_Sensory_Rest_And_Nerve_Results_2026-11-18.md` for the eigenvector evidence
+limitation and physiological limits. Motor `3d8835` is explicitly still running;
+leave it untouched. The derivative rig can now be frozen/backed up/launched.
+Fast-transient fixtures/native capture are partial authoring only; see their
+named checkpoint, no independent driver/analysis/launcher or run yet. Full goal
+active; no loaded-nerve rest, sensory firing or Avatar usability qualification.

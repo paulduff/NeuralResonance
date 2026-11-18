@@ -2942,3 +2942,11 @@ leave it untouched. The derivative rig can now be frozen/backed up/launched.
 Fast-transient fixtures/native capture are partial authoring only; see their
 named checkpoint, no independent driver/analysis/launcher or run yet. Full goal
 active; no loaded-nerve rest, sensory firing or Avatar usability qualification.
+
+Nerve derivative comparison now launched: `4ab20e`, frozen
+`3f49cb952d90b124ab84cb7a727a2a7d4f196593`, initial 1,914 files plus manifest
+D: verified, visible task `DNNE-Afferent-Numerics-0dc1320646a5`. TWO pending
+reports: this study and motor `3d8835` (explicitly still running). No post-launch
+inspection of either. Rest `760702` and components `d3fbc9` are reviewed and
+passing within their stated scopes. Review new derivative evidence before the
+joint dynamics component gate; no physiology or Avatar qualification yet.

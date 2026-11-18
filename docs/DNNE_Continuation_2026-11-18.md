@@ -463,3 +463,16 @@ fast-transient fixtures/native capture were authored; their independent driver,
 analysis and launcher remain unfinished. See `DNNE_Afferent_Fast_Transient_2026-11-18.md`.
 No transient package or test was run. Full goal active and unqualified for live
 afferent return, physiological rest, balance or recovery.
+
+The derivative comparison is now launched as `afferent-numerics-20261118-4ab20e`,
+frozen at `3f49cb952d90b124ab84cb7a727a2a7d4f196593`. Initial 1,914 files plus
+manifest are D: verified; visible task `DNNE-Afferent-Numerics-0dc1320646a5`.
+There are TWO pending reports: this new nerve calculation study and motor
+refinement `3d8835`, which the operator explicitly says is still running.
+No post-launch outputs/status/processes inspected. The new study runs 166
+focused cases and 1,686 native derivative/clamp cases with 60/90-digit
+references; it is a correctness comparison, not a competing timing benchmark.
+On reported completion, review both complete backup copies and saved results
+before the authored joint-dynamics component gate. Fast-transient fixtures and
+capture are checkpointed, but their independent comparison remains unfinished.
+No live selection changes or physiological/Avatar qualification. Full goal active.

@@ -3330,3 +3330,14 @@ controls, exact raw/archive reports/specifications and prior array digests.
 No pending reports. New capture staging/cleanup and full refined motor matrix
 remain; independent published-canal trajectory comparison is in authoring only.
 See archived accounting document. Original records/saves remain; goal unfinished.
+
+
+Published canal trajectory comparison is authored; see
+`docs/DNNE_Published_Canal_Trajectories_2026-11-18.md`. It reuses the 76 reviewed
+component checks and preserves the production mechanical kernels. The separate
+window will run six analytic reference controls, 45 native captures across
+fast/middle/slow regimes, and 15 independent cases at Decimal 60/90 digits plus
+SciPy expm. Every native endpoint and both physical/numerical energy losses are
+accounted. No new model, reference or test has executed during authoring. The
+probe build passes without warnings/errors. Work/backup use D:; old evidence
+and all live defaults remain. No pending reports before launch. Full goal active.

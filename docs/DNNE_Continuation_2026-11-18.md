@@ -936,3 +936,14 @@ full refined motor matrix remain next motor requirements. No pending completion
 reports now. Published canal numerical comparison is being authored, with fast
 resolution around input changes and larger steps only after resolved transients;
 no new mechanical reference/model/test has run. Full goal active, unfinished.
+
+
+Published canal trajectory comparison is authored; see
+`docs/DNNE_Published_Canal_Trajectories_2026-11-18.md`. It reuses the 76 reviewed
+component checks and preserves the production mechanical kernels. The separate
+window will run six analytic reference controls, 45 native captures across
+fast/middle/slow regimes, and 15 independent cases at Decimal 60/90 digits plus
+SciPy expm. Every native endpoint and both physical/numerical energy losses are
+accounted. No new model, reference or test has executed during authoring. The
+probe build passes without warnings/errors. Work/backup use D:; old evidence
+and all live defaults remain. No pending reports before launch. Full goal active.

@@ -1020,3 +1020,24 @@ is inferred from launch. All old captures and saves remain unchanged. Exactly
 ONE completion report is pending: `5bdd81`. Canal `debebb` is fully reviewed and
 passing within its declared numerical scope; its three-file review is D: verified.
 The full DNNE/Avatar/World goal remains active and unfinished.
+
+
+Loaded sensory continuation is authored; see
+`docs/DNNE_Afferent_Loaded_Continuation_2026-11-18.md`. Saved-only stopping
+review of completed `62949f` verifies all eighteen last native points meet the
+original independent physical residual limits, although six searches retain
+LineSearchFailed just above their stricter internal target. The failed states
+are within 1.42e-14 transformed units of independent roots. No search bound,
+biological equation, failed status or default changed. Three review files plus
+manifest are D: verified in `afferent-rest-20261118-62949f-stopping-review`.
+The new experiment uses strictly passing `2-uniform-original`, preserves its
+actual gates, and runs quiet, +/-1 mV hair perturbations and a brief 20 nm bundle
+input for four milliseconds. Twelve native runs (114,688 steps) and twelve
+independent Radau/BDF references use the explicit EndpointHold candidate.
+Original accuracy/conservation bounds remain; quiet drift and finite-time
+return observations are separate. No old stability estimate is reused under
+changed kinetics. All 67 protected sources match reviewed `501244`; 333 prior
+component tests and 196 root tests are reused. Probe build passes with zero
+warnings/errors; Python/PowerShell/fixture checks pass without model execution.
+No new window launched yet. Exactly ONE report remains pending: full refined
+motor `5bdd81`, untouched since launch. Full goal remains active/unfinished.

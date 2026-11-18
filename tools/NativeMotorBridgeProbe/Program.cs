@@ -20,6 +20,11 @@ if (args.Length == 3 && args[0] == "--coupled-canal-trajectories")
     CoupledCanalStudy.Run(args[1], args[2]);
     return;
 }
+if (args.Length == 3 && args[0] == "--afferent-loaded-rest")
+{
+    AfferentLoadedRestStudy.Run(args[1], args[2]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--afferent-rest")
 {
     AfferentRestStudy.Run(args[1], args[2]);

@@ -98,3 +98,14 @@ Sensory `884934` is fully reviewed/passing, and old motor `f5e01c` is reviewed
 with its original yield failure retained. No separate sensory or stationary
 window is pending. Full goal remains active; physiological resting state,
 afferent return, complete feedback, balance and recovery are still open.
+
+
+## Completed outcome
+
+The separate corrected epoch comparison `e9bed6` passes all prospective
+strong-left numerical criteria. Its reviewed analysis reproduces exactly.
+Body-step refinement reduces the limiting yield error roughly twofold per
+halving; muscle-only refinement has negligible effect. The finest yield error
+is 0.26142 of the unchanged bound. See
+`DNNE_Motor_Epoch_Comparison_2026-11-18.md` for the complete evidence and limits.
+The original failed capture remains preserved, and live defaults are unchanged.

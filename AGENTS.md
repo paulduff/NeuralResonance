@@ -3184,3 +3184,24 @@ inferred. Original defaults, failed captures, saves and live selection remain.
 The operator has now reported older motor `e9bed6` complete; its saved review is
 underway. Exactly ONE completion report is pending: new sensory `2b5a68`.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+
+Completed motor epoch comparison `e9bed6` is now fully reviewed: 1,961 C:/D:
+package files and frozen Git source verified; all saved numerical analysis and
+five epoch mappings reproduce exactly from the 95,988 original physical steps.
+The original window's structured 583,562-file full-audit receipt is retained;
+that full hash loop was not repeated. All twelve identity controls passed.
+The ten-file reviewer artifact is D: verified. No model or test reran in review.
+See `docs/DNNE_Motor_Epoch_Comparison_2026-11-18.md`.
+The finer body configurations pass every original absolute/refinement limit on
+the common 8,000-point grid. Yield error falls from 1.03936 to 0.26142 times its
+unchanged bound; extra internal muscle steps have negligible influence. This
+supports body/muscle exchange spacing as the dominant tested error. Original
+failures remain. Other directions/controls at the refined resolution, upstream
+accuracy, physiology and recovery remain open. Next motor work: full condition
+matrix at explicit h/4 body and h/4 muscle, after non-destructive storage planning.
+C: had 5.83 GiB free at this checkpoint, below the old motor freezer's 8 GiB gate;
+do not bypass that gate or delete old evidence. D: had 253.12 GiB free.
+Exactly ONE pending completion report: sensory candidate `2b5a68`, unmonitored.
+The bundle and precision reports are both reviewed, not pending. Code/notes are
+committed and pushed regularly. Full DNNE/Avatar/World goal active, unfinished.

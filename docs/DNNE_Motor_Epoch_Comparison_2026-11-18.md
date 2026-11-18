@@ -1,6 +1,6 @@
 # Saved motor partition comparison
 
-Status: **operator-reported FAILED, reviewed; corrected retry launched visibly**.
+Status: **corrected comparison reported complete; original failures preserved**.
 Package `rubral-epoch-comparison-20261118-b224a6`, revision
 `c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, failed before identity controls or
 numerical comparison. Its independent window could not find `git` when the
@@ -87,3 +87,65 @@ status or process was inspected. The window performs saved-data review and
 Exactly TWO pending completion reports: motor `e9bed6` and sensory precision
 `ddef1a`. Earlier `b224a6` is failed/reviewed, not pending. All original evidence
 and bounds remain preserved; full DNNE/Avatar/World goal active and unfinished.
+
+## Completed corrected comparison
+
+The operator reported `e9bed6` DIAGNOSTICS_COMPLETE with a verified 1,961-file
+D: backup. It contains a structured receipt for the full original 583,562-file
+C:/D: audit, 1,864 original Git source files and 287 prior focused tests. All
+twelve epoch-identity controls passed. The original `3d8835` failure remains;
+the corrected comparison and identity proofs are separate artifacts.
+
+The five conditions retain distinct fresh neuronal epochs. Original physical
+source, target, event order, exact arrival time and conduction delay reconcile
+through each epoch's own identities. All 95,988 native endpoints are accounted
+for. No neuronal, muscle, Unity or independent ODE model was rerun in this saved
+comparison. Three independent completed references are reused.
+
+The repeat's error magnitudes reproduce exactly (normalized discrepancy 0).
+Both body-step halvings pass every original refinement criterion. Both finest
+configurations meet all original absolute limits on the 8,000 shared sample
+times. These limits have not been loosened.
+
+| Condition | Body step | Muscle step | Maximum yield error / limit | All absolute limits |
+| --- | --- | --- | --- | --- |
+| repeat | h | h/2 | 1.03936024 | fail |
+| muscle-fine | h | h/4 | 1.03936024 | fail |
+| body-fine | h/2 | h/4 | 0.52029675 | pass |
+| body-finer | h/4 | h/4 | 0.26141943 | pass |
+| body-finer-muscle-fine | h/4 | h/8 | 0.26141942 | pass |
+
+Here h is the original exact native step, approximately 0.0625 ms. The yield
+limit is 1e-5, so the finest absolute error is approximately 2.6142e-6.
+Yield is the limiting metric in these comparisons. At fixed body step,
+additional muscle substeps have extremely small effects: the largest change
+over all metrics is 5.6865e-6 of its original bound for the first pair and
+3.5477e-7 for the finest pair. Both are below their separate 0.05 diagnostic
+limit. Body-step refinement, while retaining the same muscle step, nearly
+halves the errors each time. This identifies the body/muscle exchange interval
+as the dominant error source in this tested condition.
+
+The conclusion is sampled convergence for strong-left. Intermediate fine
+endpoints have accounting checks but no independent trajectory reference on
+their finer grid. Right drive, quiet, disconnected-route and retry controls
+still need the chosen refined resolution. Upstream neuronal numerical accuracy,
+human physiology, live whole-brain control, balance and fall recovery are not
+qualified by this result.
+
+The next motor experiment should apply the explicit h/4 body, h/4 muscle setting
+to the full original condition matrix, preserving original neurons, events and
+controls. Live defaults remain unchanged until that broader comparison passes.
+Plan storage before freezing a large native recording: the 18 November authoring
+checkpoint had 5.83 GiB free on C: and 253.12 GiB on D:, below the prior motor
+freezer's 8 GiB C: requirement. Preserve all old packages and saves; do not bypass
+the capacity check or delete evidence to make a launch succeed.
+
+
+Completed review verifies all 1,961 C:/D: package files and the frozen Git
+source. Re-reading the saved 95,988 native endpoints exactly reproduces the
+entire numerical analysis and all five epoch mappings. The original full
+583,562-file audit is retained as a verified structured receipt rather than
+repeating that hash loop. The ten-file review, including exact analysis,
+mappings and review source, has its own verified D: backup at
+`rubral-epoch-comparison-20261118-e9bed6-review`. No model/test reran in review.
+Only sensory activation candidate `2b5a68` remains pending and unmonitored.

@@ -3397,3 +3397,20 @@ a live fixed timestep from this result. Published-specimen mechanics passes its
 declared numerical scope; skull orientation, local bundle mapping, physiological
 sensory firing and Avatar balance remain unqualified. No pending completion
 reports now. The full refined motor matrix is ready for freezing, not launched.
+
+
+Full refined motor matrix is launched as `refined-motor-20261118-5bdd81`,
+workspace `D:/DNNE-build-work/refined-motor-20261118-5bdd81`, frozen at pushed
+revision `feb510652eb26d8a3216271a5847178180b1fed4`. Static frozen preflight passed;
+2,081 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/refined-motor-20261118-5bdd81` before visible task
+`DNNE-Refined-Motor-5373e80db78d` started. Launch returned successfully. No
+post-launch output, status or process was inspected. The window first requires
+22 storage lifecycle controls, then runs all seven fresh neuronal/native cases
+at h/4 body and h/4 muscle, publishes exact archives per closed condition, audits
+all 223,972 physical steps and compares the common grid with 15 saved references.
+No success, raw cleanup qualification, motor accuracy or physiological validity
+is inferred from launch. All old captures and saves remain unchanged. Exactly
+ONE completion report is pending: `5bdd81`. Canal `debebb` is fully reviewed and
+passing within its declared numerical scope; its three-file review is D: verified.
+The full DNNE/Avatar/World goal remains active and unfinished.

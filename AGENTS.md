@@ -3450,3 +3450,24 @@ remain preserved. Quiet drift/return observations are separate from numerical
 agreement and physiological rest. Exactly TWO completion reports are pending:
 loaded sensory `cd9fba` and full refined motor `5bdd81`. No pending run monitored.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+
+Head-to-canal conversion is authored; see
+`docs/DNNE_Canal_Skull_Coordinates_2026-11-18.md`. Retained Ifediba P20 explicitly
+reconstructs angular acceleration by the nonorthogonal prime basis, so the new
+isolated converter solves that basis rather than taking three dot products.
+The right/up/forward to posterior/right/superior map has determinant -1;
+angular quantities use its axial sign. Published PC squared norm is 1.055307,
+not consistent with unit length at printed rounding. This discrepancy remains
+unresolved: no source vector, forcing coefficient or live parameter is silently
+normalized. The candidate is explicitly the printed-basis interpretation.
+`AvatarCanalSkullInput` wraps the unchanged skull owner, retains original bytes
+and both endpoint identities, differentiates world omega, projects at the current
+endpoint and reports availability there. It advances neither organ nor neuron.
+24 new controls plus 76 earlier component regressions are authored (100 exact
+cases), followed by replay of 603 original receipts from completed skull `0ada47`
+and 600 independent Decimal coordinate checks. No new Unity physics requested.
+Probe and full test builds pass with zero warnings/errors; static inventory,
+source, fixture and Python/PowerShell parsing pass without adapter/model/test
+execution. New window is not launched yet. Exactly TWO reports remain pending:
+motor `5bdd81` and sensory `cd9fba`, both untouched. Full goal active/unfinished.

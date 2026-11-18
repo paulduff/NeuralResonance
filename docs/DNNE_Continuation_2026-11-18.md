@@ -807,3 +807,22 @@ completion report: retry `501244`. Failed `2b5a68`, precision `ddef1a`, bundle
 `092238` and motor `e9bed6` are all reviewed, not pending. Failed traces, old
 saves, original successful-replay requirement and numerical limits remain.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+
+Independent work while sensory `501244` remains pending: a lossless native
+recording container is authored in `tools/native_evidence_archive.py`. See
+`docs/DNNE_Native_Evidence_Storage_2026-11-18.md`. It preserves every file byte,
+requires source/index/hash verification before atomic non-overwriting publication,
+and exposes a checked read-only decoder view. It has no source deletion or
+migration API. No neuronal/muscle/native model, clock, live selector or old
+capture changed. The next full motor matrix needs bounded recording storage;
+C: cannot safely repeat the prior half-million-file layout.
+A visible qualification is prepared: 24 controls plus two already completed
+motor captures, 241,906 files/1,200,072,296 original bytes, comparing all 8,000 and
+31,997 decoded physical endpoints. Tests/conversion have NOT run during authoring.
+Static Python/PowerShell parsing, control inventory and environment checks pass.
+New qualification work and its verification copy use D: (same physical drive),
+while the original independent C:/D: raw copies remain untouched. This avoids
+consuming the pending sensory run's reserved C: space. Source and failed-prefix
+preservation remain mandatory. Only ONE pending completion report before launch:
+sensory `501244`, never inspected. Full goal active; no blocked audit applies.

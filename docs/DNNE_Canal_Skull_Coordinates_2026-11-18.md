@@ -106,3 +106,32 @@ already-reviewed ASP.NET directory added. Host, switches and every original
 core file must agree. A fresh package is required; no frozen input is edited.
 Motor `5bdd81` and sensory `cd9fba` remain the only pending completion reports,
 both unmonitored. Full goal remains active and unfinished.
+
+## Completed capture and saved-only comparison repair
+
+The operator reported final failure for `canal-frame-20261118-a80ee0`, frozen
+at `ddf0efb1c49b7cf38e6118711020a5bb52b0704c`. All 100 focused cases passed;
+603 original skull receipts were exactly replayed and 600 angular inputs were
+independently reconstructed at both 60 and 90 decimal digits. The final
+comparison then failed because it passed a three-component list to `Decimal`
+instead of indexing the scalar component. This was a comparison-script defect.
+
+The repair indexes `expected[j]` in both scalar comparisons and allows a separate
+output destination. The review proves these are the only comparator differences
+from the frozen file. No source basis, native adapter, biological parameter,
+reference calculation, accuracy bound or saved input changed. No model, test or
+reference solve was rerun. Original FAILED status and all capture bytes remain.
+
+`tools/review-canal-frame-result.py` verified all 3,570 files in each D: copy,
+the frozen Git source, binaries, runtime, original test inventory and reference
+controls. The repaired saved comparison passes all 600 inputs. Maximum native
+error is 0.00006893290530103808 of its allowed bound; maximum 60/90-digit
+disagreement is 9.572736066408922e-14 of its bound. The four-file review at
+`artifacts/canal-frame-20261118-a80ee0-review` has its own verified D: backup.
+The original failure is not relabelled as a successful process execution.
+
+This qualifies the declared conversion of the sampled inputs under the literal
+printed basis. The PC norm discrepancy, continuous-motion derivative error,
+anatomical calibration, organ integration and balance remain open. The next
+clock owner is only an unexecuted candidate; see
+`DNNE_Coupled_Canal_Clock_Candidate_2026-11-18.md`.

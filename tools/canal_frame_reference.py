@@ -71,7 +71,7 @@ def run(package):
     print('600 angular samples reconstructed at 60 and 90 decimal digits; no physics or organ trajectory executed.',flush=True)
 
 
-def compare(package):
+def compare(package, *, output_path=None):
     spec=read(package/'frame-input.json');a=read(package/'reference-60.json');b=read(package/'reference-90.json')
     assert read(package/'study/input.json')==spec
     controls=read(package/'reference-controls.json')
@@ -102,8 +102,8 @@ def compare(package):
         for key,expected in p.items():
             names=('hc','ac','pc') if key=='prime' else ('x','y','z')
             for j,name in enumerate(names):
-                maxima['precision']=max(maxima['precision'],close(Decimal(low['projection'][key][j]),expected,'1e-45','1e-45'))
-                maxima['native']=max(maxima['native'],close(values[key][name],expected,'1e-9','1e-12'))
+                maxima['precision']=max(maxima['precision'],close(Decimal(low['projection'][key][j]),expected[j],'1e-45','1e-45'))
+                maxima['native']=max(maxima['native'],close(values[key][name],expected[j],'1e-9','1e-12'))
         assert 0<=native['maximumBackwardError']<=1e-12;maxima['backward']=max(maxima['backward'],native['maximumBackwardError'])
         # All three positions belong to the same rigid head; their angular input
         # must be identical, without pooling their distinct sample provenance.
@@ -116,4 +116,4 @@ def compare(package):
         maximumAllowedFractions=maxima,maximumNativeBackwardError=backward,referenceControlsPassed=6,sourceDirectionsNormalized=False,
         printedPosteriorNormIssueResolved=False,continuousMotionAccuracyQualified=False,
         mechanicalClockCouplingQualified=False,anatomicalCalibrationQualified=False,afferentFiringQualified=False,avatarBalanceAssessed=False)
-    save(package/'analysis.json',output);return output
+    save(package/'analysis.json' if output_path is None else output_path,output);return output

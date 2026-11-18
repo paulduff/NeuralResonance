@@ -2950,3 +2950,14 @@ reports: this study and motor `3d8835` (explicitly still running). No post-launc
 inspection of either. Rest `760702` and components `d3fbc9` are reviewed and
 passing within their stated scopes. Review new derivative evidence before the
 joint dynamics component gate; no physiology or Avatar qualification yet.
+
+Operator reported `4ab20e` complete: full 2,473-file C:/D: review, 166 tests and
+all 1,686 numerical cases pass; saved analysis reproduced and review D: verified.
+See `DNNE_Afferent_Numerical_Results_2026-11-18.md`. Joint-dynamics component
+preparation is now unlocked. Fast-transient comparison is fully authored/static-
+checked, still gated on that future component review; no transient execution.
+The operator also requested investigation of apparently stalled `3d8835`.
+A bounded diagnostic confirmed analysis failed on event comparison and its final
+backup was actively reading/writing. Leave its process intact; await verified
+backup/footer before full outcome review. No routine live monitoring, restart,
+package mutation or broader qualification. Full goal remains active.

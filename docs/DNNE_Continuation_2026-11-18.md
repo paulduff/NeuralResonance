@@ -476,3 +476,27 @@ On reported completion, review both complete backup copies and saved results
 before the authored joint-dynamics component gate. Fast-transient fixtures and
 capture are checkpointed, but their independent comparison remains unfinished.
 No live selection changes or physiological/Avatar qualification. Full goal active.
+
+Nerve comparison `4ab20e` is now operator-reported and fully reviewed: all 2,473
+C:/D: files, 166 focused cases and 1,686 derivative/clamp comparisons pass.
+Saved analysis exactly reproduces, with maximum candidate allowed fraction
+0.01588438; its new review has a verified D: copy. See
+`DNNE_Afferent_Numerical_Results_2026-11-18.md`. No model/test reran during review.
+Prepare and visibly launch the existing joint dynamics 181-case workflow next.
+
+The subsequent fast-transient rig is now fully authored: independent Decimal
+joint RHS, Radau/BDF trajectories, full saved-state/ledger comparisons, guarded
+freezer/PowerShell launcher and completed-data reviewers. Static syntax, fixture
+identity mappings, 181-case inventory and 46 preserved-source paths pass. No
+new numerical/test execution. Its preparation remains gated on the forthcoming
+reported/reviewed dynamics component result. No transient package exists yet.
+
+Operator subsequently reported `3d8835` apparently stalled and requested a
+diagnostic. One bounded inspection found analysis failed at the saved event
+comparison (analyse-rubral-refinement.py line 48), then entered final backup.
+The same PowerShell PID 30552 and interactive task were still active; a three-
+second sample recorded 44,398,488 bytes read and 14,799,496 written, plus 0.203125
+CPU seconds. Thus backup activity was observed, not a proven stall. No restart,
+termination or package edit. Await its verified backup/footer before full review;
+do not claim numerical success or final preservation from the intermediate status.
+No routine live monitoring resumed. This turn made source and evidence progress.

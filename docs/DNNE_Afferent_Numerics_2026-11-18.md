@@ -1,10 +1,10 @@
 # Sensory nerve derivative comparison
 
-Status: **launched in an independent visible PowerShell window**, awaiting the
-operator's completion report. Package `afferent-numerics-20261118-4ab20e` is
-frozen at `3f49cb952d90b124ab84cb7a727a2a7d4f196593`; its initial 1,914 files plus
-manifest have a verified D: copy. Task: `DNNE-Afferent-Numerics-0dc1320646a5`.
-No post-launch output, status or process was inspected.
+Status: **operator-reported complete, reviewed and passing**. Package
+`afferent-numerics-20261118-4ab20e` is frozen at
+`3f49cb952d90b124ab84cb7a727a2a7d4f196593`. All 2,473 C:/D: files, 166 focused
+cases and 1,686 native comparisons are verified. See
+`DNNE_Afferent_Numerical_Results_2026-11-18.md`. No live monitoring occurred.
 The operator reported `afferent-components-20261118-d3fbc9` complete. Its full
 saved-data review passed: 2,435 files per C:/D: copy and all 166 focused cases;
 the new review also has a verified D: copy. See

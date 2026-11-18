@@ -1,9 +1,10 @@
 # Joint sensory nerve time evolution
 
 Status: authored, builds and static checks pass; **no model or test executed**.
-The dynamics component run is held behind the completed/reviewed derivative
-comparison in `DNNE_Afferent_Numerics_2026-11-18.md`, which is itself waiting for
-the reported/reviewed nerve components. No additional window has started.
+The derivative comparison `4ab20e` is now operator-reported, reviewed and
+passing, with its review backed up on D:. This unlocks preparation and visible
+launch of the joint dynamics component study. No such window has started at
+this authoring checkpoint. See `DNNE_Afferent_Numerical_Results_2026-11-18.md`.
 
 ## Why this is needed
 

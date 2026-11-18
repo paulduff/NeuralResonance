@@ -87,3 +87,17 @@ layout and protected source comparisons pass static checks. No test, adapter
 evaluation, independent solve or model ran during authoring. Frozen preparation
 and backups use D:, followed by an independent visible PowerShell window without
 live monitoring. The two new D: directories share one physical drive.
+
+
+Initial frame package `canal-frame-20261118-dc4bbc` is NOT LAUNCHED. Static
+compatibility review after its initial preflight found the expected managed
+runtime came from the smaller UnityPhysicalSampleProbe (NETCore only), whereas
+NativeMotorBridgeProbe also requires ASP.NET through the structures runtime.
+No model/test or launch attempt occurred. All 2,427 files plus manifest, frozen
+source and explicit NOT_LAUNCHED receipt are preserved in its verified D: backup.
+The corrected freezer binds the complete reviewed canal-probe runtime and proves
+the original skull runtime is an exact unchanged core subset, with only the
+already-reviewed ASP.NET directory added. Host, switches and every original
+core file must agree. A fresh package is required; no frozen input is edited.
+Motor `5bdd81` and sensory `cd9fba` remain the only pending completion reports,
+both unmonitored. Full goal remains active and unfinished.

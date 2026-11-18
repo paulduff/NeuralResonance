@@ -3471,3 +3471,17 @@ Probe and full test builds pass with zero warnings/errors; static inventory,
 source, fixture and Python/PowerShell parsing pass without adapter/model/test
 execution. New window is not launched yet. Exactly TWO reports remain pending:
 motor `5bdd81` and sensory `cd9fba`, both untouched. Full goal active/unfinished.
+
+
+Initial frame package `canal-frame-20261118-dc4bbc` is NOT LAUNCHED. Static
+compatibility review after its initial preflight found the expected managed
+runtime came from the smaller UnityPhysicalSampleProbe (NETCore only), whereas
+NativeMotorBridgeProbe also requires ASP.NET through the structures runtime.
+No model/test or launch attempt occurred. All 2,427 files plus manifest, frozen
+source and explicit NOT_LAUNCHED receipt are preserved in its verified D: backup.
+The corrected freezer binds the complete reviewed canal-probe runtime and proves
+the original skull runtime is an exact unchanged core subset, with only the
+already-reviewed ASP.NET directory added. Host, switches and every original
+core file must agree. A fresh package is required; no frozen input is edited.
+Motor `5bdd81` and sensory `cd9fba` remain the only pending completion reports,
+both unmonitored. Full goal remains active and unfinished.

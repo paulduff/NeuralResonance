@@ -44,6 +44,18 @@ def input_from(folder):
     return dict(version='retained-native-skull-prime-input-v1',clock=read(folder/'clock.json'),expectedEndpoints=201,records=rows)
 
 
+def core_subset(original,full):
+    assert {k:v for k,v in original.items() if k!='directories'}=={k:v for k,v in full.items() if k!='directories'}
+    indexed={d['path']:d for d in full['directories']}
+    assert len(original['directories'])==1 and len(full['directories'])==2
+    for directory in original['directories']:
+        assert 'Microsoft.NETCore.App' in directory['path'] and indexed[directory['path']]==directory
+    extras=[d['path'] for d in full['directories'] if d['path'] not in {n['path'] for n in original['directories']}]
+    assert len(extras)==1 and 'Microsoft.AspNetCore.App' in extras[0]
+    return dict(originalCoreRuntimePreserved=True,additionalReviewedRuntimeDirectories=extras,
+        reason='NativeMotorBridgeProbe references the structures runtime; original UnityPhysicalSampleProbe did not.')
+
+
 def prepare():
     assert not h.git('status','--porcelain'),'Commit first.'
     revision=h.git('rev-parse','HEAD');assert revision==h.git('rev-parse','origin/main'),'Push first.'
@@ -60,7 +72,8 @@ def prepare():
     canal_folder=ROOT/'artifacts/canal-trajectories-20261118-debebb-review';h.verify(canal_folder,['review.json','analysis.json']);canal=read(canal_folder/'review.json')
     assert canal['operatorReportedCompletion'] and canal['savedAnalysisExactlyReproduced'] and canal['numericalCriteriaPassed']
     cc=Path(canal['capture']);assert h.digest(cc/'backup-manifest.json')==canal['manifestSha256']
-    h.verify(cc,['source/'+n for n in PRESERVED])
+    h.verify(cc,['source/'+n for n in PRESERVED]+['managed-runtime-before.json'])
+    runtime_relation=core_subset(read(capture/'managed-runtime-before.json'),read(cc/'managed-runtime-before.json'))
     for name in PRESERVED:assert (ROOT/name).read_text(encoding='utf-8-sig')==h.io(cc/'source'/name).read_text(encoding='utf-8-sig'),name
     source=ROOT/'artifacts/vestibular-mechanics-source-20261118';source_names=['PMC3005417.html','PMC3005417-html-text.json']
     h.verify(source,source_names);interpretation=source_interpretation(source)
@@ -82,11 +95,13 @@ def prepare():
         target=package/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(h.io(src),h.io(target));assert h.digest(src)==h.digest(target)
     for name in names:copy(capture/name,'baseline/'+name)
     copy(review_folder/'review.json','reviewed-skull.json');copy(canal_folder/'review.json','reviewed-canal.json')
-    copy(capture/'managed-runtime-before.json','qualified-managed-runtime.json')
+    copy(cc/'managed-runtime-before.json','qualified-managed-runtime.json')
+    save(package/'runtime-relation.json',runtime_relation)
     for name in source_names:copy(source/name,'source-evidence/'+name)
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
     save(package/'source-interpretation.json',interpretation);save(package/'frame-input.json',frame_input);save(package/'preparation-environment.json',base.environment())
     save(package/'provenance.json',dict(skullManifestSha256=review['manifestSha256'],canalManifestSha256=canal['manifestSha256'],
+        fullManagedRuntimeSha256=h.digest(cc/'managed-runtime-before.json'),
         baselineFiles=[dict(path=n,sha256=h.digest(capture/n)) for n in names],
         preservedSources=[dict(path=n,sha256=h.digest(cc/'source'/n)) for n in PRESERVED],
         newNativePhysicsRequested=False,originalSourceDirectionsChanged=False,originalBoundsChanged=False,
@@ -108,11 +123,13 @@ def preflight(package):
     assert cfg['ExpectedNativeRecords']==603 and cfg['ExpectedAngularRecords']==600 and not cfg['NewNativePhysicsRequested']
     assert review['operatorReportedCompletion'] and review['savedAnalysisExactlyReproduced'] and review['passedTests']==80
     assert p['skullManifestSha256']==review['manifestSha256'] and p['canalManifestSha256']==read(package/'reviewed-canal.json')['manifestSha256']
+    assert h.digest(package/'qualified-managed-runtime.json')==p['fullManagedRuntimeSha256']
     for row in p['baselineFiles']:assert h.digest(package/'baseline'/row['path'])==row['sha256']
     assert read(package/'frame-input.json')==input_from(package/'baseline/study')
     assert {r['path'] for r in p['preservedSources']}==set(PRESERVED)
     for row in p['preservedSources']:assert h.digest(package/'source'/row['path'])==row['sha256']
     assert read(package/'source-interpretation.json')==source_interpretation(package/'source-evidence')
+    assert read(package/'runtime-relation.json')==core_subset(read(package/'baseline/managed-runtime-before.json'),read(package/'qualified-managed-runtime.json'))
     assert base.environment()==read(package/'preparation-environment.json')
     for row in cfg['PackageFiles']:assert h.digest(package/row['Path'])==row['Sha256'],row['Path']
     for tool in ('Dotnet','Python'):assert h.digest(cfg[tool+'Executable'])==cfg[tool+'ExecutableSha256']

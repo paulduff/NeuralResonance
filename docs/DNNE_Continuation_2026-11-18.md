@@ -227,3 +227,33 @@ visible task `DNNE-Cleft-Membranes-8551693db200`. No post-launch results, status
 or processes have been inspected. Two completion reports are pending: this new
 membrane study and rubral comparison `f5e01c`. Skull `0ada47` is reviewed and
 passing within its sampled-measurement scope. Full goal remains active.
+
+## Complete membrane derivative result reviewed
+
+The operator reported membrane `74e956` complete. New saved-data review
+`artifacts/cleft-membranes-review-20261118/review.json` verifies all 2,424 C:/D:
+files, frozen Git source/test/probe binaries, exact prior and unchanged managed
+runtime, numerical environment and all 108 focused cases. All eight regression
+files preserve the 624 closed plus 192 open records byte for byte. All 216
+complete derivative evaluations agree with their saved independent 60/90-digit
+references under the original bounds; the largest error uses about 4.2044% of
+its allowance. Saved analysis reproduces exactly without evaluating model or
+reference equations. The new review has a verified D: copy.
+
+`74e956` is no longer pending. Rubral `f5e01c` remains uninspected awaiting the
+operator. The reviewed membrane result establishes sampled instantaneous
+coupling, not time integration, anatomical calibration or afferent firing.
+
+Independent authoring adds `AvatarVestibularCleftDynamics`, a complete coupled
+SDIRK2 integrator with current-stage voltages/ions/gates, explicit held forcing,
+integer local clock, compensated state/flux quadrature, local charge/K/Na ledgers
+and atomic step acceptance. Invalid states are not clipped; failures retain the
+accepted prefix and failed phase/stage/forcing. Initialization takes explicit
+actual gates and makes no equilibrium claim. Biological source files are
+unchanged and no live body/editor path selects it.
+
+The test-project authoring build passes with zero warnings/errors. Twelve new
+cases (120 with earlier components) await a fresh visible workflow. See
+`DNNE_Cleft_Coupled_Dynamics_2026-11-18.md` for the solver, bookkeeping, exact
+scope and next independent trajectory/stationarity work. No model/test was run
+inline, and no pending study was read. Full goal remains active.

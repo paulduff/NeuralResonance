@@ -1277,3 +1277,12 @@ window: 108 tests, 624 closed plus 192 open byte-identical regression records,
 kernels are unchanged. No new time integration, afferent cable or live Avatar/
 Unity/editor selection is introduced. See the membrane coupling and continuation
 documents for the frozen workflow, reviewed prerequisites and pending execution.
+
+Complete derivative `74e956` is now reviewed/passing: 108 tests, 216 saved
+independent comparisons and 816 byte-identical regression records; 2,424 C:/D:
+files and unchanged dependencies verified. The new `AvatarVestibularCleftDynamics`
+joint voltage/ion/gate integrator is authored separately, with explicit local
+clock, charge/species ledgers and failure-preserving atomic steps. Its twelve
+new cases compile but have not run. No live Avatar/Unity/editor selection is
+changed. See `DNNE_Cleft_Coupled_Dynamics_2026-11-18.md`; time-trajectory accuracy,
+stationary state, afferent firing and balance are later qualification stages.

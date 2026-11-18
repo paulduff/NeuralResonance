@@ -2804,3 +2804,21 @@ manifest D: verified; visible task DNNE-Cleft-Membranes-8551693db200. No post-
 launch output/status/process inspection. TWO pending operator reports: this new
 membrane workflow and rubral f5e01c. Skull 0ada47 is reviewed/passing for sampled
 head measurements; no balance/afferent qualification. Full goal remains active.
+
+Operator now reports membrane 74e956 complete. Full saved-data review verifies
+2,424 C:/D: files, exact source/binaries/runtime and all 108 tests, 216 complete
+60/90-digit derivative comparisons and 816 byte-identical earlier records.
+Maximum allowed fraction .042044112511527195; original bounds unchanged. Saved
+analysis reproduced without model/reference/test execution. New cleft-membranes-
+review-20261118 has verified D: copy. Only rubral f5e01c remains pending so far.
+
+Authored AvatarVestibularCleftDynamics adds joint SDIRK2 time evolution, explicit
+initial actual state/gates and held forcing, local clock, compensated state/flux
+quadrature, local charge/K/Na ledgers and atomic accepted-prefix preservation.
+No clipping, equilibrium claim, restore API or live selection. Original biological
+kernels unchanged. Twelve prospective cases (120 including earlier components)
+compile with zero warnings/errors; no new test/model ran inline. New component
+gate requires the reviewed membrane evidence, exact managed runtime and a fresh
+visible frozen run. See DNNE_Cleft_Coupled_Dynamics_2026-11-18.md. Independent
+active trajectories, stationary solution/stability, afferents and balance remain
+unqualified. Pending rubral capture remains untouched.

@@ -143,3 +143,13 @@ Launched 18 November: `cleft-membranes-20261118-74e956`, frozen at
 D: verified. Visible task: `DNNE-Cleft-Membranes-8551693db200`. The launcher
 returned successfully; outputs/status/processes remain uninspected pending the
 operator's completion report. Launch does not qualify the new derivative.
+
+The operator has since reported completion. Saved-data review verifies all
+2,424 C:/D: files, 108 focused tests, all 816 byte-identical regression records
+and all 216 independent 60/90-digit complete-derivative comparisons. Maximum
+allowed-error fraction is `0.042044112511527195...`; original limits are unchanged.
+Analysis reproduces exactly without new equation/test execution. The separate
+review `artifacts/cleft-membranes-review-20261118` is D: verified. This establishes
+the sampled instantaneous equations. The newly authored time-evolution owner
+and its outstanding checks are described in
+`DNNE_Cleft_Coupled_Dynamics_2026-11-18.md`.

@@ -3037,3 +3037,16 @@ Event observer source is build-checked but its 20 cases are UNRUN and it has no
 live caller; see `docs/DNNE_Afferent_Event_Observer_Draft_2026-11-18.md`.
 Exactly ONE older report remains pending: saved motor `b224a6`, untouched.
 Full goal active; no sensory firing, physiology or Avatar qualification.
+
+
+The tighter solver study is now launched as
+`afferent-precision-20261118-ddef1a`, frozen at pushed revision
+`f2dc6db879860be54a888584fd6b91d9f33af3a9`. Frozen preflight passed and its
+1,948 initial files plus manifest were D: verified before visible task
+`DNNE-Afferent-Precision-48c2161ea474` started. The launch command returned
+successfully. No post-launch output, status or process was inspected.
+Exactly TWO pending reports: older motor `b224a6` and new precision `ddef1a`.
+The observer's 20 proposed cases remain unrun; it is excluded from this study's
+181 focused cases. Eight spectrum controls execute in the new window before
+trajectory comparisons. No live selection, old save or original bound changed.
+Full goal remains active and unfinished.

@@ -106,3 +106,21 @@ inferred. Exact file bytes and decoded arrays must pass before adoption.
 Exactly TWO completion reports are now pending: sensory `501244` and compact
 evidence `bc0501`. All older windows are reviewed. Original records and saves
 remain untouched. Full DNNE/Avatar/World goal remains active and unfinished.
+
+Completed compact evidence `bc0501` is now reviewed. Both 2,021-file package
+copies and frozen Git source verify. All 24 declared controls passed. Every
+archived member matches the original manifest across 241,906 files; decoded
+array digests reproduce exactly for all 39,997 physical samples. The archives
+use 409,936,598 bytes versus 1,200,072,296 raw bytes (65.8407% reduction).
+The four-file review artifact `native-evidence-20261118-bc0501-review` is
+D: verified. This was saved-byte/array review only; no models or tests reran.
+Original raw C:/D: captures remain; the new archive workspace and verification
+copy share D:, so they are not independent-drive redundancy. The completed
+format check does not yet qualify a live capture/cleanup workflow. Full motor
+source/packet/native accounting through the format is still required before
+new-record staging cleanup or the full refined motor matrix. No original
+records, limits, saves, or live selectors changed. Only ONE completion report
+is now pending: sensory retry `501244`, untouched. The repeated failed `2b5a68`
+message is already reviewed and repaired, not a new failed retry.
+Independent source-based coupled canal mechanics are being authored; no
+physiological calibration or live balance qualification is inferred.

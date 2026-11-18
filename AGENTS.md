@@ -3272,3 +3272,13 @@ inferred. Exact file bytes and decoded arrays must pass before adoption.
 Exactly TWO completion reports are now pending: sensory `501244` and compact
 evidence `bc0501`. All older windows are reviewed. Original records and saves
 remain untouched. Full DNNE/Avatar/World goal remains active and unfinished.
+
+Latest completed result: compact evidence `bc0501`, reviewed with 2,021 files
+per package copy, all 24 controls and all 241,906 archived member hashes passing.
+All 39,997 decoded physical samples reproduce exactly. Storage is 409,936,598
+versus 1,200,072,296 bytes (65.8407% smaller); old raw captures remain untouched.
+Review artifact is D: verified. See `docs/DNNE_Native_Evidence_Storage_2026-11-18.md`.
+Live archive accounting/cleanup and full refined motor matrix remain unqualified.
+Exactly ONE pending completion report: sensory retry `501244`; no live monitoring.
+Repeated failed `2b5a68` is already reviewed/repaired. Coupled canal candidate
+is in independent authoring; no new mechanical test or model executed yet.

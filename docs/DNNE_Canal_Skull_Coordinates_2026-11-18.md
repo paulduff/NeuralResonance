@@ -1,7 +1,12 @@
 # Measured head motion to the published canal coordinates
 
-Status: authored, not yet launched. Motor `5bdd81` and sensory rest `cd9fba`
-are still awaiting completion reports and have not been monitored.
+Status: launched visibly as `canal-frame-20261118-a80ee0`, frozen at
+`ddf0efb1c49b7cf38e6118711020a5bb52b0704c`. Static frozen preflight passed;
+2,427 initial files plus manifest were verified in the D: backup before task
+`DNNE-Canal-Frame-acfa4c13bba8` started. Launch returned successfully. No
+post-launch output, status or process inspected. Exactly THREE completion
+reports are pending: motor `5bdd81`, sensory rest `cd9fba`, and frame `a80ee0`.
+None has been monitored; no result is inferred from launch.
 
 The published canal mechanics now passes its declared numerical comparison,
 but its three input numbers are not Avatar pitch, yaw and roll acceleration.

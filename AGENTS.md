@@ -3485,3 +3485,21 @@ already-reviewed ASP.NET directory added. Host, switches and every original
 core file must agree. A fresh package is required; no frozen input is edited.
 Motor `5bdd81` and sensory `cd9fba` remain the only pending completion reports,
 both unmonitored. Full goal remains active and unfinished.
+
+
+The corrected head-to-canal coordinate study is launched as
+`canal-frame-20261118-a80ee0`, workspace
+`D:/DNNE-build-work/canal-frame-20261118-a80ee0`, frozen at pushed revision
+`ddf0efb1c49b7cf38e6118711020a5bb52b0704c`. Static frozen preflight passed;
+2,427 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/canal-frame-20261118-a80ee0` before visible task
+`DNNE-Canal-Frame-acfa4c13bba8` started. Launch returned successfully. No
+post-launch output, status or process inspected. The window runs 100 focused
+checks, replays 603 completed head receipts, and compares 600 angular inputs
+against 60/90-digit independent reconstruction with six analytic controls.
+No new Unity physics or organ trajectory is requested. Printed PC norm ambiguity,
+continuous-motion derivative accuracy, mechanical clock coupling, anatomical
+mapping, sensory firing and balance remain unqualified. Unlaunched `dc4bbc`
+and its NOT_LAUNCHED receipt/source remain D: verified and unchanged. Exactly
+THREE completion reports are pending: motor `5bdd81`, sensory `cd9fba` and
+coordinate `a80ee0`. No pending study has been monitored. Full goal active/unfinished.

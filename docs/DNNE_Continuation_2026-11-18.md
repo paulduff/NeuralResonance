@@ -1109,3 +1109,47 @@ mapping, sensory firing and balance remain unqualified. Unlaunched `dc4bbc`
 and its NOT_LAUNCHED receipt/source remain D: verified and unchanged. Exactly
 THREE completion reports are pending: motor `5bdd81`, sensory `cd9fba` and
 coordinate `a80ee0`. No pending study has been monitored. Full goal active/unfinished.
+
+## Wind-down checkpoint after coordinate and sensory completion
+
+The operator reported final coordinate failure `a80ee0`. Its 100 focused tests,
+603 exact original skull receipts, six analytic controls and both independent
+600-input reconstructions completed. Final comparison passed a three-component
+list to Decimal instead of its indexed scalar. The repair changes only the two
+indices and adds a separate review-output destination. All 3,570 files per copy,
+frozen source, binaries and runtime were verified. The corrected saved comparison
+passes under unchanged bounds; the native maximum allowed fraction is
+0.00006893290530103808. Original FAILED status/evidence remain untouched. The
+four-file review has a verified D: copy. No model, test or solve was rerun.
+Fix and result documentation are pushed in `34da585`.
+
+The operator also reported loaded sensory `cd9fba` complete. Both 2,459-file
+copies, frozen source, binaries and dependencies are verified. Numerical analysis
+and finite-time observations reproduce exactly without model/test/solve reruns.
+All four conditions, independent references, sampled refinement and conservation
+checks pass. Worst finest-step error uses 0.01696766123646964 of its allowance.
+The quiet state passes prospective drift limits; voltage disturbances contract
+over four milliseconds but ions/gates have not fully returned. There are 114,688
+advanced steps and 114,700 retained rows including twelve initial states. An
+initial reviewer count assertion omitted that distinction; only the reviewer
+was corrected. The original study was successful and unchanged. The four-file
+review has its own verified D: backup. See the loaded-continuation result note.
+
+The operator requested notes and a pause after the final two windows finish or
+fail. No new studies were launched after that request. Motor `5bdd81` is now the
+only outstanding final report. At a subsequent explicit stall question, a bounded
+check around 16:13–16:14 found its quiet condition complete at 31,996 steps,
+published archive receipt present, and publisher CPU time increasing during
+archive verification/release. Six conditions remained. This was a requested
+status diagnosis, not permission for ongoing monitoring. Nothing was killed,
+restarted or edited in its frozen package.
+
+`AvatarClockedCoupledCanal` and 21 controls are saved as an isolated candidate.
+The full test project built with zero warnings/errors; those controls are
+unexecuted and no qualification rig/window was launched. Its original-clock
+ownership, explicit initial state, delayed input hold, acknowledgement and
+atomic interval commit are documented in the clock-candidate note. No live
+Avatar, Unity or editor selection changed. The current handoff is
+`DNNE_Checkpoint_2026-11-18.md`: await the final motor report, review/preserve its
+outcome, finish the notes and commit/push, then pause the goal at the operator's
+request. The goal remains active and unfinished until that stopping condition.

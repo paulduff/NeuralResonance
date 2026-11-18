@@ -1,6 +1,18 @@
 # Avatar and environment work
 
-Latest pause/resume checkpoint: `docs/DNNE_Checkpoint_2026-11-17.md`.
+Latest wind-down checkpoint: `docs/DNNE_Checkpoint_2026-11-18.md`.
+The operator requested a pause after the final two windows complete or fail.
+Do not launch further studies during this wind-down. Loaded sensory `cd9fba`
+has reported completion; motor `5bdd81` still needs its final report and review.
+The goal is not yet paused. A requested one-off stall check found the motor
+publisher active after its first completed condition; do not resume monitoring.
+Head-coordinate `a80ee0` retained its original FAILED status; a scalar-index
+repair passes the saved 600-input comparison with unchanged bounds and a
+separate verified review. Loaded sensory `cd9fba` has been fully reviewed:
+four conditions pass, quiet drift passes, 114,688 steps plus twelve initial
+rows are retained, and both copies and the saved analyses are verified.
+The new coupled-canal clock owner is build-only with 21 unexecuted controls;
+do not treat it as qualified or launch it during this wind-down.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

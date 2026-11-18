@@ -67,3 +67,44 @@ passed static checks without evaluating equations. The saved stopping review
 has its own three-file verified D: copy. Package workspace is
 `D:/DNNE-build-work/afferent-loaded-20261118-cd9fba`; backup is
 `D:/DNNE-desktop-runs/UnityWorld/afferent-loaded-20261118-cd9fba`.
+
+## Reported completion and verified saved trajectories
+
+The operator reported the final DIAGNOSTICS_COMPLETE footer. All four conditions
+pass the unchanged numerical, independent-reference, sampled-refinement and
+conservation criteria. The saved quiet state also stays within its separate
+prospective drift bounds. Native error fractions at the three resolutions are:
+
+| Condition | 1/1024 ms | 1/2048 ms | 1/4096 ms |
+|---|---:|---:|---:|
+| Quiet | 8.79233e-9 | 8.78166e-9 | 8.74371e-9 |
+| Hair +1 mV | 0.519272 | 0.0749995 | 0.0169670 |
+| Hair -1 mV | 0.519291 | 0.0750023 | 0.0169677 |
+| Bundle displacement then release | 0.0845764 | 0.0122073 | 0.00276124 |
+
+These are fractions of the allowed error, not voltage amplitudes; values below
+one pass. The largest finest-step fraction is about 1.697% of the bound.
+At the finest step, the initial +/-1 mV disturbances have maximum voltage
+departures of about 0.02089 and 0.02090 mV at four milliseconds. The bundle case
+peaks at 0.40236 mV and ends at 0.03956 mV. These are maxima across the saved
+voltage coordinates relative to the quiet root. Ion concentrations and channel
+gates still differ from the root. This finite-time contraction does not establish
+asymptotic stability, full recovery, human calibration or sensory spike output.
+
+`tools/review-afferent-loaded-result.py` verifies both original 2,459-file copies,
+frozen Git source, binaries, dependencies and preserved activation/default
+choices, then reproduces the saved numerical analysis and observations exactly.
+There are 114,688 advanced native steps and 114,700 retained rows: each of the
+twelve runs also retains its initial state. The first review attempt stopped on
+a reviewer count assertion that incorrectly counted initial rows as steps; no
+study failure occurred and no captured evidence was changed. The corrected
+review distinguishes the two counts. No model, test, derivative or independent
+reference solve is rerun during this review.
+
+The review output is `artifacts/afferent-loaded-20261118-cd9fba-review`, separately
+backed up under `D:/DNNE-desktop-runs/UnityWorld` with the same name. It preserves
+the full numerical analysis and finite-time observations. The 333 earlier
+component checks and 196 earlier root checks are reused, not counted as newly
+executed. Original failed resting searches, short-trajectory failures and the
+production activation default remain unchanged. No further study is launched
+during the operator's requested wind-down.

@@ -97,3 +97,17 @@ Only the older saved motor comparison `e9bed6` is pending before this new launch
 its output and processes remain untouched. Full DNNE/Avatar/World goal remains
 active. Loaded rest, calibrated afferent firing, mechanical parameters and
 closed-loop Avatar balance/recovery remain unfinished.
+
+
+The explicit activation continuation comparison is now launched as
+`afferent-endpoint-20261118-2b5a68`, frozen at pushed revision
+`314a072e72831ea479ecb134049b9400c21ea9e9`. Static frozen preflight passed;
+2,065 initial files plus manifest were D: verified before visible task
+`DNNE-Afferent-Endpoint-19a507a1d31c` started. Launch returned successfully.
+No post-launch output, process or status was inspected. The window runs 332
+focused cases, 21 exact original native replays, 21 candidate trajectories and
+21 independent references under the original acceptance bounds. No success is
+inferred. Original defaults, failed captures, saves and live selection remain.
+The operator has now reported older motor `e9bed6` complete; its saved review is
+underway. Exactly ONE completion report is pending: new sensory `2b5a68`.
+Full DNNE/Avatar/World goal remains active and unfinished.

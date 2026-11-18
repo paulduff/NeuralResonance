@@ -39,3 +39,16 @@ stimuli through its existing vestibular population path. Connecting a new
 neuronal source will require declared central contacts and an explicit owner
 boundary, avoiding re-simulation of an already owned afferent or generic target
 remapping. This draft does not repair or qualify that live pathway.
+
+
+Observed sensory ingress controls are now launched as
+`afferent-ingress-20261118-d519cf`, frozen at pushed revision
+`3afd4e7623c524bedde78c1d304ac3abbfc92ac5`. Frozen preflight passed; 1,953
+initial files plus manifest were D: verified before visible task
+`DNNE-Afferent-Ingress-fa7811807879` started. Launch returned successfully;
+no post-launch output, status or process inspected. The window includes all
+264 declared cases, including the previously unrun observation controls.
+Exactly THREE pending reports: sensory ingress `d519cf`, sensory precision
+`ddef1a`, and saved motor comparison `e9bed6`. No completion or test success
+is inferred. Live sensory firing, physiological calibration, closed-loop
+World control and Avatar recovery remain unqualified. Full goal active.

@@ -662,3 +662,16 @@ previously unrun 20 observation cases and 20 new ingress cases. Static inventory
 have NOT executed. This checks connection mechanics, not physiological firing,
 loaded rest, spatial calibration or Avatar balance. Older windows `e9bed6` and
 `ddef1a` are still the TWO pending reports and remain untouched. Full goal active.
+
+
+Observed sensory ingress controls are now launched as
+`afferent-ingress-20261118-d519cf`, frozen at pushed revision
+`3afd4e7623c524bedde78c1d304ac3abbfc92ac5`. Frozen preflight passed; 1,953
+initial files plus manifest were D: verified before visible task
+`DNNE-Afferent-Ingress-fa7811807879` started. Launch returned successfully;
+no post-launch output, status or process inspected. The window includes all
+264 declared cases, including the previously unrun observation controls.
+Exactly THREE pending reports: sensory ingress `d519cf`, sensory precision
+`ddef1a`, and saved motor comparison `e9bed6`. No completion or test success
+is inferred. Live sensory firing, physiological calibration, closed-loop
+World control and Avatar recovery remain unqualified. Full goal active.

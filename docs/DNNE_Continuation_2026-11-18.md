@@ -219,3 +219,11 @@ visible frozen workflow will execute all tests and equations; no new numerical
 comparison, test or model has run inline. See
 `DNNE_Cleft_Membrane_Coupling_2026-11-17.md` for scope and the subsequent joint
 time-integration requirement. No live Avatar, World or editor selection changes.
+
+The membrane workflow is now launched as `cleft-membranes-20261118-74e956`,
+frozen at pushed revision `274214bc6c44538fbf0312ef730dcac843d437e3`. All 1,864
+initial files plus manifest were verified on D: before the launcher opened
+visible task `DNNE-Cleft-Membranes-8551693db200`. No post-launch results, status
+or processes have been inspected. Two completion reports are pending: this new
+membrane study and rubral comparison `f5e01c`. Skull `0ada47` is reviewed and
+passing within its sampled-measurement scope. Full goal remains active.

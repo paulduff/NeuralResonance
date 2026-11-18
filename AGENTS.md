@@ -2797,3 +2797,10 @@ ports. Reviewed open source/regression and exact Python/.NET runtimes are pinned
 No candidate biology/previous bounds changed. Capture build passes, zero warnings/
 errors; static checks only inline. Preparation/visible launch are next. Do not
 qualify time integration, afferent firing or live selection from this study.
+
+Complete membrane comparison now launched: cleft-membranes-20261118-74e956,
+frozen at 274214bc6c44538fbf0312ef730dcac843d437e3, initial 1,864 files plus
+manifest D: verified; visible task DNNE-Cleft-Membranes-8551693db200. No post-
+launch output/status/process inspection. TWO pending operator reports: this new
+membrane workflow and rubral f5e01c. Skull 0ada47 is reviewed/passing for sampled
+head measurements; no balance/afferent qualification. Full goal remains active.

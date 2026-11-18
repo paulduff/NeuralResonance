@@ -34,7 +34,9 @@ def prepare(review_folder):
     h.verify(review_folder,['review.json','analysis.json']);review=read(review_folder/'review.json');capture=Path(review['capture'])
     assert review['operatorReportedCompletion'] and review['componentCriteriaPassed'] and review['coupledCanalChecksPassed'] and review['passedTests']==76
     assert h.digest(capture/'backup-manifest.json')==review['manifestSha256']
-    h.verify(capture,['source/'+name for name in PRESERVED]+['managed-runtime-before.json'])
+    h.verify(capture,['source/'+name for name in PRESERVED]+['managed-runtime-before.json','analysis.json'])
+    assert h.digest(capture/'analysis.json')==review['analysisSha256']
+    assert read(capture/'analysis.json')==read(review_folder/'analysis.json')
     for name in PRESERVED:assert (ROOT/name).read_text(encoding='utf-8-sig')==(capture/'source'/name).read_text(encoding='utf-8-sig'),name
     package=Path('D:/DNNE-build-work')/('canal-trajectories-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6])
     backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
@@ -54,6 +56,7 @@ def prepare(review_folder):
         shutil.copyfile(source,package/name);assert h.digest(source)==h.digest(package/name)
     copy(review_folder/'review.json','reviewed-components.json')
     copy(review_folder/'analysis.json','reviewed-component-analysis.json')
+    copy(capture/'analysis.json','original-component-analysis.json')
     copy(capture/'managed-runtime-before.json','qualified-managed-runtime.json')
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
     save(package/'trajectory-input.json',protocol());save(package/'preparation-environment.json',base.environment())
@@ -79,7 +82,8 @@ def preflight(package):
     assert cfg['IsolatedCanalTrajectories'] and cfg['NoLiveMonitoring'] and cfg['ExpectedNativeRuns']==45 and cfg['ExpectedReferenceCases']==15
     assert cfg['ExpectedReferenceControls']==6 and cfg['ComponentTestsReused']==p['componentCasesReused']==review['passedTests']==76
     assert review['operatorReportedCompletion'] and review['componentCriteriaPassed'] and review['coupledCanalChecksPassed']
-    assert h.digest(package/'reviewed-component-analysis.json')==review['analysisSha256']
+    assert h.digest(package/'original-component-analysis.json')==review['analysisSha256']
+    assert read(package/'reviewed-component-analysis.json')==read(package/'original-component-analysis.json')
     assert review['sourceRevision']==p['originalRevision'] and review['manifestSha256']==p['originalManifestSha256']
     assert {r['path'] for r in p['preservedSources']}==set(PRESERVED)
     for row in p['preservedSources']:assert h.digest(package/'source'/row['path'])==row['sha256']

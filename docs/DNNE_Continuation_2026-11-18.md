@@ -947,3 +947,12 @@ SciPy expm. Every native endpoint and both physical/numerical energy losses are
 accounted. No new model, reference or test has executed during authoring. The
 probe build passes without warnings/errors. Work/backup use D:; old evidence
 and all live defaults remain. No pending reports before launch. Full goal active.
+
+
+Initial trajectory package `canal-trajectories-20261118-e01e93` stopped at static
+preflight before launch: the original capture's analysis SHA-256 was mistakenly
+compared with the reformatted review JSON. Their decoded contents agree; their
+bytes differ. No model/test executed. The unlaunched package and explicit failure
+receipt are preserved. The freezer now separately copies/hash-verifies the
+original analysis and compares its decoded contents to the reviewed reconstruction.
+A new frozen package is required; no frozen source or acceptance bound is edited.

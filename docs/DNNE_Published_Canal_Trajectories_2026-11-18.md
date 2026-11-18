@@ -104,3 +104,12 @@ Sensory resting states, sustained neuronal afferent firing, physiological
 calibration and connected Avatar balance/recovery remain separate open work.
 The motor branch separately needs new-capture archive staging and the full
 refined condition matrix; archive accounting alone does not qualify that path.
+
+
+Initial trajectory package `canal-trajectories-20261118-e01e93` stopped at static
+preflight before launch: the original capture's analysis SHA-256 was mistakenly
+compared with the reformatted review JSON. Their decoded contents agree; their
+bytes differ. No model/test executed. The unlaunched package and explicit failure
+receipt are preserved. The freezer now separately copies/hash-verifies the
+original analysis and compares its decoded contents to the reviewed reconstruction.
+A new frozen package is required; no frozen source or acceptance bound is edited.

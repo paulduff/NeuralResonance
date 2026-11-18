@@ -91,3 +91,17 @@ trajectories across fast and slow regimes before physiological mapping. The
 coordinate conversion, physical sample adapter, local bundle mechanics, afferent
 firing and connected Avatar balance/recovery remain unqualified. No existing
 model default, live control, old save, failed result or acceptance bound changes.
+
+The component qualification is launched as `coupled-canal-20261118-0fe70b`,
+workspace `D:/DNNE-build-work/coupled-canal-20261118-0fe70b`, frozen at pushed
+revision `2f93d4c55816a30b205f64a758388eddc32432dd`. Frozen static preflight
+passed; 1,986 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/coupled-canal-20261118-0fe70b` before visible
+task `DNNE-Coupled-Canal-89689213d13c` started. Launch returned successfully.
+No post-launch output, process or status was inspected. Tests/models execute
+only in that independent window; no pass is inferred from launch or builds.
+Exactly TWO completion reports are pending: sensory retry `501244` and coupled
+canal `0fe70b`. Compact evidence `bc0501` is fully reviewed/passing; earlier
+sensory `2b5a68` is reviewed/repaired. Source evidence, original mechanics,
+old saves and live Avatar/Unity/editor selection remain preserved. Full goal
+active and unfinished; physiological balance and recovery remain unqualified.

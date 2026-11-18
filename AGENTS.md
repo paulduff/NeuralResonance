@@ -3291,3 +3291,11 @@ numerical energy loss must remain separate. SimAvatar/test-project builds pass;
 76 tests are declared but not executed during authoring. New qualification
 uses D: workspace/backup; both copies share D:. Only sensory retry `501244`
 is pending before this launch. No live monitoring; full goal remains unfinished.
+
+Latest launch: coupled canal `0fe70b`, D:/DNNE-build-work workspace, frozen
+`2f93d4c55816a30b205f64a758388eddc32432dd`; 1,986 initial files plus manifest
+D: verified before visible task `DNNE-Coupled-Canal-89689213d13c`. No post-launch
+inspection. Exactly TWO pending reports: sensory retry `501244` and canal
+`0fe70b`. Compact evidence `bc0501` reviewed/passing; failed `2b5a68` already
+reviewed/repaired. See coupled canal and native evidence documents for remaining
+accuracy, integration, physiology and recovery work. Goal active, unfinished.

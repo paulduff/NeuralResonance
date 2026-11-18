@@ -868,3 +868,16 @@ models executed during authoring. A 76-case isolated visible window is prepared:
 Only ONE completion report remains pending before launch: sensory retry `501244`.
 Use D: workspace and backup to retain C: reserve; new copies share D:. Full goal
 active; neither component arithmetic nor the source label qualifies physiology.
+
+Coupled canal window `0fe70b` is launched from pushed revision
+`2f93d4c55816a30b205f64a758388eddc32432dd`, at
+`D:/DNNE-build-work/coupled-canal-20261118-0fe70b`. Static frozen preflight
+passed and 1,986 initial files plus manifest were D: verified before visible
+task `DNNE-Coupled-Canal-89689213d13c` started. No post-launch inspection.
+See `docs/DNNE_Coupled_Canal_Mechanics_2026-11-18.md` for the 76 declared
+mechanical/analytic/regression cases and remaining limits. Exactly TWO reports
+pending: sensory `501244` and canal `0fe70b`, both unmonitored. Compact storage
+`bc0501` is reviewed/passing. Next motor work is archive-aware source/packet/native
+accounting before the full refined matrix; next canal work follows its component
+review with independent published-model accuracy and explicit coordinate mapping.
+Full biological brain/body/world goal remains active and unfinished.

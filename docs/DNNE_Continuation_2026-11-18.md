@@ -924,3 +924,15 @@ next canal work is independent source-specimen trajectory comparison, and next
 sensory work must address loaded rest/stability and longer free dynamics before
 claiming usable afferent firing. Original evidence and saves remain untouched.
 Full DNNE/Avatar/World goal active, unfinished; no blocked condition applies.
+
+Archived accounting `13c9cf` is now reviewed/passing: all 2,075 files per D:
+package copy, frozen source and twelve controls verify. Original/archive reports
+and specifications are byte-identical and source reports exactly reproduce the
+reviewed motor comparison. Array digests match the prior recording review.
+Scope: 24,000 neuronal frames, 30,002 motor rows, 39,995 physical steps and both
+initial samples. Four-file review is D: verified; no model/test reran. Original
+raw and archived records remain. New capture staging/verified cleanup and the
+full refined motor matrix remain next motor requirements. No pending completion
+reports now. Published canal numerical comparison is being authored, with fast
+resolution around input changes and larger steps only after resolved transients;
+no new mechanical reference/model/test has run. Full goal active, unfinished.

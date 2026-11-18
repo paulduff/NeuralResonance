@@ -3323,3 +3323,10 @@ No post-launch inspection. Exactly ONE pending report: `13c9cf`. Both sensory
 `501244` and canal `0fe70b` are reviewed/passing within their documented scope.
 See archived accounting, activation continuation and coupled canal documents.
 No raw cleanup enabled, no old captures/defaults/saves changed. Goal unfinished.
+
+Archived accounting `13c9cf` reviewed/passing: 2,075 files per D: copy, twelve
+controls, exact raw/archive reports/specifications and prior array digests.
+24,000 source frames/39,995 physical steps accounted; four-file review D: verified.
+No pending reports. New capture staging/cleanup and full refined motor matrix
+remain; independent published-canal trajectory comparison is in authoring only.
+See archived accounting document. Original records/saves remain; goal unfinished.

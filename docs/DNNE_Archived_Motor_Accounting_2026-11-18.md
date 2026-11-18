@@ -75,3 +75,22 @@ ODE runs. Exactly ONE completion report is pending: `13c9cf`. Sensory `501244`
 and canal `0fe70b` are both fully reviewed/passing within their documented scope.
 No new-record deletion or old-capture migration is enabled. Full biological
 brain/body/world goal remains active and unfinished.
+
+## Completed archived accounting review
+
+The operator reported `13c9cf` complete. Review verifies all 2,075 files in both
+D: package copies and frozen Git source. All twelve declared view/stream controls
+passed. Both complete raw/archive accounting reports and generated specifications
+are byte-identical; their source reports reproduce the earlier reviewed motor
+comparison exactly. All decoded array digests match the earlier compact-recording
+review. The checked scope includes 24,000 source frames, 30,002 motor rows and
+39,995 physical steps plus both initial samples. No model or test reran in review.
+The completed window's full raw/archive audits are retained; the review verifies
+their hash-bound results rather than repeating both long audits. The four-file
+`native-accounting-20261118-13c9cf-review` artifact is D: verified.
+
+This qualifies archived source/packet/native accounting for these two captures.
+New capture staging, verified cleanup, the full refined motor matrix, physiological
+calibration and Avatar recovery remain unqualified. No original records are
+removed or changed. There are no pending completion reports at this checkpoint.
+The independent published canal trajectory comparison is in authoring, not running.

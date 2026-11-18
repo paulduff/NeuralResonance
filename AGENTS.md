@@ -2891,3 +2891,9 @@ outcomes. No time integration, physiological rest, afferent or Avatar claim.
 Source-only authoring build/static checks pass; tests/models run only in the
 new frozen visible PowerShell window after preparation and verified D: backup.
 Motor `3d8835` remains the sole pending run here and has not been inspected.
+
+Active sensory rest is now launched: `760702`, frozen
+`e4e3cf2243d108a49a49162b3ef5173605989c25`, 1,880 initial files plus manifest
+D: verified, task `DNNE-Cleft-Rest-b9015911e2fc`. TWO pending windows: this
+sensory study and motor `3d8835`. No post-launch inspection of either. Await
+operator completion; physiological rest, afferents and Avatar remain unqualified.

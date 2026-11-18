@@ -379,3 +379,13 @@ Python/static 132-case inventory and PowerShell syntax checks passed. No new
 model/test/control executed inline. Motor `3d8835` remains pending and untouched.
 At this authoring point there is still only that ONE pending window. Prepare,
 verify D: and launch the sensory study next; await operator completion for both.
+
+Sensory active rest launched as `cleft-rest-20261118-760702`, frozen at pushed
+revision `e4e3cf2243d108a49a49162b3ef5173605989c25`. All 1,880 initial files plus
+manifest verified on D: before visible task `DNNE-Cleft-Rest-b9015911e2fc`
+started. No post-launch outputs, processes or status have been inspected.
+
+There are now TWO pending windows: motor partition `3d8835` and sensory rest
+`760702`. Await the operator's completion reports. Sensory refinement `884934`
+remains fully reviewed/passing. The active goal remains unfinished: no resting
+physiology, afferent firing, closed-loop balance or fall recovery is qualified.

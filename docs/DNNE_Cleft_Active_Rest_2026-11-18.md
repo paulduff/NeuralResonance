@@ -106,3 +106,8 @@ independent perturbation trajectories from those roots before defining an
 afferent connection. If they fail, diagnose the retained residuals/branches
 before changing biological parameters. Existing source-equation uncertainties
 about the afferent cable remain explicit in the 17 November equation audit.
+
+Launched `cleft-rest-20261118-760702` from pushed revision
+`e4e3cf2243d108a49a49162b3ef5173605989c25`, after verifying all 1,880 initial
+files plus manifest on D:. Visible task: `DNNE-Cleft-Rest-b9015911e2fc`.
+No post-launch monitoring or outcome inspection. Await operator completion.

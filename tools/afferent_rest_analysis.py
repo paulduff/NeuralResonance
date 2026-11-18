@@ -44,6 +44,8 @@ def saved_residual(values,names,criteria):
 def audit_spectrum(matrix,uncertainty,settings,record,path):
     with np.load(path,allow_pickle=False) as data:
         assert set(data.files)=={'eigenvalues','eigenvectors'};values=data['eigenvalues'];vectors=data['eigenvectors']
+    from afferent_spectrum_witness import arithmetic_layout,LEGACY_LAYOUT
+    values,vectors=arithmetic_layout(values,vectors,record.get('witnessArithmeticLayout',LEGACY_LAYOUT))
     n=len(matrix);assert matrix.shape==(n,n) and values.shape==(n,) and vectors.shape==(n,n)
     assert np.isfinite(matrix).all() and np.isfinite(values).all() and np.isfinite(vectors).all()
     assert record['eigenvalues']==[dict(real=float(v.real),imaginary=float(v.imag)) for v in values]
@@ -101,7 +103,7 @@ def audit_stability(folder,record,names,state,settings,root_evaluation):
         retainedEigenvectorsVerified=True,newEigenSolveExecuted=False)
 
 
-def analyse(package):
+def analyse(package,output=None,require_all=True):
     spec=validate(read(package/'rest-input.json'));native=read(package/'study/results.json');independent=read(package/'independent-rest/results.json')
     keys=[c['key'] for c in spec['cases']];witnesses=read(package/'native-witnesses/results.json')
     assert native['completed'] and native['attempted']==18 and not native['executionFailures']
@@ -168,8 +170,8 @@ def analyse(package):
         allMethodsReachedSameBranch=all(r['sameBranchComparison'] and r['sameBranchComparison']['withinDeclaredDistance'] for r in rows),
         branchUniquenessProven=False,nonlinearStabilityProven=False,timeIntegrated=False,originalBiologyChanged=False,
         physiologicalRestQualified=False,afferentFiringQualified=False,avatarRecoveryAssessed=False)
-    with (package/'rest-analysis.json').open('x',encoding='utf-8') as stream:json.dump(result,stream,indent=2,allow_nan=False)
-    if not result['numericalStationaryCriteriaPassed']:raise RuntimeError('Connected stationary criteria unresolved; all roots, failures and original bounds retained.')
+    with (output if output is not None else package/'rest-analysis.json').open('x',encoding='utf-8') as stream:json.dump(result,stream,indent=2,allow_nan=False)
+    if require_all and not result['numericalStationaryCriteriaPassed']:raise RuntimeError('Connected stationary criteria unresolved; all roots, failures and original bounds retained.')
     return result
 
 

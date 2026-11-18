@@ -3022,3 +3022,18 @@ motor `b224a6`, fast trajectories `cf2f38`, connected rest `62949f`. No post-lau
 outputs, status or processes inspected. Component `54d343` is reviewed/passing,
 not pending. Full goal active; root/stability calculations remain separate from
 free firing, physiological calibration, sensory DNNE return and Avatar recovery.
+
+
+The operator subsequently reported BOTH rest `62949f` and fast trajectories
+`cf2f38` FAILED and complete. Full saved reviews verified 2,601/2,964 C:/D:
+files and 196/181 focused cases, with runtime/source preservation. Reviews are
+D: verified. See `docs/DNNE_Afferent_Precision_2026-11-18.md`: the rest audit's
+NPZ memory-layout mismatch is repaired without changing any numerical bound;
+all 18 independent roots and 12 native roots verify, with six native line-search
+failures preserved. All seven finest trajectory errors meet direct limits, but
+six reference and six refinement checks fail. The unchanged-model, tighter
+solver-tolerance experiment is being prepared. No new model/test ran inline.
+Event observer source is build-checked but its 20 cases are UNRUN and it has no
+live caller; see `docs/DNNE_Afferent_Event_Observer_Draft_2026-11-18.md`.
+Exactly ONE older report remains pending: saved motor `b224a6`, untouched.
+Full goal active; no sensory firing, physiology or Avatar qualification.

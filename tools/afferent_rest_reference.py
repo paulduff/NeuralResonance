@@ -114,6 +114,8 @@ class ActiveReference:
 
 def spectrum(matrix,uncertainty,settings,path):
     values,vectors=np.linalg.eig(matrix)
+    from afferent_spectrum_witness import arithmetic_layout,CANONICAL_LAYOUT
+    values,vectors=arithmetic_layout(values,vectors,CANONICAL_LAYOUT)
     assert np.isfinite(values).all() and np.isfinite(vectors).all()
     # Retain the actual witnesses, unlike the earlier sealed reference.
     np.savez_compressed(path,eigenvalues=values,eigenvectors=vectors)
@@ -127,7 +129,7 @@ def spectrum(matrix,uncertainty,settings,path):
     if passed and np.isfinite(radius):
         if right+radius < -margin:classification='locally-decaying estimate'
         elif right-radius > margin:classification='locally-growing estimate'
-    return dict(eigenvalues=[dict(real=float(v.real),imaginary=float(v.imag)) for v in values],
+    return dict(witnessArithmeticLayout=CANONICAL_LAYOUT,eigenvalues=[dict(real=float(v.real),imaginary=float(v.imag)) for v in values],
         maximumRealPartPerMs=right,eigenvectorCondition=condition if np.isfinite(condition) else None,
         normalizedEigenResiduals=residuals.tolist(),maximumNormalizedEigenResidual=float(residuals.max()),eigenResidualPassed=passed,
         sampledUncertaintyRadiusPerMs=radius if np.isfinite(radius) else None,classification=classification,

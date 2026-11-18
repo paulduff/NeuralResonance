@@ -15,30 +15,42 @@ def module(name,path):
 
 def main(capture,reported):
     assert reported,'Operator completion report required; do not inspect a pending window.'
-    assert capture.parent==ROOT/'artifacts' and capture.name.startswith('afferent-trajectories-')
+    assert capture.parent==ROOT/'artifacts' and capture.name.startswith(('afferent-trajectories-','afferent-precision-'))
+    precision_study=capture.name.startswith('afferent-precision-')
     out=capture.parent/(capture.name+'-review');assert not out.exists()
     files=module('afferent_trajectory_files',ROOT/'tools/review-olive-and-motor-20261109.py')
     archive=module('afferent_trajectory_archive',ROOT/'tools/review-spindle-root-and-causal-motor-20261113.py')
     revision=files.read(capture/'configuration.json')['Revision']
-    result=files.verify(capture,['test-binaries.json','probe-binaries.json'],revision)
+    status=files.read(capture/'window-status.json')
+    assert status['Status'] in ('DIAGNOSTICS_COMPLETE','FAILED')
+    expected_pass=status['Status']=='DIAGNOSTICS_COMPLETE'
+    result=files.verify(capture,['test-binaries.json','probe-binaries.json'],revision,
+        expected_status=status['Status'],expected_exit=0 if expected_pass else 1)
     result['verifiedGitFiles']=archive.source_archive(files,capture,revision)
     sys.path.insert(0,str(capture/'source/tools'))
     try:
-        gate=module('completed_afferent_trajectory_gate',capture/'source/tools/afferent_trajectory_gate.py')
+        gate=module('completed_afferent_trajectory_gate',capture/'source/tools'/('afferent_precision_gate.py' if precision_study else 'afferent_trajectory_gate.py'))
         analysis=module('completed_afferent_trajectory_analysis',capture/'source/tools/afferent_trajectory_analysis.py')
         gate.runtime(capture);tests=gate.inventory.check_tests(capture,gate.COUNTS)
         reproduced=analysis.analyse(capture,gate.prerequisites(capture),files.read(capture/'source-decisions.json'))
     finally:sys.path.pop(0)
-    assert reproduced==files.read(capture/'trajectory-analysis.json') and reproduced['numericalTrajectoryCriteriaPassed']
+    assert reproduced==files.read(capture/'trajectory-analysis.json')
+    assert reproduced['numericalTrajectoryCriteriaPassed']==expected_pass
     assert files.digest(capture/'managed-runtime-before.json')==files.digest(capture/'managed-runtime-after.json')
     status=files.read(capture/'window-status.json');assert status['PassedFocusedTests']==181 and tests['passedCases']==181
-    for key in ('ComponentChecksPassed','TestExecutionAttempted','AfferentDynamicsChecksPassed','NumericalTrajectoryCriteriaPassed','FastTransientOnly',
+    if precision_study:
+        assert status['SpectrumControlsPassed'] is True
+        assert files.read(capture/'spectrum-controls.json')==dict(completed=True,passed=8,expected=8,modelsExecuted=False)
+    assert status['NumericalTrajectoryCriteriaPassed']==expected_pass
+    for key in ('ComponentChecksPassed','TestExecutionAttempted','AfferentDynamicsChecksPassed','FastTransientOnly',
                 'MatchesQualifiedManagedRuntime','QualifiedDependenciesPreserved','ManagedRuntimePreserved','FrozenPackageUnchanged'):assert status[key] is True,key
     for key in ('IndependentCoupledTrajectoryQualified','StationaryInitializationQualified','SpatialGeometryCalibrated','AfferentFiringQualified',
                 'LiveBrainAccessed','OldSavesLoaded','NativeBodyExecuted','PhysiologyQualified','AvatarRecoveryAssessed','FullUnitSuitePassed'):assert status[key] is False,key
     result.update(reviewedUtc=datetime.now(timezone.utc).isoformat(),operatorReportedCompletion=True,passedTests=181,
-        numericalTrajectoryCriteriaPassed=True,savedAnalysisExactlyReproduced=True,analysisSha256=files.digest(capture/'trajectory-analysis.json'),
+        numericalTrajectoryCriteriaPassed=expected_pass,originalFailurePreserved=not expected_pass,
+        savedAnalysisExactlyReproduced=True,analysisSha256=files.digest(capture/'trajectory-analysis.json'),
         nativeRuns=21,references=21,modelsExecutedDuringReview=False,testsExecutedDuringReview=False,fastTransientOnly=True,
+        spectrumControlsPassed=8 if precision_study else 0,
         stationaryInitializationQualified=False,afferentFiringQualified=False,physiologyQualified=False,avatarRecoveryAssessed=False)
     out.mkdir();(out/'review.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print(f"Verified {result['verifiedFilesPerCopy']} files per C:/D: copy, 181 component cases and saved fast trajectories; no equation or test rerun.",flush=True)

@@ -2883,3 +2883,11 @@ Current pending window: ONE motor partition study `3d8835`, frozen
 `778c7f2fddcd385922fc62e95719bb0e3754f88d`, initial 1,947 files D: verified.
 Visible task `DNNE-Rubral-Refinement-561e9ba124b9`; await operator report without
 post-launch inspection. Sensory `884934` is already fully reviewed/passing.
+
+Active sensory rest study is authored, not yet launched at this checkpoint.
+See `docs/DNNE_Cleft_Active_Rest_2026-11-18.md`: 18 native/independent roots,
+full free-gate local Jacobians, unchanged biology/search and preserved failed
+outcomes. No time integration, physiological rest, afferent or Avatar claim.
+Source-only authoring build/static checks pass; tests/models run only in the
+new frozen visible PowerShell window after preparation and verified D: backup.
+Motor `3d8835` remains the sole pending run here and has not been inspected.

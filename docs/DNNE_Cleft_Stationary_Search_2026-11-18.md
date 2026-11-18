@@ -46,3 +46,9 @@ within its 132-case suite and complete C:/D: saved-data review. This qualifies t
 analytic component controls, not active-model stationary roots or their stability.
 Next stationary work remains independent active root checks and the full dynamic
 Jacobian/perturbation study, with the current channel equations preserved.
+
+The next active-root and full-gate local-Jacobian workflow is now authored in
+`DNNE_Cleft_Active_Rest_2026-11-18.md`. Eighteen native and independent searches
+retain failed/nonunique/unstable outcomes. Local linear stability is evaluated
+separately from root residuals; no perturbation trajectories or live initialization
+are performed yet. The existing search and biological kernels are unchanged.

@@ -366,3 +366,16 @@ Sensory `884934` is fully reviewed/passing, and old motor `f5e01c` is reviewed
 with its original yield failure retained. No separate sensory or stationary
 window is pending. Full goal remains active; physiological resting state,
 afferent return, complete feedback, balance and recovery are still open.
+
+Active sensory resting-state workflow is now authored; see
+`DNNE_Cleft_Active_Rest_2026-11-18.md`. It preserves the reviewed biological
+kernels and stationary search, and compares 18 native searches with independent
+60-digit roots and 90-digit residual witnesses. Three guesses for six geometries
+are followed by full voltage/ion/free-gate Jacobians at three difference steps.
+Stable, unstable, nonunique and inconclusive outcomes remain separate from
+whether a numerical root was found. No time perturbations, afferent cable or
+live initialization is introduced. Authoring probe build: zero warnings/errors;
+Python/static 132-case inventory and PowerShell syntax checks passed. No new
+model/test/control executed inline. Motor `3d8835` remains pending and untouched.
+At this authoring point there is still only that ONE pending window. Prepare,
+verify D: and launch the sensory study next; await operator completion for both.

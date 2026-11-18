@@ -1317,3 +1317,11 @@ Source-only authoring builds and static checks pass; no new model/test has run.
 No full-direction or physiological qualification is implied. C: space is limited;
 new build scratch uses D:, and prospective free-space guards retain old evidence.
 No pending runs at this preparation checkpoint. Full goal remains active.
+
+The motor matrix subsequently launched as `3d8835` and remains pending. Sensory
+refinement `884934` is fully reviewed and passes all seven trajectories and
+132 component cases. An isolated active sensory stationary-state study is now
+authored; see `DNNE_Cleft_Active_Rest_2026-11-18.md`. It adds 18 native and
+independent root searches and full free-gate local linear stability estimates.
+Avatar/Unity/editor live selection is unchanged. A valid or locally stable root
+alone does not qualify physiological rest, afferent firing or physical balance.

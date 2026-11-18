@@ -1325,3 +1325,10 @@ authored; see `DNNE_Cleft_Active_Rest_2026-11-18.md`. It adds 18 native and
 independent root searches and full free-gate local linear stability estimates.
 Avatar/Unity/editor live selection is unchanged. A valid or locally stable root
 alone does not qualify physiological rest, afferent firing or physical balance.
+
+New sensory nerve components now implement actual sodium/potassium gate state,
+physical axonal charge flow and reciprocal calyx loading, with stable patch/
+terminal identities. `DNNE_Vestibular_Afferent_2026-11-18.md` declares the source
+choices and remaining numerical/physiological work. The 166-case prospective
+suite builds. No live Avatar/Unity/editor selection or saved state is changed;
+there is still no qualified afferent spike stream to display or feed DNNE.

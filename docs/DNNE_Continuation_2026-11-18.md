@@ -389,3 +389,16 @@ There are now TWO pending windows: motor partition `3d8835` and sensory rest
 `760702`. Await the operator's completion reports. Sensory refinement `884934`
 remains fully reviewed/passing. The active goal remains unfinished: no resting
 physiology, afferent firing, closed-loop balance or fall recovery is qualified.
+
+Independent work while `3d8835` and `760702` remain untouched: authored the
+actual sensory nerve membrane, identified finite-volume axon and reciprocal
+same-state calyx/axon derivative owner. See `DNNE_Vestibular_Afferent_2026-11-18.md`.
+The named candidate uses deposited channel expressions and explicitly selected
+May14 sodium timing tables; COMSOL defaults are not inferred. All 46 timing
+values match the retained source data; C:/D: source evidence was verified.
+Physical axial/current signs follow conservation with explicit terminal owners.
+The test-project authoring build passed with zero warnings/errors. Static checks
+declare 166 focused cases, 34 new. No model/test/reference executed inline.
+Prepare, backup and launch the new component window next. Subsequent independent
+derivative/trajectory comparison and loaded stationary state remain required;
+do not promote these components directly to live Avatar, Unity or DNNE.

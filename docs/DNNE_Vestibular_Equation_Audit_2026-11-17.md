@@ -129,3 +129,15 @@ spreading the same active density over the entire basolateral area.
 The new assembly and remaining numerical/physiological limits are recorded in
 `DNNE_Cleft_Membrane_Coupling_2026-11-17.md`. This source inspection evaluates no
 equations and does not establish free sensory-cell operation.
+
+## Follow-up: explicit sensory nerve candidate
+
+`DNNE_Vestibular_Afferent_2026-11-18.md` now declares a deposited-expression
+candidate with explicitly selected May14 sodium timing tables and linear
+interpolation. Source tables and printed pages 15,20,21 were checked again.
+It retains m^3*h and the deposited nodal potassium definitions, with a physical
+finite-volume current sign and cylindrical normalization. No claim is made
+about unspecified COMSOL switch defaults or reproducing the printed equations.
+The new joint derivative owner reciprocally loads the identified calyx from
+the cable's actual potential. Free neuronal trajectories, loaded resting state,
+sensory firing, physiology and brain/body integration remain unqualified.

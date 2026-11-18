@@ -2897,3 +2897,13 @@ Active sensory rest is now launched: `760702`, frozen
 D: verified, task `DNNE-Cleft-Rest-b9015911e2fc`. TWO pending windows: this
 sensory study and motor `3d8835`. No post-launch inspection of either. Await
 operator completion; physiological rest, afferents and Avatar remain unqualified.
+
+Sensory nerve components are authored; see `DNNE_Vestibular_Afferent_2026-11-18.md`.
+Three new Avatar kernels implement actual six-gate axonal membrane, identified
+physical cable and reciprocal same-state calyx ownership. Named deposited/May14
+candidate; no implicit COMSOL default or paper-reproduction claim. Source data
+and D: copies checked; authoring build/static 166-case inventory pass. No test/
+model ran inline. Motor `3d8835` and rest `760702` remain pending and untouched.
+Component runner must freeze/backup before visible execution; independent
+joint numerical accuracy, loaded rest, neuronal events and live sensory return
+remain required. No live selection changes or physiological promotion.

@@ -3282,3 +3282,12 @@ Live archive accounting/cleanup and full refined motor matrix remain unqualified
 Exactly ONE pending completion report: sensory retry `501244`; no live monitoring.
 Repeated failed `2b5a68` is already reviewed/repaired. Coupled canal candidate
 is in independent authoring; no new mechanical test or model executed yet.
+
+Coupled canal mechanical candidate authored; see
+`docs/DNNE_Coupled_Canal_Mechanics_2026-11-18.md`. Original kernels/live selection
+remain; source-prime M/C/K mechanics does not yet have a qualified skull adapter,
+local bundle map or full source-specimen trajectory comparison. Physical and
+numerical energy loss must remain separate. SimAvatar/test-project builds pass;
+76 tests are declared but not executed during authoring. New qualification
+uses D: workspace/backup; both copies share D:. Only sensory retry `501244`
+is pending before this launch. No live monitoring; full goal remains unfinished.

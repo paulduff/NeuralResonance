@@ -854,3 +854,17 @@ pending: sensory retry `501244`, unmonitored. Repeated `2b5a68` FAILED message
 is the already repaired table-index defect. Source-based coupled canal mechanics
 are being authored independently; no tests/models have run for that candidate.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+A source-declared coupled canal mechanical candidate is authored independently
+of sensory retry `501244`. See `docs/DNNE_Coupled_Canal_Mechanics_2026-11-18.md`.
+It uses the retained Ifediba specimen's six-volume M/C/K equations in SI, with
+source-prime acceleration input. Radau IIA stages retain physical and numerical
+energy loss separately. Existing Avatar/neuronal/Unity kernels and live selectors
+remain. Source-to-skull conversion, bilateral/local bundle maps, physical-clock
+adapter and independent published-matrix trajectory accuracy remain unqualified.
+SimAvatar and full test-project builds pass without warnings/errors. No tests or
+models executed during authoring. A 76-case isolated visible window is prepared:
+23 new mechanical/analytic controls plus 53 existing clock/skull/bundle cases.
+Only ONE completion report remains pending before launch: sensory retry `501244`.
+Use D: workspace and backup to retain C: reserve; new copies share D:. Full goal
+active; neither component arithmetic nor the source label qualifies physiology.

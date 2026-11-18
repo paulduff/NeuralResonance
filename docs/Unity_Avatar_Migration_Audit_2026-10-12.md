@@ -1341,3 +1341,13 @@ compile (196 total), but have not executed. Their freezer requires reviewed
 joint-dynamics evidence first. No live Avatar/Unity/editor selection changed;
 active loaded-root accuracy, full free-gate stability and sensory spikes remain
 unqualified. Preserve existing body mechanisms and prior sealed-root evidence.
+
+The isolated coupled canal candidate is authored; see
+`DNNE_Coupled_Canal_Mechanics_2026-11-18.md`. This replaces no live Avatar feature:
+source-prime mechanical volume/flow remains upstream of any skull conversion,
+local bundle map or neuronal input. The inherited labyrinth, clock owner,
+Unity sampling and editor observations remain. Candidate mechanical energy
+accounts for physical viscosity and numerical damping separately. Source-labelled
+specimen parameters are not calibrated Avatar anatomy. Builds pass; all 76
+prospective component/analytic/regression cases await a visible PowerShell run.
+No new balance, sensory firing or physical recovery qualification is implied.

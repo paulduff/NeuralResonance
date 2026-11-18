@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Protocol\NeuralResonanceEngine.Protocol.csproj" />
     <ProjectReference Include="..\..\Shared.Contracts\NeuralResonanceEngine.Shared.Contracts.csproj" />
+    <EmbeddedResource Include="..\..\docs\reference-data\vestibular-ifediba-2007.json" LogicalName="NRE.SimAvatar.Ifediba2007.json" />
   </ItemGroup>
 
 </Project>

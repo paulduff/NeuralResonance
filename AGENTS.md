@@ -3064,3 +3064,16 @@ being prepared; no model or native Unity rerun is required. `ddef1a` is the
 ONLY pending report and remains untouched. Static sensory ingress findings
 are in `docs/DNNE_Observed_Sensory_Ingress_Review_2026-11-18.md`; no new ingress
 implementation or live selection change is claimed. Full goal active.
+
+
+Corrected saved motor comparison is now launched as
+`rubral-epoch-comparison-20261118-e9bed6`, frozen at pushed revision
+`dfe3464f0b8ae3844120c06087a23c6459999e64`. The frozen source/dependency
+preflight passed with PATH deliberately empty (no model/test executed), then
+1,943 initial files plus manifest were D: verified. Visible task
+`DNNE-Rubral-Epoch-46fc1982967a` started successfully. No post-launch output,
+status or process was inspected. The window performs saved-data review and
+12 identity controls; no neural, muscle, Unity or ODE run is started.
+Exactly TWO pending completion reports: motor `e9bed6` and sensory precision
+`ddef1a`. Earlier `b224a6` is failed/reviewed, not pending. All original evidence
+and bounds remain preserved; full DNNE/Avatar/World goal active and unfinished.

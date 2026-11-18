@@ -1,6 +1,6 @@
 # Saved motor partition comparison
 
-Status: **operator-reported FAILED, reviewed; corrected retry being prepared**.
+Status: **operator-reported FAILED, reviewed; corrected retry launched visibly**.
 Package `rubral-epoch-comparison-20261118-b224a6`, revision
 `c383fcdb4ffe7ba4485ccbb7dbe253de9dcfc6eb`, failed before identity controls or
 numerical comparison. Its independent window could not find `git` when the
@@ -74,3 +74,16 @@ Authoring checks passed Python AST parsing, PowerShell parsing and diff hygiene.
 No prospective control or model has been executed inline. At this authoring
 checkpoint, the complete 583,562-file audit and corrected numerical outcome
 remain pending in the new visible workflow.
+
+
+Corrected saved motor comparison is now launched as
+`rubral-epoch-comparison-20261118-e9bed6`, frozen at pushed revision
+`dfe3464f0b8ae3844120c06087a23c6459999e64`. The frozen source/dependency
+preflight passed with PATH deliberately empty (no model/test executed), then
+1,943 initial files plus manifest were D: verified. Visible task
+`DNNE-Rubral-Epoch-46fc1982967a` started successfully. No post-launch output,
+status or process was inspected. The window performs saved-data review and
+12 identity controls; no neural, muscle, Unity or ODE run is started.
+Exactly TWO pending completion reports: motor `e9bed6` and sensory precision
+`ddef1a`. Earlier `b224a6` is failed/reviewed, not pending. All original evidence
+and bounds remain preserved; full DNNE/Avatar/World goal active and unfinished.

@@ -3309,3 +3309,9 @@ Canal `0fe70b` passes all 76 cases; 2,517 files per D: copy verify. Its independ
 published-matrix accuracy and skull/bundle mapping remain open. Both three-file
 review artifacts are D: verified. No pending reports at this checkpoint.
 Archived motor accounting is being authored, not launched. Full goal unfinished.
+
+Archived motor accounting is authored with 12 visible-only controls and two
+complete saved raw/archive comparisons. See
+`docs/DNNE_Archived_Motor_Accounting_2026-11-18.md`. All existing audit assertions
+are AST-preserved; only gzip stream opening changes. No tests/models executed
+inline and no old/new-raw deletion enabled. No pending reports before launch.

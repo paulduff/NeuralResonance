@@ -42,7 +42,9 @@ def stable(*parts):
 
 
 def records(path):
-    with gzip.open(path,'rt',encoding='utf-8') as f:
+    # A checked archive view supplies the same original compressed bytes.
+    # Opening the stream explicitly retains ordinary filesystem behavior too.
+    with path.open('rb') as raw, gzip.open(raw,'rt',encoding='utf-8') as f:
         for line in f:yield json.loads(line)
 
 

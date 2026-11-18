@@ -897,3 +897,16 @@ There are NO pending completion reports at this checkpoint. Archived motor
 accounting is in authoring: unchanged assertions, explicit checked archive
 mounts, 12 controls and full raw/archive saved-capture comparison. It has not
 launched. Old evidence/defaults/saves remain; full DNNE/Avatar/World goal active.
+
+Archived motor accounting is authored; see
+`docs/DNNE_Archived_Motor_Accounting_2026-11-18.md`. The only change to the
+reviewed causal auditor is opening compressed records through an explicit
+binary stream; static AST comparison proves every other statement/assertion is
+unchanged. Checked read-only mounts cannot fall back to raw filesystem records.
+The prospective visible run has 12 controls and compares complete raw/archive
+source, contact, packet, muscle effort and native reply accounting for the
+already reviewed repeat/body-finer captures (39,995 steps plus initial samples).
+All decoded arrays and reports must match exactly. No new models or tests ran
+during authoring; syntax, static inventory and AST preservation pass. No original
+capture or raw staging cleanup is enabled. There are no pending windows before
+this launch; both sensory reports are now reviewed. Full goal remains active.

@@ -1332,3 +1332,12 @@ terminal identities. `DNNE_Vestibular_Afferent_2026-11-18.md` declares the sourc
 choices and remaining numerical/physiological work. The 166-case prospective
 suite builds. No live Avatar/Unity/editor selection or saved state is changed;
 there is still no qualified afferent spike stream to display or feed DNNE.
+
+The isolated connected resting-state search is now authored; see
+`DNNE_Afferent_Loaded_Rest_2026-11-18.md`. It solves sensory and axonal voltages
+together with cleft ions and stationary gate constraints, without imposing a
+terminal-current fixture or editing a live cell. Fifteen new component controls
+compile (196 total), but have not executed. Their freezer requires reviewed
+joint-dynamics evidence first. No live Avatar/Unity/editor selection changed;
+active loaded-root accuracy, full free-gate stability and sensory spikes remain
+unqualified. Preserve existing body mechanisms and prior sealed-root evidence.

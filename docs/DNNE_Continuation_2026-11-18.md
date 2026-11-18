@@ -510,3 +510,21 @@ requested bounded diagnostic). Nerve derivative `4ab20e` is fully reviewed.
 After a passing dynamics review, freeze/backup/launch the authored fast joint
 trajectory comparison. It has not been prepared or run. Full goal active;
 loaded rest, sensory firing, DNNE return, balance and recovery remain open.
+
+Independent authoring now adds `AvatarAfferentStationarySearch` and fifteen
+controls for the connected resting-state problem; see
+`DNNE_Afferent_Loaded_Rest_2026-11-18.md`. It uses the full reciprocal joint
+derivative, stable sensory/cable identity, bath-relative voltages, log ions and
+gate elimination only in the algebraic search. It never resets a live cell.
+The existing biological kernels and numerical solvers are unchanged. Failed,
+singular and nonunique cases remain explicit; no active physiological rest claim.
+
+Full test-project authoring build passes zero warnings/errors at
+`D:/DNNE-build-work/afferent-stationary-authoring-20261118`. Python/PowerShell
+syntax, 15 new / 196 total source cases and 46 preserved paths pass static
+inspection. A guarded component freezer, visible runner and completed-data
+reviewer are authored; no new package, model or test execution. They require a
+passing reviewed `0e0e99` first. Active loaded-root independent comparison and
+full free-gate stability (including retained eigenvectors) are still future work.
+TWO pending reports remain `0e0e99` and motor `3d8835` final backup; neither
+was inspected this turn. This is source progress; the full goal remains active.

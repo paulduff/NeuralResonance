@@ -2969,3 +2969,14 @@ reports: this 181-case component study and motor `3d8835` final backup/footer.
 Derivative `4ab20e` is reviewed/passing. Fast joint trajectories are authored but
 unprepared/unrun; require reported/reviewed passing dynamics first. Full goal
 active, no loaded rest/afferent physiology or Avatar usability qualification.
+
+Connected stationary search authored: `AvatarAfferentStationarySearch`; see
+`DNNE_Afferent_Loaded_Rest_2026-11-18.md`. All sensory/cable voltages and cleft
+ions share the reciprocal derivative. Gate equilibrium is used only for the
+algebraic root, never to reset live/dynamic gates. Fifteen new controls (196
+total), full test-project build and static inventories pass authoring checks;
+NO tests/models executed. Component freezer/visible runner/reviewer require
+reported/reviewed passing dynamics first. No new package/window. Existing
+`0e0e99` and `3d8835` remain pending and uninspected this turn. Active loaded
+roots, full free-gate stability with eigenvector witnesses and usable Avatar
+remain unqualified; no live/Unity/editor selection changed. Full goal active.

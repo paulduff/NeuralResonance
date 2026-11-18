@@ -2830,3 +2830,18 @@ status or process inspected. TWO pending reports: ca2f31 and rubral f5e01c.
 Membrane 74e956 and skull 0ada47 are reviewed/passing at their stated scopes.
 Independent active time trajectories and stationary solution/stability are next
 after component review; no afferent physiology or Avatar balance qualified.
+
+Operator now reports ca2f31 complete. Saved-data review verifies 2,391 C:/D:
+files, frozen source/test/probe binaries, exact runtime and all 120 cases.
+Saved analysis exactly reproduced; cleft-dynamics-review-20261118 is D: verified.
+No model/test rerun. Only rubral f5e01c remains pending at this authoring point.
+
+The independent trajectory workflow is now authored, preserving all candidate
+biology/solver sources: seven conditions, three fixed steps (.002/.001/.0005 ms),
+21 complete native captures and 21 Decimal/full-matrix Radau/BDF references.
+All candidate endpoints and reference accepted nodes retain physical domain and
+independent capacitor/incidence accounting requirements. Reference/finest error,
+halving and conservation criteria are prospective and separate. Build/static
+checks pass; no model/reference/control/test executed inline. See
+DNNE_Cleft_Trajectories_2026-11-18.md. Prepare/backup/visible launch next, without
+live monitoring. Stationarity, physiology, afferents and balance remain open.

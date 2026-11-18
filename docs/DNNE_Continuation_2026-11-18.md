@@ -264,3 +264,26 @@ manifest D: verified. Visible task: `DNNE-Cleft-Dynamics-9c501d09763f`. No
 post-launch outputs/status/process inspection. Two reports are pending: this
 new 120-case component run and rubral `f5e01c`. Membrane `74e956` and skull
 `0ada47` are reviewed/passing within their stated scopes. Full goal active.
+
+## Joint dynamics components reviewed; full comparison authored
+
+The operator reported `ca2f31` complete. Full saved-data review verifies 2,391
+files per C:/D: copy, frozen source/test/probe binaries, exact managed runtime
+and all 120 component cases. The saved analysis reproduces exactly without a
+model or test rerun. New `cleft-dynamics-review-20261118` has a verified D: copy.
+Only rubral `f5e01c` remains pending at this point, still untouched.
+
+The independent full comparison now has seven conditions at three candidate
+steps, all accepted states/compensation/ledgers retained, and 21 separately
+integrated Radau/BDF references using the independent Decimal/full-matrix RHS.
+Every reference accepted node and comparison sample must remain in the physical
+domain. Saved 60/90-digit witnesses check RHS precision; an independent capacitor/
+incidence audit checks every candidate endpoint and reference node. Reference
+agreement, candidate accuracy, halving behavior and conservation are separately
+assessed under prospectively declared bounds. No candidate source or previous
+bound changed; no inline numerical execution occurred. The capture build has
+zero warnings/errors and static checks pass. See `DNNE_Cleft_Trajectories_2026-11-18.md`.
+
+This remains a numerical qualification stage. Quiet duration is not equilibrium;
+stationary solution/stability, longer responses, physiological calibration,
+afferent firing and live brain-body return remain open. Full goal active.

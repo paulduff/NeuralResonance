@@ -103,3 +103,11 @@ initial files plus manifest are D: verified. Visible task:
 `DNNE-Cleft-Dynamics-9c501d09763f`. The launcher returned successfully; no
 post-launch output, status or process has been inspected. Await the operator's
 completion report before reviewing or claiming component success.
+
+The operator has since reported completion. The review in
+`artifacts/cleft-dynamics-review-20261118` verifies all 2,391 C:/D: files, source/
+binaries/runtime and all 120 focused cases. Saved analysis reproduces exactly;
+the review is separately D: verified. No test/model was rerun during review.
+The next independent active-trajectory workflow is authored in
+`DNNE_Cleft_Trajectories_2026-11-18.md`. The component pass does not replace that
+comparison or stationary-state/physiological qualification.

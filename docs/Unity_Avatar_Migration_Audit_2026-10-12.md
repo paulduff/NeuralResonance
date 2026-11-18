@@ -1286,3 +1286,11 @@ clock, charge/species ledgers and failure-preserving atomic steps. Its twelve
 new cases compile but have not run. No live Avatar/Unity/editor selection is
 changed. See `DNNE_Cleft_Coupled_Dynamics_2026-11-18.md`; time-trajectory accuracy,
 stationary state, afferent firing and balance are later qualification stages.
+
+Joint sensory dynamics `ca2f31` is reviewed/passing: 120 cases and all 2,391
+C:/D: files/source/binaries/runtime verified. The new seven-condition complete
+trajectory comparison preserves the exact candidate, captures all endpoints
+at three step sizes and uses independent Decimal/full-matrix Radau/BDF references.
+It adds no live body/editor selection or physiological qualification. See the
+18 November trajectory document for prospective error/refinement/conservation
+criteria and the remaining stationary-state and afferent work.

@@ -95,3 +95,13 @@ The observer's 20 proposed cases remain unrun; it is excluded from this study's
 181 focused cases. Eight spectrum controls execute in the new window before
 trajectory comparisons. No live selection, old save or original bound changed.
 Full goal remains active and unfinished.
+
+
+## Completed precision review
+
+The operator reported `ddef1a` complete. Its 2,983-file C:/D: review reproduces
+the failure exactly: all seven reference comparisons and all finest direct-error
+limits pass; six sampled refinement checks fail. All 181 tests and eight witness
+controls passed. See `DNNE_Afferent_Activation_Continuation_2026-11-18.md` for
+the saved boundary diagnosis and explicit next candidate. The original failure
+and all bounds remain. Only older motor comparison `e9bed6` is pending.

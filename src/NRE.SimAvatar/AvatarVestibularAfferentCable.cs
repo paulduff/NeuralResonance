@@ -29,10 +29,16 @@ public sealed class AvatarAfferentCable
     public IReadOnlyList<AvatarAfferentCableNode> Nodes { get; }
     public IReadOnlyList<AvatarAfferentCableEdge> Edges { get; }
     public IReadOnlyList<AvatarAfferentCableTerminal> Terminals { get; }
+    public AvatarSodiumActivationContinuation ActivationContinuation { get; }
     public string Fingerprint { get; }
     public AvatarAfferentCable(IEnumerable<AvatarAfferentCableNode> nodes,IEnumerable<AvatarAfferentCableEdge> edges,IEnumerable<AvatarAfferentCableTerminal> terminals)
+        : this(nodes,edges,terminals,AvatarSodiumActivationContinuation.DepositedFixedValue) { }
+    public AvatarAfferentCable(IEnumerable<AvatarAfferentCableNode> nodes,IEnumerable<AvatarAfferentCableEdge> edges,
+        IEnumerable<AvatarAfferentCableTerminal> terminals,AvatarSodiumActivationContinuation continuation)
     {
         ArgumentNullException.ThrowIfNull(nodes);ArgumentNullException.ThrowIfNull(edges);ArgumentNullException.ThrowIfNull(terminals);
+        if(!Enum.IsDefined(continuation))throw new ArgumentOutOfRangeException(nameof(continuation));
+        ActivationContinuation=continuation;
         _nodes=nodes.OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray();_edges=edges.OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray();_terminals=terminals.OrderBy(x=>x.Id,StringComparer.Ordinal).ToArray();
         if(_nodes.Length is <1 or >4096||_terminals.Length==0)throw new ArgumentException("Explicit finite cable and terminals required.");
         static void Ids(IEnumerable<string> ids) { var a=ids.ToArray();if(a.Any(string.IsNullOrWhiteSpace)||a.Distinct(StringComparer.Ordinal).Count()!=a.Length)throw new ArgumentException("Unique nonempty identities required."); }
@@ -41,7 +47,7 @@ public sealed class AvatarAfferentCable
         _kernels=new AvatarAfferentMembraneKernel[_nodes.Length];_areas=new double[_nodes.Length];_capacitances=new double[_nodes.Length];_conductances=new double[_edges.Length];
         for(int i=0;i<_nodes.Length;i++)
         {
-            var n=_nodes[i];CleftNumbers.Positive(n.LengthMicrometers);CleftNumbers.Positive(n.RadiusMicrometers);_kernels[i]=new(n.Membrane);
+            var n=_nodes[i];CleftNumbers.Positive(n.LengthMicrometers);CleftNumbers.Positive(n.RadiusMicrometers);_kernels[i]=new(n.Membrane,continuation);
             _areas[i]=2*Math.PI*n.RadiusMicrometers*n.LengthMicrometers;_capacitances[i]=_areas[i]*n.Membrane.SpecificCapacitancePfPerSquareMicrometer;
             CleftNumbers.Positive(_areas[i]);CleftNumbers.Positive(_capacitances[i]);
         }
@@ -101,6 +107,8 @@ public sealed class AvatarAfferentCable
     // A spatial mesh hypothesis, not fitted anatomy or a spatial convergence
     // claim. Every compartment boundary stays at its declared source location.
     public static AvatarAfferentCable ReferenceChain(int cellsPerRegion)
+        =>ReferenceChain(cellsPerRegion,AvatarSodiumActivationContinuation.DepositedFixedValue);
+    public static AvatarAfferentCable ReferenceChain(int cellsPerRegion,AvatarSodiumActivationContinuation continuation)
     {
         if(cellsPerRegion is <1 or >512)throw new ArgumentOutOfRangeException(nameof(cellsPerRegion));
         double[] boundaries=[0,8,9,80,82,382,384,425];string[] names=["unmyelinated","heminode","internode1","node1","internode2","node2","distal"];
@@ -116,6 +124,6 @@ public sealed class AvatarAfferentCable
                 Math.PI*radius*radius,(previous.LengthMicrometers+next.LengthMicrometers)/2,conductivity)); }
             nodes.Add(next);
         }
-        return new(nodes,edges,[new("calyx",nodes[0].Id,conductivity*Math.PI*radius*radius/(nodes[0].LengthMicrometers/2)),new("distal-sealed",nodes[^1].Id,0)]);
+        return new(nodes,edges,[new("calyx",nodes[0].Id,conductivity*Math.PI*radius*radius/(nodes[0].LengthMicrometers/2)),new("distal-sealed",nodes[^1].Id,0)],continuation);
     }
 }

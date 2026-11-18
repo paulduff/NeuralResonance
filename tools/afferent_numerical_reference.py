@@ -23,8 +23,12 @@ base=importlib.util.module_from_spec(s);s.loader.exec_module(base)
 def sigmoid(x):return 1/(1+(-x).exp())
 
 
-def time_from_source(voltage,points,activation):
+def time_from_source(voltage,points,activation,policy='deposited-fixed-value'):
+    assert policy in ('deposited-fixed-value','endpoint-hold'), 'Unknown activation continuation.'
     v=d(voltage);xy=[(d(p['voltageMv']),d(p['tauMs'])) for p in points]
+    if activation and policy=='endpoint-hold':
+        if v<xy[0][0]:return xy[0][1]
+        if v>xy[-1][0]:return xy[-1][1]
     if activation and (v<xy[0][0] or v>xy[-1][0]):return d(.2)
     if v<=xy[0][0]:a,b=xy[:2]
     elif v>=xy[-1][0]:a,b=xy[-2:]
@@ -35,7 +39,7 @@ def time_from_source(voltage,points,activation):
 
 def rates(v,source):
     v=d(v);tables=source['tables']
-    result=dict(sodiumActivation=dict(equilibrium=sigmoid((v+d(40.1))/d(7.5)),tauMs=time_from_source(v,tables['ActivationTimes']['points'],True)),
+    result=dict(sodiumActivation=dict(equilibrium=sigmoid((v+d(40.1))/d(7.5)),tauMs=time_from_source(v,tables['ActivationTimes']['points'],True,source.get('activationOutsidePolicy','deposited-fixed-value'))),
         sodiumInactivation=dict(equilibrium=sigmoid(-(v+d(78.8))/6),tauMs=time_from_source(v,tables['InactivationTimes']['points'],False)),
         kv1Activation=dict(equilibrium=sigmoid((v+44)/d(7.1)),tauMs=d(3.7)),
         kv7Activation=dict(equilibrium=sigmoid((v+41)/d(7.4)),tauMs=Decimal(54)),

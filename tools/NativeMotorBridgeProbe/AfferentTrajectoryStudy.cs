@@ -17,7 +17,10 @@ internal static class AfferentTrajectoryStudy
         int ExpectedCases,int ExpectedNativeRuns,int ExpectedReferences,Case[] Cases,Settings NonlinearSettings,bool FastTransientOnly);
 
     internal static void Run(string input,string output)
+        =>Run(input,output,AvatarSodiumActivationContinuation.DepositedFixedValue);
+    internal static void Run(string input,string output,AvatarSodiumActivationContinuation continuation)
     {
+        if(!Enum.IsDefined(continuation))throw new ArgumentOutOfRangeException(nameof(continuation));
         if (!Path.IsPathFullyQualified(input) || !Path.IsPathFullyQualified(output) || Directory.Exists(output) || File.Exists(output))
             throw new ArgumentException("Absolute frozen protocol and new output required.");
         var p=JsonSerializer.Deserialize<Protocol>(File.ReadAllText(input),Json);
@@ -27,6 +30,9 @@ internal static class AfferentTrajectoryStudy
             p.ExpectedCases!=7 || p.ExpectedNativeRuns!=21 || p.ExpectedReferences!=21 || p.Cases.Length!=7 || p.Cases.Select(c=>c.Key).Distinct(StringComparer.Ordinal).Count()!=7)
             throw new ArgumentException("Unexpected complete-trajectory protocol.");
         Directory.CreateDirectory(output);WriteNew(Path.Combine(output,"input.json"),p);int completed=0;var failures=new List<string>();
+        if(continuation!=AvatarSodiumActivationContinuation.DepositedFixedValue)
+            WriteNew(Path.Combine(output,"activation-continuation.json"),new { version=AvatarAfferentMembraneKernel.EndpointHoldVersion,
+                policy=continuation.ToString(),originalDefaultChanged=false,physiologicalCalibrationQualified=false });
         foreach (var c in p.Cases)
         {
             if (string.IsNullOrWhiteSpace(c.Key) || c.Key.Any(x=>!char.IsAsciiLetterOrDigit(x) && x!='-') || c.CellId==Guid.Empty ||
@@ -42,7 +48,7 @@ internal static class AfferentTrajectoryStudy
                     if(f.Inputs.Any(x=>x.AxonOutgoingPa!=0))throw new ArgumentException("Actual nerve owns calyx loading; no prescribed terminal current.");
                     var spatial=new AvatarCleftSpatialCoupling(t.HairCellId,t.HairApicalPf,t.HairPerilymphPf,t.Material,t.Compartments,t.Connections);
                     var sensory=new AvatarVestibularCleftMembranes(new(spatial,t.Reservoir,t.Faces),f.HairParameters,f.CalyxParameters);
-                    var cable=new AvatarAfferentCable(c.Fixture.CableTopology.Nodes,c.Fixture.CableTopology.Edges,c.Fixture.CableTopology.Terminals);
+                    var cable=new AvatarAfferentCable(c.Fixture.CableTopology.Nodes,c.Fixture.CableTopology.Edges,c.Fixture.CableTopology.Terminals,continuation);
                     var kernel=new AvatarVestibularCleftAfferent(sensory,cable,c.Fixture.Attachments);
                     var s=p.NonlinearSettings;double step=(double)ticks/p.TicksPerMs;
                     cell=new(p.SessionId,c.CellId,kernel,new(step,s.VoltageAbsoluteToleranceMv,s.IonAbsoluteToleranceMm,s.GateAbsoluteTolerance,

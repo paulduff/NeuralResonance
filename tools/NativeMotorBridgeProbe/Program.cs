@@ -20,6 +20,11 @@ if (args.Length == 3 && args[0] == "--afferent-trajectories")
     AfferentTrajectoryStudy.Run(args[1], args[2]);
     return;
 }
+if (args.Length == 3 && args[0] == "--afferent-endpoint-hold-trajectories")
+{
+    AfferentTrajectoryStudy.Run(args[1], args[2], AvatarSodiumActivationContinuation.EndpointHold);
+    return;
+}
 if (args.Length == 3 && args[0] == "--afferent-numerics")
 {
     AfferentNumericalStudy.Run(args[1], args[2]);

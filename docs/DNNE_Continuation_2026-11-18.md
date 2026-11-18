@@ -723,3 +723,20 @@ filter likewise is not qualified by the literature. Source prime directions,
 posterior/right/superior axial-vector conventions, bilateral placement and local
 bundle deformation remain explicit next-model requirements. The turtle otolith
 measurements are not human calibration. Full goal active and unfinished.
+
+
+The operator reported bundle `092238` and sensory precision `ddef1a` complete.
+The bundle review verifies 2,503 C:/D: files and all 317 focused cases, exactly
+reproducing analysis. Precision review verifies 2,983 C:/D: files, 181 tests,
+eight spectrum controls and 21 native/21 reference captures. Both review
+artifacts are D: verified. Precision remains FAILED: all references and finest
+direct errors pass, but six of seven refinement criteria fail. No bounds changed.
+Saved-only boundary diagnosis shows smooth-prefix refinement and error growth
+after the -55 mV activation-table discontinuity; its two-file artifact is D: verified.
+See `docs/DNNE_Afferent_Activation_Continuation_2026-11-18.md` for evidence and
+an explicit endpoint-hold kinetic candidate. This changes an assumption, not the
+original result. Legacy APIs/defaults remain. A separate 332-case window with
+21 exact legacy replays and new candidate references is prepared; tests have
+NOT run during authoring. Both authoring builds pass without warnings/errors.
+Only ONE older report is pending: motor `e9bed6`, untouched. Live selection,
+old saves and physiological qualification remain unchanged. Full goal active.

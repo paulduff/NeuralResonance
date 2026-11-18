@@ -402,3 +402,12 @@ declare 166 focused cases, 34 new. No model/test/reference executed inline.
 Prepare, backup and launch the new component window next. Subsequent independent
 derivative/trajectory comparison and loaded stationary state remain required;
 do not promote these components directly to live Avatar, Unity or DNNE.
+
+Sensory nerve component checks launched as `afferent-components-20261118-d3fbc9`,
+frozen at pushed revision `751f92fc6fa1101f36229481744c62ee0e82f8e4`. All 1,891
+initial files plus manifest were verified on D: before visible task
+`DNNE-Afferent-Components-3cde74ea5376` started. No post-launch outcome, status
+or process was inspected. There are now THREE pending reports: motor partition
+`3d8835`, sensory rest `760702`, and nerve components `d3fbc9`. Await operator
+completion. The full goal remains active; component construction and test
+launch do not establish independent coupled accuracy, firing or Avatar balance.

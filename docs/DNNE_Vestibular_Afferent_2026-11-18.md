@@ -109,3 +109,8 @@ native/independent joint trajectories with spatial/time refinement and observed
 distal neuronal crossings; then identified sensory-event delivery into DNNE.
 The sealed-calyx rest result cannot automatically initialize the loaded cable.
 No live model/editor selection changes until the relevant coupled checks pass.
+
+Launched `afferent-components-20261118-d3fbc9`, frozen at pushed revision
+`751f92fc6fa1101f36229481744c62ee0e82f8e4`, with 1,891 initial files plus
+manifest verified on D:. Visible task `DNNE-Afferent-Components-3cde74ea5376`.
+No post-launch inspection; await the operator's outcome report.

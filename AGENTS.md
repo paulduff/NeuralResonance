@@ -2907,3 +2907,9 @@ model ran inline. Motor `3d8835` and rest `760702` remain pending and untouched.
 Component runner must freeze/backup before visible execution; independent
 joint numerical accuracy, loaded rest, neuronal events and live sensory return
 remain required. No live selection changes or physiological promotion.
+
+Nerve components now launched: `d3fbc9`, frozen
+`751f92fc6fa1101f36229481744c62ee0e82f8e4`, initial 1,891 files plus manifest
+D: verified, visible task `DNNE-Afferent-Components-3cde74ea5376`. THREE pending
+reports: motor `3d8835`, rest `760702`, components `d3fbc9`. No post-launch
+inspection of any pending run; await operator completion. Full goal active.

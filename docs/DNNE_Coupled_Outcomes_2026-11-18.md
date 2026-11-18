@@ -75,3 +75,13 @@ execution remains exclusively in the visible independent PowerShell runner,
 with frozen source, before/after dependency checks and final verified D: backup.
 This is accuracy work, not a speed benchmark. Stationary stability, physiological
 calibration, afferent firing, live sensory return and Avatar balance remain open.
+
+Finer sensory study launched as `cleft-refinement-20261118-884934`, frozen at
+pushed revision `fb61de2fd0af6b2ea01ec9b136c5e96fa0873415`. Initial 2,185 files
+plus manifest verified on D:. Visible task `DNNE-Cleft-Refinement-96fcdeb342d8`.
+This ONE window runs 132 component cases (including stationary-search controls)
+and 21 native trajectories against copied saved references, with no reference
+ODE reruns. No post-launch outputs, status or processes have been inspected.
+Await operator completion. No other study is pending: sensory `87562a` and rubral
+`f5e01c` are reviewed failures with original evidence preserved. No separate
+stationary or motor window launched. Full goal remains active.

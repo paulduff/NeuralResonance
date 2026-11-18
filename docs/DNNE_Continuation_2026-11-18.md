@@ -315,3 +315,13 @@ physiological rest claim is made. See `DNNE_Cleft_Stationary_Search_2026-11-18.m
 Authoring builds pass with zero warnings/errors; no new test/model has yet run.
 No motor rerun is launched: next separate physical/muscle step refinements to
 distinguish partition error from muscle integration error. Full goal active.
+
+Finer sensory study launched as `cleft-refinement-20261118-884934`, frozen at
+pushed revision `fb61de2fd0af6b2ea01ec9b136c5e96fa0873415`. Initial 2,185 files
+plus manifest verified on D:. Visible task `DNNE-Cleft-Refinement-96fcdeb342d8`.
+This ONE window runs 132 component cases (including stationary-search controls)
+and 21 native trajectories against copied saved references, with no reference
+ODE reruns. No post-launch outputs, status or processes have been inspected.
+Await operator completion. No other study is pending: sensory `87562a` and rubral
+`f5e01c` are reviewed failures with original evidence preserved. No separate
+stationary or motor window launched. Full goal remains active.

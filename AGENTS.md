@@ -2864,3 +2864,8 @@ failures and every bound. A finer sensory workflow reuses the 21 completed
 references. New stationary-search controls are part of its 132-case suite; the
 trajectory initial states remain unchanged. No physiological rest/stability or
 Avatar qualification, no live selection changes. No inline models/tests.
+
+Current pending study: ONE visible PowerShell window, sensory refinement
+`884934`, frozen `fb61de2fd0af6b2ea01ec9b136c5e96fa0873415`, initial 2,185 files
+D: verified. Includes stationary component controls. Await operator completion;
+no post-launch inspection. Both previous comparisons are fully reviewed.

@@ -427,3 +427,22 @@ window or numerical package was started. Review reported results next, then
 freeze/backup/launch the derivative comparison if the component gate passes.
 Free sensory trajectories, loaded rest, firing, physiology and Avatar usability
 remain open; the full goal stays active.
+
+Further independent authoring: `AvatarVestibularAfferentDynamics` now advances
+hair cell, cleft/calyx and active nerve voltage/gates in one implicit stage,
+with reciprocal current and per-compartment/terminal charge ledgers. See
+`DNNE_Afferent_Dynamics_2026-11-18.md`. Live sensory ingress still uses legacy
+frame-driven stimuli; no live route or editor/Unity selection was changed.
+Fifteen new component cases are authored (181 total). Probe/test-project
+builds and static checks pass; no new model, control, reference or test ran.
+The component freezer requires the passing, reported/reviewed derivative
+comparison first. No dynamics package or additional window was started.
+
+Pending reports remain exactly THREE: motor `3d8835`, rest `760702`, nerve
+components `d3fbc9`. An asynchronous completion question was sent; no reply or
+post-launch result inspection yet at this checkpoint. The previous goal turn
+and this turn made source/code progress, not a verified process wait. Full
+goal active. Next: review any operator-reported results, launch the already
+authored derivative study after its gate passes, then the joint dynamics
+components. Independent active trajectories/loaded rest and actual sensory
+spikes/declared DNNE delivery still follow before balance/recovery claims.

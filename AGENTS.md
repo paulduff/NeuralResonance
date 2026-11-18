@@ -2922,3 +2922,12 @@ model/test executed inline. Preparation requires reported/reviewed passing
 `d3fbc9` and its verified D: review. THREE windows still pending (`3d8835`,
 `760702`, `d3fbc9`), all untouched since launch. No fourth window. Full goal
 active; physiological rest, afferent firing and usable Avatar remain open.
+
+Joint sensory nerve evolution is now authored, not executed: see
+`DNNE_Afferent_Dynamics_2026-11-18.md`. One same-stage SDIRK2 owner advances
+hair/cleft/calyx/cable with actual gates and reciprocal current; no prescribed
+axon input or live selection. Fifteen new cases (181 total), build/static
+checks pass. The dynamics freezer requires reviewed derivative accuracy first.
+THREE pending reports remain `3d8835`, `760702`, `d3fbc9`, untouched after
+launch. An async completion question is pending. No fourth window/package.
+Full goal active; no afferent firing, physiology or Avatar qualification.

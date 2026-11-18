@@ -1,10 +1,12 @@
 # Joint sensory nerve time evolution
 
-Status: authored, builds and static checks pass; **no model or test executed**.
-The derivative comparison `4ab20e` is now operator-reported, reviewed and
-passing, with its review backed up on D:. This unlocks preparation and visible
-launch of the joint dynamics component study. No such window has started at
-this authoring checkpoint. See `DNNE_Afferent_Numerical_Results_2026-11-18.md`.
+Status: **launched visibly**, awaiting the operator's completion report.
+Package `afferent-dynamics-20261118-0e0e99` is frozen at
+`f7c0ae8697e21f9f0f1107abc9d9c107f0fec501`; initial 1,915 files plus manifest
+have a verified D: copy. Task: `DNNE-Afferent-Dynamics-2761f19f203e`.
+No post-launch results, status or process were inspected. The prerequisite
+derivative comparison `4ab20e` is reviewed/passing; see
+`DNNE_Afferent_Numerical_Results_2026-11-18.md`.
 
 ## Why this is needed
 

@@ -500,3 +500,13 @@ CPU seconds. Thus backup activity was observed, not a proven stall. No restart,
 termination or package edit. Await its verified backup/footer before full review;
 do not claim numerical success or final preservation from the intermediate status.
 No routine live monitoring resumed. This turn made source and evidence progress.
+
+Joint sensory nerve dynamics now launched: `afferent-dynamics-20261118-0e0e99`,
+frozen `f7c0ae8697e21f9f0f1107abc9d9c107f0fec501`, initial 1,915 files plus
+manifest D: verified; task `DNNE-Afferent-Dynamics-2761f19f203e`. No post-launch
+inspection. TWO pending final reports: this 181-case component study and motor
+`3d8835` (analysis failed; final backup observed active during the operator-
+requested bounded diagnostic). Nerve derivative `4ab20e` is fully reviewed.
+After a passing dynamics review, freeze/backup/launch the authored fast joint
+trajectory comparison. It has not been prepared or run. Full goal active;
+loaded rest, sensory firing, DNNE return, balance and recovery remain open.

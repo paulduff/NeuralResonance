@@ -910,3 +910,17 @@ All decoded arrays and reports must match exactly. No new models or tests ran
 during authoring; syntax, static inventory and AST preservation pass. No original
 capture or raw staging cleanup is enabled. There are no pending windows before
 this launch; both sensory reports are now reviewed. Full goal remains active.
+
+Archived motor accounting window `13c9cf` is launched from pushed revision
+`32e2e637a15a71aeeb28b00f137b33f2ae97e94a` at
+`D:/DNNE-build-work/native-accounting-20261118-13c9cf`. Static preflight passed;
+2,050 initial files plus manifest D: verified before visible task
+`DNNE-Native-Accounting-5c590a7b6a8a` started. No post-launch inspection.
+Only ONE pending completion report: `13c9cf`, 12 archive-view controls and two
+full saved-record audits, no new models. Sensory `501244` and canal `0fe70b`
+are fully reviewed/passing; source/default preservation and remaining physiology
+limits are in their documents. Next motor work depends on this accounting result;
+next canal work is independent source-specimen trajectory comparison, and next
+sensory work must address loaded rest/stability and longer free dynamics before
+claiming usable afferent firing. Original evidence and saves remain untouched.
+Full DNNE/Avatar/World goal active, unfinished; no blocked condition applies.

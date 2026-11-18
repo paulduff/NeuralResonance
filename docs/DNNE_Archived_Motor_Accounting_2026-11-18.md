@@ -61,3 +61,17 @@ disconnected, packet-cadence and retry matrix at h/4 body and h/4 muscle, retain
 the existing numerical limits. Strong-left convergence alone does not qualify
 that full matrix, live brain authority, physiological calibration, balance or
 fall recovery. This recording work is an enabling step, not motor qualification.
+
+The saved-accounting qualification is launched as
+`native-accounting-20261118-13c9cf`, workspace
+`D:/DNNE-build-work/native-accounting-20261118-13c9cf`, frozen at pushed revision
+`32e2e637a15a71aeeb28b00f137b33f2ae97e94a`. Frozen static preflight passed;
+2,050 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/native-accounting-20261118-13c9cf` before visible
+task `DNNE-Native-Accounting-5c590a7b6a8a` started. Launch returned successfully.
+No post-launch output, process or status was inspected. The window executes
+12 new controls and complete saved raw/archive audits; no new neural, Unity or
+ODE runs. Exactly ONE completion report is pending: `13c9cf`. Sensory `501244`
+and canal `0fe70b` are both fully reviewed/passing within their documented scope.
+No new-record deletion or old-capture migration is enabled. Full biological
+brain/body/world goal remains active and unfinished.

@@ -3315,3 +3315,11 @@ complete saved raw/archive comparisons. See
 `docs/DNNE_Archived_Motor_Accounting_2026-11-18.md`. All existing audit assertions
 are AST-preserved; only gzip stream opening changes. No tests/models executed
 inline and no old/new-raw deletion enabled. No pending reports before launch.
+
+Latest launch: archived motor accounting `13c9cf`, D:/DNNE-build-work workspace,
+frozen `32e2e637a15a71aeeb28b00f137b33f2ae97e94a`; 2,050 initial files plus
+manifest D: verified before visible task `DNNE-Native-Accounting-5c590a7b6a8a`.
+No post-launch inspection. Exactly ONE pending report: `13c9cf`. Both sensory
+`501244` and canal `0fe70b` are reviewed/passing within their documented scope.
+See archived accounting, activation continuation and coupled canal documents.
+No raw cleanup enabled, no old captures/defaults/saves changed. Goal unfinished.

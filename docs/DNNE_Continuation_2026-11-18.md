@@ -881,3 +881,19 @@ pending: sensory `501244` and canal `0fe70b`, both unmonitored. Compact storage
 accounting before the full refined matrix; next canal work follows its component
 review with independent published-model accuracy and explicit coordinate mapping.
 Full biological brain/body/world goal remains active and unfinished.
+
+Both reported sensory windows are now fully reviewed. `501244`: all 3,200 C:/D:
+files, 333 focused cases, eight spectrum controls, 21 byte-identical original
+replays, 21 candidate runs and 21 references verify. Saved analysis reproduces;
+all seven candidate cases pass original error/refinement/conservation limits.
+The explicit EndpointHold kinetic assumption remains separate from the old
+default. Durations are only 0.015625–0.0625 ms, so sustained firing, physiological
+rest and balance remain unqualified. `0fe70b`: 2,517 files in each D: package
+copy and all 76 component/analytic/regression cases verify, with exact saved
+analysis. Full source-specimen trajectory accuracy and skull/bundle mapping
+remain open. Both three-file review artifacts are D: verified. No models/tests
+reran during review. See their activation-continuation and coupled-canal docs.
+There are NO pending completion reports at this checkpoint. Archived motor
+accounting is in authoring: unchanged assertions, explicit checked archive
+mounts, 12 controls and full raw/archive saved-capture comparison. It has not
+launched. Old evidence/defaults/saves remain; full DNNE/Avatar/World goal active.

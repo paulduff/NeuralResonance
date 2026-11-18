@@ -3299,3 +3299,13 @@ inspection. Exactly TWO pending reports: sensory retry `501244` and canal
 `0fe70b`. Compact evidence `bc0501` reviewed/passing; failed `2b5a68` already
 reviewed/repaired. See coupled canal and native evidence documents for remaining
 accuracy, integration, physiology and recovery work. Goal active, unfinished.
+
+Latest reported results are fully reviewed. Sensory `501244` passes all seven
+short-transient accuracy/refinement cases under unchanged bounds; 3,200 files
+per C:/D: copy, 333 tests, eight spectrum controls and all 21 exact original
+native replays verify. EndpointHold remains an explicit kinetic candidate;
+0.015625–0.0625 ms traces do not qualify sustained/physiological sensory firing.
+Canal `0fe70b` passes all 76 cases; 2,517 files per D: copy verify. Its independent
+published-matrix accuracy and skull/bundle mapping remain open. Both three-file
+review artifacts are D: verified. No pending reports at this checkpoint.
+Archived motor accounting is being authored, not launched. Full goal unfinished.

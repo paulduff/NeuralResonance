@@ -156,3 +156,44 @@ completion report: retry `501244`. Failed `2b5a68`, precision `ddef1a`, bundle
 `092238` and motor `e9bed6` are all reviewed, not pending. Failed traces, old
 saves, original successful-replay requirement and numerical limits remain.
 Full DNNE/Avatar/World goal remains active and unfinished.
+
+## Completed continuation comparison
+
+The operator reported retry `501244` complete. Review verifies all 3,200 files
+in both C:/D: copies, frozen Git source, 333 focused tests, eight spectrum
+controls and managed runtime. All 86 files representing the 21 original native
+runs replay byte for byte, including initial/final states, derivatives and
+trajectories. The seven original independent derivative witness replays are
+recorded as exact. Candidate initial conditions/settings/identities remain
+unchanged, and all candidate fingerprints explicitly differ from the original.
+
+Re-reading every saved candidate/reference trajectory reproduces the entire
+analysis exactly: all seven cases meet the original direct-error, reference,
+refinement and conservation limits. The 21 candidate runs and 21 independent
+references are complete. No bound or old default changed. The three-file review
+`afferent-endpoint-20261118-501244-review` is D: verified. No model/test reran.
+
+| Case | Coarse error / allowance | Middle | Finest |
+| --- | ---: | ---: | ---: |
+| quiet-one | 0.11225433 | 0.02696905 | 0.00662522 |
+| bundle-one | 0.11225433 | 0.02696905 | 0.00662522 |
+| loaded-one | 0.75979211 | 0.18958475 | 0.04735157 |
+| reverse-one | 0.69909999 | 0.17443894 | 0.04356846 |
+| cut-one | 0.32837626 | 0.07889826 | 0.01938284 |
+| graded-two | 0.11574902 | 0.02780864 | 0.00683148 |
+| bundle-eight | 0.11574902 | 0.02780864 | 0.00683148 |
+
+Step ticks are 4, 2, 1 at 262,144 ticks per millisecond. Errors decrease by
+roughly fourfold per halving. Durations are only 0.015625 or 0.0625 ms: these
+are fast transients, not sustained firing or a balance experiment. This supports
+the diagnosis that the original discontinuous activation continuation prevented
+smooth refinement in the tested crossing regimes. It does not establish the
+new continuation as measured human kinetics. The prior default, old failures,
+source table and saves remain preserved; EndpointHold remains an explicit
+candidate choice. Loaded rest/stability, longer free dynamics, physiological
+sensory firing and physical balance/recovery remain unfinished.
+
+Coupled canal `0fe70b` was also reported and reviewed: 76 component/regression
+cases pass, with no full source-specimen trajectory qualification. Both earlier
+windows are now reviewed, not pending. Independent archived motor accounting is
+being authored; no new qualification window has launched at this checkpoint.

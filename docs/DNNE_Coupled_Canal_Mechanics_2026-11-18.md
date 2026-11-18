@@ -105,3 +105,16 @@ canal `0fe70b`. Compact evidence `bc0501` is fully reviewed/passing; earlier
 sensory `2b5a68` is reviewed/repaired. Source evidence, original mechanics,
 old saves and live Avatar/Unity/editor selection remain preserved. Full goal
 active and unfinished; physiological balance and recovery remain unqualified.
+
+## Completed component review
+
+The operator reported `0fe70b` complete. Review verifies 2,517 files in each
+D: workspace/backup copy and frozen Git source; all 76 cases pass with their exact
+method multiplicities. This includes all 23 new mechanical/analytic controls
+and 53 earlier clock/skull/bundle cases. The saved analysis is exactly reproduced,
+managed runtime and original kernels are preserved, and the three-file review
+`coupled-canal-20261118-0fe70b-review` has its own verified D: copy. No test or
+model was rerun during review. Source-specimen independent trajectories,
+coordinate conversion, physical sample adapter, local bundle mapping and
+physiological firing/balance remain unqualified. This is a component pass,
+not selection of the candidate by the live Avatar or editor.

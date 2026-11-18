@@ -129,3 +129,17 @@ is pending: `debebb`. Unlaunched static-preflight failure `e01e93` is preserved
 with its receipt and 1,997-file verified D: backup. Archive accounting `13c9cf`,
 sensory `501244` and canal components `0fe70b` are fully reviewed, not pending.
 No old capture, save, bound or live selection changed. Full goal active/unfinished.
+
+
+Completed canal trajectory review: `debebb` passes all 15 declared fine-resolution
+accuracy/refinement conditions, six reference controls and separate physical/
+numerical energy checks. All 2,357 files per D: copy and frozen Git source verify;
+saved-data recomputation exactly reproduces the complete analysis for 1,020,600
+native steps and 583,215 reference points per method. No model/test reran during
+review. The three-file review artifact has its own verified D: copy. The largest
+finest error is 0.02993453 of its allowed bound. The coarse fast-HC trace reaches
+1.08642586 of its bound: do not infer that every coarse step is accurate or select
+a live fixed timestep from this result. Published-specimen mechanics passes its
+declared numerical scope; skull orientation, local bundle mapping, physiological
+sensory firing and Avatar balance remain unqualified. No pending completion
+reports now. The full refined motor matrix is ready for freezing, not launched.

@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 7 && args[0] == "--rubral-native-compact")
+{
+    RubralNativeCompactStudy.Run(args[1],args[2],args[3],args[4],args[5],args[6]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--coupled-canal-trajectories")
 {
     CoupledCanalStudy.Run(args[1], args[2]);

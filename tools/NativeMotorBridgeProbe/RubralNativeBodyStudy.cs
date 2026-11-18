@@ -34,7 +34,7 @@ internal static class RubralNativeBodyStudy
     // The original entry point retains its exact clock. Additional resolutions
     // change only numerical coupling; the circuit, events and muscle parameters
     // remain identical, and every condition covers the same physical duration.
-    internal static void RunAt(string player,string reference,string sourceGate,string output,int physicsResolution,int muscleSubsteps,bool strongLeftOnly=false)
+    internal static void RunAt(string player,string reference,string sourceGate,string output,int physicsResolution,int muscleSubsteps,bool strongLeftOnly=false,Action<string> afterConditionClosed=null)
     {
         Require((physicsResolution,muscleSubsteps) is (1,2) or (1,4) or (2,2) or (3,1) or (3,2),
             "Require a declared independent body/muscle refinement condition.");
@@ -65,8 +65,12 @@ internal static class RubralNativeBodyStudy
             minimumStrongResponseRadians=1e-7,quietAndMirrorBoundRadians=1e-5,strongLeftOnly});
         WirePreflight.Run(player,reference,output);
         var rows=new List<object>();var angles=new Dictionary<string,double>();
+        string closedCondition=null;
         foreach(var condition in conditions)
         {
+            // The previous foreach scope, including every using declaration,
+            // has exited. Publication must never race open recording streams.
+            if(closedCondition is not null)afterConditionClosed?.Invoke(closedCondition);
             Console.WriteLine("RUBRAL NEURONS TO NATIVE MUSCLES "+condition.Key);
             string folder=Path.Combine(output,condition.Key);Directory.CreateDirectory(folder);Guid session=Guid.NewGuid();
             using var circuit=new RubralMotorCircuit(session,Path.GetFullPath(Path.Combine(folder,"source-state")),condition.Quanta,condition.Disconnected);
@@ -192,7 +196,9 @@ internal static class RubralNativeBodyStudy
                     quiet=quiet.Capture(),pendingSource=circuit.PendingSource(),plant=plant?.State,native=body?.Last});throw;
             }
             finally{if(process is not null){if(!process.HasExited){process.Kill(true);process.WaitForExit();}process.Dispose();}}
+            closedCondition=condition.Key;
         }
+        if(closedCondition is not null)afterConditionClosed?.Invoke(closedCondition);
         bool movement=strongLeftOnly?angles["strong-left"]>1e-7:
             Math.Abs(angles["quiet"])<=1e-5&&Math.Abs(angles["strong-cut"])<=1e-5&&angles["strong-left"]>1e-7&&
             angles["strong-right"]< -1e-7&&Math.Abs(angles["strong-left"]+angles["strong-right"])<=1e-5;

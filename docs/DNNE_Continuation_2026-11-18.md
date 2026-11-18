@@ -956,3 +956,19 @@ bytes differ. No model/test executed. The unlaunched package and explicit failur
 receipt are preserved. The freezer now separately copies/hash-verifies the
 original analysis and compares its decoded contents to the reviewed reconstruction.
 A new frozen package is required; no frozen source or acceptance bound is edited.
+
+
+Published canal trajectory comparison is now launched as
+`canal-trajectories-20261118-debebb`, workspace
+`D:/DNNE-build-work/canal-trajectories-20261118-debebb`, frozen at pushed revision
+`df8b1e71bfaa1212ecf8a67008f9655f3ec78a7b`. Static frozen preflight passed;
+1,997 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/canal-trajectories-20261118-debebb` before visible
+task `DNNE-Canal-Trajectory-31f76feefeb6` started. Launch returned successfully.
+No post-launch status, output or process was inspected. Six reference controls,
+45 native captures and 15 independent reference cases run only in that window;
+no success or physiological validity is inferred. Exactly ONE completion report
+is pending: `debebb`. Unlaunched static-preflight failure `e01e93` is preserved
+with its receipt and 1,997-file verified D: backup. Archive accounting `13c9cf`,
+sensory `501244` and canal components `0fe70b` are fully reviewed, not pending.
+No old capture, save, bound or live selection changed. Full goal active/unfinished.

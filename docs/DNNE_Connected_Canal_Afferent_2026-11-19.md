@@ -495,3 +495,13 @@ process has been inspected. There are now two pending final reports: this
 control window `29468a` and the unchanged connected native capture `6d0480`.
 Neither is a live-monitoring task. Only the completed mechanical/environment
 evidence was used during preparation; the native capture was not opened.
+
+The success-review script is now authored at
+`tools/review-canal-reference-controls-result.py`. After an actual final footer,
+it verifies both complete copies and frozen Git source, the numerical environment,
+all 16 saved method identities/outcomes, and the matching successful lines in
+the log. It preserves source fingerprints for later reuse; those fingerprints
+do not mean every archived Python function was tested. No test is rerun by the
+review. An explicit operator report is required before any capture is opened.
+The script itself has only been syntax-checked and has not accessed `29468a`.
+If that window reports failure, preserve and diagnose its failure before reuse.

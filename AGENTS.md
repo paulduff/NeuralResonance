@@ -10,6 +10,11 @@ Exactly TWO final reports are now pending: `6d0480` and `29468a`. The operator
 has been asked whether `6d0480` has finished; no answer is assumed. Await final
 footers; do not monitor, duplicate or reuse unreviewed results. This launch
 supersedes the pending counts and unlaunched-control status in older entries.
+`review-canal-reference-controls-result.py` is authored for a successful final
+control footer. It checks both complete copies, frozen Git source, dependency
+identity, all 16 recorded method outcomes and their log lines without rerunning
+tests. It remains unexecuted and opens no capture without the explicit report.
+If reported failed, preserve and diagnose that failure instead of promoting it.
 
 Latest 19-November result: the operator reported `canal-waveform-20261119-2dd76a`
 complete and its full review passed. Both 2,096-file copies, frozen Git source,

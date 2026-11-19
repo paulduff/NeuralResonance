@@ -394,3 +394,12 @@ inspected. The operator has been asked for `6d0480`'s status; absence of an
 answer is not completion. Wait for each final footer, review its saved evidence
 separately, and preserve any failure. No neuronal/native model or pending
 capture was accessed during control preparation. The full goal stays active.
+
+## Control result reviewer authored
+
+`review-canal-reference-controls-result.py` now provides the read-only success
+review after the operator reports `29468a` complete. It verifies both copies,
+frozen source, dependencies and the exact 16-method results/log inventory, then
+records fingerprints for any later reuse. It reruns no controls. Its explicit
+operator-report guard precedes capture access; it has only been syntax-checked.
+Both `29468a` and `6d0480` still await final reports and remain unmonitored.

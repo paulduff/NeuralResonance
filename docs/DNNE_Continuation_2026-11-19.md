@@ -522,3 +522,20 @@ That report is not completion; no pending output/status/process was opened.
 Keep the goal active and await its final footer without monitoring/duplication.
 The ownership pass does not qualify physiological firing, independent active
 trajectory accuracy, live neural authority or Avatar recovery.
+
+## Opposing head-motion input prepared
+
+`PrescribedHeadTurn` supplies smooth signed turns with consistent head basis,
+sensing-point position/velocity and analytic acceleration, while retaining
+physical sample identities and gravity. It holds the final pose rather than
+resetting organ/cell state. See `DNNE_Prescribed_Head_Turn_2026-11-19.md`.
+It is a diagnostic input producer, with no neural current, native-body motion
+or live selector. Excitatory/inhibitory interpretation remains a measured
+downstream question; positive yaw is not assigned an excitatory label.
+
+Both projects build cleanly and static syntax/inventory checks pass. Twenty
+new producer cases and twelve existing skull-adapter cases are prepared for
+a visible 32-case window, using only completed `add4d7` evidence. They remain
+unexecuted; record any launch separately. Pending continuous comparison `2a402c`
+remains untouched, and its review is still required before selecting the next
+active sensory protocol. No original biological equation or limit changed.

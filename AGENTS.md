@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+New input candidate: `docs/DNNE_Prescribed_Head_Turn_2026-11-19.md`.
+`PrescribedHeadTurn` supplies consistent analytic pitch/yaw/roll observations,
+signed excursions, quiet onset and held final pose through the existing skull
+adapter. This is prescribed diagnostic motion, not native Unity or neural control.
+No biological equations/live selector changed. Both projects build cleanly;
+20 new tests and the 32-case input workflow are authored but unexecuted. They
+read only completed `add4d7` evidence, never pending `2a402c` results. Record any
+actual launch/report count separately. Direction labels are kinematic; infer
+excitation from measured organ/cell response, not the sign of yaw alone.
+
 Latest completed component: the operator reported `add4d7` complete and its
 full review passed. Both 2,625-file copies, frozen Git source, runtime/binaries,
 all 75 exact cases and saved analysis verify. The three-file review plus manifest

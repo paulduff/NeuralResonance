@@ -21,6 +21,7 @@
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\ObservedMotorSource.cs" Link="ObservedMotorSource.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\RubralMotorCircuit.cs" Link="RubralMotorCircuit.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\CanalAfferentNucleusConnection.cs" Link="CanalAfferentNucleusConnection.cs" />
+    <Compile Include="..\..\tools\NativeMotorBridgeProbe\PrescribedHeadTurn.cs" Link="PrescribedHeadTurn.cs" />
     <Compile Include="..\..\tools\MotoneuronReferenceProbe\ClockAudit.cs" Link="MotorClockAudit.cs" />
     <Compile Include="..\..\tools\UnityPhysicalSampleProbe\UnityObservationEncoding.cs" Link="UnityObservationEncoding.cs" />
     <Compile Include="..\..\tools\OliveBatchProbe\OlivaryBatchKernel.cs" Link="OlivaryBatchKernel.cs" />

@@ -78,3 +78,32 @@ The component window reads no pending reference output and executes no active
 head-to-afferent qualification or live world. Await the operator footers without
 monitoring, then distinguish ownership checks from numerical and physiological
 qualification. The full brain/body/world goal remains active and incomplete.
+
+## Completed ownership review
+
+The operator reported `add4d7` complete. Both full 2,625-file copies, frozen
+`4e06017489fe2915c23068583b07d8652ded6858` Git source, executable/runtime evidence,
+all 75 exact test cases and their saved analysis verify. The three-file review
+plus manifest is D: verified at `canal-nucleus-20261119-add4d7-review`.
+`tools/review-canal-nucleus-result.py` performed this read-only review; it reran
+no tests, source models or reference solves and opened no pending capture.
+
+All ten new owner cases pass alongside 25 source-owner, 20 event-observer and
+20 ingress cases. The original passive crossing reaches its declared receiving
+contact at its original delayed time. Publication retries do not repeat receiving
+integration; wrong/stale acknowledgements do not release newer output. Quiet
+packets respect the known conduction horizon, and different packet partitions
+preserve source state, fixed receiving ticks, actual deliveries and original
+nucleus output. Overload retains the unacknowledged source packet. Existing-save,
+external-source and invalid-head checks also pass.
+
+This establishes the tested isolated ownership and delivery behavior. The passive
+threshold fixture is not a physiological afferent, and no live service/World
+mode was promoted. Independent active sensory accuracy, calibrated firing,
+multiple-source brain coupling and Avatar recovery remain open.
+
+Only continuous reference `2a402c` still awaits its final report. The operator
+confirmed it remains running and pasted progress to interval 3/10 of its first
+`recorded-head radau-standard` reference. No post-launch output files, status or
+process were inspected; this user-provided progress is not a completed result.
+Await its final footer before reviewing or selecting the next active experiment.

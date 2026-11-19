@@ -505,3 +505,20 @@ after launch. Await the operator's final footers without monitoring/duplication.
 The new connection is isolated; no live selector, prior equation or old save was
 changed. Its passive crossing controls do not qualify physiological firing,
 connected active accuracy or Avatar balance. The full goal stays active.
+
+## Source-to-nucleus ownership result reviewed
+
+The operator reported `add4d7` complete. Both 2,625-file copies, frozen Git source,
+runtime/binaries, all 75 exact cases and saved analysis verify. The ten new
+connection cases pass, including actual passive-event receptor delivery,
+packet-partition timing, retained output, quiet progress and rejection/failure
+handling. The three-file review plus manifest is D: verified. No model/test or
+independent reference was rerun. See the completed section of the connection
+document and `tools/review-canal-nucleus-result.py`.
+
+Exactly ONE final report remains pending: `2a402c`. The operator confirmed it
+is still running and pasted progress through first-reference interval 3/10.
+That report is not completion; no pending output/status/process was opened.
+Keep the goal active and await its final footer without monitoring/duplication.
+The ownership pass does not qualify physiological firing, independent active
+trajectory accuracy, live neural authority or Avatar recovery.

@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+Latest completed component: the operator reported `add4d7` complete and its
+full review passed. Both 2,625-file copies, frozen Git source, runtime/binaries,
+all 75 exact cases and saved analysis verify. The three-file review plus manifest
+is D: verified at `artifacts/canal-nucleus-20261119-add4d7-review`. Ten new owner
+cases pass, including original passive crossing/contact delivery, fixed receiving
+ticks across packet partitions, backpressure, quiet horizons and failure retention.
+No tests/models were rerun. This is isolated ownership evidence, not physiological
+afferent firing, independent coupled accuracy, live-brain authority or balance.
+Only ONE final report remains pending: continuous reference `2a402c`. The operator
+explicitly confirmed it is still running and pasted first-reference progress
+through `recorded-head radau-standard interval 3/10`; that is not completion.
+No post-launch file/status/process of that run has been inspected. Await its final
+footer without monitoring or duplication. This supersedes the two-report counts.
+
 Latest component launch: `D:/DNNE-build-work/canal-nucleus-20261119-add4d7`,
 frozen at pushed `4e06017489fe2915c23068583b07d8652ded6858`. Its source/runtime
 preflight and initial backup passed (2,094 files per copy plus manifest).

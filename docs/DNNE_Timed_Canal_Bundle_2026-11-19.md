@@ -79,3 +79,21 @@ At authoring, the code builds and static inventories/parse checks pass. The new
 tests and replay have not run. If this connection qualifies, the next step is
 to consume its timed bundle input in the existing coupled sensory nerve owner,
 retaining initialization, clock ownership, ionic state and actual emitted events.
+
+
+## Timed bundle window launched
+
+Fresh package `D:/DNNE-build-work/canal-bundle-20261119-bd15d1` is frozen at
+pushed revision `bfa0ae9c2ef2c2214c8be0587a6c82160a3e39a1`. Both build targets
+pass with zero warnings/errors; Python/PowerShell parsing and the exact static
+204-case inventory pass. Frozen preflight confirms all preserved inputs,
+35 prior sources and numerical/runtime dependencies. Initial 2,685 files plus
+manifest verify in `D:/DNNE-desktop-runs/UnityWorld/canal-bundle-20261119-bd15d1`.
+Visible independent task `DNNE-Canal-Bundle-7be04cf7594f` started successfully.
+
+Exactly one final report is pending: `bd15d1`. No post-launch output, status or
+process has been inspected. Wait for the operator's final footer; do not monitor
+or duplicate the run. The 204 tests and three timed replays remain unqualified.
+This tests the physical input to sensory cells; it does not yet execute them or
+qualify anatomical mapping, live neural balance or recovery. The overall goal
+remains active and unfinished.

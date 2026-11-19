@@ -31,16 +31,22 @@ Cupula component `8ec244` has now been reported complete and fully reviewed:
 179/179 cases, including 23 spatial controls; both 2,586-file copies, source,
 exact test identities, runtime and catalogue byte versions verify. Its three-file
 review plus manifest is backed up. Earlier preparation failure `6b69cf` remains
-preserved and was never launched. No test window remains pending at this point.
+preserved and was never launched. That completed component needs no further report.
 The next candidate is `docs/DNNE_Timed_Canal_Bundle_2026-11-19.md`: explicit
 stiffness-matched spatial geometry, retained graded mechanical knots, quadratic
 stage-based dense queries and one acknowledged physical-clock owner. It adds
 no live selector or neuronal current. Geometry/placement are declared hypotheses,
-not measured human anatomy. Builds/static checks pass; its 25 new cases have not
-run. The prospective window runs 204 cases and compares all accepted mechanics
+not measured human anatomy. Builds/static checks pass; its 25 new cases remain
+unqualified. The window runs 204 cases and compares all accepted mechanics
 exactly with `7880d2`, then 1,333,300 dense queries against saved independent
 references using unchanged bounds. Thirty-five earlier files remain pinned.
 No sensory neurons, Unity bodies or live services run in that qualification.
+The fresh `canal-bundle-20261119-bd15d1` window is now launched, frozen at
+`bfa0ae9c2ef2c2214c8be0587a6c82160a3e39a1`. Frozen preflight passed; 2,685
+initial files plus manifest verified in D: backup before visible task
+`DNNE-Canal-Bundle-7be04cf7594f` started. Exactly ONE final report is pending:
+`bd15d1`. No post-launch output, status or process has been inspected. Do not
+monitor or duplicate this window before the operator reports completion.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

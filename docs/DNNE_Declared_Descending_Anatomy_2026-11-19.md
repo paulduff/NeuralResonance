@@ -83,8 +83,18 @@ read or modified during authoring.
 
 ## Remaining connected work
 
-A passing component run would establish this declared original-output/receiving
-path only. It must then be connected to actual sensory-driven source owners and
+Completed review: `declared-descending-20261119-82111a` passed all 180 cases.
+Both final 2,761-file copies, frozen revision
+`9416df8a15c5bc9057e4b7f15f6144904bb90f21`, binaries/runtime, exact test inventory
+and saved analysis verify. Both source executions retain 523 emissions and
+identical neuronal states; all 523 actual events in the motor experiment reach
+the 256 declared contacts on two detailed cells. The review and its D: copy
+are at `artifacts/declared-descending-20261119-82111a-review` and
+`D:/DNNE-desktop-runs/UnityWorld/declared-descending-20261119-82111a-review`.
+The earlier unrun statements describe authoring, not current test status.
+
+These component checks establish this declared original-output/receiving
+path only. It must still be connected to actual sensory-driven source owners and
 the original body epoch, with independent coupled numerical checks, disabled
 contact controls, physiological receptor/source calibration and moving-muscle
 feedback. Existing generic spinal feedback neurons remain distinct from the

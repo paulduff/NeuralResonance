@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+PAUSE CHECKPOINT — 19 November: Paul requested notes and a goal pause and will
+leave `e503fd` running. See `docs/DNNE_Checkpoint_2026-11-19.md`. Commit/push the
+checkpoint, pause the goal and stop; resume only on an explicit instruction.
+Exactly ONE report remains pending: full midpoint `e503fd`; no post-launch
+output/status/process has been inspected. Leave it running without monitoring.
+Declared descending `82111a` is now fully reviewed: both 2,761-file copies,
+frozen source/runtime/binaries and exact 180 passed cases verify. All 523
+original reticular events reach the two detailed motor cells through 256
+contacts, with source states unchanged across the anatomy comparison. Its
+three-file review plus manifest is D: verified. Saved motor crossings were
+observed but lack matched causal controls/independent coupled qualification;
+the original motor-firing/physiology/balance flags remain false. No new test
+or model ran inline and no new window was launched during this final turn.
+This supersedes all earlier two-pending and unreviewed-launch notes below.
+
 Latest launch: `D:/DNNE-build-work/declared-descending-20261119-82111a`, frozen
 at pushed `9416df8a15c5bc9057e4b7f15f6144904bb90f21`. Frozen preflight and both
 initial 2,170-file copies plus manifest verify. Visible task

@@ -1,12 +1,12 @@
 # Midpoint sampling of completed canal movement
 
-The 172-case component workflow is now launched at
+The 172-case component workflow completed at
 `D:/DNNE-build-work/canal-midpoint-20261119-f8a807`, frozen from pushed
-`7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Frozen preflight and both initial
-2,153-file copies plus manifest verify. Visible task
-`DNNE-Canal-Midpoint-d7a060e43f47` was started; no post-launch inspection occurred.
-Await the operator's final footer before reviewing. No candidate trajectory
-accuracy result is available yet.
+`7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. After the operator's final footer,
+both final 2,742-file copies, frozen source/runtime/binaries, exact case inventory
+and saved analysis were verified. All 172 cases passed; the three-file review
+plus manifest is D: verified. No live monitoring occurred. No candidate full
+trajectory accuracy result is available yet.
 
 The completed continuous-input comparison `canal-reference-20261119-2a402c`
 failed its moving-head accuracy limits. All six independent reference solutions
@@ -51,9 +51,12 @@ crossing observer, event identity and acknowledgement remains in the existing
 path. The receipt records the actual midpoint bundle sample. No resettling,
 extra stimulus, threshold change or firing-rate shortcut is introduced.
 
-This option is not yet selected by `CanalAfferentStudy` or any live/editor
-consumer. The main reference capture must explicitly select it in a subsequent
-frozen experiment. The current change has not demonstrated improved accuracy.
+The explicit probe command `--canal-afferent-midpoint` now selects the candidate
+through `CanalAfferentStudy.RunMidpoint`. The original command and start-held
+capture schema remain available. A separate protocol version and `sampling.json`
+record the actual selected owner, fingerprint and midpoint offset. The full
+replay is prospective; no live/editor consumer selects this option, and improved
+trajectory accuracy has not yet been demonstrated.
 
 ## First gate: input and ownership controls
 
@@ -87,3 +90,37 @@ Retain original and candidate outcomes separately. If the candidate still fails,
 inspect which components and intervals dominate before changing another factor.
 Even a passing comparison will establish sampled numerical accuracy only;
 physiological firing, live brain authority and Avatar balance need later evidence.
+
+## Full replay implementation and preservation
+
+`canal_midpoint_trajectory_gate.py` requires the completed, D:-verified midpoint
+review, original failed reference review and earlier connected capture review.
+It freezes clean pushed source and copies all 373 files of the six preserved
+reference solutions, plus the original mechanical and loaded-state evidence.
+It reserves space for both copies and the new native capture before preparation.
+The original reference problem and every original bound are retained exactly.
+
+The visible `start-canal-midpoint-trajectory-window.ps1` rebuilds, checks the
+matched managed runtime, runs all 172 unchanged component controls and 24 Python
+controls, then captures six midpoint conditions. Accounting reconstructs every
+held movement value from the retained mechanical stages at the exact midpoint;
+it also verifies original body history, neuron states, clocks, conservation,
+observed events, packets and acknowledgements. The same continuous comparison
+then reads every new endpoint and the saved independent solutions. No ODE is
+rerun to regenerate references and no saved trace is rewritten to change input.
+
+Four harness files have declared normalized before/after hashes and full diffs:
+the probe dispatcher, capture adapter, input-accounting analyzer and comparison
+entry point. The comparison tail is checked textually against the original,
+allowing only supplied native/reference root arguments. All neuronal and
+mechanical runtime kernels are unchanged from the passed component snapshot;
+all 396 original Python sources outside the two declared analyzers are protected,
+including dynamically imported modules. Original failure status remains FAILED.
+
+The 24 analytic controls comprise the original 16 comparison/sampling cases and
+eight new protocol/coordinate controls: forcing-only changes, version identity,
+exact start/midpoint coordinates at all resolutions, unaddressable half ticks,
+invalid/noninteger/duplicate coordinates and overflow. They run in PowerShell
+before native capture. Both authoring projects build with zero warnings/errors;
+static syntax, inventories and preserved-source checks pass. These authoring
+checks have not executed the new tests or candidate trajectories.

@@ -1,15 +1,23 @@
 # Avatar and environment work
 
-Latest launch: `D:/DNNE-build-work/canal-midpoint-20261119-f8a807`, frozen at
-pushed `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Both projects build cleanly;
-static syntax, exact 172-case inventory, 159 preserved sources and the one
-declared owner diff verify. Frozen preflight and both initial 2,153-file copies
-plus manifest pass. Visible task `DNNE-Canal-Midpoint-d7a060e43f47` started.
-Exactly ONE final report is pending: this midpoint component window. No
-post-launch output/status/process was inspected. Await the operator's final
-footer without monitoring; then review before any full candidate trajectory
-capture. Earlier motor `f3826f` and sensory comparison `2a402c` are fully reviewed
-as detailed below. Launch does not establish improved accuracy or physiology.
+Latest completed review: operator reported midpoint controls `f8a807` finished.
+Both 2,742-file copies, frozen `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3` source,
+runtime/binaries, exact 172-case inventory and saved analysis verify. All 172
+pass; the three-file review plus manifest is D: verified. No older report remains
+pending. This supersedes earlier midpoint launch/unreviewed statements.
+
+The full midpoint replay is now authored: explicit probe CLI, exact recorded
+midpoint input reconstruction, shared original continuous comparison, and a
+visible pipeline with 172 existing component cases plus 24 analytic controls.
+It requires the completed midpoint review, copies all six accurate continuous
+references and preserves the failed original comparison. Four harness files
+have declared changes; all neuronal kernels and 396 original Python sources
+outside the two declared analysis edits remain intact. The shared comparison
+tail has identical arithmetic/bounds. Both projects build cleanly and static
+Python/PowerShell/inventory checks pass; no tests/models ran inline. Freeze/push/
+back up/launch using `canal_midpoint_trajectory_gate.py` and record actual launch
+separately. No reference ODE rerun or live selector change. Physiological firing,
+live brain authority and Avatar balance remain unqualified.
 
 Current checkpoint: both operator-reported final results are fully reviewed.
 Motor `f3826f` has all 164 cases passed, both 2,732-file copies verified and a

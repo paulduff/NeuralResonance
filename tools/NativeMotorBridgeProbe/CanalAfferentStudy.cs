@@ -11,11 +11,16 @@ internal static class CanalAfferentStudy
 {
     private static readonly JsonSerializerOptions Json=new(JsonSerializerDefaults.Web);
     private static readonly JsonSerializerOptions FailureJson=new(JsonSerializerDefaults.Web){NumberHandling=JsonNumberHandling.AllowNamedFloatingPointLiterals};
-    internal static void Run(string input,string output)
+    internal static void Run(string input,string output)=>RunCore(input,output,AvatarCanalForcingPolicy.StartHeld);
+    internal static void RunMidpoint(string input,string output)=>RunCore(input,output,AvatarCanalForcingPolicy.MidpointHeld);
+    private static void RunCore(string input,string output,AvatarCanalForcingPolicy forcingPolicy)
     {
         if(!Path.IsPathFullyQualified(input)||!Path.IsPathFullyQualified(output)||Directory.Exists(output)||File.Exists(output))throw new ArgumentException("Frozen input and new output required.");
         using var document=JsonDocument.Parse(File.ReadAllText(input));var p=document.RootElement;var bundle=p.GetProperty("bundle");
-        if(p.GetProperty("version").GetString()!="recorded-canal-connected-afferent-v1"||p.GetProperty("activationPolicy").GetString()!="EndpointHold"||
+        bool midpoint=forcingPolicy==AvatarCanalForcingPolicy.MidpointHeld;
+        string version=midpoint?"recorded-canal-midpoint-afferent-v2":"recorded-canal-connected-afferent-v1";
+        if(p.GetProperty("version").GetString()!=version||
+            (midpoint&&p.GetProperty("forcingPolicy").GetString()!="MidpointHeld")||p.GetProperty("activationPolicy").GetString()!="EndpointHold"||
             p.GetProperty("physicalIntervals").GetInt32()!=10||p.GetProperty("expectedRuns").GetInt32()!=6||p.GetProperty("expectedSourceSteps").GetInt64()!=2293760||
             p.GetProperty("mechanicalRefinement").GetInt32()!=4||p.GetProperty("maximumPacketSteps").GetInt32()!=512||
             !p.GetProperty("sourceStepsPerInterval").EnumerateArray().Select(x=>x.GetInt32()).SequenceEqual(new[]{16384,32768,65536})||
@@ -61,7 +66,10 @@ internal static class CanalAfferentStudy
                 cell=new(clock.SessionId,attachment.HairCellId,kernel,new(binding.SourceStepMs,settings.VoltageAbsoluteToleranceMv,settings.IonAbsoluteToleranceMm,
                     settings.GateAbsoluteTolerance,settings.RelativeTolerance,settings.MaximumNewtonIterations,settings.MaximumLineSearchHalvings),
                     f.HairMv,f.PerilymphMv,f.States,f.Inputs.Select(x=>new AvatarCleftGateState(x.Id,x.HairGates,x.CalyxGates)).ToArray(),fixture.CableStates,binding.SourceEpochMs);
-                owner=new(mechanics,cell,new("isolated-canal-afferent",attachment.HairCellId.ToString("D"),p.GetProperty("observationNode").GetString()!,p.GetProperty("thresholdMv").GetDouble()),binding,512);
+                owner=new(mechanics,cell,new("isolated-canal-afferent",attachment.HairCellId.ToString("D"),p.GetProperty("observationNode").GetString()!,p.GetProperty("thresholdMv").GetDouble()),binding,512,forcingPolicy);
+                if(midpoint)Write(Path.Combine(folder,"sampling.json"),new {policy=owner.ForcingPolicy.ToString(),
+                    version=AvatarCanalAfferentInput.MidpointVersion,ownerFingerprint=owner.Fingerprint,
+                    mechanicalTicksPerSourceStep=binding.MechanicalTicksPerSourceStep,offsetTicks=binding.MechanicalTicksPerSourceStep/2});
                 var initial=cell.Capture();Write(Path.Combine(folder,"initial.json"),new {condition,count,binding,field,attachment,owner.Fingerprint,source=owner.Source,neuronal=initial,mechanical=mechanics.Capture()});
                 using var file=new FileStream(Path.Combine(folder,"trajectory.csv.gz"),FileMode.CreateNew,FileAccess.Write,FileShare.Read);
                 using var gzip=new GZipStream(file,CompressionLevel.Fastest);using var rows=new StreamWriter(gzip,new UTF8Encoding(false));

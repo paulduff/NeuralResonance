@@ -315,10 +315,10 @@ class ReferenceReader:
 
 
 class NativeReader:
-    def __init__(self, stack, package, protocol, condition, count, equation):
+    def __init__(self, stack, package, protocol, condition, count, equation, native_directory=None):
         self.protocol, self.equation, self.condition, self.count = protocol, equation, condition, count
         connected = protocol['connected']
-        self.folder = package / 'native/study' / f'{condition}-n{count}'
+        self.folder = (package / 'native/study' if native_directory is None else Path(native_directory)) / f'{condition}-n{count}'
         initial = read(self.folder / 'initial.json')
         self.final = read(self.folder / 'final.json')
         state, source, clock = initial['neuronal'], initial['source'], initial['binding']['physicalClock']
@@ -447,6 +447,18 @@ def analyse(package):
     require(read(package / 'continuous-reference/results.json') == dict(completed=True, attempted=p['expectedReferences'],
         failedRuns=[], comparisonsExecuted=False, coupledAccuracyQualified=False,
         physiologicalCalibrationQualified=False, avatarBalanceAssessed=False), 'Reference execution incomplete.')
+    return compare_trajectories(package, p, source)
+
+
+def compare_trajectories(package, p, source, *, native_directory=None, reference_package=None):
+    """Shared original comparison after caller verifies capture/input/reference provenance.
+
+    Separate native and reference roots allow new captures to use the preserved
+    independent solutions without copying/reintegrating them. All comparison
+    equations, endpoints, conservation limits and refinement tests are unchanged.
+    """
+    package = Path(package)
+    reference_package = package if reference_package is None else Path(reference_package)
     output = package / 'continuous-comparison'
     output.mkdir()
     reports = []
@@ -462,12 +474,12 @@ def analyse(package):
         require([s['key'] for s in p['referenceSettings']] == ['radau-standard', 'radau-tight', 'bdf-tight'],
                 'Required independent methods changed.')
         for condition in p['conditions']:
-            readers = {s['key']: ReferenceReader(package, p, source, condition, s, equation, projection, gains)
+            readers = {s['key']: ReferenceReader(reference_package, p, source, condition, s, equation, projection, gains)
                        for s in p['referenceSettings']}
             errors = {key: ErrorEnvelope(equation.labels, p['referenceComparison'])
                       for key in readers if key != 'radau-tight'}
             with ExitStack() as stack:
-                natives = [NativeReader(stack, package, p, condition, count, equation)
+                natives = [NativeReader(stack, package, p, condition, count, equation, native_directory)
                            for count in p['connected']['sourceStepsPerInterval']]
                 for index in range(p['physicalIntervals']):
                     expected, clock = readers['radau-tight'].interval(index)

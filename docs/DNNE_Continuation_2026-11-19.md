@@ -7,14 +7,31 @@ independent PowerShell, with no live monitoring and no duplicate launches.
 
 ## Latest launch — midpoint sensory input controls
 
+Update: the operator reported `f8a807` complete. Both final 2,742-file copies,
+frozen source/runtime/binaries, all 172 case identities and saved analysis
+verify. All 172 passed. The three-file completed review plus manifest is D:
+verified; no older report remains pending. The original launch details below
+remain historical evidence, not a request for another completion report.
+
 `D:/DNNE-build-work/canal-midpoint-20261119-f8a807` is frozen at pushed
 `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Both projects build cleanly; static
 syntax/inventory, 159 preserved source files and the declared owner diff verify.
 Frozen preflight and both initial 2,153-file copies plus manifest pass. Task
 `DNNE-Canal-Midpoint-d7a060e43f47` started the independent visible 172-case run.
-No post-launch output/status/process was inspected. Exactly one final report
-now awaits the operator: `f8a807`. Its completion must be reviewed before the
-full candidate capture/continuous comparison. All older reports are reviewed.
+No live monitoring occurred; review happened only after the final footer.
+
+The full midpoint replay pipeline is authored and both projects build cleanly.
+It runs 172 component cases and 24 analytic controls before capturing the same
+two conditions at three resolutions, verifying every recorded midpoint input
+and comparing all 2,293,760 steps against copies of the six saved independent
+references. The exact reference protocol, initial state, clocks, equations and
+limits remain unchanged. Four harness changes are explicitly recorded; the
+shared comparison tail retains its original arithmetic and every early sample.
+All other protected kernels and 396 original Python source files are unchanged.
+Preparation requires the verified completed midpoint review, clean pushed Git
+and sufficient D: reserve. Freeze/back up/launch, then record the actual package.
+No tests/models have executed inline and no full candidate accuracy result is
+available yet. See `DNNE_Canal_Midpoint_Forcing_2026-11-19.md` for the scope.
 
 ## Current completed reviews and midpoint input candidate
 

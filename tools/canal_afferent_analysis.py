@@ -9,10 +9,12 @@ from afferent_precision_gate import read
 from afferent_trajectory_protocol import labels,group
 from afferent_trajectory_analysis import balance,RESIDUALS
 from coupled_canal_analysis import vector
+from canal_midpoint_protocol import forcing_ticks,policy
 
 
 def analyse(package):
-    p=read(package/'connected-input.json');result=read(package/'study/results.json');assert result['completed'] and len(result['runs'])==6
+    p=read(package/'connected-input.json');forcing=policy(p)
+    result=read(package/'study/results.json');assert result['completed'] and len(result['runs'])==6
     assert read(package/'study/input.json')==p
     fixture=p['fixture'];states,ledgers=labels(fixture);ns,nl=len(states),len(ledgers)
     saved_initial=read(package/'sensory/study/quiet-ticks64/initial.json')
@@ -29,6 +31,9 @@ def analyse(package):
     for expected,run in zip([(k,n) for k in p['conditions'] for n in p['sourceStepsPerInterval']],result['runs'],strict=True):
         condition,count=expected;folder=package/'study'/f'{condition}-n{count}'
         initial=read(folder/'initial.json');final=read(folder/'final.json');source=initial['source'];clock=initial['binding']['physicalClock']
+        if forcing=='MidpointHeld':
+            assert read(folder/'sampling.json')==dict(policy=forcing,version='canal-to-observed-afferent-midpoint-owner-v2',
+                ownerFingerprint=initial['fingerprint'],mechanicalTicksPerSourceStep=262144//count,offsetTicks=262144//count//2)
         assert initial['field']==saved_geometry['field'] and initial['attachment']==saved_geometry['attachment']
         n=initial['neuronal'];assert final==run and final['completed'] and final['failure'] is None
         assert (final['condition'],final['count'])==expected and final['steps']==10*count and final['intervals']==10 and final['packets']==10*count//512
@@ -71,7 +76,8 @@ def analyse(package):
                 times=source['epochMs']+steps*source['stepMs'];mechanical_times=clock['neuralEpochMs']+end_ticks*(clock['physicsStepMs']/262144)
                 assert np.array_equal(rows[:,1],times) and np.array_equal(rows[:,5],mechanical_times) and np.array_equal(rows[:,6],times-mechanical_times)
                 max_rounding=max(max_rounding,float(np.max(abs(rows[:,6]))))
-                idx=np.searchsorted(ends,start_ticks,side='left');theta=(start_ticks-starts[idx])/widths[idx]
+                sampled_ticks=forcing_ticks(start_ticks,stride,forcing)
+                idx=np.searchsorted(ends,sampled_ticks,side='left');theta=(sampled_ticks-starts[idx])/widths[idx]
                 dt=np.array([s['transition']['stepSeconds'] for s in substeps])[idx]
                 q=before[idx,3]+dt*(theta*(1.5-.75*theta)*stage1[idx,9]+theta*(.75*theta-.5)*stage2[idx,9])
                 q=np.where(theta==0,before[idx,3],np.where(theta==1,after[idx,3],q));held=gain*q

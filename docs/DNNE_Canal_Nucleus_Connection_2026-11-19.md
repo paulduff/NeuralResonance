@@ -62,3 +62,19 @@ the ownership and receiving behavior remain unqualified. Record the actual
 prepared package and launch separately, then await the operator's final footer
 without monitoring. Numerical sensory accuracy and physiological calibration
 remain separate prerequisites for subsequent active connection experiments.
+
+## Component window launched
+
+`D:/DNNE-build-work/canal-nucleus-20261119-add4d7` is frozen at pushed revision
+`4e06017489fe2915c23068583b07d8652ded6858`. Frozen preflight passed, preserving
+the earlier source, receiving-cell and learning equations and runtime. Both
+initial 2,094-file copies plus manifest verify. Independent visible task
+`DNNE-Canal-Nucleus-d1302123e5ea` started successfully.
+
+Its 75-case outcome remains unqualified until reported and reviewed. No
+post-launch output, status or process was inspected. Exactly two final reports
+are now pending: this component `add4d7` and continuous comparison `2a402c`.
+The component window reads no pending reference output and executes no active
+head-to-afferent qualification or live world. Await the operator footers without
+monitoring, then distinguish ownership checks from numerical and physiological
+qualification. The full brain/body/world goal remains active and incomplete.

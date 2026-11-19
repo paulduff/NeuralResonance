@@ -492,3 +492,16 @@ build with zero warnings/errors; ten new cases and their 75-case visible workflo
 are authored but unrun. Static syntax/inventory checks pass. The new workflow
 uses completed `6d0480` evidence only. `2a402c` remains the sole pending report
 and was not inspected. Record any new component launch separately.
+
+## Source-to-nucleus component window launched
+
+Fresh package `D:/DNNE-build-work/canal-nucleus-20261119-add4d7` is frozen at
+pushed revision `4e06017489fe2915c23068583b07d8652ded6858`. Frozen preflight and
+both initial 2,094-file copies plus manifest verify. Visible independent task
+`DNNE-Canal-Nucleus-d1302123e5ea` started successfully for the 75 component cases.
+
+Exactly TWO final reports are pending: `2a402c` and `add4d7`. Neither was inspected
+after launch. Await the operator's final footers without monitoring/duplication.
+The new connection is isolated; no live selector, prior equation or old save was
+changed. Its passive crossing controls do not qualify physiological firing,
+connected active accuracy or Avatar balance. The full goal stays active.

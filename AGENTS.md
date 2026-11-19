@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest component launch: `D:/DNNE-build-work/canal-nucleus-20261119-add4d7`,
+frozen at pushed `4e06017489fe2915c23068583b07d8652ded6858`. Its source/runtime
+preflight and initial backup passed (2,094 files per copy plus manifest).
+Visible task `DNNE-Canal-Nucleus-d1302123e5ea` started successfully for 75 cases.
+Exactly TWO final reports are pending: continuous reference `2a402c` and
+source/nucleus ownership `add4d7`. Neither post-launch output/status/process
+has been inspected. Await the operator's final footers, without monitoring or
+duplicate launches. This supersedes the unlaunched/one-report counts below.
+The new owner connects existing components but has no live selector; its passive
+crossing controls cannot qualify physiological sensory firing or Avatar balance.
+
 New ownership candidate: `docs/DNNE_Canal_Nucleus_Connection_2026-11-19.md`.
 `CanalAfferentNucleusConnection` composes the actual Avatar canal source with
 the existing isolated vestibular nucleus ingress. Original events/contact

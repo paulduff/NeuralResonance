@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+New convergence candidate: `docs/DNNE_Afferent_Convergence_2026-11-19.md`.
+Several explicitly identified original fibres can now enter one fresh full
+vestibular nucleus through their own contacts and clocks. The slowest source
+bounds receiving time; equal-time arrivals have a fixed ordering independent of
+packet arrival. The known horizon is strict because a later packet can contain
+an event at its starting endpoint. Only isolated optional engine hooks change;
+the previous ingress, neuronal/learning equations and live selectors are intact.
+Fourteen new controls and all 75 existing connection cases are authored, unrun.
+Test project build and static syntax/inventory pass. Use the new frozen gate;
+it preserves the original engine and the exact reviewed change explicitly.
+Only reference `2a402c` awaits a final report; do not inspect or duplicate it.
+
 Latest completed review: operator reported head-input `1047b8` complete. Both
 2,631-file copies, frozen `04df5c84e0216122c9f80142044dc3cea811df0a` source,
 runtime/binaries, all 32 exact cases and saved analysis verify. Twenty prescribed

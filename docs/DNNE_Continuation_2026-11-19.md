@@ -572,3 +572,22 @@ cases pass. Three review files plus manifest are retained under
 `artifacts/head-turn-20261119-1047b8-review` and backed up to D:.
 Only `2a402c` awaits its final report and remains uninspected. Input correctness
 does not establish active sensory accuracy, physiological firing or balance.
+
+## Convergent original sensory fibres authored
+
+The existing live connectome already carries vestibular output along multiple
+postural, cerebellar and ocular routes. The new isolated receiver lacked a way
+for several observed sensory fibres to converge on the same neurons. The
+`ConvergentAfferentIngress` candidate adds this with explicit source/contact
+identity, independent progress, a minimum arrival horizon and deterministic
+equal-time ordering. The original neuronal and learning equations remain intact;
+only optional engine ownership hooks change. The old single-source path is
+preserved. See `DNNE_Afferent_Convergence_2026-11-19.md` for boundary semantics.
+
+Fourteen new tests plus the existing 75 connection cases are prepared for their
+own 89-case visible window. The test project builds cleanly; syntax and static
+inventory pass. No new tests/models have run and no package has launched yet.
+Preparation uses only reported/reviewed `1047b8`, retaining the original engine
+and reviewed edit explicitly. Record any actual launch separately. `2a402c`
+remains untouched and pending; active sensory/circuit accuracy and physiology
+are still prerequisites for promoting this to the brain/body loop.

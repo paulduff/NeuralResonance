@@ -187,11 +187,20 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		IReadOnlyList<double>? diagnosticNoOpBoundaries = null, bool diagnosticCellLocalIntegration = false,
 		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false,
 		bool diagnosticCorticalPrecision = false, bool diagnosticCorticalWarmStart = false,
-		IsolatedRubralProjection? diagnosticRubralProjection = null,IsolatedAfferentIngress? diagnosticAfferentIngress = null)
+		IsolatedRubralProjection? diagnosticRubralProjection = null,IsolatedAfferentIngress? diagnosticAfferentIngress = null,
+		ConvergentAfferentIngress? diagnosticAfferentConvergence = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if(diagnosticAfferentConvergence is not null)
+		{
+			if(diagnosticAfferentIngress is not null||isolatedNeuronCount is not null||diagnosticSynapticTargets is not null||
+				diagnosticCorticalPrecision||diagnosticCorticalWarmStart||diagnosticRubralProjection is not null)
+				throw new ArgumentException("Convergent sensory ingress requires its own fresh full vestibular population.");
+			diagnosticAfferentConvergence.Bind(profile,_instanceKey,_circuit.NeuronCount);
+			_diagnosticAfferentConvergence=diagnosticAfferentConvergence;
+		}
 		if(diagnosticAfferentIngress is not null)
 		{
 			if(isolatedNeuronCount is not null||diagnosticSynapticTargets is not null||diagnosticCorticalPrecision||
@@ -302,6 +311,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedRubralProjection.Version, _diagnosticRubralProjection.Fingerprint).ToString("N");
 		if (_diagnosticAfferentIngress is not null)
 			fingerprint = StableNeuralIdentity.Create(fingerprint,IsolatedAfferentIngress.Version,_diagnosticAfferentIngress.Fingerprint).ToString("N");
+		if (_diagnosticAfferentConvergence is not null)
+			fingerprint = StableNeuralIdentity.Create(fingerprint,ConvergentAfferentIngress.Version,_diagnosticAfferentConvergence.Fingerprint).ToString("N");
 		_synapseStore = new SynapsePersistenceStore(profile.StructureId, fingerprint,
 			_diagnosticCorticalPrecision ? profile.PlasticityRule : null);
 		try
@@ -357,7 +368,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	{
 		ArgumentNullException.ThrowIfNull(messages);
 		cancellationToken.ThrowIfCancellationRequested();
-		if(_diagnosticAfferentIngress is not null)
+		if(_diagnosticAfferentIngress is not null||_diagnosticAfferentConvergence is not null)
 			throw new InvalidOperationException("This isolated recipient accepts only its contiguous observed sensory packets.");
 		if (messages.Count == 0)
 		{
@@ -449,6 +460,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		{
 			var performance = DiagnosticPerformance;
 			_diagnosticAfferentIngress?.ValidateTick(tickSignal,_lastBiologicalTimestampMs);
+			_diagnosticAfferentConvergence?.ValidateTick(tickSignal,_lastBiologicalTimestampMs);
 			long tickStarted = performance?.Start() ?? 0;
 			if (tickSignal.Tick <= _lastProcessedTick)
 			{
@@ -966,6 +978,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			return;
 		}
 
+		if (_diagnosticAfferentConvergence is not null) OrderConvergentInputs(due);
 		foreach (SpikeEnvelope envelope in due)
 		{
 			var message = envelope.Message;
@@ -1038,6 +1051,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 	private int ResolveInboundNeuronIndex(SpikeMessage message)
 	{
 		if(_diagnosticAfferentIngress is not null)return _diagnosticAfferentIngress.Resolve(message);
+		if(_diagnosticAfferentConvergence is not null)return _diagnosticAfferentConvergence.Resolve(message);
 		if (_diagnosticSynapticTargets is not null && _diagnosticSynapticTargets.TryResolve(message, out var declaredTarget))
 			return declaredTarget;
 		if (message.SourceStructure == _profile.StructureId &&

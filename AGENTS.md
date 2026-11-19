@@ -75,6 +75,13 @@ held segments require solver boundaries; continuous SciPy queries still need
 60/90-digit checks. No limits or prior equations changed and no additional
 window was launched. `6d0480` remains the only pending report; do not inspect it
 until the operator reports its final footer.
+The new input evaluator now has a separately prepared qualification workflow
+(`canal_waveform_gate.py` / `start-canal-waveform-window.ps1`): 15 analytic
+controls, six Decimal exponential controls and 1,060 fixed queries. It uses only
+reviewed `bd15d1` / `7880d2` evidence and keeps every existing error bound. No
+neuronal model or pending capture is accessed. Syntax/static inventory passes;
+numerical checks remain unrun until its own visible window executes. See the
+final section of the connected-canal document; record any launch separately.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

@@ -189,3 +189,45 @@ diff checks are permitted during this preparation; executable controls and
 references belong to a later frozen visible PowerShell window. No additional
 window is launched here. The native capture must be reported and reviewed before
 its observed response informs the next execution plan.
+
+## Independent input window prepared
+
+The continuous input evaluator can be checked without accessing the pending
+neuronal capture. `canal_waveform_gate.py`, `canal_waveform_study.py` and
+`start-canal-waveform-window.ps1` now provide that separate frozen workflow.
+It uses only the fully reviewed `bd15d1` bundle input/geometry and `7880d2`
+independent angular input, with the unchanged published matrix transcription.
+No source model, current or output from `6d0480` is read or rerun.
+
+The prospective window executes the 15 new analytic controls and six existing
+closed-form Decimal exponential controls, then compares 1,060 queries: 53 per
+physical interval over ten intervals, for recorded and stationary head input.
+Each interval includes both endpoints, the first sixteen finest sensory-grid
+steps, 31 uniform interior anchors and fractions 1/10, 1/3, 2/3 and 9/10.
+All query positions are fixed before execution. This covers early transients
+and additional times outside the source grid without dropping earlier values.
+
+SciPy evaluates each mechanical query directly from that physical interval's
+retained initial state. Separate 60- and 90-digit Taylor/scaling/squaring
+exponentials use the original source decimals, independently recorded angular
+values and the same binary64 local query time converted to seconds. Both carry
+all coordinates through successive intervals. Spatial gain is independently
+derived at both precisions. Every matrix, sample and accepted comparison is
+saved; failure preserves the prefix and original limits.
+
+The previous reference bounds remain: volume absolute 1e-20 m^3, flow absolute
+1e-19 m^3/s and relative 1e-7. The Decimal matrix/state/gain-projected comparisons
+retain 1e-40 absolute/relative limits. The existing 1e-12 geometry arithmetic
+allowance is checked separately and propagated with the volume bound to the
+bundle comparison. No biological gain or accuracy bound is fitted to this run.
+
+Passing this window qualifies sampled input-reference arithmetic only. It does
+not prove accuracy at every possible adaptive solver query, or qualify neuronal
+trajectories, anatomy, physiological firing or balance. Subsequent connected
+references still require their own derivative/trajectory comparisons and input
+precision witnesses. Analytic controls are not tests of neuronal physiology.
+
+Authoring verification is limited to Python/PowerShell syntax, the static
+15-control/1,060-query inventory and the original saved angular identities.
+No model, reference solve or analytic test has executed inline. The neuronal
+window remains untouched; any new launch and final report are recorded below.

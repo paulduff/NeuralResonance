@@ -253,3 +253,21 @@ frozen evidence changed. No additional window was launched. The sole pending
 operator report remains `canal-afferent-20261119-6d0480`; its post-launch output,
 status and process remain uninspected. Review that reported capture before
 choosing and freezing the next reference run. The broad goal remains active.
+
+## Independent reference work while sensory capture remains pending
+
+Current source confirms that observed sensory ingress remains an isolated
+VestibularNuclei coupling, without a live service selector. The earlier cortical
+precision repair also exists and has reviewed isolated numerical evidence; the
+live host still uses schema 4. The compute-direction document now distinguishes
+that later isolated result from its original unresolved starting point. Neither
+finding justifies silently promoting an unqualified live pathway.
+
+The new continuous-input evaluator can be qualified using completed mechanical
+evidence independently of the pending neuronal result. Its frozen workflow is
+now authored: 15 analytic input controls, six Decimal exponential controls and
+1,060 fixed queries against 60/90-digit calculations. See the final section of
+`DNNE_Connected_Canal_Afferent_2026-11-19.md`. Original bounds/source choices are
+preserved. Python/PowerShell parsing, query inventory and saved angular identity
+checks pass; all numerical execution belongs to the visible independent window.
+No post-launch output or process of `6d0480` has been inspected.

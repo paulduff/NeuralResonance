@@ -74,6 +74,14 @@ pooled or that more nodes remove biological-time synchronization requirements.
 
 ## Existing correctness work still required
 
+Update checked against current source on 19 November: the isolated cortical
+contact/receptor/schema-5 repair has passed its declared numerical checks; see
+`DNNE_Cortical_Precision_Results_2026-11-09.md`. Its double state remains
+authoritative and float fields are diagnostic mirrors. The live host still
+selects the older schema-4 path; dense cortical coverage, biological calibration
+and live promotion remain open. The following paragraph records the earlier
+9-November starting point, not the current isolated implementation status.
+
 Friday's cortical precision result passed its isolated numerical tests, but
 double state is not yet integrated through actual cells and persistence. The
 float storage and small-change transmission bypass remain relevant to any CPU or

@@ -380,3 +380,17 @@ evidence is read; no native capture, head input or neuronal model is accessed.
 This does not bypass the full reference gate. Record the actual launch and
 pending count separately. Once reported and reviewed, passing evidence may be
 reused only with identical control/worker source and numerical dependencies.
+
+## Independent control window launched
+
+Fresh controls package `D:/DNNE-build-work/canal-controls-20261119-29468a` is
+frozen at pushed revision `0cf7dc3fa070513a6f6341db48d845176e55a1bb`. Preflight
+passed; both initial 2,086-file copies plus manifest verify. Independent visible
+task `DNNE-Canal-Controls-ed57c1fa678f` started successfully.
+
+Exactly TWO final reports remain pending: controls `29468a` and connected native
+capture `6d0480`. Neither post-launch output, status nor process has been
+inspected. The operator has been asked for `6d0480`'s status; absence of an
+answer is not completion. Wait for each final footer, review its saved evidence
+separately, and preserve any failure. No neuronal/native model or pending
+capture was accessed during control preparation. The full goal stays active.

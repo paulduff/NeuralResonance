@@ -482,3 +482,16 @@ footer and a saved-evidence review. If those controls pass and their exact
 source/dependencies remain unchanged, reuse their verified evidence in the later
 full comparison rather than executing an unchanged suite again. A separate
 launch entry will identify the actual frozen package.
+
+## Independent controls launched
+
+Package `D:/DNNE-build-work/canal-controls-20261119-29468a` is frozen at pushed
+revision `0cf7dc3fa070513a6f6341db48d845176e55a1bb`. Its frozen preflight passed
+and both initial 2,086-file copies plus manifest verify. The independent visible
+task `DNNE-Canal-Controls-ed57c1fa678f` started successfully.
+
+The 16 control outcomes remain unreviewed. No post-launch output, status or
+process has been inspected. There are now two pending final reports: this
+control window `29468a` and the unchanged connected native capture `6d0480`.
+Neither is a live-monitoring task. Only the completed mechanical/environment
+evidence was used during preparation; the native capture was not opened.

@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest launch: independent analytic controls `canal-controls-20261119-29468a`
+is frozen at `0cf7dc3fa070513a6f6341db48d845176e55a1bb`. Frozen preflight passed;
+both initial 2,086-file copies plus manifest verify. Visible task
+`DNNE-Canal-Controls-ed57c1fa678f` started successfully. It runs only the 16
+synthetic sampling/reporting/comparison controls, with no neuronal/native model
+or pending capture input. No post-launch output, status or process was inspected.
+Exactly TWO final reports are now pending: `6d0480` and `29468a`. The operator
+has been asked whether `6d0480` has finished; no answer is assumed. Await final
+footers; do not monitor, duplicate or reuse unreviewed results. This launch
+supersedes the pending counts and unlaunched-control status in older entries.
+
 Latest 19-November result: the operator reported `canal-waveform-20261119-2dd76a`
 complete and its full review passed. Both 2,096-file copies, frozen Git source,
 numerical dependencies, all 21 analytic controls and 1,060 queries verify.

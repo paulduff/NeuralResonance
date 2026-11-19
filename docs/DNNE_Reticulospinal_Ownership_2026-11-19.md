@@ -1,5 +1,12 @@
 # Reticulospinal recurrent ownership candidate — 19 November 2026
 
+Latest launch: `D:/DNNE-build-work/reticulospinal-20261119-4c18a7`, frozen at
+`143b6d5373020f4f87a3443c8d9e206828943723`. Preflight and both initial 2,137-file
+copies plus manifest verify. Visible task `DNNE-Reticulospinal-cf57b3d981a0`
+started for all 146 cases. No post-launch output/status/process was inspected.
+Await the operator's final backup/footer; no result is inferred from launch.
+The other outstanding report remains continuous sensory reference `2a402c`.
+
 Update: the operator reported recipient `49d913` complete. Its full review
 verifies both 2,714-file copies, source/runtime/binaries, all 130 cases and exact
 saved analysis. The three-file review has a verified D: copy. The prerequisite

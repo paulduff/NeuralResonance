@@ -5,6 +5,21 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — recurrent reticulospinal ownership
+
+`D:/DNNE-build-work/reticulospinal-20261119-4c18a7` is frozen at pushed
+`143b6d5373020f4f87a3443c8d9e206828943723`. Preflight passes, and both initial
+2,137-file copies plus manifest verify. Visible task
+`DNNE-Reticulospinal-cf57b3d981a0` started for 146 cases: sixteen new recurrent
+controls and all 130 prior cases. No post-launch output/status/process was read.
+
+Exactly two final reports now await the operator: `4c18a7` and continuous
+reference `2a402c`. Neither is to be monitored or duplicated. Recipient `49d913`
+is fully reviewed, with all 130 cases passed and a verified D: review copy.
+This supersedes the one-report/preparation-only checkpoint below. The full goal
+remains active; launch does not establish circuit function, physiological
+activity, independently accurate coupled dynamics or Avatar balance.
+
 ## Latest completed review — actual receiving neurons
 
 The operator reported `49d913` complete. Both 2,714-file copies, frozen source,

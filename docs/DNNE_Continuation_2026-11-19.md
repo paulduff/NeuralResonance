@@ -77,3 +77,18 @@ cupula paper's metadata/abstract (DOI 10.3233/VES-2009-0359) and access record i
 was not obtained. No parameter was installed from its abstract. The existing
 2019 review supports distinguishing generalized organ volume from local bundle
 shear; a calibrated mapping remains open. No live selector/editor change.
+
+
+## Graded qualification launched
+
+The new run is `canal-graded-20261119-7880d2`, frozen at pushed revision
+`b06a811b57d11a5d94adac2c73ae8883889525a6`. Results belong to
+`D:/DNNE-build-work/canal-graded-20261119-7880d2`; its initial 2,055 files plus
+manifest were verified at `D:/DNNE-desktop-runs/UnityWorld/canal-graded-20261119-7880d2`.
+Frozen preflight passed. Visible independent task
+`DNNE-Canal-Graded-8f60d7eb0b2d` started successfully. There has been no
+post-launch output, status or process inspection. Exactly one final report is
+pending: `7880d2`. Do not duplicate or monitor it. Review all original limits,
+refinement, reference anchors and substep accounting after the operator reports
+its final backup/footer. The full brain/body/world goal remains active and
+unfinished; this candidate has not yet been numerically qualified.

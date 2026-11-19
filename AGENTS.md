@@ -24,8 +24,12 @@ A separate graded schedule/owner and prospective rig are authored, preserving
 24 earlier files and all biological equations. It requires 156 focused cases,
 491,729 native substeps and 459,293 reference samples per method, with original
 uniform anchors retained. Builds and static checks pass; tests/models have not
-run during authoring. No final report is pending at this authoring checkpoint;
-the graded rig is not yet launched. Historical launch notes below are not current.
+run during authoring. The graded rig is now launched as
+`canal-graded-20261119-7880d2`, frozen at `b06a811`, in `D:/DNNE-build-work`.
+Its 2,055 initial files plus manifest verified in D: backup before visible task
+`DNNE-Canal-Graded-8f60d7eb0b2d` started. Exactly ONE final report is pending:
+`7880d2`. No post-launch output/status/process has been inspected. Do not monitor
+or duplicate this study. Historical launch notes below are not current.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

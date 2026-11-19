@@ -168,6 +168,13 @@ public sealed class PrescribedHeadTurnTests
         foreach(var bad in new[]{rest with{SampleId=Guid.NewGuid()},rest with{RightWorld=Scale(X,-1)},
             rest with{AngularVelocityWorldRadiansPerSecond=Y},rest with{PointVelocityWorldMetersPerSecond=X}})
             Assert.Throws<ArgumentException>(()=>new PrescribedHeadTurn(c,bad,PrescribedHeadAxis.Yaw,.4,10,1000));
+        foreach(var measured in new[]{rest with{RightWorld=Scale(X,1+1e-7)},
+            rest with{UpWorld=new(1e-7,1,0)},rest with{PointWorldMeters=Add(rest.PointWorldMeters,new(1e-7,0,0))}})
+        {
+            // Valid native float measurements need not be valid analytic fixtures.
+            new AvatarSkullKinematics(c,"head","labyrinth",rest.LocalPointMeters).Consume(measured);
+            Assert.Throws<ArgumentException>(()=>new PrescribedHeadTurn(c,measured,PrescribedHeadAxis.Yaw,.4,10,1000));
+        }
     }
 
     [Fact]

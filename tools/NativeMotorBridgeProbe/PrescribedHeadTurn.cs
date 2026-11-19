@@ -14,6 +14,7 @@ internal sealed record PrescribedHeadTurnSample(AvatarSkullObservation Observati
 internal sealed class PrescribedHeadTurn
 {
     internal const string Version="prescribed-quintic-head-turn-v1";
+    internal const double AnalyticGeometryTolerance=1e-12;
     private static readonly AvatarSkullVector Zero=new(0,0,0);
     private readonly AvatarSkullObservation _rest;
     private readonly AvatarSkullVector _axis;
@@ -35,6 +36,18 @@ internal sealed class PrescribedHeadTurn
         // Reuse the actual adapter's geometry/identity checks; no normalization,
         // anatomical repair or substitute pelvis frame is permitted.
         new AvatarSkullKinematics(clock,rest.HeadBodyId,rest.SensorId,rest.LocalPointMeters).Consume(rest);
+        // Native observations permit float rounding. This prescribed rotation
+        // requires a double-precision rigid frame and a consistent starting point.
+        // Reject approximate measured geometry instead of silently repairing it.
+        var axes=new[]{rest.RightWorld,rest.UpWorld,rest.ForwardWorld};
+        var expectedPoint=Add(rest.OriginWorldMeters,Add(Scale(axes[0],rest.LocalPointMeters.X),
+            Add(Scale(axes[1],rest.LocalPointMeters.Y),Scale(axes[2],rest.LocalPointMeters.Z))));
+        if(axes.Any(v=>Math.Abs(Dot(v,v)-1)>AnalyticGeometryTolerance)||
+            Math.Abs(Dot(axes[0],axes[1]))>AnalyticGeometryTolerance||
+            Math.Abs(Dot(axes[0],axes[2]))>AnalyticGeometryTolerance||
+            Math.Abs(Dot(axes[1],axes[2]))>AnalyticGeometryTolerance||
+            !Close(Cross(axes[0],axes[1]),axes[2])||!Close(expectedPoint,rest.PointWorldMeters))
+            throw new ArgumentException("Prescribed motion requires an analytic orthonormal frame and consistent material point; measured rounding is not repaired.");
         StartStep=checked(clock.InitialPhysicsStep+startOffsetSteps);EndStep=checked(StartStep+turnSteps);
         _=clock.AtStep(checked(EndStep+1));
         _seconds=turnSteps*(clock.PhysicsStepMs/1000);
@@ -44,7 +57,7 @@ internal sealed class PrescribedHeadTurn
         _axis=axis switch {PrescribedHeadAxis.Pitch=>rest.RightWorld,PrescribedHeadAxis.Yaw=>rest.UpWorld,_=>rest.ForwardWorld};
         _rest=rest;Clock=clock;_angle=signedAngleRadians;_turnSteps=turnSteps;
         Fingerprint=PhysicalSampleProtocol.Digest(JsonSerializer.Serialize(new {Version,Clock=clock.Fingerprint,rest,axis,
-            signedAngleRadians,startOffsetSteps,turnSteps,Units="metres, seconds and radians; fixed origin and world gravity",
+            signedAngleRadians,startOffsetSteps,turnSteps,AnalyticGeometryTolerance,Units="metres, seconds and radians; fixed origin and world gravity",
             Scope="prescribed diagnostic movement; neither native motion nor neuronal authority"}));
     }
 
@@ -84,6 +97,8 @@ internal sealed class PrescribedHeadTurn
         return Add(Scale(vector,c),Add(Scale(Cross(_axis,vector),s),Scale(_axis,Dot(_axis,vector)*(1-c))));
     }
     private static bool Finite(AvatarSkullVector v)=>double.IsFinite(v.X)&&double.IsFinite(v.Y)&&double.IsFinite(v.Z);
+    private static bool Close(AvatarSkullVector a,AvatarSkullVector b)=>
+        Math.Abs(a.X-b.X)<=AnalyticGeometryTolerance&&Math.Abs(a.Y-b.Y)<=AnalyticGeometryTolerance&&Math.Abs(a.Z-b.Z)<=AnalyticGeometryTolerance;
     private static double Dot(AvatarSkullVector a,AvatarSkullVector b)=>a.X*b.X+a.Y*b.Y+a.Z*b.Z;
     private static AvatarSkullVector Scale(AvatarSkullVector a,double s)=>new(a.X*s,a.Y*s,a.Z*s);
     private static AvatarSkullVector Add(AvatarSkullVector a,AvatarSkullVector b)=>new(a.X+b.X,a.Y+b.Y,a.Z+b.Z);

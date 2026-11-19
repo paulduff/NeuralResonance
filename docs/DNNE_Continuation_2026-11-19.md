@@ -539,3 +539,12 @@ a visible 32-case window, using only completed `add4d7` evidence. They remain
 unexecuted; record any launch separately. Pending continuous comparison `2a402c`
 remains untouched, and its review is still required before selecting the next
 active sensory protocol. No original biological equation or limit changed.
+
+Authoring review caught overly permissive initial geometry in this prescribed
+producer: native float measurement tolerances do not establish an analytic rigid
+frame. Its separate basis/material-point checks now require 1e-12, with regression
+inputs accepted by the native adapter but rejected by the analytic fixture.
+The original adapter and biological equations are unchanged. The prepared
+`head-turn-20261119-6f9251` at `034e5322f65a0c477df30e8779d67aa5cd0cd0c3`
+was rejected before launch; its source remains intact and all 2,101 files plus
+manifest, including the reason, are D: verified. Use a fresh package for execution.

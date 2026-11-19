@@ -1,5 +1,14 @@
 # Avatar and environment work
 
+Prelaunch correction: prepared head-input package `head-turn-20261119-6f9251`
+was rejected before any launch, test or model. Its frozen inputs remain intact;
+the rejection record and all 2,101 files plus manifest have a verified D: copy.
+The new analytic fixture now requires an orthonormal initial basis and consistent
+material point within 1e-12; existing native measurement tolerances are unchanged.
+Its invalid-input controls include measurements acceptable to the native adapter
+but unsuitable for analytic rotation. Prepare a fresh package after committing;
+never launch the rejected preparation. `2a402c` remains untouched and pending.
+
 New input candidate: `docs/DNNE_Prescribed_Head_Turn_2026-11-19.md`.
 `PrescribedHeadTurn` supplies consistent analytic pitch/yaw/roll observations,
 signed excursions, quiet onset and held final pose through the existing skull

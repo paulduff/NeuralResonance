@@ -14,6 +14,11 @@ orientation; the sensing point follows that rotation. Point velocity is
 omega cross radius, and its analytic acceleration includes both angular
 acceleration cross radius and centripetal acceleration. No normalization,
 reflected-frame repair or substitute pelvis orientation is used.
+The prescribed initial basis must be orthonormal within 1e-12, and its material
+point must match within 1e-12 metres. The existing native adapter retains its
+1e-5 tolerances for measured float coordinates. A measurement acceptable to that
+adapter can therefore be rejected as an analytic fixture; it is never silently
+normalized or converted into prescribed motion.
 
 For turn phase u in [0,1], angle is A(10u^3 - 15u^4 + 6u^5), angular speed is
 (A/T)30u^2(1-u)^2 and angular acceleration is

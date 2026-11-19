@@ -5,6 +5,19 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — actual vestibular recipients
+
+`D:/DNNE-build-work/vestibular-recipient-20261119-49d913` is frozen at pushed
+`2c2d3e4165477048f88acc7e02190ff3567fc7d3`. Both projects build cleanly, frozen
+preflight passes and both initial 2,127-file copies plus manifest verify.
+Visible task `DNNE-Vestibular-Recipient-f61e64a0984c` started for 130 cases.
+Exactly TWO final reports are pending: continuous reference `2a402c` and actual
+recipient `49d913`. Neither post-launch output/status/process was inspected.
+Await operator final footers without monitoring or duplication. Outgoing owner
+`ae88a4` is fully reviewed with 119 passes. This supersedes earlier unlaunched
+and one-report counts. No live/coupled numerical/physiological qualification or
+Avatar balance follows from launch.
+
 ## Current checkpoint — outgoing ownership reviewed; receiving neurons authored
 
 The operator reported `ae88a4` complete. Both 2,710-file copies, frozen source,

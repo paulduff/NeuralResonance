@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/vestibular-recipient-20261119-49d913`, frozen
+at pushed `2c2d3e4165477048f88acc7e02190ff3567fc7d3`. Both projects build cleanly;
+frozen preflight passes and both initial 2,127-file copies plus manifest verify.
+Visible task `DNNE-Vestibular-Recipient-f61e64a0984c` started for 130 cases.
+Exactly TWO final reports are pending: continuous reference `2a402c` and actual
+recipient `49d913`. Neither post-launch output/status/process was inspected.
+Await operator final footers without monitoring or duplication. Outgoing owner
+`ae88a4` is fully reviewed with all 119 cases passed and needs no further report.
+This supersedes the unlaunched/one-report counts below. No live neural selection,
+independent coupled accuracy, physiology or Avatar balance follows from launch.
+
 Latest completed review: operator reported outgoing ownership `ae88a4` complete.
 Both 2,710-file copies, frozen `ab70753bcca31033111ea6434e40234257db3386` source,
 runtime/binaries, all 119 exact cases and saved analysis verify. The three-file

@@ -82,3 +82,14 @@ incoming brain regions, recurrent whole-brain coupling, physiological sensory
 firing, independently accurate downstream trajectories, neuronal muscle control
 from this sensory source and Avatar balance remain later requirements. No
 language-model, Dyad or CIV work is resumed.
+
+## Visible qualification launched
+
+`D:/DNNE-build-work/vestibular-recipient-20261119-49d913` is frozen at pushed
+`2c2d3e4165477048f88acc7e02190ff3567fc7d3`. Frozen preflight passes and both
+initial 2,127-file copies plus manifest verify at the workspace and
+`D:/DNNE-desktop-runs/UnityWorld/vestibular-recipient-20261119-49d913`.
+Visible task `DNNE-Vestibular-Recipient-f61e64a0984c` started for all 130 cases.
+No post-launch output/status/process was inspected. Await the operator's final
+backup/footer. Continuous reference `2a402c` is the only other pending report
+and remains untouched. Preparation and launch do not qualify receiving behavior.

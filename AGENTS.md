@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+New ownership candidate: `docs/DNNE_Canal_Nucleus_Connection_2026-11-19.md`.
+`CanalAfferentNucleusConnection` composes the actual Avatar canal source with
+the existing isolated vestibular nucleus ingress. Original events/contact
+delivery, fixed receiver grid, bounded retained output and explicit consumer
+acknowledgement connect the prior separate owners. No biological equations,
+live selectors or old saves change. Both projects build with zero warnings/errors;
+the new ten tests and 75-case component workflow remain unexecuted. This workflow
+uses only completed `6d0480` evidence and never the pending `2a402c` output.
+Record any actual launch and resulting report count separately; do not treat
+build success or passive diagnostic crossings as physiological firing.
+
 Latest launch: `D:/DNNE-build-work/canal-reference-20261119-2a402c`, frozen
 at pushed revision `fab52528b3d4250be2d647929d70d0c6273a5700`. The verified-control
 preparer and frozen preflight passed; both initial 2,133-file copies plus manifest

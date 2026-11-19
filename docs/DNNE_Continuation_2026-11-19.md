@@ -478,3 +478,17 @@ references, all saved native endpoint comparisons and final preservation/backup.
 Original bounds remain fixed, including refinement under continuous versus
 start-held forcing. No connected accuracy, physiological firing, live neural
 authority or Avatar balance is inferred from launch. The full goal stays active.
+
+## Source-to-nucleus owner authored while reference remains pending
+
+`CanalAfferentNucleusConnection` joins the actual Avatar source and existing
+isolated vestibular ingress, retaining original receiving output until consumer
+acknowledgement. Its fixed receiver grid is independent of packet boundaries;
+quiet progress bounds receiving time, and failures retain partial evidence.
+See `DNNE_Canal_Nucleus_Connection_2026-11-19.md` for scope and restrictions.
+
+No existing biological/learning equation or live selector changed. Both projects
+build with zero warnings/errors; ten new cases and their 75-case visible workflow
+are authored but unrun. Static syntax/inventory checks pass. The new workflow
+uses completed `6d0480` evidence only. `2a402c` remains the sole pending report
+and was not inspected. Record any new component launch separately.

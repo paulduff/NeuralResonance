@@ -345,7 +345,7 @@ The reported-completion reviewer, frozen comparison gate and independent
 PowerShell launcher are now authored. They require the completed native review
 and verified backup before preparation, pin all original biological/numerical
 inputs, and retain the complete original capture while copying only the exact
-trajectory subset needed for comparison. The visible window will run 15 new
+trajectory subset needed for comparison. The visible window will run 16 new
 controls, six independent references, every saved native endpoint, preservation
 checks and final backup. Existing output cannot be silently replaced.
 
@@ -357,3 +357,15 @@ passed, back up that review before preparing and launching the new workflow.
 If it failed, preserve and diagnose its failure first. The connected-canal
 document records the exact prerequisite and storage requirements.
 The pending capture remains untouched and unmonitored; the full goal is active.
+
+## Failure-reporting correction before executing the candidate
+
+Static review found a possible JSON failure when an inaccurate mechanical
+precision witness short-circuited to a NumPy Boolean. The new worker now records
+an ordinary Boolean, preserving the original rejected comparison values before
+raising its numerical failure. One added, unexecuted regression method covers
+both failure branches and an exact control. The prospective inventory is now
+16 methods (8 sampler/reporting + 8 comparison), reflected in the gate and
+launcher. Syntax/static checks only; no new package or experiment was started.
+No original equation, input or accuracy limit changed. `6d0480` still awaits
+the operator's final footer and remains uninspected.

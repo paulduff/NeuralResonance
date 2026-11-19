@@ -27,7 +27,7 @@ NATIVE_REVISION = 'c8466ff24b58588ec140cd8ef411883af244b899'
 WAVEFORM = ROOT / 'artifacts/canal-waveform-20261119-2dd76a-review'
 WAVEFORM_REVISION = 'deb4b145bab025864bc49f827e81084c5a0307a7'
 CONTROL_CLASSES = {
-    'check_canal_afferent_reference_sampling': ('ReferenceSamplingControls', 7),
+    'check_canal_afferent_reference_sampling': ('ReferenceSamplingControls', 8),
     'check_canal_afferent_reference_analysis': ('ReferenceAnalysisControls', 8),
 }
 NATIVE_PRESERVED = sorted(set(native_gate.PRESERVED + native_gate.SENSORY_PRESERVED + [
@@ -56,7 +56,7 @@ def control_inventory(root):
         methods = sorted(node.name for node in classes[0].body if isinstance(node, ast.FunctionDef) and node.name.startswith('test_'))
         assert len(methods) == len(set(methods)) == count
         expected.extend(name + '.' + class_name + '.' + method for method in methods)
-    assert len(expected) == 15
+    assert len(expected) == 16
     return sorted(expected)
 
 
@@ -188,7 +188,7 @@ def prepare(review_folder, reported):
              for f in sorted(h.io(package).rglob('*')) if f.is_file()]
     save(package / 'configuration.json', dict(Revision=revision, PackageFiles=files, BackupDestination=str(backup),
         PythonExecutable=sys.executable, PythonExecutableSha256=h.digest(sys.executable),
-        IsolatedContinuousCanalReference=True, NoLiveMonitoring=True, ExpectedControls=15, ExpectedControlMethods=tests,
+        IsolatedContinuousCanalReference=True, NoLiveMonitoring=True, ExpectedControls=16, ExpectedControlMethods=tests,
         ExpectedReferenceCases=6, ExpectedNativeSteps=2293760, ExpectedUniqueSamplesPerReference=655361,
         MinimumPhaseReserveBytes=RESERVE_BYTES, NewNativeCaptureRequested=False, LiveSelectionChanged=False,
         PhysiologicalCalibrationQualified=False, AvatarBalanceAssessed=False, ArchiveCopiesShareDrive=True))
@@ -201,7 +201,7 @@ def prepare(review_folder, reported):
 def preflight(package):
     cfg, provenance = read(package / 'configuration.json'), read(package / 'provenance.json')
     assert cfg['IsolatedContinuousCanalReference'] and cfg['NoLiveMonitoring']
-    assert cfg['ExpectedControls'] == 15 and cfg['ExpectedReferenceCases'] == 6
+    assert cfg['ExpectedControls'] == 16 and cfg['ExpectedReferenceCases'] == 6
     assert cfg['ExpectedNativeSteps'] == 2293760 and cfg['ExpectedUniqueSamplesPerReference'] == 655361
     assert cfg['MinimumPhaseReserveBytes'] == RESERVE_BYTES
     assert not any(cfg[k] for k in ('NewNativeCaptureRequested', 'LiveSelectionChanged', 'PhysiologicalCalibrationQualified', 'AvatarBalanceAssessed'))
@@ -271,17 +271,17 @@ def controls(package):
 
     result = unittest.TextTestRunner(verbosity=2, resultclass=RecordedResult).run(suite)
     exact = sorted(result.started) == sorted(result.passed) == expected
-    report = dict(expected=15, executed=result.testsRun, successful=result.wasSuccessful(), exactInventory=exact,
+    report = dict(expected=16, executed=result.testsRun, successful=result.wasSuccessful(), exactInventory=exact,
         started=result.started, passed=result.passed, failures=[dict(test=str(t), trace=s) for t, s in result.failures],
         errors=[dict(test=str(t), trace=s) for t, s in result.errors], skipped=result.skipped)
     save(package / 'analytic-controls.json', report)
-    assert result.testsRun == 15 and result.wasSuccessful() and not result.skipped and exact, 'Analytic controls failed or incomplete.'
+    assert result.testsRun == 16 and result.wasSuccessful() and not result.skipped and exact, 'Analytic controls failed or incomplete.'
 
 
 def require_controls(package):
     result = read(package / 'analytic-controls.json')
     expected = read(package / 'configuration.json')['ExpectedControlMethods']
-    assert result['expected'] == result['executed'] == 15 and result['successful'] and result['exactInventory']
+    assert result['expected'] == result['executed'] == 16 and result['successful'] and result['exactInventory']
     assert sorted(result['started']) == sorted(result['passed']) == expected
     assert not result['errors'] and not result['failures'] and not result['skipped']
 

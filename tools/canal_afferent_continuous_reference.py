@@ -1,8 +1,8 @@
 """Full continuous sensory references, for a later frozen visible study only.
 
-No CLI or launcher is provided at this preparation stage. This module neither
-reads nor monitors the pending native capture. A future gate must verify the
-operator-reported capture and preserved prerequisite studies before execution.
+This module neither reads nor monitors a pending native capture. The frozen
+reference gate must verify operator-reported completion and the preserved
+prerequisite studies before invoking this worker in its visible window.
 """
 from decimal import Decimal as D, localcontext
 import json
@@ -139,7 +139,10 @@ def mechanical_witness(catalog, bundle, prefixes, angular, interval, local_ms):
     bundle_error = abs(nm - float(references[90]['bundleNm'])) / projected_bound
     return dict(localMs=local_ms, scipyState=list(values), scipyBundleNm=nm, references=references, metadata=metadata,
         maximumStateFraction=max(errors), bundleFraction=bundle_error, decimalPrecisionFraction=str(precision_error),
-        passed=max(errors) <= 1 and bundle_error <= 1 and precision_error <= 1)
+        # A failed NumPy comparison can short-circuit ``and`` to np.bool_.
+        # Convert explicitly so the rejected witness is saved before the
+        # caller raises the numerical failure, instead of a JSON type error.
+        passed=bool(max(errors) <= 1 and bundle_error <= 1 and precision_error <= 1))
 
 
 def run_case(package, protocol, condition, setting, source, output):

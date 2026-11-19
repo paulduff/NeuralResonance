@@ -415,12 +415,12 @@ The remaining setup is now authored in:
   It verifies every protected file in both original captures, copies an exact
   native trajectory subset, freezes pushed Git source, and pins the initial
   state, input catalog, equations, numerical dependencies and original bounds.
-  Fifteen exact control identities are recorded. The original managed runtime
+  Sixteen exact control identities are recorded. The original managed runtime
   fingerprints remain evidence; this Python-only comparison executes no new
   managed model and requires no new native capture.
 - `tools/start-canal-reference-window.ps1`: checks both initial package copies,
   then opens an independent visible PowerShell window with `-NoExit`. It runs
-  the 15 sampler/comparison controls, six reference captures, full saved-data
+  the 16 sampler/reporting/comparison controls, six reference captures, full saved-data
   comparison, preservation checks and final D: backup. A failed stage retains
   its output and prevents a successful footer. No script polls another run.
 
@@ -439,6 +439,25 @@ backup; launch its visible window. The explicit completion flag is a record of
 the operator report, not a way to discover whether a run has finished.
 
 All three workflow files are **unexecuted**. Python syntax compilation,
-PowerShell parser checks and the static 7+8 control inventory pass. No new
+PowerShell parser checks and the static 8+8 control inventory pass. No new
 package, scheduled task, model solve or test run was created in this preparation.
 `6d0480` remains the only pending report, with no output/status/process inspection.
+
+## Preserve failed precision witnesses before reporting numerical failure
+
+Static review found that the new mechanical precision witness could return a
+NumPy Boolean when an early comparison in its `and` expression failed. Standard
+JSON cannot serialize that type. The witness file could therefore be lost to a
+serialization error before the intended numerical failure was reported.
+
+The worker now converts the final flag explicitly to Python `bool`. A new
+regression method uses a zero mechanical generator (exact identity exponential)
+and deliberately inaccurate binary64 observations to cover state-comparison
+failure, bundle-comparison failure and an exact control. It checks that the
+result, original values and error fractions can be saved and read intact.
+The test remains unexecuted and requires no neuronal/native solve when it runs.
+
+This expands the prospective workflow from the earlier 7+8 controls to **8+8**
+(16 total). Gate and PowerShell expectations match. Python/PowerShell syntax and
+static inventory pass; no tests, model integrations, preparation or launches
+were performed. The original numerical equations and all error bounds remain.

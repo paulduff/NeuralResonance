@@ -4,7 +4,7 @@ $ErrorActionPreference='Stop'
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 if(-not $configuration.IsolatedContinuousCanalReference -or -not $configuration.NoLiveMonitoring -or
- $configuration.ExpectedControls -ne 15 -or $configuration.ExpectedReferenceCases -ne 6 -or
+ $configuration.ExpectedControls -ne 16 -or $configuration.ExpectedReferenceCases -ne 6 -or
  $configuration.ExpectedNativeSteps -ne 2293760 -or $configuration.ExpectedUniqueSamplesPerReference -ne 655361 -or
  $configuration.NewNativeCaptureRequested -or $configuration.LiveSelectionChanged -or
  $configuration.PhysiologicalCalibrationQualified -or $configuration.AvatarBalanceAssessed){throw 'Unexpected continuous sensory reference configuration.'}
@@ -79,12 +79,12 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE independent connected sensory reference'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '15 analytic controls, six independent continuous references and all 2,293,760 saved native steps. Original initial state, equations and limits retained.'
+ Write-Host '16 analytic controls, six independent continuous references and all 2,293,760 saved native steps. Original initial state, equations and limits retained.'
  Write-Host 'Continuous forcing includes the native held-input error. Firing physiology and Avatar balance are separate. This window remains open after its final backup.'
  Save-Status 'preflight';Assert-Package;Python-Stage 'preflight'
  Save-Status 'analytic-controls';Python-Stage 'controls'
  $checks=Get-Content -LiteralPath (Join-Path $package 'analytic-controls.json') -Raw | ConvertFrom-Json
- if(-not $checks.successful -or -not $checks.exactInventory -or $checks.executed -ne 15 -or
+ if(-not $checks.successful -or -not $checks.exactInventory -or $checks.executed -ne 16 -or
   $checks.skipped.Count -ne 0 -or $checks.errors.Count -ne 0 -or $checks.failures.Count -ne 0){throw 'Analytic controls failed or incomplete.'}
  $status.AnalyticControlsPassed=$true
  $status.IndependentReferenceAttempted=$true

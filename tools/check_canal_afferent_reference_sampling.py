@@ -1,12 +1,16 @@
 """Unexecuted analytic sampler controls for a later visible frozen window."""
 import json
+from decimal import Decimal
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
 from canal_afferent_continuous_reference import integrate_interval
+import canal_afferent_continuous_reference as worker
 
 
 class LinearDrive:
@@ -110,6 +114,36 @@ class ReferenceSamplingControls(unittest.TestCase):
             self.assertIsNone(status['nfev'])
             with np.load(folder / 'samples.npz', allow_pickle=False) as saved:
                 np.testing.assert_array_equal(saved['values'][:, 0], [3., 7.])
+
+    def test_rejected_mechanical_witness_retains_values_in_json(self):
+        # A zero generator has the exact identity exponential at both Decimal
+        # precisions. Inject a known inaccurate binary64 observation to exercise
+        # each failing short-circuit, without a neuronal or native solve.
+        zero = [[Decimal(0)] * 15 for _ in range(15)]
+        prefixes = {p: [Decimal(0)] * 12 for p in (60, 90)}
+        angular = {p: [Decimal(0)] * 3 for p in (60, 90)}
+        bundle = dict(geometry=dict(canal=0), referenceBounds=dict(volumeAbsolute=1., flowAbsolute=1., relative=0.),
+            matrixPrecisionAbsolute='1e-40', matrixPrecisionRelative='1e-40', geometryArithmeticRelative=0.)
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(worker, 'generator_decimal', return_value=zero), \
+             patch.object(worker, 'decimal_gain', return_value=Decimal(1)):
+            for label, state_error, bundle_error, passed in (
+                    ('state-fails', 2., 0., False), ('bundle-fails', 0., 2., False), ('exact', 0., 0., True)):
+                with self.subTest(label=label):
+                    point = tuple(np.array([state_error] + [0.] * 11, dtype=np.float64))
+                    interval = SimpleNamespace(point_at_ms=lambda time: point,
+                                               at_ms=lambda time: np.float64(bundle_error))
+                    witness = worker.mechanical_witness({}, bundle, prefixes, angular, interval, .25)
+                    self.assertIs(type(witness['passed']), bool)
+                    path = Path(temp) / (label + '.json')
+                    worker.save(path, witness)
+                    saved = json.loads(path.read_text(encoding='utf-8'))
+                    self.assertIs(saved['passed'], passed)
+                    self.assertEqual(saved['maximumStateFraction'], state_error)
+                    self.assertEqual(saved['bundleFraction'], bundle_error)
+                    self.assertEqual(Decimal(saved['decimalPrecisionFraction']), Decimal(0))
+                    self.assertEqual(saved['scipyState'], list(point))
+                    self.assertEqual(saved['scipyBundleNm'], bundle_error)
 
     def test_existing_output_cannot_be_overwritten(self):
         with tempfile.TemporaryDirectory() as temp:

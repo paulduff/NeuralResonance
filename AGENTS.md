@@ -15,7 +15,7 @@ This supersedes the launch/authoring pending counts below.
 The operator has explicitly confirmed `6d0480` is still running. No monitoring
 or extra experiment was started in response. The next full continuous sensory
 reference worker is authored in `canal_afferent_continuous_reference.py`, with
-a prospective protocol and seven analytic sampling-control methods. It carries
+a prospective protocol and eight analytic sampling/reporting-control methods. It carries
 all state/flux ledgers across ten physical intervals, saves all 655,361 unique
 fine-grid points per reference and retains accepted prefixes on failure. Syntax
 and static protocol/inventory checks pass; no new tests or model/reference solves
@@ -27,14 +27,19 @@ original 0.4 refinement criterion remains; continuous versus start-held forcing
 may fail it. This is not identical-input solver-only accuracy. Both workers
 require a reported native capture with reviewed accounting. Its review script,
 the frozen gate `canal_afferent_reference_gate.py` and visible launcher
-`start-canal-reference-window.ps1` are now authored but unexecuted. Fifteen
-new controls (7 sampler + 8 comparison) remain unrun. Python/PowerShell syntax
+`start-canal-reference-window.ps1` are now authored but unexecuted. Sixteen
+new controls (8 sampler/reporting + 8 comparison) remain unrun. Python/PowerShell syntax
 and static inventory pass. No package was prepared and no new window launched.
 After the final footer, review the native capture, back up that review, then
 prepare/preflight/back up a fresh reference package before launching. Never
 supply the operator-completion flag before the actual report. Existing equations
 and all bounds are unchanged. `6d0480` is still the only pending report and
 remains untouched. See the final connected-canal document.
+Static review caught and repaired a failure-reporting bug in the new worker:
+short-circuiting a failed NumPy comparison could leave `np.bool_` in the JSON
+witness. The flag is now explicitly `bool`, with an unexecuted regression
+control for state failure, bundle failure and an exact control. This changes
+neither equations nor acceptance limits; no numerical result is inferred.
 
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:

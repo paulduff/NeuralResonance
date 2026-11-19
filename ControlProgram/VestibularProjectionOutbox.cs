@@ -18,9 +18,10 @@ internal sealed record VestibularProjectionStatus(long ReleasedSequence,long Rel
 // A packet receipt claims durable/owned admission, not target integration or firing.
 internal sealed class VestibularProjectionOutbox
 {
-    internal const string Version="observed-vestibular-projection-outbox-v1";
+    internal const string Version="observed-nucleus-projection-outbox-v2";
     private const int MaximumSteps=4096,MaximumEvents=65536;
     private readonly string _instance;
+    private readonly StructureId _structure;
     private readonly double _epoch,_step;
     private readonly (SynapticConnection Route,ServiceInstance[] Targets)[] _routes;
     private readonly string[] _targets;
@@ -32,10 +33,13 @@ internal sealed class VestibularProjectionOutbox
     internal string Fingerprint { get; }
 
     internal VestibularProjectionOutbox(string sourceInstance,string hemisphere,double epochMs,double stepMs,
-        IReadOnlyList<SynapticConnection> routes,IReadOnlyList<ServiceInstance> recipients)
+        IReadOnlyList<SynapticConnection> routes,IReadOnlyList<ServiceInstance> recipients,
+        StructureId sourceStructure=StructureId.VestibularNuclei)
     {
         ArgumentNullException.ThrowIfNull(routes);ArgumentNullException.ThrowIfNull(recipients);
-        if(string.IsNullOrWhiteSpace(sourceInstance)||!sourceInstance.StartsWith("isolated-",StringComparison.Ordinal)||
+        if(sourceStructure is not (StructureId.VestibularNuclei or StructureId.ReticularFormation or StructureId.SpinalCordMotor)||
+            sourceStructure==StructureId.SpinalCordMotor&&routes.Any(r=>r is not null&&r.Target!=StructureId.ReticularFormation)||
+            string.IsNullOrWhiteSpace(sourceInstance)||!sourceInstance.StartsWith("isolated-",StringComparison.Ordinal)||
             hemisphere is not ("L" or "R" or "M")||!double.IsFinite(epochMs)||epochMs<0||!double.IsFinite(stepMs)||
             stepMs<=0||stepMs>4||!double.IsFinite(epochMs+stepMs)||epochMs+stepMs<=epochMs||routes.Count is <1 or >64||
             routes.Any(r=>r is null||r.SynapseId==Guid.Empty||!Enum.IsDefined(r.Target)||!Enum.IsDefined(r.Neurotransmitter)||string.IsNullOrWhiteSpace(r.ProjectionType))||
@@ -44,16 +48,16 @@ internal sealed class VestibularProjectionOutbox
                 !r.InstanceKey.StartsWith("isolated-",StringComparison.Ordinal)||r.Hemisphere is not ("L" or "R" or "M"))||
             recipients.Select(r=>r.InstanceKey).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=recipients.Count)
             throw new ArgumentException("Declare isolated neuronal identity, one representable clock, distinct projections and explicit recipients.");
-        _instance=sourceInstance;_epoch=epochMs;_step=stepMs;
+        _instance=sourceInstance;_structure=sourceStructure;_epoch=epochMs;_step=stepMs;
         // Canonical ordering also makes the coordinator's final fallback stable.
         var instances=recipients.OrderBy(r=>r.InstanceKey,StringComparer.Ordinal).GroupBy(r=>r.StructureId)
             .ToDictionary(g=>g.Key,g=>g.ToList());
         _routes=routes.OrderBy(r=>r.Target).ThenBy(r=>r.SynapseId).Select(r=>(Route:r,
-            Targets:TickCoordinator.ResolveTargetInstances(r.Target,hemisphere,instances,StructureId.VestibularNuclei,r.ProjectionType)
+            Targets:TickCoordinator.ResolveTargetInstances(r.Target,hemisphere,instances,sourceStructure,r.ProjectionType)
                 .OrderBy(t=>t.InstanceKey,StringComparer.Ordinal).ToArray())).ToArray();
         if(_routes.Any(r=>r.Targets.Length==0))throw new ArgumentException("Every declared outgoing pathway needs a recipient; no silent route loss.");
         _targets=_routes.SelectMany(r=>r.Targets).Select(r=>r.InstanceKey).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-        Fingerprint=Hash(JsonSerializer.Serialize(new{Version,sourceInstance,hemisphere,epochMs,stepMs,
+        Fingerprint=Hash(JsonSerializer.Serialize(new{Version,sourceStructure,sourceInstance,hemisphere,epochMs,stepMs,
             Routes=_routes.Select(r=>new{r.Route,Targets=r.Targets.Select(t=>new{t.StructureId,t.InstanceKey,t.Hemisphere})}),MaximumSteps,MaximumEvents}));
     }
 
@@ -79,17 +83,18 @@ internal sealed class VestibularProjectionOutbox
             long tick=checked(_releasedTick+i+1);double start=Time(tick-1),end=Time(tick);
             if(end<=start)throw new InvalidOperationException("Neuronal clock is no longer representable.");
             var step=JsonSerializer.Deserialize<StructureStepResult>(originalStepJson[i])??throw new ArgumentException("Missing original receiving step.");
-            if(step.Ack is null||step.Ack.StructureId!=StructureId.VestibularNuclei||step.Ack.Tick!=tick||step.OutboundSpikes is null)
+            if(step.Ack is null||step.Ack.StructureId!=_structure||step.Ack.Tick!=tick||step.OutboundSpikes is null)
                 throw new ArgumentException("Missing, reordered or foreign completed receiving step.");
             foreach(var spike in step.OutboundSpikes)
             {
-                if(spike is null||!SpikeProtocol.validate_spike(spike,out _)||spike.MessageId==Guid.Empty||
-                    spike.SynapseId==Guid.Empty||spike.ProjectionId==Guid.Empty||spike.SourceStructure!=StructureId.VestibularNuclei||
+                if(spike is null)throw new ArgumentException("Missing original neuronal event.");
+                string original=JsonSerializer.Serialize(spike);
+                if(!SpikeProtocol.validate_spike(spike,out _)||JsonSerializer.Serialize(spike)!=original||spike.MessageId==Guid.Empty||
+                    spike.SynapseId==Guid.Empty||spike.ProjectionId==Guid.Empty||spike.SourceStructure!=_structure||
                     spike.SourceInstanceKey!=_instance||string.IsNullOrWhiteSpace(spike.SourceNeuronId)||spike.IsSyntheticBackground||
                     spike.TimestampMs<=start||spike.TimestampMs>end||!seen.Add(spike.MessageId))
                     throw new ArgumentException("Require unique original neuronal events within their completed integration step.");
-                string original=JsonSerializer.Serialize(spike);
-                // The vestibular source follows every declared collateral in the
+                // The source follows every declared collateral in the
                 // existing connectome. This owner adds no efference gain or rate.
                 foreach(var route in TickCoordinator.ResolveRoutes(_routes.Select(r=>r.Route).ToArray(),spike))
                 {
@@ -113,7 +118,7 @@ internal sealed class VestibularProjectionOutbox
         }
         var packets=_targets.Select(target=>
         {
-            string json=JsonSerializer.Serialize(new{Version,OwnerFingerprint=Fingerprint,SourceInstance=_instance,
+            string json=JsonSerializer.Serialize(new{Version,OwnerFingerprint=Fingerprint,SourceStructure=_structure,SourceInstance=_instance,
                 TargetInstance=target,SourceSequence=sequence,SourceFrameSha256=originalFrameSha256,
                 StartingTick=_releasedTick,CompletedTick=completedTick,CompletedThroughMs=completedThroughMs,
                 Events=byTarget[target]});

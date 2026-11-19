@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+Latest authoring checkpoint: `docs/DNNE_Reticulospinal_Ownership_2026-11-19.md`.
+The new isolated four-edge VN/RF/spinal circuit uses actual receiving populations,
+typed original output ownership and the existing conduction lower bounds to
+advance a recurrent loop safely. No neuronal/learning/conduction equation or
+live selector changes. Outbox/receiver protocol v2 and the read-only observer
+edits are explicitly fingerprinted in `tools/reticulospinal_gate.py`; all 130
+previous controls remain unchanged. Sixteen new controls form a 146-case visible
+workflow. Both authoring projects build cleanly; tests remain unrun and NO third
+study has launched. First await/review recipient `49d913` using the new
+completed-only reviewer, D-back up that review, then freeze/push/back up/launch
+the recurrent workflow. Do not prepare against unreviewed pending results.
+Exactly TWO reports still await the operator: `49d913` and continuous reference
+`2a402c`; neither output/status/process was inspected. `ae88a4` is fully reviewed
+with all 119 cases passed. No coupled accuracy, physiology or Avatar balance
+qualification follows from this code. The full goal remains active.
+
 Latest launch: `D:/DNNE-build-work/vestibular-recipient-20261119-49d913`, frozen
 at pushed `2c2d3e4165477048f88acc7e02190ff3567fc7d3`. Both projects build cleanly;
 frozen preflight passes and both initial 2,127-file copies plus manifest verify.

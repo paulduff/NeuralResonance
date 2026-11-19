@@ -6,6 +6,20 @@ internal sealed record ProjectionReceiverEngineObservation(double? StartedThroug
 
 public sealed partial class StructureEngine
 {
+    internal int MinimumIsolatedProjectionDelayMs(StructureId source)
+    {
+        lock(_stateGate)
+        {
+            RequireIsolatedProjectionRecipient();
+            if(source is not (StructureId.VestibularNuclei or StructureId.ReticularFormation or StructureId.SpinalCordMotor))
+                throw new ArgumentException("Declare an original vestibular/reticular/spinal source.");
+            // ClampDelay enforces this lower bound for either feed-forward or
+            // feedback events, regardless of cell, transmitter or spike type.
+            // This is a bound on the existing calculation, not an added delay.
+            var tract=GetTractDelayWindow(source,_profile.StructureId);
+            return Math.Max(0,Math.Min(tract.MinMs,_feedbackDelayWindow.MinMs));
+        }
+    }
     // Read-only access to the existing delay calculation and actual failed-step
     // state. These methods neither enqueue a spike nor advance/repair a cell.
     internal double DescribeIsolatedProjectionArrival(SpikeMessage message)

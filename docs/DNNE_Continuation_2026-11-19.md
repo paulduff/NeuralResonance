@@ -5,6 +5,27 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest authoring checkpoint — recurrent reticulospinal ownership
+
+`DNNE_Reticulospinal_Ownership_2026-11-19.md` describes a fresh isolated circuit
+using four original connectome edges, actual reticular/spinal neurons and their
+original spikes. Existing conduction lower bounds permit causal progress around
+the feedback cycle; floating-point boundary handling prevents a future arrival
+from being mistaken for completed silence. Actual output remains retained through
+downstream receipts, outer evidence acknowledgement and partial failures.
+
+Both projects build cleanly. Sixteen prospective controls join the unchanged
+130 earlier cases in the new visible workflow. Outbox/receiver v2 identity and
+read-only observer edits are explicitly declared; biological kernels and live
+selection stay unchanged. Tests are unrun; no third study has launched.
+
+Next: await the operator's final `49d913` footer, run the completed-only reviewer,
+verify its D: review copy, then prepare the clean pushed recurrent candidate,
+back it up and launch it visibly. Do not read pending captures during preparation.
+Exactly two reports remain pending: `49d913` and continuous reference `2a402c`.
+Neither has been inspected. `ae88a4` is fully reviewed with 119 passes. The full
+goal remains active, with physiology, coupled accuracy and Avatar balance open.
+
 ## Latest launch — actual vestibular recipients
 
 `D:/DNNE-build-work/vestibular-recipient-20261119-49d913` is frozen at pushed

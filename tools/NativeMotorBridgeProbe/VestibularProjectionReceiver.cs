@@ -4,18 +4,18 @@ using NeuralResonanceEngine.Protocol;
 using NeuralResonanceEngine.Shared.Contracts;
 
 internal sealed record VestibularProjectionInput(string SourceInstance,string OutboxFingerprint,double EpochMs,double StepMs,
-    IReadOnlyList<SynapticConnection> Projections);
+    IReadOnlyList<SynapticConnection> Projections,StructureId SourceStructure=StructureId.VestibularNuclei);
 internal sealed record VestibularRecipientFrame(long Sequence,long CompletedTicks,double CompletedThroughMs,string CanonicalJson,string Sha256);
 internal sealed record VestibularRecipientProgress(string SourceInstance,long Sequence,long CompletedTicks,double CompletedThroughMs,VestibularProjectionReceipt? LastReceipt);
-internal sealed record VestibularRecipientStatus(long CompletedTicks,double CompletedThroughMs,double KnownSourceThroughMs,
+internal sealed record VestibularRecipientStatus(long CompletedTicks,double CompletedThroughMs,double KnownSourceThroughMs,double PermittedThroughMs,
     IReadOnlyList<VestibularRecipientProgress> Sources,int WaitingEvents,VestibularRecipientFrame? Pending,string? Failure,
     string RetainedEvidenceJson,ProjectionReceiverEngineObservation Actual);
 
-// Owns actual reticular/spinal neurons receiving the declared vestibular fibres.
+// Owns actual reticular/spinal neurons receiving the declared neuronal fibres.
 // No live selector, source-rate substitution, new learning rule or motor command.
 internal sealed class VestibularProjectionReceiver : IDisposable
 {
-    internal const string Version="owned-vestibular-projection-recipient-v1";
+    internal const string Version="owned-nucleus-projection-recipient-v2";
     private const int MaximumTicksPerFrame=4096,MaximumHeldPackets=4096;
     private static readonly object ConstructionGate=new();
     private sealed class Input(VestibularProjectionInput definition)
@@ -24,6 +24,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
         internal long Sequence,Ticks;
         internal VestibularProjectionPacket? LastPacket;
         internal VestibularProjectionReceipt? Receipt;
+        internal int MinimumDelayMs;
         internal double Through=>Definition.EpochMs+Ticks*Definition.StepMs;
     }
     private sealed class Held(VestibularProjectionPacket packet,int remaining)
@@ -37,6 +38,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
     private readonly double _epoch,_step;
     private readonly int _capacity,_owner=Environment.CurrentManagedThreadId;
     private readonly NeuralSubstrateSupply _supply;
+    private readonly bool _conductionLookahead;
     private readonly List<Held> _held=[];
     private readonly List<Waiting> _waiting=[];
     private readonly List<string> _steps=[];
@@ -47,16 +49,23 @@ internal sealed class VestibularProjectionReceiver : IDisposable
     private bool _disposed;
     private VestibularRecipientFrame? _pending;
     internal string Fingerprint { get; }
+    internal StructureId Structure=>_structure;
+    internal string Instance=>_instance;
+    internal double EpochMs=>_epoch;
+    internal double StepMs=>_step;
+    internal bool CanAdvance { get { Healthy();return Time(checked(_ticks+1))<=PermittedThrough(); } }
 
     internal VestibularProjectionReceiver(StructureId structure,string instance,string stateDirectory,double receiverStepMs,
-        IEnumerable<VestibularProjectionInput> inputs,NeuralSubstrateSupply supply,int capacity=4096)
+        IEnumerable<VestibularProjectionInput> inputs,NeuralSubstrateSupply supply,int capacity=4096,bool conductionLookahead=false)
     {
         ArgumentNullException.ThrowIfNull(inputs);ArgumentNullException.ThrowIfNull(supply);
         var definitions=inputs.ToArray();
         if(structure is not (StructureId.ReticularFormation or StructureId.SpinalCordMotor)||string.IsNullOrWhiteSpace(instance)||
             !instance.StartsWith("isolated-",StringComparison.Ordinal)||!Path.IsPathFullyQualified(stateDirectory)||
             !double.IsFinite(receiverStepMs)||receiverStepMs<=0||receiverStepMs>4||!supply.IsValid||capacity is <1 or >65536||
-            definitions.Length is <1 or >256||definitions.Any(d=>d is null||string.IsNullOrWhiteSpace(d.SourceInstance)||
+            definitions.Length is <1 or >256||definitions.Any(d=>d is null||
+                d.SourceStructure is not (StructureId.VestibularNuclei or StructureId.ReticularFormation or StructureId.SpinalCordMotor)||
+                string.IsNullOrWhiteSpace(d.SourceInstance)||
                 !d.SourceInstance.StartsWith("isolated-",StringComparison.Ordinal)||!Digest(d.OutboxFingerprint)||
                 !double.IsFinite(d.EpochMs)||d.EpochMs<0||!double.IsFinite(d.StepMs)||d.StepMs<=0||d.StepMs>4||
                 d.Projections is null||d.Projections.Count is <1 or >64||d.Projections.Any(p=>p is null||p.Target!=structure||p.SynapseId==Guid.Empty||!Enum.IsDefined(p.Neurotransmitter)))||
@@ -72,7 +81,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
             if(input.Definition.Projections.Select(p=>p.SynapseId).Distinct().Count()!=input.Definition.Projections.Count)
                 throw new ArgumentException("A source projection must have one declared identity.");
         _byFingerprint=_inputs.ToDictionary(i=>i.Definition.OutboxFingerprint,StringComparer.Ordinal);
-        _instance=instance;_structure=structure;_step=receiverStepMs;_supply=supply;_capacity=capacity;
+        _instance=instance;_structure=structure;_step=receiverStepMs;_supply=supply;_capacity=capacity;_conductionLookahead=conductionLookahead;
         lock(ConstructionGate)
         {
             if(File.Exists(stateDirectory)||Directory.Exists(stateDirectory)&&Directory.EnumerateFileSystemEntries(stateDirectory).Any())
@@ -88,8 +97,9 @@ internal sealed class VestibularProjectionReceiver : IDisposable
             finally{Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",directory);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",previous);}
         }
         _engine.RubralInputObserver=_deliveries.Add;
-        Fingerprint=Hash(JsonSerializer.Serialize(new{Version,structure,instance,receiverStepMs,supply,capacity,
-            Inputs=_inputs.Select(i=>i.Definition),MaximumTicksPerFrame,MaximumHeldPackets}));
+        foreach(var input in _inputs)input.MinimumDelayMs=_engine.MinimumIsolatedProjectionDelayMs(input.Definition.SourceStructure);
+        Fingerprint=Hash(JsonSerializer.Serialize(new{Version,structure,instance,receiverStepMs,supply,capacity,conductionLookahead,
+            Inputs=_inputs.Select(i=>new{i.Definition,i.MinimumDelayMs}),MaximumTicksPerFrame,MaximumHeldPackets}));
     }
 
     internal VestibularProjectionReceipt Admit(VestibularProjectionPacket packet)
@@ -101,6 +111,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
         using var doc=JsonDocument.Parse(packet.CanonicalJson);var root=doc.RootElement;
         if(root.GetProperty("Version").GetString()!=VestibularProjectionOutbox.Version||
             !_byFingerprint.TryGetValue(root.GetProperty("OwnerFingerprint").GetString()!,out var input)||
+            root.GetProperty("SourceStructure").GetInt32()!=(int)input.Definition.SourceStructure||
             root.GetProperty("SourceInstance").GetString()!=input.Definition.SourceInstance||root.GetProperty("TargetInstance").GetString()!=_instance||
             root.GetProperty("SourceSequence").GetInt64()!=packet.SourceSequence||root.GetProperty("SourceFrameSha256").GetString()!=packet.SourceFrameSha256)
             throw new ArgumentException("Unknown or inconsistent original source owner.");
@@ -121,7 +132,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
             var routed=JsonSerializer.Deserialize<SpikeMessage>(routedJson)??throw new ArgumentException("Missing routed event.");
             if(!SpikeProtocol.validate_spike(original,out _)||JsonSerializer.Serialize(original)!=originalJson||
                 !SpikeProtocol.validate_spike(routed,out _)||JsonSerializer.Serialize(routed)!=routedJson||
-                original.SourceStructure!=StructureId.VestibularNuclei||original.SourceInstanceKey!=input.Definition.SourceInstance||
+                original.SourceStructure!=input.Definition.SourceStructure||original.SourceInstanceKey!=input.Definition.SourceInstance||
                 original.ProjectionId==Guid.Empty||original.IsSyntheticBackground||original.TimestampMs<=input.Through||original.TimestampMs>through)
                 throw new ArgumentException("Original spike changed, was synthesized or lies outside its completed source interval.");
             Guid projection=row.GetProperty("ProjectionId").GetGuid();
@@ -134,6 +145,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
             if(JsonSerializer.Serialize(expected)!=routedJson||!ids.Add(routed.MessageId)||_waiting.Any(w=>w.Id==routed.MessageId))
                 throw new ArgumentException("Routed event differs or duplicates an owned event.");
             double arrival=_engine.DescribeIsolatedProjectionArrival(routed);
+            if(arrival<routed.TimestampMs+input.MinimumDelayMs)throw new InvalidOperationException("Existing conduction violates its declared lower bound.");
             if(arrival<=Time(_ticks))throw new ArgumentException("A completed recipient cannot accept an event in its elapsed past.");
             candidate.Add(new(held,routedJson,routed.MessageId,arrival));
         }
@@ -146,7 +158,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
     internal VestibularRecipientFrame PublishCompleted()
     {
         Healthy();if(_pending is not null)return _pending;
-        double horizon=_inputs.Min(i=>i.Through);
+        double horizon=PermittedThrough();
         if(_admissions==_releasedAdmissions&&Time(checked(_ticks+1))>horizon)
             throw new InvalidOperationException("No new source ownership or known neuronal interval to publish.");
         try
@@ -157,8 +169,8 @@ internal sealed class VestibularProjectionReceiver : IDisposable
                 long tick=checked(_ticks+1);double through=Time(tick),start=Time(_ticks);
                 if(!double.IsFinite(through)||through<=start)throw new InvalidOperationException("Recipient clock is no longer representable.");
                 if(through>horizon)break;
-                // All sources have completed this interval. Admit only arrivals
-                // due in it, in a fixed order, so earlier packet partitions do
+                // No unknown source event can arrive in this interval. Admit
+                // only due arrivals in a fixed order, so packet partitions do
                 // not change the engine heap or equal-time contact order.
                 _dispatching=_waiting.Where(w=>w.Arrival<=through).OrderBy(w=>w.Arrival).ThenBy(w=>w.MessageJson,StringComparer.Ordinal).ToArray();
                 int deliveryStart=_deliveries.Count;
@@ -192,15 +204,27 @@ internal sealed class VestibularProjectionReceiver : IDisposable
         _held.RemoveAll(h=>h.Remaining==0);
     }
     internal VestibularRecipientStatus Capture()
-    {Owner();return new(_ticks,Time(_ticks),_inputs.Min(i=>i.Through),Progress(),_waiting.Count,_pending,_failure,EvidenceJson(),_engine.ObserveIsolatedProjectionRecipient());}
+    {Owner();return new(_ticks,Time(_ticks),_inputs.Min(i=>i.Through),PermittedThrough(),Progress(),_waiting.Count,_pending,_failure,EvidenceJson(),_engine.ObserveIsolatedProjectionRecipient());}
     private IReadOnlyList<VestibularRecipientProgress> Progress()=>Array.AsReadOnly(_inputs.Select(i=>
         new VestibularRecipientProgress(i.Definition.SourceInstance,i.Sequence,i.Ticks,i.Through,i.Receipt)).ToArray());
-    private string EvidenceJson()=>JsonSerializer.Serialize(new{Version,Fingerprint,CompletedTicks=_ticks,CompletedThroughMs=Time(_ticks),
+    private string EvidenceJson()=>JsonSerializer.Serialize(new{Version,Fingerprint,SourceStructure=_structure,SourceInstance=_instance,
+        CompletedTicks=_ticks,CompletedThroughMs=Time(_ticks),PermittedThroughMs=PermittedThrough(),ConductionLookahead=_conductionLookahead,
         Sources=Progress(),OwnedPackets=_held.Select(h=>new{h.Packet,h.Remaining}),
         WaitingEvents=_waiting.Select(w=>new{PacketSha256=w.Owner.Packet.Sha256,w.MessageJson,w.Arrival}),
         DispatchingEvents=_dispatching.Select(w=>new{PacketSha256=w.Owner.Packet.Sha256,w.MessageJson,w.Arrival}),
         ReceiverStepJson=_steps,ActualDeliveries=_deliveries,Failure=_failure});
     private double Time(long tick)=>_epoch+tick*_step;
+    private double PermittedThrough()
+    {
+        // A future event is strictly later than its source's completed time.
+        // Addition may round two adjacent source times to the same arrival at
+        // a binary exponent boundary. Stay below the earliest representable
+        // unknown arrival, rather than assuming strictness survives addition.
+        double result=_inputs.Min(i=>_conductionLookahead?
+            Math.BitDecrement(Math.BitIncrement(i.Through)+i.MinimumDelayMs):i.Through);
+        if(!double.IsFinite(result))throw new InvalidOperationException("Known arrival horizon is not representable.");
+        return result;
+    }
     private static bool Digest(string? value)=>value is {Length:64}&&value.All(c=>char.IsAsciiHexDigit(c));
     private static string Hash(string text)=>VestibularProjectionOutbox.Hash(text);
     private void Owner(){if(Environment.CurrentManagedThreadId!=_owner)throw new InvalidOperationException("One thread owns the receiving circuit.");if(_disposed)throw new ObjectDisposedException(nameof(VestibularProjectionReceiver));}

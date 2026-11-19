@@ -12,6 +12,16 @@ Exactly ONE final report remains pending: `canal-afferent-20261119-6d0480`.
 Its post-launch output, status and process remain uninspected. Await the
 operator's final footer; do not monitor or duplicate it. The full goal is active.
 This supersedes the launch/authoring pending counts below.
+The operator has explicitly confirmed `6d0480` is still running. No monitoring
+or extra experiment was started in response. The next full continuous sensory
+reference worker is authored in `canal_afferent_continuous_reference.py`, with
+a prospective protocol and seven analytic sampling-control methods. It carries
+all state/flux ledgers across ten physical intervals, saves all 655,361 unique
+fine-grid points per reference and retains accepted prefixes on failure. Syntax
+and static protocol/inventory checks pass; no new tests or model/reference solves
+have executed. A frozen gate, execution and full comparison remain to be done
+after the native capture is reported/reviewed. Existing equations and all bounds
+are unchanged. See the final connected-canal document section before continuing.
 
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:

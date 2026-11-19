@@ -304,3 +304,18 @@ after launch. Wait for the operator's final footer; do not monitor or duplicate
 it. This reference-component result does not qualify connected sensory dynamics,
 physiology, live brain authority or Avatar balance. No new window was launched
 during the review. The broad goal remains active and unfinished.
+
+## Pending native run confirmed; full reference worker prepared
+
+The operator explicitly confirmed `6d0480` is still running. Its output, status
+and process remain uninspected. No additional experiment has been started.
+
+The continuous sensory reference worker and prospective protocol are authored,
+with seven unexecuted analytic sampling-control methods. It carries the actual
+joint state and cumulative flux through all ten body intervals, preserves every
+fine source-grid point and saves accepted prefixes if the solver fails. It reuses
+the qualified input evaluator and original reference equations/settings/bounds.
+Python syntax, static inventory and protocol construction pass; no model, test or
+reference solve ran. The final section of `DNNE_Connected_Canal_Afferent_2026-11-19.md`
+records the remaining frozen-gate, execution and complete-comparison work.
+Exactly one completion report remains pending: `6d0480`. The full goal is active.

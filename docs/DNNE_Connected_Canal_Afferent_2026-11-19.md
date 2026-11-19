@@ -282,3 +282,52 @@ have a verified D: backup. Exactly one report remains pending: neuronal capture
 `6d0480`. Its post-launch output, status and process remain uninspected. No
 additional window was launched during this review. The full biological goal
 remains active; live brain authority, sensory physiology and balance are open.
+
+## Full continuous sensory reference worker authored
+
+The operator has confirmed `6d0480` is still running. It remains untouched; no
+additional experiment is started here. The next worker is now authored in
+`canal_afferent_continuous_reference.py`, with prospective settings in
+`canal_afferent_reference_protocol.py`. It has no standalone launcher. Execution
+requires an operator-reported native review, a frozen gate and visible PowerShell.
+
+The proposed six references pair recorded and stationary head input with the
+existing Radau-standard, Radau-tight and BDF-tight settings. They use the saved
+loaded quiet state, the unchanged independent joint derivative/Jacobian and the
+checked continuous mechanical input. All 72 neuronal variables and 41 cumulative
+flux ledgers carry through the ten physical intervals. Solver-local time restarts
+at a body boundary; neuronal state, ions, gates and cumulative flux do not.
+
+Every reference retains all accepted solver nodes and dense values at each of
+the 65,536 finest source-clock steps per body interval: 655,361 unique samples
+over the full prefix, or 655,370 stored samples including repeated boundary
+records. Each interval is saved separately to keep memory bounded. Both original
+clock representations and their shared integer coordinates are retained; there
+is no nearest-time matching. The entire requested grid must be populated for
+execution to finish successfully.
+
+The independent solver advances through its public step interface. On an RHS,
+solver or physical-domain failure, the worker preserves the accepted nodes and
+only the populated sample prefix; it does not save an uninitialized tail, restart
+the neuron or erase the accepted history. Every distinct mechanical query made
+by the solver is recorded. Existing outputs cannot be overwritten.
+
+Each interval also retains independent 60/90-digit mechanical and 40/60/90-digit
+neuronal derivative witnesses at its start, first accepted node, midpoint,
+largest absolute observed-node voltage among accepted nodes, and end. Duplicate
+times are retained once. These finite witnesses supplement the required complete
+cross-method/trajectory/conservation checks; they do not prove every intermediate
+input or derivative exact.
+
+All previous reference settings, native accuracy bounds, conservation limits and
+the 0.4 refinement criterion are inherited unchanged. This worker addresses the
+continuous-forcing reference; an identical-held-input comparison is still a
+separate diagnostic. No neuronal firing/physiological or coupled accuracy flag is
+set by successful integration alone. Event-time qualification remains separate.
+
+Seven prospective sampler-control methods cover closed-form state/flux evolution
+under both solvers, continuous accumulated flux, derivative exceptions, invalid
+accepted-domain evidence, rejected initial state, output preservation and invalid
+source grids. They are authored but have not executed. Only Python syntax,
+static control inventory and protocol construction from completed prerequisite
+files have been checked. No package, gate or new run was launched at this stage.

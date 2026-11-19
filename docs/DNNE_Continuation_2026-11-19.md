@@ -616,3 +616,19 @@ a verified D: copy. This qualifies the tested isolated admission and timing
 behavior, including actual passive-source delivery and simultaneous arrival
 ordering. Active sensory physiology and brain/body recovery remain unqualified.
 Only `2a402c` still awaits its final report and remains untouched.
+
+## Multiple actual canal sources under shared ownership
+
+`CanalConvergenceConnection` now composes actual canal/sensory owners with the
+completed convergence ingress and one real nucleus. A complete head batch must
+describe one rigid body while preserving distinct sensing points. Every source
+keeps its original state, sampling grid and packet; all wait while shared output
+is unacknowledged. Partial progress is retained on failure, without rollback.
+See `DNNE_Canal_Convergence_Owner_2026-11-19.md` for ownership and scope.
+
+Both projects build cleanly. Twelve new cases and a 101-case visible workflow
+are authored, with static syntax/inventory/source preservation checks passed.
+No new tests/models have run or package launched. The workflow requires the
+completed, reviewed and D:-verified `b208e4` result and leaves pending `2a402c`
+untouched. Earlier biological/ingress equations are unchanged; no live selector
+or physiological qualification is introduced. Record actual execution separately.

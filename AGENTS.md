@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+New shared-owner candidate: `docs/DNNE_Canal_Convergence_Owner_2026-11-19.md`.
+`CanalConvergenceConnection` composes multiple actual fresh canal/sensory owners
+with the completed convergence ingress and one real receiving nucleus. It
+checks common head pose/rigid velocity while retaining separate sensing points,
+source grids and original packets. Shared output acknowledgement releases source
+traces; partial mechanical/admission failure retains evidence and stops. Earlier
+source/neuronal/learning/ingress code is unchanged. Both projects build cleanly;
+twelve new cases and the 101-case visible workflow are authored but unrun. Only
+`2a402c` awaits its footer and remains untouched. Record any launch separately.
+
 Latest completed result: operator reported convergence `b208e4` complete. Both
 2,639-file copies, frozen `bd3ecec953d1b8ea46054fd0c326065dac772c53` Git source,
 the declared engine edit, runtime/binaries and all 89 exact cases verify. Saved

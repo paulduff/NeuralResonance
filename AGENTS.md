@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/canal-reference-20261119-2a402c`, frozen
+at pushed revision `fab52528b3d4250be2d647929d70d0c6273a5700`. The verified-control
+preparer and frozen preflight passed; both initial 2,133-file copies plus manifest
+verify. Independent visible task `DNNE-Canal-Reference-35b76b494345` started.
+Exactly ONE final report is now pending: `2a402c`. No post-launch output, status
+or process was inspected. Await its operator footer; do not monitor or duplicate.
+It compares six continuous independent references with every retained native
+endpoint, reusing the 16 unchanged verified analytic controls. It includes held-
+input approximation error and retains every original limit. No connected accuracy,
+firing physiology, live-brain authority or Avatar recovery is yet established.
+Completed `6d0480` needs no further report. Its supplementary stimulus-direction
+review is D: verified: sampled mechanical knots range -42.2490 to +0.08212 nm;
+the strongest input is inhibitory and endpoint voltages hyperpolarize. Zero
+events does not establish failed excitability. After accuracy review, assess
+both motion directions without changing original polarity or thresholds.
+This launch supersedes the next-prepare/no-pending statements below.
+
 Latest native result: the operator reported connected sensory `6d0480` complete.
 Its full review passed: both 2,730-file copies, frozen Git source, runtime,
 all 284 exact component cases and the saved accounting for 2,293,760 source

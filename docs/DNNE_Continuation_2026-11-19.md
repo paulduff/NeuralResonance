@@ -452,3 +452,29 @@ using this completed D:-verified review and the 16 unchanged verified controls.
 Preserve the original initial state, equations and all bounds. Prepare, preflight,
 back up and launch visibly, then record its actual package/task and await the
 operator's final footer without monitoring. The broad goal remains active.
+
+A supplementary saved-input review explains why zero spikes is inconclusive:
+the finest-run mechanical knots span -42.24903771721149 to +0.08211539172729843
+nm, predominantly inhibitory in amplitude under the declared polarity. Final
+hair/calyx/observed-node voltages are lower than their initial values. The
+14,130 retained knots include shared boundaries; these are not continuous
+extrema. Twelve input hashes match the original manifest, and the one-file
+`canal-stimulus-direction-20261119-6d0480-review` plus manifest is D: verified.
+No model/test ran. After numerical review, deliberate controls in both motion
+directions are needed before judging excitability or tonic sensory function.
+
+## Independent connected comparison launched
+
+Fresh package `D:/DNNE-build-work/canal-reference-20261119-2a402c` is frozen at
+pushed `fab52528b3d4250be2d647929d70d0c6273a5700`. The verified-control wrapper
+and frozen preflight passed, and both initial 2,133-file copies plus manifest
+verify. The 16 analytic controls are reused with identical archived Python bytes
+and dependencies; no tests/models ran during preparation.
+
+Visible independent task `DNNE-Canal-Reference-35b76b494345` started successfully.
+Exactly ONE final report is pending: `2a402c`. No post-launch output/status/process
+was inspected. Await the operator footer, then review the six independent
+references, all saved native endpoint comparisons and final preservation/backup.
+Original bounds remain fixed, including refinement under continuous versus
+start-held forcing. No connected accuracy, physiological firing, live neural
+authority or Avatar balance is inferred from launch. The full goal stays active.

@@ -597,3 +597,50 @@ original equations, every sampled endpoint and all original error/refinement
 limits. Freeze, verify and back up that package before its visible PowerShell
 launch. Record the actual launch separately. This review does not substitute
 for that numerical comparison or justify changing the firing threshold.
+
+### Direction of the recorded stimulus
+
+A separate read-only review of the ten finest-run mechanical traces retains
+their 14,130 knots (including shared interval boundaries) and initial/final
+voltages. All twelve input files match the completed capture manifest. Its
+one-file report plus manifest is D: verified at
+`canal-stimulus-direction-20261119-6d0480-review`; no model/test was executed.
+These are sampled knot extrema, not continuous extrema or a new accuracy test.
+
+The sampled bundle displacement ranges from -42.24903771721149 nm to only
++0.08211539172729843 nm. With the already declared excitatory polarity, negative
+displacement reduces the source model's mechanotransduction open probability.
+Hair voltage ends 1.4189492789815148 mV below its initial value; the first calyx
+ends 0.589783398186789 mV lower and observed node2-000 ends 0.5744434129068452
+mV lower. Thus the strongest sampled input is inhibitory and the endpoint
+response is hyperpolarizing. Zero spikes here alone is not evidence of failed
+excitability, and a quiet initial state cannot demonstrate modulation of tonic
+afferent firing. Neither fact establishes physiological correctness.
+
+After independent trajectory review, use prospective excitatory and inhibitory
+head-motion controls with the same declared geometry and full sensory state.
+Assess rest, graded response, actual nerve spikes and recovery separately. Keep
+this original capture intact; do not invert its polarity or lower its threshold
+retrospectively to obtain spikes.
+
+## Independent comparison launched
+
+Package `D:/DNNE-build-work/canal-reference-20261119-2a402c` is frozen at
+pushed revision `fab52528b3d4250be2d647929d70d0c6273a5700`. The preparation
+wrapper executed successfully, retaining the original configuration and adding
+the verified control evidence before initial backup. Frozen preflight verifies
+all 396 preserved Python source files byte for byte and the same dependencies.
+No control was rerun. Both initial 2,133-file copies plus manifest verify.
+
+Independent visible task `DNNE-Canal-Reference-35b76b494345` started successfully.
+It will run the six continuous references and compare all 2,293,760 saved native
+steps, preserving the original state, equations and every original accuracy and
+refinement criterion. Preparation/preflight success is not execution success;
+the visible run's reuse, integration, comparison and final backup outcomes await
+the operator's completion report. No post-launch output, status or process has
+been inspected. Exactly one final report is pending: `2a402c`.
+
+No new native/Unity capture or live brain was launched. The continuous versus
+start-held comparison includes input approximation error. It does not establish
+identical-input solver accuracy, physiological firing or Avatar balance. Keep
+the full goal active and review this run only after its reported final footer.

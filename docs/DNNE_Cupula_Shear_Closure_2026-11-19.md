@@ -99,3 +99,19 @@ final report is pending: `8ec244`; do not monitor or duplicate it. It runs 179
 focused cases and preservation/backup checks, not an independent coupled sensory
 trajectory study or a live brain/body run. The full biological goal stays active
 and unfinished. The earlier failed preparation `6b69cf` was never launched.
+
+
+## Cupula component reviewed and next connection authored
+
+The operator reported `8ec244` complete, including its final backup/footer.
+All 179 cases pass; both 2,586-file copies, frozen source, exact test identities,
+binaries, runtime and catalogue bytes verify. The separate three-file review
+plus manifest has a verified D: backup. This supersedes the pending status above;
+no window remains pending at this authoring checkpoint.
+
+The next timed mechanical-to-bundle owner and qualification are described in
+`DNNE_Timed_Canal_Bundle_2026-11-19.md`. They preserve every mechanical knot,
+reject mismatched spatial stiffness and expose explicit quadratic dense queries
+without changing existing neuronal models or live selectors. Builds/static
+inventories pass; the 204-case replay/comparison has not yet run. Anatomy,
+connected sensory firing and Avatar balance remain unqualified.

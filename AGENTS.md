@@ -27,17 +27,20 @@ the base resolution fails accuracy, while refinement and finest criteria pass.
 Every early substep remains compared. Both 3,213-file copies verify; saved
 analysis is reproduced exactly and the four-file review is backed up. Original
 uniform failure and all bounds remain. No physiological/balance claim follows.
-The next candidate is `docs/DNNE_Cupula_Shear_Closure_2026-11-19.md`: a declared
-circular solid-volume shear field and local bundle attachment geometry. It adds
-no live selector, neuronal gain or human preset. Builds/static checks pass; its
-23 new cases and 156 regressions have not yet run. The prospective component
-rig preserves 31 earlier files. Initial package `6b69cf` failed before launch on
-LF/CRLF catalogue identity and is preserved/backed up; the correction retains
-both byte identities. The new component window `cupula-shear-20261119-8ec244`
-is launched, frozen at `ed35796`; 2,054 initial files plus manifest verified in
-D: backup before visible task `DNNE-Cupula-Shear-f033c1002bc2` started. Exactly
-ONE final report is pending: `8ec244`. No post-launch output/status/process has
-been inspected. Never monitor or duplicate it before the operator reports completion.
+Cupula component `8ec244` has now been reported complete and fully reviewed:
+179/179 cases, including 23 spatial controls; both 2,586-file copies, source,
+exact test identities, runtime and catalogue byte versions verify. Its three-file
+review plus manifest is backed up. Earlier preparation failure `6b69cf` remains
+preserved and was never launched. No test window remains pending at this point.
+The next candidate is `docs/DNNE_Timed_Canal_Bundle_2026-11-19.md`: explicit
+stiffness-matched spatial geometry, retained graded mechanical knots, quadratic
+stage-based dense queries and one acknowledged physical-clock owner. It adds
+no live selector or neuronal current. Geometry/placement are declared hypotheses,
+not measured human anatomy. Builds/static checks pass; its 25 new cases have not
+run. The prospective window runs 204 cases and compares all accepted mechanics
+exactly with `7880d2`, then 1,333,300 dense queries against saved independent
+references using unchanged bounds. Thirty-five earlier files remain pinned.
+No sensory neurons, Unity bodies or live services run in that qualification.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

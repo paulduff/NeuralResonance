@@ -31,9 +31,13 @@ The next candidate is `docs/DNNE_Cupula_Shear_Closure_2026-11-19.md`: a declared
 circular solid-volume shear field and local bundle attachment geometry. It adds
 no live selector, neuronal gain or human preset. Builds/static checks pass; its
 23 new cases and 156 regressions have not yet run. The prospective component
-rig preserves 31 earlier files. No completion report is pending at this authoring
-checkpoint; the cupula component window has not yet launched. Later launch notes
-supersede this checkpoint. Never inspect a launched run before the operator reports completion.
+rig preserves 31 earlier files. Initial package `6b69cf` failed before launch on
+LF/CRLF catalogue identity and is preserved/backed up; the correction retains
+both byte identities. The new component window `cupula-shear-20261119-8ec244`
+is launched, frozen at `ed35796`; 2,054 initial files plus manifest verified in
+D: backup before visible task `DNNE-Cupula-Shear-f033c1002bc2` started. Exactly
+ONE final report is pending: `8ec244`. No post-launch output/status/process has
+been inspected. Never monitor or duplicate it before the operator reports completion.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

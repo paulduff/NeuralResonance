@@ -150,3 +150,18 @@ receipt are preserved in a verified 2,055-file D: backup. No model/test ran.
 The harness now retains the reviewed canonical Git blob and the archive version
 separately, pins their distinct hashes and requires equal text after ordinary
 line-ending decoding. It does not relabel or reuse the failed package.
+
+
+## Component window launched
+
+The corrected fresh run is `cupula-shear-20261119-8ec244`, frozen at pushed
+revision `ed357966062a5d96de4519face2a8060ba0aab23`. Frozen preflight passes,
+including the separate canonical/catalogue byte identities. Its initial 2,054
+files plus manifest verify in `D:/DNNE-desktop-runs/UnityWorld/cupula-shear-20261119-8ec244`.
+Results belong to `D:/DNNE-build-work/cupula-shear-20261119-8ec244`.
+Visible independent task `DNNE-Cupula-Shear-f033c1002bc2` started successfully.
+There has been no post-launch output, status or process inspection. Exactly one
+final report is pending: `8ec244`; do not monitor or duplicate it. It runs 179
+focused cases and preservation/backup checks, not an independent coupled sensory
+trajectory study or a live brain/body run. The full biological goal stays active
+and unfinished. The earlier failed preparation `6b69cf` was never launched.

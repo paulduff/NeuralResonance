@@ -1,9 +1,15 @@
 # Descending motor-pool owner — work in progress
 
+Visible qualification launched: `D:/DNNE-build-work/descending-motor-20261119-f3826f`,
+frozen at `69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight and both
+initial 2,143-file copies plus manifest verify. Task
+`DNNE-Descending-Motor-6236b8719f4b` started all 164 cases. No post-launch
+inspection occurred; wait for the operator's final footer before reviewing.
+
 `tools/NativeMotorBridgeProbe/DescendingMotorPool.cs` is an isolated receiving
 owner for the existing detailed receptor-driven motor cells. Eighteen dedicated
 controls are authored and the test project builds with zero warnings/errors.
-They have not yet run. No live service, editor or body selects this owner.
+No completed result has been reviewed. No live service, editor or body selects this owner.
 The prerequisite recurrent retry `a974ff` has now been reviewed: all 146 cases
 pass, full observed cell states agree exactly across packet schedules, and all
 original routed events reconcile with actual delivery or retained future events.
@@ -29,14 +35,14 @@ has a distinct source instance compatible with the existing single-cell motor
 lane. The pool waits for all declared incoming source clocks and preserves fixed
 motor sample grids independently of packet boundaries.
 
-The prospective workflow contains 164 cases: 18 new controls plus all 146
+The frozen workflow contains 164 cases: 18 new controls plus all 146
 unchanged recurrent/source/recipient controls. `descending_motor_pool_gate.py`
 requires the operator-completed, verified, D-backed `a974ff` review before
 preparation. It protects 158 prior source/control files, including the original
 motor channels, membrane, receptor, crossing observer and Avatar receiver. The
 visible `start-descending-motor-window.ps1` retains both original recurrent
 comparison traces and all test results and backs them up on completion/failure.
-Its actual preparation and launch must be recorded separately.
+Its actual preparation and launch are recorded above.
 
 New controls cover missing companion inputs, exact sample-by-sample equivalence
 with the existing unwrapped motor-cell path, two original sources converging on
@@ -52,8 +58,8 @@ motor firing, muscle force, independent coupled accuracy or physiological tuning
 
 Still required before connected use:
 
-* Freeze, preserve source/runtime, back up and run the 164 controls visibly, then
-  review the operator-reported final results before interpreting them as passed.
+* Review the operator-reported final result of the frozen 164-case run before
+  interpreting any new receiving-motor control as passed.
 * Declare the actual descending source anatomy before neuronal emission. The
   generic reticular/vestibular preferred target currently falls back to an
   intralaminar target name. The pool deliberately cannot repair that by renaming

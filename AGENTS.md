@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+Latest motor launch: `D:/DNNE-build-work/descending-motor-20261119-f3826f`, frozen
+at pushed `69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight and both
+initial 2,143-file copies plus manifest verify. Visible task
+`DNNE-Descending-Motor-6236b8719f4b` started 164 checks (18 new receiving-motor
+controls and all 146 unchanged recurrent/source/recipient cases). No post-launch
+outputs/status/process inspected. Exactly TWO reports await the operator:
+motor component `f3826f` and continuous reference `2a402c`. The latter reportedly
+failed its comparison but has not yet reported its final preservation/backup
+footer; keep it untouched. Recurrent `a974ff` is fully reviewed with 146 passed.
+The source inputs in new motor tests are prescribed; source firing, motor firing,
+muscle force, live brain authority, physiology and balance remain unqualified.
+This supersedes the preparation-only/one-pending-report statements below.
+
 Latest completed review: operator reported `a974ff` finished. Both 2,734-file
 copies, frozen `de0087852dbcee7ba564a03ce55df9c9398dc035` source/runtime/binaries,
 exact 146-case inventory and analysis verify. All 146 pass. Complete reticular/

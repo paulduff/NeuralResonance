@@ -5,6 +5,21 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — receiving motor-cell controls
+
+`D:/DNNE-build-work/descending-motor-20261119-f3826f` is frozen at pushed
+`69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight passes; both initial
+2,143-file copies plus manifest verify. Visible task
+`DNNE-Descending-Motor-6236b8719f4b` started the 164-case workflow. No post-launch
+outputs/status/process inspected. Await its operator final footer before review.
+All 18 new receiving-path cases use prescribed source fixtures; they cannot
+qualify original descending neuronal firing, motor firing or muscle force.
+
+Exactly two final reports remain pending: `f3826f` and continuous reference
+`2a402c`. The latter has a user-reported comparison failure while still running
+preservation; leave its outputs/status/process untouched until its final report.
+Recurrent `a974ff` is fully reviewed as passed and needs no further report.
+
 ## Current completed review and next receiving-motor controls
 
 The operator reported `a974ff` complete. Both 2,734-file copies, frozen

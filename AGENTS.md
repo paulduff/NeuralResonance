@@ -1,17 +1,34 @@
 # Avatar and environment work
 
-Latest motor launch: `D:/DNNE-build-work/descending-motor-20261119-f3826f`, frozen
-at pushed `69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight and both
-initial 2,143-file copies plus manifest verify. Visible task
-`DNNE-Descending-Motor-6236b8719f4b` started 164 checks (18 new receiving-motor
-controls and all 146 unchanged recurrent/source/recipient cases). No post-launch
-outputs/status/process inspected. Exactly TWO reports await the operator:
-motor component `f3826f` and continuous reference `2a402c`. The latter reportedly
-failed its comparison but has not yet reported its final preservation/backup
-footer; keep it untouched. Recurrent `a974ff` is fully reviewed with 146 passed.
-The source inputs in new motor tests are prescribed; source firing, motor firing,
-muscle force, live brain authority, physiology and balance remain unqualified.
-This supersedes the preparation-only/one-pending-report statements below.
+Current checkpoint: both operator-reported final results are fully reviewed.
+Motor `f3826f` has all 164 cases passed, both 2,732-file copies verified and a
+D:-verified three-file review. Continuous reference `2a402c` remains FAILED:
+both 2,538-file copies, original Git source, dependencies and saved criteria
+verify; its four-file failure review is D: verified. All six independent
+references agree within their limits, stationary-head passes and moving-head
+fails. Moving error fractions on common sample grids are 5.81347, 2.90674,
+1.45338; finest all-endpoint error is 1.453385383 of its unchanged bound.
+Conservation passes. Halving the step halves error; start-held forcing is a
+candidate cause, not yet a demonstrated causal explanation. Full raw error
+envelopes were not recomputed during review; arrays were byte-verified and
+saved report criteria independently reconciled. No older report remains pending.
+
+An explicit midpoint-held option is authored in AvatarCanalAfferentInput;
+default start-held behavior/fingerprint and all neuronal kernels remain intact.
+Only already released mechanical history may supply the exact middle tick;
+unaddressable half ticks reject rather than round. Eight new controls plus the
+164 unchanged controls form a 172-case visible workflow, not a full trajectory
+qualification. Both projects build cleanly. See
+`docs/DNNE_Canal_Midpoint_Forcing_2026-11-19.md`. Freeze/push/back up/launch the
+controls and record the actual package/task separately. After their completed
+review, capture and compare the candidate at the original three resolutions
+against all six preserved continuous references with every original bound.
+Do not rerun the expensive reference ODEs merely to compare new native input.
+No source anatomy, neuronal/learning equation or live/editor selector changed.
+The motor controls use prescribed inputs; physiological firing, live brain
+authority and Avatar balance remain unqualified. This current checkpoint
+supersedes all pending-report and unreviewed-result statements below, which
+are historical checkpoints.
 
 Latest completed review: operator reported `a974ff` finished. Both 2,734-file
 copies, frozen `de0087852dbcee7ba564a03ce55df9c9398dc035` source/runtime/binaries,

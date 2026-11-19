@@ -4,6 +4,8 @@ using System.Text.Json;
 
 namespace NRE.SimAvatar;
 
+public enum AvatarCanalForcingPolicy { StartHeld, MidpointHeld }
+
 public sealed record AvatarCanalAfferentReceipt(string TraceFingerprint,AvatarCanalAfferentTime Start,AvatarCanalAfferentTime End,
     AvatarTimedCupulaBundle HeldBundle,AvatarAfferentObservationReceipt Observation);
 public sealed record AvatarCanalAfferentFailure(long StartingStep,long AcceptedNeuronalSteps,string Reason);
@@ -13,13 +15,15 @@ public sealed record AvatarCanalAfferentState(string Fingerprint,string ClockFin
     AvatarCanalAfferentFailure? Failure);
 
 // Owns the actual bundle -> joint hair/cleft/calyx/cable -> observed event path.
-// Input is sampled at each source-step start and held for that complete step.
-// This numerical forcing approximation needs coupled reference qualification.
+// The original default samples the source-step start. The explicit midpoint
+// candidate samples the middle of the same already released mechanical history.
+// Both hold that sample over one neuronal step and need coupled qualification.
 // There is no resettling, firing-rate conversion, injected axonal current or
 // reset. Quiet packets carry elapsed neuronal progress just as firing ones do.
 public sealed class AvatarCanalAfferentInput
 {
     public const string Version="canal-to-observed-afferent-owner-v1";
+    public const string MidpointVersion="canal-to-observed-afferent-midpoint-owner-v2";
     private readonly int _owner=Environment.CurrentManagedThreadId,_maximumPacketSteps;
     private readonly AvatarCanalBundleInput _mechanics;
     private readonly AvatarVestibularAfferentDynamics _model;
@@ -37,13 +41,18 @@ public sealed class AvatarCanalAfferentInput
     private int _unacknowledgedEvents;
     public string Fingerprint { get; }
     public AvatarCanalAfferentClock Clock { get; }
+    public AvatarCanalForcingPolicy ForcingPolicy { get; }
     public ObservedAfferentSource Source=>_packets.Source;
 
     public AvatarCanalAfferentInput(AvatarCanalBundleInput mechanics,AvatarVestibularAfferentDynamics model,
-        AvatarAfferentObservationSite observationSite,AvatarCanalAfferentClock clock,int maximumPacketSteps)
+        AvatarAfferentObservationSite observationSite,AvatarCanalAfferentClock clock,int maximumPacketSteps,
+        AvatarCanalForcingPolicy forcingPolicy=AvatarCanalForcingPolicy.StartHeld)
     {
         ArgumentNullException.ThrowIfNull(mechanics);ArgumentNullException.ThrowIfNull(model);ArgumentNullException.ThrowIfNull(clock);
         if(maximumPacketSteps<1||maximumPacketSteps>ObservedAfferentPacket.MaximumSteps)throw new ArgumentOutOfRangeException(nameof(maximumPacketSteps));
+        if(!Enum.IsDefined(forcingPolicy)||forcingPolicy==AvatarCanalForcingPolicy.MidpointHeld&&
+            (clock.MechanicalTicksPerSourceStep<2||clock.MechanicalTicksPerSourceStep%2!=0))
+            throw new ArgumentException("Midpoint forcing needs an exactly addressable mechanical tick; do not round or extrapolate.");
         var m=mechanics.Capture();var n=model.Capture();var head=m.LastReceipt;var first=clock.At(0);
         var original=head is null?null:JsonSerializer.Deserialize<AvatarSkullObservation>(head.Mechanics.Input.Skull.RawObservationJson,new JsonSerializerOptions(JsonSerializerDefaults.Web));
         if(m.Failure is not null||m.Mechanics.Faulted||m.PendingTrace is not null||head?.AvailableSample is not { } initial||
@@ -54,11 +63,14 @@ public sealed class AvatarCanalAfferentInput
         if(n.CompletedSteps!=0||n.Failure is not null||n.SessionId!=clock.PhysicalClock.SessionId||n.CellId!=initial.Bundle.HairCellId||
             n.EpochMs!=clock.SourceEpochMs||n.Settings.StepMs!=clock.SourceStepMs)
             throw new ArgumentException("Declare the attached cell's complete initial state, session, epoch and matched source step; no restart or resampling.");
-        _mechanics=mechanics;_model=model;Clock=clock;_maximumPacketSteps=maximumPacketSteps;_head=head;
+        _mechanics=mechanics;_model=model;Clock=clock;ForcingPolicy=forcingPolicy;_maximumPacketSteps=maximumPacketSteps;_head=head;
         _mechanicalFingerprint=m.Fingerprint;_modelFingerprint=n.Fingerprint;_cell=n.CellId;
         _observer=new(model,observationSite);_packets=new(_observer,maximumPacketSteps);clock.ValidateSource(_packets.Source);
-        Fingerprint=CleftNumbers.Fingerprint(new {Version,Clock=clock.Fingerprint,Mechanics=m.Fingerprint,Source=_packets.Source,maximumPacketSteps,
-            Forcing="dense bundle sampled at source-step start, held for that whole neuronal step; no gain or offset",
+        Fingerprint=CleftNumbers.Fingerprint(new {Version=forcingPolicy==AvatarCanalForcingPolicy.StartHeld?Version:MidpointVersion,
+            Clock=clock.Fingerprint,Mechanics=m.Fingerprint,Source=_packets.Source,maximumPacketSteps,
+            Forcing=forcingPolicy==AvatarCanalForcingPolicy.StartHeld?
+                "dense bundle sampled at source-step start, held for that whole neuronal step; no gain or offset":
+                "dense bundle sampled at the exact source-step midpoint in completed mechanical history, held for that neuronal step; no gain or offset",
             Acknowledgement="keep physical trace until every source step and its final quiet/firing packet are acknowledged",
             State="original joint sensory state, compensation, flux ledgers and crossing times; no reset or automatic settling"});
         // Attachment evaluates neither the sensory kernel nor an elapsed step.
@@ -111,8 +123,11 @@ public sealed class AvatarCanalAfferentInput
             throw new InvalidOperationException("The entire neuronal step must be inside the released mechanical interval.");
         try
         {
-            var sample=_trace.AtTick(start.MechanicalTick);var closing=_trace.AtTick(end.MechanicalTick);
-            ValidateSample(sample,start);ValidateSample(closing,end);
+            var opening=_trace.AtTick(start.MechanicalTick);var closing=_trace.AtTick(end.MechanicalTick);
+            ValidateSample(opening,start);ValidateSample(closing,end);
+            var sample=ForcingPolicy==AvatarCanalForcingPolicy.StartHeld?opening:
+                _trace.AtTick(checked(start.MechanicalTick+Clock.MechanicalTicksPerSourceStep/2));
+            if(sample.Bundle.HairCellId!=_cell)throw new InvalidOperationException("Forcing sample belongs to another sensory cell.");
             var observed=_packets.AdvanceNext(_step,sample.Bundle.BundleDisplacementNanometers);
             if(observed.Interval.StartMs!=start.SourceNeuralMs||observed.Interval.EndMs!=end.SourceNeuralMs)
                 throw new InvalidOperationException("Original neuronal timestamps changed during the source step.");

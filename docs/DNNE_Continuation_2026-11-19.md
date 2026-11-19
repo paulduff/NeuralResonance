@@ -5,20 +5,40 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
-## Latest launch — receiving motor-cell controls
+## Current completed reviews and midpoint input candidate
 
-`D:/DNNE-build-work/descending-motor-20261119-f3826f` is frozen at pushed
-`69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight passes; both initial
-2,143-file copies plus manifest verify. Visible task
-`DNNE-Descending-Motor-6236b8719f4b` started the 164-case workflow. No post-launch
-outputs/status/process inspected. Await its operator final footer before review.
-All 18 new receiving-path cases use prescribed source fixtures; they cannot
-qualify original descending neuronal firing, motor firing or muscle force.
+Both final footers are now reported and reviewed. Motor `f3826f` passes all 164
+cases, including exact equivalence with the existing receptor/motor-cell path.
+Both 2,732-file copies, frozen source/runtime/binaries and saved analysis verify;
+its three-file review plus manifest is D: verified. Prescribed input controls
+do not establish original descending source firing, muscle force or balance.
 
-Exactly two final reports remain pending: `f3826f` and continuous reference
-`2a402c`. The latter has a user-reported comparison failure while still running
-preservation; leave its outputs/status/process untouched until its final report.
-Recurrent `a974ff` is fully reviewed as passed and needs no further report.
+Continuous comparison `2a402c` remains FAILED. Both 2,538-file copies (about
+7.65 GiB each), frozen source, dependencies and saved analysis/status verify.
+Its four-file review plus manifest is D: verified. All six independent reference
+solutions pass their agreement criteria; stationary-head passes. Moving-head
+errors at shared sample points are 5.813469959, 2.906743086 and 1.453384934 times
+their original limits. The finest all-endpoint fraction is 1.453385383, with
+the worst component `apex/apex/sodiumToBathAttomoles`. Conservation passes.
+The review reconciles saved criteria, not a second full error-envelope scan;
+all original native/reference arrays were byte-verified and remain preserved.
+
+The nearly exact halving of moving error with timestep suggests first-order
+input sampling. The owner currently holds each step's starting movement value.
+An explicit midpoint-held option now samples the middle of the same completed
+mechanical history, leaving the original default/fingerprint, neuronal kernels,
+initial state and timing intact. This is a prospective numerical remedy, not a
+proved explanation or a biological calibration. Eight new ownership/input
+controls plus all 164 existing cases form a 172-case PowerShell workflow. Both
+authoring projects build cleanly. No tests were run inline.
+
+Next: freeze/push/back up/launch those controls, await the operator's footer,
+then review before the full three-resolution capture/comparison using the six
+preserved continuous references. Keep every original limit and early sample;
+do not discard cumulative flux errors or rerun accurate reference ODEs without
+a changed reference problem. See `DNNE_Canal_Midpoint_Forcing_2026-11-19.md`.
+No older report remains pending. The following sections are historical and
+their pending/unreviewed counts are superseded by this checkpoint.
 
 ## Current completed review and next receiving-motor controls
 

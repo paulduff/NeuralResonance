@@ -1,15 +1,15 @@
 # Descending motor-pool owner — work in progress
 
-Visible qualification launched: `D:/DNNE-build-work/descending-motor-20261119-f3826f`,
-frozen at `69bf014f1b5a7d588199e9d17fb096efb73c1c27`. Frozen preflight and both
-initial 2,143-file copies plus manifest verify. Task
-`DNNE-Descending-Motor-6236b8719f4b` started all 164 cases. No post-launch
-inspection occurred; wait for the operator's final footer before reviewing.
+Completed and reviewed: `D:/DNNE-build-work/descending-motor-20261119-f3826f`,
+frozen at `69bf014f1b5a7d588199e9d17fb096efb73c1c27`. All 164 cases pass. Both
+2,732-file copies, original Git source, runtime/binaries and saved analysis
+verify. The three-file review in `artifacts/descending-motor-20261119-f3826f-review`
+plus manifest is D: verified. No model/test was rerun during that review.
 
 `tools/NativeMotorBridgeProbe/DescendingMotorPool.cs` is an isolated receiving
 owner for the existing detailed receptor-driven motor cells. Eighteen dedicated
-controls are authored and the test project builds with zero warnings/errors.
-No completed result has been reviewed. No live service, editor or body selects this owner.
+controls have passed and the test project builds with zero warnings/errors.
+No live service, editor or body selects this owner.
 The prerequisite recurrent retry `a974ff` has now been reviewed: all 146 cases
 pass, full observed cell states agree exactly across packet schedules, and all
 original routed events reconcile with actual delivery or retained future events.
@@ -58,8 +58,6 @@ motor firing, muscle force, independent coupled accuracy or physiological tuning
 
 Still required before connected use:
 
-* Review the operator-reported final result of the frozen 164-case run before
-  interpreting any new receiving-motor control as passed.
 * Declare the actual descending source anatomy before neuronal emission. The
   generic reticular/vestibular preferred target currently falls back to an
   intralaminar target name. The pool deliberately cannot repair that by renaming

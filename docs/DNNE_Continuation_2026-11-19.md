@@ -432,3 +432,23 @@ byte for byte. Its one-file source-review record plus manifest is D: verified at
 `canal-reuse-source-20261119-c36da64`. This was a static source check, with no
 tests/models or pending capture access. It does not execute the new reuse branch.
 Only the final `6d0480` report remains needed before the next connected step.
+
+## Connected sensory capture reviewed
+
+The operator has now reported `6d0480` complete. Both 2,730-file copies, frozen
+source/runtime/dependencies, all 284 component cases and all 2,293,760 source
+steps verify; the saved accounting reproduces exactly. The three-file review
+plus manifest is D: verified. No model/test/reference solve was rerun.
+
+All six cases emitted zero observed nerve events. Their 4,480 quiet-progress
+packets reconcile; moving versus stationary head produces up to 1.4189492789815006
+mV difference at retained physical endpoints. This is an electrical response,
+not physiological sensory firing or a brain/body loop. The downstream nucleus
+receiver exists separately; the capture itself acknowledges to a recording sink.
+
+No earlier completion report remains pending. Next is the already authored
+continuous independent comparison through `reuse_canal_reference_controls.py`,
+using this completed D:-verified review and the 16 unchanged verified controls.
+Preserve the original initial state, equations and all bounds. Prepare, preflight,
+back up and launch visibly, then record its actual package/task and await the
+operator's final footer without monitoring. The broad goal remains active.

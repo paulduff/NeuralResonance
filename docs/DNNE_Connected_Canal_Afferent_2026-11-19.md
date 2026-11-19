@@ -568,3 +568,32 @@ verified D: copy at `canal-reuse-source-20261119-c36da64`. No test/model ran and
 no pending native capture was accessed. The new preparation/reuse branch still
 requires its actual frozen preflight after native completion; this source check
 does not qualify that branch or connected neuronal dynamics.
+
+## Connected capture reported and reviewed
+
+The operator reported `canal-afferent-20261119-6d0480` complete. The review
+verified both complete 2,730-file copies (6,962,857,908 bytes per copy), the
+frozen `c8466ff24b58588ec140cd8ef411883af244b899` source, managed runtime and
+numerical dependencies. All 284 declared component cases passed. The original
+saved accounting reproduces exactly across all six conditions/resolutions and
+2,293,760 source steps. No model, test or reference solve was rerun in review.
+The three-file review plus manifest has a verified D: backup at
+`canal-afferent-20261119-6d0480-review`.
+
+All six captures emitted zero observed events. Their 4,480 packets preserve
+quiet elapsed source time. The largest moving-head versus stationary-head
+voltage difference at retained physical endpoints is 1.4189492789815006 mV
+at the finest resolution (1.4189461634045841 and 1.4189482403345295 mV at the
+two coarser resolutions). This establishes an electrical response to the
+mechanical input, without establishing physiological afferent firing.
+Conservation, original input and source-clock accounting passed. Independent
+connected trajectory accuracy, biological calibration and Avatar balance remain
+unqualified. The capture's acknowledgement sink is not a receiving brain nucleus;
+the existing isolated afferent ingress is a separate downstream connection.
+
+No earlier completion report remains pending. Prepare the continuous independent
+comparison through the verified-controls wrapper, preserving the loaded state,
+original equations, every sampled endpoint and all original error/refinement
+limits. Freeze, verify and back up that package before its visible PowerShell
+launch. Record the actual launch separately. This review does not substitute
+for that numerical comparison or justify changing the firing threshold.

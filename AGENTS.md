@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+Latest native result: the operator reported connected sensory `6d0480` complete.
+Its full review passed: both 2,730-file copies, frozen Git source, runtime,
+all 284 exact component cases and the saved accounting for 2,293,760 source
+steps verify. The three-file review plus manifest is D: verified at
+`artifacts/canal-afferent-20261119-6d0480-review`. All six cases emitted ZERO
+observed events; 4,480 quiet-progress packets reconcile. Moving versus stationary
+head differs by at most 1.4189492789815006 mV at retained physical endpoints.
+This is electrical response/accounting, not physiological firing or balance.
+No model/test was rerun in review. No earlier completion report remains pending.
+Next: prepare the independent comparison using `reuse_canal_reference_controls.py`
+and this completed review, then frozen preflight, initial D: backup and visible
+PowerShell launch. All 16 verified controls and original error/refinement bounds
+remain fixed. Record the actual new package/task separately after launch; no
+connected accuracy, live-brain authority or Avatar recovery is yet qualified.
+This supersedes every older pending-report statement below.
+
 Latest reported result: controls `29468a` completed and are fully reviewed.
 All 16 exact methods pass; both 2,093-file copies, frozen Git source, dependencies
 and successful log inventory verify. The three-file review plus manifest has a

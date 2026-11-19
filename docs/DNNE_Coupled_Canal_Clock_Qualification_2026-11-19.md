@@ -64,3 +64,10 @@ or anatomical repair is hidden in the clock wrapper. A pass does not establish
 continuous-motion derivative accuracy, bilateral anatomy, conversion from organ
 motion to local bundle deformation, sensory firing, full-brain authority,
 Avatar balance or recovery. Those remain subsequent integration/physiology work.
+
+The qualification is now launched as `canal-clock-20261119-274f31`, frozen at
+`d2d14605520ee2706d6a196096fc618a302be857`. Its 2,040-file initial package and
+manifest were verified in D: backup before the independent visible task
+`DNNE-Canal-Clock-fe7424147fdd` started. Static frozen preflight passed. There
+has been no post-launch inspection, and no result is inferred from launch.
+Review awaits the operator's final footer.

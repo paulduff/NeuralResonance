@@ -35,3 +35,18 @@ Probe build passes with zero warnings/errors; static syntax, case inventory and
 See `DNNE_Coupled_Canal_Clock_Qualification_2026-11-19.md` for scope and limits.
 No new window has launched at this authoring checkpoint. No older completion
 report remains pending. The goal is active and unfinished.
+
+## Qualification launched
+
+`canal-clock-20261119-274f31` is launched from
+`D:/DNNE-build-work/canal-clock-20261119-274f31`, frozen at pushed revision
+`d2d14605520ee2706d6a196096fc618a302be857`. Static frozen preflight passed;
+2,040 initial files plus manifest were verified at
+`D:/DNNE-desktop-runs/UnityWorld/canal-clock-20261119-274f31`. Visible task
+`DNNE-Canal-Clock-fe7424147fdd` started successfully. No post-launch output,
+status or process was inspected. The window first requires all 121 focused
+cases, then captures three resolutions, computes independent references,
+compares every saved mechanical substep and preserves/backups the outcome.
+Exactly ONE completion report is pending: `274f31`. Motor `5bdd81` is fully
+reviewed within its recorded isolated scope; no earlier window remains pending.
+The full biological brain/body/world goal remains active and unfinished.

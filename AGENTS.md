@@ -17,6 +17,11 @@ The coupled-canal clock owner still awaits qualification. Its new rig combines
 21 owner controls with 100 prior checks, original head replay at three resolutions
 and independent organ trajectories. Build/static authoring checks pass; do not
 infer test success until the operator reports its completed PowerShell outcome.
+The rig is now launched as `canal-clock-20261119-274f31`, frozen at `d2d1460`,
+in `D:/DNNE-build-work`; 2,040 initial files plus manifest were verified in its
+D: backup. Visible task `DNNE-Canal-Clock-fe7424147fdd` launched successfully.
+Exactly one final report is pending. No post-launch output/status/process has
+been inspected; do not monitor or duplicate the run.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

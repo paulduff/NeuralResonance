@@ -505,3 +505,56 @@ do not mean every archived Python function was tested. No test is rerun by the
 review. An explicit operator report is required before any capture is opened.
 The script itself has only been syntax-checked and has not accessed `29468a`.
 If that window reports failure, preserve and diagnose its failure before reuse.
+
+## Sixteen controls reported and fully reviewed
+
+The operator reported the final `DIAGNOSTICS_COMPLETE` footer for `29468a`.
+Both 2,093-file copies, complete frozen Git source, numerical dependencies and
+all 16 exact method outcomes verify. The successful method lines in the log match
+the recorded inventory. There are no failed, errored or skipped methods; process
+exit was zero. The three-file review plus manifest is verified at
+`D:/DNNE-desktop-runs/UnityWorld/canal-controls-20261119-29468a-review`.
+The review reran no controls, models or reference integrations.
+
+The `System.Management.Automation.RemoteException` lines occur at unittest's
+blank stderr lines. The earlier launcher converted wrapped native `ErrorRecord`
+objects through `ToString`, which prints the type name for empty text. The full
+reference launcher now records the underlying exception message as a string,
+retaining blank lines and actual error text; native exit-code checking is unchanged.
+That display correction does not reinterpret a failed numerical result as passed.
+
+This result qualifies the tested analytic sampling, recording, failure-preservation,
+clock and comparison controls. It is not connected neuronal accuracy or a firing,
+physiology, live-brain or Avatar-balance result. Only `6d0480` still awaits a
+final operator report; its output/status/process remain uninspected.
+
+## Reuse the reviewed controls with unchanged tested code
+
+`tools/reuse_canal_reference_controls.py` is the preparation entry point for the
+later full reference. Its `prepare` command still requires the native completion
+report and reviewed accounting, then invokes the original full preparer unchanged.
+Before initial backup or launch, it preserves that first configuration and adds
+the verified control report, review and environment to the new frozen package.
+All added inputs and the original declaration enter the final package hashes.
+
+The wrapper checks every one of the 396 Python source files preserved in the
+control capture, including the complete original gate, both control classes,
+worker/comparator and support code. Working-tree source texts match now; frozen
+preflight requires the raw file hashes and numerical dependencies to match. No
+tested Python function or source file was modified to enable reuse. Additional
+review/preparation helpers are not represented as covered by the control suite.
+Any relevant source/dependency change prevents this reuse path; do not waive it.
+
+The visible launcher validates reused evidence in its `verified-controls` stage,
+sets `AnalyticControlsReused`, and proceeds to the six independent references
+without executing the unchanged controls again. The original independent initial
+state, equations, all sampled native endpoints and error/refinement limits remain.
+The legacy fresh-control path is available for a genuinely changed candidate.
+
+The read-only `authoring-check` passed against the completed control evidence
+and all 396 preserved source texts; it opened no pending native capture. Python
+and PowerShell syntax checks pass. The wrapper's package preparation, frozen-byte
+preflight and the launcher's new reuse branch have not executed. No full reference
+package or additional window was created. Review `6d0480` only after its footer,
+back up that review, then use the wrapper and the normal preflight/backup/launch
+sequence. The complete biological brain/body/world goal remains unfinished.

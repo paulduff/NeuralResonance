@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+Latest reported result: controls `29468a` completed and are fully reviewed.
+All 16 exact methods pass; both 2,093-file copies, frozen Git source, dependencies
+and successful log inventory verify. The three-file review plus manifest has a
+verified D: backup. No control/model was rerun. RemoteException type-name lines
+are Windows PowerShell's rendering of blank native stderr, not failed test cases.
+Only ONE final report remains pending: connected native `6d0480`, still untouched.
+This supersedes the two-report status below. Do not inspect it before its report.
+`reuse_canal_reference_controls.py` now prepares the later reference package
+through the unchanged original gate and attaches this verified control evidence.
+Use this wrapper's `prepare` after the native report/review instead of repeating
+the unchanged suite. Authoring review verifies all 396 preserved Python source
+texts match; frozen preflight requires their exact byte hashes and dependencies.
+No full reference package was prepared or launched. The updated visible launcher
+reuses the reviewed report and preserves blank stderr as blank text. Syntax passes;
+its new reuse branch remains unexecuted. See the final connected-canal section.
+
 Latest launch: independent analytic controls `canal-controls-20261119-29468a`
 is frozen at `0cf7dc3fa070513a6f6341db48d845176e55a1bb`. Frozen preflight passed;
 both initial 2,086-file copies plus manifest verify. Visible task

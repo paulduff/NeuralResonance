@@ -403,3 +403,25 @@ frozen source, dependencies and the exact 16-method results/log inventory, then
 records fingerprints for any later reuse. It reruns no controls. Its explicit
 operator-report guard precedes capture access; it has only been syntax-checked.
 Both `29468a` and `6d0480` still await final reports and remain unmonitored.
+
+## Analytic controls reviewed; one native report remains
+
+The operator reported `29468a` complete. Its 16 exact methods, both 2,093-file
+copies, frozen Git source, numerical dependencies and successful log inventory
+verify. No methods failed/errored/skipped; native exit was zero. The three-file
+review plus manifest has a verified D: backup. No tests/models were rerun.
+The RemoteException type-name lines were blank native stderr rendered by Windows
+PowerShell; the future reference launcher now preserves the underlying text.
+
+`reuse_canal_reference_controls.py` provides a preparation wrapper for the full
+reference after the native report/review. It preserves the original preparer and
+all 396 previously archived Python files, adds verified control evidence to the
+fresh package before backup, and allows the visible launcher to reuse the pass.
+Authoring review confirms all 396 source texts and the numerical environment
+match; frozen package preflight will demand raw byte identity. Syntax checks pass.
+No full package, reference integration or new window was started.
+
+Exactly ONE final report remains pending: `6d0480`. It is still untouched and
+unmonitored. After its final footer, review native accounting, back up that
+review, and prepare through the reuse wrapper. The analytic control pass is not
+proof of connected neuronal accuracy, firing physiology or Avatar balance.

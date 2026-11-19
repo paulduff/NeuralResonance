@@ -56,8 +56,14 @@ function Python-Stage([string]$Stage){
  $previous=$ErrorActionPreference;$nativeExit=$null
  try{
   $ErrorActionPreference='Continue'
-  & $configuration.PythonExecutable '-B' (Join-Path $package 'source/tools/canal_afferent_reference_gate.py') $Stage $package 2>&1 |
-   ForEach-Object {$line=[string]$_;$writer.WriteLine($line);Write-Host $line} -ErrorAction Stop
+  $scriptName=if($Stage -eq 'verified-controls'){'reuse_canal_reference_controls.py'}else{'canal_afferent_reference_gate.py'}
+  & $configuration.PythonExecutable '-B' (Join-Path $package ('source/tools/'+$scriptName)) $Stage $package 2>&1 |
+   ForEach-Object {
+    # Windows PowerShell wraps native stderr in ErrorRecord. ToString on an
+    # empty stderr line shows a misleading RemoteException type name.
+    $line=if($_ -is [System.Management.Automation.ErrorRecord]){[string]$_.Exception.Message}else{[string]$_}
+    $writer.WriteLine($line);Write-Host $line
+   } -ErrorAction Stop
   $nativeExit=$LASTEXITCODE
  }finally{$writer.Dispose();$ErrorActionPreference=$previous}
  if($null -eq $nativeExit -or $nativeExit -ne 0){throw ($Stage+'.log exited '+$nativeExit)}
@@ -79,10 +85,14 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE independent connected sensory reference'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '16 analytic controls, six independent continuous references and all 2,293,760 saved native steps. Original initial state, equations and limits retained.'
+ Write-Host 'Six independent continuous references and all 2,293,760 saved native steps, with 16 required analytic controls. Original initial state, equations and limits retained.'
  Write-Host 'Continuous forcing includes the native held-input error. Firing physiology and Avatar balance are separate. This window remains open after its final backup.'
  Save-Status 'preflight';Assert-Package;Python-Stage 'preflight'
- Save-Status 'analytic-controls';Python-Stage 'controls'
+ if($configuration.PSObject.Properties['VerifiedAnalyticControlsReused'] -and $configuration.VerifiedAnalyticControlsReused){
+  Save-Status 'verified-controls';Python-Stage 'verified-controls';$status['AnalyticControlsReused']=$true
+ }else{
+  Save-Status 'analytic-controls';Python-Stage 'controls';$status['AnalyticControlsReused']=$false
+ }
  $checks=Get-Content -LiteralPath (Join-Path $package 'analytic-controls.json') -Raw | ConvertFrom-Json
  if(-not $checks.successful -or -not $checks.exactInventory -or $checks.executed -ne 16 -or
   $checks.skipped.Count -ne 0 -or $checks.errors.Count -ne 0 -or $checks.failures.Count -ne 0){throw 'Analytic controls failed or incomplete.'}

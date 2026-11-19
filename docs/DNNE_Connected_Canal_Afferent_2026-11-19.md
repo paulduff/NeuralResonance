@@ -558,3 +558,13 @@ preflight and the launcher's new reuse branch have not executed. No full referen
 package or additional window was created. Review `6d0480` only after its footer,
 back up that review, then use the wrapper and the normal preflight/backup/launch
 sequence. The complete biological brain/body/world goal remains unfinished.
+
+A subsequent static check of `git archive` for pushed revision
+`c36da645cdc30d73b06fcd5a719b17196b67f9ad` verifies all 396 preserved Python
+files, totaling 3,219,532 bytes, against the original control-review hashes.
+This confirms raw archive identity, including line endings, beyond the earlier
+working-tree text comparison. The source-review record and manifest have a
+verified D: copy at `canal-reuse-source-20261119-c36da64`. No test/model ran and
+no pending native capture was accessed. The new preparation/reuse branch still
+requires its actual frozen preflight after native completion; this source check
+does not qualify that branch or connected neuronal dynamics.

@@ -15,6 +15,12 @@ texts match; frozen preflight requires their exact byte hashes and dependencies.
 No full reference package was prepared or launched. The updated visible launcher
 reuses the reviewed report and preserves blank stderr as blank text. Syntax passes;
 its new reuse branch remains unexecuted. See the final connected-canal section.
+An additional static Git-archive check now verifies all 396 preserved Python
+files (3,219,532 bytes) at `c36da645cdc30d73b06fcd5a719b17196b67f9ad` match the
+qualified control capture byte for byte. Evidence is in
+`artifacts/canal-reuse-source-20261119-c36da64`, with a verified D: copy. This
+checks archive bytes, not the new reuse workflow or numerical dynamics. No test,
+model, environment re-evaluation or pending native access occurred in that check.
 
 Latest launch: independent analytic controls `canal-controls-20261119-29468a`
 is frozen at `0cf7dc3fa070513a6f6341db48d845176e55a1bb`. Frozen preflight passed;

@@ -425,3 +425,10 @@ Exactly ONE final report remains pending: `6d0480`. It is still untouched and
 unmonitored. After its final footer, review native accounting, back up that
 review, and prepare through the reuse wrapper. The analytic control pass is not
 proof of connected neuronal accuracy, firing physiology or Avatar balance.
+
+The remaining archive-identity check is complete: all 396 preserved Python files
+(3,219,532 bytes) from pushed Git revision `c36da64` match the verified controls
+byte for byte. Its one-file source-review record plus manifest is D: verified at
+`canal-reuse-source-20261119-c36da64`. This was a static source check, with no
+tests/models or pending capture access. It does not execute the new reuse branch.
+Only the final `6d0480` report remains needed before the next connected step.

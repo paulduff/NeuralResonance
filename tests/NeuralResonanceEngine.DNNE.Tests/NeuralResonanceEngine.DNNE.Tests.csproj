@@ -26,6 +26,7 @@
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\VestibularProjectionReceiver.cs" Link="VestibularProjectionReceiver.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\RecipientNucleusProjection.cs" Link="RecipientNucleusProjection.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\ReticulospinalCircuit.cs" Link="ReticulospinalCircuit.cs" />
+    <Compile Include="..\..\tools\NativeMotorBridgeProbe\DescendingMotorPool.cs" Link="DescendingMotorPool.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\PrescribedHeadTurn.cs" Link="PrescribedHeadTurn.cs" />
     <Compile Include="..\..\tools\MotoneuronReferenceProbe\ClockAudit.cs" Link="MotorClockAudit.cs" />
     <Compile Include="..\..\tools\UnityPhysicalSampleProbe\UnityObservationEncoding.cs" Link="UnityObservationEncoding.cs" />

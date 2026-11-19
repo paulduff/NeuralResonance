@@ -67,6 +67,14 @@ is pending: `6d0480`. No post-launch output, status or process has been inspecte
 Do not monitor or duplicate it before the operator reports completion. Do not
 claim independent connected accuracy, physiological firing, live brain authority
 or Avatar balance from completion/accounting alone.
+While that capture is pending, an independent continuous/held mechanical-input
+adapter and 15 analytic controls have been authored; see the final section of
+`docs/DNNE_Connected_Canal_Afferent_2026-11-19.md`. They are unexecuted candidates,
+not qualified references. Only syntax/static checks were performed. Explicit
+held segments require solver boundaries; continuous SciPy queries still need
+60/90-digit checks. No limits or prior equations changed and no additional
+window was launched. `6d0480` remains the only pending report; do not inspect it
+until the operator reports its final footer.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

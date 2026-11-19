@@ -237,3 +237,19 @@ process has been inspected. Wait for the operator's final footer; do not monitor
 or duplicate the run. The new tests/capture remain unqualified. Independent
 connected trajectory accuracy, physiological firing, live brain authority and
 Avatar balance are still open requirements. The full goal remains active.
+
+## Reference input prepared without inspecting the pending capture
+
+The independent continuous/held input adapter and 15 prospective analytic
+controls are authored in `canal_afferent_reference_input.py` and
+`check_canal_afferent_reference_input.py`. See the final section of
+`DNNE_Connected_Canal_Afferent_2026-11-19.md` for provenance, interval ownership,
+the separation between identical-input neuronal accuracy and full-path accuracy,
+and the additional arbitrary-time 60/90-digit comparison still required.
+
+No tests, mechanical/neuronal evaluations or reference solves ran during this
+preparation. No accuracy limits, biological parameters, existing model sources or
+frozen evidence changed. No additional window was launched. The sole pending
+operator report remains `canal-afferent-20261119-6d0480`; its post-launch output,
+status and process remain uninspected. Review that reported capture before
+choosing and freezing the next reference run. The broad goal remains active.

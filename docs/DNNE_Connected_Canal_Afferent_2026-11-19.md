@@ -122,3 +122,70 @@ process has been inspected. Wait for the operator's final footer; do not monitor
 or duplicate the run. The new tests/capture remain unqualified. Independent
 connected trajectory accuracy, physiological firing, live brain authority and
 Avatar balance are still open requirements. The full goal remains active.
+
+## Independent input preparation while the capture is pending
+
+The running `6d0480` package remains untouched. Its output, status and processes
+have not been inspected. There is still exactly one pending operator report.
+
+`tools/canal_afferent_reference_input.py` prepares the next comparison. It
+constructs a continuous mechanical input from the separately written published
+matrix generator and SciPy matrix exponential, starting from an explicit
+12-coordinate mechanical state and three angular inputs. It uses no native
+Radau stage, current or captured neuronal trajectory. The circular shear
+projection is reconstructed from source stiffness and the declared attachment;
+organ/cell identity, source hash, coordinate order and polarity remain explicit.
+The new SciPy query path is not yet numerically qualified. Its arbitrary-time
+values still need the existing independent 60/90-digit exponential comparison;
+previous accepted-grid agreement alone does not establish that result.
+
+Every physical interval is explicit. Mechanical continuation carries all twelve
+coordinates forward and changes only the newly available angular input. Queries
+are pure: retries, rejected solver stages and out-of-order queries cannot advance
+the organ. Mechanical seconds are converted from sensory milliseconds once.
+The callback never searches for a nearby timestamp or reads a future head input.
+
+The same interface supports a separately declared held segment. Its right-end
+ODE stage sees that segment's original held value; a new solve must start for
+the next segment. This avoids hiding discontinuities inside `floor(time/step)`
+callbacks, where an adaptive solver could step across them without accounting
+for the change. The sensory adapter reuses the existing independent full joint
+derivative and Jacobian, with the same physical input for both. It changes no
+neuronal equation, gate, ion state, threshold, model default or live selector.
+
+Two comparisons must remain distinct:
+
+1. Replaying the **actual captured held values** in a separate ODE solver can
+   assess neuronal integration for that identical imposed input. Those values
+   must be labelled captured input; they are not an independent mechanical
+   reference. The explicit held-segment type supports this path without using
+   native neuronal currents or states after the original initial condition.
+2. Driving the independent neuronal equations with the **independent continuous
+   mechanical waveform** assesses the full numerical path, including mechanical
+   interpolation and the native step-start hold. Comparing continuous and held
+   independent forcing can expose the contribution of that input approximation.
+
+The first path requires a solver boundary at every held-input change and could
+be expensive over the entire capture. Any shortened diagnostic must state its
+limited coverage and cannot replace the full-trajectory acceptance check. Both
+paths must carry neuronal state and cumulative charge/ion ledgers continuously
+across physical intervals; changing a solver's local time origin is not a state
+reset. Every source-step endpoint remains eligible for comparison.
+
+No accuracy limit has changed. The existing absolute/relative state and ledger
+limits, reference precision checks and earlier refinement evidence remain. A
+step-start hold is generally first order in the input interval even when the
+underlying neuronal integrator is second order; a ratio near one half must not
+be misreported as satisfying the earlier 0.4 refinement criterion. If that
+approximation prevents qualification, review the forcing integration, retaining
+the original failed result and bounds.
+
+`tools/check_canal_afferent_reference_input.py` contains 15 prospective analytic
+controls: stationary/constant-velocity/quadratic/oscillatory motion, continued
+forcing, immutable query results, explicit held endpoints, source geometry,
+identity/domain rejection and derivative/Jacobian input consistency. These are
+authored controls, not passing tests. Only Python syntax, static inventory and
+diff checks are permitted during this preparation; executable controls and
+references belong to a later frozen visible PowerShell window. No additional
+window is launched here. The native capture must be reported and reviewed before
+its observed response informs the next execution plan.

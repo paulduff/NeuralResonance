@@ -1,5 +1,13 @@
 # Declared primary descending source anatomy
 
+The 180-case workflow is now launched at
+`D:/DNNE-build-work/declared-descending-20261119-82111a`, frozen from pushed
+`9416df8a15c5bc9057e4b7f15f6144904bb90f21`. Frozen preflight and both initial
+2,170-file copies plus manifest verify. Visible task
+`DNNE-Declared-Descending-b3213598b61f` started. No post-launch inspection
+occurred; await the operator's final backup/footer before reviewing. Its source
+and motor results remain unqualified pending that review.
+
 The detailed motor pool passed its receiving controls, but actual generic
 reticular/vestibular neurons still named their default intralaminar destination.
 The motor pool correctly refused to repair that by renaming an already emitted

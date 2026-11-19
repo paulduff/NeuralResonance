@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/declared-descending-20261119-82111a`, frozen
+at pushed `9416df8a15c5bc9057e4b7f15f6144904bb90f21`. Frozen preflight and both
+initial 2,170-file copies plus manifest verify. Visible task
+`DNNE-Declared-Descending-b3213598b61f` started the 180-case workflow, retaining
+both actual source executions, original neuronal-to-motor frames and earlier
+recurrent evidence. Exactly TWO operator final reports are now pending: this
+declared-output run `82111a` and full sensory midpoint comparison `e503fd`.
+Neither post-launch output/status/process has been inspected. Await final
+backup/footers without monitoring or duplicate launches. `f8a807` is already
+fully reviewed with 172 passed. Launch is not source-path, numerical or biological
+qualification. This supersedes all one-report/preparation-only notes below.
+
 Authoring checkpoint: explicit primary descending anatomy is implemented for
 fresh, full isolated vestibular/reticular populations. Every original cell must
 declare one primary motor target before original emission; neuron/learning

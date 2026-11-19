@@ -5,6 +5,19 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — original descending output contacts
+
+`D:/DNNE-build-work/declared-descending-20261119-82111a` is frozen at pushed
+`9416df8a15c5bc9057e4b7f15f6144904bb90f21`. Frozen preflight and both initial
+2,170-file copies plus manifest verify. Task
+`DNNE-Declared-Descending-b3213598b61f` started the visible 180-case run.
+Its full original source/receiving evidence is required by the saved-data audit;
+no outcome is inferred from launch. No post-launch output/status/process was
+inspected. Exactly two final reports now await the operator: `82111a` and full
+midpoint `e503fd`. Neither is to be monitored or duplicated. All earlier reports,
+including the 172 passed controls in `f8a807`, are already reviewed. This
+supersedes the one-pending-report and preparation-only statements below.
+
 ## Declared descending source anatomy
 
 The next independent component change assigns named motor targets before the

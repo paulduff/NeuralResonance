@@ -103,3 +103,22 @@ At authoring, both build targets and static source/fixture/parser checks pass;
 the new 25 tests and connected capture have not yet run. All executable checks
 belong to a fresh visible PowerShell window, with verified D: backup and no live
 monitoring. Old saves and completed captures remain unchanged.
+
+
+## Connected window launched
+
+Fresh run `canal-afferent-20261119-6d0480` is frozen at pushed revision
+`c8466ff24b58588ec140cd8ef411883af244b899`. Both build targets pass without
+warnings/errors; Python/PowerShell parsing, the exact 284-case static inventory,
+fixture counts and source preservation checks pass. Frozen preflight verifies
+both reviewed prerequisites, all source/runtime identities and the original
+loaded state/limits. Its initial 2,098 files plus manifest verify in
+`D:/DNNE-desktop-runs/UnityWorld/canal-afferent-20261119-6d0480`.
+Results belong to `D:/DNNE-build-work/canal-afferent-20261119-6d0480`.
+
+Visible independent task `DNNE-Canal-Afferent-f356e54d8b8d` started successfully.
+Exactly one final report is pending: `6d0480`. No post-launch output, status or
+process has been inspected. Wait for the operator's final footer; do not monitor
+or duplicate the run. The new tests/capture remain unqualified. Independent
+connected trajectory accuracy, physiological firing, live brain authority and
+Avatar balance are still open requirements. The full goal remains active.

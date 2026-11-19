@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/canal-midpoint-20261119-f8a807`, frozen at
+pushed `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Both projects build cleanly;
+static syntax, exact 172-case inventory, 159 preserved sources and the one
+declared owner diff verify. Frozen preflight and both initial 2,153-file copies
+plus manifest pass. Visible task `DNNE-Canal-Midpoint-d7a060e43f47` started.
+Exactly ONE final report is pending: this midpoint component window. No
+post-launch output/status/process was inspected. Await the operator's final
+footer without monitoring; then review before any full candidate trajectory
+capture. Earlier motor `f3826f` and sensory comparison `2a402c` are fully reviewed
+as detailed below. Launch does not establish improved accuracy or physiology.
+
 Current checkpoint: both operator-reported final results are fully reviewed.
 Motor `f3826f` has all 164 cases passed, both 2,732-file copies verified and a
 D:-verified three-file review. Continuous reference `2a402c` remains FAILED:
@@ -20,7 +31,7 @@ unaddressable half ticks reject rather than round. Eight new controls plus the
 164 unchanged controls form a 172-case visible workflow, not a full trajectory
 qualification. Both projects build cleanly. See
 `docs/DNNE_Canal_Midpoint_Forcing_2026-11-19.md`. Freeze/push/back up/launch the
-controls and record the actual package/task separately. After their completed
+controls (actual launch recorded above). After their completed
 review, capture and compare the candidate at the original three resolutions
 against all six preserved continuous references with every original bound.
 Do not rerun the expensive reference ODEs merely to compare new native input.

@@ -5,6 +5,17 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — midpoint sensory input controls
+
+`D:/DNNE-build-work/canal-midpoint-20261119-f8a807` is frozen at pushed
+`7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Both projects build cleanly; static
+syntax/inventory, 159 preserved source files and the declared owner diff verify.
+Frozen preflight and both initial 2,153-file copies plus manifest pass. Task
+`DNNE-Canal-Midpoint-d7a060e43f47` started the independent visible 172-case run.
+No post-launch output/status/process was inspected. Exactly one final report
+now awaits the operator: `f8a807`. Its completion must be reviewed before the
+full candidate capture/continuous comparison. All older reports are reviewed.
+
 ## Current completed reviews and midpoint input candidate
 
 Both final footers are now reported and reviewed. Motor `f3826f` passes all 164
@@ -32,7 +43,7 @@ proved explanation or a biological calibration. Eight new ownership/input
 controls plus all 164 existing cases form a 172-case PowerShell workflow. Both
 authoring projects build cleanly. No tests were run inline.
 
-Next: freeze/push/back up/launch those controls, await the operator's footer,
+The controls are now launched as recorded above. Await the operator's footer,
 then review before the full three-resolution capture/comparison using the six
 preserved continuous references. Keep every original limit and early sample;
 do not discard cumulative flux errors or rerun accurate reference ODEs without

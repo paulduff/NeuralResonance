@@ -1,5 +1,13 @@
 # Midpoint sampling of completed canal movement
 
+The 172-case component workflow is now launched at
+`D:/DNNE-build-work/canal-midpoint-20261119-f8a807`, frozen from pushed
+`7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. Frozen preflight and both initial
+2,153-file copies plus manifest verify. Visible task
+`DNNE-Canal-Midpoint-d7a060e43f47` was started; no post-launch inspection occurred.
+Await the operator's final footer before reviewing. No candidate trajectory
+accuracy result is available yet.
+
 The completed continuous-input comparison `canal-reference-20261119-2a402c`
 failed its moving-head accuracy limits. All six independent reference solutions
 agree within their specified limits; stationary-head passes. Both 2,538-file

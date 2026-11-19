@@ -80,13 +80,21 @@ identity checks. Tests have not run at this authoring checkpoint.
 and D:-verified `6ceeae` result before preparation. Original biological kernels,
 shared sensory owner, connectome and earlier tests are byte-pinned. The exact
 two-helper visibility change is recorded separately. Reusing the coordinator
-adds an ASP.NET framework dependency to the probe, without starting the host.
+requires the ASP.NET framework, without starting the host. Inspection of the
+completed baseline confirms ASP.NET 10.0.15 was already part of its runtime.
 The gate declares and hashes that installed framework before launch and requires
-the old core runtime and runtime settings to remain exact; no runtime is installed
-or changed implicitly. The visible launcher rebuilds, verifies all exact cases,
+the original framework files and runtime settings to remain exact; no runtime is
+installed or changed implicitly. The visible launcher rebuilds, verifies all exact cases,
 preserves inputs/runtime/binaries and makes the final verified backup.
 
 Continuous reference `2a402c` remains pending and untouched. This work does not
 qualify active sensory accuracy, physiological firing, downstream coupled
 neuronal/muscle accuracy, live brain authority or Avatar balance. Record any
 actual preparation/launch and result separately.
+
+The first preparation `vestibular-projection-20261119-515c08` stopped before any
+test/model or launch because its declaration incorrectly assumed ASP.NET was
+absent from the qualified runtime. The original frozen files and rejection
+record are preserved in both locations. Corrected preparation accepts an already
+qualified framework only when its full directory manifest remains exact; it
+does not duplicate the directory or weaken comparison. Never launch `515c08`.

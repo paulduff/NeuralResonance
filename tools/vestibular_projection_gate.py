@@ -75,8 +75,8 @@ def coordinator_change(original,candidate):
 
 
 def additional_runtime(dotnet,qualified):
-    # Reusing the coordinator adds the installed ASP.NET framework. Declare and
-    # hash its exact files before launch; retain the previous core runtime whole.
+    # Reusing the coordinator requires the installed ASP.NET framework. Declare
+    # its exact files before launch; it may already be in the qualified runtime.
     version=qualified['runtimeVersion'];major_minor=version.split('.')[:2]
     listing=subprocess.run([dotnet,'--list-runtimes'],check=True,capture_output=True,text=True,encoding='utf-8').stdout
     candidates=[]
@@ -86,11 +86,13 @@ def additional_runtime(dotnet,qualified):
             candidates.append((tuple(map(int,match[1].split('.'))),Path(match[2])/match[1]))
     assert candidates,'Required ASP.NET framework is absent; do not install or change runtimes implicitly.'
     folder=max(candidates,key=lambda item:item[0])[1].resolve()
-    assert str(folder) not in {d['path'] for d in qualified['directories']}
     files=sorted((p for p in folder.rglob('*') if p.is_file()),key=lambda p:str(p).casefold())
     assert files
+    directory=dict(path=str(folder),files=[dict(path=str(p),sha256=h.digest(p)) for p in files])
+    previous=[d for d in qualified['directories'] if d['path']==str(folder)]
+    assert not previous or previous==[directory],'Previously qualified framework files changed.'
     return dict(reason='Existing coordinator routing helper reuse; no host service starts.',
-        directory=dict(path=str(folder),files=[dict(path=str(p),sha256=h.digest(p)) for p in files]),
+        alreadyQualified=bool(previous),directory=directory,
         modelsExecuted=False,testsExecuted=False)
 
 
@@ -179,6 +181,9 @@ def preflight(package):
         verify_runtime_directory(directory)
     extension=read(package/'declared-runtime-extension.json')
     assert not extension['modelsExecuted'] and not extension['testsExecuted']
+    previous=[d for d in read(package/'qualified-managed-runtime.json')['directories'] if d['path']==extension['directory']['path']]
+    assert extension['alreadyQualified']==bool(previous)
+    assert not previous or previous==[extension['directory']]
     verify_runtime_directory(extension['directory'])
     print('Original sensory/neuronal kernels and declared routing helper access preserved; no model/test or pending reference accessed by preflight.',flush=True)
 
@@ -186,7 +191,8 @@ def preflight(package):
 def runtime(package):
     preflight(package);actual=read(package/'managed-runtime-before.json');qualified=read(package/'qualified-managed-runtime.json')
     assert {k:v for k,v in actual.items() if k!='directories'}=={k:v for k,v in qualified.items() if k!='directories'}
-    expected=qualified['directories']+[read(package/'declared-runtime-extension.json')['directory']]
+    extension=read(package/'declared-runtime-extension.json')
+    expected=qualified['directories']+([] if extension['alreadyQualified'] else [extension['directory']])
     assert actual['directories']==sorted(expected,key=lambda d:d['path'].casefold())
 
 

@@ -1,5 +1,13 @@
 # Avatar and environment work
 
+Prelaunch correction: `vestibular-projection-20261119-515c08` was rejected before
+any test/model or launch. Its runtime declaration wrongly assumed ASP.NET was
+absent from the qualified baseline, which already includes ASP.NET 10.0.15.
+Original frozen files and the rejection record are retained in both locations.
+The corrected gate requires exact old framework files whether the dependency is
+already present or newly declared. Use a fresh package; never launch `515c08`.
+Only `2a402c` awaits its report and remains untouched.
+
 Latest completed review: shared owner `6ceeae` was reported complete. Both
 2,643-file copies, frozen `6210b4263e782cd2ef613862656af1d7fe486da0` source,
 runtime/binaries, all 101 cases and saved analysis verify. Its three-file review
@@ -13,8 +21,8 @@ Original shared-nucleus output is retained through per-recipient acknowledgement
 for every declared outgoing projection. It reuses existing coordinator routing
 (two helpers gain internal visibility only), with distinct collateral delivery
 IDs and unchanged neuronal chemistry/timing. No live host/recipient is started.
-The probe now references the coordinator and requires an explicitly fingerprinted
-ASP.NET framework in addition to the unchanged core runtime. Both projects build
+The probe now references the coordinator and requires the explicitly fingerprinted
+ASP.NET framework already present beside the unchanged core runtime. Both projects build
 cleanly; fourteen new controls and a 119-case visible workflow are authored,
 unrun. The gate requires the reviewed `6ceeae` dependency. Record actual launch
 separately; original sensory/learning kernels and prior owners are unchanged.

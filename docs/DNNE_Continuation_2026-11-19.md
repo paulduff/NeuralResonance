@@ -19,9 +19,15 @@ connectome routing and preserves original neuronal timing/chemistry. Fourteen
 new controls and four unchanged routing cases join the existing 101 cases in a
 119-case visible workflow. Both projects build cleanly; tests remain unrun at
 this authoring checkpoint. Source preservation explicitly records the two routing
-helper visibility changes and the probe's added ASP.NET runtime dependency.
+helper visibility changes and its required, already qualified ASP.NET runtime.
 See `DNNE_Vestibular_Projection_Ownership_2026-11-19.md`. No live selector or
 physiological qualification changed. Record the actual launch separately.
+
+Preparation `515c08` was rejected before launch/test/model because the first gate
+assumed ASP.NET was absent from the qualified baseline. It is already present at
+10.0.15. The corrected declaration requires the same complete file manifest and
+avoids duplicating it. Preserve the rejected frozen package and its D: copy;
+prepare a new package after committing and pushing. Never launch `515c08`.
 
 ## Current checkpoint — shared canal/nucleus owner launched
 

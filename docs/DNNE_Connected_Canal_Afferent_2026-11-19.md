@@ -248,3 +248,37 @@ monitoring or duplication. Launch/preflight do not establish analytic-test or
 reference success. This companion study cannot qualify connected neuronal
 accuracy, anatomical mapping, physiological firing or Avatar balance. The broad
 goal remains active and unfinished.
+
+## Independent input result reviewed
+
+The operator reported `2dd76a` complete, with its final D: backup/footer. The
+review verifies every file in both 2,096-file copies, the full frozen Git
+archive, numerical dependencies and the exact names of all 15 input controls.
+Those and all six independent exponential controls pass. All 1,060 timed queries
+pass the unchanged limits. The full saved matrix products, interval continuity,
+stationary control, error maxima and worst locations reproduce exactly using
+recorded arithmetic; no model, analytic test or reference solve was rerun.
+
+Maximum fractions of their respective allowed errors are:
+
+| Comparison | Fraction of allowed error |
+| --- | ---: |
+| SciPy mechanical state versus 90 digits | 4.9409121324816475e-6 |
+| SciPy bundle displacement versus 90 digits | 1.7587747151776843e-6 |
+| 60/90-digit mechanical state | 2.385293181373539e-25 |
+| 60/90-digit bundle displacement | 5.179699829986417e-15 |
+| 60/90-digit exponential operators | 3.9388292291334484e-15 |
+| Binary64 spatial gain arithmetic | 0.0012701246556965345 |
+
+These are numerical error fractions, not anatomical or biological errors. The
+sampled continuous-input evaluator now has passing independent evidence for the
+declared head prefix and stationary control. It is suitable as the next reference
+component; arbitrary-time and coupled sensory accuracy still require their own
+trajectory checks and precision witnesses.
+
+`tools/review-canal-waveform-result.py` records the audit in
+`artifacts/canal-waveform-20261119-2dd76a-review`; its three files plus manifest
+have a verified D: backup. Exactly one report remains pending: neuronal capture
+`6d0480`. Its post-launch output, status and process remain uninspected. No
+additional window was launched during this review. The full biological goal
+remains active; live brain authority, sensory physiology and balance are open.

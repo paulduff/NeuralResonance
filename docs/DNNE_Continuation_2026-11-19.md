@@ -286,3 +286,21 @@ The new companion uses only reviewed completed mechanical evidence. Its 15
 analytic input controls, six exponential controls and 1,060 queries remain
 unqualified until completed and reviewed. Connected neuronal accuracy, physiology,
 live brain authority and Avatar recovery remain open. The full goal is active.
+
+## Independent input result reported and reviewed
+
+The operator reported `2dd76a` complete. Both 2,096-file copies, full frozen Git
+source, original numerical environment and all 21 analytic controls verify.
+All 1,060 queries pass their unchanged limits. Saved reference matrix products,
+physical-interval continuity and all six error maxima/worst locations reproduce
+exactly without model/test/reference execution. Maximum state error is
+4.940912e-6 of its allowance; bundle error is 1.758775e-6. The three-file review
+plus manifest is D: verified. See the final result section in
+`DNNE_Connected_Canal_Afferent_2026-11-19.md` and
+`tools/review-canal-waveform-result.py`.
+
+Exactly ONE report remains pending: connected sensory `6d0480`, still untouched
+after launch. Wait for the operator's final footer; do not monitor or duplicate
+it. This reference-component result does not qualify connected sensory dynamics,
+physiology, live brain authority or Avatar balance. No new window was launched
+during the review. The broad goal remains active and unfinished.

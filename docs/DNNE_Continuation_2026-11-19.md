@@ -50,3 +50,30 @@ compares every saved mechanical substep and preserves/backups the outcome.
 Exactly ONE completion report is pending: `274f31`. Motor `5bdd81` is fully
 reviewed within its recorded isolated scope; no earlier window remains pending.
 The full biological brain/body/world goal remains active and unfinished.
+
+
+## Clock result reviewed; graded repair authored
+
+The operator reported `274f31` finished with FAILED. The preceding pending-run
+entry is superseded. All 121 tests, original clock/input/energy accounting and
+independent references pass; native early boundary transients fail accuracy and
+refinement. Both 3,198-file copies, frozen source, binaries and runtime verify.
+Saved analysis is reproduced exactly without another solve; the four-file
+review plus manifest is backed up. Matching-time convergence and already-small
+physical-endpoint errors point to resolving the first microseconds after each
+held-input change, not changing biological coefficients or discarding samples.
+
+The separate graded owner and rig are authored in
+`DNNE_Graded_Canal_Clock_2026-11-19.md`. They preserve all original limits and
+24 earlier source/reference/test files. The prospective window requires 156
+component cases, 491,729 accepted native substeps, 459,293 reference samples
+per method, all original uniform reference anchors and every graded endpoint.
+Test/probe builds and static inventory/syntax checks pass; no tests/models have
+run inline. No completion report remains pending before this next launch.
+
+Independent source inspection has also retained the Selva/Oman/Stone 2009
+cupula paper's metadata/abstract (DOI 10.3233/VES-2009-0359) and access record in
+`artifacts/cupula-source-20261119-21aeca`, with a verified D: backup. Full text
+was not obtained. No parameter was installed from its abstract. The existing
+2019 review supports distinguishing generalized organ volume from local bundle
+shear; a calibrated mapping remains open. No live selector/editor change.

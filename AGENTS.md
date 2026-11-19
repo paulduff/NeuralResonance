@@ -13,15 +13,19 @@ repair passes the saved 600-input comparison with unchanged bounds and a
 separate verified review. Loaded sensory `cd9fba` has been fully reviewed:
 four conditions pass, quiet drift passes, 114,688 steps plus twelve initial
 rows are retained, and both copies and the saved analyses are verified.
-The coupled-canal clock owner still awaits qualification. Its new rig combines
-21 owner controls with 100 prior checks, original head replay at three resolutions
-and independent organ trajectories. Build/static authoring checks pass; do not
-infer test success until the operator reports its completed PowerShell outcome.
-The rig is now launched as `canal-clock-20261119-274f31`, frozen at `d2d1460`,
-in `D:/DNNE-build-work`; 2,040 initial files plus manifest were verified in its
-D: backup. Visible task `DNNE-Canal-Clock-fe7424147fdd` launched successfully.
-Exactly one final report is pending. No post-launch output/status/process has
-been inspected; do not monitor or duplicate the run.
+Clock `274f31` has now been reported FAILED and fully reviewed: 121 cases,
+clock/input/energy accounting and independent references pass, but early native
+boundary transients fail accuracy/refinement. Both 3,198-file copies verify;
+original failure and all bounds remain. Errors at matching times converge while
+the differently sampled first-step maxima do not. Do not qualify by dropping
+those early samples or checking physical endpoints alone. The separate four-file
+review is backed up. See `docs/DNNE_Graded_Canal_Clock_2026-11-19.md`.
+A separate graded schedule/owner and prospective rig are authored, preserving
+24 earlier files and all biological equations. It requires 156 focused cases,
+491,729 native substeps and 459,293 reference samples per method, with original
+uniform anchors retained. Builds and static checks pass; tests/models have not
+run during authoring. No final report is pending at this authoring checkpoint;
+the graded rig is not yet launched. Historical launch notes below are not current.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

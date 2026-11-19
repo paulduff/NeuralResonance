@@ -71,3 +71,16 @@ manifest were verified in D: backup before the independent visible task
 `DNNE-Canal-Clock-fe7424147fdd` started. Static frozen preflight passed. There
 has been no post-launch inspection, and no result is inferred from launch.
 Review awaits the operator's final footer.
+
+
+## Completed result and numerical repair direction
+
+The operator reported the final FAILED footer for `274f31`. Its 121 tests,
+clock/input/energy accounting and independent references pass. Native early
+boundary transients fail the unchanged accuracy and refinement criteria.
+The separate saved review reproduces the analysis exactly and verifies both
+3,198-file copies; its four files plus manifest have a verified D: backup.
+At matching times errors fall strongly. Physical endpoint errors pass, but that
+does not excuse failing early substeps. The original failure remains unchanged.
+The separate graded candidate and prospective qualification are documented in
+`DNNE_Graded_Canal_Clock_2026-11-19.md`. No biology or acceptance limit changes.

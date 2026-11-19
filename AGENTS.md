@@ -41,12 +41,26 @@ unqualified. The window runs 204 cases and compares all accepted mechanics
 exactly with `7880d2`, then 1,333,300 dense queries against saved independent
 references using unchanged bounds. Thirty-five earlier files remain pinned.
 No sensory neurons, Unity bodies or live services run in that qualification.
-The fresh `canal-bundle-20261119-bd15d1` window is now launched, frozen at
-`bfa0ae9c2ef2c2214c8be0587a6c82160a3e39a1`. Frozen preflight passed; 2,685
-initial files plus manifest verified in D: backup before visible task
-`DNNE-Canal-Bundle-7be04cf7594f` started. Exactly ONE final report is pending:
-`bd15d1`. No post-launch output, status or process has been inspected. Do not
-monitor or duplicate this window before the operator reports completion.
+Timed bundle `bd15d1` has been reported complete and fully reviewed: both
+4,436-file copies verify, all 204 cases pass and the frozen saved analysis
+reproduces exactly. All 491,729 accepted mechanical steps remain identical;
+1,333,300 dense samples reconcile. Error fractions are 6.597744 / 0.941491 /
+0.081619 at refinements 1/2/4. Coarse accuracy fails; finest accuracy and common-
+time refinement pass. The three-file review plus manifest has a verified D:
+backup. That completed window needs no further report.
+Next: `docs/DNNE_Connected_Canal_Afferent_2026-11-19.md`. A new integer-clock
+owner connects retained mechanical history to the actual joint hair/cleft/calyx/
+cable solver and its existing observer/outbox, preserving continuous state and
+original events. It changes no prior neuronal or mechanical equations. Explicit
+start-held input and geometric hypotheses still need connected qualification.
+The prospective window runs 284 cases and six roughly 100-ms connected captures,
+recorded-head versus stationary-head at three sensory resolutions, from the
+reviewed loaded quiet state. Every one of 2,293,760 source steps and all packet
+progress are retained. Source equations, original conservation bounds and
+EndpointHold hypothesis remain fixed. No spike quota or live selector is added.
+Builds/static checks pass; new tests and connected capture remain unexecuted.
+No window is pending at this authoring checkpoint. Do not claim independent
+connected accuracy, physiological firing, live brain authority or Avatar balance.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

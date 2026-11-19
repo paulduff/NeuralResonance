@@ -199,3 +199,22 @@ or duplicate the run. The 204 tests and three timed replays remain unqualified.
 This tests the physical input to sensory cells; it does not yet execute them or
 qualify anatomical mapping, live neural balance or recovery. The overall goal
 remains active and unfinished.
+
+
+## Timed bundle reviewed; connected neuronal owner authored
+
+The operator reported `bd15d1` complete, including the final backup/footer.
+Both 4,436-file copies, source/runtime/binaries and all 204 tests verify; the
+frozen analysis reproduces exactly. The 491,729 original accepted steps are
+unchanged and all 1,333,300 dense queries reconcile. Error fractions at the
+three refinements are 6.597744, 0.941491 and 0.081619; the finest and common-time
+refinement criteria pass. The separate three-file review plus manifest is
+backed up. This supersedes the earlier pending status.
+
+`DNNE_Connected_Canal_Afferent_2026-11-19.md` describes the new composed owner
+and prospective 284-case/2,293,760-step recorded-head versus stationary-head
+capture. It advances the existing joint sensory neuron continuously, retains
+actual observation/packet progress and uses explicit integer clock mapping.
+Build/static checks pass; no new test/model has run inline. Independent coupled
+accuracy and physiology remain open, and no new window is launched at this
+specific authoring checkpoint.

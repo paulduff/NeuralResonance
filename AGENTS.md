@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+Latest completed review: operator reported head-input `1047b8` complete. Both
+2,631-file copies, frozen `04df5c84e0216122c9f80142044dc3cea811df0a` source,
+runtime/binaries, all 32 exact cases and saved analysis verify. Twenty prescribed
+input cases and twelve original skull controls pass. Review reran no models or
+tests. See `artifacts/head-turn-20261119-1047b8-review` and its review script.
+Only ONE final report remains pending: continuous reference `2a402c`; it remains
+untouched. This supersedes the two-report counts below. New convergence work
+for multiple original sensory fibres is being authored separately; it is unrun
+and has not changed any already frozen experiment or qualified live selection.
+
 Latest launch: `D:/DNNE-build-work/head-turn-20261119-1047b8`, frozen at pushed
 `04df5c84e0216122c9f80142044dc3cea811df0a`. Both projects built cleanly, frozen
 preflight passed and both initial 2,100-file copies plus manifest verify. Visible

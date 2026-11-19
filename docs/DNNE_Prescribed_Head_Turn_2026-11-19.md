@@ -80,3 +80,18 @@ identified the need for stricter analytic initial geometry. Its original frozen
 inputs and separate rejection record remain intact, with a verified D: copy of
 all 2,101 files plus manifest. It ran no tests or models. The fresh package
 contains the stricter producer checks; native measurement tolerances are unchanged.
+
+## Completed input review
+
+The operator reported the final footer for `1047b8`. Both complete 2,631-file
+copies, frozen Git source, runtime/binaries and all 32 exact test cases verify.
+All twenty new producer cases and twelve original skull-adapter controls pass,
+including rejection of approximate measured geometry as an analytic fixture.
+The saved analysis reproduces exactly; review ran no tests, models or references.
+Evidence and the review script are retained in
+`artifacts/head-turn-20261119-1047b8-review`.
+
+This establishes the tested prescribed-input geometry and timing. The independent
+active sensory comparison `2a402c` remains pending and untouched; no physiological
+excitation, firing, live motor control or balance qualification follows from
+these input controls.

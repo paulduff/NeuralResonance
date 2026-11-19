@@ -562,3 +562,13 @@ Exactly TWO final reports now remain pending: continuous sensory reference
 Await operator footers without monitoring or duplication. These input checks
 cannot establish active sensory accuracy, physiological firing or Avatar balance.
 The full goal remains active; original biological equations and limits are fixed.
+
+## Head-input controls reviewed
+
+The operator reported `1047b8` complete. Both 2,631-file copies, frozen Git source,
+runtime/binaries and all 32 exact cases verify; saved analysis reproduces exactly
+without rerunning tests/models. The twenty producer and twelve skull-adapter
+cases pass. Three review files plus manifest are retained under
+`artifacts/head-turn-20261119-1047b8-review` and backed up to D:.
+Only `2a402c` awaits its final report and remains uninspected. Input correctness
+does not establish active sensory accuracy, physiological firing or balance.

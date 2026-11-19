@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+Latest launch: shared canal/nucleus owner `canal-convergence-20261119-6ceeae`,
+at `D:/DNNE-build-work/canal-convergence-20261119-6ceeae`, frozen at pushed
+`6210b4263e782cd2ef613862656af1d7fe486da0`. Frozen preflight passes; both initial
+2,112-file copies plus manifest verify. Visible task
+`DNNE-Canal-Convergence-35418c1d8b8b` started for 101 cases. Exactly TWO final
+reports are pending: continuous reference `2a402c` and shared owner `6ceeae`.
+Neither post-launch output/status/process was inspected. Await operator footers
+without monitoring or duplication. Convergence `b208e4` and head input `1047b8`
+are fully reviewed and need no further report. This supersedes the unlaunched
+and one-report counts below. No active sensory accuracy, physiological firing,
+live-brain authority or Avatar balance is qualified by this launch.
+
 New shared-owner candidate: `docs/DNNE_Canal_Convergence_Owner_2026-11-19.md`.
 `CanalConvergenceConnection` composes multiple actual fresh canal/sensory owners
 with the completed convergence ingress and one real receiving nucleus. It

@@ -5,6 +5,29 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Current checkpoint — shared canal/nucleus owner launched
+
+Convergence `b208e4` is fully reviewed: both 2,639-file copies, frozen source,
+declared engine edit, runtime/binaries, 89 exact cases and saved analysis verify.
+The three-file review plus manifest is D: verified. Its 14 new convergence cases
+and all 75 previous source/owner cases pass; no models or tests were rerun during
+review. Head-input `1047b8` is also fully reviewed and needs no further report.
+
+The next 101-case run owns multiple actual canal sources with one receiving
+nucleus. It is launched at `D:/DNNE-build-work/canal-convergence-20261119-6ceeae`,
+frozen at pushed `6210b4263e782cd2ef613862656af1d7fe486da0`. Both projects built
+cleanly, frozen preflight passed and both initial 2,112-file copies plus manifest
+verify. Visible task `DNNE-Canal-Convergence-35418c1d8b8b` started successfully.
+See `DNNE_Canal_Convergence_Owner_2026-11-19.md` for its ownership and failure
+semantics; original biological, learning and convergence kernels are unchanged.
+
+Exactly TWO final reports are pending: continuous sensory reference `2a402c`
+and shared owner `6ceeae`. No post-launch output/status/process of either was
+inspected. Await operator final footers without monitoring or duplicate runs.
+This checkpoint supersedes earlier pending counts below. The full biological
+brain/body/world goal remains active and unfinished; component ownership does
+not establish active sensory accuracy, physiological firing or Avatar balance.
+
 ## Completed motor matrix
 
 The operator reported `refined-motor-20261118-5bdd81` finished. All seven cases

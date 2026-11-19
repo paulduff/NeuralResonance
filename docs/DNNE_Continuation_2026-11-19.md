@@ -319,3 +319,22 @@ Python syntax, static inventory and protocol construction pass; no model, test o
 reference solve ran. The final section of `DNNE_Connected_Canal_Afferent_2026-11-19.md`
 records the remaining frozen-gate, execution and complete-comparison work.
 Exactly one completion report remains pending: `6d0480`. The full goal is active.
+
+## Saved connected-trajectory comparison prepared while awaiting the footer
+
+The full comparator is authored in `tools/canal_afferent_reference_analysis.py`.
+It retains every native endpoint and fine reference sample, verifies actual
+state/flux continuity and conservation, and computes refinement only at matching
+integer ticks. The independent reference uses continuous mechanical input, so
+this comparison includes the native start-held input error. Original bounds,
+including the 0.4 remaining-error criterion, remain fixed even if that criterion
+fails. It cannot qualify identical-input solver accuracy, event timing or biology.
+
+The reference worker now retains explicit forcing in each derivative witness.
+Eight comparison controls are authored alongside the seven sampler controls;
+all fifteen remain unrun. Only syntax compilation and static inventory were
+performed. The connected-canal document records the future package contract and
+required preservation/identity gate. No package, launcher or additional experiment
+was started, and no pending output/status/process was inspected. `6d0480` remains
+the sole pending final report. Review it only after operator confirmation, then
+prepare the frozen visible comparison workflow. The broad goal remains active.

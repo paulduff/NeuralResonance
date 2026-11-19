@@ -331,3 +331,70 @@ accepted-domain evidence, rejected initial state, output preservation and invali
 source grids. They are authored but have not executed. Only Python syntax,
 static control inventory and protocol construction from completed prerequisite
 files have been checked. No package, gate or new run was launched at this stage.
+
+## Full saved-trajectory comparator prepared, not executed
+
+`tools/canal_afferent_reference_analysis.py` now defines the next comparison.
+It has no CLI or launcher and has not accessed the pending `6d0480` capture.
+The reference worker additionally records each derivative witness's explicit
+bundle forcing, so its retained state, input and precision record can be matched
+without evaluating another derivative.
+
+The comparator consumes a later frozen package with these verified inputs:
+
+- `continuous-reference-input.json` and `source-decisions.json`, constructed
+  from the unchanged reviewed loaded-state and bundle protocols;
+- `reviewed-connected.json`, explicitly recording operator completion and
+  passing connected accounting, linked by the future gate to original hashes;
+- `native/connected-input.json`, `native/analysis.json`, `native/study/input.json`,
+  `native/study/results.json` and each of the six captures' original initial,
+  final and compressed trajectory files;
+- the catalog and independent angular records used by the worker, and every
+  worker-produced interval's accepted nodes, full samples, two clocks, input
+  query log, precision witnesses and execution metadata.
+
+The future gate must verify frozen source/runtime/numerical dependencies,
+original capture and accounting identities, the completed input-reference review,
+both protected evidence copies, and exact copied file hashes before execution.
+The comparator does not replace that gate or rerun packet/causal accounting from
+a reduced subset. Existing original events, packets, mechanical stages and
+failure histories must remain preserved in the full native capture.
+
+Every one of the 2,293,760 native endpoints is compared with the independent
+continuous-input reference. This includes interpolation and start-held forcing
+error as well as neuronal integration error; it is not an identical-held-input
+solver comparison. Cross-method reference agreement uses all 655,361 unique fine
+ticks per reference, including the initial point. Repeated physical boundaries
+remain stored and their continuity is checked. No initial transient is dropped.
+
+Each native resolution also has a separate error record at the identical
+coarsest-grid times. Refinement uses these common-time errors, with an integer
+tick hash to reject equal-sized but differently sampled grids. Every error record
+retains the worst tick/component and maximum error for each state/flux group.
+The original remaining-error fraction of 0.4 plus the 0.01 normalized floor
+remains unchanged. Start-held forcing can have first-order error and fail that
+criterion even when its finest absolute error passes; such a result stays failed.
+
+All accepted reference nodes, all reference grid samples and every native state
+retain positive-ion and gate-domain checks. Charge/ion/cable/interface balances
+use the original initial state and cumulative ledgers across all body intervals.
+Dense output's endpoint can differ from its accepted endpoint by rounding; that
+difference is recorded under the original reference bounds rather than hidden
+behind a new epsilon. Independent precision reports are reproduced from their
+saved Decimal evaluations, without a new exponential or neuronal derivative.
+Per-interval reports preserve completed comparison work if later input is invalid.
+
+Passing requires independent reference agreement, reference conservation and
+precision, finest native accuracy, native conservation and common-time refinement.
+It does not establish event-time accuracy, physiological calibration, live brain
+authority or balance. Successful execution alone sets none of those claims.
+
+Eight prospective corruption/control methods cover early errors, every state/flux
+group, original relative-error scaling, duplicate/reversed/noninteger ticks,
+missing or nonfinite samples, mismatched refinement times, unchanged refinement
+limits, all three exact clocks and malformed archives. Together with the seven
+sampler methods they remain **unexecuted**. Syntax compilation and static method
+inventory pass; no tests, model/reference solves or extra windows were run.
+The next execution still waits for the operator's final footer and review of
+`6d0480`, followed by the frozen gate and visible PowerShell controls/reference
+workflow. No live monitoring has occurred.

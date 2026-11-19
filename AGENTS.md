@@ -19,9 +19,16 @@ a prospective protocol and seven analytic sampling-control methods. It carries
 all state/flux ledgers across ten physical intervals, saves all 655,361 unique
 fine-grid points per reference and retains accepted prefixes on failure. Syntax
 and static protocol/inventory checks pass; no new tests or model/reference solves
-have executed. A frozen gate, execution and full comparison remain to be done
-after the native capture is reported/reviewed. Existing equations and all bounds
-are unchanged. See the final connected-canal document section before continuing.
+have executed. The saved-data comparator is now also authored in
+`canal_afferent_reference_analysis.py`, with eight further unexecuted controls.
+It checks all native endpoints, all fine reference samples, continuous state/
+flux, conserved quantities and refinement at identical integer ticks. The
+original 0.4 refinement criterion remains; continuous versus start-held forcing
+may fail it. This is not identical-input solver-only accuracy. Both workers
+require a reported native capture with reviewed accounting. A frozen gate,
+execution and result review remain to be done; there is no new launcher.
+Existing equations and all bounds are unchanged. `6d0480` is still the only
+pending report and remains untouched. See the final connected-canal document.
 
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:

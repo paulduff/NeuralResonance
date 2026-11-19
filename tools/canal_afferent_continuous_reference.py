@@ -201,7 +201,7 @@ def run_case(package, protocol, condition, setting, source, output):
                 forcing = {'bundleDisplacementNanometers': interval.at_ms(local_ms)}
                 neuronal = precision_witness(equation, state, forcing, 0, protocol)
                 neuronal.pop('tick')  # Arbitrary solver nodes are not grid ticks.
-                neuronal.update(localMs=local_ms, heldPhysicalStep=physical_step)
+                neuronal.update(localMs=local_ms, heldPhysicalStep=physical_step, forcing=forcing)
                 witnesses.append(dict(mechanical=mechanical, neuronal=neuronal))
             save(folder / 'precision.json', witnesses)
             assert all(w['mechanical']['passed'] and w['neuronal']['precision']['passed'] and w['neuronal']['workingPrecision']['passed'] for w in witnesses)
@@ -224,7 +224,8 @@ def run_case(package, protocol, condition, setting, source, output):
 def run(package):
     package = Path(package)
     reviewed = read(package / 'reviewed-connected.json')
-    assert reviewed['operatorReportedCompletion'], 'Native capture must be reported and reviewed before execution.'
+    assert reviewed['operatorReportedCompletion'] and reviewed['connectedAccountingPassed'], \
+        'Native capture must be reported and its accounting reviewed before execution.'
     protocol = read(package / 'continuous-reference-input.json')
     source = read(package / 'source-decisions.json')
     assert protocol['version'] == 'continuous-canal-joint-afferent-reference-v1'

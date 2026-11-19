@@ -5,6 +5,33 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Current completed review and next receiving-motor controls
+
+The operator reported `a974ff` complete. Both 2,734-file copies, frozen
+`de0087852dbcee7ba564a03ce55df9c9398dc035` source, runtime/binaries, exact 146-case
+inventory and saved analysis verify. All 146 passed. Both complete executions
+have identical observed reticular/spinal states, normalized contact deliveries
+and pending payloads at zero numerical tolerance. Each has 555 original neuronal
+events, 559 routed events, 354 delivered and 205 waiting. Original identities and
+complete payloads reconcile within each execution; raw delivery records differ
+in the newly generated event IDs. This retry supports the corrected comparison;
+the original truncated `4c18a7` failure remains preserved, not relabelled passed.
+The three-file review plus manifest is D: verified.
+
+The receiving motor-pool candidate has 18 new unrun controls and a 164-case
+visible workflow including all 146 prior controls. The test project builds with
+zero warnings/errors; Python/PowerShell syntax, exact case inventory and 158
+preserved source files pass static checks against committed `de008785` without
+opening pending captures. No biological kernel or Avatar transport change.
+See the descending motor-pool candidate document. Freeze/back up/launch after
+clean push; record the actual package/task separately. Tests here use prescribed
+source inputs and cannot qualify live brain control or muscle force.
+
+Only continuous reference `2a402c` still awaits its final footer. The operator
+reports `compare.log` failed its continuous-input accuracy criteria while the
+window is still running preservation. Do not inspect its outputs/status/process
+until completion is reported. Preserve every original sample and accuracy bound.
+
 ## Latest launch — complete recurrent comparison evidence
 
 `D:/DNNE-build-work/reticulospinal-20261119-a974ff` is frozen at pushed

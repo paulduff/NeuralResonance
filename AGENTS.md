@@ -1,5 +1,25 @@
 # Avatar and environment work
 
+Latest completed review: operator reported `a974ff` finished. Both 2,734-file
+copies, frozen `de0087852dbcee7ba564a03ce55df9c9398dc035` source/runtime/binaries,
+exact 146-case inventory and analysis verify. All 146 pass. Complete reticular/
+spinal states, normalized deliveries and pending events agree exactly; each
+execution retains 555 neuronal emissions and 559 routed events (354 delivered,
+205 waiting). Original IDs/payloads reconcile within each run; raw delivery IDs
+differ. Three-file review plus manifest is D: verified at
+`artifacts/reticulospinal-20261119-a974ff-review`. Original `4c18a7` stays failed.
+
+The motor-pool candidate now has 18 authored/unrun controls and a gated 164-case
+visible workflow (all 146 prior controls unchanged). Test build is clean; static
+Python/PowerShell parsing, inventory and 158 preserved sources pass. No runtime
+or biological changes this turn. See its candidate document; freeze/push/back
+up/launch then record the actual task separately. Its prescribed inputs cannot
+qualify neuronal-source firing, muscle force or live Avatar control.
+Only `2a402c` awaits its final footer: operator reports continuous-input criteria
+failed in `compare.log` but the window is still preserving/backing up. Do not
+inspect its outputs/status/process until completion is reported. Keep original
+traces and bounds. This supersedes earlier two-report counts/unreviewed notes.
+
 Latest retry launch: `D:/DNNE-build-work/reticulospinal-20261119-a974ff`, frozen
 at pushed `de0087852dbcee7ba564a03ce55df9c9398dc035`. Build/static checks and
 frozen preflight pass; both initial 2,145-file copies plus manifest verify.

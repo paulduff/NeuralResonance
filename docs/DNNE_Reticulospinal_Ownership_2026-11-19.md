@@ -1,5 +1,16 @@
 # Reticulospinal recurrent ownership candidate — 19 November 2026
 
+Completed retry: operator-reported `a974ff` verifies in both 2,734-file copies,
+its frozen source/runtime/binaries and exact 146-case inventory. All 146 pass;
+saved analysis is independently reproduced. Both original executions have
+identical observed reticular/spinal state, normalized deliveries and pending
+payloads at zero tolerance. Each records 555 original neuronal emissions and
+559 routed events, partitioned into 354 delivered and 205 waiting, with every
+original ID/payload reconciled within its own execution. Raw delivery records
+differ in fresh event IDs. The three-file review plus manifest is D: verified.
+Original `4c18a7` remains failed and preserved. This qualifies the isolated
+ownership controls, not independent coupled accuracy, physiology or balance.
+
 Latest retry launch: `D:/DNNE-build-work/reticulospinal-20261119-a974ff`, frozen
 at `de0087852dbcee7ba564a03ce55df9c9398dc035`. Authoring builds/static checks,
 frozen preflight and both initial 2,145-file copies plus manifest verify.

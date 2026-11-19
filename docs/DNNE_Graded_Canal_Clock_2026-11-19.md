@@ -99,3 +99,31 @@ pending: `7880d2`. Do not duplicate or monitor it. Review all original limits,
 refinement, reference anchors and substep accounting after the operator reports
 its final backup/footer. The full brain/body/world goal remains active and
 unfinished; this candidate has not yet been numerically qualified.
+
+
+## Completed graded result reviewed
+
+The operator reported the final DIAGNOSTICS_COMPLETE footer for `7880d2`.
+All 156 cases pass. The three runs retain 491,729 substeps, with 459,293
+independent reference samples per method. All clock, input, stage and energy
+checks pass; finest accuracy and sampled refinement pass unchanged bounds.
+
+| Refinement | Substeps/interval | Worst allowance fraction | Accuracy alone |
+| --- | ---: | ---: | --- |
+| 1 | 353 | 3.1692350498112583 | Fails |
+| 2 | 706 | 0.3975764241525769 | Passes |
+| 4 | 1412 | 0.05413969420805266 | Passes |
+
+The finest first-substep error is 0.003730146313769756 of its allowance; physical
+endpoint error is 0.0035986594171416113. Early samples have not been removed.
+The independent SciPy reference uses at most 0.0034934076870480097 of its bound.
+New and old Decimal-reference states agree at every retained uniform anchor
+when represented in the saved binary64 arrays. SciPy anchor error is at most
+0.0017591876328120427 of the original reference allowance.
+
+Full review verifies both 3,213-file copies, Git source, binaries, managed runtime,
+exact test identities and preservation. The frozen saved analysis reproduces
+exactly without models/tests/reference solves. The separate four-file review
+plus manifest has a verified D: backup. This qualifies sampled integration at
+the stated resolution within the experiment, not the base resolution, human
+anatomy, continuous head-motion accuracy, neuronal firing or Avatar balance.

@@ -1,0 +1,52 @@
+{
+  "version": "declared-circular-cupula-shear-closure-v1",
+  "sources": [
+    {
+      "doi": "10.1016/j.bpj.2017.08.001",
+      "pmcid": "PMC5658742",
+      "retainedHtmlSha256": "8037d79489f224bfbb3ef10255f95a2193bdc0b0bd6e1895bc3a1621b6c4a5dd",
+      "evidence": "The text after axial-impedance coefficients uses a simply supported shear-elastic cupula and lambda_gamma = 8*pi. This is a macromechanical approximation, not a measured local bundle map."
+    },
+    {
+      "doi": "10.1007/s10439-007-9277-y",
+      "pmcid": "PMC3005417",
+      "retainedHtmlSha256": "07724245a89d5bf4959de50181830d932f70ad15ba402c6ffaef00dc2f0db1e2",
+      "evidence": "Appendix equation 4 integrates gamma*lambda/A^2 along thickness. The cupula solid volume and endolymph volume are distinct coordinates. Table A.1 writes h_c = sqrt(A_c/(4*pi)); the square root must not be lost in plain-text extraction."
+    },
+    {
+      "doi": "10.1152/jn.00708.2018",
+      "pmcid": "PMC6520623",
+      "retainedXmlSha256": "2448677fefac0233f0df73c345becf39ee1ea02b19a292ed6548d68f85afee6b",
+      "evidence": "The healthy cupula attaches around its perimeter. Kinocilium-to-cupula coupling is a putative mechanical link. Local bundle mechanics and adaptation are not supplied by a mean organ displacement."
+    },
+    {
+      "doi": "10.1038/s41598-021-87730-w",
+      "pmcid": "PMC8050243",
+      "retainedHtmlSha256": "7b75f6142c56245c2e4aa7f4dacc7006876027cbd5c9111f30cb9e534d7d3097",
+      "evidence": "A separate three-dimensional model reports position-dependent crista shear. Its human modulus and temperature conclusions are indirect; no parameter from this work is installed here."
+    }
+  ],
+  "derivedClosure": {
+    "authorship": "Derived here from the circular homogeneous shear approximation; not a literal transcription of a human finite-element field.",
+    "area": "A = pi*R^2",
+    "displacement": "u(x,y) = 2*Q/A * (1 - (x^2+y^2)/R^2)",
+    "normalization": "integral_disk u dA = Q; u = 0 at the perimeter",
+    "stiffness": "K = 8*pi*G*h/A^2; pressure = K*Q",
+    "elasticEnergy": "0.5*G*h*integral_disk |grad u|^2 dA = 0.5*K*Q^2",
+    "attachment": "root lies on the lower circular boundary; declared length extends in positive local y; rigid root and no-slip tip",
+    "bundleInput": "excitation polarity * (u_tip - u_root), converted from metres to nanometres",
+    "flow": "same spatial mode applied to the separate solid flow Qdot; no elapsed time invented"
+  },
+  "limitations": [
+    "No anatomical radius, material modulus, bundle location, length or polarity default.",
+    "No projection of endolymph volume into a solid hair-bundle displacement.",
+    "Quasi-static homogeneous circular shear closure; detailed crista shape, bending, pore-scale flow, attachment compliance and active bundle forces are omitted.",
+    "Projection supplies no additional inertia, damping, neuronal spike or MET adaptation.",
+    "The published organ's inertial approximation is not upgraded by this shape reconstruction.",
+    "A connected organ must reconcile the declared field's stiffness with its own mechanical parameters before physiological interpretation.",
+    "Independent source numerical agreement is not human anatomical calibration or Avatar balance."
+  ],
+  "livePreset": false,
+  "anatomicalCalibrationQualified": false,
+  "localBundleMapPhysiologicallyQualified": false
+}

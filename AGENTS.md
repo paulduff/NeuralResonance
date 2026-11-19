@@ -20,16 +20,20 @@ original failure and all bounds remain. Errors at matching times converge while
 the differently sampled first-step maxima do not. Do not qualify by dropping
 those early samples or checking physical endpoints alone. The separate four-file
 review is backed up. See `docs/DNNE_Graded_Canal_Clock_2026-11-19.md`.
-A separate graded schedule/owner and prospective rig are authored, preserving
-24 earlier files and all biological equations. It requires 156 focused cases,
-491,729 native substeps and 459,293 reference samples per method, with original
-uniform anchors retained. Builds and static checks pass; tests/models have not
-run during authoring. The graded rig is now launched as
-`canal-graded-20261119-7880d2`, frozen at `b06a811`, in `D:/DNNE-build-work`.
-Its 2,055 initial files plus manifest verified in D: backup before visible task
-`DNNE-Canal-Graded-8f60d7eb0b2d` started. Exactly ONE final report is pending:
-`7880d2`. No post-launch output/status/process has been inspected. Do not monitor
-or duplicate this study. Historical launch notes below are not current.
+Graded clock `7880d2` was reported complete and is fully reviewed: 156 cases,
+491,729 native substeps and 459,293 reference samples per method reconcile.
+Worst normalized errors are 3.169235, 0.397576 and 0.054140 at refinements 1/2/4;
+the base resolution fails accuracy, while refinement and finest criteria pass.
+Every early substep remains compared. Both 3,213-file copies verify; saved
+analysis is reproduced exactly and the four-file review is backed up. Original
+uniform failure and all bounds remain. No physiological/balance claim follows.
+The next candidate is `docs/DNNE_Cupula_Shear_Closure_2026-11-19.md`: a declared
+circular solid-volume shear field and local bundle attachment geometry. It adds
+no live selector, neuronal gain or human preset. Builds/static checks pass; its
+23 new cases and 156 regressions have not yet run. The prospective component
+rig preserves 31 earlier files. No completion report is pending at this authoring
+checkpoint; the cupula component window has not yet launched. Later launch notes
+supersede this checkpoint. Never inspect a launched run before the operator reports completion.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

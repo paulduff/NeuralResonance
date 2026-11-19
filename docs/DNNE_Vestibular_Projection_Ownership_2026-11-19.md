@@ -98,3 +98,15 @@ absent from the qualified runtime. The original frozen files and rejection
 record are preserved in both locations. Corrected preparation accepts an already
 qualified framework only when its full directory manifest remains exact; it
 does not duplicate the directory or weaken comparison. Never launch `515c08`.
+
+## Visible qualification launched
+
+The corrected package is `D:/DNNE-build-work/vestibular-projection-20261119-ae88a4`,
+frozen at pushed `ab70753bcca31033111ea6434e40234257db3386`. Frozen preflight
+passes and both initial 2,123-file copies plus manifest verify, including the
+explicit already-qualified ASP.NET dependency. Visible PowerShell task
+`DNNE-Vestibular-Projection-41a9d0f47eec` started for all 119 cases. Its output,
+status and process have not been inspected after launch. Await the operator's
+final backup/footer. Continuous reference `2a402c` is the only other pending
+report and remains untouched. Preparation and launch do not qualify the candidate.
+Rejected `515c08` retains a verified 2,121-file backup plus manifest and stays unrun.

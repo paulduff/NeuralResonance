@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/vestibular-projection-20261119-ae88a4`, frozen
+at pushed `ab70753bcca31033111ea6434e40234257db3386`. Frozen preflight passes;
+both initial 2,123-file copies plus manifest verify. Visible task
+`DNNE-Vestibular-Projection-41a9d0f47eec` started for 119 cases. Exactly TWO
+reports are pending: continuous reference `2a402c` and outgoing ownership
+`ae88a4`. Neither post-launch output/status/process was inspected. Await operator
+final footers without monitoring or duplication. Shared owner `6ceeae` is fully
+reviewed with all 101 cases passed and needs no further report. This supersedes
+the unlaunched/one-report counts below. Rejected `515c08` remains unrun, with all
+2,121 files plus manifest D: verified. No live/physiological qualification follows.
+
 Prelaunch correction: `vestibular-projection-20261119-515c08` was rejected before
 any test/model or launch. Its runtime declaration wrongly assumed ASP.NET was
 absent from the qualified baseline, which already includes ASP.NET 10.0.15.

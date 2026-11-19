@@ -5,6 +5,20 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — outgoing vestibular ownership
+
+`D:/DNNE-build-work/vestibular-projection-20261119-ae88a4` is frozen at pushed
+`ab70753bcca31033111ea6434e40234257db3386`. Both projects build cleanly; corrected
+frozen preflight passes and both initial 2,123-file copies plus manifest verify.
+Visible task `DNNE-Vestibular-Projection-41a9d0f47eec` started for 119 cases.
+Exactly TWO reports are pending: continuous reference `2a402c` and outgoing
+ownership `ae88a4`. Neither post-launch output/status/process was inspected.
+Await operator final footers without monitoring or duplication. Shared owner
+`6ceeae` is fully reviewed with all 101 cases passed. Rejected preparation
+`515c08` remains unrun with its 2,121-file backup plus manifest verified.
+This supersedes older unlaunched/one-report counts. No active sensory accuracy,
+live-brain authority, physiological firing or Avatar balance follows from launch.
+
 ## Current checkpoint — shared owner reviewed; outgoing ownership authored
 
 The operator reported `6ceeae` complete. Both 2,643-file copies, frozen source,

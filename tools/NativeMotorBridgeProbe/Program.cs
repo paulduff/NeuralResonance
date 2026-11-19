@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 3 && args[0] == "--canal-clock")
+{
+    CanalClockStudy.Run(args[1],args[2]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--canal-skull-input")
 {
     CanalSkullStudy.Run(args[1],args[2]);

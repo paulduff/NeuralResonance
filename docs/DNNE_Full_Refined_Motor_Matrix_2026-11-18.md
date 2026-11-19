@@ -155,3 +155,46 @@ is inferred from launch. All old captures and saves remain unchanged. Exactly
 ONE completion report is pending: `5bdd81`. Canal `debebb` is fully reviewed and
 passing within its declared numerical scope; its three-file review is D: verified.
 The full DNNE/Avatar/World goal remains active and unfinished.
+
+## Completed result reviewed on 19 November
+
+The operator reported the final DIAGNOSTICS_COMPLETE footer. All seven native
+conditions pass their original sampled numerical limits. The largest error in
+each case is the yield-fraction metric; its fraction of the allowed error is:
+
+| Case | Motor events delivered | Maximum allowed fraction |
+|---|---:|---:|
+| quiet | 0 | 1.1524115e-8 |
+| unit-left | 1 | 0.1492936464 |
+| strong-left | 12 | 0.2614194281 |
+| strong-right | 12 | 0.2614194284 |
+| strong-cut | 0 | 1.1524115e-8 |
+| strong-fast | 12 | 0.2614194281 |
+| strong-retry | 12 | 0.2614194281 |
+
+All 223,972 physical steps and 84,000 source frames were reconciled in the
+completed full causal audit. Numerical accuracy is checked against fifteen
+saved independent references at 8,000 common samples per case; unsampled finer
+intermediate values are not independently qualified. Fast-packet and retry
+states are bitwise identical to strong-left. Cutting the connection retains
+230 selected source events and produces zero motor events, rather than
+manufacturing a downstream response. Source arrival times require exact equality
+across the explicitly mapped distinct epochs.
+
+`tools/review-refined-motor-result.py` verifies all 2,868 files in each D: copy,
+the frozen Git source, native player/probe binaries, original source changes,
+dependencies, all 22 storage-control identities, event-epoch mappings and
+publication/release receipts. The seven archives retain 1,365,665 original
+members. Whole archive bytes are checked in both copies, and the completed
+member/full-causal audit is reused; the review does not repeat every member
+decode. It recomputes the saved comparison arithmetic against unchanged original
+bounds. It does not claim a fresh independent recomputation from every raw
+trajectory. No model, test, reference solve or old-capture cleanup runs during
+review. The five-file review at
+`artifacts/refined-motor-20261118-5bdd81-review` has its own verified D: backup.
+
+This establishes the complete declared isolated matrix at h/4 body and h/4 muscle,
+and checks the new-owned recording/publication workflow. It supports the earlier
+finding that body exchange resolution was the dominant error in these cases.
+It does not select a live default, qualify upstream cell dynamics or anatomy,
+connect the whole brain, or demonstrate balance and recovery after a fall.

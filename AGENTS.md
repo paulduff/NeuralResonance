@@ -1,19 +1,22 @@
 # Avatar and environment work
 
-Latest wind-down checkpoint: `docs/DNNE_Checkpoint_2026-11-18.md`.
-The operator explicitly chose "Pause now; review tomorrow", leaving the motor
-window running independently. Stop goal work after saving this checkpoint;
-resume only on an explicit operator instruction. Loaded sensory `cd9fba` is
-reviewed; motor `5bdd81` still needs its final report and review. Do not launch
-studies, stop/restart its process or monitor it during the pause. A requested
-one-off stall check found its publisher active after the first condition.
+The operator explicitly resumed testing and the goal on 19 November 2026.
+Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:
+`docs/DNNE_Checkpoint_2026-11-18.md`. The pause is revoked. Motor `5bdd81` was
+reported complete and reviewed: all seven cases pass unchanged sampled limits,
+223,972 physical steps are accounted for, and both copies verify. The 1,365,665
+archived members retain the completed full causal audit; review rechecks whole
+archive hashes and saved comparison arithmetic without repeating every decode.
+No live brain authority, physiological calibration or Avatar recovery is inferred.
 Head-coordinate `a80ee0` retained its original FAILED status; a scalar-index
 repair passes the saved 600-input comparison with unchanged bounds and a
 separate verified review. Loaded sensory `cd9fba` has been fully reviewed:
 four conditions pass, quiet drift passes, 114,688 steps plus twelve initial
 rows are retained, and both copies and the saved analyses are verified.
-The new coupled-canal clock owner is build-only with 21 unexecuted controls;
-do not treat it as qualified or launch it during this wind-down.
+The coupled-canal clock owner still awaits qualification. Its new rig combines
+21 owner controls with 100 prior checks, original head replay at three resolutions
+and independent organ trajectories. Build/static authoring checks pass; do not
+infer test success until the operator reports its completed PowerShell outcome.
 The operator resumed the goal on 18 November and requested reruns of the two
 older studies, explicitly confirming their windows stopped/disappeared. See
 `docs/DNNE_Continuation_2026-11-18.md` for current findings and launch state.

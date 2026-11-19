@@ -5,6 +5,20 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — full midpoint trajectory comparison
+
+`D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd` is frozen at pushed
+`4488f9da1590efbed84c7316c03b5ec941e5a66e`. Frozen preflight and both initial
+2,554-file copies plus manifest verify. Visible task
+`DNNE-Canal-Midpoint-Trajectory-729856f67461` started the complete pipeline:
+172 existing component cases, 24 analytic controls, six new native captures,
+complete input/event accounting and all 2,293,760 steps against the six exact
+copied reference solutions. No reference ODE is regenerated. The original failure
+and original limits remain preserved. No post-launch output/status/process was
+inspected. Exactly one final report is pending: `e503fd`. Await the operator's
+final backup/footer without monitoring; the earlier `f8a807` controls are already
+fully reviewed with 172 passed. This supersedes no-pending/preparation-only notes.
+
 ## Latest launch — midpoint sensory input controls
 
 Update: the operator reported `f8a807` complete. Both final 2,742-file copies,

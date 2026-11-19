@@ -1,5 +1,13 @@
 # Midpoint sampling of completed canal movement
 
+The full replay is now launched at
+`D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd`, frozen from pushed
+`4488f9da1590efbed84c7316c03b5ec941e5a66e`. Frozen preflight and both initial
+2,554-file copies plus manifest verify. Task
+`DNNE-Canal-Midpoint-Trajectory-729856f67461` runs visibly and independently;
+no post-launch inspection occurred. Await the operator's final backup/footer
+before reviewing its new capture or comparison. No outcome is inferred here.
+
 The 172-case component workflow completed at
 `D:/DNNE-build-work/canal-midpoint-20261119-f8a807`, frozen from pushed
 `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3`. After the operator's final footer,

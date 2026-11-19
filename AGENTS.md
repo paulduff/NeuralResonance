@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+Latest launch: full midpoint trajectory package
+`D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd`, frozen at pushed
+`4488f9da1590efbed84c7316c03b5ec941e5a66e`. Frozen preflight and both initial
+2,554-file copies plus manifest verify. Visible task
+`DNNE-Canal-Midpoint-Trajectory-729856f67461` started the 172 component / 24
+analytic controls, six new native captures and complete 2,293,760-step comparison
+against the six copied original continuous references. Exactly ONE final report
+is pending: `e503fd`. No post-launch output/status/process was inspected. Await
+the operator's final backup/footer without monitoring or duplication. `f8a807`
+is fully reviewed with 172 passed and needs no further report. Original `2a402c`
+remains FAILED. Numerical accuracy, physiological firing, live authority and
+Avatar balance remain separate; launch establishes none of them. This supersedes
+preparation-only/no-pending statements below.
+
 Latest completed review: operator reported midpoint controls `f8a807` finished.
 Both 2,742-file copies, frozen `7b50528fb3a2e29bccc52a5e8a01984dd791b6d3` source,
 runtime/binaries, exact 172-case inventory and saved analysis verify. All 172

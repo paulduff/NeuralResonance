@@ -398,3 +398,47 @@ inventory pass; no tests, model/reference solves or extra windows were run.
 The next execution still waits for the operator's final footer and review of
 `6d0480`, followed by the frozen gate and visible PowerShell controls/reference
 workflow. No live monitoring has occurred.
+
+## Reported-completion review and frozen execution workflow authored
+
+The remaining setup is now authored in:
+
+- `tools/review-canal-afferent-result.py`: accepts only the named capture and
+  frozen revision, and requires the operator-completion acknowledgement before
+  opening it. It verifies the full original/backup inventories, Git source,
+  managed runtime, all 284 exact test cases, and reproduces the saved connected
+  accounting from every native step/event/packet. It does not rerun any model.
+  A failed capture is not promoted through this success-review path; inspect
+  and preserve its failure separately after the operator reports it.
+- `tools/canal_afferent_reference_gate.py`: preparation requires that completed
+  review and its verified D: copy, plus the completed `2dd76a` input review.
+  It verifies every protected file in both original captures, copies an exact
+  native trajectory subset, freezes pushed Git source, and pins the initial
+  state, input catalog, equations, numerical dependencies and original bounds.
+  Fifteen exact control identities are recorded. The original managed runtime
+  fingerprints remain evidence; this Python-only comparison executes no new
+  managed model and requires no new native capture.
+- `tools/start-canal-reference-window.ps1`: checks both initial package copies,
+  then opens an independent visible PowerShell window with `-NoExit`. It runs
+  the 15 sampler/comparison controls, six reference captures, full saved-data
+  comparison, preservation checks and final D: backup. A failed stage retains
+  its output and prevents a successful footer. No script polls another run.
+
+Preparation requires enough space for two copies of the frozen inputs plus a
+32-GiB reserve; reference and comparison phases also check the reserve. This is
+a storage guard, not a change to an accuracy or physiological criterion. Final
+preservation rechecks the original captures and protected copies, including
+their full packet/event evidence, even though only the comparison subset is
+copied into the new package. Both package copies share D:; this is protection
+against accidental modification, not independent-drive failure protection.
+
+The sequence after an actual final footer is: review `6d0480`; verify the new
+review's D: backup; commit/push any necessary changes; prepare the reference
+package using that review; run its frozen preflight; verify its initial D:
+backup; launch its visible window. The explicit completion flag is a record of
+the operator report, not a way to discover whether a run has finished.
+
+All three workflow files are **unexecuted**. Python syntax compilation,
+PowerShell parser checks and the static 7+8 control inventory pass. No new
+package, scheduled task, model solve or test run was created in this preparation.
+`6d0480` remains the only pending report, with no output/status/process inspection.

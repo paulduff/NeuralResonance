@@ -338,3 +338,22 @@ required preservation/identity gate. No package, launcher or additional experime
 was started, and no pending output/status/process was inspected. `6d0480` remains
 the sole pending final report. Review it only after operator confirmation, then
 prepare the frozen visible comparison workflow. The broad goal remains active.
+
+## Comparison setup authored; native report still pending
+
+The reported-completion reviewer, frozen comparison gate and independent
+PowerShell launcher are now authored. They require the completed native review
+and verified backup before preparation, pin all original biological/numerical
+inputs, and retain the complete original capture while copying only the exact
+trajectory subset needed for comparison. The visible window will run 15 new
+controls, six independent references, every saved native endpoint, preservation
+checks and final backup. Existing output cannot be silently replaced.
+
+Python and PowerShell syntax checks and the static control inventory pass.
+The workflow itself remains unexecuted: no package or task was created, and no
+test/reference/model was run. Next, wait for the operator's actual final footer
+for `6d0480`; review it with `review-canal-afferent-result.py` only then. If it
+passed, back up that review before preparing and launching the new workflow.
+If it failed, preserve and diagnose its failure first. The connected-canal
+document records the exact prerequisite and storage requirements.
+The pending capture remains untouched and unmonitored; the full goal is active.

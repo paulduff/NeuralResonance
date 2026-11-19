@@ -25,10 +25,16 @@ It checks all native endpoints, all fine reference samples, continuous state/
 flux, conserved quantities and refinement at identical integer ticks. The
 original 0.4 refinement criterion remains; continuous versus start-held forcing
 may fail it. This is not identical-input solver-only accuracy. Both workers
-require a reported native capture with reviewed accounting. A frozen gate,
-execution and result review remain to be done; there is no new launcher.
-Existing equations and all bounds are unchanged. `6d0480` is still the only
-pending report and remains untouched. See the final connected-canal document.
+require a reported native capture with reviewed accounting. Its review script,
+the frozen gate `canal_afferent_reference_gate.py` and visible launcher
+`start-canal-reference-window.ps1` are now authored but unexecuted. Fifteen
+new controls (7 sampler + 8 comparison) remain unrun. Python/PowerShell syntax
+and static inventory pass. No package was prepared and no new window launched.
+After the final footer, review the native capture, back up that review, then
+prepare/preflight/back up a fresh reference package before launching. Never
+supply the operator-completion flag before the actual report. Existing equations
+and all bounds are unchanged. `6d0480` is still the only pending report and
+remains untouched. See the final connected-canal document.
 
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:

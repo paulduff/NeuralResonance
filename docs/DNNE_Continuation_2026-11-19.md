@@ -5,6 +5,21 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest completed review — actual receiving neurons
+
+The operator reported `49d913` complete. Both 2,714-file copies, frozen source,
+runtime/binaries, all 130 exact cases and exact saved analysis verify. The
+three-file completed review plus manifest is D: verified. No models/tests were
+rerun. Only continuous reference `2a402c` still awaits its footer and remains
+untouched; this supersedes the two-report counts below.
+
+The 146-case recurrent candidate may now be frozen after clean push, backed up
+and launched visibly. Source inspection confirms the later muscle connection
+must use the existing detailed receptor-driven motor neuron and its original
+acetylcholine crossings. Generic spinal feedback events are not those motor-unit
+events. The selected four-edge circuit is an intermediate connection, not a
+complete motor pool or body controller. See the recurrent ownership document.
+
 ## Latest authoring checkpoint — recurrent reticulospinal ownership
 
 `DNNE_Reticulospinal_Ownership_2026-11-19.md` describes a fresh isolated circuit

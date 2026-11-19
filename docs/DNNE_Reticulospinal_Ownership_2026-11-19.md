@@ -1,5 +1,11 @@
 # Reticulospinal recurrent ownership candidate — 19 November 2026
 
+Update: the operator reported recipient `49d913` complete. Its full review
+verifies both 2,714-file copies, source/runtime/binaries, all 130 cases and exact
+saved analysis. The three-file review has a verified D: copy. The prerequisite
+below is satisfied; the recurrent candidate itself remains unrun until its own
+visible launch and result. Only `2a402c` awaits an older report at this checkpoint.
+
 The next isolated connection joins actual reticular and spinal neuronal
 populations with four existing connectome edges: vestibular nuclei to reticular
 formation, vestibular nuclei to spinal motor, reticular formation to spinal
@@ -91,3 +97,24 @@ vestibular firing pattern, calibrated target anatomy, independent coupled
 trajectory accuracy, the later motoneuron-to-muscle path, live brain authority
 or recovery in World. In particular, the existing routed target-cell naming
 and receiving maps are preserved, not newly anatomically calibrated here.
+
+## Inspected boundary to the existing motor units
+
+The existing generic `SpinalCordMotor` service uses an Izhikevich/STDP population.
+The reviewed motor/muscle path instead owns `ReceptorMotorSource`: a detailed
+receptor-driven motoneuron whose observed membrane crossings become identified
+acetylcholine motor-axon events. `ReceptorMotorLane`, `MotorAxonAnatomy` and
+`AvatarCausalMotorPlant` then preserve those events through conduction, calcium,
+muscle force and native mechanics. The retained rubral circuit already exercises
+this path and provides the appropriate integration model.
+
+Therefore do not connect the new generic spinal feedback messages directly to
+muscles by changing their transmitter or inventing motor commands. A subsequent
+explicit spinal circuit must declare which original vestibular/reticular/spinal
+contacts drive each detailed motor cell, preserve their actual target identities
+and delays, retain all source completeness, and hand only that cell's own emitted
+axon spikes to its existing motor lane. Motor cells must evolve through the
+declared quiet prehistory before binding a later body epoch; no reset at binding.
+Those motor-cell input maps and physiological parameters are still unqualified.
+The generic feedback population and detailed motor pool cannot silently claim
+the same neuronal identity or receive one event twice as if they were one cell.

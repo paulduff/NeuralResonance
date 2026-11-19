@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+Latest completed review: operator reported actual recipients `49d913` complete.
+Both 2,714-file copies, frozen `2c2d3e4165477048f88acc7e02190ff3567fc7d3` source,
+runtime/binaries, all 130 exact cases and saved analysis verify. The three-file
+review plus manifest is D: verified at `artifacts/vestibular-recipient-20261119-49d913-review`.
+Only continuous reference `2a402c` now awaits its footer and remains untouched;
+this supersedes the earlier two-report count. The 146-case recurrent candidate
+can now be frozen and launched after clean push and verified initial backup.
+Record its actual launch separately; no test/model was rerun during review.
+Source inspection also confirms the generic spinal population is distinct from
+the detailed `ReceptorMotorSource` acetylcholine motor-unit path. Preserve both;
+do not relabel generic glutamatergic feedback as neuromuscular output. See the
+new motor-connection note in the recurrent ownership document.
+
 Latest authoring checkpoint: `docs/DNNE_Reticulospinal_Ownership_2026-11-19.md`.
 The new isolated four-edge VN/RF/spinal circuit uses actual receiving populations,
 typed original output ownership and the existing conduction lower bounds to

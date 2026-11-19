@@ -66,3 +66,17 @@ separate visible window runs. Record its actual package/task separately.
 An input-control pass will not establish active organ/cell accuracy, physiological
 firing, anatomical calibration or Avatar balance. Select and freeze the next
 active sensory protocol only after the pending independent trajectory review.
+
+## Visible input-control launch
+
+Package `D:/DNNE-build-work/head-turn-20261119-1047b8` is frozen at pushed
+`04df5c84e0216122c9f80142044dc3cea811df0a`. Frozen preflight passed and both
+initial 2,100-file copies plus manifest verify. Visible independent task
+`DNNE-Head-Turn-4ee13921dff8` started successfully. Its result remains pending;
+no post-launch output, status or process was inspected.
+
+Earlier preparation `6f9251` was rejected before launch when authoring review
+identified the need for stricter analytic initial geometry. Its original frozen
+inputs and separate rejection record remain intact, with a verified D: copy of
+all 2,101 files plus manifest. It ran no tests or models. The fresh package
+contains the stricter producer checks; native measurement tolerances are unchanged.

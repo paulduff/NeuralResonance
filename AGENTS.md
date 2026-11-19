@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/head-turn-20261119-1047b8`, frozen at pushed
+`04df5c84e0216122c9f80142044dc3cea811df0a`. Both projects built cleanly, frozen
+preflight passed and both initial 2,100-file copies plus manifest verify. Visible
+task `DNNE-Head-Turn-4ee13921dff8` started for 32 input/coordinate cases. Exactly
+TWO final reports are pending: continuous sensory reference `2a402c` and prescribed
+head-input `1047b8`. Neither post-launch output/status/process was inspected.
+Await operator footers without monitoring or duplicate launches. This supersedes
+the one-report/preparation-only entries below; rejected `6f9251` remains unrun.
+No active sensory protocol is selected before the independent accuracy review.
+
 Prelaunch correction: prepared head-input package `head-turn-20261119-6f9251`
 was rejected before any launch, test or model. Its frozen inputs remain intact;
 the rejection record and all 2,101 files plus manifest have a verified D: copy.

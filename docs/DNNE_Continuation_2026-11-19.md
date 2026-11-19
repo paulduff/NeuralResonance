@@ -548,3 +548,17 @@ The original adapter and biological equations are unchanged. The prepared
 `head-turn-20261119-6f9251` at `034e5322f65a0c477df30e8779d67aa5cd0cd0c3`
 was rejected before launch; its source remains intact and all 2,101 files plus
 manifest, including the reason, are D: verified. Use a fresh package for execution.
+
+## Prescribed head-input window launched
+
+Fresh `D:/DNNE-build-work/head-turn-20261119-1047b8` is frozen at pushed revision
+`04df5c84e0216122c9f80142044dc3cea811df0a`. Both projects build with zero warnings
+and errors; frozen preflight and both initial 2,100-file copies plus manifest pass.
+Visible task `DNNE-Head-Turn-4ee13921dff8` started for the 32 input/coordinate
+checks. No tests or models executed during preparation.
+
+Exactly TWO final reports now remain pending: continuous sensory reference
+`2a402c` and prescribed input `1047b8`. Neither was inspected after launch.
+Await operator footers without monitoring or duplication. These input checks
+cannot establish active sensory accuracy, physiological firing or Avatar balance.
+The full goal remains active; original biological equations and limits are fixed.

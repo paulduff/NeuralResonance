@@ -100,3 +100,19 @@ Its final result remains pending along with continuous reference `2a402c`.
 Neither post-launch output, status nor process was inspected. Await the operator's
 final footer, then verify the complete results and backup before drawing any
 convergence conclusion. Head-input `1047b8` is already fully reviewed.
+
+## Completed convergence review
+
+The operator reported `b208e4` complete. Both 2,639-file copies, frozen Git source,
+the exact declared engine edit, runtime/binaries and all 89 exact cases verify.
+Fourteen new convergence controls and all 75 previous connection cases pass.
+Saved analysis reproduces exactly; review reran no tests, models or references.
+The three-file review plus manifest is preserved at
+`artifacts/afferent-convergence-20261119-b208e4-review` with a verified D: copy.
+
+The observed controls include original passive-source delivery through distinct
+contacts onto one cell, slower-source clock bounds, equal-time releases under
+reversed packet order and an event at the next packet's starting boundary.
+This establishes those isolated admission/clock controls; the passive fixtures
+do not establish physiological firing or a connected body response. Only
+continuous reference `2a402c` still awaits its final report and remains untouched.

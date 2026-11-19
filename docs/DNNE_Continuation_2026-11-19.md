@@ -605,3 +605,14 @@ post-launch output/status/process was inspected. Await operator footers without
 monitoring or duplication. The head-input review is D: verified and complete.
 The full goal remains active; convergence, active sensory accuracy, physiological
 firing, downstream muscle coupling and Avatar balance remain separately assessed.
+
+## Convergent input result reviewed
+
+Operator-reported `b208e4` is fully reviewed: both 2,639-file copies, frozen Git
+source, reviewed engine edit, runtime/binaries and all 89 exact cases verify.
+The fourteen new and 75 previous cases pass. Saved analysis reproduces exactly
+without tests/models/reference reruns; the three-file review plus manifest has
+a verified D: copy. This qualifies the tested isolated admission and timing
+behavior, including actual passive-source delivery and simultaneous arrival
+ordering. Active sensory physiology and brain/body recovery remain unqualified.
+Only `2a402c` still awaits its final report and remains untouched.

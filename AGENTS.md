@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+Latest completed result: operator reported convergence `b208e4` complete. Both
+2,639-file copies, frozen `bd3ecec953d1b8ea46054fd0c326065dac772c53` Git source,
+the declared engine edit, runtime/binaries and all 89 exact cases verify. Saved
+analysis reproduces exactly without rerunning tests/models. Fourteen convergence
+controls and all 75 earlier connection cases pass. Its three-file review is at
+`artifacts/afferent-convergence-20261119-b208e4-review`. Only `2a402c` still awaits
+its footer and remains untouched. This supersedes the two-report counts below.
+An owner composing multiple actual canal sources with this ingress is now being
+authored and built separately; its new cases have not run or launched.
+
 Latest launch: `D:/DNNE-build-work/afferent-convergence-20261119-b208e4`, frozen
 at pushed `bd3ecec953d1b8ea46054fd0c326065dac772c53`. Both projects build cleanly,
 frozen preflight passes and both initial 2,108-file copies plus manifest verify.

@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+Latest retry launch: `D:/DNNE-build-work/reticulospinal-20261119-a974ff`, frozen
+at pushed `de0087852dbcee7ba564a03ce55df9c9398dc035`. Build/static checks and
+frozen preflight pass; both initial 2,145-file copies plus manifest verify.
+Visible task `DNNE-Reticulospinal-2c2c7c80eff4` started for the revised 146-case
+comparison with full original traces and zero numerical tolerance. Exactly TWO
+reports are pending: recurrent retry `a974ff` and continuous reference `2a402c`.
+Neither post-launch output/status/process was inspected. Await operator final
+footers without monitoring or duplication. Original `4c18a7` remains FAILED,
+fully reviewed and backed up. Its ID-comparison defect is corrected; whether
+actual states also differ remains undecided until the retry is reported complete.
+The descending motor-pool draft is committed but remains untested/unselected.
+No coupled accuracy, physiological firing or Avatar balance qualification follows.
+This supersedes the one-report/preparation-only notes below.
+
 Latest completed failure review: operator reported recurrent `4c18a7` finished.
 Both 2,722-file copies, frozen `143b6d5373020f4f87a3443c8d9e206828943723` source,
 runtime/binaries and all 146 identities verify: 145 passed, one failed, namely

@@ -5,6 +5,22 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Latest launch — complete recurrent comparison evidence
+
+`D:/DNNE-build-work/reticulospinal-20261119-a974ff` is frozen at pushed
+`de0087852dbcee7ba564a03ce55df9c9398dc035`. Authoring builds/static checks and
+frozen preflight pass; both initial 2,145-file copies plus manifest verify.
+Visible task `DNNE-Reticulospinal-2c2c7c80eff4` started the revised 146-case
+workflow. Original traces/IDs remain intact, cross-run numerical tolerance is
+zero, and original runtime code is unchanged. No post-launch inspection occurred.
+
+Exactly two operator reports are pending: recurrent retry `a974ff` and independent
+continuous reference `2a402c`. Original `4c18a7` is fully reviewed as failed;
+its preservation and review must remain unchanged. Review the new complete
+comparison only after the final footer. If numerical states differ, investigate
+the original event ordering and causal schedule without relaxing the bounds.
+The separate descending motor-pool draft remains untested and unselected.
+
 ## Current failure review — recurrent comparison
 
 The operator reported `4c18a7` complete. Both 2,722-file copies, frozen source,

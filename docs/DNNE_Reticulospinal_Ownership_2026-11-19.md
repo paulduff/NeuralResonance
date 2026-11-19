@@ -1,5 +1,14 @@
 # Reticulospinal recurrent ownership candidate — 19 November 2026
 
+Latest retry launch: `D:/DNNE-build-work/reticulospinal-20261119-a974ff`, frozen
+at `de0087852dbcee7ba564a03ce55df9c9398dc035`. Authoring builds/static checks,
+frozen preflight and both initial 2,145-file copies plus manifest verify.
+Visible task `DNNE-Reticulospinal-2c2c7c80eff4` started all 146 cases with the
+complete-trace comparison described below. No post-launch inspection occurred.
+Await the operator's final footer; original failure `4c18a7` remains preserved.
+Numerical equality, circuit qualification and physiology are not established
+by the revised comparison's launch.
+
 Latest result: the operator reported `4c18a7` complete with 145 passed and one
 failed case. Both complete 2,722-file copies, frozen source, runtime/binaries and
 all 146 test identities verify; the failure review has a verified D: copy.

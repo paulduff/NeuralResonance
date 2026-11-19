@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+Latest launch: `D:/DNNE-build-work/afferent-convergence-20261119-b208e4`, frozen
+at pushed `bd3ecec953d1b8ea46054fd0c326065dac772c53`. Both projects build cleanly,
+frozen preflight passes and both initial 2,108-file copies plus manifest verify.
+Visible task `DNNE-Afferent-Convergence-889075f7e34f` started for 89 cases. Exactly
+TWO final reports are pending: continuous reference `2a402c` and convergence
+`b208e4`. Neither post-launch output/status/process was inspected. Await operator
+footers without monitoring or duplication. Head-input `1047b8` is fully reviewed
+and needs no further report; its three-file review plus manifest is D: verified.
+This supersedes the unlaunched/one-report counts below. No live neural selection,
+active afferent accuracy, physiological firing or Avatar balance is qualified.
+
 New convergence candidate: `docs/DNNE_Afferent_Convergence_2026-11-19.md`.
 Several explicitly identified original fibres can now enter one fresh full
 vestibular nucleus through their own contacts and clocks. The slowest source

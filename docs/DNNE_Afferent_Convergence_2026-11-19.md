@@ -86,3 +86,17 @@ executed. Record the actual package/task and outcome separately. The complete
 brain/body/world goal still requires active sensory accuracy and calibration,
 downstream neuronal and muscle coupling, balance and fall recovery. Those
 requirements are not replaced by this component's admission checks.
+
+## Visible component launch
+
+Package `D:/DNNE-build-work/afferent-convergence-20261119-b208e4` is frozen at
+pushed `bd3ecec953d1b8ea46054fd0c326065dac772c53`. Both projects build with zero
+warnings/errors. Frozen preflight passes, and both initial 2,108-file copies
+plus manifest verify, including the original engine and exact reviewed change.
+Visible independent task `DNNE-Afferent-Convergence-889075f7e34f` started for
+89 cases. No tests or models ran during preparation.
+
+Its final result remains pending along with continuous reference `2a402c`.
+Neither post-launch output, status nor process was inspected. Await the operator's
+final footer, then verify the complete results and backup before drawing any
+convergence conclusion. Head-input `1047b8` is already fully reviewed.

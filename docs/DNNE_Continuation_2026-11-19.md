@@ -591,3 +591,17 @@ Preparation uses only reported/reviewed `1047b8`, retaining the original engine
 and reviewed edit explicitly. Record any actual launch separately. `2a402c`
 remains untouched and pending; active sensory/circuit accuracy and physiology
 are still prerequisites for promoting this to the brain/body loop.
+
+## Convergent sensory component window launched
+
+`D:/DNNE-build-work/afferent-convergence-20261119-b208e4` is frozen at pushed
+`bd3ecec953d1b8ea46054fd0c326065dac772c53`. Both builds and frozen preflight
+pass. Both initial 2,108-file copies plus manifest verify. Visible task
+`DNNE-Afferent-Convergence-889075f7e34f` started for 89 cases, without any model
+or test execution during preparation.
+
+Exactly TWO final reports are now pending: `2a402c` and `b208e4`. Neither
+post-launch output/status/process was inspected. Await operator footers without
+monitoring or duplication. The head-input review is D: verified and complete.
+The full goal remains active; convergence, active sensory accuracy, physiological
+firing, downstream muscle coupling and Avatar balance remain separately assessed.

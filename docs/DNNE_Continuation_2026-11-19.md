@@ -271,3 +271,18 @@ now authored: 15 analytic input controls, six Decimal exponential controls and
 preserved. Python/PowerShell parsing, query inventory and saved angular identity
 checks pass; all numerical execution belongs to the visible independent window.
 No post-launch output or process of `6d0480` has been inspected.
+
+## Independent input companion launched
+
+Fresh package `D:/DNNE-build-work/canal-waveform-20261119-2dd76a` is frozen at
+pushed revision `deb4b145bab025864bc49f827e81084c5a0307a7`. Frozen preflight
+passed, and 2,081 initial files plus manifest verify in its D: backup. Visible
+independent task `DNNE-Canal-Waveform-625c9cf7cbd5` started successfully.
+
+Exactly TWO final reports are pending: connected sensory `6d0480` and independent
+input `2dd76a`. Neither window's post-launch output, status or process has been
+inspected. Await the operator's final footers; do not monitor or duplicate them.
+The new companion uses only reviewed completed mechanical evidence. Its 15
+analytic input controls, six exponential controls and 1,060 queries remain
+unqualified until completed and reviewed. Connected neuronal accuracy, physiology,
+live brain authority and Avatar recovery remain open. The full goal is active.

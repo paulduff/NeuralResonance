@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+Latest 19-November launch update: exactly TWO final reports are pending:
+connected sensory `canal-afferent-20261119-6d0480` and independent input
+`canal-waveform-20261119-2dd76a`. The latter is frozen at pushed revision
+`deb4b145bab025864bc49f827e81084c5a0307a7`, passed frozen preflight and has
+2,081 initial files plus manifest verified in D: backup. Visible independent
+task `DNNE-Canal-Waveform-625c9cf7cbd5` started successfully. It runs 15 analytic
+input controls, six Decimal exponential controls and 1,060 timed mechanical
+queries, using only completed `bd15d1` / `7880d2` evidence. No post-launch
+output, status or process of either window has been inspected. Wait for the
+operator's final footers; do not monitor or duplicate either study. Both are
+unqualified until reported and reviewed; neither can establish Avatar balance.
+This supersedes the one-pending-window authoring checkpoints below.
+
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:
 `docs/DNNE_Checkpoint_2026-11-18.md`. The pause is revoked. Motor `5bdd81` was

@@ -231,3 +231,20 @@ Authoring verification is limited to Python/PowerShell syntax, the static
 15-control/1,060-query inventory and the original saved angular identities.
 No model, reference solve or analytic test has executed inline. The neuronal
 window remains untouched; any new launch and final report are recorded below.
+
+## Independent input window launched
+
+`canal-waveform-20261119-2dd76a` is frozen at pushed revision
+`deb4b145bab025864bc49f827e81084c5a0307a7`. Frozen preflight passed; its 2,081
+initial files plus manifest verify in
+`D:/DNNE-desktop-runs/UnityWorld/canal-waveform-20261119-2dd76a`.
+Results belong to `D:/DNNE-build-work/canal-waveform-20261119-2dd76a`.
+Visible independent task `DNNE-Canal-Waveform-625c9cf7cbd5` started successfully.
+
+Exactly two final reports are now pending: neuronal capture `6d0480` and
+independent input reference `2dd76a`. No post-launch output, status or process of
+either window has been inspected. Await the operator's final footers without
+monitoring or duplication. Launch/preflight do not establish analytic-test or
+reference success. This companion study cannot qualify connected neuronal
+accuracy, anatomical mapping, physiological firing or Avatar balance. The broad
+goal remains active and unfinished.

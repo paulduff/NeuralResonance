@@ -39,6 +39,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
     private readonly int _capacity,_owner=Environment.CurrentManagedThreadId;
     private readonly NeuralSubstrateSupply _supply;
     private readonly bool _conductionLookahead;
+    private readonly IsolatedDescendingProjection? _declaredOutput;
     private readonly List<Held> _held=[];
     private readonly List<Waiting> _waiting=[];
     private readonly List<string> _steps=[];
@@ -56,7 +57,8 @@ internal sealed class VestibularProjectionReceiver : IDisposable
     internal bool CanAdvance { get { Healthy();return Time(checked(_ticks+1))<=PermittedThrough(); } }
 
     internal VestibularProjectionReceiver(StructureId structure,string instance,string stateDirectory,double receiverStepMs,
-        IEnumerable<VestibularProjectionInput> inputs,NeuralSubstrateSupply supply,int capacity=4096,bool conductionLookahead=false)
+        IEnumerable<VestibularProjectionInput> inputs,NeuralSubstrateSupply supply,int capacity=4096,bool conductionLookahead=false,
+        IsolatedDescendingProjection? declaredOutput=null)
     {
         ArgumentNullException.ThrowIfNull(inputs);ArgumentNullException.ThrowIfNull(supply);
         var definitions=inputs.ToArray();
@@ -82,6 +84,7 @@ internal sealed class VestibularProjectionReceiver : IDisposable
                 throw new ArgumentException("A source projection must have one declared identity.");
         _byFingerprint=_inputs.ToDictionary(i=>i.Definition.OutboxFingerprint,StringComparer.Ordinal);
         _instance=instance;_structure=structure;_step=receiverStepMs;_supply=supply;_capacity=capacity;_conductionLookahead=conductionLookahead;
+        _declaredOutput=declaredOutput;
         lock(ConstructionGate)
         {
             if(File.Exists(stateDirectory)||Directory.Exists(stateDirectory)&&Directory.EnumerateFileSystemEntries(stateDirectory).Any())
@@ -92,7 +95,8 @@ internal sealed class VestibularProjectionReceiver : IDisposable
                 Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",stateDirectory);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",instance);
                 _engine=new(new(structure,"Izhikevich",structure==StructureId.ReticularFormation?"HomeostaticGain":"STDP",
                     "Isolated execution of the existing reticular/spinal receiving profile; physiology unqualified.",
-                    structure==StructureId.ReticularFormation?new(2,10):new(1,4),capacity));
+                    structure==StructureId.ReticularFormation?new(2,10):new(1,4),capacity),null,
+                    diagnosticDescendingProjection:declaredOutput);
             }
             finally{Environment.SetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR",directory);Environment.SetEnvironmentVariable("SERVICE_INSTANCE",previous);}
         }
@@ -100,6 +104,15 @@ internal sealed class VestibularProjectionReceiver : IDisposable
         foreach(var input in _inputs)input.MinimumDelayMs=_engine.MinimumIsolatedProjectionDelayMs(input.Definition.SourceStructure);
         Fingerprint=Hash(JsonSerializer.Serialize(new{Version,structure,instance,receiverStepMs,supply,capacity,conductionLookahead,
             Inputs=_inputs.Select(i=>new{i.Definition,i.MinimumDelayMs}),MaximumTicksPerFrame,MaximumHeldPackets}));
+        if(declaredOutput is not null)Fingerprint=Hash(JsonSerializer.Serialize(new
+            {Version="owned-nucleus-declared-output-v1",OriginalOwner=Fingerprint,OutputAnatomy=declaredOutput.Fingerprint}));
+    }
+
+    internal IReadOnlyList<DescendingPrimaryOutput> DescribePrimaryMotorOutputs()
+    {
+        Healthy();
+        if(_declaredOutput is null)throw new InvalidOperationException("This receiving population has no declared motor output anatomy.");
+        return _engine.DescribeDeclaredDescendingOutputs();
     }
 
     internal VestibularProjectionReceipt Admit(VestibularProjectionPacket packet)

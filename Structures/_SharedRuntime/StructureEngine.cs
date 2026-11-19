@@ -188,11 +188,25 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 		IsolatedSynapticTargets? diagnosticSynapticTargets = null, bool diagnosticPerformance = false,
 		bool diagnosticCorticalPrecision = false, bool diagnosticCorticalWarmStart = false,
 		IsolatedRubralProjection? diagnosticRubralProjection = null,IsolatedAfferentIngress? diagnosticAfferentIngress = null,
-		ConvergentAfferentIngress? diagnosticAfferentConvergence = null)
+		ConvergentAfferentIngress? diagnosticAfferentConvergence = null,
+		IsolatedDescendingProjection? diagnosticDescendingProjection = null)
 	{
 		_profile = profile;
 		_instanceKey = SynapsePersistenceStore.ResolveInstanceKey(profile.StructureId);
 		_circuit = StructureCircuitProfile.For(profile.StructureId);
+		if (diagnosticDescendingProjection is not null)
+		{
+			var directory = Environment.GetEnvironmentVariable("NRE_SYNAPSE_STATE_DIR");
+			if (profile.StructureId is not (StructureId.VestibularNuclei or StructureId.ReticularFormation) ||
+				isolatedNeuronCount is not null || diagnosticSynapticTargets is not null ||
+				diagnosticCorticalPrecision || diagnosticCorticalWarmStart || diagnosticRubralProjection is not null ||
+				string.IsNullOrWhiteSpace(directory) || !Path.IsPathFullyQualified(directory) ||
+				!_instanceKey.StartsWith("isolated-", StringComparison.Ordinal) || File.Exists(directory) ||
+				(Directory.Exists(directory) && Directory.EnumerateFileSystemEntries(directory).Any()))
+				throw new InvalidOperationException("Descending anatomy requires its own fresh full-size isolated brainstem population.");
+			diagnosticDescendingProjection.ValidateFor(profile.StructureId, _circuit.NeuronCount);
+			_diagnosticDescendingProjection = diagnosticDescendingProjection;
+		}
 		if(diagnosticAfferentConvergence is not null)
 		{
 			if(diagnosticAfferentIngress is not null||isolatedNeuronCount is not null||diagnosticSynapticTargets is not null||
@@ -309,6 +323,8 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			fingerprint = StableNeuralIdentity.Create(fingerprint, CorticalPrecisionMode.Version, CorticalContactNumerics.Version).ToString("N");
 		if (_diagnosticRubralProjection is not null)
 			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedRubralProjection.Version, _diagnosticRubralProjection.Fingerprint).ToString("N");
+		if (_diagnosticDescendingProjection is not null)
+			fingerprint = StableNeuralIdentity.Create(fingerprint, IsolatedDescendingProjection.Version, _diagnosticDescendingProjection.Fingerprint).ToString("N");
 		if (_diagnosticAfferentIngress is not null)
 			fingerprint = StableNeuralIdentity.Create(fingerprint,IsolatedAfferentIngress.Version,_diagnosticAfferentIngress.Fingerprint).ToString("N");
 		if (_diagnosticAfferentConvergence is not null)
@@ -1535,6 +1551,7 @@ public sealed partial class StructureEngine : IStructureHost, IDisposable
 			: _kernel.ResolveOutboundTargetIndex(source, target, _circuit);
 		num = ResolveDeclaredRubralOutput(source.Index, target, isFeedback, num);
 		string targetNeuronId = $"auto-{target}-{num:000}";
+		ResolveDeclaredDescendingOutput(source.Index, isFeedback, ref target, ref targetNeuronId);
 		SynapseState synapseState = GetOrCreateOutboundSynapse(source, target, neurotransmitter, isFeedback, targetNeuronId);
 
 		SpikeMessage spikeMessage = new SpikeMessage();

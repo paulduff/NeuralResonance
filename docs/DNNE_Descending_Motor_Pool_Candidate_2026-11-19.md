@@ -63,6 +63,10 @@ Still required before connected use:
   intralaminar target name. The pool deliberately cannot repair that by renaming
   an already emitted event. An explicitly declared fresh output map or an
   anatomically specified projection must supply the correct motor contacts.
+  A fresh-population declaration and receiving-owner option are now authored;
+  see `DNNE_Declared_Descending_Anatomy_2026-11-19.md`. Its connected controls
+  remain prospective until the separately frozen 180-case run is reported and
+  reviewed. The existing receiver's 164 passing cases do not prove this new path.
 * Integrate the actual source owners and body epoch, then assess independent
   coupled accuracy, physiological firing, muscle force and moving-body feedback.
 

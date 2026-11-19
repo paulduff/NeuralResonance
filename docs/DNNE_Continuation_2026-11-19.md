@@ -5,6 +5,24 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Declared descending source anatomy
+
+The next independent component change assigns named motor targets before the
+existing full reticular/vestibular population emits its original primary events.
+It preserves original firing/learning equations, default routing and old saves;
+an explicit fresh-state option carries a separate anatomy/owner fingerprint.
+This implements a declared mapping within the existing one-primary-output
+reduction, not anatomical calibration or a complete arbor. The receiving motor
+pool and body transport are unchanged. Eight prospective controls include exact
+source evolution across the map change and actual RF emissions admitted to two
+detailed motor cells, with all original source frames and contact receipts saved.
+They join the 172 reviewed controls in a separate visible 180-case workflow.
+Both projects build cleanly; static syntax/inventory and 158 preserved source
+checks pass. No tests were executed inline. Freeze/push/back up/launch and record
+the actual package separately. Full midpoint `e503fd` remains the only pending
+report until that launch; it has not been inspected. See the declared-anatomy
+document for remaining circuit, numerical and physiological requirements.
+
 ## Latest launch — full midpoint trajectory comparison
 
 `D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd` is frozen at pushed

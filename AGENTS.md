@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+Authoring checkpoint: explicit primary descending anatomy is implemented for
+fresh, full isolated vestibular/reticular populations. Every original cell must
+declare one primary motor target before original emission; neuron/learning
+equations and the old default route remain unchanged. This retains the existing
+one-primary-output reduction, not a calibrated or complete biological axon arbor.
+The reticular receiving owner can select it and export read-only actual contact
+identities; persistence/owner fingerprints separate the new anatomy. No live host
+or editor selects it. See `docs/DNNE_Declared_Descending_Anatomy_2026-11-19.md`.
+Eight new controls and their complete original source/motor evidence are authored
+for a 180-case visible workflow, using the reviewed `f8a807` prerequisite. Both
+projects build cleanly; syntax/inventory and 158 preserved sources verify. Two
+output-owner files have declared diffs alongside four already committed sensory
+comparison harness changes, which are not executed as models in this workflow.
+Freeze/push/back up/launch, then record the actual package/task. No tests ran
+inline and no new source/motor result is inferred. Only full midpoint `e503fd`
+currently awaits a report; its outputs/status/process remain untouched.
+
 Latest launch: full midpoint trajectory package
 `D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd`, frozen at pushed
 `4488f9da1590efbed84c7316c03b5ec941e5a66e`. Frozen preflight and both initial

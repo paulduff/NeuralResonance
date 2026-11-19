@@ -5,6 +5,24 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Current checkpoint — outgoing ownership reviewed; receiving neurons authored
+
+The operator reported `ae88a4` complete. Both 2,710-file copies, frozen source,
+runtime/binaries, all 119 cases and exact saved analysis verify. Its three-file
+review plus manifest is D: verified. No model/test was rerun. Only continuous
+reference `2a402c` still awaits its footer and remains untouched; this supersedes
+earlier two-report counts.
+
+The new receiving owner uses actual full reticular/spinal populations and their
+existing learning/contact/conduction rules. It preserves every source packet,
+waits for all declared source horizons, observes actual contact application and
+retains failed-step prefixes without replay. Eleven new controls join all 119
+previous cases in a 130-case visible workflow. Both projects build cleanly;
+tests remain unrun at this authoring checkpoint. Prior kernels/controllers and
+source owners are unchanged. See `DNNE_Vestibular_Receiving_Neurons_2026-11-19.md`.
+No live selector, physiological or balance qualification changed. Record actual
+preparation and launch separately.
+
 ## Latest launch — outgoing vestibular ownership
 
 `D:/DNNE-build-work/vestibular-projection-20261119-ae88a4` is frozen at pushed

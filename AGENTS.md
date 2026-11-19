@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+Latest completed review: operator reported outgoing ownership `ae88a4` complete.
+Both 2,710-file copies, frozen `ab70753bcca31033111ea6434e40234257db3386` source,
+runtime/binaries, all 119 exact cases and saved analysis verify. The three-file
+review plus manifest is D: verified at `artifacts/vestibular-projection-20261119-ae88a4-review`.
+Only continuous reference `2a402c` awaits its footer and remains untouched. This
+supersedes earlier two-report counts; do not repeat completed reviews.
+
+New recipient candidate: `docs/DNNE_Vestibular_Receiving_Neurons_2026-11-19.md`.
+`VestibularProjectionReceiver` owns actual fresh reticular/spinal neurons and
+original downstream packets, stays behind every declared source's known time,
+uses original conduction/contact/learning calculations and retains partial
+failures. The engine addition is read-only isolated observation; original methods,
+biological kernels, source owners, controller and outbox are unchanged. Both
+projects build cleanly; eleven new controls and a 130-case visible workflow are
+authored, unrun. The gate requires fully reviewed `ae88a4` evidence. Record the
+actual preparation/launch separately. No live or physiological promotion follows.
+
 Latest launch: `D:/DNNE-build-work/vestibular-projection-20261119-ae88a4`, frozen
 at pushed `ab70753bcca31033111ea6434e40234257db3386`. Frozen preflight passes;
 both initial 2,123-file copies plus manifest verify. Visible task

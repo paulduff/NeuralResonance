@@ -23,6 +23,7 @@
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\CanalAfferentNucleusConnection.cs" Link="CanalAfferentNucleusConnection.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\CanalConvergenceConnection.cs" Link="CanalConvergenceConnection.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\CanalNucleusProjection.cs" Link="CanalNucleusProjection.cs" />
+    <Compile Include="..\..\tools\NativeMotorBridgeProbe\VestibularProjectionReceiver.cs" Link="VestibularProjectionReceiver.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\PrescribedHeadTurn.cs" Link="PrescribedHeadTurn.cs" />
     <Compile Include="..\..\tools\MotoneuronReferenceProbe\ClockAudit.cs" Link="MotorClockAudit.cs" />
     <Compile Include="..\..\tools\UnityPhysicalSampleProbe\UnityObservationEncoding.cs" Link="UnityObservationEncoding.cs" />

@@ -1,5 +1,25 @@
 # Reticulospinal recurrent ownership candidate — 19 November 2026
 
+Latest result: the operator reported `4c18a7` complete with 145 passed and one
+failed case. Both complete 2,722-file copies, frozen source, runtime/binaries and
+all 146 test identities verify; the failure review has a verified D: copy.
+The failed case compares independently executed packet schedules. It includes
+freshly allocated original event GUIDs in an exact cross-run tuple comparison.
+Those identities should differ, but its truncated error does not establish
+whether observed neuronal states also differ. Do not treat identity allocation
+as the proven sole cause or declare this circuit qualified.
+
+The revised test saves both complete original executions before comparison. It
+reconciles original neuronal output with routed copies, actual delivered records
+and waiting events within each execution. It then compares full observed cell
+states, contact effects, arrival times and pending payloads exactly, excluding
+only each fresh event ID from the cross-execution comparison. Original IDs and
+payloads remain intact in saved evidence. Python independently reconstructs the
+comparison from those traces. The numerical tolerance remains zero, and the
+runtime, neuronal equations and the other 145 cases stay unchanged. The new
+workflow requires the preserved original failure and its unchanged circuit
+sources. Actual retry launch/result is recorded separately.
+
 Latest launch: `D:/DNNE-build-work/reticulospinal-20261119-4c18a7`, frozen at
 `143b6d5373020f4f87a3443c8d9e206828943723`. Preflight and both initial 2,137-file
 copies plus manifest verify. Visible task `DNNE-Reticulospinal-cf57b3d981a0`

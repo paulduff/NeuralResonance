@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+Latest completed failure review: operator reported recurrent `4c18a7` finished.
+Both 2,722-file copies, frozen `143b6d5373020f4f87a3443c8d9e206828943723` source,
+runtime/binaries and all 146 identities verify: 145 passed, one failed, namely
+`FeedbackSchedulingAndInputPartitionPreserveActualCellsAndContacts`. The three-file
+review plus manifest is D: verified at `artifacts/reticulospinal-20261119-4c18a7-review`.
+The original engine allocates fresh event GUIDs, but the test compared them across
+separate executions. Truncated failure text cannot establish numerical equality
+or prove IDs are the sole cause. Preserve that failure. The revised comparison
+saves both full runs, verifies every original payload/ID within its run and compares
+observed states, contacts, arrivals and pending events exactly across runs, omitting
+only fresh event IDs. Existing runtime/neuronal code is unchanged. Freeze and run
+the revised 146-case workflow visibly after build/static checks and verified backup.
+Only `2a402c` awaits an older report; do not inspect it. Record the actual retry
+launch separately. `DescendingMotorPool` is additive unfinished authoring, builds
+but has no dedicated tests or live selection; see its candidate document. Resume
+its controls and explicit source anatomy after the recurrent comparison is resolved.
+
 Latest launch: `D:/DNNE-build-work/reticulospinal-20261119-4c18a7`, frozen at
 pushed `143b6d5373020f4f87a3443c8d9e206828943723`. Frozen preflight passes; both
 initial 2,137-file copies plus manifest verify. Visible task

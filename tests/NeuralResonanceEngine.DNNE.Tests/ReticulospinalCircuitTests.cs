@@ -210,19 +210,20 @@ public sealed class ReticulospinalCircuitTests
     [Fact]
     public void FeedbackSchedulingAndInputPartitionPreserveActualCellsAndContacts()
     {
-        (string Reticular,string Spinal,string Deliveries) Run(bool partitioned)
+        ReticulospinalTrial Run(bool partitioned)
         {
             using var f=new Fixture();var deliveries=new List<string>();
+            var inputs=new List<VestibularProjectionFrame>();var frames=new List<ReticulospinalFrame>();
             foreach(int end in partitioned?Enumerable.Range(1,10).Select(i=>i*32):new[]{320})
             {
-                f.Send(end,end==(partitioned?32:320)?[Event(),Event(1)]:[]);
-                var frame=f.Circuit.PublishCompleted();Assert.False(frame.MoreKnownWork);deliveries.AddRange(Deliveries(frame));f.Circuit.Acknowledge(frame.Sha256);
+                inputs.Add(f.Send(end,end==(partitioned?32:320)?[Event(),Event(1)]:[]));
+                var frame=f.Circuit.PublishCompleted();frames.Add(frame);Assert.False(frame.MoreKnownWork);deliveries.AddRange(Deliveries(frame));f.Circuit.Acknowledge(frame.Sha256);
             }
             var state=f.Circuit.Capture();Assert.Equal(4,deliveries.Count(d=>
                 JsonSerializer.Deserialize<SpikeMessage>(JsonSerializer.Deserialize<RubralInputDelivery>(d)!.OriginalJson)!.SourceStructure==StructureId.VestibularNuclei));
-            return(state.Reticular.Actual.CellStateJson,state.Spinal.Actual.CellStateJson,Json(deliveries.Order(StringComparer.Ordinal)));
+            return new(state.Reticular.Actual.CellStateJson,state.Spinal.Actual.CellStateJson,Json(deliveries.Order(StringComparer.Ordinal)),inputs.AsReadOnly(),frames.AsReadOnly());
         }
-        Assert.Equal(Run(false),Run(true));
+        ReticulospinalComparisonEvidence.Compare(Run(false),Run(true));
     }
 
     [Fact]

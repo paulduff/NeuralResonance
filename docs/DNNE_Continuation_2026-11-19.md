@@ -5,6 +5,27 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Current failure review — recurrent comparison
+
+The operator reported `4c18a7` complete. Both 2,722-file copies, frozen source,
+runtime/binaries and all 146 test identities verify: 145 passed and the partition
+comparison failed. The three-file failure review plus manifest is D: verified.
+Its expected/actual diagnostic is truncated; numerical equality is not established.
+
+Source inspection confirms fresh GUID allocation for original neuronal emissions.
+The old assertion incorrectly compared those identities between independent runs.
+The revised test retains both complete runs, reconciles each original ID and
+payload within its own run, and compares observed state, contact effects, timing
+and pending events exactly across runs. Only fresh event IDs are omitted from
+that cross-run comparison; no numerical bound or runtime equation changes.
+The prospective rerun must preserve the original failure and unchanged circuit
+source. Record its freeze/backup/visible launch separately.
+
+Only the older continuous reference `2a402c` awaits its report and remains
+untouched. The additive `DescendingMotorPool` receiving owner builds but is
+unfinished and untested; its candidate document records remaining controls and
+the need for explicit source anatomy before a complete motor/body connection.
+
 ## Latest launch — recurrent reticulospinal ownership
 
 `D:/DNNE-build-work/reticulospinal-20261119-4c18a7` is frozen at pushed

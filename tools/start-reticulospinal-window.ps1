@@ -3,6 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
+if(-not $configuration.CompletePartitionEvidenceRequired){throw 'Full original partition traces are required for this comparison.'}
 if(-not $configuration.IsolatedReticulospinalCircuit -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 146 -or $configuration.IndependentCoupledTrajectoryQualified -or $configuration.StationaryInitializationQualified -or $configuration.SpatialGeometryCalibrated -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected recurrent reticulospinal ownership configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
@@ -79,6 +80,7 @@ try{
  $Host.UI.RawUI.WindowTitle='DNNE recurrent reticulospinal ownership input controls'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host '146 connection checks: 16 recurrent ownership cases and all 130 recipient/source/outbox/routing cases. No active sensory firing, neural authority or native body qualification.'
+ Write-Host 'Both original executions will be saved. Original IDs remain exact within each execution; cross-execution state, contact and timing comparisons exclude only freshly allocated event IDs. Numerical tolerance remains zero.'
  Save-Status 'preflight';Assert-Package;Python-Stage 'preflight'
  $build=Join-Path $package 'source/artifacts/reticulospinal-tests'
  Save-Status 'build-tests'
@@ -97,6 +99,7 @@ try{
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--runtime-fingerprint',(Join-Path $package 'managed-runtime-before.json')) 'managed-runtime-before.log'
  Python-Stage 'runtime';$status['MatchesQualifiedManagedRuntime']=$true
  $status.TestExecutionAttempted=$true;Save-Status 'focused-tests'
+ $env:NRE_RETICULOSPINAL_EVIDENCE_DIR=Join-Path $package 'partition-evidence'
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
  Python-Stage 'check-tests'
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json

@@ -13,8 +13,14 @@ import sys
 import uuid
 from zipfile import ZipFile
 import vestibular_recipient_gate as prior
+from reticulospinal_partition_evidence import audit as partition_audit
 NATIVE=Path('D:/DNNE-build-work/vestibular-recipient-20261119-49d913')
 NATIVE_REVISION='2c2d3e4165477048f88acc7e02190ff3567fc7d3'
+FAILED=Path('D:/DNNE-build-work/reticulospinal-20261119-4c18a7')
+FAILED_REVISION='143b6d5373020f4f87a3443c8d9e206828943723'
+FAILED_UNCHANGED=['ControlProgram/VestibularProjectionOutbox.cs','Structures/_SharedRuntime/StructureEngine.cs',
+    'Structures/_SharedRuntime/IsolatedProjectionObservation.cs','tools/NativeMotorBridgeProbe/VestibularProjectionReceiver.cs',
+    'tools/NativeMotorBridgeProbe/RecipientNucleusProjection.cs','tools/NativeMotorBridgeProbe/ReticulospinalCircuit.cs']
 from afferent_trajectory_gate import inventory
 from afferent_precision_gate import h, read, save
 from cleft_trajectory_reference import base
@@ -71,6 +77,14 @@ def test_evidence(package):
 def prepare(review_folder):
     assert not h.git('status','--porcelain'),'Commit first.'
     revision=h.git('rev-parse','HEAD');assert revision==h.git('rev-parse','origin/main'),'Push first.'
+    failure_folder=ROOT/'artifacts'/(FAILED.name+'-review')
+    h.verify(failure_folder,['review.json','failure.json']);failure=read(failure_folder/'review.json')
+    assert failure['operatorReportedCompletion'] and failure['originalFailurePreserved'] and failure['sourceRevision']==FAILED_REVISION
+    assert failure['passedTests']==145 and failure['failedTests']==1 and not failure['identityDifferenceIsSoleCauseEstablished']
+    assert h.digest(FAILED/'backup-manifest.json')==failure['manifestSha256']
+    h.verify(FAILED,['source/'+name for name in FAILED_UNCHANGED]+['source/tests/NeuralResonanceEngine.DNNE.Tests/ReticulospinalCircuitTests.cs'])
+    for name in FAILED_UNCHANGED:
+        assert h.io(FAILED/'source'/name).read_text(encoding='utf-8-sig')==(ROOT/name).read_text(encoding='utf-8-sig'),name
     assert review_folder==(ROOT/'artifacts'/f'{NATIVE.name}-review').resolve()
     h.verify(review_folder,['review.json','analysis.json']);review=read(review_folder/'review.json')
     assert review['operatorReportedCompletion'] and review['receivingNeuronChecksPassed'] and review['savedAnalysisExactlyReproduced']
@@ -102,6 +116,8 @@ def prepare(review_folder):
     def copy(source,name):
         target=h.io(package/name);shutil.copyfile(h.io(source),target);assert h.digest(source)==h.digest(target)
     copy(review_folder/'review.json','qualified-source-review.json')
+    copy(failure_folder/'review.json','failed-recurrent-review.json');copy(failure_folder/'failure.json','failed-recurrent-status.json')
+    copy(FAILED/'source/tests/NeuralResonanceEngine.DNNE.Tests/ReticulospinalCircuitTests.cs','original-failed-test.cs')
     for name in evidence:
         copy(NATIVE/name,{'managed-runtime-before.json':'qualified-managed-runtime.json','analysis.json':'qualified-source-analysis.json'}.get(name,name))
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
@@ -111,12 +127,14 @@ def prepare(review_folder):
     changes=declared_changes(package/'declared-original',package/'source')
     save(package/'provenance.json',dict(originalRevision=NATIVE_REVISION,originalManifestSha256=review['manifestSha256'],
         preservedSources=[dict(path=n,sha256=h.digest(NATIVE/'source'/n)) for n in PRESERVED],declaredChanges=changes,
+        failedCircuitSources=[dict(path=n,sha256=h.digest(FAILED/'source'/n)) for n in FAILED_UNCHANGED],
         pendingCapturesRead=False,originalBiologyChanged=False,modelsExecutedDuringPreparation=False,testsExecutedDuringPreparation=False))
     files=[dict(Path=f.relative_to(h.io(package)).as_posix(),Sha256=h.digest(f)) for f in sorted(h.io(package).rglob('*')) if f.is_file()]
     dotnet=shutil.which('dotnet');assert dotnet
     save(package/'configuration.json',dict(Revision=revision,PackageFiles=files,BackupDestination=str(backup),
         DotnetExecutable=dotnet,DotnetExecutableSha256=h.digest(dotnet),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
         IsolatedReticulospinalCircuit=True,NoLiveMonitoring=True,ExpectedTestCases=146,ExpectedClassCounts=COUNTS,
+        CompletePartitionEvidenceRequired=True,
         ExpectedTestMethods=methods,TestFilter='|'.join('FullyQualifiedName~'+c for c in COUNTS),
         IndependentCoupledTrajectoryQualified=False,StationaryInitializationQualified=False,SpatialGeometryCalibrated=False,
         AfferentFiringQualified=False,PhysiologyQualified=False,AvatarRecoveryAssessed=False,LiveSelectionChanged=False))
@@ -128,7 +146,14 @@ def prepare(review_folder):
 
 def preflight(package):
     cfg=read(package/'configuration.json');review=read(package/'qualified-source-review.json');provenance=read(package/'provenance.json')
+    failure=read(package/'failed-recurrent-review.json');status=read(package/'failed-recurrent-status.json')
+    assert failure['operatorReportedCompletion'] and failure['originalFailurePreserved'] and failure['sourceRevision']==FAILED_REVISION
+    assert failure['passedTests']==145 and failure['failedTests']==1 and not failure['identityDifferenceIsSoleCauseEstablished']
+    assert status['Status']=='FAILED' and status['Revision']==FAILED_REVISION
+    assert {r['path'] for r in provenance['failedCircuitSources']}==set(FAILED_UNCHANGED)
+    for row in provenance['failedCircuitSources']:assert h.digest(package/'source'/row['path'])==row['sha256'],row['path']
     assert cfg['IsolatedReticulospinalCircuit'] and cfg['NoLiveMonitoring'] and cfg['ExpectedTestCases']==146 and cfg['ExpectedClassCounts']==COUNTS
+    assert cfg['CompletePartitionEvidenceRequired']
     assert inventory_methods(package/'source')==cfg['ExpectedTestMethods']
     assert review['sourceRevision']==provenance['originalRevision']==NATIVE_REVISION
     assert review['manifestSha256']==provenance['originalManifestSha256']
@@ -152,7 +177,10 @@ def runtime(package):
 
 def check_tests(package):
     runtime(package);result=test_evidence(package)
+    partition=partition_audit(package)
+    assert all(partition['checks'][key] for key in ('ReticularEqual','SpinalEqual','CanonicalDeliveriesEqual','CanonicalWaitingEqual'))
     save(package/'analysis.json',dict(completed=True,componentChecksPassed=True,recurrentOwnershipChecksPassed=True,tests=result,
+        partitionComparison=partition,
         independentCoupledTrajectoryQualified=False,stationaryInitializationQualified=False,spatialGeometryCalibrated=False,
         afferentFiringQualified=False,physiologyQualified=False,avatarRecoveryAssessed=False))
     print(json.dumps(result,indent=2),flush=True)

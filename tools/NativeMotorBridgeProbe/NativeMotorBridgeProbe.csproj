@@ -5,6 +5,7 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../ControlProgram/NeuralResonanceEngine.ControlProgram.csproj" />
     <ProjectReference Include="../../src/NRE.SimAvatar/NRE.SimAvatar.csproj" />
     <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
     <Compile Include="../MotoneuronReferenceProbe/ClockAudit.cs" Link="ClockAudit.cs" />

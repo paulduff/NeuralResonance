@@ -5,6 +5,24 @@ pause. The biological DNNE/Avatar/World objective is unchanged; Entity/LM/Dyad
 remain parked and CIV separate. All tests, comparisons and models run in visible
 independent PowerShell, with no live monitoring and no duplicate launches.
 
+## Current checkpoint — shared owner reviewed; outgoing ownership authored
+
+The operator reported `6ceeae` complete. Both 2,643-file copies, frozen source,
+managed runtime/binaries, all 101 exact cases and saved analysis verify. Its
+three-file review plus manifest is D: verified. No model/test was rerun. Only
+continuous reference `2a402c` still awaits a footer and remains untouched; this
+supersedes earlier pending counts. Repeated `b208e4` was already fully reviewed.
+
+`CanalNucleusProjection` now retains actual shared-nucleus output until every
+declared downstream recipient acknowledges its exact packet. It uses the existing
+connectome routing and preserves original neuronal timing/chemistry. Fourteen
+new controls and four unchanged routing cases join the existing 101 cases in a
+119-case visible workflow. Both projects build cleanly; tests remain unrun at
+this authoring checkpoint. Source preservation explicitly records the two routing
+helper visibility changes and the probe's added ASP.NET runtime dependency.
+See `DNNE_Vestibular_Projection_Ownership_2026-11-19.md`. No live selector or
+physiological qualification changed. Record the actual launch separately.
+
 ## Current checkpoint — shared canal/nucleus owner launched
 
 Convergence `b208e4` is fully reviewed: both 2,639-file copies, frozen source,

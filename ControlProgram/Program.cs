@@ -7939,7 +7939,7 @@ internal sealed class TickCoordinator(
         };
     }
 
-    private static SpikeMessage RewriteSpikeForRoute(SpikeMessage spike, SynapticConnection route)
+    internal static SpikeMessage RewriteSpikeForRoute(SpikeMessage spike, SynapticConnection route)
     {
         return new SpikeMessage
         {
@@ -8161,7 +8161,7 @@ internal sealed class TickCoordinator(
         return builder.Uri;
     }
 
-    private static IReadOnlyList<ServiceInstance> ResolveTargetInstances(
+    internal static IReadOnlyList<ServiceInstance> ResolveTargetInstances(
         StructureId target,
         string sourceHemisphere,
         IReadOnlyDictionary<StructureId, List<ServiceInstance>> instancesByStructure,

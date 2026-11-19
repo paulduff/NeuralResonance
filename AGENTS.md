@@ -1,5 +1,24 @@
 # Avatar and environment work
 
+Latest completed review: shared owner `6ceeae` was reported complete. Both
+2,643-file copies, frozen `6210b4263e782cd2ef613862656af1d7fe486da0` source,
+runtime/binaries, all 101 cases and saved analysis verify. Its three-file review
+plus manifest is D: verified at `artifacts/canal-convergence-20261119-6ceeae-review`.
+Only continuous reference `2a402c` awaits a footer; it remains untouched. The
+repeated `b208e4` footer adds no new pending report or work. This supersedes the
+two-report counts below.
+
+New candidate: `docs/DNNE_Vestibular_Projection_Ownership_2026-11-19.md`.
+Original shared-nucleus output is retained through per-recipient acknowledgements
+for every declared outgoing projection. It reuses existing coordinator routing
+(two helpers gain internal visibility only), with distinct collateral delivery
+IDs and unchanged neuronal chemistry/timing. No live host/recipient is started.
+The probe now references the coordinator and requires an explicitly fingerprinted
+ASP.NET framework in addition to the unchanged core runtime. Both projects build
+cleanly; fourteen new controls and a 119-case visible workflow are authored,
+unrun. The gate requires the reviewed `6ceeae` dependency. Record actual launch
+separately; original sensory/learning kernels and prior owners are unchanged.
+
 Latest launch: shared canal/nucleus owner `canal-convergence-20261119-6ceeae`,
 at `D:/DNNE-build-work/canal-convergence-20261119-6ceeae`, frozen at pushed
 `6210b4263e782cd2ef613862656af1d7fe486da0`. Frozen preflight passes; both initial

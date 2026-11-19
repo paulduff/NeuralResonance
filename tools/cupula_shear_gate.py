@@ -1,6 +1,7 @@
 """Freeze source evidence and qualify the declared cupula spatial component."""
 import argparse
 from datetime import datetime,timezone
+from hashlib import sha256
 from pathlib import Path,PurePosixPath
 import json
 import shutil
@@ -33,7 +34,8 @@ def prepare():
     methods=inventory.inventory(ROOT,COUNTS);assert sum(methods.values())==179
     sources=ROOT/'artifacts/cupula-mapping-source-20261119-32f7a8';h.verify(sources,['source-review.json','PMC8050243.html'])
     source_review=read(sources/'source-review.json')
-    assert source_review['catalogSha256']==h.digest(ROOT/'docs/reference-data/cupula-shear-closure.json').lower()
+    reviewed_catalog=subprocess.check_output(['git','show',revision+':docs/reference-data/cupula-shear-closure.json'],cwd=ROOT)
+    assert source_review['catalogSha256']==sha256(reviewed_catalog).hexdigest()
     assert not source_review['modelsExecuted'] and not source_review['testsExecuted']
     package=Path('D:/DNNE-build-work')/('cupula-shear-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]);backup=Path('D:/DNNE-desktop-runs/UnityWorld')/package.name
     assert not package.exists() and not backup.exists();package.mkdir()
@@ -53,6 +55,9 @@ def prepare():
     for name in names:copy(capture/name,'baseline/'+name)
     copy(reviewed/'review.json','reviewed-clock.json');copy(reviewed/'analysis.json','reviewed-clock-analysis.json')
     copy(sources/'source-review.json','mapping-source-review.json')
+    # Keep the reviewed LF bytes as well as Git's CRLF export. Their identities
+    # differ, while only the line-ending representation may change.
+    with (package/'mapping-source-catalog.json').open('xb') as stream:stream.write(reviewed_catalog)
     copy(capture/'qualified-managed-runtime.json','qualified-managed-runtime.json')
     copy(package/'source/tools/backup-unity-run.ps1','backup-run.ps1')
     save(package/'preparation-environment.json',base.environment())
@@ -79,7 +84,8 @@ def preflight(package):
     assert review['manifestSha256']==p['gradedClockManifestSha256'] and review['passedTests']==156
     assert read(package/'reviewed-clock-analysis.json')['numericalCriteriaPassed']
     sources=read(package/'mapping-source-review.json')
-    assert sources['catalogSha256']==h.digest(package/'source/docs/reference-data/cupula-shear-closure.json').lower()
+    assert sources['catalogSha256']==h.digest(package/'mapping-source-catalog.json').lower()
+    assert (package/'mapping-source-catalog.json').read_text(encoding='utf-8')==(package/'source/docs/reference-data/cupula-shear-closure.json').read_text(encoding='utf-8')
     assert not sources['modelsExecuted'] and not sources['testsExecuted']
     assert {r['path'] for r in p['preservedSources']}==set(PRESERVED)
     for r in p['preservedSources']:assert h.digest(package/'source'/r['path'])==r['sha256'],r['path']

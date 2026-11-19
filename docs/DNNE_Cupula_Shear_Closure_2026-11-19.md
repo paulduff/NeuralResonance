@@ -74,3 +74,13 @@ synthetic geometry. All 156 prior canal/skull/clock/bundle cases are retained,
 giving 179 focused cases. No full unit-suite claim follows from that subset.
 Tests run only in a separate visible PowerShell window, with frozen source,
 runtime preservation and verified D: backups, without live monitoring.
+
+
+The first prepared cupula package `6b69cf` was not launched. Frozen preflight
+caught a catalogue representation mismatch: the reviewed Git blob uses LF,
+while Git archive exports CRLF. Exact comparison confirms that only 52 line
+endings differ. The failed preparation, both catalogue byte versions and failure
+receipt are preserved in a verified 2,055-file D: backup. No model/test ran.
+The harness now retains the reviewed canonical Git blob and the archive version
+separately, pins their distinct hashes and requires equal text after ordinary
+line-ending decoding. It does not relabel or reuse the failed package.

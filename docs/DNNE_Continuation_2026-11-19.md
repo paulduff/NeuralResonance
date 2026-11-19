@@ -140,3 +140,13 @@ window preserves 31 earlier files and the reviewed graded-clock result. No
 model or test ran inline; no new window is launched at this authoring checkpoint.
 The next integration must reconcile geometric stiffness with the chosen organ,
 preserve physical times and samples, and measure actual sensory responses.
+
+
+The first prepared cupula package `6b69cf` was not launched. Frozen preflight
+caught a catalogue representation mismatch: the reviewed Git blob uses LF,
+while Git archive exports CRLF. Exact comparison confirms that only 52 line
+endings differ. The failed preparation, both catalogue byte versions and failure
+receipt are preserved in a verified 2,055-file D: backup. No model/test ran.
+The harness now retains the reviewed canonical Git blob and the archive version
+separately, pins their distinct hashes and requires equal text after ordinary
+line-ending decoding. It does not relabel or reuse the failed package.

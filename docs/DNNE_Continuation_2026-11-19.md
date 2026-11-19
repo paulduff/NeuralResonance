@@ -369,3 +369,14 @@ both failure branches and an exact control. The prospective inventory is now
 launcher. Syntax/static checks only; no new package or experiment was started.
 No original equation, input or accuracy limit changed. `6d0480` still awaits
 the operator's final footer and remains uninspected.
+
+## Independent analytic controls prepared
+
+The sixteen synthetic controls do not need `6d0480` and can provide useful
+verification while its report is pending. A separate frozen gate/visible launcher
+is authored: `canal_reference_controls_gate.py` and
+`start-canal-controls-window.ps1`. Only the completed `2dd76a` environment
+evidence is read; no native capture, head input or neuronal model is accessed.
+This does not bypass the full reference gate. Record the actual launch and
+pending count separately. Once reported and reviewed, passing evidence may be
+reused only with identical control/worker source and numerical dependencies.

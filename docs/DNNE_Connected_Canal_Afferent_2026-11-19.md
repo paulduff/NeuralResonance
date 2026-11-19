@@ -461,3 +461,24 @@ This expands the prospective workflow from the earlier 7+8 controls to **8+8**
 (16 total). Gate and PowerShell expectations match. Python/PowerShell syntax and
 static inventory pass; no tests, model integrations, preparation or launches
 were performed. The original numerical equations and all error bounds remain.
+
+## Independent execution of the sixteen analytic controls
+
+The analytic controls have no dependency on the pending neuronal capture. Their
+synthetic fixtures can therefore be checked before committing time to the full
+reference comparison. `tools/canal_reference_controls_gate.py` freezes pushed
+source and the reviewed `2dd76a` numerical environment; it calls only the exact
+16-method suite already defined by the full gate. It supplies no recorded head,
+neuronal trajectory or live-service input and cannot invoke the six connected
+reference integrations. The full reference gate's reported-completion requirement
+is unchanged.
+
+`tools/start-canal-controls-window.ps1` uses an independent visible PowerShell
+window, preserves the method-by-method results and errors, checks source and
+dependencies afterwards, and verifies the final D: copy. Neither that window
+nor the existing native run will be live-monitored. Source syntax/static checks
+precede preparation; numerical control results require the operator's final
+footer and a saved-evidence review. If those controls pass and their exact
+source/dependencies remain unchanged, reuse their verified evidence in the later
+full comparison rather than executing an unchanged suite again. A separate
+launch entry will identify the actual frozen package.

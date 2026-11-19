@@ -40,6 +40,13 @@ short-circuiting a failed NumPy comparison could leave `np.bool_` in the JSON
 witness. The flag is now explicitly `bool`, with an unexecuted regression
 control for state failure, bundle failure and an exact control. This changes
 neither equations nor acceptance limits; no numerical result is inferred.
+The 16 synthetic controls can be executed independently of that pending capture.
+`canal_reference_controls_gate.py` and `start-canal-controls-window.ps1` now
+prepare their own frozen visible window, reusing only the completed `2dd76a`
+numerical-environment evidence. This path invokes the analytic suite only; it
+cannot run the connected reference or read its native capture. Record any launch
+and resulting pending count separately. Successful controls still need operator-
+reported completion/review and exact source identity before later reuse.
 
 The operator explicitly resumed testing and the goal on 19 November 2026.
 Current continuation: `docs/DNNE_Continuation_2026-11-19.md`; previous checkpoint:

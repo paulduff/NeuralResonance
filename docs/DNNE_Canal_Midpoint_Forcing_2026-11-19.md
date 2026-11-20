@@ -1,5 +1,18 @@
 # Midpoint sampling of completed canal movement
 
+Completed review, 20 November: `e503fd` passed the original numerical criteria.
+Both final 3,275-file copies, frozen source/runtime/binaries, 172 C# controls and
+24 analytic controls verify. All 2,293,760 steps were compared in the completed
+window. Moving-head finest error is 0.00003610787860867132 of its allowance,
+versus 1.453385383035444 for the original start-held input. Stationary-head
+remains 0.0000002774916073557423. Six unchanged continuous references, original
+limits and conservation checks are retained. Refinement passes below the
+original normalized floor; an asymptotic convergence order is not established.
+All six native runs still emitted zero nerve events; active firing, physiological
+calibration and Avatar balance remain unqualified. The four-file completed
+review is D: verified. See `DNNE_Checkpoint_2026-11-20.md`; the launch/wait text
+below is historical, and no result remains pending.
+
 The full replay is now launched at
 `D:/DNNE-build-work/canal-midpoint-trajectory-20261119-e503fd`, frozen from pushed
 `4488f9da1590efbed84c7316c03b5ec941e5a66e`. Frozen preflight and both initial

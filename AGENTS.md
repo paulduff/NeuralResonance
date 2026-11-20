@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+HARNESS UPDATE PAUSE — 20 November: Paul resumed, reported `e503fd` complete,
+then requested notes before the next test and explicitly chose "Pause the goal
+for the update". Commit/push the checkpoint, pause and stop; resume only on his
+instruction. Its completed review verifies both 3,275-file copies/source/runtime/
+binaries; 172 C# and 24 analytic controls passed; all 2,293,760 saved steps meet
+original limits. Moving-head finest error is 0.00003610787860867132 of its
+allowance (old 1.4534); all six captures still have zero sensory events. The
+four-file review is D: verified. No tests/models ran in this turn and no new
+experiment was authored or launched. There are NO unreported windows. See
+`docs/DNNE_Checkpoint_2026-11-20.md` for the handoff. This supersedes yesterday's
+pending-e503fd checkpoint and all earlier launch/wait counts below.
+
 PAUSE CHECKPOINT — 19 November: Paul requested notes and a goal pause and will
 leave `e503fd` running. See `docs/DNNE_Checkpoint_2026-11-19.md`. Commit/push the
 checkpoint, pause the goal and stop; resume only on an explicit instruction.

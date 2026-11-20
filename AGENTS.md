@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+RESUMED — 20 November after harness update: Paul explicitly continued the goal.
+The harness pause below is revoked. Opposing prescribed head/sensory capture is
+authored: quiet and +/-0.1 radian yaw, 100 ms turn, 18 physical intervals at two
+neuronal resolutions (six captures, 2,654,208 source steps). Existing biological
+kernels, loaded state, geometry and thresholds stay unchanged. Only the probe
+dispatcher changes; 164 preserved sources verify. Both projects build cleanly;
+static inventories/syntax verify 212 C# plus eight analytic controls. No test or
+model ran inline. Freeze/push/prepare/back up/launch the visible workflow, then
+record its actual folder/task. Await the final footer without monitoring.
+See `docs/DNNE_Continuation_2026-11-20.md` and the opposing-head study document.
+At this authoring checkpoint no run is pending; `e503fd` is fully reviewed.
+
 HARNESS UPDATE PAUSE — 20 November: Paul resumed, reported `e503fd` complete,
 then requested notes before the next test and explicitly chose "Pause the goal
 for the update". Commit/push the checkpoint, pause and stop; resume only on his

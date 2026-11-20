@@ -10,6 +10,12 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 3 && args[0] == "--head-turn-afferent")
+{
+    HeadTurnAfferentStudy.Run(args[1], args[2]);
+    return;
+}
+
 if (args.Length == 3 && args[0] == "--canal-afferent-midpoint")
 {
     CanalAfferentStudy.RunMidpoint(args[1], args[2]);

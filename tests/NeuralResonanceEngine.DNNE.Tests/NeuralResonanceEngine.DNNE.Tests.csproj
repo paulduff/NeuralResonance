@@ -40,6 +40,7 @@
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorActuation.cs" Link="UnityMotorActuation.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\JointCoordinates.cs" Link="UnityJointCoordinates.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\StandingTrialMetrics.cs" Link="UnityStandingTrialMetrics.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\StandingBalanceEvidence.cs" Link="UnityStandingBalanceEvidence.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MuscleCore.cs" Link="UnityMuscleCore.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MusclePathGeometry.cs" Link="UnityMusclePathGeometry.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorUnitPool.cs" Link="UnityMotorUnitPool.cs" />

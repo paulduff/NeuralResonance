@@ -1,5 +1,24 @@
 # Avatar and environment work
 
+20 November update: Paul reported the final FAILED footer for opposing-head
+`2e0ed3`. Its full 2,933-file copies, source/runtime/binaries, 212 C# and 32
+analytic controls verify; the four-file review is D: verified. All six captures
+completed; quiet/positive yaw report zero nerve events and negative yaw reports
+one at each resolution. Full accounting failed on PascalCase-versus-camelCase
+JSON identity, not a demonstrated neuronal failure. Original FAILED preserved.
+See `docs/DNNE_Head_Turn_Reanalysis_2026-11-20.md`. The strict repair retains all
+values/limits and has a visible saved-data workflow authored (40 analytic plus
+37 standing/body measurement cases). Freeze/push/prepare/back up/launch it; no
+model rerun or inline tests. At this checkpoint NO report remains pending.
+
+Standing-trial observation now records baseline/every physics endpoint and exact
+outgoing body requests/responses. This is observation only: the legacy live
+population-command path still does not select the recent direct neuronal chain.
+See `docs/DNNE_Unity_Standing_Observation_2026-11-20.md`. .NET builds cleanly;
+Unity-specific compilation and native execution remain outstanding. Do not infer
+standing, neuronal detection or correction from the new diagnostic counters.
+This supersedes pending-2e0ed3 notes below; record the new launch separately.
+
 LATEST LAUNCH — 20 November: `D:/DNNE-build-work/head-turn-afferent-20261120-2e0ed3`
 is frozen at pushed `5f3887d489c36b67012700bc96012b195f9fc686`. Frozen preflight
 and both initial 2,186-file copies plus manifest verify. Interactive task

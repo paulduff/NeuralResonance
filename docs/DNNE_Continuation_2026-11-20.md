@@ -1,5 +1,25 @@
 # DNNE continuation — 20 November 2026
 
+## Opposing-head failure reviewed; saved-data retry authored
+
+Paul reported `2e0ed3` complete. Both 2,933-file copies, source/runtime and
+212 C# / 32 analytic cases verify; its failure review is D: verified. The first
+analysis assertion compares different JSON property spellings. Six captures
+completed; negative yaw reports one nerve event at each resolution, versus zero
+for quiet and positive yaw. Full accounting and firing accuracy remain unproved.
+The strict schema repair changes no values, dynamics or limits. Prepare and
+launch `head_turn_reanalysis_gate.py` / `start-head-turn-reanalysis-window.ps1`
+from clean pushed source using the failure review. The visible workflow has
+40 analytic controls, 37 standing/body observation cases and saved-data analysis;
+no sensory/ODE rerun. At this authoring point no report is pending.
+
+The standing observation now retains baseline/every physics step and exact
+body API requests/responses. Existing live motor commands remain population
+based; actual direct neuronal integration is still required. Unity compilation
+and a native observation trial remain open. See the two new 20-November
+head-turn-reanalysis / Unity-standing-observation documents. No tests ran inline.
+The goal remains active. Append actual new package/task after launch.
+
 ## Visible opposing-head run launched
 
 `D:/DNNE-build-work/head-turn-afferent-20261120-2e0ed3`, frozen at pushed

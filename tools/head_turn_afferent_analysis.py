@@ -12,6 +12,7 @@ from coupled_canal_analysis import vector
 from canal_midpoint_protocol import forcing_ticks
 from head_turn_afferent_protocol import protocol
 from head_turn_input_evidence import audit as head_audit
+from head_observation_identity import original_observation
 
 
 def analyse(package):
@@ -56,8 +57,8 @@ def analyse(package):
             for interval in range(p['physicalIntervals']):
                 head=interval+2;mechanical=read(folder/f'mechanical-{head:02}.json');receipt=mechanical['mechanics'];released=receipt['completedInterval']
                 assert released['heldInput']['skull']['physicsStep']==head-1 and released['closingInput']['skull']['physicsStep']==head
-                assert json.loads(released['heldInput']['skull']['rawObservationJson'])==head_input['observations'][head-1]
-                assert json.loads(released['closingInput']['skull']['rawObservationJson'])==head_input['observations'][head]
+                original_observation(released['heldInput']['skull']['rawObservationJson'],head_input['observations'][head-1])
+                original_observation(released['closingInput']['skull']['rawObservationJson'],head_input['observations'][head])
                 substeps=released['substeps'];assert len(substeps)==1412
                 ends=np.array([s['clockSubstepIndex'] for s in substeps],dtype=np.int64)
                 first_tick=(head-1)*262144;starts=np.concatenate(([first_tick],ends[:-1]));widths=ends-starts

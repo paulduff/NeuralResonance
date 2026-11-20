@@ -11,12 +11,15 @@ namespace Nre.UnityWorld
     {
         readonly double duration;
         readonly StandingTrialMetrics metrics = new StandingTrialMetrics();
+        readonly StandingBalanceEvidence balanceEvidence = new StandingBalanceEvidence();
         bool prepared, started, stopped, saved;
         string failure = "";
         float startedAt;
         long packetsAtStart;
-        double nextTraceAt;
-        StreamWriter trace;
+        double nextProgressAt;
+        long traceSamples;
+        long bodyRequestsRecorded, bodyResponsesRecorded;
+        StreamWriter trace, bodyDeliveryTrace;
         public bool Finished => saved;
         public string Caption => saved ? "Trial complete · paused" :
             $"Standing observation · {metrics.simulationSeconds:F1}/{duration:F0} simulation seconds";
@@ -32,6 +35,7 @@ namespace Nre.UnityWorld
         {
             world.PauseTrial("Paused · preparing DNNE standing observation");
             trace = new StreamWriter(Path.Combine(world.outputDirectory, "standing-trace.jsonl"));
+            bodyDeliveryTrace = new StreamWriter(Path.Combine(world.outputDirectory, "standing-body-delivery.jsonl"));
             yield return world.ConnectForTrial();
             if (!world.Connected) { failure = "Exclusive world handoff failed."; stopped = true; }
             prepared = true;
@@ -56,14 +60,37 @@ namespace Nre.UnityWorld
             Save(world);
         }
 
+        public bool BeforeStep(WorldController world)
+        {
+            if (!prepared || stopped) return false;
+            if (started) return true;
+            try
+            {
+                var frame = BodyFrame.Capture(world.Avatar, world.physicsSteps);
+                balanceEvidence.Begin(world.physicsSteps, WorldController.StepSeconds, BalanceObservation(frame));
+                WriteTrace(world, frame, true);
+                trace.Flush(); // Preserve the actual pre-step body, not an assumed upright pose.
+                started = true; startedAt = Time.realtimeSinceStartup; packetsAtStart = world.motorPacketsReceived;
+                return true;
+            }
+            catch (Exception e) { FailObservation(world, e); return false; }
+        }
+
         public void AfterStep(WorldController world)
         {
             if (!prepared || stopped) return;
-            if (!started) { started = true; startedAt = Time.realtimeSinceStartup; packetsAtStart = world.motorPacketsReceived; }
+            try { RecordAfterStep(world); }
+            catch (Exception e) { FailObservation(world, e); }
+        }
+
+        void RecordAfterStep(WorldController world)
+        {
             var body = world.Avatar;
             var frame = BodyFrame.Capture(body, world.physicsSteps);
             var physical = frame.articulation.musculoskeletal;
             var motor = world.LastAppliedCommand;
+            WriteTrace(world, frame, false);
+            balanceEvidence.Observe(world.physicsSteps, BalanceObservation(frame));
             metrics.Observe(WorldController.StepSeconds, new StandingObservation {
                 finite = body.IsFinite(), authorizedMotor = motor.IsAuthorized(), motorTick = motor.tick,
                 legActuationApplied = world.LegActuationApplied, standDrive = motor.standDrive,
@@ -72,22 +99,74 @@ namespace Nre.UnityWorld
                 bodyWeight = body.totalMass * 9.81, supportMargin = physical.balance.supportMarginMeters,
                 otherSupportLoad = body.links.Values.Where(l => !l.name.EndsWith("foot") && l.sensor.supportPoints.Count > 0).Sum(l => l.sensor.force),
                 limitViolation = ActuatorQualification.LimitViolation(body) });
-            if (metrics.simulationSeconds >= nextTraceAt)
+            if (metrics.simulationSeconds >= nextProgressAt)
             {
-                var sample = new TraceSample { simulationSeconds = metrics.simulationSeconds,
-                    physicsStep = world.physicsSteps, motor = motor, observedMotor = world.ObservedMotor,
-                    motorAgeSeconds = world.MotorAgeSeconds, bodyRequestSeconds = world.LastBodyRequestSeconds,
-                    legActuationApplied = world.LegActuationApplied,
-                    body = frame, bodyFramesAccepted = world.bodyFramesAccepted,
-                    bodySpikesGenerated = world.bodySpikesGenerated, retinalFramesAccepted = world.retinalFramesAccepted };
-                trace.WriteLine(JsonUtility.ToJson(sample));
                 trace.Flush();
-                nextTraceAt = metrics.simulationSeconds + .2;
+                nextProgressAt = metrics.simulationSeconds + .2;
                 WriteProgress(world);
             }
             if (!metrics.finite) { failure = "Non-finite physical state."; stopped = true; }
             if (metrics.simulationSeconds + .000001 >= duration) stopped = true;
             if (stopped) world.PauseTrial("Paused · finishing standing observation");
+        }
+
+        static StandingBalanceObservation BalanceObservation(BodyFrame frame)
+        {
+            var physical = frame.articulation.musculoskeletal;
+            return new StandingBalanceObservation {
+                supportMarginMeters = physical.balance.supportMarginMeters,
+                pitchRadians = physical.balance.fallPitchRadians, rollRadians = physical.balance.fallRollRadians,
+                balanceError = physical.balanceError, fallen = physical.balance.phase == "fallen",
+                leftFootLoadNewtons = frame.articulation.leftFootLoadNewtons,
+                rightFootLoadNewtons = frame.articulation.rightFootLoadNewtons };
+        }
+
+        void WriteTrace(WorldController world, BodyFrame frame, bool baseline)
+        {
+            var sample = new TraceSample { simulationSeconds = (world.physicsSteps - balanceEvidence.initialPhysicsStep) * (double)WorldController.StepSeconds,
+                physicsStep = world.physicsSteps, initialObservation = baseline,
+                motorAppliedForThisStep = !baseline, motor = baseline ? null : world.LastAppliedCommand,
+                observedMotor = world.ObservedMotor, motorAgeSeconds = world.MotorAgeSeconds,
+                bodyRequestSeconds = world.LastBodyRequestSeconds, legActuationApplied = !baseline && world.LegActuationApplied,
+                body = frame, bodyFramesAccepted = world.bodyFramesAccepted, bodySpikesGenerated = world.bodySpikesGenerated,
+                retinalFramesAccepted = world.retinalFramesAccepted };
+            trace.WriteLine(JsonUtility.ToJson(sample));
+            traceSamples++;
+        }
+
+        void FailObservation(WorldController world, Exception error)
+        {
+            failure = "Physical observation failed: " + error;
+            stopped = true;
+            world.PauseTrial("Paused · physical observation failed");
+        }
+
+        public bool RecordBodyRequest(WorldController world, long physicalStep, long sequence, string requestJson)
+        {
+            if (!started || stopped || saved) return false;
+            try
+            {
+                bodyDeliveryTrace.WriteLine(JsonUtility.ToJson(new BodyDeliverySample {
+                    stage = "request", requestSequence = sequence, samplePhysicsStep = physicalStep,
+                    observedPhysicsStep = world.physicsSteps, realtimeSeconds = Time.realtimeSinceStartup, requestJson = requestJson }));
+                bodyDeliveryTrace.Flush(); bodyRequestsRecorded++;
+                return true;
+            }
+            catch (Exception e) { FailObservation(world, e); return false; }
+        }
+
+        public void RecordBodyResponse(WorldController world, long physicalStep, long sequence, bool transportSuccess, long httpStatus, string responseJson)
+        {
+            if (saved) return; // A closed/incomplete trial cannot claim final delivery evidence.
+            try
+            {
+                bodyDeliveryTrace.WriteLine(JsonUtility.ToJson(new BodyDeliverySample {
+                    stage = "response", requestSequence = sequence, samplePhysicsStep = physicalStep,
+                    observedPhysicsStep = world.physicsSteps, realtimeSeconds = Time.realtimeSinceStartup,
+                    transportSuccess = transportSuccess, httpStatus = httpStatus, responseJson = responseJson }));
+                bodyDeliveryTrace.Flush(); bodyResponsesRecorded++;
+            }
+            catch (Exception e) { FailObservation(world, e); }
         }
 
         void WriteProgress(WorldController world)
@@ -121,8 +200,15 @@ namespace Nre.UnityWorld
         {
             if (saved) return;
             trace?.Dispose(); trace = null;
+            bodyDeliveryTrace?.Dispose(); bodyDeliveryTrace = null;
             bool completed = started && string.IsNullOrEmpty(failure) && metrics.simulationSeconds + .000001 >= duration;
             var report = new Report { unity = Application.unityVersion, error = failure, completed = completed,
+                balanceEvidence = balanceEvidence, traceSamples = traceSamples,
+                bodyRequestsRecorded = bodyRequestsRecorded, bodyResponsesRecorded = bodyResponsesRecorded,
+                bodyRequestAccountingComplete = bodyRequestsRecorded > 0 && bodyRequestsRecorded == bodyResponsesRecorded,
+                physicalTraceComplete = started && traceSamples == balanceEvidence.completedSteps + 1 &&
+                    balanceEvidence.completedSteps == metrics.samples && balanceEvidence.lastPhysicsStep == world.physicsSteps,
+                physicalBalanceErrorObserved = balanceEvidence.maximumBalanceError > 0,
                 operatorStarted = started, finite = metrics.finite && world.Avatar.IsFinite(), metrics = metrics,
                 motorPacketsReceived = world.motorPacketsReceived, motorPacketsDuringTrial = world.motorPacketsReceived-packetsAtStart,
                 maximumBodyRequestSeconds = world.MaximumBodyRequestSeconds, bodyFramesAccepted = world.bodyFramesAccepted,
@@ -133,7 +219,7 @@ namespace Nre.UnityWorld
                 freshMotorObserved = world.motorPacketsReceived-packetsAtStart >= 2,
                 disconnectedAtCompletion = !world.Connected, worldLeaseReleaseAccepted = world.LeaseReleaseAccepted,
                 pausedAtCompletion = !world.Running };
-            report.integrationChecksPassed = completed && report.finite && report.bodyFeedbackObserved &&
+            report.integrationChecksPassed = completed && report.finite && report.physicalTraceComplete && report.bodyRequestAccountingComplete && report.bodyFeedbackObserved &&
                 report.freshMotorObserved && report.retinalFramesAccepted > 0 && report.disconnectedAtCompletion &&
                 report.worldLeaseReleaseAccepted && report.pausedAtCompletion;
             report.standingCriterionMet = report.integrationChecksPassed && metrics.StandingCriterionMet;
@@ -147,15 +233,32 @@ namespace Nre.UnityWorld
         }
 
         [Serializable] sealed class TraceSample {
+            public string schemaVersion = "standing-trace-v2";
+            public bool initialObservation, motorAppliedForThisStep;
             public double simulationSeconds; public long physicsStep, bodyFramesAccepted, bodySpikesGenerated, retinalFramesAccepted;
             public bool legActuationApplied; public MotorFrame motor, observedMotor; public BodyFrame body;
             public float motorAgeSeconds, bodyRequestSeconds;
+        }
+        [Serializable] sealed class BodyDeliverySample {
+            public string schemaVersion = "standing-body-delivery-v1", stage, requestJson, responseJson;
+            public long requestSequence, samplePhysicsStep, observedPhysicsStep, httpStatus;
+            public double realtimeSeconds;
+            public bool transportSuccess;
         }
         [Serializable] sealed class Progress {
             public double simulationSeconds, durationSeconds, standingSeconds, longestStandingSeconds;
             public long stepsWithLegActuation, bodyFramesAccepted, bodySpikesGenerated, retinalFramesAccepted, fallEvents, recoveries;
         }
         [Serializable] public sealed class Report {
+            public string observationVersion = StandingBalanceEvidence.Version;
+            public string motorPath = "legacy-population-command";
+            public StandingBalanceEvidence balanceEvidence;
+            public long traceSamples;
+            public long bodyRequestsRecorded, bodyResponsesRecorded;
+            public bool bodyRequestAccountingComplete;
+            public bool physicalTraceComplete, physicalBalanceErrorObserved;
+            public bool neuronalBalanceDetectionVerified = false, correctiveMuscleCausalityVerified = false;
+            public bool directMotorAxonControlAssessed = false;
             public string unity, error; public StandingTrialMetrics metrics;
             public bool completed, operatorStarted, finite, integrationChecksPassed, standingCriterionMet, weightTransferObserved;
             public bool recoveryObserved, recoveryCriterionMet;

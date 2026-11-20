@@ -78,6 +78,7 @@ public sealed class WorldController:MonoBehaviour {
  void StepCore(){
   if(DiagnosticMode&&!IsolatedQualification)throw new InvalidOperationException("Diagnostic commands cannot enter live operation.");
   if(!IsolatedQualification)Avatar.muscles.RequireLivePolicy();
+  if(Trial!=null&&!Trial.BeforeStep(this))return;
   MotorFrame command=DiagnosticMode?DiagnosticCommand:Connected&&motor.IsAuthorized()?motor:new MotorFrame();
   command=command??new MotorFrame();
   LastAppliedCommand=command;LegActuationApplied=false;
@@ -149,7 +150,10 @@ public sealed class WorldController:MonoBehaviour {
  bool CanSend()=>Running&&Connected&&Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f;
  IEnumerator BodyLoop(){while(true){yield return new WaitForSecondsRealtime(.05f);if(!CanSend())continue;
   var frame=BodyFrame.Capture(Avatar,++sequence);
-  using(var request=JsonPost(brain+"/api/v1/admin/input/body-frame",JsonUtility.ToJson(frame))){float sentAt=Time.realtimeSinceStartup;yield return request.SendWebRequest();LastBodyRequestSeconds=Time.realtimeSinceStartup-sentAt;MaximumBodyRequestSeconds=Mathf.Max(MaximumBodyRequestSeconds,LastBodyRequestSeconds);Count(request,false);}
+  long sampleStep=physicsSteps;string bodyJson=JsonUtility.ToJson(frame);
+  if(Trial!=null&&!Trial.RecordBodyRequest(this,sampleStep,frame.sequence,bodyJson))continue;
+  using(var request=JsonPost(brain+"/api/v1/admin/input/body-frame",bodyJson)){float sentAt=Time.realtimeSinceStartup;yield return request.SendWebRequest();LastBodyRequestSeconds=Time.realtimeSinceStartup-sentAt;MaximumBodyRequestSeconds=Mathf.Max(MaximumBodyRequestSeconds,LastBodyRequestSeconds);Count(request,false);
+   Trial?.RecordBodyResponse(this,sampleStep,frame.sequence,request.result==UnityWebRequest.Result.Success,request.responseCode,request.downloadHandler.text);}
   if(!CanSend())continue;
   foreach(var link in Avatar.links.Values.ToArray()){
    if(link.sensor.force<=0||!CanSend())continue;

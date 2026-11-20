@@ -1,5 +1,13 @@
 # Opposing head capture: preserved failure and analysis repair
 
+Launched package: `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6`,
+frozen at `44199c0b526a8b7f863697a5bcd4fc5d92a92f4a`. Frozen preflight and both
+initial 2,184-file copies plus manifest verify. Interactive task
+`DNNE-Head-Turn-Reanalysis-9abff43daf94` was started. No post-launch output,
+status or process has been inspected. Await Paul's final backup/footer; no
+passing test, corrected accounting or new physiological result is inferred.
+This supersedes the authoring-only statement at the end of this document.
+
 Paul reported the final FAILED footer for `head-turn-afferent-20261120-2e0ed3`.
 Both complete 2,933-file copies, original Git source at
 `5f3887d489c36b67012700bc96012b195f9fc686`, compiled binaries, numerical/runtime

@@ -1,5 +1,17 @@
 # DNNE continuation — 20 November 2026
 
+## Saved-data workflow launched
+
+Package `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6` is frozen at
+pushed `44199c0b526a8b7f863697a5bcd4fc5d92a92f4a`. Frozen preflight passed;
+both initial 2,184-file copies plus manifest verify. Interactive task
+`DNNE-Head-Turn-Reanalysis-9abff43daf94` launched its independent visible window.
+It runs 37 measurement tests, 40 analytic controls and reanalysis of the existing
+2,654,208 sensory steps, with no sensory/ODE/Unity rerun. Exactly ONE report is
+pending: `2859f6`. No post-launch output/status/process has been inspected.
+Await the final backup/footer without monitoring. Original `2e0ed3` remains
+FAILED and fully reviewed. This supersedes preparation-only notes below.
+
 ## Opposing-head failure reviewed; saved-data retry authored
 
 Paul reported `2e0ed3` complete. Both 2,933-file copies, source/runtime and

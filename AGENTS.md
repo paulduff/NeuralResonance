@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 20 November: `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6`
+is frozen at pushed `44199c0b526a8b7f863697a5bcd4fc5d92a92f4a`. Frozen read-only
+preflight and both initial 2,184-file copies plus manifest verify. Interactive
+task `DNNE-Head-Turn-Reanalysis-9abff43daf94` launched the visible 37 measurement /
+40 analytic controls and saved-data analysis. It does not rerun the sensory model
+or execute Unity. Exactly ONE final report is pending: `2859f6`. No post-launch
+status/output/process has been inspected. Await Paul's final backup/footer with
+no monitoring or duplicate launches. Launch establishes no passing result.
+Original `2e0ed3` is fully reviewed and remains FAILED. The goal stays active.
+This supersedes preparation/no-pending statements below.
+
 20 November update: Paul reported the final FAILED footer for opposing-head
 `2e0ed3`. Its full 2,933-file copies, source/runtime/binaries, 212 C# and 32
 analytic controls verify; the four-file review is D: verified. All six captures

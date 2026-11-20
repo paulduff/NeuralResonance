@@ -34,8 +34,8 @@ public sealed class WorldController:MonoBehaviour {
  public MotorFrame DiagnosticCommand;public bool DiagnosticMode;
  object physicalSampleOwner;
  void Awake(){
-  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
-  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify"}.Any(flag=>Argument(flag)!=null);
+  if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify","--neuronal-muscle-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
+  IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify","--neuronal-muscle-qualify"}.Any(flag=>Argument(flag)!=null);
   Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-9.81f,0);Time.fixedDeltaTime=StepSeconds;
   Avatar=ArticulatedAvatar.Create(avatarPrefab);view=Camera.main;previewTarget=new Vector3(0,.85f,0);
   if(Argument("--muscles")!=null)Avatar.EnableMuscles();
@@ -75,7 +75,23 @@ public sealed class WorldController:MonoBehaviour {
    throw new InvalidOperationException("Invalid isolated physical sample owner.");
   StepCore();
  }
+ internal void ClaimMusclePathOwnership(object owner,float stepSeconds){
+  if(owner==null||physicalSampleOwner!=null||!IsolatedQualification||Connected||Running||physicsSteps!=0||Argument("--neuronal-muscle-qualify")==null)
+   throw new InvalidOperationException("Direct tendon ownership requires a fresh paused isolated body and its explicit mode.");
+  if(float.IsNaN(stepSeconds)||float.IsInfinity(stepSeconds)||stepSeconds<=0||stepSeconds>StepSeconds)throw new ArgumentException("Invalid physical step.");
+  physicalSampleOwner=owner;Avatar.EnableDirectTendonForces(stepSeconds);Status="Paused · declared direct tendon mechanics";
+ }
+ internal void StepForMusclePaths(object owner,Action applyForces){
+  if(owner==null||!ReferenceEquals(owner,physicalSampleOwner)||applyForces==null||!IsolatedQualification||Connected||Running||!Avatar.DirectTendonForcesEnabled)
+   throw new InvalidOperationException("Invalid direct tendon step owner.");
+  LastAppliedCommand=new MotorFrame();LegActuationApplied=false;
+  float dt=Avatar.PhysicalStepSeconds;
+  Avatar.BeginStep();applyForces();Physics.Simulate(dt);physicsSteps=checked(physicsSteps+1);
+  Avatar.AdvancePhysiology(dt);Avatar.SynchronizeSkin();
+  if(!Avatar.IsFinite())throw new InvalidOperationException("Nonfinite direct tendon body state.");
+ }
  void StepCore(){
+  if(Argument("--neuronal-muscle-qualify")!=null)throw new InvalidOperationException("Direct tendon mode requires its declared owner; no legacy stepping.");
   if(DiagnosticMode&&!IsolatedQualification)throw new InvalidOperationException("Diagnostic commands cannot enter live operation.");
   if(!IsolatedQualification)Avatar.muscles.RequireLivePolicy();
   if(Trial!=null&&!Trial.BeforeStep(this))return;
@@ -99,7 +115,7 @@ public sealed class WorldController:MonoBehaviour {
   GUI.Box(new Rect(16,16,560,168),"NRE · Unity physical world");
   GUI.Label(new Rect(32,44,530,24),Status);
   bool ready=!connecting&&(!Connected||(Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f));
-  GUI.enabled=ready&&physicalSampleOwner==null&&Argument("--physical-sample-qualify")==null;
+  GUI.enabled=ready&&physicalSampleOwner==null&&Argument("--physical-sample-qualify")==null&&Argument("--neuronal-muscle-qualify")==null;
   if(Trial!=null)GUI.enabled=ready&&Connected&&!Trial.Finished;
   if(GUI.Button(new Rect(32,75,110,30),Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE population commands":"Live · isolated mechanics preview"):"Paused";}
   GUI.enabled=!connecting&&(Trial==null||!Trial.Finished);
@@ -111,7 +127,7 @@ public sealed class WorldController:MonoBehaviour {
   GUI.Label(new Rect(32,140,525,24),$"Body accepted: {bodyFramesAccepted}  |  Retina accepted: {retinalFramesAccepted}  |  Rejected: {rejectedFrames}");
   if(Trial!=null)GUI.Label(new Rect(32,190,750,24),Trial.Caption+" · population commands; direct motor-axon control unqualified");
   var state=Avatar.physiology.State;
-  string plant=Avatar.MusclesEnabled?"38 Avatar muscles with measured joint feedback":"simplified joint torques";
+  string plant=Avatar.DirectTendonForcesEnabled?"Declared direct tendon forces · neural source unqualified":Avatar.MusclesEnabled?"38 Avatar muscles with measured joint feedback":"simplified joint torques";
   GUI.Box(new Rect(16,Screen.height-100,800,85),$"DNNE = brain · Avatar = body/nervous system · Unity = environment\nEnergy: {state.StoredEnergyJoules/1000000:F3} MJ · Hydration: {state.HydrationFraction:P1} · Tissue: {state.TissueIntegrityFraction:P2}\nSimulation physiology; {plant}; standing/walking unqualified.\nAvatar: Mike Alger · CC BY 4.0 (source and license in the project credits)");
  }
  void PositionCamera(Vector3 p){view.transform.position=p;view.transform.LookAt(previewTarget);}

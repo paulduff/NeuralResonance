@@ -5,6 +5,18 @@ tests and DNNE receptor paths before adding a replacement. The operator explicit
 requires this review because the existing Avatar contains substantial prior work.
 Unity provides a dynamic physical solver; it does not replace DNNE's authority.
 
+20 November candidate: `ArticulatedMusclePathOwner` reuses the existing canonical
+`AvatarMusclePath` geometry for all 38 currently exposed Unity muscle groups.
+An explicit isolated owner disables legacy joint drives and accepts declared
+tendon forces at physical attachment points. Default live control is unchanged.
+Contact impulse conversion and physiology follow the owner's declared physical
+step; stale legacy muscle telemetry is omitted in that mode. Actual dynamic
+muscle state still needs publishing by the future `AvatarCausalMotorPlant`
+bridge. No attachment manifest, host bridge or native qualification exists yet;
+this is an API-compiled authoring candidate, not migrated neuronal control.
+The four axial muscles absent from the current Unity rig remain absent.
+See `DNNE_Checkpoint_2026-11-20_Evening.md` for preservation and next gates.
+
 The 6 November motor-path audit found that the existing population command and
 joint-error paths do not preserve cell-level motor authority. The isolated
 replacement transport is documented in `DNNE_Motor_Axon_Transport_2026-11-06.md`;

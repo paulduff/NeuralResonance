@@ -1,5 +1,23 @@
 # DNNE continuation — 20 November 2026
 
+## Evening stopping point
+
+Paul requested notes and a pause for tomorrow. See
+`DNNE_Checkpoint_2026-11-20_Evening.md` for the authoritative handoff. Reanalysis
+`2859f6` is now fully reviewed: 37 C# and 40 analytic controls passed, both
+2,776-file copies verify and saved input/state/packet accounting passes across
+all 2,654,208 steps. Negative yaw emitted one nerve event at each resolution;
+quiet and positive yaw emitted none. Independent active trajectory accuracy,
+physiological firing and Avatar balance remain unqualified. The four-file
+review is D: verified. No reports remain pending.
+
+The full-Avatar tendon-force owner is checkpointed as unfinished isolated
+authoring, with all 34 Unity runtime C# sources API-compiled and the exact
+sources/build evidence backed up (57 files plus manifest). No native execution
+or new tests occurred. Its host bridge, anatomical declarations and native
+qualification remain open. Commit/push and pause; do not launch anything until
+Paul resumes. Earlier launch and active-goal entries below are historical.
+
 ## Saved-data workflow launched
 
 Package `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6` is frozen at

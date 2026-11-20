@@ -1,5 +1,25 @@
 # Avatar and environment work
 
+EVENING PAUSE — 20 November: Paul requested notes for tomorrow and a pause.
+The authoritative handoff is `docs/DNNE_Checkpoint_2026-11-20_Evening.md`.
+Saved-head reanalysis `2859f6` is fully reviewed: both 2,776-file copies,
+source/runtime/binaries, exact 37 C# / 40 analytic cases and saved accounting
+verify. Six captures retain 2,654,208 steps: quiet/opposite yaw have zero nerve
+events, negative yaw has one at each resolution. Original `2e0ed3` stays FAILED.
+Independent active trajectory accuracy, physiological firing and balance remain
+unqualified. The four-file review has a verified D: backup. NO final reports
+remain pending; no new test/model was launched in the review/closing turn.
+
+An unfinished full-Avatar tendon-force owner is checkpointed behind explicit
+isolated `--neuronal-muscle-qualify` ownership. All 34 Unity runtime sources
+compile against installed Unity assemblies (zero errors, seven existing
+reflection-field warnings); exact sources/evidence have a verified 57-file D:
+backup. No Unity editor/player or native force test ran. The bridge, complete
+physical fingerprint, declared attachment anatomy and native qualification are
+still required. No live host selects it. Commit/push this checkpoint, pause the
+goal and stop. Resume only on Paul's instruction. This supersedes ALL earlier
+pending-report and active-goal statements below, which are historical.
+
 LATEST LAUNCH — 20 November: `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6`
 is frozen at pushed `44199c0b526a8b7f863697a5bcd4fc5d92a92f4a`. Frozen read-only
 preflight and both initial 2,184-file copies plus manifest verify. Interactive

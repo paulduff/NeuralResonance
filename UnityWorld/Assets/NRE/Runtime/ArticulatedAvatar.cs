@@ -8,6 +8,8 @@ public sealed class ArticulatedAvatar {
  public readonly Dictionary<string,Link> links=new Dictionary<string,Link>();
  public readonly BodyPhysiology physiology=new BodyPhysiology();
  public readonly MusclePlant muscles;public bool MusclesEnabled {get;private set;}
+ public bool DirectTendonForcesEnabled {get;private set;}
+ public float PhysicalStepSeconds {get;private set;}=WorldController.StepSeconds;
  public long torqueClippedAxes;public float maximumRequestedTorqueNewtonMeters,maximumAppliedTorqueNewtonMeters;
  ArticulatedAvatar(double diagnosticStrengthScale){muscles=new MusclePlant(diagnosticStrengthScale);}
  public ArticulationBody pelvis;public GameObject visual;public float totalMass;public float initialPelvisHeight;
@@ -79,11 +81,23 @@ public sealed class ArticulatedAvatar {
  // PhysX integrates spring/damper drives with the joint constraint solve.
  // Explicit -damping*velocity torque was unstable for low-inertia forearms.
  static ArticulationDrive Drive(float lower,float upper,float limit)=>new ArticulationDrive{lowerLimit=lower,upperLimit=upper,stiffness=8,damping=2.5f,forceLimit=limit,target=0};
- public void EnableMuscles(bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true){MusclesEnabled=true;muscles.PreserveActiveCapacity=preserveActiveCapacity;muscles.PreserveVelocityCapacity=preserveVelocityCapacity;foreach(var p in MuscleProfiles.All){var link=links[p.Joint];var drive=JointDrive(link,p.Axis);
+ public void EnableMuscles(bool preserveActiveCapacity=false,bool preserveVelocityCapacity=true){if(DirectTendonForcesEnabled)throw new InvalidOperationException("Legacy muscle drives cannot replace direct tendon ownership.");MusclesEnabled=true;muscles.PreserveActiveCapacity=preserveActiveCapacity;muscles.PreserveVelocityCapacity=preserveVelocityCapacity;foreach(var p in MuscleProfiles.All){var link=links[p.Joint];var drive=JointDrive(link,p.Axis);
   drive.stiffness=(float)p.Stiffness;drive.damping=(float)p.Damping;drive.target=(float)p.Rest*Mathf.Rad2Deg;
   if(p.Axis==0)link.body.xDrive=drive;else if(link.coordinates.SecondPhysicalAxis==1)link.body.yDrive=drive;else link.body.zDrive=drive;
  }}
  public static ArticulationDrive JointDrive(Link link,int axis)=>axis==0?link.body.xDrive:link.coordinates.SecondPhysicalAxis==1?link.body.yDrive:link.body.zDrive;
+ internal void EnableDirectTendonForces(float stepSeconds){
+  if(DirectTendonForcesEnabled)throw new InvalidOperationException("Direct tendon mechanics already claimed.");
+  if(!Finite(stepSeconds)||stepSeconds<=0||stepSeconds>WorldController.StepSeconds)throw new ArgumentException("Invalid direct tendon physical clock.");
+  foreach(var link in links.Values){
+   for(int axis=0;axis<link.dofs;axis++){
+    var drive=JointDrive(link,axis);drive.stiffness=0;drive.damping=0;drive.forceLimit=0;
+    if(axis==0)link.body.xDrive=drive;else if(link.coordinates.SecondPhysicalAxis==1)link.body.yDrive=drive;else link.body.zDrive=drive;
+   }
+   if(link.dofs>0)link.body.jointForce=NativeState(link,0);
+  }
+  PhysicalStepSeconds=stepSeconds;DirectTendonForcesEnabled=true;
+ }
  public double BoundMuscleTarget(string name,int axis,double target){var drive=JointDrive(links[name],axis);return Math.Clamp(target,drive.lowerLimit*Mathf.Deg2Rad,drive.upperLimit*Mathf.Deg2Rad);}
  public float Angle(string name,int index=0){var link=links[name];var state=link.body.jointPosition;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
  public float Speed(string name,int index=0){var link=links[name];var state=link.body.jointVelocity;link.coordinates.ValidateNativeCount(state.dofCount);return state[link.coordinates.NativeIndex(index)];}
@@ -91,7 +105,7 @@ public sealed class ArticulatedAvatar {
   link.coordinates.ValidateNativeCount(link.body.dofCount);var values=link.coordinates.Pack(first,second);
   return values.Length==1?new ArticulationReducedSpace(values[0]):values.Length==3?new ArticulationReducedSpace(values[0],values[1],values[2]):new ArticulationReducedSpace();
  }
- public void SetCalibrationPose(Link link,float first,float second=0){if(link.dofs==0)return;
+ public void SetCalibrationPose(Link link,float first,float second=0){if(DirectTendonForcesEnabled)throw new InvalidOperationException("Direct tendon ownership cannot reset the physical pose.");if(link.dofs==0)return;
   link.body.jointPosition=NativeState(link,first,second);link.body.jointVelocity=NativeState(link,0);link.body.jointForce=NativeState(link,0);
  }
  float Load(string name)=>links[name].sensor.force;
@@ -101,6 +115,7 @@ public sealed class ArticulatedAvatar {
  }}
  public void SynchronizeSkin(){foreach(var l in links.Values.OrderBy(l=>l.bone.GetComponentsInParent<Transform>().Length)){l.bone.position=l.body.transform.position;l.bone.rotation=l.body.transform.rotation*l.bindRotation;}}
  public void Torques(string name,float first,float second=0,float posturalStiffness=0){var l=links[name];int n=l.body.dofCount;if(n==0)return;
+  if(DirectTendonForcesEnabled)throw new InvalidOperationException("Legacy joint commands cannot enter direct tendon mechanics.");
   if(!MusclesEnabled){var drive=l.body.xDrive;drive.stiffness=8+Mathf.Clamp(posturalStiffness,0,150);l.body.xDrive=drive;}
   maximumRequestedTorqueNewtonMeters=Mathf.Max(maximumRequestedTorqueNewtonMeters,Mathf.Max(Mathf.Abs(first),l.dofs>1?Mathf.Abs(second):0));
   if(Mathf.Abs(first)>l.torqueLimit)torqueClippedAxes++;if(l.dofs>1&&Mathf.Abs(second)>l.torqueLimit)torqueClippedAxes++;
@@ -125,7 +140,7 @@ public sealed class ContactSensor:MonoBehaviour {
   var body=avatar.links[region].body;incomingVelocity=body.linearVelocity;incomingAngular=body.angularVelocity;center=body.worldCenterOfMass;
  }
  void OnCollisionEnter(Collision c)=>Measure(c,true);void OnCollisionStay(Collision c)=>Measure(c,false);
- void Measure(Collision c,bool onset){if(c.contactCount==0)return;var contact=c.GetContact(0);float dt=WorldController.StepSeconds;for(int i=0;i<c.contactCount;i++){var cp=c.GetContact(i);if(cp.normal.y>.5f)supportPoints.Add(cp.point);}
+ void Measure(Collision c,bool onset){if(c.contactCount==0)return;var contact=c.GetContact(0);float dt=avatar.PhysicalStepSeconds;for(int i=0;i<c.contactCount;i++){var cp=c.GetContact(i);if(cp.normal.y>.5f)supportPoints.Add(cp.point);}
   var surfaceVelocity=c.rigidbody!=null?c.rigidbody.GetPointVelocity(contact.point):Vector3.zero;
   var approach=Mathf.Max(0,-Vector3.Dot(incomingVelocity+Vector3.Cross(incomingAngular,contact.point-center)-surfaceVelocity,contact.normal));
   impactImpulse+=(float)BodyPhysiology.EstimateImpact(onset&&!wasTouching,approach,c.impulse.magnitude,avatar.totalMass,dt);

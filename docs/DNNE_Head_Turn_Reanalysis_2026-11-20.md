@@ -1,5 +1,26 @@
 # Opposing head capture: preserved failure and analysis repair
 
+## Completed review
+
+Paul reported the final footer for `2859f6`. Both final 2,776-file copies,
+frozen Git source, runtime dependencies, executed binaries and exact inventories
+verify: all 37 C# measurement cases and 40 analytic controls passed. Saved
+accounting reconciles every original input, state and nerve packet across six
+captures containing 2,654,208 steps; all original conservation bounds pass.
+Quiet and positive yaw retain zero events at both resolutions. Negative yaw
+retains one event at each resolution, with original identity and crossing
+brackets preserved. No neuronal model was rerun and no bound was changed.
+
+The completed-only review does not rerun the full accounting or independent
+trajectory comparison. It verifies full bytes/provenance and reconciles saved
+criteria, counts, original limits and emitted events. Independent coupled
+accuracy, calibrated physiological firing, live brain authority and balance
+remain unqualified. Original `2e0ed3` remains FAILED. Reviewer:
+`tools/review-head-turn-reanalysis-result.py`. Its four-file output at
+`artifacts/head-turn-reanalysis-20261120-2859f6-review` has a verified copy at
+`D:/DNNE-desktop-runs/UnityWorld/head-turn-reanalysis-20261120-2859f6-review`.
+No report remains pending. The launch/authoring notes below are historical.
+
 Launched package: `D:/DNNE-build-work/head-turn-reanalysis-20261120-2859f6`,
 frozen at `44199c0b526a8b7f863697a5bcd4fc5d92a92f4a`. Frozen preflight and both
 initial 2,184-file copies plus manifest verify. Interactive task

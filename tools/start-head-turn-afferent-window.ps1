@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.IsolatedHeadTurnAfferent -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 212 -or $configuration.ExpectedAnalyticControls -ne 8 -or $configuration.ExpectedSourceSteps -ne 2654208 -or $configuration.IndependentCoupledTrajectoryQualified -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected prescribed head/sensory configuration.'}
+if(-not $configuration.IsolatedHeadTurnAfferent -or -not $configuration.NoLiveMonitoring -or $configuration.ExpectedTestCases -ne 212 -or $configuration.ExpectedAnalyticControls -ne 32 -or $configuration.ExpectedSourceSteps -ne 2654208 -or $configuration.IndependentCoupledTrajectoryQualified -or $configuration.AfferentFiringQualified -or $configuration.LiveSelectionChanged -or $configuration.PhysiologyQualified -or $configuration.AvatarRecoveryAssessed){throw 'Unexpected prescribed head/sensory configuration.'}
 function Extended-Path([string]$Path){
  if($Path.StartsWith('\\?\')){return $Path}
  if($Path.StartsWith('\\')){return '\\?\UNC\'+$Path.Substring(2)}
@@ -62,7 +62,7 @@ function Capture-Binaries([string]$Assembly,[string]$Name){
  $entries | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
  return $entries
 }
-$status=[ordered]@{PrescribedDiagnosticMotion=$true;ConnectedAccountingPassed=$false;NativeCaptureAttempted=$false;AnalyticControlsPassed=$false;Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;ComponentChecksPassed=$false;
+$status=[ordered]@{PythonRuntimeChanged=$true;NumericalLibrariesByteUnchanged=$false;PrescribedDiagnosticMotion=$true;ConnectedAccountingPassed=$false;NativeCaptureAttempted=$false;AnalyticControlsPassed=$false;Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;ComponentChecksPassed=$false;
  TestExecutionAttempted=$false;IndependentCoupledTrajectoryQualified=$false;
  StationaryInitializationQualified=$false;SpatialGeometryCalibrated=$false;AfferentFiringQualified=$false;
  LiveBrainAccessed=$false;OldSavesLoaded=$false;NativeBodyExecuted=$false;PhysiologyQualified=$false;AvatarRecoveryAssessed=$false;FullUnitSuitePassed=$false}
@@ -78,9 +78,9 @@ try{
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle='DNNE opposing head turns and sensory nerve'
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '212 component cases and 8 analytic controls, then six native sensory captures: stationary head and opposite 0.1 radian yaw turns at two neuronal resolutions. 2,654,208 source steps; all states, fluxes, head motion and original nerve packets retained.'
+ Write-Host '212 component cases and 32 analytic controls, then six native sensory captures: stationary head and opposite 0.1 radian yaw turns at two neuronal resolutions. 2,654,208 source steps; all states, fluxes, head motion and original nerve packets retained.'
  Write-Host 'Motion is prescribed diagnostic input. Observed firing is reported without tuning thresholds or claiming independent numerical/physiological qualification. This window stays open after its final backup.'
- Save-Status 'preflight';Assert-Package;Python-Stage 'preflight'
+ Save-Status 'preflight';Assert-Package;Python-Stage 'preflight';$status.NumericalLibrariesByteUnchanged=$true
  $build=Join-Path $package 'source/artifacts/head-turn-afferent-tests'
  Save-Status 'build-tests'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'
@@ -102,7 +102,7 @@ try{
  $env:NRE_DESCENDING_ANATOMY_EVIDENCE_DIR=Join-Path $package 'descending-evidence'
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
  Python-Stage 'check-tests';$status.ComponentChecksPassed=$true;$status['PassedFocusedTests']=212
- Save-Status 'analytic-controls';Python-Stage 'controls';$status.AnalyticControlsPassed=$true
+ Save-Status 'analytic-controls';Python-Stage 'controls';$status.AnalyticControlsPassed=$true;$status['PassedAnalyticControls']=32
  Save-Status 'head-turn-sensory-capture';$status.NativeCaptureAttempted=$true
  Invoke-Logged $configuration.DotnetExecutable @($probe,'--head-turn-afferent',(Join-Path $package 'connected-input.json'),(Join-Path $package 'study')) 'study.log'
  Save-Status 'head-turn-sensory-accounting';Python-Stage 'analyse'

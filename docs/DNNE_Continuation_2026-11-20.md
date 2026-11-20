@@ -1,5 +1,13 @@
 # DNNE continuation — 20 November 2026
 
+Preparation update: the first preparation attempt stopped before package
+creation because the harness changed three Python runtime binaries. Their
+exact old/new hashes are now declared; the other 2,433 numerical/runtime files
+remain identical. The new package will retain both environment manifests and
+run all 24 previous numerical-analysis controls plus the eight new controls,
+for **32 analytic controls**, with the 212 C# cases. No old result or limit is
+changed and no test/model ran inline. This supersedes the eight-only count below.
+
 Paul completed the harness update and explicitly resumed the goal. This
 supersedes the harness pause in `DNNE_Checkpoint_2026-11-20.md`. The full
 biological DNNE/Avatar/World objective remains active; LM/Entity/Dyad are parked

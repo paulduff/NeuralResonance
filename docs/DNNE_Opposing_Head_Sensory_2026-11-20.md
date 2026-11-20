@@ -1,5 +1,15 @@
 # Opposing prescribed head turns and connected sensory response
 
+Runtime update: preparation stopped before creating a package because the
+harness replaced `python.exe`, `python3.dll` and `python312.dll` despite retaining
+the same Python version string. All other 2,433 recorded files, including NumPy
+2.2.6 and SciPy 1.16.3, are byte unchanged. The new gate retains the old manifest,
+records the exact three before/after hashes and freezes the new environment.
+It rejects any other change. All 24 prior numerical-analysis controls will run
+again under the new runtime alongside the eight new input controls: **32 analytic
+controls in total**, before capture. No old numerical result is re-labelled as
+having used the new runtime. No model or test ran during this preparation stop.
+
 The completed midpoint study `e503fd` passes its original numerical limits but
 emits no nerve events. Its original head clip mostly inhibited the declared
 bundle. This experiment supplies stationary and opposite head movements through

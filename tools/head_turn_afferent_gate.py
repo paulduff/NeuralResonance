@@ -14,6 +14,8 @@ import declared_descending_gate as prior
 from head_turn_afferent_protocol import protocol
 import ast
 import unittest
+import importlib
+from canal_midpoint_trajectory_gate import controls_inventory as prior_control_methods, CONTROL_CLASSES
 from declared_descending_evidence import audit as source_audit
 import hashlib
 import difflib
@@ -36,6 +38,23 @@ PRESERVED=sorted((set(prior.PRESERVED)|set(prior.CHANGED)|{
     *('tests/NeuralResonanceEngine.DNNE.Tests/'+name+'.cs' for name in COUNTS),
 })-{PROGRAM})
 DISPATCH='if (args.Length == 3 && args[0] == "--head-turn-afferent")\n{\n    HeadTurnAfferentStudy.Run(args[1], args[2]);\n    return;\n}\n\n'
+RUNTIME_CHANGES={
+    'python.exe':('9165BC4B4BD49BF9942A5E7B42A171FD46A71B77CA77A1CF574A51657C1B7BB4','5699BDFD4B6924C69D0A1F6B1D75D7760698567CE81B92D4FCC8BB2AF4EEBA84'),
+    'python3.dll':('A188F3BB45550DE223D03B7B1DBB670E2FC42311D331CCBCC35AC6D05A268DB6','93DF6426868ADF52D9980A6526ED44EA28786F859AA0FA8CCB68D1EC6AA00DC0'),
+    'python312.dll':('35894502CD9EDD97145783C67F263397E0D5FF0503C6B141B6CF4F85A71259BB','091CFAFFBA5DA38CEA075B310399799BC2025A365F6ED266D94C92E6FC91F3C3')}
+
+
+def runtime_transition(before,after):
+    assert {k:v for k,v in before.items() if k!='files'}=={k:v for k,v in after.items() if k!='files'}
+    old={r['path']:r['sha256'] for r in before['files']};new={r['path']:r['sha256'] for r in after['files']}
+    assert len(old)==len(before['files'])==len(new)==len(after['files'])==2436 and old.keys()==new.keys()
+    changed=[dict(path=k,before=old[k],after=new[k]) for k in sorted(old) if old[k]!=new[k]]
+    assert len(changed)==3
+    assert {Path(r['path']).name:(r['before'],r['after']) for r in changed}==RUNTIME_CHANGES
+    expected=Path('C:/Users/duff_/.cache/codex-runtimes/codex-primary-runtime/dependencies/python')
+    assert all(Path(r['path']).parent==expected for r in changed)
+    return dict(pythonRuntimeChanged=True,numericalLibrariesByteUnchanged=True,changed=changed,
+        unchangedFiles=2433,previousControlsReused=False,requiredAnalyticControls=32)
 
 
 def declared_changes(original,candidate):
@@ -50,7 +69,8 @@ def control_methods(source):
     cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='HeadTurnInputControls')
     methods=sorted('check_head_turn_input_evidence.HeadTurnInputControls.'+n.name for n in cls.body if isinstance(n,ast.FunctionDef) and n.name.startswith('test_'))
     assert len(methods)==8
-    return methods
+    result=sorted(prior_control_methods(source)+methods);assert len(result)==len(set(result))==32
+    return result
 
 
 def inventory_methods(source):
@@ -93,7 +113,12 @@ def prepare(review_folder):
     evidence=['managed-runtime-before.json','preparation-environment.json','analysis.json']
     h.verify(NATIVE,evidence+['source/'+n for n in PRESERVED]+['source/'+n for n in [PROGRAM]])
     assert h.digest(NATIVE/'analysis.json')==review['analysisSha256']
-    assert base.environment()==read(NATIVE/'preparation-environment.json')
+    environment=base.environment();transition=runtime_transition(read(NATIVE/'preparation-environment.json'),environment)
+    with ZipFile(NATIVE/'source.zip') as archive:
+        original_python=sorted(n for n in archive.namelist() if n.endswith('.py'))
+    h.verify(NATIVE,['source.zip']+['source/'+n for n in original_python])
+    for name in original_python:
+        assert (ROOT/name).read_text(encoding='utf-8-sig')==h.io(NATIVE/'source'/name).read_text(encoding='utf-8-sig'),name
     for name in PRESERVED:
         assert (ROOT/name).read_text(encoding='utf-8-sig')==h.io(NATIVE/'source'/name).read_text(encoding='utf-8-sig'),name
     declared_changes(NATIVE/'source',ROOT)
@@ -127,7 +152,10 @@ def prepare(review_folder):
     copy(review_folder/'review.json','qualified-source-review.json')
     copy(failure_folder/'review.json','failed-reference-review.json');copy(failure_folder/'analysis.json','failed-reference-analysis.json');copy(failure_folder/'failure.json','failed-reference-status.json')
     for name in evidence:
-        copy(NATIVE/name,{'managed-runtime-before.json':'qualified-managed-runtime.json','analysis.json':'qualified-source-analysis.json'}.get(name,name))
+        copy(NATIVE/name,{'managed-runtime-before.json':'qualified-managed-runtime.json','analysis.json':'qualified-source-analysis.json',
+            'preparation-environment.json':'original-preparation-environment.json'}.get(name,name))
+    save(package/'preparation-environment.json',environment)
+    save(package/'runtime-transition.json',transition)
     copy(midpoint_review/'review.json','qualified-midpoint-review.json')
     for name in midpoint_files:
         copy(MIDPOINT/name,{'connected-input.json':'qualified-connected-input.json','analysis.json':'qualified-midpoint-analysis.json'}.get(name,name))
@@ -138,12 +166,13 @@ def prepare(review_folder):
     changes=declared_changes(package/'declared-original',package/'source')
     save(package/'provenance.json',dict(declaredChanges=changes,originalRevision=NATIVE_REVISION,originalManifestSha256=review['manifestSha256'],
         preservedSources=[dict(path=n,sha256=h.digest(NATIVE/'source'/n)) for n in PRESERVED],
+        preservedNumericalPython=[dict(path=n,sha256=h.digest(NATIVE/'source'/n)) for n in original_python],
         pendingCapturesRead=False,neuronalEquationsChanged=False,primaryOutputAnatomyChanged=False,prescribedHeadInputChanged=True,modelsExecutedDuringPreparation=False,testsExecutedDuringPreparation=False))
     files=[dict(Path=f.relative_to(h.io(package)).as_posix(),Sha256=h.digest(f)) for f in sorted(h.io(package).rglob('*')) if f.is_file()]
     dotnet=shutil.which('dotnet');assert dotnet
     save(package/'configuration.json',dict(Revision=revision,PackageFiles=files,BackupDestination=str(backup),
         DotnetExecutable=dotnet,DotnetExecutableSha256=h.digest(dotnet),PythonExecutable=sys.executable,PythonExecutableSha256=h.digest(sys.executable),
-        IsolatedHeadTurnAfferent=True,ExpectedSourceSteps=2654208,ExpectedAnalyticControls=8,ExpectedAnalyticMethods=control_methods(ROOT),NoLiveMonitoring=True,ExpectedTestCases=212,ExpectedClassCounts=COUNTS,
+        IsolatedHeadTurnAfferent=True,ExpectedSourceSteps=2654208,ExpectedAnalyticControls=32,ExpectedAnalyticMethods=control_methods(ROOT),NoLiveMonitoring=True,ExpectedTestCases=212,ExpectedClassCounts=COUNTS,
         CompletePartitionEvidenceRequired=True,UpstreamInputsAreFixtures=True,MotorFiringQualified=False,DescendingMotorTrajectoryAccuracyQualified=False,
         ExpectedTestMethods=methods,TestFilter='|'.join('FullyQualifiedName~'+c for c in COUNTS),
         IndependentCoupledTrajectoryQualified=False,StationaryInitializationQualified=False,SpatialGeometryCalibrated=False,
@@ -174,18 +203,20 @@ def preflight(package):
     assert not any(provenance[k] for k in ('pendingCapturesRead','neuronalEquationsChanged','modelsExecutedDuringPreparation','testsExecutedDuringPreparation'))
     assert {r['path'] for r in provenance['preservedSources']}==set(PRESERVED)
     for row in provenance['preservedSources']:assert h.digest(package/'source'/row['path'])==row['sha256'],row['path']
+    for row in provenance['preservedNumericalPython']:assert h.digest(package/'source'/row['path'])==row['sha256'],row['path']
     for row in cfg['PackageFiles']:assert h.digest(package/row['Path'])==row['Sha256'],row['Path']
     mr=read(package/'qualified-midpoint-review.json')
     assert mr['operatorReportedCompletion'] and mr['sampledContinuousInputAccuracyPassed'] and mr['sourceRevision']==MIDPOINT_REVISION
     assert h.digest(package/'qualified-midpoint-analysis.json')==mr['analysisSha256']
     assert read(package/'connected-input.json')==protocol(read(package/'qualified-connected-input.json'))
-    assert cfg['ExpectedSourceSteps']==2654208 and cfg['ExpectedAnalyticControls']==8
+    assert cfg['ExpectedSourceSteps']==2654208 and cfg['ExpectedAnalyticControls']==32
     assert cfg['ExpectedAnalyticMethods']==control_methods(package/'source')
     assert base.environment()==read(package/'preparation-environment.json')
+    assert runtime_transition(read(package/'original-preparation-environment.json'),read(package/'preparation-environment.json'))==read(package/'runtime-transition.json')
     for directory in read(package/'qualified-managed-runtime.json')['directories']:
         root=h.io(directory['path']);assert {str(f) for f in root.rglob('*') if f.is_file()}=={str(h.io(r['path'])) for r in directory['files']}
         for row in directory['files']:assert h.digest(row['path'])==row['sha256']
-    print('Reviewed midpoint input, original sensory kernels, loaded state, geometry and dependencies preserved; prescribed motion declared. No model/test executed by preflight.',flush=True)
+    print('Reviewed sensory kernels, loaded state, geometry and numerical libraries preserved; three Python runtime replacements explicitly recorded. No model/test executed by preflight.',flush=True)
 
 
 def runtime(package):
@@ -204,10 +235,12 @@ def check_tests(package):
 def controls(package):
     from check_head_turn_input_evidence import HeadTurnInputControls
     suite=unittest.defaultTestLoader.loadTestsFromTestCase(HeadTurnInputControls)
+    for module,(class_name,_) in CONTROL_CLASSES.items():
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(getattr(importlib.import_module(module),class_name)))
     methods=sorted(t.id() for t in suite)
-    assert methods==read(package/'configuration.json')['ExpectedAnalyticMethods'] and suite.countTestCases()==8
+    assert methods==read(package/'configuration.json')['ExpectedAnalyticMethods'] and suite.countTestCases()==32
     result=unittest.TextTestRunner(verbosity=2).run(suite)
-    evidence=dict(completed=True,passed=result.wasSuccessful() and result.testsRun==8 and not result.skipped,
+    evidence=dict(completed=True,passed=result.wasSuccessful() and result.testsRun==32 and not result.skipped,
         cases=result.testsRun,methods=methods,failures=[(t.id(),text) for t,text in result.failures],
         errors=[(t.id(),text) for t,text in result.errors],skipped=result.skipped)
     save(package/'analytic-controls.json',evidence)

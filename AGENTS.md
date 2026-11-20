@@ -1,5 +1,13 @@
 # Avatar and environment work
 
+Preparation correction: the harness replaced exactly three Python runtime
+binaries while leaving the version string and all 2,433 other dependency files
+unchanged. The initial gate stopped before package creation. The new workflow
+records exact before/after hashes, preserves both manifests and reruns all 24
+prior numerical-analysis controls plus eight new input controls (**32 total**)
+before capture, alongside 212 C# tests. No tests/models have run inline. This
+supersedes eight-only analytic counts below; no new result is yet available.
+
 RESUMED — 20 November after harness update: Paul explicitly continued the goal.
 The harness pause below is revoked. Opposing prescribed head/sensory capture is
 authored: quiet and +/-0.1 radian yaw, 100 ms turn, 18 physical intervals at two

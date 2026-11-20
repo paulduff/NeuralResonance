@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 20 November: `D:/DNNE-build-work/head-turn-afferent-20261120-2e0ed3`
+is frozen at pushed `5f3887d489c36b67012700bc96012b195f9fc686`. Frozen preflight
+and both initial 2,186-file copies plus manifest verify. Interactive task
+`DNNE-Head-Turn-Afferent-05042e48c2e8` started the visible 212 C# / 32 analytic
+controls and six opposing-head sensory captures. Exactly ONE final report is
+pending: `2e0ed3`. No post-launch status/output/process has been inspected.
+Await Paul's final backup/footer without monitoring or duplicate launches.
+No numerical/physiological outcome is inferred from launch. All previous runs,
+including `e503fd`, are reviewed. This supersedes preparation-only/no-pending
+notes below. The goal is active; the harness pause has been revoked.
+
 Preparation correction: the harness replaced exactly three Python runtime
 binaries while leaving the version string and all 2,433 other dependency files
 unchanged. The initial gate stopped before package creation. The new workflow

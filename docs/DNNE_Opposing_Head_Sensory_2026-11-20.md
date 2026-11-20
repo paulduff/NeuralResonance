@@ -1,5 +1,12 @@
 # Opposing prescribed head turns and connected sensory response
 
+Launched: `D:/DNNE-build-work/head-turn-afferent-20261120-2e0ed3`, frozen at
+`5f3887d489c36b67012700bc96012b195f9fc686`. Frozen preflight and both initial
+2,186-file copies plus manifest verify. Visible task
+`DNNE-Head-Turn-Afferent-05042e48c2e8` started; no post-launch output/status/process
+was read. Await the operator's final backup/footer without monitoring. The
+authoring checks below are not a result from this new capture.
+
 Runtime update: preparation stopped before creating a package because the
 harness replaced `python.exe`, `python3.dll` and `python312.dll` despite retaining
 the same Python version string. All other 2,433 recorded files, including NumPy

@@ -1,5 +1,21 @@
 # DNNE continuation — 20 November 2026
 
+## Visible opposing-head run launched
+
+`D:/DNNE-build-work/head-turn-afferent-20261120-2e0ed3`, frozen at pushed
+`5f3887d489c36b67012700bc96012b195f9fc686`, passed frozen preflight. Both initial
+2,186-file work/backup copies plus manifest verify. Task
+`DNNE-Head-Turn-Afferent-05042e48c2e8` started the independent visible PowerShell
+pipeline: 212 C# controls, 32 analytic controls under the explicitly recorded
+new Python runtime, then six sensory captures and complete input/state/event
+accounting. No old reference ODE is rerun.
+
+Exactly one final report is pending: `2e0ed3`. No post-launch status, output or
+process has been inspected. Await Paul's final backup/footer without monitoring
+or duplication. Launch establishes no numerical accuracy or physiological
+firing result. All previous studies, including `e503fd`, are reviewed. The
+goal remains active. This supersedes preparation-only statements below.
+
 Preparation update: the first preparation attempt stopped before package
 creation because the harness changed three Python runtime binaries. Their
 exact old/new hashes are now declared; the other 2,433 numerical/runtime files

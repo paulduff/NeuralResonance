@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+NATIVE FULL POPULATION INTEGRATION AUTHORED — 23 November: next isolated
+comparison connects both retained 147-unit TA populations to the actual named
+Unity paths; no biological equation, native player or live host change.
+Eight cases (quiet/left/right/both/cut/retry and quiet/both with finer muscle
+steps), 40 coupled body steps after the original passive prelude. Original
+294-source completeness, diagnostic event identity, force/length feedback and
+all native/head endpoints retained. 388 managed checks include the reviewed
+shared-owner delta. Author build zero warnings/errors; syntax/inventory valid.
+No scientific execution yet at this checkpoint. See
+docs/DNNE_Native_Population_Protocol_2026-11-23.md. Independent coupled accuracy,
+physiology, neuronal authority and standing remain unqualified. Goal active.
+
 BOTH POPULATION/SHARED STUDIES REVIEWED — 23 November: Paul confirmed both done.
 `a212b5`: both 3,097-file copies, 2,275 Git files, binaries/runtime, 379 managed
 cases, 24 full 147-unit traces and 24 references verified. Original numerical

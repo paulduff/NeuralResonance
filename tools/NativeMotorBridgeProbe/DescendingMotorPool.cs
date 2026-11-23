@@ -168,8 +168,12 @@ internal sealed class DescendingMotorPool
     internal void AttachMotorOutput(MotorAxonAnatomy anatomy,MotorAxonClock clock)
     {
         Healthy();ArgumentNullException.ThrowIfNull(anatomy);ArgumentNullException.ThrowIfNull(clock);clock.Validate();
-        if(_outputAttached||_pending is not null||clock.SessionId!=_session||anatomy.Contacts.Count!=_cells.Length)
+        if(_outputAttached||_pending is not null||clock.SessionId!=_session)
             throw new ArgumentException("Attach each original motor cell once, outside pending output, on its actual neural epoch.");
+        // Every pool uses the same whole-body anatomy fingerprint. Other pools'
+        // contacts remain in it so the body waits for every declared source.
+        // Each cell owned here must still resolve to exactly one original axon;
+        // accepting a larger anatomy must never remap or duplicate that cell.
         foreach(var cell in _cells)
         {
             var state=cell.Source.Capture();var identity=cell.Definition.Identity;

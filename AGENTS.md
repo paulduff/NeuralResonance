@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+SHARED MOTOR ANATOMY FIX AUTHORED — 23 November: while `a212b5` remains pending
+and untouched, found DescendingMotorPool required total body contacts == local
+cell count. Removed that equality; all original per-cell identity, session,
+epoch and quiet-prehistory checks remain. All pools use the full body anatomy
+and Avatar still waits for every declared source. Nine new controls (including
+two 147-cell pools) plus 155 prior regressions =164. No biological equations
+changed or live promotion. Tests built, no tests executed yet. Next prepare
+`fresh_motor_epoch_study.py prepare --shared-motor`, freeze/backup/launch visible
+PowerShell after commit/push. Existing named-muscle source guard must explicitly
+carry this ownership change and its reviewed regression in the next integration.
+See docs/DNNE_Shared_Motor_Anatomy_2026-11-23.md. Goal active and incomplete.
+
 ACTIVE SLOW POPULATION WINDOW LAUNCHED — 23 November: visible independent task
 `DNNE-Muscle-Population-Active-f262deb0578f` started for
 `D:/DNNE-build-work/muscle-population-active-20261123-a212b5`, frozen at pushed

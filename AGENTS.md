@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/avatar-tendons-20261123-bb320d`
+is frozen at pushed `218054afac3165edbb1cac7fdd0a98629d786f95`. Frozen read-only
+preflight passed; both initial 2,194-file copies plus manifest verify. Interactive
+task `DNNE-Avatar-Tendons-d6f2862dfbd1` started the visible 112-component / 51-native
+case workflow (38 force paths, quiet/fall and 11 rejection controls). Exactly ONE
+final report is pending: `bb320d`. No post-launch output/status/process has been
+inspected. Await Paul's final backup/footer without monitoring or duplicate
+launches. The attachments and tensions are explicit mechanical fixtures; no
+neuronal source, anatomical calibration or standing is qualified by launch.
+The full goal remains active. This supersedes preparation-only/no-pending notes.
+
 RESUMED — 23 November: Paul resumed the goal. Friday's pause is revoked.
 All earlier reported studies are reviewed; no report is pending at this authoring
 checkpoint. A 51-case full-Avatar tendon mechanics workflow is ready to freeze

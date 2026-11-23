@@ -1,5 +1,16 @@
 # Full Avatar tendon mechanics — 23 November 2026
 
+## Actual launch
+
+Package `D:/DNNE-build-work/avatar-tendons-20261123-bb320d` is frozen at pushed
+`218054afac3165edbb1cac7fdd0a98629d786f95`. Read-only frozen preflight passes;
+both initial 2,194-file copies plus manifest verify. Interactive task
+`DNNE-Avatar-Tendons-d6f2862dfbd1` started its visible independent PowerShell
+window. Exactly one report is pending: this package. No post-launch output,
+status or process has been inspected. Await Paul's final backup/footer, with
+no live monitoring or duplicate launch. No test/native result is inferred from
+launch. The rest of this document retains the prospective protocol.
+
 Paul resumed the goal after Friday's checkpoint. The next isolated native
 study checks the physical boundary on the existing complete Unity rig, before
 connecting `AvatarCausalMotorPlant` to it. No previous result is pending.

@@ -132,6 +132,13 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
         using var geometry = Parse(r.geometryJson);
         Require(geometry.RootElement.GetProperty("links").EnumerateArray().Select(l => l.GetProperty("id").GetString()).SequenceEqual(Bodies),
             "Full physical geometry must retain all fifteen canonical links.");
+        float expectedFriction = _configuration.mechanicsMode == "original" ? .05f : 0f;
+        Require(geometry.RootElement.GetProperty("links").EnumerateArray().All(l => l.GetProperty("jointFriction").GetSingle() == expectedFriction),
+            "Actual joint friction differs from the explicit reviewed body setting.");
+        using var mechanics = Parse(r.mechanicsDiagnosticJson);
+        Require(mechanics.RootElement.GetProperty("mode").GetString() == _configuration.mechanicsMode &&
+            !mechanics.RootElement.GetProperty("liveConfigurationChanged").GetBoolean() &&
+            !mechanics.RootElement.GetProperty("physiologicalCalibrationQualified").GetBoolean(), "Missing isolated mechanical provenance.");
         using var state = Parse(r.stateJson);
         Require(state.RootElement.GetProperty("physicsStep").GetInt64() == r.physicsStep &&
             state.RootElement.GetProperty("links").EnumerateArray().Select(l => l.GetProperty("id").GetString()).SequenceEqual(Bodies), "Wrong native body endpoint.");

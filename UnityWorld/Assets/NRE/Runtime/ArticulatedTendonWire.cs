@@ -11,14 +11,14 @@ namespace Nre.UnityWorld
     // implicit attachment anatomy, or biological controller crosses this wire.
     public static class ArticulatedTendonWire
     {
-        public const string Protocol = "full-avatar-tendon-wire-v2";
+        public const string Protocol = "full-avatar-tendon-wire-v3";
         public const int PathCount = 38;
         public const long MaximumSteps = 1000000;
         [Serializable] public sealed class Anchor { public string id, bodyId; public Real x, y, z; }
         [Serializable] public sealed class Declaration { public string muscleId, provenance; public Anchor[] anchors; }
         [Serializable] public sealed class Configuration
         {
-            public string protocol, sessionId;
+            public string protocol, sessionId, mechanicsMode;
             public Real stepSeconds;
             public int passivePreludeSteps;
             public Declaration[] declarations;
@@ -33,7 +33,7 @@ namespace Nre.UnityWorld
         [Serializable] public sealed class Reply
         {
             public string protocol, sessionId, configurationHash, operation, unity, bodyFingerprint, plantFingerprint;
-            public string geometryJson, stateJson, stateHash, lastAppliedEffortId, observationsJson, observationsHash, applicationsJson;
+            public string geometryJson, stateJson, stateHash, lastAppliedEffortId, observationsJson, observationsHash, applicationsJson, mechanicsDiagnosticJson;
             public long sequence, physicsStep;
             public Real physicsStepMs, physicalTimeMs;
             public bool isolated, paused, connected;
@@ -62,6 +62,8 @@ namespace Nre.UnityWorld
         public static float Validate(Configuration c)
         {
             Require(c != null && c.protocol == Protocol && GuidN(c.sessionId), "Declare the full-body protocol and fresh session.");
+            Require(c.mechanicsMode == "original" || c.mechanicsMode == "no-joint-friction",
+                "Explicitly select the reviewed original or no-joint-friction mechanics; other interventions are not bridge settings.");
             Require(c.passivePreludeSteps == 0 || c.passivePreludeSteps == 1, "Declare zero or one passive initialization interval.");
             double seconds = c.stepSeconds;
             Require(Finite(seconds) && seconds > 0 && seconds <= (double).01f && (double)(float)seconds == seconds,
@@ -91,7 +93,8 @@ namespace Nre.UnityWorld
                 r.physicsStepMs == h && r.physicalTimeMs == r.physicsStep * h, "Invalid native full-body identity or clock.");
             Require(!string.IsNullOrEmpty(r.geometryJson) && r.bodyFingerprint == Digest(r.geometryJson) &&
                 !string.IsNullOrEmpty(r.stateJson) && r.stateHash == Digest(r.stateJson) &&
-                !string.IsNullOrEmpty(r.observationsJson) && r.observationsHash == Digest(r.observationsJson), "Native evidence hash differs.");
+                !string.IsNullOrEmpty(r.observationsJson) && r.observationsHash == Digest(r.observationsJson) &&
+                !string.IsNullOrEmpty(r.mechanicsDiagnosticJson), "Native evidence hash or declared mechanical evidence is missing.");
             Require((r.plantFingerprint == "" || Hash(r.plantFingerprint)) &&
                 (r.physicsStep <= c.passivePreludeSteps ? r.lastAppliedEffortId == "" : GuidN(r.lastAppliedEffortId)), "Invalid plant/last effort identity.");
             Require(r.paths != null && r.paths.Length == PathCount && r.paths.All(p => p != null) &&
@@ -133,7 +136,7 @@ namespace Nre.UnityWorld
             Require(after.sequence == request.sequence && after.operation == request.operation &&
                 after.physicsStep == before.physicsStep + (moved ? 1 : 0) && after.physicalTimeMs == request.endTimeMs &&
                 after.plantFingerprint == request.plantFingerprint && after.lastAppliedEffortId == (request.operation == "step" ? request.effortId : before.lastAppliedEffortId) &&
-                after.bodyFingerprint == before.bodyFingerprint && after.geometryJson == before.geometryJson &&
+                after.bodyFingerprint == before.bodyFingerprint && after.geometryJson == before.geometryJson && after.mechanicsDiagnosticJson == before.mechanicsDiagnosticJson &&
                 after.paths.Select(p => p.pathFingerprint).SequenceEqual(before.paths.Select(p => p.pathFingerprint)), "Native step receipt or fixed geometry differs.");
             if (!moved)
                 Require(after.stateJson == before.stateJson && after.observationsJson == before.observationsJson && after.applicationsJson == before.applicationsJson &&

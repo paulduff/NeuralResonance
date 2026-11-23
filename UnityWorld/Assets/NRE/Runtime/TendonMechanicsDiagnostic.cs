@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace Nre.UnityWorld
 {
-    // Explicit isolated interventions, never selected by the live body/bridge.
+    // Explicit isolated interventions. The isolated v3 bridge permits only the
+    // reviewed original/no-joint-friction pair; the live body never selects this.
     // A changed response diagnoses a mechanical sensitivity, not anatomical validity.
     internal sealed class TendonMechanicsDiagnostic
     {

@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+EXPLICIT BODY MECHANICS AUTHORING — 23 November: `full-avatar-tendon-wire-v3`
+requires `mechanicsMode=original|no-joint-friction`. The real isolated bridge
+applies the reviewed setting owner and retains its before/intervention/owned
+evidence in every immutable reply; the host checks actual friction and declared
+provenance. No live world default or neuronal/learning/muscle equation changed.
+Ten new admission controls plus the previous 331 declare 341 cases / 215 methods.
+`native_body_mechanics_study.py` and `start-declared-body-mechanics-window.ps1`
+prepare a single visible 341-test / 12-native-case workflow (96 steps / 324 head
+receipts), comparing each mode against its own original quiet capture and
+retaining original derivative/limit bounds. See
+`docs/DNNE_Declared_Body_Mechanics_2026-11-23.md`. Host/test builds zero warnings/
+errors; Unity API zero errors, seven existing warnings; static syntax/inventory
+pass. No model/test run during authoring. Nothing launched at this checkpoint;
+no pending reports. Full goal active; old v2 player must not be paired with v3.
+
 COMPLETED ACTUAL HEAD / FULL FRICTION REVIEWS — 23 November: Paul reported both
 `e19c4a` and `9d34cc` complete. Head: both 2,943-file copies verify, six real
 sessions / 48 steps / 54 endpoints / 162 head receipts / 54 inspections;

@@ -22,7 +22,7 @@ public sealed class ArticulatedTendonBridgeTests
         "pelvis", "right_arm", "right_foot", "right_forearm", "right_hand", "right_shin", "right_thigh"];
     static string Json<T>(T v) => JsonSerializer.Serialize(v, NativeArticulatedBody.Json);
     static T Copy<T>(T v) => JsonSerializer.Deserialize<T>(Json(v), NativeArticulatedBody.Json)!;
-    internal static Configuration Config(float step = .000125f) => new() { protocol = Wire.Protocol, sessionId = Session.ToString("N"), stepSeconds = (double)step,
+    internal static Configuration Config(float step = .000125f) => new() { protocol = Wire.Protocol, sessionId = Session.ToString("N"), stepSeconds = (double)step, mechanicsMode = "original",
         declarations = Names.Select(n => new Declaration { muscleId = n, provenance = "protocol-peer-fixture-not-anatomy", anchors = [
             new Anchor { id = "origin", bodyId = "chest", x = 0d, y = -.1, z = 0d },
             new Anchor { id = "insertion", bodyId = "head", x = 0d, y = .1, z = 0d }] }).ToArray() };
@@ -55,11 +55,12 @@ public sealed class ArticulatedTendonBridgeTests
         public Peer(Configuration? configuration = null)
         {
             Configuration = configuration ?? Config(); ConfigurationJson = Json(Configuration);
-            string geometry = Json(new { links = Links.Select(id => new { id }) }), state = State(0), observations = Json(Samples(0));
+            string geometry = Json(new { links = Links.Select(id => new { id, jointFriction = Configuration.mechanicsMode == "original" ? .05f : 0f }) }), state = State(0), observations = Json(Samples(0));
             Current = new() { protocol = Wire.Protocol, sessionId = Configuration.sessionId, configurationHash = Wire.Digest(ConfigurationJson),
                 operation = "hello", unity = "6000.3.19f1", sequence = 0, physicsStep = 0, physicsStepMs = Wire.StepMs(Configuration), physicalTimeMs = 0d,
                 bodyFingerprint = Wire.Digest(geometry), geometryJson = geometry, stateJson = state, stateHash = Wire.Digest(state),
                 plantFingerprint = "", lastAppliedEffortId = "", observationsJson = observations, observationsHash = Wire.Digest(observations), applicationsJson = "",
+                mechanicsDiagnosticJson = Json(new { mode = Configuration.mechanicsMode, prescribedPeer = true, liveConfigurationChanged = false, physiologicalCalibrationQualified = false }),
                 isolated = true, paused = true, connected = false, paths = Names.Select(n => new MuscleHingeWire.Path {
                     muscleId = n, pathFingerprint = Wire.Digest(n), lengthMeters = Length(), velocityMetersPerSecond = 0d }).ToArray() };
         }

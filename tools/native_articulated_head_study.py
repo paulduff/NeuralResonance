@@ -104,8 +104,10 @@ def dot(a,b):return sum(x*y for x,y in zip(a,b,strict=True))
 
 def compare(package):
     cfg=read(package/'configuration.json');capture=package/'native';protocol=read(capture/'protocol.json');result=read(capture/'result.json')
+    mode=cfg.get('MechanicsMode','original');assert mode in ('original','no-joint-friction')
     assert [(c['name'],c['muscle'],c['inspectionsPerEndpoint']) for c in protocol['cases']]==CASES
-    assert protocol['prescribedTensionNewtons']==40 and protocol['passivePreludeSteps']==1 and protocol['originalSettingsRetained']
+    assert protocol['prescribedTensionNewtons']==40 and protocol['passivePreludeSteps']==1 and protocol['originalSettingsRetained']==(mode=='original')
+    assert protocol.get('mechanicsMode','original')==mode
     original_report=read(package/cfg['OriginalRelativePath']/'result.json')
     original=rows(package/cfg['OriginalRelativePath']/'endpoints.jsonl')
     original_declarations=json.loads(json.loads(original_report['geometryJson'])['declarationsJson'])['paths']

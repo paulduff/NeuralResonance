@@ -19,8 +19,9 @@ internal static class ArticulatedHeadNativeStudy
         new("shoulder", "leftShoulderAbduction/flexor", 0), new("quiet-inspected", "", 2),
         new("hip-inspected", "leftHip/flexor", 2), new("shoulder-inspected", "leftShoulderAbduction/flexor", 2)];
 
-    internal static void Run(string player, string originalDirectory, string output)
+    internal static void Run(string player, string originalDirectory, string output, string mechanicsMode = "original")
     {
+        Require(mechanicsMode is "original" or "no-joint-friction", "Only the reviewed mechanical choices are admitted.");
         Require(new[] { player, originalDirectory, output }.All(Path.IsPathFullyQualified) &&
             File.Exists(player) && Directory.Exists(originalDirectory) && !Directory.Exists(output),
             "Require an existing isolated player/original evidence and a new absolute output directory.");
@@ -35,12 +36,12 @@ internal static class ArticulatedHeadNativeStudy
         string declarationsText = geometry.RootElement.GetProperty("declarationsJson").GetString()!;
         using var declarations = JsonDocument.Parse(declarationsText);
         Directory.CreateDirectory(output);
-        Write(Path.Combine(output, "protocol.json"), new { Version, Cases, FinalStep,
+        Write(Path.Combine(output, "protocol.json"), new { Version, Cases, FinalStep, MechanicsMode = mechanicsMode,
             OriginalReportSha256 = Wire.Digest(reportText), OriginalDeclarationsJson = declarationsText,
-            PrescribedTensionNewtons = 40, PassivePreludeSteps = 1, OriginalSettingsRetained = true,
+            PrescribedTensionNewtons = 40, PassivePreludeSteps = 1, OriginalSettingsRetained = mechanicsMode == "original",
             NativePointAndDerivativeLimits = "native_skull_gate.py: original bounds",
             NeuronalSourceExecuted = false, MuscleCellExecuted = false, PhysiologyQualified = false, AvatarBalanceQualified = false });
-        foreach (var condition in Cases) RunCase(player, output, declarations.RootElement, condition);
+        foreach (var condition in Cases) RunCase(player, output, declarations.RootElement, condition, mechanicsMode);
         Write(Path.Combine(output, "result.json"), new { Version, Completed = true, NativeCases = Cases.Length,
             ActualPhysicsSteps = Cases.Length * FinalStep, PhysicalEndpoints = Cases.Length * (FinalStep + 1),
             HeadReceipts = Cases.Length * (FinalStep + 1) * 3, ExtraInspections = Cases.Sum(c => c.InspectionsPerEndpoint) * (FinalStep + 1),
@@ -48,13 +49,13 @@ internal static class ArticulatedHeadNativeStudy
             PhysiologyQualified = false, AvatarBalanceQualified = false });
     }
 
-    private static void RunCase(string player, string output, JsonElement originalPaths, Condition condition)
+    private static void RunCase(string player, string output, JsonElement originalPaths, Condition condition, string mechanicsMode)
     {
         Console.WriteLine("ACTUAL FULL AVATAR HEAD INPUT " + condition.Name);
         string directory = Path.Combine(output, condition.Name); Directory.CreateDirectory(directory);
         Guid session = Guid.NewGuid();
         var config = new Wire.Configuration { protocol = Wire.Protocol, sessionId = session.ToString("N"),
-            stepSeconds = (double).005f, passivePreludeSteps = 1,
+            stepSeconds = (double).005f, passivePreludeSteps = 1, mechanicsMode = mechanicsMode,
             declarations = originalPaths.GetProperty("paths").EnumerateArray().Select(p => new Wire.Declaration {
                 muscleId = p.GetProperty("id").GetString()!, provenance = p.GetProperty("provenance").GetString()!,
                 anchors = p.GetProperty("anchors").EnumerateArray().Select(a => new Wire.Anchor {

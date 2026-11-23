@@ -14,6 +14,7 @@ namespace Nre.UnityWorld
     {
         readonly WorldController world;
         ArticulatedMusclePathOwner owner;
+        TendonMechanicsDiagnostic mechanics;
         Configuration configuration;
         string directory, configurationHash, observationsJson;
         Reply last;
@@ -38,9 +39,11 @@ namespace Nre.UnityWorld
                 MuscleHingeWire.Require(!Directory.Exists(directory), "Do not reuse a physical bridge directory.");
                 Directory.CreateDirectory(directory); ownsDirectory = true;
                 Write("configuration.json", text);
+                mechanics = TendonMechanicsDiagnostic.Prepare(world, configuration.mechanicsMode);
                 owner = new ArticulatedMusclePathOwner(world, configuration.declarations.Select(d => new ArticulatedMusclePathOwner.Declaration(
                     d.muscleId, d.provenance, d.anchors.Select(a => new MusclePathAnchor(a.id, a.bodyId, new MusclePathVector(a.x, a.y, a.z))))), stepSeconds,
                     allowPassivePrelude: configuration.passivePreludeSteps == 1);
+                mechanics.Bound();
                 var initial = Capture("hello", 0, true); Validate(initial, configuration, configurationHash);
                 Write("hello.json", JsonUtility.ToJson(initial)); last = initial;
             }
@@ -91,6 +94,7 @@ namespace Nre.UnityWorld
         }
         Reply Capture(string operation, long sequence, bool captureObservations)
         {
+            mechanics.CheckUnchanged();
             var s = owner.Capture();
             if (captureObservations)
             {
@@ -114,6 +118,7 @@ namespace Nre.UnityWorld
                 physicalTimeMs = s.PhysicalTimeMs, bodyFingerprint = s.BodyFingerprint, plantFingerprint = s.PlantFingerprint,
                 geometryJson = owner.GeometryJson, stateJson = s.StateJson, stateHash = s.StateHash, lastAppliedEffortId = s.LastEffortId,
                 observationsJson = observationsJson, observationsHash = Digest(observationsJson), applicationsJson = owner.LastApplicationsJson,
+                mechanicsDiagnosticJson = mechanics.Json(),
                 paths = s.Paths.Select(p => new MuscleHingeWire.Path { muscleId = p.MuscleId, pathFingerprint = p.PathFingerprint,
                     lengthMeters = p.MusculotendonLengthMeters, velocityMetersPerSecond = p.MusculotendonVelocityMetersPerSecond }).ToArray() };
         }

@@ -69,3 +69,15 @@ both initial 2,223-file copies plus manifest verified against its same-name
 No post-launch outputs, status or process were inspected. Await Paul's final
 report before reading results. Actual native head delivery and physiological
 sensory feedback remain separate outstanding integration work.
+
+## Completed component review
+
+Paul reported `7bc04c` complete. The read-only review confirms all 331 exact
+cases and both 2,812-file copies, source/archive, executed binaries and 335
+unchanged selected runtime files. The review's four files plus manifest are
+verified under `artifacts/articulated-head-20261123-7bc04c-review` and its
+same-name D: UnityWorld backup. No model/test was rerun during review.
+
+The next actual Unity file-bridge workflow is described in
+`DNNE_Native_Articulated_Head_2026-11-23.md`. It retains this adapter and its
+passed components, the original body settings and native material-point data.

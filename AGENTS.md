@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+HEAD COMPONENT REVIEW / NATIVE INTEGRATION AUTHORING — 23 November: Paul
+reported `7bc04c` complete. Both 2,812-file copies, source/binaries, all 331 exact
+cases and unchanged 335-file runtime verify; the four-file review is D:-verified.
+`ArticulatedHeadNativeStudy` now connects the real file bridge to the unchanged
+head adapter, with six prescribed/inspection-paired cases, 48 steps / 54 endpoints /
+162 head receipts / 54 extra inspections. `native_articulated_head_study.py`
+freezes the completed player, original quiet geometry and reviewed components;
+`start-native-articulated-head-window.ps1` builds only the new host and runs the
+actual native/independent saved comparison visibly. See
+`docs/DNNE_Native_Articulated_Head_2026-11-23.md`. Authoring build passes with
+zero warnings/errors; syntax/static matrix/player-source checks pass. No native
+integration run launched at this checkpoint. Exactly ONE report awaits Paul:
+friction `9d34cc`, never inspected after launch. Full goal active.
+
 LATEST LAUNCHES — 23 November: both follow-ups are frozen at pushed
 `712e3251e877ccb46073d6535dda60ca9617e1cc`. `D:/DNNE-build-work/tendon-friction-20261123-9d34cc`
 has verified initial 2,313-file copies plus manifest and was launched by

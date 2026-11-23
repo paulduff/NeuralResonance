@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+FRESH MUSCLE BALANCE LAUNCHED — 23 November: independent visible PowerShell
+task `DNNE-Muscle-Initial-4019dc56c094` started for
+`D:/DNNE-build-work/muscle-initial-20261123-4c4377`, frozen at pushed
+`22f7ed894ff131f9a67b5eea5d7f3030a15e1591`. Both initial 2,252-file copies plus
+manifest verified; preparation/preflight passed. Runs 263 component/regression
+cases then eight independent 80/110-digit initial-equilibrium comparisons.
+No live Unity/brain access. Exactly ONE pending report: `4c4377`; no postlaunch
+output/process/status inspected. Wait for Paul's final footer before review.
+Completed `8dd5a0` is reviewed and D:-verified below. Full goal remains active;
+anatomical mapping/populations, coupled accuracy and standing remain open.
+
 FRESH MUSCLE BALANCE AUTHORED — 23 November: new optional
 `AvatarMuscleInitialBalance` solves a passive initial fiber/tendon force
 balance using unchanged `AvatarDynamicMuscle` evaluations. Explicit bracket,

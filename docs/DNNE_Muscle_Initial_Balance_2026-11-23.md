@@ -70,3 +70,10 @@ can use the result when a separately qualified anatomy and initial body frame
 are ready; it is not yet selected in live Avatar. Coupled trajectory accuracy,
 physiological calibration, neuronal muscle authority and standing remain
 unqualified.
+
+Launched: `D:/DNNE-build-work/muscle-initial-20261123-4c4377`, frozen at
+`22f7ed894ff131f9a67b5eea5d7f3030a15e1591`. Preparation/preflight passed, with
+both initial 2,252-file copies plus manifest verified. Interactive task
+`DNNE-Muscle-Initial-4019dc56c094` started the visible PowerShell window. No
+post-launch process, output or status inspected. This is the only pending
+report; the earlier saved native/sensory comparison is completed and reviewed.

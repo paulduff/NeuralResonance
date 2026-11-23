@@ -100,3 +100,19 @@ initial 2,438-file copies plus manifest verify against its same-name
 `DNNE-Native-Articulated-Head-a1a1dae11746` started the visible workflow.
 No post-launch output, status or process was inspected. Await Paul's final
 report before reviewing this run. Friction `9d34cc` is the other pending report.
+
+## Completed actual delivery review
+
+Paul reported `e19c4a` complete. Both 2,943-file copies, source/archive, executed
+host and preserved player verify. All six sessions retain 48 actual steps,
+54 endpoints, 162 head receipts and 54 extra inspections. All 1,296 saved
+derived-value comparisons pass; their largest error/allowance ratio is
+3.468851913440339e-10. Inspections preserve the original observations and paired
+physical trajectories, and the quiet trajectory reproduces all nine original
+endpoints exactly. The 335 selected runtime files remain identical before/after.
+
+The four-file read-only review at
+`artifacts/native-articulated-head-20261123-e19c4a-review` and its same-name D:
+UnityWorld backup verify. No model/test or full derivative analysis was rerun
+during review. This qualifies the stated actual delivery/kinematic checks;
+physiological firing, neuronal motor authority and standing remain unqualified.

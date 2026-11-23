@@ -206,3 +206,27 @@ both initial 2,313-file copies plus manifest verified against its same-name
 `DNNE-Tendon-Friction-b5563b636e5e` started the visible workflow. No post-launch
 outputs, status or process were inspected. Await Paul's final report; launch
 does not establish all-path motion or physiological joint resistance.
+
+## Completed full-path review
+
+Paul reported `9d34cc` complete. Both 3,294-file copies, source/archive, executed
+player and 112 exact component tests verify. The 78 cases retain 624 steps and
+702 endpoints. All **92,640 force/torque checks** and **13,338 joint-angle
+observations** pass. Maximum recorded limit violation is
+3.901869263245316e-7 radians, below the original 0.05f mechanical guard.
+Only the declared friction setting changes; every original-mode endpoint and
+every variant's initial state remains preserved.
+
+Largest target response relative to same-mode quiet is
+0.43432289548217895 rad for the no-friction right ankle-roll flexor, versus
+2.5319364453935123e-6 rad in the original matrix. The four knee/elbow pulls into
+their initial lower angular bounds remain effectively blocked. Other signed
+responses are retained individually; this does not establish control from all
+interior poses or calibrated physiological resistance.
+
+The four-file review at `artifacts/tendon-friction-20261123-9d34cc-review` and
+its same-name D: UnityWorld backup verify. No model/test/full force analysis was
+rerun during review. The next body integration should explicitly declare the
+reviewed original or no-joint-friction setting, retain exact mechanical identity
+and verify native bridge/measurement continuity. Do not replace this evidence
+with a neural gain increase or silently change the live body defaults.

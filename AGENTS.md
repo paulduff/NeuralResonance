@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+COMPLETED ACTUAL HEAD / FULL FRICTION REVIEWS — 23 November: Paul reported both
+`e19c4a` and `9d34cc` complete. Head: both 2,943-file copies verify, six real
+sessions / 48 steps / 54 endpoints / 162 head receipts / 54 inspections;
+1,296 derived checks pass, original quiet and inspected pairs exact, runtime335
+unchanged. Friction: both 3,294-file copies, 112 exact cases, 78 native cases /
+624 steps / 702 endpoints; 92,640 force checks and 13,338 angle checks pass.
+No-friction max response 0.43432289548217895 rad; maximum limit violation
+3.90186926324532e-7 rad. Both four-file reviews are D:-verified. No model/test/
+full numerical analysis rerun during review. No reports pending at this point.
+Next make the reviewed mechanical choice explicit in the isolated tendon bridge
+and qualify actual native delivery with it before any live adoption. Existing
+head-to-vestibular/circuit owners remain available; physiological firing,
+consistent anatomical muscle geometry and full neuronal standing still require
+integration. Full goal active; earlier pending notes are historical.
+
 LATEST NATIVE HEAD LAUNCH — 23 November: package
 `D:/DNNE-build-work/native-articulated-head-20261123-e19c4a` is frozen at pushed
 `619b0b38bf49735f1f21b3fa6224c65f56cd8fd1`. Preparation/preflight passed and

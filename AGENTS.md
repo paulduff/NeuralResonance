@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+PATELLAR WINDOW LAUNCHED — 23 November: visible independent task
+`DNNE-Patellar-Path-c593b5fad8a0`, results
+`D:/DNNE-build-work/patellar-path-20261123-a9bac5`, frozen at pushed `4c95efc`.
+Both initial 2,336-file copies plus manifest verified. Working and frozen
+data-only preflights pass; no test/model executed during preparation. Window
+runs 99 managed cases then 450 independent 80/110-digit position/Jacobian/work
+comparisons. Exactly THREE reports pending: native population `b3cf65`, cylinder
+`0b9165`, patella `a9bac5`. No postlaunch status/process/log/output inspected for
+any. Earlier `a212b5` and `5001cd` were already reviewed and are not pending.
+Wait for Paul's final backup/footer before review. Goal active and incomplete.
+
 PATELLAR COMPONENT AUTHORED — 23 November: original native population `b3cf65`
 and cylinder `0b9165` reports remain pending and untouched. Source quadriceps
 need both cylindrical routing and moving patellar attachments. Retained all

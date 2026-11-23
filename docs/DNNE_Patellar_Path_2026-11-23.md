@@ -99,3 +99,12 @@ coordinates. Native attachment/constraint delivery, continuous coupled dynamics,
 anatomical scaling, muscle populations, neuronal authority and Avatar standing
 still require their own evidence. No editor or live-world presentation changes
 are made before a body owner selects the mechanism.
+
+Launched as visible independent task `DNNE-Patellar-Path-c593b5fad8a0`, results
+`D:/DNNE-build-work/patellar-path-20261123-a9bac5`, frozen at pushed `4c95efc`.
+Both initial 2,336-file copies plus manifest verified. Author build had zero
+warnings/errors; exact inventory, syntax, generated parity and both working/
+frozen data-only preflights passed. Scientific test/reference outcomes remain
+pending. No postlaunch status, process, log or output has been inspected. Paul
+will report the final D: backup/footer; the other pending reports are `b3cf65`
+and `0b9165`.

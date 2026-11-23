@@ -85,3 +85,13 @@ Static Python/PowerShell parsing, Unity metadata and the exact 112-test /
 
 The complete biological goal remains unchanged: original neuronal motor
 authority, active sensory return, balance, falling/recovery and basic movement.
+
+## Launch record
+
+Frozen package `D:/DNNE-build-work/tendon-force-20261123-e764e3` uses pushed
+revision `740fa633dcc92a1c5c537c44ebd27e08c8ba20b2`. Frozen preflight passed;
+both initial 2,286-file copies plus manifest verify. Interactive task
+`DNNE-Tendon-Force-c574d7b01ac3` started the visible workflow on 23 November.
+No post-launch output/status/process has been inspected. This is the sole
+pending final report; await Paul without monitoring. The clock `6889f0` and
+original tendon `bb320d` results are fully reviewed, with verified D: reviews.

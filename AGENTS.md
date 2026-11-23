@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-force-20261123-e764e3`
+is frozen at pushed `740fa633dcc92a1c5c537c44ebd27e08c8ba20b2`. Frozen preflight
+passed; both initial 2,286-file copies plus manifest verify. Interactive task
+`DNNE-Tendon-Force-c574d7b01ac3` started the visible 112-component / 78-native
+paired force-observation workflow. Exactly ONE final report is pending: `e764e3`.
+No post-launch output/status/process inspected. Await Paul's final backup/footer
+without monitoring or duplicate launch. Completed `6889f0` and `bb320d` are
+fully reviewed. The new measurements do not imply useful movement, anatomy,
+neuronal authority or standing; original body-force weakness is unexplained.
+Full goal remains active. This supersedes preparation/no-pending statements below.
+
 23 November clock review: Paul reported `motor-epoch-20261123-6889f0` complete.
 Both 2,785-file copies, full frozen Git source, exact 155-case inventory and
 executed binaries verify. Thirteen fresh-origin controls and 142 existing

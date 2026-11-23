@@ -82,6 +82,13 @@ and all seven existing/new suite inventories were checked. No tests, reference
 calculations or body integration ran during authoring. Scientific results are
 pending the independent visible window and Paul's final footer.
 
+Launched `D:/DNNE-build-work/muscle-frames-20261123-581e1f`, frozen at
+`a3c2bb9997c0d6fbbbc7babf714ae384c7671eb3`. Preparation/preflight and both
+initial 2,260-file copies plus manifest passed verification. Interactive task
+`DNNE-Muscle-Frames-8dc8e232d434` started its independent visible PowerShell
+window. No postlaunch output/process/status inspected. This is the only
+pending report; the equilibrium run `4c4377` is completed and reviewed.
+
 Next integration must admit named anatomical paths in the native protocol,
 which currently requires 38 synthetic joint flexor/extensor paths. It must
 also supply explicit muscle geometry, tendon conventions and identified

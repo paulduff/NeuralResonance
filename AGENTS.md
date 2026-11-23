@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LOWER-LEG FRAME STUDY LAUNCHED — 23 November: independent visible task
+`DNNE-Muscle-Frames-8dc8e232d434` started for
+`D:/DNNE-build-work/muscle-frames-20261123-581e1f`, frozen at pushed
+`a3c2bb9997c0d6fbbbc7babf714ae384c7671eb3`. Preparation/preflight passed;
+both initial 2,260-file copies plus manifest verified. Runs 288 component/
+regression cases, eight equilibrium references and 44-point independent frame
+comparison. No live Unity/brain access. Exactly ONE pending report: `581e1f`.
+No postlaunch output/process/status inspected; await Paul's final footer.
+Previous `4c4377` is completed/reviewed/D:-verified below. Goal remains active;
+full anatomical fit, named-muscle native integration and standing remain open.
+
 MUSCLE EQUILIBRIUM REVIEWED / FRAME MAPPING AUTHORED — 23 November: Paul
 reported final DIAGNOSTICS_COMPLETE for `muscle-initial-20261123-4c4377`.
 Both complete 2,842-file copies, frozen source, binaries, exact 263 test

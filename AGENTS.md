@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+Independent authoring — 23 November: the full 38-path native/host tendon bridge
+is implemented as an isolated candidate. See `docs/DNNE_Full_Avatar_Bridge_2026-11-23.md`.
+It has explicit frozen attachment declarations, exact scalar/clock transport,
+one bound plant and owned-step receipts, and retains body/contact/head samples
+once per physical endpoint. Inspections replay that observation; uncertain
+commands fault without resend. Original force, muscle and neuronal equations
+are unchanged. The host implements `IAvatarMotorMechanicalBody`; production
+host/editor and the sensory prelude remain unconnected. Thirty-four component
+cases are authored, with 261 prior cases in the 295-case visible workflow
+(`fresh_motor_epoch_study.py prepare --articulated`). Authoring test/probe builds
+and static inventory pass; tests and native behavior remain unqualified. Freeze,
+push, back up and launch the component window before claiming results. Exactly
+TWO reports remain pending at this preparation checkpoint: native force `e764e3`
+and body/motor closure `ab2502`; no pending outputs/processes were accessed.
+The weak native tendon response still needs its separate diagnosis. Goal active.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/motor-closure-20261123-ab2502`
 is frozen at pushed `188aef7d6fd443c92aee351cdb6bbf8e1a9ff69c`. Frozen preflight
 passed; both initial 2,203-file copies plus manifest verify. Interactive task

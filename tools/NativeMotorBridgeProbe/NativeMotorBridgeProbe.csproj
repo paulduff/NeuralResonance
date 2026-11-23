@@ -10,6 +10,7 @@
     <ProjectReference Include="../../Structures/NeuralResonanceEngine.Structures.Runtime.csproj" />
     <Compile Include="../MotoneuronReferenceProbe/ClockAudit.cs" Link="ClockAudit.cs" />
     <Compile Include="../../UnityWorld/Assets/NRE/Runtime/MuscleHingeWire.cs" Link="MuscleHingeWire.cs" />
+    <Compile Include="../../UnityWorld/Assets/NRE/Runtime/ArticulatedTendonWire.cs" Link="ArticulatedTendonWire.cs" />
     <Compile Include="../../UnityWorld/Assets/NRE/Runtime/DiagnosticBridgeFiles.cs" Link="DiagnosticBridgeFiles.cs" />
   </ItemGroup>
 </Project>

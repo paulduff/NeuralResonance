@@ -86,3 +86,13 @@ must occur in `start-native-canal-window.ps1`; no live monitoring. Final results
 are backed up and verified on D: before the footer. Physiological firing,
 consistent full-body muscle geometry, neuronal motor authority and Avatar
 standing remain unqualified.
+
+## Visible launch
+
+Prepared `D:/DNNE-build-work/native-canal-20261123-184323` at pushed
+`f851ee1be3ac0e0c708c9e8db5f82ff4d08f22d0`. Preflight passed and both initial
+2,455-file copies plus manifest verified against the same-name D: UnityWorld
+backup. Interactive task `DNNE-Native-Canal-9c770507f773` started the visible
+runner. After its build and runtime checks, Paul presses Enter to open Unity.
+No post-launch status, process or output inspected. This is the sole pending
+run; wait for Paul's final footer before reviewing it.

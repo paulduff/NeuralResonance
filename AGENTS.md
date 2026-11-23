@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+VISIBLE NATIVE/SENSORY LAUNCH — 23 November: package
+`D:/DNNE-build-work/native-canal-20261123-184323` frozen at pushed
+`f851ee1be3ac0e0c708c9e8db5f82ff4d08f22d0`. Preparation/preflight passed;
+both initial 2,455-file copies plus manifest verified. Interactive task
+`DNNE-Native-Canal-9c770507f773` started the independent visible PowerShell
+runner. After build/runtime checks it waits for Paul's Enter before opening
+six visible Unity cases (Front/Side camera buttons; test owns physical steps).
+No post-launch process/status/output inspected. Exactly ONE report pending:
+`184323`. Do not monitor or duplicate it. Earlier `203560` is reviewed and
+D:-verified. Full goal active; independent connected accuracy, physiological
+firing, neuronal motor authority and standing remain unqualified.
+
 ACTUAL BODY/SENSORY CONNECTION AUTHORED — 23 November: new
 `ArticulatedCanalNativeStudy` joins the verified v3 body's original right head
 samples to the unchanged loaded canal/afferent owner and existing receiving

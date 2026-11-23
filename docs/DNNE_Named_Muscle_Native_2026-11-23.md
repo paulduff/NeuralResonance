@@ -79,3 +79,10 @@ remain pending the independent window. This advances real attachment/force
 delivery, not calibrated strength, neuronal authority, coupled trajectory
 accuracy or standing. Identified motor-unit populations and full muscle/tendon
 geometry must follow before attempting those broader claims.
+
+Launched `D:/DNNE-build-work/named-muscle-native-20261123-afc890`, frozen at
+`a7fd7ce734552cf3aaf69be0185da65e989936d0`. Both initial 2,281-file copies plus
+manifest and preflight verified. Interactive task
+`DNNE-Named-Muscle-Native-e710b2963054` started the independent visible
+PowerShell window. No postlaunch process/output/status inspected; this is the
+only pending report. The prerequisite mapping and equilibrium runs are reviewed.

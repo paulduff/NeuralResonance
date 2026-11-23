@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+NAMED MUSCLE UNITY STUDY LAUNCHED — 23 November: independent visible task
+`DNNE-Named-Muscle-Native-e710b2963054` started for
+`D:/DNNE-build-work/named-muscle-native-20261123-afc890`, frozen at pushed
+`a7fd7ce734552cf3aaf69be0185da65e989936d0`. Preparation/preflight and both
+initial 2,281-file copies plus manifest verified. Runs 359 component/regression
+cases, builds a separate Unity player, then twelve actual named-path cases
+and independent saved force/geometry accounting. Exactly ONE pending report:
+`afc890`. No postlaunch output/process/status inspected; wait for Paul's footer.
+`581e1f` and `4c4377` are completed/reviewed/D:-verified. No live DNNE connection,
+neural drive or old-save load; test tensions only. Goal active and incomplete.
+
 FRAME MAPPING REVIEWED / NAMED NATIVE PATHS AUTHORED — 23 November: Paul
 reported final DIAGNOSTICS_COMPLETE for `muscle-frames-20261123-581e1f`.
 Both full 2,852-file copies, frozen source/binaries and exact 288-test inventory

@@ -18,6 +18,7 @@ namespace Nre.UnityWorld
             public string geometryJson, beforeRejectedState, afterRejectedState, stepMsBits, lastNativeForcesJson;
             public bool completed, passed, rejectedWithoutStep, faultLatchPassed;
             public bool nativeForceObservationEnabled;
+            public string mechanicsDiagnosticJson;
             public bool neuronalSourceExecuted = false, anatomicalCalibrationQualified = false, avatarBalanceQualified = false;
             public long finalStep;
             public int links, paths;
@@ -99,6 +100,7 @@ namespace Nre.UnityWorld
             yield return null;
             var result = new Report { unity = Application.unityVersion, condition = Arg("--tendon-case"), muscle = Arg("--tendon-muscle") ?? "" };
             ArticulatedMusclePathOwner owner = null;
+            TendonMechanicsDiagnostic diagnostic = null;
             int exit = 1;
             try
             {
@@ -107,8 +109,15 @@ namespace Nre.UnityWorld
                 Require(observe == null || observe == "1", "Unknown native observation setting.");
                 result.nativeForceObservationEnabled = observe == "1";
                 var declarations = Fixtures(world.Avatar, out result.fixtures);
+                string mechanics = Arg("--tendon-mechanics");
+                if (mechanics != null)
+                {
+                    Require(result.nativeForceObservationEnabled && (result.condition == "quiet" || result.condition == "pulse"), "Mechanical diagnosis requires observed quiet/pulse cases.");
+                    diagnostic = TendonMechanicsDiagnostic.Prepare(world, mechanics);
+                }
                 owner = new ArticulatedMusclePathOwner(world, declarations, .005f, result.nativeForceObservationEnabled);
                 string plant = new string('A', 64); owner.Bind(plant);
+                diagnostic?.Bound();
                 var state = owner.Capture(); result.geometryJson = owner.GeometryJson; result.stepMsBits = MuscleHingeWire.Encode(owner.PhysicsStepMs);
                 result.links = world.Avatar.links.Count; result.paths = state.Paths.Count;
                 Require(result.links == 15 && result.paths == 38, "Incomplete Avatar mechanics.");
@@ -125,8 +134,10 @@ namespace Nre.UnityWorld
                         int steps = result.condition == "freefall" ? 100 : 8;
                         for (int i = 0; i < steps; i++)
                         {
+                            diagnostic?.CheckUnchanged();
                             state = owner.Advance(state.PhysicsStep, state.StateHash, plant, Guid.NewGuid().ToString("N"), tensions);
                             Record(log, state, owner, world.Avatar);
+                            diagnostic?.CheckUnchanged();
                             result.peakFootForce = Mathf.Max(result.peakFootForce, world.Avatar.LeftLoad + world.Avatar.RightLoad);
                             Require(!world.Connected && !world.Running && world.Avatar.IsFinite(), "Body became nonfinite or lost isolation.");
                         }
@@ -170,7 +181,9 @@ namespace Nre.UnityWorld
                 result.completed = result.passed = true; exit = 0;
             }
             catch (Exception e) { result.error = e.ToString(); Debug.LogException(e); }
+            result.finalStep = world.physicsSteps;
             if (owner != null) result.lastNativeForcesJson = owner.LastNativeForcesJson;
+            if (diagnostic != null) result.mechanicsDiagnosticJson = diagnostic.Json();
             File.WriteAllText(Path.Combine(world.outputDirectory, "result.json"), JsonUtility.ToJson(result, true));
             Application.Quit(exit);
         }

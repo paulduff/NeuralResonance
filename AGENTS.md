@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+Independent mechanical diagnosis authored — 23 November: see
+`docs/DNNE_Tendon_Motion_Diagnosis_2026-11-23.md`. Six explicitly isolated modes
+compare original settings with one-factor friction, body damping, joint-speed,
+active angular-limit and gravity interventions. Nine selected original quiet/
+opposing pulls per mode give 54 native cases / 432 steps / 486 endpoints after
+112 exact component checks. Original-mode endpoints must match completed
+`e764e3`; all variants retain initial states, exact settings and original force
+accounting bounds. Each response is relative to its own mode's quiet control.
+No useful-motion threshold, gain change, anatomy claim or live setting is added.
+Unity API compilation passes (zero errors, seven existing warnings); no tests
+or models executed. This follow-up is not launched yet. Exactly ONE report is
+pending: attachment `526071`, untouched since launch. Full goal remains active.
+Static Python/PowerShell/inventory checks now pass, as does metadata validation
+for all 45 scripts after correcting the malformed earlier bridge GUID (no scene
+reference). Final API build is `tendon-mechanics-authoring-20261123-final`.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/motor-attachment-20261123-526071`
 is frozen at pushed `bd0099e9682c07f9c552420f9f937eeeaddc940f`. Frozen preflight
 passed; both initial 2,215-file copies plus manifest verify. Interactive task

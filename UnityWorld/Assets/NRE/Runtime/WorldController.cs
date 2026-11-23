@@ -35,6 +35,7 @@ public sealed class WorldController:MonoBehaviour {
  object physicalSampleOwner;
  void Awake(){
   if(Argument("--tendon-bridge")!=null&&(Argument("--neuronal-muscle-qualify")==null||Argument("--tendon-case")!=null))throw new InvalidOperationException("Full-body tendon bridge needs its separate isolated mode.");
+  if(Argument("--tendon-mechanics")!=null&&(Argument("--neuronal-muscle-qualify")==null||Argument("--tendon-case")==null||Argument("--tendon-bridge")!=null))throw new InvalidOperationException("Mechanical variants require the separate tendon qualification.");
   if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify","--neuronal-muscle-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
   IsolatedQualification=new[]{"--qualify","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify","--neuronal-muscle-qualify"}.Any(flag=>Argument(flag)!=null);
   Physics.simulationMode=SimulationMode.Script;Physics.gravity=new Vector3(0,-9.81f,0);Time.fixedDeltaTime=StepSeconds;

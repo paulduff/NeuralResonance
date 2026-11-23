@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-wire-20261123-7ce921`
+is frozen at pushed `d4069ebb59b38683913554779ff2adff2d8fd591`. Frozen preflight
+passed; both initial 2,210-file copies plus manifest verify. Interactive task
+`DNNE-Tendon-Wire-11e2864ef108` started the visible 295-case component workflow
+(34 new host bridge cases, 261 previous regressions). Exactly THREE final
+reports await Paul: `7ce921`, force observations `e764e3`, and body/motor closure
+`ab2502`. No post-launch output/status/process was inspected for any pending
+study. Do not monitor or duplicate them. This new window executes no Unity/live
+brain. Source compilation and launch qualify neither the host protocol nor
+native delivery, active sensory feedback, physiology or standing. Review its
+final backup/footer before using results. Full goal remains active; the following
+two-pending/preparation statements are historical.
+
 Independent authoring — 23 November: the full 38-path native/host tendon bridge
 is implemented as an isolated candidate. See `docs/DNNE_Full_Avatar_Bridge_2026-11-23.md`.
 It has explicit frozen attachment declarations, exact scalar/clock transport,

@@ -79,6 +79,16 @@ name-resolution errors and their logs remain preserved. Python/PowerShell syntax
 and static inventories pass without executing tests or models. No component
 pass is inferred from compilation.
 
+## Visible component launch
+
+The component package is `D:/DNNE-build-work/tendon-wire-20261123-7ce921`,
+frozen at pushed `d4069ebb59b38683913554779ff2adff2d8fd591`. Frozen preflight
+passed and both initial 2,210-file copies plus manifest verified against
+`D:/DNNE-desktop-runs/UnityWorld/tendon-wire-20261123-7ce921` before interactive
+task `DNNE-Tendon-Wire-11e2864ef108` started. No post-launch output, status or
+process was inspected. Await the operator's final backup/footer; no test pass
+is inferred. This makes three pending reports, alongside `e764e3` and `ab2502`.
+
 ## Remaining integration
 
 After component results and native force observations are reviewed, qualify the

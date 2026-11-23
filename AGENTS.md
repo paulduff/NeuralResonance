@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/motor-attachment-20261123-526071`
+is frozen at pushed `bd0099e9682c07f9c552420f9f937eeeaddc940f`. Frozen preflight
+passed; both initial 2,215-file copies plus manifest verify. Interactive task
+`DNNE-Motor-Attachment-07ad1712c500` started the visible 315-case workflow
+(20 passive attachment controls, 295 previous cases). Exactly ONE final report
+is pending: `526071`. Do not inspect its post-launch outputs/status/processes
+or duplicate it. The earlier `ab2502`, `7ce921` and `e764e3` are fully reviewed
+and D:-verified as below. The next independent native work should localize the
+force-to-motion gap, preserving original forces/limits, before any brain gain
+or complexity change. Native sampling/attachment, active physiology and standing
+remain unqualified. Full goal active; earlier pending/preparation notes are history.
+
 Completed reviews — 23 November: Paul reported all three windows complete;
 the duplicate `ab2502` footer was reviewed once. Scheduling `ab2502` verifies
 both 2,792-file copies, frozen source/binaries/runtime and all 243 exact cases

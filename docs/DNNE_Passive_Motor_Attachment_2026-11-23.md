@@ -88,3 +88,14 @@ study and does not qualify passive initialization. The 315-case follow-up may
 now be frozen, backed up and launched visibly. Actual native prelude/force delivery, active
 sensory-brain-motor integration, anatomy, physiology, standing and recovery remain
 unfinished.
+
+## Visible component launch
+
+Package `D:/DNNE-build-work/motor-attachment-20261123-526071` is frozen at pushed
+`bd0099e9682c07f9c552420f9f937eeeaddc940f`. Frozen preflight passed, and both
+initial 2,215-file copies plus manifest verified against
+`D:/DNNE-desktop-runs/UnityWorld/motor-attachment-20261123-526071` before visible
+task `DNNE-Motor-Attachment-07ad1712c500` started. No post-launch output, status
+or process was inspected. This is now the only pending report. Await Paul's
+final backup/footer; compilation and launch are not a component result, native
+initialization qualification or evidence of standing.

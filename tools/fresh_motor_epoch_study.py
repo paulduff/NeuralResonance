@@ -35,6 +35,12 @@ def population_initial():
     return result
 
 
+def population_dynamics():
+    spec = importlib.util.spec_from_file_location('epoch_population_dynamics', ROOT/'tools/muscle_population_dynamics.py')
+    result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
+    return result
+
+
 def initial_balance_reference():
     spec = importlib.util.spec_from_file_location('initial_balance_decimal_reference', ROOT/'tools/muscle_initial_balance_reference.py')
     result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
@@ -72,7 +78,9 @@ def configure(closed_loop=False, articulated=False, attachment=False, head=False
     return 243 if closed_loop else 155
 
 
-def prepare(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False, named_muscles=False, population=False):
+def prepare(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False, named_muscles=False, population=False, dynamics=False):
+    assert not (population and dynamics), 'Select initial or active population study.'
+    population = population or dynamics
     named_muscles = named_muscles or population
     head = head or named_muscles
     initial_balance = initial_balance or frame_map
@@ -92,6 +100,7 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
             ('ArticulatedTendonWire','ArticulatedMusclePathOwner','ArticulatedTendonBridge')] +
             ['tools/NativeMotorBridgeProbe/NativeArticulatedBody.cs','tools/NativeMotorBridgeProbe/NamedMuscleNativeStudy.cs',
              'tools/NativeMotorBridgeProbe/Program.cs','tools/NativeMotorBridgeProbe/MusclePopulationInitialStudy.cs',
+             'tools/NativeMotorBridgeProbe/MusclePopulationDynamicsStudy.cs',
              'tests/NeuralResonanceEngine.DNNE.Tests/NamedMuscleBridgeTests.cs'])
         assert changed == expected, changed
         named_declaration = dict(baseRevision=helper.git('rev-parse','7002e56'), changedFiles=changed,
@@ -110,7 +119,7 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
         balance_declaration = dict(baseRevision=helper.git('rev-parse', '05a1ed5'), changedRuntimeFiles=changed,
                                   originalKernelsAndExistingTestsUnchanged=True)
     methods = helper.inventory(); assert sum(methods.values()) == total
-    prefix = 'muscle-population-initial-' if population else 'named-muscle-native-' if named_muscles else 'muscle-frames-' if frame_map else 'muscle-initial-' if initial_balance else 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
+    prefix = 'muscle-population-active-' if dynamics else 'muscle-population-initial-' if population else 'named-muscle-native-' if named_muscles else 'muscle-frames-' if frame_map else 'muscle-initial-' if initial_balance else 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
     name = prefix+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
     package = Path('D:/DNNE-build-work')/name; backup = Path('D:/DNNE-desktop-runs/UnityWorld')/name
     assert not package.exists() and not backup.exists(); package.mkdir()
@@ -144,6 +153,7 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
     if population:
         population_initial().prepare(package)
         balance_runtime = initial_balance_reference().runtime()
+        if dynamics: population_dynamics().prepare(package)
     files = [dict(Path=p.relative_to(package).as_posix(), Sha256=digest(p)) for p in sorted(package.rglob('*')) if p.is_file()]
     dotnet = Path(shutil.which('dotnet')); python = Path(sys.executable)
     write(package/'configuration.json', dict(Revision=revision, PackageFiles=files, BackupDestination=str(backup),
@@ -158,7 +168,8 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
         UnityExecutable=str(unity) if unity else None,UnityExecutableSha256=digest(unity) if unity else None,
         UnityBuildWorkspace=str(Path('D:/DNNE-build-work')/(name+'-unity-build')) if named_muscles else None,
         NativeNamedMuscleStudy=named_muscles and not population,NamedNativeCases=12 if named_muscles and not population else 0,
-        MusclePopulationInitialStudy=population,PopulationInitialCases=4 if population else 0,
+        MusclePopulationInitialStudy=population and not dynamics,PopulationInitialCases=4 if population and not dynamics else 0,
+        MusclePopulationDynamicsStudy=dynamics,PopulationDynamicCases=24 if dynamics else 0,PopulationReferences=24 if dynamics else 0,
         AvatarBuildInputChecks=8 if named_muscles else 0,
         NamedNativeLimits=dict(forceNewtons=1e-10,pathLengthMeters=2e-12,nativePointMeters=2e-6,responseRadians=1e-6) if named_muscles else None,
         InitialBalanceChangeDeclaration=balance_declaration, InitialBalanceReferenceRuntime=balance_runtime,
@@ -182,7 +193,8 @@ def preflight(package):
     initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
     frame_map = cfg.get('MuscleFrameMapRegression', False)
     named_muscles = cfg.get('NamedMuscleRegression', False)
-    population = cfg.get('MusclePopulationInitialStudy', False)
+    dynamics = cfg.get('MusclePopulationDynamicsStudy', False)
+    population = cfg.get('MusclePopulationInitialStudy', False) or dynamics
     assert (not articulated or closed_loop) and (not attachment or articulated) and (not head or attachment)
     total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map, named_muscles, population)
     assert cfg['NoLiveMonitoring'] and cfg['FreshMotorEpochRegression'] and cfg['ExpectedTestCases'] == total
@@ -214,6 +226,7 @@ def preflight(package):
             ('ArticulatedTendonWire','ArticulatedMusclePathOwner','ArticulatedTendonBridge')] +
             ['tools/NativeMotorBridgeProbe/NativeArticulatedBody.cs','tools/NativeMotorBridgeProbe/NamedMuscleNativeStudy.cs',
              'tools/NativeMotorBridgeProbe/Program.cs','tools/NativeMotorBridgeProbe/MusclePopulationInitialStudy.cs',
+             'tools/NativeMotorBridgeProbe/MusclePopulationDynamicsStudy.cs',
              'tests/NeuralResonanceEngine.DNNE.Tests/NamedMuscleBridgeTests.cs'])
         assert digest(cfg['UnityExecutable']) == cfg['UnityExecutableSha256']
         assert cfg['NativeNamedMuscleStudy']==(not population) and cfg['NamedNativeCases']==(0 if population else 12)
@@ -225,9 +238,12 @@ def preflight(package):
         proof=read(package/'frame-review/review.json')
         assert proof['operatorReportedCompletion'] and proof['frameArithmeticPassed'] and proof['passedTests']==288 and proof['originalPoints']==44
     if population:
-        assert named_muscles and cfg['PopulationInitialCases']==4
+        assert named_muscles and cfg['PopulationInitialCases']==(0 if dynamics else 4)
         assert cfg['InitialBalanceReferenceRuntime']==initial_balance_reference().runtime()
         population_initial().preflight(package)
+        if dynamics:
+            assert not cfg['MusclePopulationInitialStudy'] and cfg['PopulationDynamicCases']==24 and cfg['PopulationReferences']==24
+            population_dynamics().preflight(package)
     assert cfg.get('NewBridgeCases', 0) == (34 if articulated and not attachment else 0)
     assert cfg.get('NewAttachmentCases', 0) == (20 if attachment and not head else 0)
     assert cfg.get('NewHeadCases', 0) == (16 if head and not named_muscles else 0)
@@ -268,7 +284,7 @@ def check_tests(package):
     initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
     frame_map = cfg.get('MuscleFrameMapRegression', False)
     named_muscles = cfg.get('NamedMuscleRegression', False)
-    population = cfg.get('MusclePopulationInitialStudy', False)
+    population = cfg.get('MusclePopulationInitialStudy', False) or cfg.get('MusclePopulationDynamicsStudy', False)
     total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map, named_muscles, population)
     tree = ET.parse(package/'test-results/focused.trx')
     definitions = {r.attrib['id']:r.find('t:TestMethod', ns).attrib for r in tree.findall('.//t:UnitTest', ns)}
@@ -309,14 +325,17 @@ def named_compare(package):
 
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
-    parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests','named-compare','population-compare'))
+    parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests','named-compare','population-compare','population-controls','population-reference','population-dynamics-compare'))
     parser.add_argument('package', nargs='?', type=Path); parser.add_argument('--closed-loop', action='store_true')
     parser.add_argument('--articulated', action='store_true'); parser.add_argument('--attachment', action='store_true'); parser.add_argument('--head', action='store_true')
     parser.add_argument('--initial-balance', action='store_true'); parser.add_argument('--frame-map', action='store_true'); parser.add_argument('--named-muscles', action='store_true')
-    parser.add_argument('--population-initial', action='store_true'); args = parser.parse_args()
-    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head, args.initial_balance, args.frame_map, args.named_muscles, args.population_initial)
+    parser.add_argument('--population-initial', action='store_true'); parser.add_argument('--population-dynamics', action='store_true'); args = parser.parse_args()
+    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head, args.initial_balance, args.frame_map, args.named_muscles, args.population_initial, args.population_dynamics)
     else:
-        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head and not args.initial_balance and not args.frame_map and not args.named_muscles and not args.population_initial, 'The frozen configuration selects the protocol after preparation.'
+        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head and not args.initial_balance and not args.frame_map and not args.named_muscles and not args.population_initial and not args.population_dynamics, 'The frozen configuration selects the protocol after preparation.'
         assert args.package is not None
         {'preflight':preflight, 'runtime':runtime, 'check-tests':check_tests,'named-compare':named_compare,
-         'population-compare':lambda p:population_initial().compare(p)}[args.stage](args.package.resolve())
+         'population-compare':lambda p:population_initial().compare(p),
+         'population-controls':lambda p:population_dynamics().run_stage(p,'controls'),
+         'population-reference':lambda p:population_dynamics().run_stage(p,'reference'),
+         'population-dynamics-compare':lambda p:population_dynamics().run_stage(p,'compare')}[args.stage](args.package.resolve())

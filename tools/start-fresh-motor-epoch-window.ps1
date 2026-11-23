@@ -11,12 +11,15 @@ $initialBalance=($configuration.PSObject.Properties.Name -contains 'MuscleInitia
 $frameMap=($configuration.PSObject.Properties.Name -contains 'MuscleFrameMapRegression') -and $configuration.MuscleFrameMapRegression
 $namedMuscles=($configuration.PSObject.Properties.Name -contains 'NamedMuscleRegression') -and $configuration.NamedMuscleRegression
 $populationInitial=($configuration.PSObject.Properties.Name -contains 'MusclePopulationInitialStudy') -and $configuration.MusclePopulationInitialStudy
-if($namedMuscles -and (-not $head -or $initialBalance -or $frameMap -or ($configuration.NativeNamedMuscleStudy -eq $populationInitial))){throw 'Named muscle study requires its full-body regression and explicit native or population selection.'}
+$populationDynamics=($configuration.PSObject.Properties.Name -contains 'MusclePopulationDynamicsStudy') -and $configuration.MusclePopulationDynamicsStudy
+$populationStudy=$populationInitial -or $populationDynamics
+if($namedMuscles -and (-not $head -or $initialBalance -or $frameMap -or ($configuration.NativeNamedMuscleStudy -eq $populationStudy))){throw 'Named muscle study requires its full-body regression and explicit native or population selection.'}
 if($populationInitial -and (-not $namedMuscles -or $configuration.PopulationInitialCases -ne 4)){throw 'Unexpected full slow population initialization.'}
+if($populationDynamics -and ($populationInitial -or -not $namedMuscles -or $configuration.PopulationInitialCases -ne 0 -or $configuration.PopulationDynamicCases -ne 24 -or $configuration.PopulationReferences -ne 24)){throw 'Unexpected active population inventory.'}
 if($frameMap -and -not $initialBalance){throw 'Anatomical mapping retains equilibrium controls.'}
 if($initialBalance -and (-not $closedLoop -or $articulated -or $attachment -or $head)){throw 'Initial muscle balance retains the declared motor/plant regressions.'}
 if($head -and -not $attachment){throw 'Head input retains initial physical sampling controls.'}
-$expectedCases=if($populationInitial){379}elseif($namedMuscles){359}elseif($frameMap){288}elseif($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
+$expectedCases=if($populationStudy){379}elseif($namedMuscles){359}elseif($frameMap){288}elseif($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
 if($attachment -and -not $articulated){throw 'Motor initialization retains the full-body host controls.'}
 if($articulated -and -not $closedLoop){throw 'Full-body host controls retain the split-schedule regressions.'}
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne $expectedCases){throw 'Unexpected motor-clock protocol.'}
@@ -34,7 +37,7 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskPrefix=if($populationInitial){'DNNE-Muscle-Population-Initial-'}elseif($namedMuscles){'DNNE-Named-Muscle-Native-'}elseif($frameMap){'DNNE-Muscle-Frames-'}elseif($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
+ $taskPrefix=if($populationDynamics){'DNNE-Muscle-Population-Active-'}elseif($populationInitial){'DNNE-Muscle-Population-Initial-'}elseif($namedMuscles){'DNNE-Named-Muscle-Native-'}elseif($frameMap){'DNNE-Muscle-Frames-'}elseif($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -86,7 +89,8 @@ try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle=if($frameMap){'DNNE lower leg attachment frames - 288 cases and 44 retained points'}elseif($initialBalance){'DNNE fresh muscle equilibrium - 263 cases and independent reference'}elseif($head){'DNNE original full Avatar head input - 331 component cases'}elseif($attachment){'DNNE passive motor attachment - 315 component/regression cases'}elseif($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($populationInitial){$Host.UI.RawUI.WindowTitle='DNNE named TA population initial state - 379 checks and four full populations';Write-Host '379 existing component/regression cases, then four 147-unit initial balances and independent 80/110-digit references. Original TA force capacity retained; explicit candidate dimensions. No neuronal or Unity run.'}
+ if($populationDynamics){$Host.UI.RawUI.WindowTitle='DNNE active slow muscle population - 24 trajectories and 24 references';Write-Host '379 component/regression cases, 108 field and six Jacobian controls, then 24 complete 147-unit trajectories and 24 independent references. Saved initial states, original force values and accuracy limits retained. Prescribed diagnostic arrivals; no neuronal or Unity run.'}
+ elseif($populationInitial){$Host.UI.RawUI.WindowTitle='DNNE named TA population initial state - 379 checks and four full populations';Write-Host '379 existing component/regression cases, then four 147-unit initial balances and independent 80/110-digit references. Original TA force capacity retained; explicit candidate dimensions. No neuronal or Unity run.'}
  elseif($namedMuscles){$Host.UI.RawUI.WindowTitle='DNNE named muscle paths - 359 checks then 12 actual Unity cases';Write-Host '28 named-path controls plus 331 previous regressions, then a separate Unity build and 12 isolated native cases using ten mapped lower-leg muscles. Known test tensions; no live brain or neuronal authority claim.'}
  elseif($frameMap){Write-Host '25 mapping controls and 263 previous regressions; ten named muscle paths and 44 source points independently checked. Foot scale is a declared shin-ratio proxy, not measured foot anatomy. No Unity or live brain.'}
  elseif($initialBalance){Write-Host '20 fresh muscle controls and 243 existing regressions, then eight independent 80/110-digit equilibria. No Unity or live brain. This window stays open after backup.'}
@@ -127,7 +131,7 @@ try {
  if($articulated){$status['HostBridgeChecksPassed']=$true;$status['NativeFullBodyBridgeQualified']=$false}
  if($attachment){$status['PhysicalInitializationChecksPassed']=$true;$status['NativePassiveInitializationQualified']=$false}
  if($head){$status['OriginalHeadInputChecksPassed']=$true;$status['NativeHeadDeliveryQualified']=$false}
- if($initialBalance -or $populationInitial){$status['InitialMuscleBalanceChecksPassed']=$true;$status['IndependentInitialBalancePassed']=$true;$status['LiveMuscleGeometrySelected']=$false}
+ if($initialBalance -or $populationStudy){$status['InitialMuscleBalanceChecksPassed']=$true;$status['IndependentInitialBalancePassed']=$true;$status['LiveMuscleGeometrySelected']=$false}
  if($frameMap){$status['AnatomicalFrameArithmeticPassed']=$true;$status['AnatomicalCalibrationQualified']=$false}
  if($namedMuscles){$status['NamedMuscleProtocolChecksPassed']=$true}
  if($populationInitial){
@@ -135,7 +139,16 @@ try {
   Stage 'population-compare'
   $status['FullSlowPopulationInitialBalancePassed']=$true;$status['PopulationInitialCases']=4;$status['UnitsPerMuscle']=147
  }
- if($namedMuscles -and -not $populationInitial){
+ if($populationDynamics){
+  Stage 'population-controls'
+  $status['ScalarVectorFieldControlsPassed']=108;$status['BoundedJacobianControlsPassed']=6
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--population-dynamics',(Join-Path $package 'population-dynamics-input.json'),(Join-Path $package 'population-dynamics')) 'population-dynamics.log'
+  Stage 'population-reference'
+  Stage 'population-dynamics-compare'
+  $status['PopulationNumericalCriteriaPassed']=$true;$status['PopulationDynamicCases']=24;$status['PopulationReferences']=24;$status['UnitsPerMuscle']=147
+  $status['PrescribedArrivals']=$true;$status['NeuronalMotorAuthority']=$false
+ }
+ if($namedMuscles -and -not $populationStudy){
   $workProject=Join-Path $configuration.UnityBuildWorkspace 'UnityWorld'
   Copy-Tree (Join-Path $package 'source/UnityWorld') $workProject
   $playerOutput=Join-Path $package 'player';[IO.Directory]::CreateDirectory($playerOutput) | Out-Null
@@ -186,7 +199,8 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($populationInitial){Write-Host 'Tell Orion the full slow muscle initialization outcome. Passive equilibrium, anatomical dimensions, active populations, native muscle coupling and Avatar standing are separate.'}
+ if($populationDynamics){Write-Host 'Tell Orion the active slow muscle population outcome. Coupled numerical accuracy, physiological recruitment, native muscle coupling and Avatar standing are separate.'}
+ elseif($populationInitial){Write-Host 'Tell Orion the full slow muscle initialization outcome. Passive equilibrium, anatomical dimensions, active populations, native muscle coupling and Avatar standing are separate.'}
  elseif($namedMuscles){Write-Host 'Tell Orion the actual named-muscle Unity outcome. Native attachment/force delivery, anatomical fit, neuronal authority and Avatar standing are separate.'}
  elseif($frameMap){Write-Host 'Tell Orion the lower-leg attachment mapping outcome. Coordinate accuracy, anatomical fit, native muscle delivery and Avatar standing are separate.'}
  elseif($initialBalance){Write-Host 'Tell Orion the fresh muscle equilibrium outcome. Initial force balance, coupled trajectories, anatomical calibration, neuronal authority and Avatar standing are separate.'}

@@ -10,6 +10,11 @@ using Path=System.IO.Path;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 try
 {
+if (args.Length == 3 && args[0] == "--population-dynamics")
+{
+    MusclePopulationDynamicsStudy.Run(args[1], args[2]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--population-initial")
 {
     MusclePopulationInitialStudy.Run(args[1], args[2]);

@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+ACTIVE SLOW POPULATION AUTHORED — 23 November: next workflow is
+`fresh_motor_epoch_study.py prepare --population-dynamics`. Exact completed
+`370cb9` candidate initial states, 147 distinct slow units and original force
+values; eight 200-ms conditions at three native steps, three independent
+references each. Quiet, source first/last, mixed, stretch and diagnostic clamp.
+Original numerical bounds retained. 108 scalar/vector and six Jacobian controls
+precede trajectories; 379 existing managed cases/eight Decimal controls retained.
+Biological kernels unchanged. Authoring probe build clean, Python/PowerShell
+syntax, exact test inventory and data-only saved-state preparation checked; no
+new tests/models executed yet. Review is committed/pushed at `e0ef668`.
+No pending windows yet: commit/push/freeze/backup/launch next, then wait for Paul.
+See docs/DNNE_Muscle_Population_Active_2026-11-23.md. Goal remains active.
+
 FULL SLOW INITIALIZATION REVIEWED — 23 November: Paul reported `370cb9` complete.
 Both complete 2,913-file copies, 2,268 Git files, runtime/binaries, exact 379
 managed cases, eight original equilibria and four 147-unit equilibria verified.

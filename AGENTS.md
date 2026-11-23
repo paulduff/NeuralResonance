@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+ACTUAL BODY/SENSORY CONNECTION AUTHORED — 23 November: new
+`ArticulatedCanalNativeStudy` joins the verified v3 body's original right head
+samples to the unchanged loaded canal/afferent owner and existing receiving
+nucleus. Six prescribed-force cases, two sensory resolutions: 48 native steps,
+162 head receipts, 516,096 sensory steps, 1,008 packets. Exact native replay,
+midpoint forcing, original conservation bounds and actual packet/contact
+accounting are required. Source intervals must finish and be acknowledged
+before another physical step. Read-only 30-second wall inspections preserve
+the endpoint while keeping the native bridge alive. No biological kernels,
+Unity implementation or old saves changed. Host builds zero warnings/errors;
+Python/PowerShell syntax passes. No model/test executed in authoring.
+Paul asked to watch: the new independent PowerShell runner waits for Enter,
+then opens the qualified Unity player visibly, with working Front/Side view.
+Only 40 ms body motion per case; physical stepping stays under the test owner.
+See `docs/DNNE_Native_Canal_Connection_2026-11-23.md`. Not launched at this
+checkpoint; no pending reports. Full biological control/standing unqualified.
+
 DECLARED MECHANICS REVIEWED — 23 November: Paul reported `203560` complete.
 Both final 3,722-file copies plus manifest, frozen abec8aa source, test/probe/
 player binaries and exact 335-file runtime verified. All 341 component cases;

@@ -66,3 +66,14 @@ have zero warnings/errors; the Unity API compilation has zero errors and seven
 existing reflection-field warnings. Python/PowerShell syntax and the static
 341-case / 215-method inventory pass. No test/model was executed by authoring.
 Actual execution remains required at this checkpoint.
+
+## Visible launch
+
+`D:/DNNE-build-work/declared-body-mechanics-20261123-203560` is frozen at pushed
+`abec8aab441815fed37a800fd94f98739737f572`. Preparation/preflight passed and
+both initial 2,255-file copies plus manifest verify against its same-name
+`D:/DNNE-desktop-runs/UnityWorld` backup. Interactive task
+`DNNE-Declared-Body-Mechanics-4626d18d0885` started the visible workflow.
+No post-launch output, status or process was inspected. Await Paul's final
+report; this is the only pending run. The preceding actual head and full-path
+friction results are completed, reviewed and D:-verified.

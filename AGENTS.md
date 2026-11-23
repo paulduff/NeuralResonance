@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+LATEST DECLARED-MECHANICS LAUNCH — 23 November: package
+`D:/DNNE-build-work/declared-body-mechanics-20261123-203560` is frozen at pushed
+`abec8aab441815fed37a800fd94f98739737f572`. Preparation/preflight passed and
+both initial 2,255-file copies plus manifest verified against its same-name
+D: UnityWorld backup. Interactive task `DNNE-Declared-Body-Mechanics-4626d18d0885`
+started the visible workflow: 341 component cases, separate Unity build, then
+12 native cases / 96 steps / 324 head receipts under explicit original and
+no-joint-friction settings. No post-launch output/status/process inspected.
+Exactly ONE report awaits Paul: `203560`. Do not monitor or duplicate it.
+Earlier `e19c4a`, `9d34cc` and `7bc04c` are reviewed and D:-verified, not pending.
+Full biological control, calibrated resistance and standing remain unfinished.
+Full goal active.
+
 EXPLICIT BODY MECHANICS AUTHORING — 23 November: `full-avatar-tendon-wire-v3`
 requires `mechanicsMode=original|no-joint-friction`. The real isolated bridge
 applies the reviewed setting owner and retains its before/intervention/owned

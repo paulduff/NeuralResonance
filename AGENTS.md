@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+FULL SLOW POPULATION INITIAL WINDOW LAUNCHED — 23 November: independent visible
+task `DNNE-Muscle-Population-Initial-6f354a9ff2dc` started for
+`D:/DNNE-build-work/muscle-population-initial-20261123-370cb9`, frozen at pushed
+`917be280abd608f3b33910028cabb0d180de4234`. Both initial 2,313-file copies plus
+manifest verified. Eight packaging controls, 379 managed cases/eight original
+Decimal controls, four complete 147-unit initial conditions and independent
+80/110-digit balances execute there. Exactly ONE pending report: `370cb9`.
+No postlaunch output/process/status inspected; wait for Paul's final footer.
+No Unity or neuronal execution in this study; dimensions remain a declared
+candidate, source capacities unchanged. Goal active and incomplete. Native
+`998900` and its seven-file D:-verified review are complete; see below.
+
 FULL SLOW POPULATION INITIALIZATION AUTHORED — 23 November: next independent
 workflow is `fresh_motor_epoch_study.py prepare --population-initial`: 379 existing
 managed cases (359 named-path + 20 initializer), eight packaging controls, eight

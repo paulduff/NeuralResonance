@@ -1,5 +1,29 @@
 # Avatar and environment work
 
+NAMED MUSCLE NATIVE RESULT REVIEWED — 23 November: Paul reported final
+DIAGNOSTICS_COMPLETE for `named-muscle-native-20261123-998900`. Both complete
+3,570-file copies, 2,262 Git files, 144 player files, 359 managed cases and eight
+packaging controls verified. Twelve cases / 96 physical steps / 108 endpoints /
+324 head receipts / 44 attachments / 3,696 point forces reconcile. All ten paths
+respond (maximum joint difference per muscle 0.0779238–0.2138742 rad); original
+quiet states and extra-inspection states remain exact. Seven-file review plus
+manifest D:-verified at `artifacts/named-muscle-native-20261123-998900-review`.
+NO pending windows. Source `250fb111aeef3da1195b4decf2f03144310acbd8` and failed
+`afc890` remain untouched. Geometry fit, actual muscle-cell coupling, neuronal
+authority and standing remain open; 40 N prescribed forces are not neural drive.
+
+Motor population source now preserved at `artifacts/motor-population-source-20261123`
+(four files plus manifest D:-verified). All 200 author rows / 3,000 binary64
+parameters retained: 147 slow units total 266.1767346837521 N, 53 fast units total
+395.5879711986010 N; raw full sum exceeds F0 by 2.1111e-13 N, not normalized.
+Current AvatarDynamicMuscle is slow-only; do not import fast rows as slow or
+copy a single first unit into all muscles. No source model/test was executed.
+Named TA paths after passive prelude measure 0.2908102148570971 m left and
+0.29255618136815514 m right; whole reference TA geometry cannot silently stand
+in for every actual body path. Next: explicit anatomical muscle dimensions,
+slow populations and shared-fiber/tendon accuracy before native cell coupling.
+See docs/DNNE_Motor_Population_Source_2026-11-23.md. Goal active/incomplete.
+
 NAMED MUSCLE PACKAGING RETRY LAUNCHED — 23 November: visible independent task
 `DNNE-Named-Muscle-Native-0122f4307146` started for
 `D:/DNNE-build-work/named-muscle-native-20261123-998900`, frozen at pushed

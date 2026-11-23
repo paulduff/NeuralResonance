@@ -1,5 +1,26 @@
 # Named muscle paths in native Avatar — 23 November 2026
 
+## Native retry result
+
+`named-muscle-native-20261123-998900`, frozen at
+`250fb111aeef3da1195b4decf2f03144310acbd8`, completed. Both 3,570-file copies,
+2,262 Git files, 144 player files and unchanged selected runtime were reviewed.
+All eight packaging controls and 359 managed cases passed. Unity built with
+zero reported build errors or warnings. All twelve native cases, 96 physical
+steps, 108 endpoints, 324 original head receipts and 3,696 point forces passed
+the unchanged accounting checks. Every named path produced a response above
+the prospective 1e-6-radian observation threshold; maximum joint response per
+muscle ranged from 0.07792382338084503 to 0.2138741891831195 radians.
+
+Maximum saved comparison errors were 1.8573121142451132e-7 m for native point
+position, 1.1102230246251565e-16 m for polyline length and
+2.1316282072803006e-14 N for point force. Original quiet motion remained exact,
+as did quiet motion with extra inspections. The seven-file review at
+`artifacts/named-muscle-native-20261123-998900-review` has a verified D: copy.
+This establishes the named force-delivery route under the declared mechanics;
+it does not establish anatomical fit, muscle-cell trajectories, neuronal
+authority or standing. Actual forces were still the prescribed 40 N fixture.
+
 ## Build packaging repair
 
 Paul reported the final failure footer for `afc890`. Both complete 2,872-file

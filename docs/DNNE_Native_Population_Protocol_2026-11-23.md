@@ -92,3 +92,9 @@ start paused; this isolated diagnostic harness owns each requested step.
 Author validation: probe builds with zero warnings/errors; Python and PowerShell
 syntax and exact 388-case inventory checked. Scientific outcomes await the
 independent visible run.
+
+Launched: `D:/DNNE-build-work/native-muscle-population-20261123-b3cf65`, frozen
+at pushed `da4c72b`, task `DNNE-Native-Muscle-Population-2e84401f8cfb`.
+Both initial 2,512-file copies and manifest were verified before launch.
+Exactly one result report is pending; no postlaunch output, status or process
+was inspected. Review only after Paul's final backup/footer report.

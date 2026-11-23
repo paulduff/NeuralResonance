@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+NATIVE FULL POPULATION WINDOW LAUNCHED — 23 November: visible independent task
+`DNNE-Native-Muscle-Population-2e84401f8cfb` started for
+`D:/DNNE-build-work/native-muscle-population-20261123-b3cf65`, frozen at pushed
+`da4c72b`. Both initial 2,512-file copies plus manifest verified. 388 regression
+cases, then eight actual Unity cases with two complete 147-unit slow TA muscles.
+Exactly ONE pending report: `b3cf65`. No postlaunch process, status, log or output
+inspection. Wait for Paul to report the final D: backup/footer. Original
+neuronal/muscle kernels and qualified player retained; diagnostic events only.
+Author build zero warnings/errors, syntax/inventory and frozen preparation pass;
+scientific outcomes remain pending. Goal active and incomplete.
+
 NATIVE FULL POPULATION INTEGRATION AUTHORED — 23 November: next isolated
 comparison connects both retained 147-unit TA populations to the actual named
 Unity paths; no biological equation, native player or live host change.

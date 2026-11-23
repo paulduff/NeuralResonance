@@ -49,6 +49,7 @@ public sealed class WorldController:MonoBehaviour {
   if(Argument("--balance-qualify")!=null)StartCoroutine(BalanceCapability.Run(this));
   if(Argument("--response-qualify")!=null)StartCoroutine(BalanceResponseQualification.Run(this));
   if(Argument("--physical-sample-qualify")!=null)StartCoroutine(PhysicalSampleQualification.Run(this));
+  if(Argument("--neuronal-muscle-qualify")!=null && Argument("--tendon-case")!=null)StartCoroutine(ArticulatedTendonQualification.Run(this));
  }
  void CreateEye(bool left){var eye=new GameObject(left?"Left physical eye":"Right physical eye");eye.transform.SetParent(Avatar.links["head"].body.transform,false);eye.transform.localPosition=new Vector3(left?-.032f:.032f,.12f,.115f);
   var camera=eye.AddComponent<Camera>();camera.fieldOfView=85;camera.nearClipPlane=.03f;camera.farClipPlane=40;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.23f,.31f,.38f);camera.enabled=false;

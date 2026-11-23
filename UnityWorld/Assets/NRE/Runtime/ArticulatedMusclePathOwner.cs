@@ -39,10 +39,11 @@ namespace Nre.UnityWorld
         {
             public string muscleId, attachmentId, bodyId, requestedXBits, requestedYBits, requestedZBits;
             public Vector3 worldPoint, appliedForceNewtons;
+            public string[] pointBits, appliedBits;
         }
         [Serializable] sealed class Geometry
         {
-            public string version = "declared-full-avatar-tendon-paths-v1", unity, declarationsJson;
+            public string version = "declared-full-avatar-tendon-paths-v2", unity, declarationsJson, sceneMechanicsJson;
             public float stepSeconds;
             public Vector3 gravity;
             public GeometryLink[] links;
@@ -149,7 +150,8 @@ namespace Nre.UnityWorld
             Healthy();
             if (!MuscleHingeWire.Hash(fingerprint) || plantFingerprint.Length != 0 || world.physicsSteps != 0)
                 throw new ArgumentException("Bind the actual muscle plant once before physical advancement.");
-            CheckUnchanged(); plantFingerprint = fingerprint; last = CaptureCore();
+            try { CheckUnchanged(); plantFingerprint = fingerprint; last = CaptureCore(); }
+            catch (Exception e) { Fail(e); throw; }
         }
 
         internal Snapshot Capture()
@@ -175,6 +177,7 @@ namespace Nre.UnityWorld
                 var applications = last.Paths.SelectMany(p => p.ApplyTension(tensions[p.MuscleId]).PointForces.Select(f => new AppliedPoint {
                     muscleId = p.MuscleId, attachmentId = f.Point.AttachmentId, bodyId = f.Point.BodyId,
                     worldPoint = F(f.Point.PositionMeters), appliedForceNewtons = F(f.ForceNewtons),
+                    pointBits = Bits(F(f.Point.PositionMeters)), appliedBits = Bits(F(f.ForceNewtons)),
                     requestedXBits = MuscleHingeWire.Encode(f.ForceNewtons.X), requestedYBits = MuscleHingeWire.Encode(f.ForceNewtons.Y),
                     requestedZBits = MuscleHingeWire.Encode(f.ForceNewtons.Z) })).ToArray();
                 if (applications.Any(a => !Finite(a.worldPoint) || !Finite(a.appliedForceNewtons)))
@@ -221,7 +224,8 @@ namespace Nre.UnityWorld
             return new Snapshot(world.physicsSteps, PhysicsStepMs, BodyFingerprint, plantFingerprint, state, lastEffort, measured);
         }
         string CaptureGeometryJson() => JsonUtility.ToJson(new Geometry {
-            unity = Application.unityVersion, declarationsJson = declarationsJson, stepSeconds = physicalStepSeconds, gravity = Physics.gravity,
+            unity = Application.unityVersion, declarationsJson = declarationsJson, sceneMechanicsJson = ArticulatedMechanicsIdentity.Capture(body),
+            stepSeconds = physicalStepSeconds, gravity = Physics.gravity,
             links = body.links.Values.OrderBy(l => l.name, StringComparer.Ordinal).Select(l => new GeometryLink {
                 id = l.name, parent = l.body.transform.parent == null ? "" : l.body.transform.parent.name, mass = l.body.mass,
                 inertia = l.body.inertiaTensor, inertiaRotation = l.body.inertiaTensorRotation, centerOfMass = l.body.centerOfMass,

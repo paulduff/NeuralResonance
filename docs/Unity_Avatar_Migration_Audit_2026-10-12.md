@@ -5,6 +5,14 @@ tests and DNNE receptor paths before adding a replacement. The operator explicit
 requires this review because the existing Avatar contains substantial prior work.
 Unity provides a dynamic physical solver; it does not replace DNNE's authority.
 
+23 November: the full-body direct tendon candidate has a supported-scene
+mechanics identity and an isolated 51-case native qualification workflow.
+Its 38 paths use explicitly synthetic joint-frame attachments and prescribed
+tensions; these do not migrate anatomical attachments or neuronal control.
+Canonical Avatar geometry/causal muscle kernels remain unchanged. Contact and
+force endpoints will be retained without changing the live default. See
+`DNNE_Full_Avatar_Tendons_2026-11-23.md`; no native outcome is known at authoring.
+
 20 November candidate: `ArticulatedMusclePathOwner` reuses the existing canonical
 `AvatarMusclePath` geometry for all 38 currently exposed Unity muscle groups.
 An explicit isolated owner disables legacy joint drives and accepts declared

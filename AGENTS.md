@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+RESUMED — 23 November: Paul resumed the goal. Friday's pause is revoked.
+All earlier reported studies are reviewed; no report is pending at this authoring
+checkpoint. A 51-case full-Avatar tendon mechanics workflow is ready to freeze
+and launch after clean commit/push and verified backup. See
+`docs/DNNE_Full_Avatar_Tendons_2026-11-23.md`. It first runs 112 exact unchanged
+component cases, then fresh Unity processes for 38 prescribed tension paths,
+quiet/fall and 11 rejection controls (413 total physical steps). The attachments
+are declared joint-frame mechanical fixtures, NOT anatomical calibration.
+All canonical Avatar/neuronal source and tests remain unchanged. API compilation
+and static syntax/inventory/metadata checks pass; no new model/test has executed.
+The host wire/causal muscle bridge and real anatomy are still unfinished. Record
+the actual frozen package/task after launch, then await Paul's final footer
+without monitoring. Do not infer standing or neuronal authority from this study.
+This supersedes the paused state below, which remains a historical checkpoint.
+
 EVENING PAUSE — 20 November: Paul requested notes for tomorrow and a pause.
 The authoritative handoff is `docs/DNNE_Checkpoint_2026-11-20_Evening.md`.
 Saved-head reanalysis `2859f6` is fully reviewed: both 2,776-file copies,

@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+LATEST NATIVE HEAD LAUNCH — 23 November: package
+`D:/DNNE-build-work/native-articulated-head-20261123-e19c4a` is frozen at pushed
+`619b0b38bf49735f1f21b3fa6224c65f56cd8fd1`. Preparation/preflight passed and
+both initial 2,438-file copies plus manifest verify against its same-name D:
+UnityWorld backup. Interactive task `DNNE-Native-Articulated-Head-a1a1dae11746`
+started the six-case real bridge/head-input workflow. It reuses the verified
+331 component cases and qualified 144-file player; only the host is rebuilt.
+No post-launch output/status/process inspected. Exactly TWO final reports await
+Paul: friction `9d34cc` and actual head `e19c4a`. Do not monitor or duplicate
+either. Component head `7bc04c` is completed/reviewed/D:-verified, not pending.
+Native delivery and the full biological control loop remain unqualified until
+their own evidence is reviewed. Full goal active.
+
 HEAD COMPONENT REVIEW / NATIVE INTEGRATION AUTHORING — 23 November: Paul
 reported `7bc04c` complete. Both 2,812-file copies, source/binaries, all 331 exact
 cases and unchanged 335-file runtime verify; the four-file review is D:-verified.

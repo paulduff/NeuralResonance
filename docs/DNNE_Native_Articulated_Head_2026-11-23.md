@@ -90,3 +90,13 @@ the stated short conditions. Active sensory trajectories, motor-muscle feedback,
 anatomical resistance, live neuronal authority and Avatar standing remain
 outstanding. The fixture geometry must not be combined with repeated tibialis
 muscle parameters as if that were anatomical full-body muscle calibration.
+
+## Visible launch
+
+`D:/DNNE-build-work/native-articulated-head-20261123-e19c4a` is frozen at pushed
+`619b0b38bf49735f1f21b3fa6224c65f56cd8fd1`. Preparation/preflight passed; both
+initial 2,438-file copies plus manifest verify against its same-name
+`D:/DNNE-desktop-runs/UnityWorld` backup. Interactive task
+`DNNE-Native-Articulated-Head-a1a1dae11746` started the visible workflow.
+No post-launch output, status or process was inspected. Await Paul's final
+report before reviewing this run. Friction `9d34cc` is the other pending report.

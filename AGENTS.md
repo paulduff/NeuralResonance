@@ -1,5 +1,34 @@
 # Avatar and environment work
 
+FRESH MUSCLE BALANCE AUTHORED — 23 November: new optional
+`AvatarMuscleInitialBalance` solves a passive initial fiber/tendon force
+balance using unchanged `AvatarDynamicMuscle` evaluations. Explicit bracket,
+clock and existing unit anatomy; no activation, state reset, geometry change
+or live selection. Nonbracketed/unconverged results supply no definition;
+final candidate remains inside its reported bracket. Twenty new cases plus
+243 existing regressions and eight independent 80/110-digit Decimal roots
+are supported by `fresh_motor_epoch_study.py --initial-balance` and the
+existing visible PowerShell runner. C# authoring build at
+`D:/DNNE-build-work/muscle-initial-authoring-20261123-v1`: zero warnings/errors;
+Python/PowerShell syntax and all six declared suite inventories checked.
+No tests/models/references executed or launched at this checkpoint. Original
+muscle/calcium/neuronal/Unity kernels and existing tests unchanged. See
+`docs/DNNE_Muscle_Initial_Balance_2026-11-23.md`; whole-body anatomy/population,
+coupled accuracy and standing remain unqualified. No untracked draft remains
+once this candidate is committed.
+
+SAVED NATIVE/SENSORY REANALYSIS REVIEWED — 23 November: Paul reported final
+DIAGNOSTICS_COMPLETE for `8dd5a0`. Both 2,260-file copies and source verified;
+25 identity controls passed, all six cases/516,096 source steps/1,008 packets/
+162 head receipts reconciled. Maximum held-input allowance fraction
+0.00044405487046477544. Original body-state/force bytes exact; 30 process-local
+IDs mapped per case, 38 path hashes independently reconstructed per session.
+ZERO afferent events and ZERO actual nucleus contact deliveries; 281 fixed
+receiver ticks per case. Hip/shoulder input causes small subthreshold membrane
+changes (~0.0424/~0.00755 mV), not firing. Five-file review plus manifest D:-
+verified at `artifacts/native-canal-reanalysis-20261123-8dd5a0-review`.
+Original `184323` failure preserved. NO pending reports at this checkpoint.
+
 SAVED NATIVE/SENSORY REANALYSIS LAUNCHED — 23 November: independent visible
 PowerShell task `DNNE-Native-Canal-Reanalysis-d69dbed0fd61` started for
 `D:/DNNE-build-work/native-canal-reanalysis-20261123-8dd5a0`, frozen at pushed

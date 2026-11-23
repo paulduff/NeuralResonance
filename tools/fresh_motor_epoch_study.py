@@ -23,14 +23,24 @@ helper.COUNTS = COUNTS
 read, write, digest = helper.read, helper.write, helper.digest
 
 
-def configure(closed_loop=False, articulated=False, attachment=False, head=False):
+def initial_balance_reference():
+    spec = importlib.util.spec_from_file_location('initial_balance_decimal_reference', ROOT/'tools/muscle_initial_balance_reference.py')
+    result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
+    return result
+
+
+def configure(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False):
+    if initial_balance: assert not (articulated or attachment or head)
     attachment = attachment or head
     articulated = articulated or attachment
-    closed_loop = closed_loop or articulated
+    closed_loop = closed_loop or articulated or initial_balance
     helper.COUNTS = dict(COUNTS)
     if closed_loop:
         helper.COUNTS.update(ClosedLoopMotorScheduleTests=14, CausalMotorPlantTests=27,
                             DynamicMuscleTests=16, MusclePathGeometryTests=31)
+    if initial_balance:
+        helper.COUNTS.update(MuscleInitialBalanceTests=20)
+        return 263
     if articulated:
         helper.COUNTS.update(ArticulatedTendonBridgeTests=34, MuscleHingeClockTests=18)
         if attachment:
@@ -43,16 +53,25 @@ def configure(closed_loop=False, articulated=False, attachment=False, head=False
     return 243 if closed_loop else 155
 
 
-def prepare(closed_loop=False, articulated=False, attachment=False, head=False):
+def prepare(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False):
     attachment = attachment or head
     articulated = articulated or attachment
-    closed_loop = closed_loop or articulated
-    total = configure(closed_loop, articulated, attachment, head)
+    closed_loop = closed_loop or articulated or initial_balance
+    total = configure(closed_loop, articulated, attachment, head, initial_balance)
     assert not helper.git('status', '--porcelain'), 'Commit clean source first.'
     revision = helper.git('rev-parse', 'HEAD')
     assert revision == helper.git('rev-parse', 'origin/main'), 'Push first.'
+    balance_declaration = None; balance_runtime = None
+    if initial_balance:
+        changed = sorted(helper.git('diff', '--name-only', '05a1ed5', revision, '--',
+            'src', 'Protocol', 'Shared.Contracts', 'Structures', 'ControlProgram', 'UnityWorld', 'tests').splitlines())
+        assert changed == ['src/NRE.SimAvatar/AvatarMuscleInitialBalance.cs',
+                           'tests/NeuralResonanceEngine.DNNE.Tests/MuscleInitialBalanceTests.cs'], changed
+        balance_runtime = initial_balance_reference().runtime()
+        balance_declaration = dict(baseRevision=helper.git('rev-parse', '05a1ed5'), changedRuntimeFiles=changed,
+                                  originalKernelsAndExistingTestsUnchanged=True)
     methods = helper.inventory(); assert sum(methods.values()) == total
-    prefix = 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
+    prefix = 'muscle-initial-' if initial_balance else 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
     name = prefix+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
     package = Path('D:/DNNE-build-work')/name; backup = Path('D:/DNNE-desktop-runs/UnityWorld')/name
     assert not package.exists() and not backup.exists(); package.mkdir()
@@ -76,9 +95,11 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False):
         FreshMotorEpochRegression=True, ClosedLoopMotorScheduleRegression=closed_loop,
         ArticulatedTendonBridgeRegression=articulated,
         PassiveMotorAttachmentRegression=attachment, ArticulatedHeadInputRegression=head,
-        ExpectedTestCases=total, NewClockCases=0 if closed_loop else 13, NewScheduleCases=14 if closed_loop and not articulated else 0,
+        MuscleInitialBalanceRegression=initial_balance, NewInitialBalanceCases=20 if initial_balance else 0,
+        InitialBalanceChangeDeclaration=balance_declaration, InitialBalanceReferenceRuntime=balance_runtime,
+        ExpectedTestCases=total, NewClockCases=0 if closed_loop else 13, NewScheduleCases=14 if closed_loop and not articulated and not initial_balance else 0,
         NewBridgeCases=34 if articulated and not attachment else 0, NewAttachmentCases=20 if attachment and not head else 0, NewHeadCases=16 if head else 0,
-        ExistingRegressionCases=315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142,
+        ExistingRegressionCases=243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142,
         ExpectedTestMethods=methods, TestFilter='|'.join('FullyQualifiedName~'+name for name in helper.COUNTS),
         OriginalCaptureAccessed=False, NativeUnityExecuted=False, LiveBrainAccessed=False, OldSavesLoaded=False,
         IndependentCoupledTrajectoryQualified=False, PhysiologicalFiringQualified=False, AvatarBalanceQualified=False))
@@ -93,11 +114,22 @@ def preflight(package):
     articulated = cfg.get('ArticulatedTendonBridgeRegression', False)
     attachment = cfg.get('PassiveMotorAttachmentRegression', False)
     head = cfg.get('ArticulatedHeadInputRegression', False)
+    initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
     assert (not articulated or closed_loop) and (not attachment or articulated) and (not head or attachment)
-    total = configure(closed_loop, articulated, attachment, head)
+    total = configure(closed_loop, articulated, attachment, head, initial_balance)
     assert cfg['NoLiveMonitoring'] and cfg['FreshMotorEpochRegression'] and cfg['ExpectedTestCases'] == total
-    assert cfg['NewClockCases'] == (0 if closed_loop else 13) and cfg['ExistingRegressionCases'] == (315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142)
-    assert cfg.get('NewScheduleCases', 0) == (14 if closed_loop and not articulated else 0)
+    assert cfg['NewClockCases'] == (0 if closed_loop else 13) and cfg['ExistingRegressionCases'] == (243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142)
+    assert cfg.get('NewScheduleCases', 0) == (14 if closed_loop and not articulated and not initial_balance else 0)
+    assert cfg.get('NewInitialBalanceCases', 0) == (20 if initial_balance else 0)
+    if initial_balance:
+        assert closed_loop
+        # Initial-condition selection must not silently change any biological,
+        # transport, native or existing test equation in this study.
+        declared = cfg['InitialBalanceChangeDeclaration']
+        assert declared['originalKernelsAndExistingTestsUnchanged'] and declared['baseRevision'].startswith('05a1ed5')
+        assert declared['changedRuntimeFiles'] == ['src/NRE.SimAvatar/AvatarMuscleInitialBalance.cs',
+                           'tests/NeuralResonanceEngine.DNNE.Tests/MuscleInitialBalanceTests.cs']
+        assert cfg['InitialBalanceReferenceRuntime'] == initial_balance_reference().runtime()
     assert cfg.get('NewBridgeCases', 0) == (34 if articulated and not attachment else 0)
     assert cfg.get('NewAttachmentCases', 0) == (20 if attachment and not head else 0)
     assert cfg.get('NewHeadCases', 0) == (16 if head else 0)
@@ -134,7 +166,8 @@ def check_tests(package):
     articulated = cfg.get('ArticulatedTendonBridgeRegression', False)
     attachment = cfg.get('PassiveMotorAttachmentRegression', False)
     head = cfg.get('ArticulatedHeadInputRegression', False)
-    total = configure(closed_loop, articulated, attachment, head)
+    initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
+    total = configure(closed_loop, articulated, attachment, head, initial_balance)
     tree = ET.parse(package/'test-results/focused.trx')
     definitions = {r.attrib['id']:r.find('t:TestMethod', ns).attrib for r in tree.findall('.//t:UnitTest', ns)}
     rows = tree.findall('.//t:UnitTestResult', ns); actual = Counter()
@@ -151,17 +184,22 @@ def check_tests(package):
     if articulated: analysis.update(newBridgeCases=cfg['NewBridgeCases'], hostProtocolChecksPassed=True, nativeFullBodyBridgeQualified=False)
     if attachment: analysis.update(newAttachmentCases=cfg.get('NewAttachmentCases',20), physicalInitializationChecksPassed=True, nativePassiveInitializationQualified=False)
     if head: analysis.update(newHeadCases=16, originalHeadInputChecksPassed=True, nativeHeadDeliveryQualified=False)
+    if initial_balance:
+        independent = initial_balance_reference().compare(package)
+        analysis.update(newInitialBalanceCases=20, initialMuscleBalanceChecksPassed=True,
+            independentInitialBalancePassed=independent['passed'], liveMuscleGeometrySelected=False)
     write(package/'analysis.json', analysis)
-    print(f'All {total} clock/schedule and existing regression cases passed. Whole-loop timing, physiological firing and standing remain separate.', flush=True)
+    print(f'All {total} component/regression cases passed. Whole-loop timing, physiological firing and standing remain separate.', flush=True)
 
 
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
     parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests'))
     parser.add_argument('package', nargs='?', type=Path); parser.add_argument('--closed-loop', action='store_true')
-    parser.add_argument('--articulated', action='store_true'); parser.add_argument('--attachment', action='store_true'); parser.add_argument('--head', action='store_true'); args = parser.parse_args()
-    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head)
+    parser.add_argument('--articulated', action='store_true'); parser.add_argument('--attachment', action='store_true'); parser.add_argument('--head', action='store_true')
+    parser.add_argument('--initial-balance', action='store_true'); args = parser.parse_args()
+    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head, args.initial_balance)
     else:
-        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head, 'The frozen configuration selects the protocol after preparation.'
+        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head and not args.initial_balance, 'The frozen configuration selects the protocol after preparation.'
         assert args.package is not None
         {'preflight':preflight, 'runtime':runtime, 'check-tests':check_tests}[args.stage](args.package.resolve())

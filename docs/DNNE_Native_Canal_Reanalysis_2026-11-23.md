@@ -77,3 +77,23 @@ frozen at `c22d3d6b7bf0928b73e54f094769889b956e71af`. Both initial copies contai
 2,251 verified files plus manifest. Interactive task
 `DNNE-Native-Canal-Reanalysis-d69dbed0fd61` was started; no post-launch output,
 process or status inspected. This is the only pending report.
+
+## Completed result
+
+Paul subsequently reported the final DIAGNOSTICS_COMPLETE footer. Both
+2,260-file result copies and the frozen source were verified. All 25 identity
+controls passed. The six saved cases reconcile all 516,096 sensory steps,
+1,008 packets, 54 body endpoints and 162 head receipts, preserving original
+state/force bytes and the declared numerical limits. Maximum held-input
+arithmetic error is 0.00044405487046477544 of its original allowance.
+
+All six runs contain zero afferent events and zero actual nucleus contact
+deliveries; each receiving cell advanced 281 fixed-grid ticks. Hip input
+reaches approximately 3.08 nm bundle displacement, with an approximately
+0.0424 mV heminode change; shoulder input reaches 0.546 nm and approximately
+0.00755 mV. These recorded changes demonstrate a subthreshold sensory response
+in this short fixture, not firing qualification or a balance response.
+
+Review: `artifacts/native-canal-reanalysis-20261123-8dd5a0-review`, five files
+plus manifest verified on D:. Original `184323` remains FAILED; its results
+were not rewritten. The reanalysis has no pending report.

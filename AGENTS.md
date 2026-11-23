@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+TWO NEXT WINDOWS LAUNCHED — 23 November, frozen at pushed `e4d2f18`:
+saved population reanalysis `D:/DNNE-build-work/native-population-reanalysis-20261123-c6dcd3`,
+task `DNNE-Population-Reanalysis-fc78e836f29c`, initial 2,332-file copies verified;
+complete routed path `D:/DNNE-build-work/routed-muscle-path-20261123-61820b`,
+task `DNNE-Routed-Path-65fe0ea44a7f`, initial 2,360-file copies verified.
+Exactly TWO reports pending (`c6dcd3`, `61820b`). No postlaunch process/status/log/
+output inspected. First runs eight receipt controls and saved eight-case analysis
+without model rerun; second runs 169 geometry/regression cases. Working and frozen
+data-only preflights pass. Earlier `b3cf65`, `0b9165`, `a9bac5` are complete and
+reviewed below. Preserve original failure and all limits. Goal active/incomplete.
+
 THREE RESULTS REVIEWED / NEXT ASSEMBLY AUTHORED — 23 November: Paul explicitly
 reported ALL `b3cf65`, `0b9165`, `a9bac5` complete. Both full inventories, Git
 sources, binaries and runtime records verified. Cylinder 127 cases + 24 independent

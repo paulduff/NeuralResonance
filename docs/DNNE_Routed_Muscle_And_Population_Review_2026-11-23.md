@@ -95,3 +95,16 @@ Author build has zero warnings/errors; syntax, exact case inventory and generate
 parity are checked without executing tests. Actual component outcomes remain
 pending until Paul reports the final footer. Standing, neuronal authority and
 fall recovery remain requirements of the unchanged goal.
+
+Both next windows launched from pushed revision `e4d2f18`, after their working
+and frozen data-only preflights passed:
+
+| Window | Results directory | Initial files verified in each copy |
+|---|---|---:|
+| Saved native population analysis | `D:/DNNE-build-work/native-population-reanalysis-20261123-c6dcd3` | 2,332 |
+| Complete routed muscle paths | `D:/DNNE-build-work/routed-muscle-path-20261123-61820b` | 2,360 |
+
+Task identities are `DNNE-Population-Reanalysis-fc78e836f29c` and
+`DNNE-Routed-Path-65fe0ea44a7f`. Each has a verified initial D: backup and a visible
+independent PowerShell window. No postlaunch process, status, log or output was
+inspected. These are the only two pending reports at this checkpoint.

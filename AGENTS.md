@@ -1,5 +1,25 @@
 # Avatar and environment work
 
+BOTH POPULATION/SHARED STUDIES REVIEWED — 23 November: Paul confirmed both done.
+`a212b5`: both 3,097-file copies, 2,275 Git files, binaries/runtime, 379 managed
+cases, 24 full 147-unit traces and 24 references verified. Original numerical
+criteria all pass; max finest allowance fraction .04510336, reference .40469912;
+mixed tendon peaks ~130 N. Seven-file review D:-verified. Prescribed arrivals,
+not neuronal authority/physiology/standing. `5001cd`: both 2,869-file copies,
+2,277 Git files and exact 164 cases verified; nine new shared-anatomy controls
+pass including 2x147 motor cells, original identity and all-source completeness.
+Four-file review D:-verified. NO pending windows. Original results unchanged.
+Read-only topology audit `artifacts/standing-muscle-coverage-20261123` is
+D:-verified: ten new named paths cross only ankle child joints, not hip/knee.
+All eight source quadriceps subdivisions require wraps and moving patella;
+current fixed-point mapping/native 15-link body does not supply that mechanism.
+Older Avatar hip/knee muscle groups EXIST and must be retained/consulted.
+Next integrate passing active TA population with native named paths, explicitly
+carrying the reviewed shared-owner source delta and regressions; then extend
+hip/knee mechanics without flattening wraps or treating TA as every muscle.
+See docs/DNNE_Population_And_Standing_Checkpoint_2026-11-23.md. Goal active,
+incomplete. No model/test executed by reviews or topology audit.
+
 SHARED MOTOR WINDOW LAUNCHED — 23 November: visible independent task
 `DNNE-Shared-Motor-Anatomy-b7d730402a68` started for
 `D:/DNNE-build-work/shared-motor-anatomy-20261123-5001cd`, frozen at pushed

@@ -48,6 +48,7 @@
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MusclePathGeometry.cs" Link="UnityMusclePathGeometry.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\CylinderMusclePathGeometry.cs" Link="UnityCylinderMusclePathGeometry.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\PatellarPathGeometry.cs" Link="UnityPatellarPathGeometry.cs" />
+    <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\RoutedMusclePathGeometry.cs" Link="UnityRoutedMusclePathGeometry.cs" />
     <EmbeddedResource Include="Fixtures\PatellarSource.json" LogicalName="PatellarSource.json" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MotorUnitPool.cs" Link="UnityMotorUnitPool.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MusclePlant.cs" Link="UnityMusclePlant.cs" />

@@ -1,5 +1,22 @@
 # Avatar and environment work
 
+THREE RESULTS REVIEWED / NEXT ASSEMBLY AUTHORED — 23 November: Paul explicitly
+reported ALL `b3cf65`, `0b9165`, `a9bac5` complete. Both full inventories, Git
+sources, binaries and runtime records verified. Cylinder 127 cases + 24 independent
+comparisons pass; patella 99 + 450 pass at original limits. Native population 388
+cases and eight captures complete, but analyser FAILED on step vs inspect
+envelopes. All 320 post-step endpoints match the immediate original inspection
+reply; only operation/sequence differ, all physical payload exact. Original
+failure retained. Reviews (6/5/5 files) D:-verified. No reports pending at this
+checkpoint. Repair authenticates exact step/inspect receipts, preserves all
+payload/force/source bounds, and writes a fresh saved-only reanalysis. Eight
+adversarial receipt controls authored. New routed muscle assembly retains all
+ordered points, explicit cylinder spans, guide reactions and constrained patellar
+loads; generated Unity parity and 18 controls authored. Build zero warnings/errors,
+169-case inventory and syntax pass; tests remain to run in independent PowerShell.
+No native/live selection. See docs/DNNE_Routed_Muscle_And_Population_Review_2026-11-23.md.
+Goal active and incomplete; standing/neuronal authority not demonstrated.
+
 PATELLAR WINDOW LAUNCHED — 23 November: visible independent task
 `DNNE-Patellar-Path-c593b5fad8a0`, results
 `D:/DNNE-build-work/patellar-path-20261123-a9bac5`, frozen at pushed `4c95efc`.

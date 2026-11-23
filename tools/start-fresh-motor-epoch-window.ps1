@@ -3,7 +3,9 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne 155){throw 'Unexpected motor-clock protocol.'}
+$closedLoop=($configuration.PSObject.Properties.Name -contains 'ClosedLoopMotorScheduleRegression') -and $configuration.ClosedLoopMotorScheduleRegression
+$expectedCases=if($closedLoop){243}else{155}
+if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne $expectedCases){throw 'Unexpected motor-clock protocol.'}
 function Sha([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash}
 function Assert-Package {
  foreach($entry in $configuration.PackageFiles){if((Sha (Join-Path $package $entry.Path)) -ne $entry.Sha256){throw ('Frozen input changed: '+$entry.Path)}}
@@ -17,7 +19,8 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskName='DNNE-Motor-Epoch-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskPrefix=if($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
+ $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -56,9 +59,10 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBi
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE fresh motor clock - 155 component/regression cases'
+ $Host.UI.RawUI.WindowTitle=if($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '13 new clock controls and 142 existing regressions. No Unity or live brain. This window stays open after its final backup.'
+ if($closedLoop){Write-Host '14 new split-schedule controls and 229 existing regressions. No Unity or live brain. This window stays open after its final backup.'}
+ else{Write-Host '13 new clock controls and 142 existing regressions. No Unity or live brain. This window stays open after its final backup.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package;Stage 'preflight'
  Invoke-Logged $configuration.DotnetExecutable @('--info') 'dotnet-info.log'
@@ -80,7 +84,9 @@ try {
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
  Stage 'check-tests'
- $status['PassedFocusedTests']=155;$status.ClockChecksPassed=$true;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
+ $status['PassedFocusedTests']=$expectedCases;$status.ClockChecksPassed=$true
+ if($closedLoop){$status['SplitScheduleChecksPassed']=$true}
+ $status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString();Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 }finally{
@@ -104,5 +110,6 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- Write-Host 'Tell Orion the fresh motor-clock outcome. Component clock ownership, coupled numerical accuracy, physiological firing and Avatar standing are separate.'
+ if($closedLoop){Write-Host 'Tell Orion the body/motor closure outcome. Component scheduling, active sensory feedback, coupled accuracy and Avatar standing are separate.'}
+ else{Write-Host 'Tell Orion the fresh motor-clock outcome. Component clock ownership, coupled numerical accuracy, physiological firing and Avatar standing are separate.'}
 }

@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+Independent authoring — 23 November: a source audit found a possible circular
+wait between the motor-before-body completeness gate and sensory owners requiring
+a completed mechanical interval. `AvatarCausalMotorPlant` now has an explicit
+`BodyThenMotor` candidate: one body step under known start tension, then actual
+source completion/muscle closure. Default atomic behavior remains; no quiet
+history, retiming, source gain or neural equation is added. Pending body receipt
+and closed muscle endpoint stay distinct, with fault/no-resend guards.
+See `docs/DNNE_Body_Motor_Closure_2026-11-23.md`. Fourteen new controls are authored;
+the full test project builds with zero warnings/errors. No tests/models ran.
+A 243-case visible workflow is authored using the motor clock freezer's
+`prepare --closed-loop` option; freeze/push/back up/launch after static checks.
+Exactly ONE report remains pending at authoring: native `e764e3`, untouched.
+The actual body prelude, full host wire, active sensory accuracy and standing
+remain unfinished. Do not infer active feedback from a scheduling fixture.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-force-20261123-e764e3`
 is frozen at pushed `740fa633dcc92a1c5c537c44ebd27e08c8ba20b2`. Frozen preflight
 passed; both initial 2,286-file copies plus manifest verify. Interactive task

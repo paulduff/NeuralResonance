@@ -23,12 +23,22 @@ helper.COUNTS = COUNTS
 read, write, digest = helper.read, helper.write, helper.digest
 
 
-def prepare():
+def configure(closed_loop=False):
+    helper.COUNTS = dict(COUNTS)
+    if closed_loop:
+        helper.COUNTS.update(ClosedLoopMotorScheduleTests=14, CausalMotorPlantTests=27,
+                            DynamicMuscleTests=16, MusclePathGeometryTests=31)
+    return 243 if closed_loop else 155
+
+
+def prepare(closed_loop=False):
+    total = configure(closed_loop)
     assert not helper.git('status', '--porcelain'), 'Commit clean source first.'
     revision = helper.git('rev-parse', 'HEAD')
     assert revision == helper.git('rev-parse', 'origin/main'), 'Push first.'
-    methods = helper.inventory(); assert sum(methods.values()) == 155
-    name = 'motor-epoch-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
+    methods = helper.inventory(); assert sum(methods.values()) == total
+    prefix = 'motor-closure-' if closed_loop else 'motor-epoch-'
+    name = prefix+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
     package = Path('D:/DNNE-build-work')/name; backup = Path('D:/DNNE-desktop-runs/UnityWorld')/name
     assert not package.exists() and not backup.exists(); package.mkdir()
     subprocess.run(['git', 'archive', '--format=zip', '--output='+str(package/'source.zip'), revision], cwd=ROOT, check=True)
@@ -48,8 +58,10 @@ def prepare():
     write(package/'configuration.json', dict(Revision=revision, PackageFiles=files, BackupDestination=str(backup),
         PythonExecutable=str(python), PythonExecutableSha256=digest(python), PythonRuntime=helper.python_runtime(),
         DotnetExecutable=str(dotnet), DotnetExecutableSha256=digest(dotnet), NoLiveMonitoring=True,
-        FreshMotorEpochRegression=True, ExpectedTestCases=155, NewClockCases=13, ExistingRegressionCases=142,
-        ExpectedTestMethods=methods, TestFilter='|'.join('FullyQualifiedName~'+name for name in COUNTS),
+        FreshMotorEpochRegression=True, ClosedLoopMotorScheduleRegression=closed_loop,
+        ExpectedTestCases=total, NewClockCases=0 if closed_loop else 13, NewScheduleCases=14 if closed_loop else 0,
+        ExistingRegressionCases=229 if closed_loop else 142,
+        ExpectedTestMethods=methods, TestFilter='|'.join('FullyQualifiedName~'+name for name in helper.COUNTS),
         OriginalCaptureAccessed=False, NativeUnityExecuted=False, LiveBrainAccessed=False, OldSavesLoaded=False,
         IndependentCoupledTrajectoryQualified=False, PhysiologicalFiringQualified=False, AvatarBalanceQualified=False))
     preflight(package)
@@ -59,8 +71,11 @@ def prepare():
 
 def preflight(package):
     cfg = read(package/'configuration.json')
-    assert cfg['NoLiveMonitoring'] and cfg['FreshMotorEpochRegression'] and cfg['ExpectedTestCases'] == 155
-    assert cfg['NewClockCases'] == 13 and cfg['ExistingRegressionCases'] == 142
+    closed_loop = cfg.get('ClosedLoopMotorScheduleRegression', False)
+    total = configure(closed_loop)
+    assert cfg['NoLiveMonitoring'] and cfg['FreshMotorEpochRegression'] and cfg['ExpectedTestCases'] == total
+    assert cfg['NewClockCases'] == (0 if closed_loop else 13) and cfg['ExistingRegressionCases'] == (229 if closed_loop else 142)
+    assert cfg.get('NewScheduleCases', 0) == (14 if closed_loop else 0)
     for key in ('OriginalCaptureAccessed', 'NativeUnityExecuted', 'LiveBrainAccessed', 'OldSavesLoaded',
                 'IndependentCoupledTrajectoryQualified', 'PhysiologicalFiringQualified', 'AvatarBalanceQualified'):
         assert cfg[key] is False, key
@@ -68,7 +83,7 @@ def preflight(package):
     for name in ('Python', 'Dotnet'): assert digest(cfg[name+'Executable']) == cfg[name+'ExecutableSha256']
     assert cfg['PythonRuntime'] == helper.python_runtime(), 'Declared stdlib/binaries changed.'
     assert cfg['ExpectedTestMethods'] == helper.inventory()
-    print('Frozen clock candidate, exact inventory and dependencies verified; no model/test executed by preflight.', flush=True)
+    print('Frozen clock/schedule candidate, exact inventory and dependencies verified; no model/test executed by preflight.', flush=True)
 
 
 def runtime(package):
@@ -90,6 +105,8 @@ def runtime(package):
 
 def check_tests(package):
     cfg = read(package/'configuration.json'); ns = {'t':'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+    closed_loop = cfg.get('ClosedLoopMotorScheduleRegression', False)
+    total = configure(closed_loop)
     tree = ET.parse(package/'test-results/focused.trx')
     definitions = {r.attrib['id']:r.find('t:TestMethod', ns).attrib for r in tree.findall('.//t:UnitTest', ns)}
     rows = tree.findall('.//t:UnitTestResult', ns); actual = Counter()
@@ -97,19 +114,22 @@ def check_tests(package):
         assert row.attrib['outcome'] == 'Passed', row.attrib
         method = definitions[row.attrib['testId']]
         actual[method['className'].split(',')[0]+'.'+method['name']] += 1
-    assert len(rows) == 155 and dict(actual) == cfg['ExpectedTestMethods']
-    write(package/'analysis.json', dict(completed=True, clockComponentChecksPassed=True, passedCases=155,
-        newClockCases=13, existingRegressionCases=142, exactMethodMultiplicity=True,
+    assert len(rows) == total and dict(actual) == cfg['ExpectedTestMethods'] == helper.inventory()
+    analysis = dict(completed=True, clockComponentChecksPassed=True, passedCases=total,
+        newClockCases=cfg['NewClockCases'], existingRegressionCases=cfg['ExistingRegressionCases'], exactMethodMultiplicity=True,
         prescribedInputFixtures=True, oldCapturesRetimed=False, nativeUnityExecuted=False,
-        independentCoupledTrajectoryQualified=False, physiologicalFiringQualified=False, avatarBalanceQualified=False))
-    print('All 155 clock and existing regression cases passed. Whole-loop timing, physiological firing and standing remain separate.', flush=True)
+        independentCoupledTrajectoryQualified=False, physiologicalFiringQualified=False, avatarBalanceQualified=False)
+    if closed_loop: analysis.update(newScheduleCases=14, splitScheduleComponentChecksPassed=True, activeSensoryFeedbackQualified=False)
+    write(package/'analysis.json', analysis)
+    print(f'All {total} clock/schedule and existing regression cases passed. Whole-loop timing, physiological firing and standing remain separate.', flush=True)
 
 
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
     parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests'))
-    parser.add_argument('package', nargs='?', type=Path); args = parser.parse_args()
-    if args.stage == 'prepare': prepare()
+    parser.add_argument('package', nargs='?', type=Path); parser.add_argument('--closed-loop', action='store_true'); args = parser.parse_args()
+    if args.stage == 'prepare': prepare(args.closed_loop)
     else:
+        assert not args.closed_loop, 'The frozen configuration selects the protocol after preparation.'
         assert args.package is not None
         {'preflight':preflight, 'runtime':runtime, 'check-tests':check_tests}[args.stage](args.package.resolve())

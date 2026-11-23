@@ -37,6 +37,13 @@ internal interface IAvatarMotorMechanicalBody
 }
 
 internal enum CausalMotorAdvance { Paused, WaitingForNeuronalCompleteness, Advanced }
+internal enum CausalMotorSchedule { MotorBeforeBody, BodyThenMotor }
+internal enum CausalBodyAdvance { Paused, AlreadyPending, Advanced }
+
+// The body endpoint is real, but its muscle/neuronal interval is not yet closed.
+// Never publish this receipt as a completed CausalMotorStep.
+internal sealed record CausalMotorPendingStep(MotorMechanicalFrame Before, MotorMechanicalFrame After,
+    MotorMechanicalEffort Effort);
 
 internal sealed record CausalMotorStep(MotorMechanicalFrame Before, MotorMechanicalFrame After,
     MotorMechanicalEffort Effort, IReadOnlyList<AvatarMotorAxonArrival> Arrivals,
@@ -69,14 +76,20 @@ internal sealed class AvatarCausalMotorPlant
     private string? _fault;
     private long _completed, _observed;
     private MotorMechanicalFrame? _last;
+    private CausalMotorPendingStep? _pending;
+    private double[]? _pendingEndpoints;
     public string Fingerprint { get; }
+    public CausalMotorSchedule Schedule { get; }
 
     public AvatarCausalMotorPlant(PhysicalSampleClock clock, IAvatarMotorMechanicalBody body,
         IEnumerable<CausalMuscleDefinition> definitions, int muscleSubstepsPerPhysicsStep,
-        int maximumPending = 65_536, int maximumEpochEvents = 1_000_000, int retainedBatches = 64)
+        int maximumPending = 65_536, int maximumEpochEvents = 1_000_000, int retainedBatches = 64,
+        CausalMotorSchedule schedule = CausalMotorSchedule.MotorBeforeBody)
     {
         ArgumentNullException.ThrowIfNull(clock); clock.Validate(); ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(definitions);
+        if (!Enum.IsDefined(schedule)) throw new ArgumentException("Declare the motor/body scheduling policy.");
+        Schedule = schedule;
         if (muscleSubstepsPerPhysicsStep <= 0 || muscleSubstepsPerPhysicsStep > MaximumMuscleSubsteps ||
             clock.PhysicsStepMs / muscleSubstepsPerPhysicsStep > AvatarDynamicMuscle.MaximumStepMs)
             throw new ArgumentException("Declare enough muscle substeps for this physical clock.");
@@ -106,6 +119,9 @@ internal sealed class AvatarCausalMotorPlant
             Version, MuscleVersion = AvatarDynamicMuscle.Version, Anatomy = anatomy.Fingerprint,
             BodyFingerprint = _bodyFingerprint, clock.PhysicsStepMs, MuscleSubsteps = _substeps, Muscles = _definitions
         })));
+        if (schedule == CausalMotorSchedule.BodyThenMotor)
+            Fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+            { Version = "isolated-body-then-motor-closure-v1", OriginalPartition = Fingerprint, Schedule })));
     }
 
     public CausalMotorPlantState State => Exclusive(() => new CausalMotorPlantState(_initialized, _running && !_faulted,
@@ -113,6 +129,11 @@ internal sealed class AvatarCausalMotorPlant
         _receiver.CompleteThroughBodyMs, _receiver.AcceptedEvents, _receiver.DeliveredEvents, _receiver.PendingEvents), true);
 
     public MotorAxonAcknowledgement Accept(MotorAxonBatch batch) => Exclusive(() => _receiver.AcceptWithAcknowledgement(batch));
+
+    // State.BodyTimeMs remains the last CLOSED coupled endpoint. During a split
+    // interval State.ObservedPhysicsStep and PendingStep.After expose the body
+    // endpoint ahead of it; muscle state and event consumption have not advanced.
+    public CausalMotorPendingStep? PendingStep => Exclusive(() => _pending, true);
 
     public MotorMechanicalFrame CaptureInitial() => Exclusive(() =>
     {
@@ -133,7 +154,7 @@ internal sealed class AvatarCausalMotorPlant
     public void Resume() => Exclusive(() =>
     {
         if (!_initialized) throw new InvalidOperationException("Capture the unevolved initial body first.");
-        try { CheckCurrent(); _running = true; return true; }
+        try { CheckFrame(_pending?.After ?? _last!); _running = true; return true; }
         catch (Exception e) { Fault("Resume", e); throw; }
     });
 
@@ -141,6 +162,8 @@ internal sealed class AvatarCausalMotorPlant
 
     public (CausalMotorAdvance Outcome, CausalMotorStep? Step) TryAdvance() => Exclusive(() =>
     {
+        if (Schedule != CausalMotorSchedule.MotorBeforeBody)
+            throw new InvalidOperationException("This owner requires separate physical advance and motor closure.");
         if (!_running) return (CausalMotorAdvance.Paused, (CausalMotorStep?)null);
         string phase = "Before physics";
         try
@@ -165,33 +188,99 @@ internal sealed class AvatarCausalMotorPlant
             phase = "Completed physical geometry";
             var after = CaptureAt(next, effort.EffortId);
             phase = "Muscle/event advance";
-            foreach (var definition in _definitions)
-            {
-                var muscle = _muscles[definition.MuscleId];
-                var local = arrivals.Where(a => _owners[a.MotorUnitId] == definition.MuscleId).ToArray();
-                double heldLength = before.Paths.Single(p => p.MuscleId == definition.MuscleId).LengthMeters;
-                int eventIndex = 0;
-                foreach (double end in endpoints)
-                {
-                    while (eventIndex < local.Length && local[eventIndex].ArrivalAtBodyMs <= end)
-                    {
-                        AdvanceHeld(muscle, local[eventIndex].ArrivalAtBodyMs, heldLength);
-                        muscle.Receive(local[eventIndex++]);
-                    }
-                    AdvanceHeld(muscle, end, heldLength);
-                }
-                if (eventIndex != local.Length) throw new InvalidOperationException("Motor arrival disappeared at a body boundary.");
-                muscle.ObserveCompletedBodyLength(endpoint, after.Paths.Single(p => p.MuscleId == definition.MuscleId).LengthMeters);
-            }
-            double work = tensions.Sum(t => t.AxialNewtons *
-                (before.Paths.Single(p => p.MuscleId == t.MuscleId).LengthMeters - after.Paths.Single(p => p.MuscleId == t.MuscleId).LengthMeters));
-            if (!double.IsFinite(work)) throw new InvalidOperationException("Nonfinite held-tension boundary work.");
-            _last = after; _completed = next;
-            return (CausalMotorAdvance.Advanced, (CausalMotorStep?)new CausalMotorStep(before, after, effort, arrivals,
-                Snapshots(), work));
+            return (CausalMotorAdvance.Advanced, (CausalMotorStep?)CloseMuscleInterval(new(before, after, effort), endpoints, arrivals));
         }
         catch (Exception e) { Fault(phase, e); throw; }
     });
+
+    // First-order partition already uses only START tension for physics. Release
+    // its real endpoint for sensory processing without claiming motor silence,
+    // consuming events or moving a second interval ahead of the muscles.
+    public (CausalBodyAdvance Outcome, CausalMotorPendingStep? Step) TryAdvanceBody() => Exclusive(() =>
+    {
+        RequireSplitSchedule();
+        if (!_running) return (CausalBodyAdvance.Paused, (CausalMotorPendingStep?)null);
+        string phase = "Before split physics";
+        try
+        {
+            if (_pending is not null)
+            {
+                CheckFrame(_pending.After);
+                return (CausalBodyAdvance.AlreadyPending, _pending);
+            }
+            CheckCurrent();
+            long next = checked(_completed + 1); double endpoint = _clock.AtStep(next).PhysicalMs;
+            var before = _last!;
+            var endpoints = MuscleEndpoints(before.PhysicalTimeMs, endpoint);
+            var tensions = Array.AsReadOnly(_definitions.Select(d => new TendonTension(d.MuscleId,
+                _muscles[d.MuscleId].Capture().Forces.TendonAxialForceNewtons)).ToArray());
+            var effort = new MotorMechanicalEffort(StableNeuralIdentity.Create("causal-muscle-effort-v1", _clock.Fingerprint,
+                Fingerprint, _completed), _clock.SessionId, _bodyFingerprint, Fingerprint, _completed,
+                before.PhysicalTimeMs, endpoint, tensions);
+            phase = "Split physical advance";
+            _body.AdvanceOneStep(effort);
+            phase = "Split physical receipt";
+            var after = CaptureAt(next, effort.EffortId);
+            _pending = new(before, after, effort); _pendingEndpoints = endpoints;
+            return (CausalBodyAdvance.Advanced, _pending);
+        }
+        catch (Exception e) { Fault(phase, e); throw; }
+    });
+
+    public (CausalMotorAdvance Outcome, CausalMotorStep? Step) TryCompleteMotorInterval() => Exclusive(() =>
+    {
+        RequireSplitSchedule();
+        if (!_running) return (CausalMotorAdvance.Paused, (CausalMotorStep?)null);
+        if (_pending is null) throw new InvalidOperationException("No completed body interval is awaiting motor closure.");
+        string phase = "Before split motor closure";
+        try
+        {
+            CheckFrame(_pending.After);
+            if (_receiver.CompleteThroughBodyMs < _pending.After.PhysicalTimeMs)
+                return (CausalMotorAdvance.WaitingForNeuronalCompleteness, (CausalMotorStep?)null);
+            var arrivals = _receiver.AdvanceTo(_pending.After.PhysicalTimeMs);
+            phase = "Split muscle/event advance";
+            var step = CloseMuscleInterval(_pending, _pendingEndpoints!, arrivals);
+            _pending = null; _pendingEndpoints = null;
+            return (CausalMotorAdvance.Advanced, (CausalMotorStep?)step);
+        }
+        catch (Exception e) { Fault(phase, e); throw; }
+    });
+
+    private void RequireSplitSchedule()
+    {
+        if (Schedule != CausalMotorSchedule.BodyThenMotor)
+            throw new InvalidOperationException("Split physical/motor phases require an explicitly declared owner.");
+    }
+
+    private CausalMotorStep CloseMuscleInterval(CausalMotorPendingStep step, double[] endpoints,
+        IReadOnlyList<AvatarMotorAxonArrival> arrivals)
+    {
+        var before = step.Before; var after = step.After;
+        foreach (var definition in _definitions)
+        {
+            var muscle = _muscles[definition.MuscleId];
+            var local = arrivals.Where(a => _owners[a.MotorUnitId] == definition.MuscleId).ToArray();
+            double heldLength = before.Paths.Single(p => p.MuscleId == definition.MuscleId).LengthMeters;
+            int eventIndex = 0;
+            foreach (double end in endpoints)
+            {
+                while (eventIndex < local.Length && local[eventIndex].ArrivalAtBodyMs <= end)
+                {
+                    AdvanceHeld(muscle, local[eventIndex].ArrivalAtBodyMs, heldLength);
+                    muscle.Receive(local[eventIndex++]);
+                }
+                AdvanceHeld(muscle, end, heldLength);
+            }
+            if (eventIndex != local.Length) throw new InvalidOperationException("Motor arrival disappeared at a body boundary.");
+            muscle.ObserveCompletedBodyLength(after.PhysicalTimeMs, after.Paths.Single(p => p.MuscleId == definition.MuscleId).LengthMeters);
+        }
+        double work = step.Effort.Tensions.Sum(t => t.AxialNewtons *
+            (before.Paths.Single(p => p.MuscleId == t.MuscleId).LengthMeters - after.Paths.Single(p => p.MuscleId == t.MuscleId).LengthMeters));
+        if (!double.IsFinite(work)) throw new InvalidOperationException("Nonfinite held-tension boundary work.");
+        _last = after; _completed = after.PhysicsStep;
+        return new(before, after, step.Effort, arrivals, Snapshots(), work);
+    }
 
     public IReadOnlyDictionary<string, DynamicMuscleSnapshot> CaptureMuscles() => Exclusive(Snapshots, true);
 
@@ -242,8 +331,13 @@ internal sealed class AvatarCausalMotorPlant
 
     private void CheckCurrent()
     {
-        var observed = CaptureAt(_completed, _last!.LastAppliedEffortId);
-        if (!observed.Paths.SequenceEqual(_last.Paths))
+        CheckFrame(_last!);
+    }
+
+    private void CheckFrame(MotorMechanicalFrame expected)
+    {
+        var observed = CaptureAt(expected.PhysicsStep, expected.LastAppliedEffortId);
+        if (!observed.Paths.SequenceEqual(expected.Paths))
             throw new InvalidOperationException("Body geometry changed without an owned physical step.");
     }
 

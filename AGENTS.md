@@ -1,5 +1,20 @@
 # Avatar and environment work
 
+EVENING CHECKPOINT — 23 November: Paul asked to note up for tomorrow and stop.
+Both `c6dcd3` and `61820b` are complete, reviewed and PASS; duplicate `c6dcd3`
+messages are already accounted for. Their full original/backup inventories and
+Git identities were verified; new reviews are D:-verified (5 and 4 files).
+There are ZERO experiment reports pending and NO new native routed window has
+been launched or packaged. Goal to be paused after committing/pushing this
+checkpoint. Resume from docs/DNNE_Routed_Native_Checkpoint_2026-11-23.md.
+The native curved-path/patellar-load candidate and its launcher/analyser are
+authored but UNEXECUTED. C# 9 author compilation against installed Unity engine
+references passes (7 existing deserialization warnings, 0 errors); Python and
+PowerShell parse checks pass. Final harness review, frozen preparation, verified
+initial backup and visible PowerShell launch remain for tomorrow. No models,
+tests, native build or player were run during this evening close-out. No live
+promotion, biological kernel change, neuronal authority or standing claim.
+
 TWO NEXT WINDOWS LAUNCHED — 23 November, frozen at pushed `e4d2f18`:
 saved population reanalysis `D:/DNNE-build-work/native-population-reanalysis-20261123-c6dcd3`,
 task `DNNE-Population-Reanalysis-fc78e836f29c`, initial 2,332-file copies verified;

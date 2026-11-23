@@ -11,7 +11,8 @@ ROOT=Path(__file__).resolve().parents[1]
 STUDIES={
     'native':('native-muscle-population-20261123-b3cf65','da4c72bf042c8c5aaa27189b6077ca4b2a4931b1',388),
     'cylinder':('cylinder-muscle-path-20261123-0b9165','67d0fb90a3f5544b53fbb3c54c4d9141a3c5bbe8',127),
-    'patella':('patellar-path-20261123-a9bac5','4c95efc088eca30e0be918945af47e29f88ce58f',99)}
+    'patella':('patellar-path-20261123-a9bac5','4c95efc088eca30e0be918945af47e29f88ce58f',99),
+    'routed':('routed-muscle-path-20261123-61820b','e4d2f181ccdb8f0ee8b91cdf3d0f0d56868455bb',169)}
 
 def module(name,path):
     s=importlib.util.spec_from_file_location(name,path);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m
@@ -66,6 +67,12 @@ def main(kind):
         details=dict(originalStatusRetained='FAILED',nativeCasesCompleted=8,verifiedPlayerFiles=len(player),
             envelopeDiagnosis=findings,physicsPayloadChanged=False,completeCausalAccountingQualified=False)
         copies+=['native-population-analysis.json','compare.log']
+    elif kind=='routed':
+        a=common.read(package/'component-analysis.json')
+        assert a==dict(completed=True,passedCases=169,newRoutedCases=18,exactInventory=True,unitySourceParityChecked=True,
+            nativeUnityExecuted=False,anatomicalCalibrationQualified=False,avatarStandingQualified=False)
+        assert status['RoutedAssemblyChecksPassed'] and not status['NativeUnityExecuted']
+        details=dict(routedAssemblyChecksPassed=True,newRoutedCases=18,nativeUnityExecuted=False,independentCoupledTrajectoryQualified=False)
     else:
         prefix='cylinder' if kind=='cylinder' else 'patellar';a=common.read(package/(prefix+'-reference-analysis.json'))
         assert a['completed'] and a['passed'] and a['referenceDigits']==[80,110] and a['referenceAgreementBound']=='1e-60'

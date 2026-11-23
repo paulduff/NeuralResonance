@@ -34,6 +34,7 @@ public sealed class WorldController:MonoBehaviour {
  public MotorFrame DiagnosticCommand;public bool DiagnosticMode;
  object physicalSampleOwner;
  void Awake(){
+  if(Argument("--native-routed-case")!=null&&(Argument("--neuronal-muscle-qualify")==null||Argument("--tendon-case")!=null||Argument("--tendon-bridge")!=null||Argument("--tendon-mechanics")!=null||Argument("--muscles")!=null))throw new InvalidOperationException("Routed muscle loads require their separate paused isolated mode.");
   if(Argument("--tendon-bridge")!=null&&(Argument("--neuronal-muscle-qualify")==null||Argument("--tendon-case")!=null))throw new InvalidOperationException("Full-body tendon bridge needs its separate isolated mode.");
   if(Argument("--tendon-mechanics")!=null&&(Argument("--neuronal-muscle-qualify")==null||Argument("--tendon-case")==null||Argument("--tendon-bridge")!=null))throw new InvalidOperationException("Mechanical variants require the separate tendon qualification.");
   if(new[]{"--qualify","--standing-trial","--muscle-qualify","--balance-qualify","--response-qualify","--physical-sample-qualify","--neuronal-muscle-qualify"}.Count(flag=>Argument(flag)!=null)>1)throw new InvalidOperationException("Isolated qualifications and live observation are separate modes.");
@@ -53,6 +54,7 @@ public sealed class WorldController:MonoBehaviour {
   if(Argument("--physical-sample-qualify")!=null)StartCoroutine(PhysicalSampleQualification.Run(this));
   if(Argument("--neuronal-muscle-qualify")!=null && Argument("--tendon-case")!=null)StartCoroutine(ArticulatedTendonQualification.Run(this));
   if(Argument("--tendon-bridge")!=null)StartCoroutine(ArticulatedTendonBridge.Run(this));
+  if(Argument("--native-routed-case")!=null)StartCoroutine(RoutedMuscleNativeQualification.Run(this));
  }
  void CreateEye(bool left){var eye=new GameObject(left?"Left physical eye":"Right physical eye");eye.transform.SetParent(Avatar.links["head"].body.transform,false);eye.transform.localPosition=new Vector3(left?-.032f:.032f,.12f,.115f);
   var camera=eye.AddComponent<Camera>();camera.fieldOfView=85;camera.nearClipPlane=.03f;camera.farClipPlane=40;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.23f,.31f,.38f);camera.enabled=false;

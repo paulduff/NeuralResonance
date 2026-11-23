@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+DECLARED MECHANICS REVIEWED — 23 November: Paul reported `203560` complete.
+Both final 3,722-file copies plus manifest, frozen abec8aa source, test/probe/
+player binaries and exact 335-file runtime verified. All 341 component cases;
+12 native sessions / 96 steps / 108 endpoints / 324 head receipts / 108 extra
+inspections. All 240 mechanical-setting receipts, 2,592 derived checks and
+2,052 angular observations pass; maximum limit violation 9.438066328470995e-9
+radians. Each mode's original quiet replay and inspection pairs remain exact.
+Four-file review plus manifest D:-verified at
+`artifacts/declared-body-mechanics-20261123-203560-review`. No model/test/full
+numerical comparison rerun by review. No reports pending. Next connect actual
+native head receipts to existing canal/afferent/nucleus owners, preserving
+sample/packet acknowledgement and source state. Full physiology, consistent
+muscle geometry, neuronal control and standing remain unqualified. Goal active.
+
 LATEST DECLARED-MECHANICS LAUNCH — 23 November: package
 `D:/DNNE-build-work/declared-body-mechanics-20261123-203560` is frozen at pushed
 `abec8aab441815fed37a800fd94f98739737f572`. Preparation/preflight passed and

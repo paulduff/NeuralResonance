@@ -1,5 +1,33 @@
 # Explicit tendon-body mechanics — candidate
 
+## Completed result and review
+
+Paul reported `203560` complete. Read-only review verified both final **3,722
+files plus manifest**, frozen `abec8aab441815fed37a800fd94f98739737f572`
+source, exact test/probe/player inventories and the unchanged selected 335-file
+managed runtime. All **341 component cases** passed. The **12 native sessions**
+retained 96 physical steps, 108 endpoints, 324 original head receipts, 108
+extra inspections and 240 mechanical-setting receipts.
+
+Both modes reproduced their own original quiet trajectories exactly. Inspection
+pairs preserve the physical state and native head payloads. All 2,592 saved
+derived checks pass (largest error/allowance fraction 2.770780615683433e-9).
+All 2,052 saved angle observations pass the unchanged 0.05f-radian guard;
+maximum observed violation is 9.438066328470995e-9 radians.
+
+`tools/review-declared-body-mechanics-result.py` records this review at
+`artifacts/declared-body-mechanics-20261123-203560-review`, with its four files
+and manifest verified in the same-name D: UnityWorld backup. Review did not
+rerun tests, physics, sensory cells or the full numerical comparison.
+
+This supports explicit mechanics selection and actual native head delivery.
+The next connection must admit these original head samples into the existing
+canal/sensory/nucleus owners and preserve every acknowledgement. Physiological
+firing, anatomical muscle geometry, neuronal authority and standing are still
+unqualified. There are no pending run reports at this checkpoint.
+
+## Candidate and prospective protocol
+
 The completed full-path experiment identifies the engine's original joint
 friction as a major suppressor of prescribed motion. Removing it changes the
 largest response from 2.53e-6 to 0.4343 radians while preserving force accounting

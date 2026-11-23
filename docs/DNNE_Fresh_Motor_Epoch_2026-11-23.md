@@ -149,3 +149,12 @@ The updated dependency helper also builds with zero warnings/errors at
 probe/test runtime configurations both declare .NETCore and ASP.NETCore 10.0.0.
 Record the frozen revision, folder, verified initial backup and actual visible
 task after launch; do not monitor the run afterward.
+
+## Launch record
+
+Frozen package: `D:/DNNE-build-work/motor-epoch-20261123-6889f0` at pushed
+`07294c30fce30ea0ef0a2b465aa91964a3519f88`. Frozen preflight and both initial
+2,196-file copies plus manifest verify. The independent visible task
+`DNNE-Motor-Epoch-14ea39bd5935` was started on 23 November. No post-launch
+output, status or process has been inspected. This is the sole pending report;
+await Paul's final backup/footer. Launch does not establish a passing result.

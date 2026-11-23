@@ -72,6 +72,7 @@ internal sealed class AvatarCausalMotorPlant
     private readonly Dictionary<string, AvatarDynamicMuscle> _muscles = new(StringComparer.Ordinal);
     private readonly int _substeps, _ownerThread = Environment.CurrentManagedThreadId;
     private readonly string _bodyFingerprint;
+    private readonly CausalMotorAttachment? _attachment;
     private bool _initialized, _running, _busy, _faulted;
     private string? _fault;
     private long _completed, _observed;
@@ -84,7 +85,7 @@ internal sealed class AvatarCausalMotorPlant
     public AvatarCausalMotorPlant(PhysicalSampleClock clock, IAvatarMotorMechanicalBody body,
         IEnumerable<CausalMuscleDefinition> definitions, int muscleSubstepsPerPhysicsStep,
         int maximumPending = 65_536, int maximumEpochEvents = 1_000_000, int retainedBatches = 64,
-        CausalMotorSchedule schedule = CausalMotorSchedule.MotorBeforeBody)
+        CausalMotorSchedule schedule = CausalMotorSchedule.MotorBeforeBody, CausalMotorAttachment? attachment = null)
     {
         ArgumentNullException.ThrowIfNull(clock); clock.Validate(); ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(definitions);
@@ -111,9 +112,14 @@ internal sealed class AvatarCausalMotorPlant
         _clock = clock; _body = body; _substeps = muscleSubstepsPerPhysicsStep;
         _bodyFingerprint = body.Fingerprint;
         if (string.IsNullOrWhiteSpace(_bodyFingerprint)) throw new ArgumentException("Missing physical geometry fingerprint.");
-        _motorClock = new(clock.SessionId, clock.NeuralEpochMs, clock.PhysicalEpochMs);
+        if (attachment is not null && (attachment.PhysicalClockFingerprint != clock.Fingerprint ||
+            attachment.Frame.BodyFingerprint != _bodyFingerprint || attachment.Frame.PhysicsStep != body.CompletedPhysicsStep))
+            throw new ArgumentException("Motor attachment belongs to another physical clock, body or endpoint.");
+        _attachment = attachment;
+        _motorClock = new(clock.SessionId, attachment?.NeuralEpochMs ?? clock.NeuralEpochMs,
+            attachment?.Frame.PhysicalTimeMs ?? clock.PhysicalEpochMs);
         _receiver = new(anatomy, _motorClock, maximumPending, maximumEpochEvents, retainedBatches);
-        _completed = _observed = clock.InitialPhysicsStep;
+        _completed = _observed = attachment?.Frame.PhysicsStep ?? clock.InitialPhysicsStep;
         Fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
             Version, MuscleVersion = AvatarDynamicMuscle.Version, Anatomy = anatomy.Fingerprint,
@@ -122,6 +128,9 @@ internal sealed class AvatarCausalMotorPlant
         if (schedule == CausalMotorSchedule.BodyThenMotor)
             Fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
             { Version = "isolated-body-then-motor-closure-v1", OriginalPartition = Fingerprint, Schedule })));
+        if (attachment is not null)
+            Fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+            { Version = CausalMotorAttachment.Version, OriginalPartition = Fingerprint, Attachment = attachment.Fingerprint })));
     }
 
     public CausalMotorPlantState State => Exclusive(() => new CausalMotorPlantState(_initialized, _running && !_faulted,
@@ -141,6 +150,8 @@ internal sealed class AvatarCausalMotorPlant
         try
         {
             var initial = CaptureAt(_completed, Guid.Empty);
+            if (_attachment is not null && !initial.Paths.SequenceEqual(_attachment.Frame.Paths))
+                throw new InvalidOperationException("Attachment geometry changed before fresh muscle initialization.");
             foreach (var definition in _definitions)
                 _muscles.Add(definition.MuscleId, new(definition.Geometry, definition.Units, _motorClock,
                     definition.InitialFiberLengthMeters, initial.Paths.Single(p => p.MuscleId == definition.MuscleId).LengthMeters,

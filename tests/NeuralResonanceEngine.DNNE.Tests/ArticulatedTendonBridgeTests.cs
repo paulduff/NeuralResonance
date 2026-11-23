@@ -15,14 +15,14 @@ namespace NeuralResonanceEngine.DNNE.Tests;
 // physics or neuronal authority. Native delivery needs its own visible study.
 public sealed class ArticulatedTendonBridgeTests
 {
-    static readonly Guid Session = Guid.Parse("7cb80c66-6357-4a8b-b893-915e68d5d18a");
+    internal static readonly Guid Session = Guid.Parse("7cb80c66-6357-4a8b-b893-915e68d5d18a");
     static readonly string PlantHash = new('A', 64);
-    static readonly string[] Names = MuscleProfiles.All.SelectMany(p => new[] { p.Variable + "/flexor", p.Variable + "/extensor" }).Order(StringComparer.Ordinal).ToArray();
+    internal static readonly string[] Names = MuscleProfiles.All.SelectMany(p => new[] { p.Variable + "/flexor", p.Variable + "/extensor" }).Order(StringComparer.Ordinal).ToArray();
     static readonly string[] Links = ["chest", "head", "left_arm", "left_foot", "left_forearm", "left_hand", "left_shin", "left_thigh",
         "pelvis", "right_arm", "right_foot", "right_forearm", "right_hand", "right_shin", "right_thigh"];
     static string Json<T>(T v) => JsonSerializer.Serialize(v, NativeArticulatedBody.Json);
     static T Copy<T>(T v) => JsonSerializer.Deserialize<T>(Json(v), NativeArticulatedBody.Json)!;
-    static Configuration Config(float step = .000125f) => new() { protocol = Wire.Protocol, sessionId = Session.ToString("N"), stepSeconds = (double)step,
+    internal static Configuration Config(float step = .000125f) => new() { protocol = Wire.Protocol, sessionId = Session.ToString("N"), stepSeconds = (double)step,
         declarations = Names.Select(n => new Declaration { muscleId = n, provenance = "protocol-peer-fixture-not-anatomy", anchors = [
             new Anchor { id = "origin", bodyId = "chest", x = 0d, y = -.1, z = 0d },
             new Anchor { id = "insertion", bodyId = "head", x = 0d, y = .1, z = 0d }] }).ToArray() };
@@ -43,7 +43,7 @@ public sealed class ArticulatedTendonBridgeTests
         bodyJson = Json(new { sequence = step, inputSource = "avatar_unity_body" }),
         contactsJson = Links.Select(id => Json(new { sequence = step, inputSource = "avatar_unity_" + id + "_contact" })).ToArray(),
         skullJson = new[] { "centre", "left", "right" }.Select(id => Json(new { physicsStep = step, headBodyId = "head", sensorId = id })).ToArray() };
-    sealed class Peer : IArticulatedTendonExchange
+    internal sealed class Peer : IArticulatedTendonExchange
     {
         public readonly string ConfigurationJson;
         public readonly Configuration Configuration;
@@ -68,12 +68,13 @@ public sealed class ArticulatedTendonBridgeTests
         {
             Commands.Add(Copy(r)); var after = Copy(Current);
             after.operation = r.operation; after.sequence = r.sequence; after.plantFingerprint = r.plantFingerprint;
-            if (r.operation == "step")
+            if (r.operation is "step" or "prelude")
             {
                 PhysicalSteps++; after.physicsStep++; after.physicalTimeMs = after.physicsStep * (double)after.physicsStepMs;
                 after.stateJson = State(after.physicsStep); after.stateHash = Wire.Digest(after.stateJson);
                 after.observationsJson = Json(Samples(after.physicsStep)); after.observationsHash = Wire.Digest(after.observationsJson);
-                after.lastAppliedEffortId = r.effortId; after.applicationsJson = Json(new { fixture = true, tensions = r.tensions });
+                if (r.operation == "step")
+                { after.lastAppliedEffortId = r.effortId; after.applicationsJson = Json(new { fixture = true, tensions = r.tensions }); }
             }
             Current = after;
         }

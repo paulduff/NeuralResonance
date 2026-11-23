@@ -92,6 +92,8 @@ namespace Nre.UnityWorld
         readonly string declarationsJson;
         readonly float physicalStepSeconds;
         readonly bool observeNativeForces;
+        readonly bool allowPassivePrelude;
+        bool passivePreludeCompleted;
         Snapshot last;
         bool faulted;
         string plantFingerprint = "", lastEffort = "";
@@ -103,13 +105,14 @@ namespace Nre.UnityWorld
         internal string LastNativeForcesJson { get; private set; } = "";
 
         internal ArticulatedMusclePathOwner(WorldController world, IEnumerable<Declaration> declarations, float stepSeconds = WorldController.StepSeconds,
-            bool observeNativeForces = false)
+            bool observeNativeForces = false, bool allowPassivePrelude = false)
         {
             if (world == null || declarations == null) throw new ArgumentNullException();
             if (!MusclePathVector.Finite(stepSeconds) || stepSeconds <= 0 || stepSeconds > WorldController.StepSeconds)
                 throw new ArgumentException("Declare a finite physical step no larger than the existing world step.");
             physicalStepSeconds = stepSeconds;
             this.observeNativeForces = observeNativeForces;
+            this.allowPassivePrelude = allowPassivePrelude;
             this.world = world; body = world.Avatar;
             var declared = declarations.ToArray();
             var expected = MuscleProfiles.All.SelectMany(p => new[] { p.Variable + "/flexor", p.Variable + "/extensor" }).OrderBy(n => n, StringComparer.Ordinal).ToArray();
@@ -152,8 +155,9 @@ namespace Nre.UnityWorld
         internal void Bind(string fingerprint)
         {
             Healthy();
-            if (!MuscleHingeWire.Hash(fingerprint) || plantFingerprint.Length != 0 || world.physicsSteps != 0)
-                throw new ArgumentException("Bind the actual muscle plant once before physical advancement.");
+            if (!MuscleHingeWire.Hash(fingerprint) || plantFingerprint.Length != 0 ||
+                world.physicsSteps != (allowPassivePrelude ? 1 : 0) || (allowPassivePrelude && !passivePreludeCompleted))
+                throw new ArgumentException("Bind once at the declared initial motor endpoint.");
             try { CheckUnchanged(); plantFingerprint = fingerprint; last = CaptureCore(); }
             catch (Exception e) { Fail(e); throw; }
         }
@@ -163,6 +167,27 @@ namespace Nre.UnityWorld
             Healthy();
             try { CheckUnchanged(); return last; }
             catch (Exception e) { Fail(e); throw; }
+        }
+
+        // Physical initialization only: retain two actual head samples before
+        // constructing fresh sensory/motor owners. No motor event, completion
+        // watermark, muscle activation or synthetic effort is manufactured.
+        internal Snapshot AdvancePassivePrelude(long expectedStep, string expectedStateHash)
+        {
+            Healthy();
+            try
+            {
+                if (!allowPassivePrelude || passivePreludeCompleted || plantFingerprint.Length != 0 ||
+                    expectedStep != 0 || last.PhysicsStep != 0 || expectedStateHash != last.StateHash)
+                    throw new ArgumentException("One explicitly declared passive interval is permitted before binding.");
+                CheckUnchanged();
+                world.StepForMusclePaths(stepOwner, () => { });
+                last = CaptureCore();
+                if (last.PhysicsStep != 1 || last.LastEffortId != "") throw new InvalidOperationException("Passive initialization did not retain its actual endpoint.");
+                passivePreludeCompleted = true;
+                return last;
+            }
+            catch (Exception error) { Fail(error); throw; }
         }
 
         internal Snapshot Advance(long expectedStep, string expectedStateHash, string plant, string effortId,

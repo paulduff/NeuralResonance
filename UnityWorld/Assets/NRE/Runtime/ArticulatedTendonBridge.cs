@@ -39,7 +39,8 @@ namespace Nre.UnityWorld
                 Directory.CreateDirectory(directory); ownsDirectory = true;
                 Write("configuration.json", text);
                 owner = new ArticulatedMusclePathOwner(world, configuration.declarations.Select(d => new ArticulatedMusclePathOwner.Declaration(
-                    d.muscleId, d.provenance, d.anchors.Select(a => new MusclePathAnchor(a.id, a.bodyId, new MusclePathVector(a.x, a.y, a.z))))), stepSeconds);
+                    d.muscleId, d.provenance, d.anchors.Select(a => new MusclePathAnchor(a.id, a.bodyId, new MusclePathVector(a.x, a.y, a.z))))), stepSeconds,
+                    allowPassivePrelude: configuration.passivePreludeSteps == 1);
                 var initial = Capture("hello", 0, true); Validate(initial, configuration, configurationHash);
                 Write("hello.json", JsonUtility.ToJson(initial)); last = initial;
             }
@@ -68,13 +69,18 @@ namespace Nre.UnityWorld
                     MuscleHingeWire.Require(current.stateHash == last.stateHash, "Body moved outside its owner.");
                     var request = JsonUtility.FromJson<Request>(text); Validate(request, current, configuration, configurationHash);
                     if (request.operation == "bind") owner.Bind(request.plantFingerprint);
+                    if (request.operation == "prelude")
+                    {
+                        advanceAttempted = true;
+                        owner.AdvancePassivePrelude(request.expectedStep, request.stateHash);
+                    }
                     if (request.operation == "step")
                     {
                         advanceAttempted = true;
                         owner.Advance(request.expectedStep, request.stateHash, request.plantFingerprint, request.effortId,
                             request.tensions.ToDictionary(t => t.muscleId, t => (double)t.axialNewtons, StringComparer.Ordinal));
                     }
-                    var after = Capture(request.operation, request.sequence, request.operation == "step");
+                    var after = Capture(request.operation, request.sequence, request.operation == "step" || request.operation == "prelude");
                     ValidateTransition(current, request, after, configuration, configurationHash);
                     Write("reply-" + request.sequence.ToString("D6") + ".json", JsonUtility.ToJson(after));
                     last = after; waiting.Restart(); stop = request.operation == "stop";

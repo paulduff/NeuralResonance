@@ -1,5 +1,36 @@
 # Avatar and environment work
 
+Completed reviews — 23 November: Paul reported all three windows complete;
+the duplicate `ab2502` footer was reviewed once. Scheduling `ab2502` verifies
+both 2,792-file copies, frozen source/binaries/runtime and all 243 exact cases
+(14 new). Bridge `7ce921` verifies both 2,799-file copies and all 295 exact cases
+(34 new); both runs retain 335 unchanged selected runtime files. Native forces
+`e764e3` verifies both 3,260-file copies, player, 112 cases, 78 native cases /
+624 steps / 702 endpoints, preserved originals/pairs and 46,320 passing saved
+accumulator comparisons. All three four-file reviews have verified D: backups.
+No test/model/full force analysis was rerun. Largest saved target joint-angle
+difference is still only 2.5319364453935123e-6 rad; useful mechanics is NOT
+qualified. The force-to-motion gap now needs a controlled native constraint/
+friction/drive investigation; do not blame brainstem complexity or increase
+neural gain. No completion report is pending at this checkpoint. Next freeze,
+back up and launch the authored 315-case passive attachment checks. Native
+mechanical diagnosis and active sensory/brain integration remain open; goal active.
+
+Independent authoring — 23 November: explicit passive physical initialization
+and fresh motor attachment are implemented as an unqualified candidate. See
+`docs/DNNE_Passive_Motor_Attachment_2026-11-23.md`. Full-body wire v2 optionally
+permits one unbound passive step, retains both actual head/body samples, then
+binds at step one. The causal plant retains its original physical clock and
+starts fresh muscles at that measured endpoint; no existing neuron is retimed
+and no prelude motor silence is asserted. Default no-prelude mechanics remain.
+Twenty new controls plus 295 previous cases are authored in the 315-case
+`prepare --attachment` mode. Test/probe and Unity API builds pass; no tests or
+models executed. Do not launch this follow-up until the pending component
+reports are reviewed. Exactly THREE reports remain pending: `e764e3`, `ab2502`,
+`7ce921`; none was inspected. `7ce921` remains frozen wire v1 and cannot qualify
+this v2 change. Source/static work only; actual native attachment, sensory/brain
+integration, useful movement and standing remain unfinished. Goal active.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-wire-20261123-7ce921`
 is frozen at pushed `d4069ebb59b38683913554779ff2adff2d8fd591`. Frozen preflight
 passed; both initial 2,210-file copies plus manifest verify. Interactive task

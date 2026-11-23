@@ -11,7 +11,7 @@ namespace Nre.UnityWorld
     // implicit attachment anatomy, or biological controller crosses this wire.
     public static class ArticulatedTendonWire
     {
-        public const string Protocol = "full-avatar-tendon-wire-v1";
+        public const string Protocol = "full-avatar-tendon-wire-v2";
         public const int PathCount = 38;
         public const long MaximumSteps = 1000000;
         [Serializable] public sealed class Anchor { public string id, bodyId; public Real x, y, z; }
@@ -20,6 +20,7 @@ namespace Nre.UnityWorld
         {
             public string protocol, sessionId;
             public Real stepSeconds;
+            public int passivePreludeSteps;
             public Declaration[] declarations;
         }
         [Serializable] public sealed class Request
@@ -61,6 +62,7 @@ namespace Nre.UnityWorld
         public static float Validate(Configuration c)
         {
             Require(c != null && c.protocol == Protocol && GuidN(c.sessionId), "Declare the full-body protocol and fresh session.");
+            Require(c.passivePreludeSteps == 0 || c.passivePreludeSteps == 1, "Declare zero or one passive initialization interval.");
             double seconds = c.stepSeconds;
             Require(Finite(seconds) && seconds > 0 && seconds <= (double).01f && (double)(float)seconds == seconds,
                 "Physical seconds must be the exact positive native float, at most the existing world step.");
@@ -91,7 +93,7 @@ namespace Nre.UnityWorld
                 !string.IsNullOrEmpty(r.stateJson) && r.stateHash == Digest(r.stateJson) &&
                 !string.IsNullOrEmpty(r.observationsJson) && r.observationsHash == Digest(r.observationsJson), "Native evidence hash differs.");
             Require((r.plantFingerprint == "" || Hash(r.plantFingerprint)) &&
-                (r.physicsStep == 0 ? r.lastAppliedEffortId == "" : GuidN(r.lastAppliedEffortId)), "Invalid plant/last effort identity.");
+                (r.physicsStep <= c.passivePreludeSteps ? r.lastAppliedEffortId == "" : GuidN(r.lastAppliedEffortId)), "Invalid plant/last effort identity.");
             Require(r.paths != null && r.paths.Length == PathCount && r.paths.All(p => p != null) &&
                 r.paths.Select(p => p.muscleId).SequenceEqual(c.declarations.Select(d => d.muscleId)) &&
                 r.paths.All(p => Hash(p.pathFingerprint) && Finite(p.lengthMeters) && p.lengthMeters > 0 && Finite(p.velocityMetersPerSecond)),
@@ -105,7 +107,7 @@ namespace Nre.UnityWorld
                 r.bodyFingerprint == current.bodyFingerprint && r.stateHash == current.stateHash && r.startTimeMs == current.physicalTimeMs,
                 "Command must name this exact session, sequence and body endpoint.");
             if (r.operation == "bind")
-                Require(current.physicsStep == 0 && current.plantFingerprint == "" && Hash(r.plantFingerprint), "Bind once before movement.");
+                Require(current.physicsStep == c.passivePreludeSteps && current.plantFingerprint == "" && Hash(r.plantFingerprint), "Bind once at the declared motor baseline.");
             else Require(r.plantFingerprint == current.plantFingerprint, "Plant binding differs.");
             if (r.operation == "step")
             {
@@ -116,6 +118,10 @@ namespace Nre.UnityWorld
                     r.tensions.All(t => Finite(t.axialNewtons) && t.axialNewtons >= 0 && t.axialNewtons <= float.MaxValue),
                     "Require every ordered, finite, nonnegative tendon tension exactly once.");
             }
+            else if (r.operation == "prelude")
+                Require(c.passivePreludeSteps == 1 && current.physicsStep == 0 && current.plantFingerprint == "" &&
+                    r.effortId == "" && r.tensions != null && r.tensions.Length == 0 && r.endTimeMs == (double)current.physicsStepMs,
+                    "Passive initialization permits exactly one unbound interval without a motor effort.");
             else
                 Require((r.operation == "bind" || r.operation == "inspect" || r.operation == "stop") && r.effortId == "" &&
                     r.tensions != null && r.tensions.Length == 0 && r.endTimeMs == r.startTimeMs, "Nonmoving command carries time or force.");
@@ -123,10 +129,10 @@ namespace Nre.UnityWorld
         public static void ValidateTransition(Reply before, Request request, Reply after, Configuration c, string configurationHash)
         {
             Validate(request, before, c, configurationHash); Validate(after, c, configurationHash);
-            bool moved = request.operation == "step";
+            bool moved = request.operation == "step" || request.operation == "prelude";
             Require(after.sequence == request.sequence && after.operation == request.operation &&
                 after.physicsStep == before.physicsStep + (moved ? 1 : 0) && after.physicalTimeMs == request.endTimeMs &&
-                after.plantFingerprint == request.plantFingerprint && after.lastAppliedEffortId == (moved ? request.effortId : before.lastAppliedEffortId) &&
+                after.plantFingerprint == request.plantFingerprint && after.lastAppliedEffortId == (request.operation == "step" ? request.effortId : before.lastAppliedEffortId) &&
                 after.bodyFingerprint == before.bodyFingerprint && after.geometryJson == before.geometryJson &&
                 after.paths.Select(p => p.pathFingerprint).SequenceEqual(before.paths.Select(p => p.pathFingerprint)), "Native step receipt or fixed geometry differs.");
             if (!moved)

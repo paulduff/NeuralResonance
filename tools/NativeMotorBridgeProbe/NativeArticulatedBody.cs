@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using NRE.SimAvatar;
+using NeuralResonanceEngine.Shared.Contracts;
 using Nre.UnityWorld;
 using static Nre.UnityWorld.ArticulatedTendonWire;
 using static Nre.UnityWorld.MuscleHingeWire;
@@ -40,6 +41,29 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
     internal bool Faulted => _faulted;
     internal Reply Last => Copy(_last);
     internal string OriginalObservationJson => _last.observationsJson;
+    internal string? InitializationEvidenceJson { get; private set; }
+
+    internal CausalMotorAttachment InitializePassiveInterval(PhysicalSampleClock originalClock)
+    {
+        CausalMotorAttachment? attachment = null;
+        Execute(() =>
+        {
+            ArgumentNullException.ThrowIfNull(originalClock); originalClock.Validate();
+            Require(_configuration.passivePreludeSteps == 1 && _last.physicsStep == 0 && _last.plantFingerprint == "" &&
+                originalClock.SessionId.ToString("N") == _configuration.sessionId && originalClock.InitialPhysicsStep == 0 &&
+                originalClock.PhysicalEpochMs == 0 && originalClock.PhysicsStepMs == PhysicsStepMs,
+                "Passive initialization requires the original physical clock and a fresh unbound body.");
+            var before = _last;
+            var request = NewRequest("prelude"); request.endTimeMs = PhysicsStepMs;
+            var after = Send(request);
+            var frame = Frame(after);
+            string evidence = JsonSerializer.Serialize(new
+                { Protocol, OriginalClock = originalClock, ClockFingerprint = originalClock.Fingerprint, Before = before, Request = request, After = after }, Json);
+            attachment = new(originalClock, frame, Wire.Digest(evidence));
+            InitializationEvidenceJson = evidence;
+        });
+        return attachment ?? throw new InvalidOperationException("Missing passive attachment receipt.");
+    }
 
     internal NativeArticulatedBody(string configurationJson, IArticulatedTendonExchange exchange)
     {
@@ -60,12 +84,13 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
         Execute(() =>
         {
             var r = Send(NewRequest("inspect"));
-            result = new(Guid.ParseExact(r.sessionId, "N"), r.bodyFingerprint, r.physicsStep, r.physicalTimeMs,
-                r.lastAppliedEffortId == "" ? Guid.Empty : Guid.ParseExact(r.lastAppliedEffortId, "N"),
-                Array.AsReadOnly(r.paths.Select(p => new MusculotendonPathMeasurement(p.muscleId, p.lengthMeters, p.velocityMetersPerSecond)).ToArray()));
+            result = Frame(r);
         });
         return result ?? throw new InvalidOperationException("Missing physical receipt.");
     }
+    private static MotorMechanicalFrame Frame(Reply r) => new(Guid.ParseExact(r.sessionId, "N"), r.bodyFingerprint, r.physicsStep, r.physicalTimeMs,
+        r.lastAppliedEffortId == "" ? Guid.Empty : Guid.ParseExact(r.lastAppliedEffortId, "N"),
+        Array.AsReadOnly(r.paths.Select(p => new MusculotendonPathMeasurement(p.muscleId, p.lengthMeters, p.velocityMetersPerSecond)).ToArray()));
     public void AdvanceOneStep(MotorMechanicalEffort effort) => Execute(() =>
     {
         Require(effort != null && effort.SessionId.ToString("N") == _configuration.sessionId && effort.BodyFingerprint == Fingerprint &&
@@ -133,7 +158,7 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
                 skull.RootElement.GetProperty("sensorId").GetString() == sensors[i] && skull.RootElement.GetProperty("headBodyId").GetString() == "head",
                 "Skull measurement belongs to another sensor or endpoint.");
         }
-        if (r.physicsStep > 0) Require(!string.IsNullOrEmpty(r.applicationsJson), "Missing actual point-force applications.");
+        if (r.physicsStep > _configuration.passivePreludeSteps) Require(!string.IsNullOrEmpty(r.applicationsJson), "Missing actual point-force applications.");
     }
     private static int Bits(JsonElement array)
     { foreach (var v in array.EnumerateArray()) _ = Decode(v.GetString()); return array.GetArrayLength(); }

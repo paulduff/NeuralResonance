@@ -1,5 +1,36 @@
 # Native tendon force observation — 23 November 2026
 
+## Completed result and review
+
+Paul reported `tendon-force-20261123-e764e3` complete. Both 3,260-file copies,
+frozen revision `740fa633dcc92a1c5c537c44ebd27e08c8ba20b2`, full source, executed
+player/test files and all 112 component cases verify. All 78 native cases cover
+624 physical steps and 702 endpoints. Original state, paths, contacts and point
+applications are identical to their preserved predecessors; observed/plain
+pairs are identical too. The 312 observed steps retain all native trace stages.
+
+All 46,320 saved force/torque accumulator comparisons passed. The largest
+error/allowance fraction is 0.01210377244532741. Native queued forces and torques
+match the declared applications within the original limits and reset after
+physics. This establishes native accumulation, not useful joint movement.
+
+The largest saved target joint-angle difference from the quiet condition is
+2.5319364453935123e-6 radians (left shoulder abduction flexor), with maximum
+speed difference 1.55279948552689e-5 radians/second. All 38 path response summaries
+retain `practicalControlQualified=false`. The force-to-motion gap remains.
+Next inspect/test the full articulation's constraints, friction/drive settings
+and response to equivalent controlled mechanical inputs before changing brain
+complexity, neural strength or attachment anatomy. No cause is yet established.
+
+The read-only review verified the saved ledgers and original/paired endpoint
+bytes without rerunning the force analysis, any model or test. It retained the
+3,099-file managed-runtime manifest checked by the frozen runner without
+rehashing today's external runtime installation. Four review files plus manifest
+are D: verified at `artifacts/tendon-force-20261123-e764e3-review` and
+`D:/DNNE-desktop-runs/UnityWorld/tendon-force-20261123-e764e3-review`.
+The launch/pending statements below are historical. No neuronal source,
+anatomical calibration, coupled mechanical accuracy or standing is qualified.
+
 ## Why this is next
 
 Completed full-body tendon run `bb320d` reconciled the requested point forces

@@ -1,5 +1,9 @@
 # Full Avatar muscle bridge — 23 November 2026
 
+Subsequent authoring adds a separately unqualified v2 passive initialization
+route; see `DNNE_Passive_Motor_Attachment_2026-11-23.md`. The launch recorded
+below remains the original frozen v1, with no post-launch inspection or edit.
+
 The qualified hinge transport only represents two paths. The full Avatar owner
 already accepts the existing 38 paths, but previously had no host implementation
 of `IAvatarMotorMechanicalBody`. This candidate connects those two boundaries.
@@ -91,11 +95,19 @@ is inferred. This makes three pending reports, alongside `e764e3` and `ab2502`.
 
 ## Remaining integration
 
+Completed v1 review: `tendon-wire-20261123-7ce921` passed all 295 exact cases
+(34 new, 261 prior). Both 2,799-file copies, frozen Git source, executed files
+and unchanged 335-file selected runtime verify. The four-file review and D:
+copy are `artifacts/tendon-wire-20261123-7ce921-review` and
+`D:/DNNE-desktop-runs/UnityWorld/tendon-wire-20261123-7ce921-review`.
+This is host protocol/plant behavior against the declared peer; it executed no
+Unity body and does not qualify v2 initialization. No test/model ran in review.
+
 After component results and native force observations are reviewed, qualify the
 actual file bridge in a separate frozen Unity study, including all paths,
 nonmoving samples and uncertain-command rejection. Reuse explicit preserved
-attachments as fixtures; do not relabel them anatomical. The fresh full-body
-owner still starts at physical step zero. Joining the sensory prelude requires
+attachments as fixtures; do not relabel them anatomical. The frozen v1 full-body
+owner starts at physical step zero. Joining the sensory prelude requires
 explicit ownership of the actual baseline: neural 1010 ms remains physical
 10 ms under the existing fixture clock. No invented prior silence or retimed
 neurons solve that boundary.

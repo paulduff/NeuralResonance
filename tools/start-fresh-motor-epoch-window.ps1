@@ -5,7 +5,9 @@ $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 $closedLoop=($configuration.PSObject.Properties.Name -contains 'ClosedLoopMotorScheduleRegression') -and $configuration.ClosedLoopMotorScheduleRegression
 $articulated=($configuration.PSObject.Properties.Name -contains 'ArticulatedTendonBridgeRegression') -and $configuration.ArticulatedTendonBridgeRegression
-$expectedCases=if($articulated){295}elseif($closedLoop){243}else{155}
+$attachment=($configuration.PSObject.Properties.Name -contains 'PassiveMotorAttachmentRegression') -and $configuration.PassiveMotorAttachmentRegression
+$expectedCases=if($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
+if($attachment -and -not $articulated){throw 'Motor initialization retains the full-body host controls.'}
 if($articulated -and -not $closedLoop){throw 'Full-body host controls retain the split-schedule regressions.'}
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne $expectedCases){throw 'Unexpected motor-clock protocol.'}
 function Sha([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash}
@@ -21,7 +23,7 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskPrefix=if($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
+ $taskPrefix=if($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -61,9 +63,10 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBi
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle=if($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
+ $Host.UI.RawUI.WindowTitle=if($attachment){'DNNE passive motor attachment - 315 component/regression cases'}elseif($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($articulated){Write-Host '34 new host bridge controls and 261 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
+ if($attachment){Write-Host '20 new passive-attachment controls and 295 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
+ elseif($articulated){Write-Host '34 new host bridge controls and 261 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
  elseif($closedLoop){Write-Host '14 new split-schedule controls and 229 existing regressions. No Unity or live brain. This window stays open after its final backup.'}
  else{Write-Host '13 new clock controls and 142 existing regressions. No Unity or live brain. This window stays open after its final backup.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -90,6 +93,7 @@ try {
  $status['PassedFocusedTests']=$expectedCases;$status.ClockChecksPassed=$true
  if($closedLoop){$status['SplitScheduleChecksPassed']=$true}
  if($articulated){$status['HostBridgeChecksPassed']=$true;$status['NativeFullBodyBridgeQualified']=$false}
+ if($attachment){$status['PhysicalInitializationChecksPassed']=$true;$status['NativePassiveInitializationQualified']=$false}
  $status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString();Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
@@ -114,7 +118,8 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($articulated){Write-Host 'Tell Orion the full Avatar host bridge outcome. Protocol controls, native force delivery, sensory physiology and Avatar standing are separate.'}
+ if($attachment){Write-Host 'Tell Orion the passive motor attachment outcome. Clock/initialization controls, native delivery, physiological feedback and Avatar standing are separate.'}
+ elseif($articulated){Write-Host 'Tell Orion the full Avatar host bridge outcome. Protocol controls, native force delivery, sensory physiology and Avatar standing are separate.'}
  elseif($closedLoop){Write-Host 'Tell Orion the body/motor closure outcome. Component scheduling, active sensory feedback, coupled accuracy and Avatar standing are separate.'}
  else{Write-Host 'Tell Orion the fresh motor-clock outcome. Component clock ownership, coupled numerical accuracy, physiological firing and Avatar standing are separate.'}
 }

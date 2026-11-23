@@ -114,3 +114,50 @@ task `DNNE-Tendon-Mechanics-9a4524fd0a15` started the visible PowerShell workflo
 No post-launch outputs/status/processes were inspected. This and attachment
 `526071` are the two pending reports. Launch does not establish a mechanical
 cause, useful movement, anatomical validity, neuronal authority or standing.
+
+## Completed mechanical finding
+
+Paul reported `9d73a7` complete. Both 3,128-file copies, original Git source,
+executed player/binaries and all 112 exact component cases verify. All 54 cases,
+432 physical steps and 486 endpoints are present; all 61,920 saved accumulator
+checks pass. Each intervention changes only its declared settings. Original
+endpoints and every initial pose/path remain preserved. The four-file review
+and manifest are verified in `artifacts/tendon-mechanics-20261123-9d73a7-review`
+and its same-name D: UnityWorld backup. No model/test/full force analysis was
+rerun during review.
+
+The recorded original joint friction is 0.05000000074505806 on all 15 links.
+Removing it restores substantial response in the selected joints. Largest
+absolute differences from each mode's quiet trajectory are:
+
+| Mode | Largest target angle difference, rad |
+| --- | ---: |
+| Original | 0.0000025319364453935123 |
+| No joint friction | 0.16876459073744188 |
+| No body damping | 0.000002532207801664299 |
+| Raised joint-speed floor | 0.0000025319364453935123 |
+| Free active angular axes | 0.000002531975781039364 |
+| No gravity | 0.000002532168693392123 |
+
+The no-friction elbow flexor reaches +0.16876459 rad relative to quiet; hip
+directions reach +0.01017422 and -0.00356480 rad; shoulder abduction directions
+reach +0.00582616 and -0.00582756 rad. Knee flexor reaches +0.02626279 rad.
+The opposing elbow/knee pulls remain effectively blocked at their initial lower
+limits. Do not interpret that expected positional restriction as a failed axon
+or increase force to overcome it. No interior-pose/full-direction result exists.
+
+This intervention identifies native joint friction as the dominant suppressor
+for these prescribed short pulls. It does not establish a physiological value,
+native solver accuracy at every timestep or full-body control. The next declared
+comparison should retain all 38 original pulls and their baseline, with only
+joint friction removed, before adopting a changed body configuration.
+
+Natural joint resistance is not zero. A primary
+[human shoulder experiment](https://pmc.ncbi.nlm.nih.gov/articles/PMC4707938/)
+found low, nonzero articular friction during prolonged loading. That measured
+surface coefficient is not interchangeable with Unity's documented load-related
+joint-friction parameter in 1/s. Do not insert a literature surface coefficient
+into this engine field or call the zero-friction diagnostic cartilage calibration.
+Contact friction, body damping and anatomical angular limits remain present in
+the no-joint-friction variant. Muscle/tendon resistance still needs its explicitly
+consistent geometry and independently checked coupled dynamics.

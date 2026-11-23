@@ -20,6 +20,7 @@
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\MuscleHingeWire.cs" Link="MuscleHingeWire.cs" />
     <Compile Include="..\..\UnityWorld\Assets\NRE\Runtime\ArticulatedTendonWire.cs" Link="ArticulatedTendonWire.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\NativeArticulatedBody.cs" Link="NativeArticulatedBody.cs" />
+    <Compile Include="..\..\tools\NativeMotorBridgeProbe\NativeArticulatedHeadInput.cs" Link="NativeArticulatedHeadInput.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\ObservedMotorSource.cs" Link="ObservedMotorSource.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\RubralMotorCircuit.cs" Link="RubralMotorCircuit.cs" />
     <Compile Include="..\..\tools\NativeMotorBridgeProbe\CanalAfferentNucleusConnection.cs" Link="CanalAfferentNucleusConnection.cs" />

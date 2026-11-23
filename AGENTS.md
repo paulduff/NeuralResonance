@@ -1,5 +1,26 @@
 # Avatar and environment work
 
+LATEST REVIEWS / AUTHORING — 23 November: Paul reported `526071` and `9d73a7`
+complete. Attachment verifies all 315 cases and both 2,804-file copies. Motion
+diagnosis verifies both 3,128-file copies, 112 tests, 54 native cases / 432 steps /
+486 endpoints and 61,920 force checks. Both four-file reviews are D:-verified.
+Only joint-friction removal restored substantial motion (max 0.16876459 rad vs
+original 2.53193645e-6); other variants stay near the original. Original friction
+is 0.05000000074505806 on every link. Knee/elbow opposite pulls remain at their
+initial lower limits. Do not infer full-direction/anatomical/neuronal control.
+See the completed section of `DNNE_Tendon_Motion_Diagnosis_2026-11-23.md`.
+Next extend the same original/no-friction comparison to all 38 muscle paths.
+
+`NativeArticulatedHeadInput` is authored, not selected live: it carries the real
+host's acknowledged three material points into existing skull kinematics,
+retains native bytes, verifies body pose/velocity identity, rejects gaps and
+preserves partial failures. Sixteen controls plus 315 prior cases are declared
+in `fresh_motor_epoch_study.py prepare --head` (331 / 210 methods). Probe/test
+builds and all five static inventories pass; no new tests/models executed.
+See `docs/DNNE_Articulated_Head_Input_2026-11-23.md`. Native delivery, afferent
+and full circuit coupling remain unfinished. Exactly ZERO reports pending at
+this checkpoint; old `e764e3` / `ab2502` footers were duplicates. Full goal active.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-mechanics-20261123-9d73a7`
 is frozen at pushed `dc493d1e6483614d27f05afa3a4e60c88be87c10`. Static frozen
 preflight passed; both initial 2,244-file copies plus manifest verify against

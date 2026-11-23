@@ -40,6 +40,11 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
     public double PhysicsStepMs { get; }
     internal bool Faulted => _faulted;
     internal Reply Last => Copy(_last);
+    internal Reply ReadAcknowledgedForSensory()
+    {
+        Require(Environment.CurrentManagedThreadId == _owner, "The physical owner must hand off its own acknowledged observation.");
+        return Copy(_last);
+    }
     internal string OriginalObservationJson => _last.observationsJson;
     internal string? InitializationEvidenceJson { get; private set; }
 

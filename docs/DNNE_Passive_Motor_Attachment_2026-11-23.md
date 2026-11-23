@@ -99,3 +99,13 @@ task `DNNE-Motor-Attachment-07ad1712c500` started. No post-launch output, status
 or process was inspected. This is now the only pending report. Await Paul's
 final backup/footer; compilation and launch are not a component result, native
 initialization qualification or evidence of standing.
+
+## Completed review
+
+Paul reported `526071` complete. Its saved result verifies all 315 exact cases
+(20 new, 295 previous), both 2,804-file copies, original Git archive/extracted
+source, executed binaries and all 335 selected managed runtime files unchanged
+before/after. No test or model was rerun during review. The four-file review
+plus manifest is verified at `artifacts/motor-attachment-20261123-526071-review`
+and `D:/DNNE-desktop-runs/UnityWorld/motor-attachment-20261123-526071-review`.
+Native initialization, active sensory feedback and standing remain unqualified.

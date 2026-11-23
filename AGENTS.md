@@ -1,5 +1,33 @@
 # Avatar and environment work
 
+MUSCLE EQUILIBRIUM REVIEWED / FRAME MAPPING AUTHORED — 23 November: Paul
+reported final DIAGNOSTICS_COMPLETE for `muscle-initial-20261123-4c4377`.
+Both complete 2,842-file copies, frozen source, binaries, exact 263 test
+inventory and unchanged runtime verified. Eight 80/110-digit references
+passed original bounds; largest fiber error 1.764727835651735e-13 m, largest
+independent force allowance fraction 0.167106. Five-file review plus manifest
+D:-verified at `artifacts/muscle-initial-20261123-4c4377-review`. No rerun.
+NO pending reports at this checkpoint. Goal remains active and incomplete.
+
+New optional `AvatarMuscleFrameMap` maps explicit orthonormal anatomical
+frames, positive uniform scale and source/body identities; reflection and
+axial-vector parity explicit. No existing biological/Unity kernels changed.
+`artifacts/lower-leg-anatomy-input-20261123`: 11 input files plus manifest
+D:-verified, retaining original source and native neutral endpoint. Ten
+unwrapped source muscles / 44 points, five per leg: tibant, soleus, tibpost,
+perlong, perbrev. Preserve knee and talus/calcaneus offsets; no source wrapping
+removed. Foot inherits declared shin scale, NOT measured foot calibration.
+25 new mapping controls plus 263 previous cases, eight equilibrium references
+and 44-point 80/110-digit coordinate comparison supported by existing runner
+with `fresh_motor_epoch_study.py prepare --frame-map`. Authoring build
+`D:/DNNE-build-work/muscle-frame-authoring-20261123-v1` passed with zero
+warnings/errors after correcting two C# declaration errors. All seven suite
+inventories and Python/PowerShell syntax checked, no tests/models executed.
+Next freeze/launch this candidate in visible PowerShell; no live monitoring.
+See `docs/DNNE_Muscle_Frame_Mapping_2026-11-23.md`. Actual anatomical fit,
+named-muscle native protocol, unit populations, coupled accuracy, neuronal
+authority and standing remain open. This mapping is not selected in live Avatar.
+
 FRESH MUSCLE BALANCE LAUNCHED — 23 November: independent visible PowerShell
 task `DNNE-Muscle-Initial-4019dc56c094` started for
 `D:/DNNE-build-work/muscle-initial-20261123-4c4377`, frozen at pushed

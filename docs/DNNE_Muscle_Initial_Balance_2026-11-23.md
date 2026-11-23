@@ -1,5 +1,13 @@
 # Fresh muscle force balance — 23 November 2026
 
+Completed and reviewed: `muscle-initial-20261123-4c4377`. All 263 cases
+passed; all eight independent equilibria met the original limits. Both
+2,842-file copies, frozen source, executable identities and unchanged managed
+runtime verified. Largest fiber error was 1.764727835651735e-13 m; largest
+independent force residual used 16.711% of its allowance. The review is saved
+at `artifacts/muscle-initial-20261123-4c4377-review`, with five files plus
+manifest verified on D:. No model, test or reference was rerun during review.
+
 The detailed Avatar muscle previously required a caller-chosen initial fiber
 length. With a separately measured path length, that can put the passive
 fiber and tendon at incompatible initial forces before any motor event. The
@@ -52,9 +60,9 @@ implementation is additionally hashed. No live monitoring.
 
 Authoring build `D:/DNNE-build-work/muscle-initial-authoring-20261123-v1`
 completed with zero warnings/errors; no test or model executed during that
-build. Python/PowerShell syntax and declared test inventories are checked
-without running tests. Scientific results remain pending until the window
-completes and Paul reports its footer.
+build. Python/PowerShell syntax and declared test inventories were checked
+without running tests. The subsequently completed window supplied the
+independent evidence reported above.
 
 ## Full-body work still required
 
@@ -75,5 +83,5 @@ Launched: `D:/DNNE-build-work/muscle-initial-20261123-4c4377`, frozen at
 `22f7ed894ff131f9a67b5eea5d7f3030a15e1591`. Preparation/preflight passed, with
 both initial 2,252-file copies plus manifest verified. Interactive task
 `DNNE-Muscle-Initial-4019dc56c094` started the visible PowerShell window. No
-post-launch process, output or status inspected. This is the only pending
-report; the earlier saved native/sensory comparison is completed and reviewed.
+post-launch process, output or status was inspected until Paul reported the
+final footer. The earlier saved native/sensory comparison is also reviewed.

@@ -8,9 +8,11 @@ $articulated=($configuration.PSObject.Properties.Name -contains 'ArticulatedTend
 $attachment=($configuration.PSObject.Properties.Name -contains 'PassiveMotorAttachmentRegression') -and $configuration.PassiveMotorAttachmentRegression
 $head=($configuration.PSObject.Properties.Name -contains 'ArticulatedHeadInputRegression') -and $configuration.ArticulatedHeadInputRegression
 $initialBalance=($configuration.PSObject.Properties.Name -contains 'MuscleInitialBalanceRegression') -and $configuration.MuscleInitialBalanceRegression
+$frameMap=($configuration.PSObject.Properties.Name -contains 'MuscleFrameMapRegression') -and $configuration.MuscleFrameMapRegression
+if($frameMap -and -not $initialBalance){throw 'Anatomical mapping retains equilibrium controls.'}
 if($initialBalance -and (-not $closedLoop -or $articulated -or $attachment -or $head)){throw 'Initial muscle balance retains the declared motor/plant regressions.'}
 if($head -and -not $attachment){throw 'Head input retains initial physical sampling controls.'}
-$expectedCases=if($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
+$expectedCases=if($frameMap){288}elseif($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
 if($attachment -and -not $articulated){throw 'Motor initialization retains the full-body host controls.'}
 if($articulated -and -not $closedLoop){throw 'Full-body host controls retain the split-schedule regressions.'}
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne $expectedCases){throw 'Unexpected motor-clock protocol.'}
@@ -27,7 +29,7 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskPrefix=if($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
+ $taskPrefix=if($frameMap){'DNNE-Muscle-Frames-'}elseif($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -67,9 +69,10 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBi
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle=if($initialBalance){'DNNE fresh muscle equilibrium - 263 cases and independent reference'}elseif($head){'DNNE original full Avatar head input - 331 component cases'}elseif($attachment){'DNNE passive motor attachment - 315 component/regression cases'}elseif($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
+ $Host.UI.RawUI.WindowTitle=if($frameMap){'DNNE lower leg attachment frames - 288 cases and 44 retained points'}elseif($initialBalance){'DNNE fresh muscle equilibrium - 263 cases and independent reference'}elseif($head){'DNNE original full Avatar head input - 331 component cases'}elseif($attachment){'DNNE passive motor attachment - 315 component/regression cases'}elseif($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($initialBalance){Write-Host '20 fresh muscle controls and 243 existing regressions, then eight independent 80/110-digit equilibria. No Unity or live brain. This window stays open after backup.'}
+ if($frameMap){Write-Host '25 mapping controls and 263 previous regressions; ten named muscle paths and 44 source points independently checked. Foot scale is a declared shin-ratio proxy, not measured foot anatomy. No Unity or live brain.'}
+ elseif($initialBalance){Write-Host '20 fresh muscle controls and 243 existing regressions, then eight independent 80/110-digit equilibria. No Unity or live brain. This window stays open after backup.'}
  elseif($head){Write-Host '16 original head-input controls and 315 previous regressions. Prescribed protocol peer; no Unity or afferent firing.'}
  elseif($attachment){Write-Host '20 new passive-attachment controls and 295 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
  elseif($articulated){Write-Host '34 new host bridge controls and 261 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
@@ -92,6 +95,7 @@ try {
  $env:NRE_SYNAPSE_STATE_DIR=Join-Path $package 'isolated-synapses'
  $env:NRE_RETICULOSPINAL_EVIDENCE_DIR=Join-Path $package 'partition-evidence'
  $env:NRE_DESCENDING_ANATOMY_EVIDENCE_DIR=Join-Path $package 'anatomy-evidence'
+ if($frameMap){$env:NRE_MUSCLE_FRAME_INPUT=Join-Path $package 'anatomical-input/binding-input.json'}else{Remove-Item Env:NRE_MUSCLE_FRAME_INPUT -ErrorAction SilentlyContinue}
  $status.TestExecutionAttempted=$true
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Invoke-Logged $configuration.DotnetExecutable @('vstest',$assembly,('/TestCaseFilter:'+$configuration.TestFilter),('/ResultsDirectory:'+$testOutput),'/Logger:trx;LogFileName=focused.trx') 'focused-tests.log'
@@ -102,6 +106,7 @@ try {
  if($attachment){$status['PhysicalInitializationChecksPassed']=$true;$status['NativePassiveInitializationQualified']=$false}
  if($head){$status['OriginalHeadInputChecksPassed']=$true;$status['NativeHeadDeliveryQualified']=$false}
  if($initialBalance){$status['InitialMuscleBalanceChecksPassed']=$true;$status['IndependentInitialBalancePassed']=$true;$status['LiveMuscleGeometrySelected']=$false}
+ if($frameMap){$status['AnatomicalFrameArithmeticPassed']=$true;$status['AnatomicalCalibrationQualified']=$false}
  $status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString();Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
@@ -126,7 +131,8 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($initialBalance){Write-Host 'Tell Orion the fresh muscle equilibrium outcome. Initial force balance, coupled trajectories, anatomical calibration, neuronal authority and Avatar standing are separate.'}
+ if($frameMap){Write-Host 'Tell Orion the lower-leg attachment mapping outcome. Coordinate accuracy, anatomical fit, native muscle delivery and Avatar standing are separate.'}
+ elseif($initialBalance){Write-Host 'Tell Orion the fresh muscle equilibrium outcome. Initial force balance, coupled trajectories, anatomical calibration, neuronal authority and Avatar standing are separate.'}
  elseif($head){Write-Host 'Tell Orion the acknowledged head-input outcome. Original sample ownership, actual native delivery, afferent physiology and Avatar standing are separate.'}
  elseif($attachment){Write-Host 'Tell Orion the passive motor attachment outcome. Clock/initialization controls, native delivery, physiological feedback and Avatar standing are separate.'}
  elseif($articulated){Write-Host 'Tell Orion the full Avatar host bridge outcome. Protocol controls, native force delivery, sensory physiology and Avatar standing are separate.'}

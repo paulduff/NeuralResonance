@@ -1,5 +1,15 @@
 # Avatar and environment work
 
+SAVED NATIVE/SENSORY REANALYSIS LAUNCHED — 23 November: independent visible
+PowerShell task `DNNE-Native-Canal-Reanalysis-d69dbed0fd61` started for
+`D:/DNNE-build-work/native-canal-reanalysis-20261123-8dd5a0`, frozen at pushed
+`c22d3d6b7bf0928b73e54f094769889b956e71af`. Both initial 2,251-file copies plus
+manifest verified. Runs 25 identity controls then all 516,096 saved sensory
+steps; no Unity/neuronal model rerun. Exactly ONE pending report: `8dd5a0`.
+No post-launch output, status or process inspected; await Paul's final footer.
+Completed original `184323` remains FAILED and preserved in both copies.
+Muscle-initial-balance draft remains separate, unqualified and untracked.
+
 NATIVE/SENSORY FAILURE REVIEWED — 23 November: Paul reported final FAILED for
 `native-canal-20261123-184323`. Both complete 2,940-file copies, frozen source,
 executables and runtime manifests verified; five-file review plus manifest

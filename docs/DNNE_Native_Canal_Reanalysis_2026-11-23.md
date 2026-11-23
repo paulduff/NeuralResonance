@@ -71,3 +71,9 @@ At preparation, Python/PowerShell syntax checks pass; the 25 controls and full
 reanalysis remain pending until the independent run completes. A successful
 accounting result would still leave independent connected accuracy,
 physiological firing, neuronal motor authority and Avatar standing unqualified.
+
+Launched package: `D:/DNNE-build-work/native-canal-reanalysis-20261123-8dd5a0`,
+frozen at `c22d3d6b7bf0928b73e54f094769889b956e71af`. Both initial copies contain
+2,251 verified files plus manifest. Interactive task
+`DNNE-Native-Canal-Reanalysis-d69dbed0fd61` was started; no post-launch output,
+process or status inspected. This is the only pending report.

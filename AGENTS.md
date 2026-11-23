@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+LATEST LAUNCHES — 23 November: both follow-ups are frozen at pushed
+`712e3251e877ccb46073d6535dda60ca9617e1cc`. `D:/DNNE-build-work/tendon-friction-20261123-9d34cc`
+has verified initial 2,313-file copies plus manifest and was launched by
+interactive task `DNNE-Tendon-Friction-b5563b636e5e` (112 component checks,
+78 native cases / 624 steps). `D:/DNNE-build-work/articulated-head-20261123-7bc04c`
+has verified initial 2,223-file copies plus manifest and was launched by
+`DNNE-Articulated-Head-b8182816ce8e` (331 component cases, no native body).
+Both backups are under the same names in `D:/DNNE-desktop-runs/UnityWorld`.
+Exactly TWO final reports await Paul: `9d34cc` and `7bc04c`. No post-launch
+output/status/process has been inspected. Do not monitor or duplicate them.
+Friction remains an isolated diagnostic; live settings, physiological resistance,
+native head delivery and neuronal standing are not qualified. Full goal active.
+
 FULL-PATH FOLLOW-UP AUTHORING — 23 November: the reviewed friction diagnosis
 is now extended by `native_tendon_mechanics_study.py prepare --full-friction`
 to original/no-friction quiet plus all 38 paths: 78 cases / 624 steps / 702

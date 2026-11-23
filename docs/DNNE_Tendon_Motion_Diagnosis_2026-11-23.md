@@ -196,3 +196,13 @@ component inventory, Python syntax, both launchers' PowerShell syntax and Git
 whitespace checks. The five motor/head workflow inventories also retain their
 155/243/295/315/331 case counts. No model, test or scientific comparison ran
 as part of these static checks.
+
+## Full-path visible launch
+
+`D:/DNNE-build-work/tendon-friction-20261123-9d34cc` is frozen at pushed
+`712e3251e877ccb46073d6535dda60ca9617e1cc`. Preparation/preflight passed and
+both initial 2,313-file copies plus manifest verified against its same-name
+`D:/DNNE-desktop-runs/UnityWorld` backup. Interactive task
+`DNNE-Tendon-Friction-b5563b636e5e` started the visible workflow. No post-launch
+outputs, status or process were inspected. Await Paul's final report; launch
+does not establish all-path motion or physiological joint resistance.

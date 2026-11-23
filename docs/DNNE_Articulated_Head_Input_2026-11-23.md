@@ -58,3 +58,14 @@ is 0.28875 m, while the synthetic opposing-line attachment fixtures start near
 0.2 m total path length. Do not adopt that combination as anatomical activation
 or compensate with a neural gain. Real muscle/path geometry and initial state
 need explicit consistent definitions before full-body muscle calibration.
+
+## Visible component launch
+
+`D:/DNNE-build-work/articulated-head-20261123-7bc04c` is frozen at pushed
+`712e3251e877ccb46073d6535dda60ca9617e1cc`. Preparation/preflight passed and
+both initial 2,223-file copies plus manifest verified against its same-name
+`D:/DNNE-desktop-runs/UnityWorld` backup. Interactive task
+`DNNE-Articulated-Head-b8182816ce8e` started the visible 331-case workflow.
+No post-launch outputs, status or process were inspected. Await Paul's final
+report before reading results. Actual native head delivery and physiological
+sensory feedback remain separate outstanding integration work.

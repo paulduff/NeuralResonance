@@ -12,7 +12,7 @@ import uuid
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = '5480e1b'
+BASE = '0c36f50'
 ORIGINAL = Path('D:/DNNE-build-work/tendon-force-20261123-e764e3')
 spec = importlib.util.spec_from_file_location('tendon_force_helpers', ROOT/'tools/native_avatar_tendon_study.py')
 h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
@@ -24,24 +24,28 @@ PROFILES = ('leftHip','leftKnee','leftElbow','leftShoulderAbduction')
 ORIGINAL_NAMES = ('quiet',) + tuple(p+'-'+side for p in PROFILES for side in ('flexor','extensor'))
 
 
-def cases():
+def cases(full_friction=False):
+    profiles = tuple(h.re.findall(r'new MuscleProfile\("([^"]+)"', (ROOT/'UnityWorld/Assets/NRE/Runtime/MuscleCore.cs').read_text())) if full_friction else PROFILES
+    assert len(profiles)==(19 if full_friction else 4) and len(set(profiles))==len(profiles)
+    names=('quiet',)+tuple(p+'-'+side for p in profiles for side in ('flexor','extensor'))
     return [dict(name=mode+'__'+name, original=name+'-observed', mode=mode,
                  condition='quiet' if name=='quiet' else 'pulse',
                  muscle='' if name=='quiet' else name.rsplit('-',1)[0]+'/'+name.rsplit('-',1)[1], observe=True)
-            for mode in MODES for name in ORIGINAL_NAMES]
+            for mode in (MODES[:2] if full_friction else MODES) for name in names]
 
 
-def prepare():
+def prepare(full_friction=False):
     assert not h.git('status','--porcelain'), 'Commit clean source first.'
     revision = h.git('rev-parse','HEAD'); assert revision == h.git('rev-parse','origin/main')
-    assert not h.git('diff','--name-only',BASE,revision,'--','src','Structures','tests','Shared.Contracts','tools/NativeMotorBridgeProbe')
+    assert not h.git('diff','--name-only',BASE,revision,'--','src','Structures','tests','Shared.Contracts','tools/NativeMotorBridgeProbe','UnityWorld','tools/native_avatar_tendon_study.py')
     old = read(ORIGINAL/'configuration.json'); old_analysis = read(ORIGINAL/'analysis.json')
     assert old_analysis['mechanicalCriteriaPassed'] and old['Revision'] == '740fa633dcc92a1c5c537c44ebd27e08c8ba20b2'
     manifest = read(ORIGINAL/'backup-manifest.json'); protected = Path(manifest['Destination'])
     assert digest(ORIGINAL/'backup-manifest.json') == digest(protected/'backup-manifest.json')
     entries = {e['Path'].replace('\\','/'):e for e in manifest['Files']}
-    selected = [c for c in old['Cases'] if c['name'] in {n+'-observed' for n in ORIGINAL_NAMES}]; assert len(selected) == 9
-    name = 'tendon-mechanics-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
+    planned=cases(full_friction)
+    selected = [c for c in old['Cases'] if c['name'] in {c['original'] for c in planned}]; assert len(selected) == (39 if full_friction else 9)
+    name = ('tendon-friction-' if full_friction else 'tendon-mechanics-')+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
     package = Path('D:/DNNE-build-work')/name; backup = Path('D:/DNNE-desktop-runs/UnityWorld')/name
     assert not package.exists() and not backup.exists(); package.mkdir()
     subprocess.run(['git','archive','--format=zip','--output='+str(package/'source.zip'),revision],cwd=ROOT,check=True)
@@ -71,19 +75,29 @@ def prepare():
         target = package/'original'/name; target.parent.mkdir(parents=True,exist_ok=True)
         shutil.copyfile(ORIGINAL/name,target)
     shutil.copyfile(ORIGINAL/'backup-manifest.json',package/'original-manifest.json')
+    if full_friction:
+        review=ROOT/'artifacts/tendon-mechanics-20261123-9d73a7-review'
+        reviewed=read(review/'review.json'); proof=read(review/'backup-manifest.json'); copy=Path(proof['Destination'])
+        assert reviewed['declaredInterventionsVerified'] and reviewed['originalEndpointsIdentical'] and reviewed['accumulatorChecks']==61920
+        assert digest(review/'backup-manifest.json')==digest(copy/'backup-manifest.json')
+        target=package/'prior-mechanical-review';target.mkdir()
+        for entry in proof['Files']:
+            relative=entry['Path'].replace('\\','/');assert '/' not in relative
+            assert digest(review/relative)==digest(copy/relative)==entry['Sha256']
+            shutil.copyfile(review/relative,target/relative)
+        shutil.copyfile(review/'backup-manifest.json',target/'backup-manifest.json')
     shutil.copyfile(package/'source/tools/backup-unity-run.ps1',package/'backup-run.ps1')
-    planned = cases()
     files = [dict(Path=p.relative_to(package).as_posix(),Sha256=digest(p)) for p in sorted(package.rglob('*')) if p.is_file()]
     unity = Path(old['UnityExecutable']); dotnet = Path(shutil.which('dotnet')); python = Path(sys.executable)
     write(package/'configuration.json',dict(Revision=revision,BaselineRevision=h.git('rev-parse',BASE),PackageFiles=files,
         BackupDestination=str(backup),UnityBuildWorkspace=str(package.parent/(package.name+'-unity')),
         UnityExecutable=str(unity),UnityExecutableSha256=digest(unity),DotnetExecutable=str(dotnet),DotnetExecutableSha256=digest(dotnet),
         PythonExecutable=str(python),PythonExecutableSha256=digest(python),PythonRuntime=h.python_runtime(),
-        NoLiveMonitoring=True,IsolatedFullAvatarTendons=True,NativeMechanicsDiagnosticStudy=True,
+        NoLiveMonitoring=True,IsolatedFullAvatarTendons=True,NativeMechanicsDiagnosticStudy=True, FullFrictionMatrix=full_friction,
         ExpectedTestCases=112,ExpectedTestMethods=h.inventory(),TestFilter='|'.join('FullyQualifiedName~'+c for c in h.COUNTS),
-        ExpectedNativeCases=54,ExpectedNativeSteps=432,Cases=planned,SyntheticAttachments=True,
+        ExpectedNativeCases=len(planned),ExpectedNativeSteps=len(planned)*8,Cases=planned,SyntheticAttachments=True,
         NeuronalSourceExecuted=False,AnatomicalCalibrationQualified=False,AvatarBalanceQualified=False,
-        Limits=old['Limits'],
+        Limits=old['Limits'], MaximumLimitViolationRadians=0.05000000074505806 if full_friction else None,
         OriginalManifestSha256=digest(ORIGINAL/'backup-manifest.json')))
     preflight(package)
     print(json.dumps(dict(Package=str(package),Backup=str(backup),Revision=revision,
@@ -93,7 +107,9 @@ def prepare():
 def preflight(package):
     c=read(package/'configuration.json')
     assert c['NativeMechanicsDiagnosticStudy'] and c['NoLiveMonitoring'] and c['IsolatedFullAvatarTendons'] and c['SyntheticAttachments']
-    assert c['ExpectedTestCases']==112 and c['ExpectedNativeCases']==len(c['Cases'])==54 and c['ExpectedNativeSteps']==432 and c['Cases']==cases()
+    full=c.get('FullFrictionMatrix',False); planned=cases(full)
+    assert c['ExpectedTestCases']==112 and c['ExpectedNativeCases']==len(planned)==len(c['Cases']) and c['ExpectedNativeSteps']==len(planned)*8 and c['Cases']==planned
+    if full: assert c['MaximumLimitViolationRadians']==0.05000000074505806
     assert not any(c[k] for k in ('NeuronalSourceExecuted','AnatomicalCalibrationQualified','AvatarBalanceQualified'))
     for entry in c['PackageFiles']: assert digest(package/entry['Path'])==entry['Sha256'],entry['Path']
     for name in ('Unity','Dotnet','Python'): assert digest(c[name+'Executable'])==c[name+'ExecutableSha256'],name
@@ -166,10 +182,11 @@ def force_checks(case, endpoint, rows, limits):
 
 
 def analyse(package):
-    cfg=read(package/'configuration.json'); assert cfg['Cases']==cases()
+    cfg=read(package/'configuration.json'); full=cfg.get('FullFrictionMatrix',False); assert cfg['Cases']==cases(full)
+    modes=MODES[:2] if full else MODES
     original_cfg=read(package/'original/configuration.json'); assert cfg['Limits']==original_cfg['Limits']
-    summaries=[]; rows=[]; total=0; baseline_settings=None
-    quiet={mode:records(package/'native'/(mode+'__quiet')/'endpoints.jsonl') for mode in MODES}
+    summaries=[]; rows=[]; limit_rows=[]; total=0; baseline_settings=None
+    quiet={mode:records(package/'native'/(mode+'__quiet')/'endpoints.jsonl') for mode in modes}
     for case in cfg['Cases']:
         folder=package/'native'/case['name']; report=read(folder/'result.json'); values=records(folder/'endpoints.jsonl')
         prior_report=read(package/'original/native'/case['original']/'result.json')
@@ -180,6 +197,11 @@ def analyse(package):
         assert not any(report[k] for k in ('neuronalSourceExecuted','anatomicalCalibrationQualified','avatarBalanceQualified'))
         assert report['fixtures']==prior_report['fixtures'] and report['stepMsBits']==prior_report['stepMsBits']
         configuration=json.loads(report['mechanicsDiagnosticJson']); changed=settings(configuration,case['mode'])
+        geometry=json.loads(report['geometryJson'])
+        if full:
+            original_geometry=json.loads(prior_report['geometryJson'])
+            assert len(geometry['links'])==15 and sum(len(b['activeNativeIndices']) for b in geometry['links'])==19
+            assert [(b['id'],b['activeNativeIndices'],b['activeDrives']) for b in geometry['links']]==[(b['id'],b['activeNativeIndices'],b['activeDrives']) for b in original_geometry['links']]
         if baseline_settings is None: baseline_settings=configuration['original']
         assert configuration['original']==baseline_settings, ('Different initial body settings',case['name'])
         # No initial pose, velocity, path or time change is permitted by an intervention.
@@ -190,6 +212,16 @@ def analyse(package):
             assert endpoint['step']==n and endpoint['physicalTimeMsBits']==old[n]['physicalTimeMsBits']
             assert h.hashlib.sha256(endpoint['stateJson'].encode()).hexdigest().upper()==endpoint['stateHash']
             assert len(endpoint['paths'])==38
+            if full:
+                physical={b['id']:b for b in json.loads(endpoint['stateJson'])['links']}
+                f32=lambda x:h.struct.unpack('<f',h.struct.pack('<f',x))[0]
+                for link in geometry['links']:
+                    for axis,(index,drive) in enumerate(zip(link['activeNativeIndices'],link['activeDrives'],strict=True)):
+                        lower=f32(h.real(drive['lowerBits'])*f32(math.pi/180));upper=f32(h.real(drive['upperBits'])*f32(math.pi/180))
+                        angle=h.real(physical[link['id']]['jointPositionBits'][index]);violation=max(0.,f32(lower-angle),f32(angle-upper))
+                        limit_rows.append(dict(case=case['name'],step=n,joint=link['id'],axis=axis,nativeIndex=index,
+                            angleRadians=angle,lowerRadians=lower,upperRadians=upper,violationRadians=violation,
+                            passed=violation<cfg['MaximumLimitViolationRadians']))
             if case['mode']=='original': identical &= all(endpoint[k]==old[n][k] for k in keys)
             if not n:
                 assert not endpoint['nativeForcesJson']; continue
@@ -213,7 +245,7 @@ def analyse(package):
         response=None
         if case['condition']=='pulse':
             fixture=next(f for f in report['fixtures'] if f['muscleId']==case['muscle'])
-            geometry=json.loads(report['geometryJson']); link=next(b for b in geometry['links'] if b['id']==fixture['child'])
+            link=next(b for b in geometry['links'] if b['id']==fixture['child'])
             index=link['activeNativeIndices'][fixture['axis']]; angles=[];speeds=[]
             for endpoint,control in zip(values,quiet[case['mode']],strict=True):
                 actual=next(b for b in json.loads(endpoint['stateJson'])['links'] if b['id']==fixture['child'])
@@ -227,24 +259,30 @@ def analyse(package):
         total+=8
     original_ok=all(s['originalEndpointsIdentical'] for s in summaries if s['mode']=='original')
     force_ok=bool(rows) and all(r['passed'] for r in rows)
-    assert total==432 and len(summaries)==54
+    limits_ok=not full or bool(limit_rows) and all(r['passed'] for r in limit_rows)
+    assert total==cfg['ExpectedNativeSteps'] and len(summaries)==cfg['ExpectedNativeCases']
+    if full: assert len(limit_rows)==cfg['ExpectedNativeCases']*9*19
     write(package/'force-observations.json',rows)
-    write(package/'analysis.json',dict(completed=True,mechanicalCriteriaPassed=original_ok and force_ok,
+    if full: write(package/'joint-limit-observations.json',limit_rows)
+    write(package/'analysis.json',dict(completed=True,mechanicalCriteriaPassed=original_ok and force_ok and limits_ok,
         actualPhysicsSteps=total,cases=summaries,originalEndpointsIdentical=original_ok,settingsInterventionsVerified=True,
         initialStatesPreserved=True,accumulatedForceAndTorquePassed=force_ok,accumulatorChecks=len(rows),
         maximumAllowanceFraction=max(r['error']/r['allowance'] for r in rows),
+        fullFrictionMatrix=full,existingJointLimitGuardPassed=limits_ok if full else None,
+        jointLimitObservations=len(limit_rows),maximumJointLimitViolationRadians=max((r['violationRadians'] for r in limit_rows),default=None),
         usefulAllAxisControlQualified=False,neuronalSourceExecuted=False,physiologyQualified=False,avatarBalanceQualified=False))
-    print(f'54 native cases / 432 steps: original replay {original_ok}; one-factor settings verified; force accounting {force_ok}.',flush=True)
-    for mode in MODES:
+    print(f'{len(summaries)} native cases / {total} steps: original replay {original_ok}; one-factor settings verified; force accounting {force_ok}.',flush=True)
+    for mode in modes:
         responses=[s['jointResponse']['maximumAbsoluteAngleDifferenceRadians'] for s in summaries if s['mode']==mode and s['jointResponse']]
         print(mode,'largest response relative to its own quiet:',max(responses),'rad; movement is diagnostic, not a qualification.',flush=True)
-    if not original_ok or not force_ok: raise RuntimeError('Mechanical diagnostic accounting failed; preserve original settings, limits and all traces.')
+    if full: print('Existing 0.05-radian mechanical limit guard:',limits_ok,'; this is not anatomical accuracy.',flush=True)
+    if not original_ok or not force_ok or not limits_ok: raise RuntimeError('Mechanical diagnostic accounting failed; preserve original settings, limits and all traces.')
 
 
 if __name__=='__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
-    p=argparse.ArgumentParser();p.add_argument('stage',choices=('prepare','preflight','check-tests','analyse'));p.add_argument('package',nargs='?',type=Path);a=p.parse_args()
-    if a.stage=='prepare': prepare()
+    p=argparse.ArgumentParser();p.add_argument('stage',choices=('prepare','preflight','check-tests','analyse'));p.add_argument('package',nargs='?',type=Path);p.add_argument('--full-friction',action='store_true');a=p.parse_args()
+    if a.stage=='prepare': prepare(a.full_friction)
     else:
-        assert a.package is not None
+        assert a.package is not None and not a.full_friction, 'Frozen configuration chooses the native matrix.'
         {'preflight':preflight,'check-tests':h.check_tests,'analyse':analyse}[a.stage](a.package.resolve())

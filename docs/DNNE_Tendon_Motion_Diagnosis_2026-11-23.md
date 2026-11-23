@@ -161,3 +161,38 @@ into this engine field or call the zero-friction diagnostic cartilage calibratio
 Contact friction, body damping and anatomical angular limits remain present in
 the no-joint-friction variant. Muscle/tendon resistance still needs its explicitly
 consistent geometry and independently checked coupled dynamics.
+
+## Full muscle-path follow-up protocol
+
+`native_tendon_mechanics_study.py prepare --full-friction` extends the same
+original/no-joint-friction comparison to every one of the 19 active axes and
+38 opposing paths, plus quiet in each mode: **78 cases, 624 steps, 702 endpoints**.
+It uses the same 40 N pulls, eight physical steps, initial pose, native player
+source, 112 component checks and force tolerances. No live setting is changed.
+The preceding verified mechanical review is included in the frozen inputs.
+
+All 39 original-mode histories must reproduce the completed `e764e3` captures.
+Every variant retains the original initial body state and active drive limits.
+The independent saved-setting transformation must show only friction removal.
+Each path's signed motion is compared with its own mode's quiet trajectory;
+pulls into an initial angular bound are reported without relabeling them as a
+neuronal failure or requiring motion through that bound.
+
+The follow-up also records all **13,338 active joint-angle observations** against
+their original limits. It retains the existing `ActuatorQualification` guard
+of less than `0.05f` radians of violation, using the same float degree-to-radian
+conversion and subtraction. This loose mechanical guard is not anatomical
+accuracy. A failure retains all traces and does not widen the limit. There is
+still no invented minimum-movement acceptance threshold.
+
+Only the two previously authored isolated modes are used; this follow-up changes
+the study matrix and saved-result analysis, not native physics or neurons.
+Preparation, syntax checks and static inventory checks execute no test/model.
+Run and analyse the frozen package in its visible PowerShell window and review
+it only after Paul reports completion.
+
+Authoring checks passed: both 54/78 native matrix inventories, the 112-case
+component inventory, Python syntax, both launchers' PowerShell syntax and Git
+whitespace checks. The five motor/head workflow inventories also retain their
+155/243/295/315/331 case counts. No model, test or scientific comparison ran
+as part of these static checks.

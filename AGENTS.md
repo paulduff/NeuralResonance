@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+FULL-PATH FOLLOW-UP AUTHORING — 23 November: the reviewed friction diagnosis
+is now extended by `native_tendon_mechanics_study.py prepare --full-friction`
+to original/no-friction quiet plus all 38 paths: 78 cases / 624 steps / 702
+endpoints after the same 112 component checks. Native/neuronal sources, original
+40 N pulls, initial poses and force limits remain unchanged. All original-mode
+endpoints must match `e764e3`. Record all 13,338 active-angle observations using
+the existing 0.05f-radian violation guard; do not invent a movement threshold or
+call zero engine friction anatomical calibration. Details in the full-path
+section of `DNNE_Tendon_Motion_Diagnosis_2026-11-23.md`. This and the authored
+331-case head-input workflow are not launched at this checkpoint. No reports
+pending; all earlier pending notices below are historical. Full goal active.
+
 LATEST REVIEWS / AUTHORING — 23 November: Paul reported `526071` and `9d73a7`
 complete. Attachment verifies all 315 cases and both 2,804-file copies. Motion
 diagnosis verifies both 3,128-file copies, 112 tests, 54 native cases / 432 steps /

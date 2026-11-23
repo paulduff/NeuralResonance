@@ -5,8 +5,10 @@ $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
 $forceObservation=($configuration.PSObject.Properties.Name -contains 'NativeForceObservationStudy') -and $configuration.NativeForceObservationStudy
 $mechanicsDiagnostic=($configuration.PSObject.Properties.Name -contains 'NativeMechanicsDiagnosticStudy') -and $configuration.NativeMechanicsDiagnosticStudy
+$fullFriction=($configuration.PSObject.Properties.Name -contains 'FullFrictionMatrix') -and $configuration.FullFrictionMatrix
+if($fullFriction -and -not $mechanicsDiagnostic){throw 'Full friction comparison requires the isolated mechanical diagnostic.'}
 if($forceObservation -and $mechanicsDiagnostic){throw 'Choose one native study.'}
-$expectedCases=if($mechanicsDiagnostic){54}elseif($forceObservation){78}else{51};$expectedSteps=if($mechanicsDiagnostic){432}elseif($forceObservation){624}else{413}
+$expectedCases=if($fullFriction){78}elseif($mechanicsDiagnostic){54}elseif($forceObservation){78}else{51};$expectedSteps=if($fullFriction){624}elseif($mechanicsDiagnostic){432}elseif($forceObservation){624}else{413}
 $studyScript=if($mechanicsDiagnostic){'native_tendon_mechanics_study.py'}elseif($forceObservation){'native_tendon_force_study.py'}else{'native_avatar_tendon_study.py'}
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.IsolatedFullAvatarTendons -or $configuration.ExpectedNativeCases -ne $expectedCases -or $configuration.ExpectedNativeSteps -ne $expectedSteps -or $configuration.ExpectedTestCases -ne 112){throw 'Unexpected full Avatar mechanical protocol.'}
 function Sha([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash}
@@ -22,7 +24,7 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskPrefix=if($mechanicsDiagnostic){'DNNE-Tendon-Mechanics-'}elseif($forceObservation){'DNNE-Tendon-Force-'}else{'DNNE-Avatar-Tendons-'}
+ $taskPrefix=if($fullFriction){'DNNE-Tendon-Friction-'}elseif($mechanicsDiagnostic){'DNNE-Tendon-Mechanics-'}elseif($forceObservation){'DNNE-Tendon-Force-'}else{'DNNE-Avatar-Tendons-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -74,7 +76,7 @@ $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$runtim
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle=if($mechanicsDiagnostic){'DNNE full Avatar motion diagnosis - isolated mechanical variants'}elseif($forceObservation){'DNNE native tendon force observations - paired mechanics'}else{'DNNE full Avatar tendon mechanics - no neuronal standing claim'}
+ $Host.UI.RawUI.WindowTitle=if($fullFriction){'DNNE all 38 muscle paths - original and no joint friction'}elseif($mechanicsDiagnostic){'DNNE full Avatar motion diagnosis - isolated mechanical variants'}elseif($forceObservation){'DNNE native tendon force observations - paired mechanics'}else{'DNNE full Avatar tendon mechanics - no neuronal standing claim'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
  Write-Host ('112 component checks, then '+$expectedCases+' isolated Unity cases. Mechanical fixtures, no live brain. This window stays open after its final backup.')
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
@@ -142,7 +144,8 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($mechanicsDiagnostic){Write-Host 'Tell Orion the mechanical motion diagnosis outcome. Changed-setting sensitivity, useful joint motion, anatomy, neuronal authority and standing are separate.'}
+ if($fullFriction){Write-Host 'Tell Orion the full joint-friction comparison outcome. All-path response, anatomical resistance, neuronal authority and standing are separate.'}
+ elseif($mechanicsDiagnostic){Write-Host 'Tell Orion the mechanical motion diagnosis outcome. Changed-setting sensitivity, useful joint motion, anatomy, neuronal authority and standing are separate.'}
  elseif($forceObservation){Write-Host 'Tell Orion the native tendon force outcome. Native accumulation, useful joint response, anatomy, neuronal authority and standing are separate.'}
  else{Write-Host 'Tell Orion the full Avatar tendon outcome. Mechanical force delivery, anatomical calibration, neuronal authority and standing are separate.'}
 }

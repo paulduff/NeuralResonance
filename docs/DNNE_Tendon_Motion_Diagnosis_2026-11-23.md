@@ -103,3 +103,14 @@ or prefab referenced the malformed value. Frozen earlier component packages
 are retained. Those component-only checks did not validate a Unity import.
 Python/PowerShell syntax, the exact static inventories and all 45 Unity script
 metadata records pass after that correction. Native behavior remains untested.
+
+## Visible launch
+
+Package `D:/DNNE-build-work/tendon-mechanics-20261123-9d73a7` is frozen at
+pushed `dc493d1e6483614d27f05afa3a4e60c88be87c10`. Its frozen preflight passed;
+both initial 2,244-file copies plus manifest verified against
+`D:/DNNE-desktop-runs/UnityWorld/tendon-mechanics-20261123-9d73a7`. Interactive
+task `DNNE-Tendon-Mechanics-9a4524fd0a15` started the visible PowerShell workflow.
+No post-launch outputs/status/processes were inspected. This and attachment
+`526071` are the two pending reports. Launch does not establish a mechanical
+cause, useful movement, anatomical validity, neuronal authority or standing.

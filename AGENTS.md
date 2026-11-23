@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/tendon-mechanics-20261123-9d73a7`
+is frozen at pushed `dc493d1e6483614d27f05afa3a4e60c88be87c10`. Static frozen
+preflight passed; both initial 2,244-file copies plus manifest verify against
+`D:/DNNE-desktop-runs/UnityWorld/tendon-mechanics-20261123-9d73a7`. Interactive
+task `DNNE-Tendon-Mechanics-9a4524fd0a15` started the visible 112-component /
+54-native-case workflow. No post-launch output/status/process inspected.
+Exactly TWO reports await Paul: mechanical diagnosis `9d73a7` and motor
+attachment `526071`. Do not monitor or duplicate either. The diagnostic changes
+one isolated setting family at a time, retains original force bounds and compares
+motion with same-mode quiet; no standing or useful mechanics result is inferred
+from launch. No live setting or neural equation changed. Full goal active.
+
 Independent mechanical diagnosis authored — 23 November: see
 `docs/DNNE_Tendon_Motion_Diagnosis_2026-11-23.md`. Six explicitly isolated modes
 compare original settings with one-factor friction, body damping, joint-speed,

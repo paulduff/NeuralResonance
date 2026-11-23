@@ -1,5 +1,19 @@
 # Avatar and environment work
 
+PATELLAR COMPONENT AUTHORED — 23 November: original native population `b3cf65`
+and cylinder `0b9165` reports remain pending and untouched. Source quadriceps
+need both cylindrical routing and moving patellar attachments. Retained all
+13 curve knots, 18 points, coordinate constraints, offsets and source mass/inertia
+with verified 23-file D: input copy. Added restricted source patellar kinematics,
+source-range rejection and massless virtual-work force transfer, with generated
+Unity parity. Source knee range ends at 2.0944 rad; Avatar still permits 2.45 rad.
+No hidden clipping, native mapping/selection or source mass/inertia integration.
+Author build passes (zero warnings/errors); Python/PowerShell syntax, exact
+99-case inventory and generated parity pass without running tests/models.
+Prepared 450 independent 80/110-digit polynomial/work comparisons in a visible
+window. Qualification pending. See docs/DNNE_Patellar_Path_2026-11-23.md.
+Goal active and incomplete; all old saves/evidence preserved.
+
 CYLINDER PATH WINDOW LAUNCHED — 23 November: visible independent task
 `DNNE-Cylinder-Muscle-Path-66df551fb7b0` started for
 `D:/DNNE-build-work/cylinder-muscle-path-20261123-0b9165`, frozen at pushed

@@ -1,0 +1,173 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace NRE.SimAvatar
+{
+    internal readonly struct MuscleCurveValue
+    {
+        public double Value { get; }
+        public double FirstDerivative { get; }
+        public double SecondDerivative { get; }
+        internal MuscleCurveValue(double value,double first,double second)
+        {Value=value;FirstDerivative=first;SecondDerivative=second;}
+    }
+
+    // Cubic interpolation with endpoint third derivatives set by the first
+    // and last four-point divided differences (the SimmSpline conditions).
+    // Independent second-derivative formulation; not a generic OpenSim import.
+    // Unlike source extrapolation, this candidate REJECTS out-of-range input.
+    internal sealed class MuscleCoordinateSpline
+    {
+        private readonly double[] x,y,m;
+        public IReadOnlyList<double> Knots { get; }
+        public IReadOnlyList<double> Values { get; }
+        public double Minimum => x[0];
+        public double Maximum => x[x.Length-1];
+        public MuscleCoordinateSpline(IEnumerable<double> knots,IEnumerable<double> values)
+        {
+            if(knots==null||values==null)throw new ArgumentNullException();x=knots.ToArray();y=values.ToArray();
+            if(x.Length<2||x.Length!=y.Length||x.Any(v=>!MusclePathVector.Finite(v))||y.Any(v=>!MusclePathVector.Finite(v))||
+                Enumerable.Range(1,x.Length-1).Any(i=>x[i]<=x[i-1]))throw new ArgumentException("Distinct increasing finite knots and matching values required.");
+            Knots=Array.AsReadOnly(x);Values=Array.AsReadOnly(y);m=new double[x.Length];
+            if(x.Length==2)return;
+            int n=x.Length;var lower=new double[n];var diagonal=new double[n];var upper=new double[n];var rhs=new double[n];
+            var h=new double[n-1];var slope=new double[n-1];
+            for(int i=0;i<n-1;i++){h[i]=x[i+1]-x[i];slope[i]=(y[i+1]-y[i])/h[i];}
+            for(int i=1;i<n-1;i++){lower[i]=h[i-1];diagonal[i]=2*(h[i-1]+h[i]);upper[i]=h[i];rhs[i]=6*(slope[i]-slope[i-1]);}
+            diagonal[0]=-h[0];upper[0]=h[0];lower[n-1]=h[n-2];diagonal[n-1]=-h[n-2];
+            if(n>3)
+            {
+                rhs[0]=6*h[0]*h[0]*ThirdDifference(0);
+                rhs[n-1]=-6*h[n-2]*h[n-2]*ThirdDifference(n-4);
+            }
+            for(int i=1;i<n;i++)
+            {
+                if(!MusclePathVector.Finite(diagonal[i-1])||diagonal[i-1]==0)throw new InvalidOperationException("Singular/nonfinite spline system.");
+                double ratio=lower[i]/diagonal[i-1];diagonal[i]-=ratio*upper[i-1];rhs[i]-=ratio*rhs[i-1];
+            }
+            for(int i=n-1;i>=0;i--)
+            {
+                if(!MusclePathVector.Finite(diagonal[i])||diagonal[i]==0)throw new InvalidOperationException("Singular/nonfinite spline system.");
+                m[i]=(rhs[i]-(i==n-1?0:upper[i]*m[i+1]))/diagonal[i];
+                if(!MusclePathVector.Finite(m[i]))throw new InvalidOperationException("Unrepresentable spline derivative.");
+            }
+        }
+        private double ThirdDifference(int start)
+        {
+            var d=new double[4];for(int i=0;i<4;i++)d[i]=y[start+i];
+            for(int order=1;order<=3;order++)for(int i=0;i<4-order;i++)d[i]=(d[i+1]-d[i])/(x[start+i+order]-x[start+i]);
+            return d[0];
+        }
+        public MuscleCurveValue Evaluate(double coordinate)
+        {
+            if(!MusclePathVector.Finite(coordinate)||coordinate<Minimum||coordinate>Maximum)
+                throw new ArgumentOutOfRangeException(nameof(coordinate),"Outside declared source support; no clipping or extrapolation.");
+            int found=Array.BinarySearch(x,coordinate);int i=found>=0?Math.Min(found,x.Length-2):~found-1;
+            double h=x[i+1]-x[i],s=coordinate-x[i],cubic=(m[i+1]-m[i])/(6*h),linear=(y[i+1]-y[i])/h-h*(2*m[i]+m[i+1])/6;
+            double value=found>=0?y[found]:y[i]+s*(linear+s*(m[i]/2+s*cubic));
+            double first=linear+s*(m[i]+3*s*cubic),second=m[i]+6*s*cubic;
+            if(!MusclePathVector.Finite(value)||!MusclePathVector.Finite(first)||!MusclePathVector.Finite(second))
+                throw new InvalidOperationException("Nonfinite patellar curve evaluation.");
+            return new MuscleCurveValue(value,first,second);
+        }
+    }
+
+    internal sealed class PatellarPathPoint
+    {
+        public string MechanismFingerprint { get; }
+        public double KneeAngleRadians { get; }
+        public MusclePathVector ParentLocalPositionMeters { get; }
+        public MusclePathVector DerivativeMetersPerRadian { get; }
+        public MusclePathVector SecondDerivativeMetersPerRadianSquared { get; }
+        internal PatellarPathPoint(string fingerprint,double q,MusclePathVector p,MusclePathVector d,MusclePathVector dd)
+        {MechanismFingerprint=fingerprint;KneeAngleRadians=q;ParentLocalPositionMeters=p;DerivativeMetersPerRadian=d;SecondDerivativeMetersPerRadianSquared=dd;}
+    }
+
+    // Restricted source patella: identity coordinate coupling, one rotation
+    // about parent Z, X/Y translations and constant Z offset. No mass/inertia,
+    // collision shape, native body mapping or live anatomical selection here.
+    internal sealed class AvatarPatellarPath
+    {
+        public const string Version="source-patellar-path-kinematics-v1";
+        public string Fingerprint { get; }
+        public string CoordinateId { get; }
+        public string ParentBodyId { get; }
+        public string PatellaBodyId { get; }
+        public MuscleCoordinateSpline Angle { get; }
+        public MuscleCoordinateSpline X { get; }
+        public MuscleCoordinateSpline Y { get; }
+        public MusclePathVector ParentOffsetMeters { get; }
+        public double ZTranslationMeters { get; }
+        public AvatarPatellarPath(string coordinate,string parent,string patella,string sourceSha256,
+            MusclePathVector parentOffset,double z,MuscleCoordinateSpline angle,MuscleCoordinateSpline x,MuscleCoordinateSpline y)
+        {
+            if(!AvatarMusclePath.ValidKey(coordinate)||!AvatarMusclePath.ValidKey(parent)||!AvatarMusclePath.ValidKey(patella)||parent==patella||
+                sourceSha256==null||sourceSha256.Length!=64||sourceSha256.Any(c=>!Uri.IsHexDigit(c))||!parentOffset.IsFinite||!MusclePathVector.Finite(z)||
+                angle==null||x==null||y==null||!angle.Knots.SequenceEqual(x.Knots)||!angle.Knots.SequenceEqual(y.Knots))
+                throw new ArgumentException("Declare source identity and the same supported coordinate for all patellar curves.");
+            CoordinateId=coordinate;ParentBodyId=parent;PatellaBodyId=patella;Angle=angle;X=x;Y=y;ParentOffsetMeters=parentOffset;ZTranslationMeters=z;
+            using(var bytes=new MemoryStream())
+            {
+                using(var w=new BinaryWriter(bytes,Encoding.UTF8,true))
+                {
+                    w.Write(Version);w.Write(coordinate);w.Write(parent);w.Write(patella);w.Write(sourceSha256.ToUpperInvariant());
+                    foreach(double v in new[]{parentOffset.X,parentOffset.Y,parentOffset.Z,z})w.Write(v==0?0:v);
+                    w.Write(angle.Knots.Count);foreach(double v in angle.Knots)w.Write(v==0?0:v);
+                    foreach(var curve in new[]{angle,x,y})foreach(double v in curve.Values)w.Write(v==0?0:v);
+                }
+                using(var sha=SHA256.Create())Fingerprint=BitConverter.ToString(sha.ComputeHash(bytes.ToArray())).Replace("-","");
+            }
+        }
+        public PatellarPathPoint Measure(double kneeAngleRadians,MusclePathVector localPoint)
+        {
+            if(!localPoint.IsFinite)throw new ArgumentException("Finite patellar material point required.");
+            var a=Angle.Evaluate(kneeAngleRadians);var x=X.Evaluate(kneeAngleRadians);var y=Y.Evaluate(kneeAngleRadians);
+            double c=Math.Cos(a.Value),s=Math.Sin(a.Value);var r=new MusclePathVector(c*localPoint.X-s*localPoint.Y,s*localPoint.X+c*localPoint.Y,localPoint.Z);
+            var tangent=new MusclePathVector(-r.Y,r.X,0);
+            var position=ParentOffsetMeters+new MusclePathVector(x.Value,y.Value,ZTranslationMeters)+r;
+            var first=new MusclePathVector(x.FirstDerivative,y.FirstDerivative,0)+tangent*a.FirstDerivative;
+            var second=new MusclePathVector(x.SecondDerivative,y.SecondDerivative,0)+tangent*a.SecondDerivative-
+                new MusclePathVector(r.X,r.Y,0)*(a.FirstDerivative*a.FirstDerivative);
+            if(!position.IsFinite||!first.IsFinite||!second.IsFinite)throw new InvalidOperationException("Unrepresentable patellar attachment.");
+            return new PatellarPathPoint(Fingerprint,kneeAngleRadians,position,first,second);
+        }
+    }
+
+    // Virtual-work transfer for a MASSLESS constrained attachment. Apply the
+    // original force once to the parent at the virtual point, and the derived
+    // equal/opposite relative-coordinate moments once to child/parent. This is
+    // a constraint reaction, not an extra controller or independently set torque.
+    internal sealed class PatellarForceTransfer
+    {
+        public MusclePathVector ApplicationPointMeters { get; }
+        public MusclePathVector ParentPointForceNewtons { get; }
+        public MusclePathVector ChildTorqueNewtonMeters { get; }
+        public MusclePathVector ParentCounterTorqueNewtonMeters { get; }
+        public double RelativeCoordinateSpeedRadiansPerSecond { get; }
+        public double GeneralizedForceNewtonMeters { get; }
+        public MusclePathVector MovingPointVelocityMetersPerSecond { get; }
+        public double MovingPointPowerWatts { get; }
+        public double DeliveredPowerWatts { get; }
+        public double PowerResidualWatts => DeliveredPowerWatts-MovingPointPowerWatts;
+        public PatellarForceTransfer(MusclePathVector applicationPoint,MusclePathVector force,MusclePathVector worldDerivativePerRadian,MusclePathVector parentMaterialPointVelocity,
+            MusclePathVector parentAngularVelocity,MusclePathVector childAngularVelocity,MusclePathVector positiveNativeCoordinateAxis)
+        {
+            if(new[]{applicationPoint,force,worldDerivativePerRadian,parentMaterialPointVelocity,parentAngularVelocity,childAngularVelocity,positiveNativeCoordinateAxis}.Any(v=>!v.IsFinite)||
+                Math.Abs(positiveNativeCoordinateAxis.Magnitude-1)>1e-10)throw new ArgumentException("Finite force/Jacobian/velocities and a declared unit hinge axis required.");
+            ApplicationPointMeters=applicationPoint;ParentPointForceNewtons=force;
+            RelativeCoordinateSpeedRadiansPerSecond=MusclePathVector.Dot(positiveNativeCoordinateAxis,childAngularVelocity-parentAngularVelocity);
+            GeneralizedForceNewtonMeters=MusclePathVector.Dot(force,worldDerivativePerRadian);
+            ChildTorqueNewtonMeters=positiveNativeCoordinateAxis*GeneralizedForceNewtonMeters;ParentCounterTorqueNewtonMeters=ChildTorqueNewtonMeters*(-1);
+            MovingPointVelocityMetersPerSecond=parentMaterialPointVelocity+worldDerivativePerRadian*RelativeCoordinateSpeedRadiansPerSecond;
+            MovingPointPowerWatts=MusclePathVector.Dot(force,MovingPointVelocityMetersPerSecond);
+            DeliveredPowerWatts=MusclePathVector.Dot(force,parentMaterialPointVelocity)+MusclePathVector.Dot(ChildTorqueNewtonMeters,childAngularVelocity)+
+                MusclePathVector.Dot(ParentCounterTorqueNewtonMeters,parentAngularVelocity);
+            if(!ChildTorqueNewtonMeters.IsFinite||!MovingPointVelocityMetersPerSecond.IsFinite||!MusclePathVector.Finite(MovingPointPowerWatts)||
+                !MusclePathVector.Finite(DeliveredPowerWatts)||!MusclePathVector.Finite(PowerResidualWatts))throw new InvalidOperationException("Nonfinite constrained force/work transfer.");
+        }
+    }
+}

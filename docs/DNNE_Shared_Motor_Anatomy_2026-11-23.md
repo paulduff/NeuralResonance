@@ -1,5 +1,10 @@
 # Separate motor pools sharing one Avatar
 
+Launched as `shared-motor-anatomy-20261123-5001cd` from pushed revision
+`bc7898940d43cf83093e0c4368671e8bd22c01d5`. Both initial 2,280-file copies plus
+manifest verified. Interactive task `DNNE-Shared-Motor-Anatomy-b7d730402a68`
+accepted launch. No postlaunch monitoring; test outcome awaits Paul's footer.
+
 Inspection after launching `muscle-population-active-20261123-a212b5` found a
 concrete integration restriction in `DescendingMotorPool.AttachMotorOutput`:
 it required the total body anatomy contact count to equal the pool's cell count.

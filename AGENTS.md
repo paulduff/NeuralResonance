@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+SHARED MOTOR WINDOW LAUNCHED — 23 November: visible independent task
+`DNNE-Shared-Motor-Anatomy-b7d730402a68` started for
+`D:/DNNE-build-work/shared-motor-anatomy-20261123-5001cd`, frozen at pushed
+`bc7898940d43cf83093e0c4368671e8bd22c01d5`. Both initial 2,280-file copies plus
+manifest verified. 164 component/regression cases; no muscle/Unity integration.
+Exactly TWO pending reports: shared motor `5001cd` and active population
+`a212b5`. No postlaunch process/output/status inspected for either. Wait for
+Paul's final backup/footer. New code compiles with zero warnings/errors; test
+outcomes remain pending. Biological equations and full-body completeness rule
+unchanged. Goal active and incomplete; earlier pending counts are superseded.
+
 SHARED MOTOR ANATOMY FIX AUTHORED — 23 November: while `a212b5` remains pending
 and untouched, found DescendingMotorPool required total body contacts == local
 cell count. Removed that equality; all original per-cell identity, session,

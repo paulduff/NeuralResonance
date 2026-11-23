@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+CYLINDER PATH WINDOW LAUNCHED — 23 November: visible independent task
+`DNNE-Cylinder-Muscle-Path-66df551fb7b0` started for
+`D:/DNNE-build-work/cylinder-muscle-path-20261123-0b9165`, frozen at pushed
+`67d0fb9`. Both initial 2,305-file copies plus manifest verified. Exactly TWO
+pending reports: native populations `b3cf65` and cylinder geometry `0b9165`.
+No postlaunch process/status/log/output inspected for either. Cylinder window
+runs 127 cases (52 new + 75 existing), then 24 independent 80/110-digit length
+gradient checks. Separate D: Python environment uses the verified mpmath 1.3.0
+wheel; earlier numerical environment unchanged. Code build zero warnings/errors;
+syntax, exact inventory and data-only frozen preflight pass. Scientific outcomes
+pending. No live selection; patella/native guide integration and standing remain
+unqualified. Goal active and incomplete; no pause requested.
+
 CYLINDER PATH COMPONENT AUTHORED — 23 November: `b3cf65` remains pending and
 untouched. Existing Avatar hip/knee/ankle groups confirmed; named quadriceps
 source requires a 0.025 m femoral cylinder AND moving patella. Added isolated

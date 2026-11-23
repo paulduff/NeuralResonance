@@ -102,3 +102,12 @@ hip/knee geometry with explicit guide ownership and patella coupling; assign
 appropriate muscle populations rather than duplicating TA everywhere; then
 close the original neuronal sensory/motor loop in the observable, paused-on-open
 world. This component is one required mechanical step toward that unchanged goal.
+
+Launched in visible independent PowerShell as
+`DNNE-Cylinder-Muscle-Path-66df551fb7b0`, results
+`D:/DNNE-build-work/cylinder-muscle-path-20261123-0b9165`, frozen at pushed
+`67d0fb9`. Both initial 2,305-file copies plus manifest verified. Author build
+had zero warnings/errors; syntax, exact test inventory and frozen preflight
+passed without scientific execution. The new `0b9165` and earlier `b3cf65`
+outcomes remain pending. Neither process, status nor output was inspected
+after launch. Wait for Paul's final backup/footer reports.

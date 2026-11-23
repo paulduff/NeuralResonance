@@ -1,5 +1,24 @@
 # Avatar and environment work
 
+23 November completed review: Paul reported `avatar-tendons-20261123-bb320d`
+finished. Both 3,057-file copies, frozen Git source, executed test/player files,
+112 exact TRX cases, all 51 native cases and 464 endpoint records verify. All
+413 physical steps and 11 rejected-command controls reconcile. Force accounting
+passed; pulse/quiet position differences exceed the original 1e-8 m threshold
+in 36/38 paths, with maximum only 1.379847526550293e-5 m. Neck-pitch extensor
+and trunk-yaw flexor are below threshold. This does NOT establish useful
+all-axis movement, anatomical calibration, original neuronal authority or
+standing. Review four files plus manifest are D: verified. No report remains
+pending at this checkpoint; this supersedes the earlier pending-bb320d notes.
+
+The fresh motor-clock visible workflow is authored: 13 new controls and 142
+existing regressions (155 cases / 110 methods), frozen source, selected runtime
+hashes with progress, separate binaries and verified D: backup. Source/static
+checks only so far; no new test/model or second window has run. Freeze, push,
+prepare, back up and launch `tools/start-fresh-motor-epoch-window.ps1`, then
+record the actual launch and await Paul's footer without live monitoring.
+The motor/body attachment baseline and full host wire remain unfinished.
+
 Independent authoring — 23 November: the nonzero motor epoch gap is repaired as
 an unqualified fresh-initialization candidate. See
 `docs/DNNE_Fresh_Motor_Epoch_2026-11-23.md`. Explicit constructor origin flows

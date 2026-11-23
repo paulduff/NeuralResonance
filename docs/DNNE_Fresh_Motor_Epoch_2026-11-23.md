@@ -102,3 +102,50 @@ it does not identify the cause of the slowness. No restart, cancellation or
 frozen-package edit occurred. The working-tree runner now reports its file count
 and progress every 100 files for future packages. Normal no-monitoring behavior
 resumes; the operator's final footer is still required for result review.
+
+## Subsequent completion and next workflow
+
+Paul subsequently reported `bb320d` complete. The full mechanical review and
+its verified D: backup are recorded in `DNNE_Full_Avatar_Tendons_2026-11-23.md`;
+the earlier pending/stall statements above are historical. No report remains
+pending before the next launch.
+
+`tools/fresh_motor_epoch_study.py` and
+`tools/start-fresh-motor-epoch-window.ps1` prepare a clean pushed Git archive
+and run the following exact inventory in a visible, independent PowerShell:
+
+| Class | Cases |
+| --- | ---: |
+| FreshMotorEpochTests | 13 |
+| MotoneuronReferenceTests | 11 |
+| MotoneuronCrossingTests | 8 |
+| MotorReceptorContactTests | 14 |
+| ReceptorDrivenMotoneuronTests | 15 |
+| ReceptorMotorSourceTests | 19 |
+| DescendingMotorPoolTests | 18 |
+| DeclaredDescendingProjectionTests | 8 |
+| MotorAxonTransportTests | 32 |
+| MotorAxonReplayBufferTests | 16 |
+| SolutionManifestTests | 1 |
+| **Total** | **155** |
+
+Static source inventory contains 110 methods with those 155 exact multiplicities.
+The runner records separate test/probe binary manifests, matching framework
+declarations and selected managed runtime hashes before/after. Hash progress is
+printed; unused installed runtime versions are not scanned. The helper's new
+messages change no runtime manifest content or neuronal equation. Original
+source files and Python dependencies are checked before/after. Tests write new
+isolated state and any declared connection evidence into this package. Unity,
+live services and previous saved brains are not selected.
+
+A passed inventory would qualify these component clock controls and existing
+regressions, not a full independent coupled trajectory, physiological firing or
+standing. The next body connection still needs the real 10 ms physical prelude
+and all intervening motor history; no source timestamp rewrite is permitted.
+At authoring, syntax/inventory checks passed without executing tests or models.
+The updated dependency helper also builds with zero warnings/errors at
+`D:/DNNE-build-work/motor-epoch-runtime-authoring-20261123`; its build log is
+`D:/DNNE-build-work/motor-epoch-runtime-authoring-20261123-build.log`. The built
+probe/test runtime configurations both declare .NETCore and ASP.NETCore 10.0.0.
+Record the frozen revision, folder, verified initial backup and actual visible
+task after launch; do not monitor the run afterward.

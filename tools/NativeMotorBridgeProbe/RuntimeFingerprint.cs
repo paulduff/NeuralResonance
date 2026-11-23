@@ -16,10 +16,15 @@ internal static class RuntimeFingerprint
             .Select(Path.GetFullPath).Where(p => !p.StartsWith(app, StringComparison.OrdinalIgnoreCase))
             .Select(p => Path.GetDirectoryName(p)!).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
         if (folders.Length == 0) throw new InvalidOperationException("No external runtime dependency directories found.");
+        int hashed = 0;
+        int total = folders.Sum(folder => Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Count());
+        Console.WriteLine($"Preserving {total} files in {folders.Length} actually selected runtime directories.");
         string Hash(string path)
         {
             using var stream = File.OpenRead(path);
-            return Convert.ToHexString(SHA256.HashData(stream));
+            string result = Convert.ToHexString(SHA256.HashData(stream));
+            if (++hashed % 50 == 0 || hashed == total + 1) Console.WriteLine($"Runtime files hashed: {hashed - 1} / {total}");
+            return result;
         }
         string host = Environment.ProcessPath ?? throw new InvalidOperationException("Unknown execution host.");
         string[] switches = ["DOTNET_TieredCompilation", "DOTNET_TieredPGO", "DOTNET_ReadyToRun",

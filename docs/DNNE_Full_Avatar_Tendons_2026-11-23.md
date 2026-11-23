@@ -115,3 +115,42 @@ motor-axon identity and the physical clock. Real attachment anatomy and whole
 body trajectory qualification remain required. The active head/sensory response
 also still needs independent trajectory/event-time checks and its clock join to
 receiving brain populations. No live host, brain save or old failure is changed.
+
+## Completed native result and review
+
+Paul reported `D:/DNNE-build-work/avatar-tendons-20261123-bb320d` complete on
+23 November. Frozen revision: `218054afac3165edbb1cac7fdd0a98629d786f95`.
+`tools/review-avatar-tendons-result.py` verified both 3,057-file copies plus
+manifest, full Git archive identity and extracted source, all executed test and
+player bytes, the exact 112 passed tests, 51 native reports and 464 endpoint
+records covering 413 physical steps. Canonical `src`, `Structures` and `tests`
+were unchanged from the pre-study checkpoint. The original runner verified its
+3,099-file managed runtime manifest before completion; the result review did
+not rehash today's external runtime installation. No test/model or full force
+analysis was rerun in review.
+
+All 11 invalid-command cases rejected without an extra physical step or altered
+body state and latched the owner fault. Reported maximum force arithmetic error
+was 1.4210854715202004e-14 N, within the original 1e-9 N limit. Requested doubles
+and the actual float inputs to Unity remain preserved in every step.
+
+The position comparison is much weaker evidence of useful movement: 36/38
+prescribed paths exceeded the original 1e-8 m observation threshold, and the
+largest difference from quiet was only 1.379847526550293e-5 m (about 14 micrometres).
+Neck-pitch extensor (1.862645149230957e-9 m) and trunk-yaw flexor
+(1.3969838619232178e-9 m) did not exceed it. The original criterion required
+at least one observed response, not useful or bidirectional control of every
+joint. Do not change that criterion retrospectively, infer anatomical correctness
+or treat small float-level differences as practical muscle authority. Their
+cause and meaningful joint response require a separate prospective study.
+
+The passive 100-step fall changed pelvis height from 0.8897284865379333 m to
+0.32255610823631287 m, with peak foot contact 11307.396484375 N. This confirms
+gravity/contact in this fixture; it is not standing, calibrated injury or recovery.
+
+Review: `artifacts/avatar-tendons-20261123-bb320d-review`, with four files plus
+manifest verified at `D:/DNNE-desktop-runs/UnityWorld/avatar-tendons-20261123-bb320d-review`.
+No neuronal source executed. Synthetic attachments, independent whole-body
+trajectory accuracy, real muscle recruitment, anatomy and standing remain open.
+Before the mechanical bridge is joined to the sensory/descending chain, run
+the fresh motor epoch regression described in `DNNE_Fresh_Motor_Epoch_2026-11-23.md`.

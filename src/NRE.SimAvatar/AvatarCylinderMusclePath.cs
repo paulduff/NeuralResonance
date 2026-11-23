@@ -1,0 +1,178 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace NRE.SimAvatar
+{
+    // Rigid wrapping surface at one completed physical sample. The guide
+    // velocity is MATERIAL velocity, never the sliding contact-point velocity.
+    internal sealed class MuscleCylinderFrame
+    {
+        public string BodyId { get; }
+        public MusclePathVector OriginMeters { get; }
+        public MusclePathVector X { get; }
+        public MusclePathVector Y { get; }
+        public MusclePathVector Z { get; }
+        public MusclePathVector VelocityMetersPerSecond { get; }
+        public MusclePathVector AngularVelocityRadiansPerSecond { get; }
+        public MuscleCylinderFrame(string bodyId, MusclePathVector origin, MusclePathVector x, MusclePathVector y,
+            MusclePathVector velocity, MusclePathVector angularVelocity)
+        {
+            if (!AvatarMusclePath.ValidKey(bodyId) || !origin.IsFinite || !x.IsFinite || !y.IsFinite ||
+                !velocity.IsFinite || !angularVelocity.IsFinite || Math.Abs(x.Magnitude-1)>1e-10 ||
+                Math.Abs(y.Magnitude-1)>1e-10 || Math.Abs(MusclePathVector.Dot(x,y))>1e-10)
+                throw new ArgumentException("Require a finite rigid cylinder frame with orthonormal transverse axes.");
+            BodyId=bodyId; OriginMeters=origin; X=x; Y=y; Z=Cross(x,y);
+            VelocityMetersPerSecond=velocity; AngularVelocityRadiansPerSecond=angularVelocity;
+        }
+        internal static MusclePathVector Cross(MusclePathVector a, MusclePathVector b) =>
+            new MusclePathVector(a.Y*b.Z-a.Z*b.Y,a.Z*b.X-a.X*b.Z,a.X*b.Y-a.Y*b.X);
+        internal MusclePathVector World(double x,double y,double z)=>OriginMeters+X*x+Y*y+Z*z;
+        internal MusclePathVector VelocityAt(MusclePathVector p)=>VelocityMetersPerSecond+Cross(AngularVelocityRadiansPerSecond,p-OriginMeters);
+    }
+
+    internal sealed class CylinderMusclePathSnapshot
+    {
+        private readonly MusclePathVector[] unitForces;
+        public string PathFingerprint { get; }
+        public bool Wrapped { get; }
+        public double ArcRadians { get; }
+        public double MusculotendonLengthMeters { get; }
+        public double MusculotendonVelocityMetersPerSecond { get; }
+        public IReadOnlyList<MusclePathPoint> Points { get; }
+        internal CylinderMusclePathSnapshot(string fingerprint,bool wrapped,double arc,double length,
+            MusclePathPoint[] points,MusclePathVector[] forces)
+        {
+            PathFingerprint=fingerprint;Wrapped=wrapped;ArcRadians=arc;MusculotendonLengthMeters=length;
+            Points=Array.AsReadOnly(points);unitForces=forces;double power=0;
+            for(int i=0;i<points.Length;i++)
+            {
+                if(!points[i].PositionMeters.IsFinite||!points[i].VelocityMetersPerSecond.IsFinite||!forces[i].IsFinite)
+                    throw new InvalidOperationException("Nonfinite wrapping geometry/force direction.");
+                power+=MusclePathVector.Dot(forces[i],points[i].VelocityMetersPerSecond);
+            }
+            if(!MusclePathVector.Finite(length)||length<=0||!MusclePathVector.Finite(power))
+                throw new InvalidOperationException("Nonfinite or collapsed cylinder path.");
+            MusculotendonVelocityMetersPerSecond=-power;
+        }
+        public MusclePathTension ApplyTension(double tension)
+        {
+            if(!MusclePathVector.Finite(tension)||tension<0)throw new ArgumentException("Finite nonnegative tension required; no clipping.");
+            var forces=new MusclePathPointForce[Points.Count];double power=0;
+            for(int i=0;i<forces.Length;i++)
+            {
+                var f=unitForces[i]*tension;
+                if(!f.IsFinite)throw new InvalidOperationException("Unrepresentable cylinder force.");
+                forces[i]=new MusclePathPointForce(Points[i],f);power+=MusclePathVector.Dot(f,Points[i].VelocityMetersPerSecond);
+            }
+            double expected=-tension*MusculotendonVelocityMetersPerSecond;
+            if(!MusclePathVector.Finite(power)||!MusclePathVector.Finite(expected)||!MusclePathVector.Finite(power-expected))
+                throw new InvalidOperationException("Unrepresentable wrapping power.");
+            return new MusclePathTension(PathFingerprint,tension,forces,power,expected);
+        }
+    }
+
+    // Frictionless lateral cylinder: tangent / helical surface arc / tangent.
+    // Finite width is enforced at BOTH surface contacts. End-cap contact,
+    // multiple obstacles, patellar kinematics and anatomical calibration are
+    // not implemented here. No live native owner currently selects this path.
+    internal sealed class AvatarCylinderMusclePath
+    {
+        public const string Version="declared-lateral-cylinder-muscle-path-v1";
+        public string Fingerprint { get; }
+        public string BodyGeometryFingerprint { get; }
+        public string GuideBodyId { get; }
+        public double RadiusMeters { get; }
+        public double HalfLengthMeters { get; }
+        public int Direction { get; }
+        public MusclePathAnchor Origin { get; }
+        public MusclePathAnchor Insertion { get; }
+        public MusclePathVector GuideLocalOrigin { get; }
+        public MusclePathVector GuideLocalX { get; }
+        public MusclePathVector GuideLocalY { get; }
+        public AvatarCylinderMusclePath(string muscleId,string geometry,string provenance,MusclePathAnchor origin,
+            MusclePathAnchor insertion,string guideBodyId,double radius,double halfLength,int direction,
+            MusclePathVector guideLocalOrigin,MusclePathVector guideLocalX,MusclePathVector guideLocalY)
+        {
+            if(!AvatarMusclePath.ValidKey(muscleId)||!AvatarMusclePath.ValidKey(geometry)||!AvatarMusclePath.ValidKey(provenance)||
+                !AvatarMusclePath.ValidKey(guideBodyId)||origin==null||insertion==null||origin.AttachmentId==insertion.AttachmentId||
+                origin.AttachmentId=="cylinder-entry"||origin.AttachmentId=="cylinder-exit"||
+                insertion.AttachmentId=="cylinder-entry"||insertion.AttachmentId=="cylinder-exit"||
+                !MusclePathVector.Finite(radius)||radius<=0||!MusclePathVector.Finite(halfLength)||halfLength<=0||
+                (direction!=1&&direction!=-1))throw new ArgumentException("Declare endpoints, rigid guide, finite dimensions and route direction.");
+            BodyGeometryFingerprint=geometry;GuideBodyId=guideBodyId;RadiusMeters=radius;HalfLengthMeters=halfLength;
+            Direction=direction;Origin=origin;Insertion=insertion;
+            var local=new MuscleCylinderFrame(guideBodyId,guideLocalOrigin,guideLocalX,guideLocalY,default(MusclePathVector),default(MusclePathVector));
+            GuideLocalOrigin=local.OriginMeters;GuideLocalX=local.X;GuideLocalY=local.Y;
+            using(var bytes=new MemoryStream())
+            {
+                using(var w=new BinaryWriter(bytes,Encoding.UTF8,true))
+                {
+                    w.Write(Version);w.Write(muscleId);w.Write(geometry);w.Write(provenance);w.Write(guideBodyId);
+                    w.Write(radius);w.Write(halfLength);w.Write(direction);
+                    foreach(var v in new[]{GuideLocalOrigin,GuideLocalX,GuideLocalY}){w.Write(v.X==0?0:v.X);w.Write(v.Y==0?0:v.Y);w.Write(v.Z==0?0:v.Z);}
+                    foreach(var a in new[]{origin,insertion}){w.Write(a.AttachmentId);w.Write(a.BodyId);
+                        w.Write(a.LocalPositionMeters.X==0?0:a.LocalPositionMeters.X);w.Write(a.LocalPositionMeters.Y==0?0:a.LocalPositionMeters.Y);w.Write(a.LocalPositionMeters.Z==0?0:a.LocalPositionMeters.Z);}
+                }
+                using(var sha=SHA256.Create())Fingerprint=BitConverter.ToString(sha.ComputeHash(bytes.ToArray())).Replace("-","");
+            }
+        }
+        // Caller supplies continuous azimuths from its declared kinematics.
+        // They select the winding branch, not an approximate point position.
+        // Never silently choose the shorter side or unwrap across a seam.
+        public CylinderMusclePathSnapshot Measure(string geometry,MuscleCylinderFrame frame,
+            MusclePathPoint origin,MusclePathPoint insertion,double originAzimuth,double insertionAzimuth)
+        {
+            if(geometry!=BodyGeometryFingerprint||frame==null||frame.BodyId!=GuideBodyId)
+                throw new ArgumentException("Cylinder and endpoints must belong to the declared geometry/body.");
+            double ra,za,aa,rb,zb,ab;
+            Endpoint(frame,origin,Origin,originAzimuth,out ra,out za,out aa);
+            Endpoint(frame,insertion,Insertion,insertionAzimuth,out rb,out zb,out ab);
+            double sweep=Direction*(ab-aa);
+            if(sweep<0||sweep>=2*Math.PI)throw new ArgumentException("Declared continuous route must span less than one revolution; no automatic winding change.");
+            double a=Math.Acos(RadiusMeters/ra),b=Math.Acos(RadiusMeters/rb),arc=sweep-a-b;
+            if(arc<=0)
+            {
+                var delta=insertion.PositionMeters-origin.PositionMeters;double length=delta.Magnitude;
+                if(!MusclePathVector.Finite(length)||length<=0)throw new InvalidOperationException("Collapsed straight cylinder route.");
+                var direction=delta*(1/length);
+                return new CylinderMusclePathSnapshot(Fingerprint,false,0,length,new[]{origin,insertion},new[]{direction,direction*(-1)});
+            }
+            // Product form avoids cancellation in r²-R² near the surface.
+            double la=Math.Sqrt((ra-RadiusMeters)*(ra+RadiusMeters)),lb=Math.Sqrt((rb-RadiusMeters)*(rb+RadiusMeters));
+            double horizontal=la+RadiusMeters*arc+lb,dz=zb-za;
+            double total=new MusclePathVector(horizontal,0,dz).Magnitude;
+            if(!MusclePathVector.Finite(horizontal)||horizontal<=0||!MusclePathVector.Finite(total)||total<=0)
+                throw new InvalidOperationException("Unrepresentable cylinder path.");
+            double entryZ=za+dz*(la/horizontal),exitZ=zb-dz*(lb/horizontal);
+            if(Math.Abs(entryZ)>HalfLengthMeters||Math.Abs(exitZ)>HalfLengthMeters)
+                throw new InvalidOperationException("Lateral contact exceeds finite guide width; end-cap routing is not implemented.");
+            double entryAngle=aa+Direction*a,exitAngle=ab-Direction*b;
+            var entry=frame.World(RadiusMeters*Math.Cos(entryAngle),RadiusMeters*Math.Sin(entryAngle),entryZ);
+            var exit=frame.World(RadiusMeters*Math.Cos(exitAngle),RadiusMeters*Math.Sin(exitAngle),exitZ);
+            double transverse=horizontal/total,axial=dz/total;
+            var fa=(frame.X*(-Direction*Math.Sin(entryAngle))+frame.Y*(Direction*Math.Cos(entryAngle)))*transverse+frame.Z*axial;
+            var fb=((frame.X*(-Direction*Math.Sin(exitAngle))+frame.Y*(Direction*Math.Cos(exitAngle)))*transverse+frame.Z*axial)*(-1);
+            // Two equivalent resultant forces reproduce the full surface's
+            // net force, moment and material-body power. They are NOT local
+            // pressure estimates; no force is applied to an unowned point.
+            var points=new[]{origin,new MusclePathPoint("cylinder-entry",GuideBodyId,entry,frame.VelocityAt(entry)),
+                new MusclePathPoint("cylinder-exit",GuideBodyId,exit,frame.VelocityAt(exit)),insertion};
+            return new CylinderMusclePathSnapshot(Fingerprint,true,arc,total,points,new[]{fa,fa*(-1),fb*(-1),fb});
+        }
+        private void Endpoint(MuscleCylinderFrame frame,MusclePathPoint p,MusclePathAnchor anchor,double phase,
+            out double radius,out double z,out double angle)
+        {
+            if(p==null||p.AttachmentId!=anchor.AttachmentId||p.BodyId!=anchor.BodyId||!p.PositionMeters.IsFinite||!p.VelocityMetersPerSecond.IsFinite||
+                !MusclePathVector.Finite(phase)||Math.Abs(phase)>4*Math.PI)throw new ArgumentException("Require declared finite endpoints and explicit continuous azimuths.");
+            var delta=p.PositionMeters-frame.OriginMeters;double x=MusclePathVector.Dot(delta,frame.X),y=MusclePathVector.Dot(delta,frame.Y);
+            z=MusclePathVector.Dot(delta,frame.Z);radius=new MusclePathVector(x,y,0).Magnitude;
+            if(!MusclePathVector.Finite(radius)||radius<=RadiusMeters||!MusclePathVector.Finite(z))
+                throw new InvalidOperationException("Endpoint lies on/inside the cylindrical surface, or is unrepresentable.");
+            double principal=Math.Atan2(y,x),winding=Math.Round((phase-principal)/(2*Math.PI));angle=principal+2*Math.PI*winding;
+            if(Math.Abs(angle-phase)>1e-10)throw new ArgumentException("Declared azimuth disagrees with the observed endpoint; no route repair.");
+        }
+    }
+}

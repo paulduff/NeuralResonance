@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+CYLINDER PATH COMPONENT AUTHORED — 23 November: `b3cf65` remains pending and
+untouched. Existing Avatar hip/knee/ankle groups confirmed; named quadriceps
+source requires a 0.025 m femoral cylinder AND moving patella. Added isolated
+analytic lateral-cylinder path with tangent/helical routing, explicit continuous
+azimuths, finite-width checks and guide force/moment/material-power accounting.
+Original biological/straight-path kernels unchanged; namespace-only Unity copy
+and 52 controls authored. New window will retain 75 prior regressions (127 total)
+and compare 24 complete records to 80/110-digit independent length gradients.
+No live selection or physiological/standing claim. See
+docs/DNNE_Cylinder_Muscle_Path_2026-11-23.md. Goal active and incomplete.
+
 NATIVE FULL POPULATION WINDOW LAUNCHED — 23 November: visible independent task
 `DNNE-Native-Muscle-Population-2e84401f8cfb` started for
 `D:/DNNE-build-work/native-muscle-population-20261123-b3cf65`, frozen at pushed

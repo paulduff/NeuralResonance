@@ -1,5 +1,23 @@
 # Avatar and environment work
 
+FULL SLOW POPULATION INITIALIZATION AUTHORED — 23 November: next independent
+workflow is `fresh_motor_epoch_study.py prepare --population-initial`: 379 existing
+managed cases (359 named-path + 20 initializer), eight packaging controls, eight
+original Decimal initializer controls, then four fresh 147-unit TA populations
+and independent 80/110-digit passive references. No Unity or live neurons run.
+Original geometry is retained for each side; candidate dimensions use the
+matching OpenSim muscle lengths times the paired shin scale, source tendon
+reference ratio, constant source pennation and mass proportional to fiber length
+to preserve reference cross-section. All original unit/whole-muscle force values
+remain unchanged. All 147 slow rows are distinct; 53 fast rows remain excluded.
+Measured native path lengths and the original physical timestamp are retained.
+Inputs/geometry are candidate assumptions, not anatomical fit or active dynamics.
+Prospective bracket .4–1.4 optimal lengths and original force/length bounds;
+preserve errors from every case. NativeMuscle/neuronal/learning kernels unchanged.
+See docs/DNNE_Muscle_Population_Initial_2026-11-23.md. No pending windows yet;
+finish authoring checks, commit/push/freeze/launch visible PowerShell with no
+monitoring. Goal active and incomplete; `998900` completed/reviewed below.
+
 NAMED MUSCLE NATIVE RESULT REVIEWED — 23 November: Paul reported final
 DIAGNOSTICS_COMPLETE for `named-muscle-native-20261123-998900`. Both complete
 3,570-file copies, 2,262 Git files, 144 player files, 359 managed cases and eight

@@ -21,7 +21,28 @@ def finite(value):
     elif isinstance(value,list):
         for v in value:finite(v)
 
-def native_case(package,condition,paths,identity,old_canonical,old_geometry,original_quiet):
+def reconcile_endpoint_receipts(moving,acknowledged,replies):
+    """Bind each captured endpoint to its exact immediately following inspect.
+
+    Physics payloads remain exact. Only the operation and command sequence are
+    allowed to differ, and both are verified against the original wire reply.
+    """
+    assert len(moving)==len(acknowledged)==42
+    by_sequence={r['sequence']:r for r in replies};assert len(by_sequence)==len(replies)
+    receipts=[]
+    for index,(advanced,captured) in enumerate(zip(moving,acknowledged,strict=True)):
+        if index<2:
+            assert advanced==captured
+            continue
+        assert advanced.keys()==captured.keys()
+        assert advanced['operation']=='step' and captured['operation']=='inspect'
+        assert captured['sequence']==advanced['sequence']+1
+        assert by_sequence[advanced['sequence']]==advanced and by_sequence[captured['sequence']]==captured
+        assert {k:v for k,v in advanced.items() if k not in ('operation','sequence')}=={k:v for k,v in captured.items() if k not in ('operation','sequence')}
+        receipts.append(dict(physicsStep=captured['physicsStep'],stepSequence=advanced['sequence'],inspectSequence=captured['sequence']))
+    return receipts
+
+def native_case(package,condition,paths,identity,old_canonical,old_geometry,original_quiet,output):
     name=condition['name'];folder=package/'native'/name;wire=folder/'tendon-bridge';limits=read(package/'configuration.json')['NativeLimits']
     c=read(folder/'input.json');ct=(folder/'input.json').read_text(encoding='utf-8-sig')
     decl=read(folder/'declaration.json');result=read(folder/'result.json');initial=read(folder/'initial.json')
@@ -48,10 +69,11 @@ def native_case(package,condition,paths,identity,old_canonical,old_geometry,orig
     hashes={d['id']:identity.path_digest(d,body_hash) for d in declarations}
     previous=ack[0];moving=[previous];operations=[];dt=n.real(c['stepSeconds'])*1000;step_index=0
     assert dt==4.999999888241291 and decl['clock']['physicsStepMs']==dt
-    force_checks=[];requests=sorted(wire.glob('request-*.json'));replies=sorted(wire.glob('reply-*.json'))
+    force_checks=[];requests=sorted(wire.glob('request-*.json'));replies=sorted(wire.glob('reply-*.json'));reply_records=[]
     assert len(requests)==len(replies)
     for sequence,(qf,rf) in enumerate(zip(requests,replies,strict=True),1):
         q=read(qf);r=read(rf);op=q['operation'];operations.append(op)
+        reply_records.append(r)
         assert q['protocol']==r['protocol']==c['protocol'] and q['sessionId']==r['sessionId']==c['sessionId']
         assert q['configurationHash']==r['configurationHash']==n.sha(ct) and q['sequence']==r['sequence']==sequence
         assert q['expectedStep']==previous['physicsStep'] and q['stateHash']==previous['stateHash'] and q['bodyFingerprint']==r['bodyFingerprint']==body_hash
@@ -98,7 +120,8 @@ def native_case(package,condition,paths,identity,old_canonical,old_geometry,orig
                     force_checks.append(dict(step=r['physicsStep'],muscle=p['MuscleId'],attachment=anchor['AttachmentId'],pointErrorMeters=pe,lengthErrorMeters=le,forceErrorNewtons=fe))
         previous=r
     assert step_index==40 and operations.count('step')==40 and operations.count('prelude')==operations.count('bind')==operations.count('stop')==1 and operations[-1]=='stop'
-    assert moving==ack and len(force_checks)==320
+    receipt_links=reconcile_endpoint_receipts(moving,ack,reply_records)
+    assert len(force_checks)==320 and len(receipt_links)==40
     for step,(a,head) in enumerate(zip(ack,heads,strict=True)):
         assert a['physicsStep']==head['physicsStep']==step and head['bodyStateSha256']==a['stateHash'] and head['originalObservationsJson']==a['observationsJson']
         obs=json.loads(a['observationsJson']);assert obs['physicsStep']==step and len(obs['contactsJson'])==15 and len(obs['skullJson'])==len(head['samples'])==3
@@ -152,10 +175,14 @@ def native_case(package,condition,paths,identity,old_canonical,old_geometry,orig
             assert [u['motorUnitId'] for u in m['units']]==[u['contact']['motorUnitId'] for d in defs if d['muscleId']==key for u in d['units']]
         assert sum(u['arrivals'] for m in s['muscles'].values() for u in m['units'])==state['deliveredEvents']
     assert result['events']==len(emitted) and result['packets']==count and result['waitChecks']==80 and result['retries']==(11760 if condition['retry'] else 0)
-    write(folder/'saved-force-analysis.json',force_checks)
-    return dict(name=name,events=len(emitted),packets=count,pointForces=len(force_checks),endpoints=len(ack),headReceipts=3*len(ack)),ack,steps
+    destination=output/'native'/name;destination.mkdir(parents=True,exist_ok=True)
+    write(destination/'saved-force-analysis.json',force_checks)
+    write(destination/'saved-endpoint-receipts.json',receipt_links)
+    return dict(name=name,events=len(emitted),packets=count,pointForces=len(force_checks),endpoints=len(ack),headReceipts=3*len(ack),exactInspectReceipts=len(receipt_links)),ack,steps
 
-def compare(package):
+def compare(package,output=None):
+    output=package if output is None else output
+    assert not (output/'native-population-analysis.json').exists(),'Retain earlier results; use a fresh output package.'
     cfg=read(package/'configuration.json');identity=module('population_geometry_identity',ROOT/'tools/native_geometry_identity.py')
     original=json.loads(read(package/'inputs/binding.json')['originalNativeEndpointJson']);geometry=json.loads(original['geometryJson'])
     canonical,_,_,_=identity.geometry_identity(original['geometryJson'])
@@ -163,7 +190,7 @@ def compare(package):
     quiet=list(lines(package/'inputs/quiet.jsonl'));report=[];captures={};errors=[]
     for condition in cfg['Cases']:
         try:
-            result,ack,steps=native_case(package,condition,paths,identity,canonical,geometry,quiet);report.append(result);captures[condition['name']]=(ack,steps)
+            result,ack,steps=native_case(package,condition,paths,identity,canonical,geometry,quiet,output);report.append(result);captures[condition['name']]=(ack,steps)
             print(condition['name'],result,flush=True)
         except Exception as e:
             import traceback
@@ -188,6 +215,6 @@ def compare(package):
         allActiveCasesResponded=len(responses)==4 and all(r['observed'] for r in responses),cutAndRetryExact=not errors,
         independentCoupledTrajectoryQualified=False,physiologicalRecruitmentQualified=False,neuronalAuthorityQualified=False,avatarStandingQualified=False,
         prescribedDiagnosticEvents=True,bodyStepRefinementPerformed=False,muscleSubstepComparisonDiagnosticOnly=True)
-    write(package/'native-population-analysis.json',analysis)
+    write(output/'native-population-analysis.json',analysis)
     assert not errors and len(report)==8 and sum(r['pointForces'] for r in report)==2560 and analysis['allActiveCasesResponded'],'Saved native population criteria failed; retain original evidence and bounds.'
     print('Eight native cases / 294 units / 2,560 point forces reconciled. Prescribed events; coupled accuracy, physiology and standing remain separate.',flush=True)

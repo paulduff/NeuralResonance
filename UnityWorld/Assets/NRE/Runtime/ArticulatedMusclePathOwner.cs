@@ -91,6 +91,7 @@ namespace Nre.UnityWorld
         readonly HashSet<string> effortIds = new HashSet<string>(StringComparer.Ordinal);
         readonly string declarationsJson;
         readonly float physicalStepSeconds;
+        readonly bool observeNativeForces;
         Snapshot last;
         bool faulted;
         string plantFingerprint = "", lastEffort = "";
@@ -99,13 +100,16 @@ namespace Nre.UnityWorld
         internal double PhysicsStepMs => (double)physicalStepSeconds * 1000;
         internal string Failure { get; private set; }
         internal string LastApplicationsJson { get; private set; } = "";
+        internal string LastNativeForcesJson { get; private set; } = "";
 
-        internal ArticulatedMusclePathOwner(WorldController world, IEnumerable<Declaration> declarations, float stepSeconds = WorldController.StepSeconds)
+        internal ArticulatedMusclePathOwner(WorldController world, IEnumerable<Declaration> declarations, float stepSeconds = WorldController.StepSeconds,
+            bool observeNativeForces = false)
         {
             if (world == null || declarations == null) throw new ArgumentNullException();
             if (!MusclePathVector.Finite(stepSeconds) || stepSeconds <= 0 || stepSeconds > WorldController.StepSeconds)
                 throw new ArgumentException("Declare a finite physical step no larger than the existing world step.");
             physicalStepSeconds = stepSeconds;
+            this.observeNativeForces = observeNativeForces;
             this.world = world; body = world.Avatar;
             var declared = declarations.ToArray();
             var expected = MuscleProfiles.All.SelectMany(p => new[] { p.Variable + "/flexor", p.Variable + "/extensor" }).OrderBy(n => n, StringComparer.Ordinal).ToArray();
@@ -165,6 +169,7 @@ namespace Nre.UnityWorld
             IReadOnlyDictionary<string, double> tensions)
         {
             Healthy();
+            NativeTendonForceTrace trace = null;
             try
             {
                 if (expectedStep != last.PhysicsStep || expectedStateHash != last.StateHash || plant != plantFingerprint || !MuscleHingeWire.Hash(plant) ||
@@ -183,14 +188,24 @@ namespace Nre.UnityWorld
                 if (applications.Any(a => !Finite(a.worldPoint) || !Finite(a.appliedForceNewtons)))
                     throw new ArgumentException("Native point force is not finite at the declared float boundary.");
                 effortIds.Add(effortId); LastApplicationsJson = JsonUtility.ToJson(new Applications { points = applications });
+                trace = observeNativeForces ? new NativeTendonForceTrace(body, physicalStepSeconds, expectedStep) : null;
                 world.StepForMusclePaths(stepOwner, () => {
-                    foreach (var a in applications) body.links[a.bodyId].body.AddForceAtPosition(a.appliedForceNewtons, a.worldPoint, ForceMode.Force);
+                    trace?.Record("before-applications", 0);
+                    for (int i = 0; i < applications.Length; i++) {
+                        var a = applications[i];
+                        body.links[a.bodyId].body.AddForceAtPosition(a.appliedForceNewtons, a.worldPoint, ForceMode.Force);
+                        if (a.appliedForceNewtons.x != 0 || a.appliedForceNewtons.y != 0 || a.appliedForceNewtons.z != 0)
+                            trace?.Record("after-nonzero-application", i + 1);
+                    }
+                    trace?.Record("after-all-applications", applications.Length);
                 });
+                trace?.Record("after-physics", applications.Length);
                 lastEffort = effortId; last = CaptureCore();
                 if (last.PhysicsStep != checked(expectedStep + 1)) throw new InvalidOperationException("Native body did not advance exactly once.");
                 return last;
             }
             catch (Exception e) { Fail(e); throw; } // Never resend after partial force application/uncertain physics.
+            finally { if (trace != null) LastNativeForcesJson = trace.Json(); }
         }
 
         void Healthy()

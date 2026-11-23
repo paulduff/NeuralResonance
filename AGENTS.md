@@ -1,5 +1,25 @@
 # Avatar and environment work
 
+23 November clock review: Paul reported `motor-epoch-20261123-6889f0` complete.
+Both 2,785-file copies, full frozen Git source, exact 155-case inventory and
+executed binaries verify. Thirteen fresh-origin controls and 142 existing
+regressions passed; all 335 selected runtime files in two directories have
+identical before/after manifests. The four-file review is D: verified. This
+qualifies component clock ownership only, not the full sensory/body join or
+standing. No report is pending at this preparation checkpoint; the earlier
+pending-6889f0 launch is historical. The repeat `bb320d` footer is already reviewed.
+
+Independent body investigation: completed elbow endpoints confirm the tiny
+position differences also accompany tiny joint-coordinate changes; disabled
+spring drives are recorded. Cause remains unknown. Optional native force/torque
+observation is authored and API-compiles with zero errors (seven existing
+reflection warnings), without any physics/test execution. A 78-case paired
+workflow preserves original quiet/38 pulse records, requires unchanged original
+and observed/unobserved body states, and checks actual pre/post-physics force
+accumulators. No neuronal strength, anatomy or controller change is made.
+See `docs/DNNE_Native_Tendon_Force_Observation_2026-11-23.md`. Freeze, back up
+and launch it visibly after source checks; record actual launch afterward.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/motor-epoch-20261123-6889f0`
 is frozen at pushed `07294c30fce30ea0ef0a2b465aa91964a3519f88`. Frozen preflight
 passed; both initial 2,196-file copies plus manifest verify. Interactive task

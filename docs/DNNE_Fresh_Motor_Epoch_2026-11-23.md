@@ -158,3 +158,25 @@ Frozen package: `D:/DNNE-build-work/motor-epoch-20261123-6889f0` at pushed
 `DNNE-Motor-Epoch-14ea39bd5935` was started on 23 November. No post-launch
 output, status or process has been inspected. This is the sole pending report;
 await Paul's final backup/footer. Launch does not establish a passing result.
+
+## Completed result
+
+Paul reported `6889f0` complete on 23 November. All **155 cases passed**:
+13 fresh-clock controls and 142 existing regressions. The declared active
+dyadic-time translation, pre-origin rejection, original timestamp preservation,
+nonzero descending pool admission and actual motor-axon clock mapping are covered
+by those exact controls. This remains prescribed source input, not qualification
+of an intact brain or the complete physical prelude.
+
+`tools/review-fresh-motor-epoch-result.py` verified both 2,785-file copies plus
+manifest, full frozen Git archive/extraction, executed test/probe bytes, exact
+TRX multiplicities and identical managed-runtime manifests (335 files in two
+selected directories). It did not execute any model/test or rehash the external
+runtime installation. Review four files plus manifest are verified at
+`D:/DNNE-desktop-runs/UnityWorld/motor-epoch-20261123-6889f0-review`.
+
+Independent coupled numerical accuracy, physiological firing, the full physical
+attachment baseline and standing remain unqualified. The next native study
+investigates tiny tendon-driven joint responses with direct native force/torque
+observation; it does not change these neuronal equations or increase brainstem
+complexity to mask a mechanical issue.

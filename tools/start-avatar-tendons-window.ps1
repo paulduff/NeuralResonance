@@ -3,7 +3,10 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '_start-dnne-project.ps1')
 $package=(Resolve-Path -LiteralPath $PackageDirectory).Path
 $configuration=Get-Content -LiteralPath (Join-Path $package 'configuration.json') -Raw | ConvertFrom-Json
-if(-not $configuration.NoLiveMonitoring -or -not $configuration.IsolatedFullAvatarTendons -or $configuration.ExpectedNativeCases -ne 51 -or $configuration.ExpectedTestCases -ne 112){throw 'Unexpected full Avatar mechanical protocol.'}
+$forceObservation=($configuration.PSObject.Properties.Name -contains 'NativeForceObservationStudy') -and $configuration.NativeForceObservationStudy
+$expectedCases=if($forceObservation){78}else{51};$expectedSteps=if($forceObservation){624}else{413}
+$studyScript=if($forceObservation){'native_tendon_force_study.py'}else{'native_avatar_tendon_study.py'}
+if(-not $configuration.NoLiveMonitoring -or -not $configuration.IsolatedFullAvatarTendons -or $configuration.ExpectedNativeCases -ne $expectedCases -or $configuration.ExpectedNativeSteps -ne $expectedSteps -or $configuration.ExpectedTestCases -ne 112){throw 'Unexpected full Avatar mechanical protocol.'}
 function Sha([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash}
 function Assert-Package {
  foreach($entry in $configuration.PackageFiles){if((Sha (Join-Path $package $entry.Path)) -ne $entry.Sha256){throw ('Frozen input changed: '+$entry.Path)}}
@@ -17,7 +20,8 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskName='DNNE-Avatar-Tendons-'+[Guid]::NewGuid().ToString('N').Substring(0,12)
+ $taskPrefix=if($forceObservation){'DNNE-Tendon-Force-'}else{'DNNE-Avatar-Tendons-'}
+ $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
  $action=New-ScheduledTaskAction -Execute $shell -Argument (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $package
@@ -62,15 +66,15 @@ function Capture-Files([string]$Directory,[string]$Name){
  return $entries.ToArray()
 }
 function Verify-Files($entries){foreach($entry in $entries){if((Sha $entry.Path) -ne $entry.Sha256){throw ('Executed dependency changed: '+$entry.Path)}}}
-function Stage([string]$stage){Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_avatar_tendon_study.py'),$stage,$package) ($stage+'.log')}
+function Stage([string]$stage){Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package ('source/tools/'+$studyScript)),$stage,$package) ($stage+'.log')}
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;NoLiveMonitoring=$true;NativePhysicsAttempted=$false;MechanicalChecksPassed=$false;NeuronalSourceExecuted=$false;AnatomicalCalibrationQualified=$false;AvatarBalanceQualified=$false}
 $statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$runtimeFiles=@();$binaries=@();$playerFiles=@()
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
- $Host.UI.RawUI.WindowTitle='DNNE full Avatar tendon mechanics - no neuronal standing claim'
+ $Host.UI.RawUI.WindowTitle=if($forceObservation){'DNNE native tendon force observations - paired mechanics'}else{'DNNE full Avatar tendon mechanics - no neuronal standing claim'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- Write-Host '112 component checks, then 51 isolated Unity cases. Mechanical fixtures, no live brain. This window stays open after its final backup.'
+ Write-Host ('112 component checks, then '+$expectedCases+' isolated Unity cases. Mechanical fixtures, no live brain. This window stays open after its final backup.')
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package;Stage 'preflight'
  $runtimeFiles=Capture-Files (Join-Path (Split-Path $configuration.DotnetExecutable -Parent) 'shared') 'managed-runtime-files.json'
@@ -113,6 +117,7 @@ try {
   [IO.Directory]::CreateDirectory($output) | Out-Null
   $arguments=@('-batchmode','-nographics','-logFile',(Join-Path $output 'player.log'),'--neuronal-muscle-qualify','1','--tendon-case',$case.condition,'--output',$output)
   if($case.muscle){$arguments+=@('--tendon-muscle',$case.muscle)}
+  if($forceObservation -and $case.observe){$arguments+=@('--tendon-observe-native','1')}
   $playerProcess=Start-Process -FilePath (Join-Path $playerOutput 'DNNE Unity World.exe') -ArgumentList (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $playerOutput -WindowStyle Hidden -PassThru
   if(-not $playerProcess.WaitForExit(120000)){$playerProcess.Kill();$playerProcess.WaitForExit();throw ('Native case timed out: '+$case.name)}
   if($playerProcess.ExitCode -ne 0){throw ('Native case failed: '+$case.name+'; inspect its result.json and player.log.')}
@@ -120,7 +125,7 @@ try {
  Stage 'analyse';Stage 'preflight'
  Verify-Files $runtimeFiles;Verify-Files $binaries;Verify-Files $playerFiles
  $analysis=Get-Content -LiteralPath (Join-Path $package 'analysis.json') -Raw | ConvertFrom-Json
- if(-not $analysis.mechanicalCriteriaPassed -or $analysis.actualPhysicsSteps -ne 413 -or $analysis.cases.Count -ne 51){throw 'Native mechanical accounting incomplete.'}
+ if(-not $analysis.mechanicalCriteriaPassed -or $analysis.actualPhysicsSteps -ne $expectedSteps -or $analysis.cases.Count -ne $expectedCases){throw 'Native mechanical accounting incomplete.'}
  $status.MechanicalChecksPassed=$true;$status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString();Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
@@ -134,5 +139,6 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- Write-Host 'Tell Orion the full Avatar tendon outcome. Mechanical force delivery, anatomical calibration, neuronal authority and standing are separate.'
+ if($forceObservation){Write-Host 'Tell Orion the native tendon force outcome. Native accumulation, useful joint response, anatomy, neuronal authority and standing are separate.'}
+ else{Write-Host 'Tell Orion the full Avatar tendon outcome. Mechanical force delivery, anatomical calibration, neuronal authority and standing are separate.'}
 }

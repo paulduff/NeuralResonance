@@ -15,8 +15,9 @@ namespace Nre.UnityWorld
         [Serializable] sealed class Report
         {
             public string version = "full-avatar-tendon-mechanics-v1", unity, condition, muscle, error, rejectedError;
-            public string geometryJson, beforeRejectedState, afterRejectedState, stepMsBits;
+            public string geometryJson, beforeRejectedState, afterRejectedState, stepMsBits, lastNativeForcesJson;
             public bool completed, passed, rejectedWithoutStep, faultLatchPassed;
+            public bool nativeForceObservationEnabled;
             public bool neuronalSourceExecuted = false, anatomicalCalibrationQualified = false, avatarBalanceQualified = false;
             public long finalStep;
             public int links, paths;
@@ -35,7 +36,7 @@ namespace Nre.UnityWorld
         [Serializable] sealed class Endpoint
         {
             public long step;
-            public string physicalTimeMsBits, stateHash, stateJson, applicationsJson;
+            public string physicalTimeMsBits, stateHash, stateJson, applicationsJson, nativeForcesJson;
             public PathState[] paths;
             public float leftFootForce, rightFootForce;
         }
@@ -79,7 +80,7 @@ namespace Nre.UnityWorld
         static void Record(StreamWriter log, ArticulatedMusclePathOwner.Snapshot s, ArticulatedMusclePathOwner owner, ArticulatedAvatar body)
         {
             log.WriteLine(JsonUtility.ToJson(new Endpoint { step = s.PhysicsStep, physicalTimeMsBits = MuscleHingeWire.Encode(s.PhysicalTimeMs),
-                stateHash = s.StateHash, stateJson = s.StateJson, applicationsJson = owner.LastApplicationsJson,
+                stateHash = s.StateHash, stateJson = s.StateJson, applicationsJson = owner.LastApplicationsJson, nativeForcesJson = owner.LastNativeForcesJson,
                 leftFootForce = body.LeftLoad, rightFootForce = body.RightLoad,
                 paths = s.Paths.Select(p => new PathState { muscleId = p.MuscleId, lengthBits = MuscleHingeWire.Encode(p.MusculotendonLengthMeters),
                     velocityBits = MuscleHingeWire.Encode(p.MusculotendonVelocityMetersPerSecond), points = p.Points.Select(q => new Point {
@@ -97,12 +98,16 @@ namespace Nre.UnityWorld
             // Allow component registration with physics still paused.
             yield return null;
             var result = new Report { unity = Application.unityVersion, condition = Arg("--tendon-case"), muscle = Arg("--tendon-muscle") ?? "" };
+            ArticulatedMusclePathOwner owner = null;
             int exit = 1;
             try
             {
                 Require(world.IsolatedQualification && !world.Connected && !world.Running && world.physicsSteps == 0, "Fresh isolated paused world required.");
+                string observe = Arg("--tendon-observe-native");
+                Require(observe == null || observe == "1", "Unknown native observation setting.");
+                result.nativeForceObservationEnabled = observe == "1";
                 var declarations = Fixtures(world.Avatar, out result.fixtures);
-                var owner = new ArticulatedMusclePathOwner(world, declarations, .005f);
+                owner = new ArticulatedMusclePathOwner(world, declarations, .005f, result.nativeForceObservationEnabled);
                 string plant = new string('A', 64); owner.Bind(plant);
                 var state = owner.Capture(); result.geometryJson = owner.GeometryJson; result.stepMsBits = MuscleHingeWire.Encode(owner.PhysicsStepMs);
                 result.links = world.Avatar.links.Count; result.paths = state.Paths.Count;
@@ -165,6 +170,7 @@ namespace Nre.UnityWorld
                 result.completed = result.passed = true; exit = 0;
             }
             catch (Exception e) { result.error = e.ToString(); Debug.LogException(e); }
+            if (owner != null) result.lastNativeForcesJson = owner.LastNativeForcesJson;
             File.WriteAllText(Path.Combine(world.outputDirectory, "result.json"), JsonUtility.ToJson(result, true));
             Application.Quit(exit);
         }

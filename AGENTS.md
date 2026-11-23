@@ -1,5 +1,24 @@
 # Avatar and environment work
 
+NATIVE/SENSORY FAILURE REVIEWED — 23 November: Paul reported final FAILED for
+`native-canal-20261123-184323`. Both complete 2,940-file copies, frozen source,
+executables and runtime manifests verified; five-file review plus manifest
+D:-verified at `artifacts/native-canal-20261123-184323-review`. All six cases
+completed; 54 body-state/force payloads exact, zero recorded afferent events.
+Failure is cross-session raw geometry/path equality: GetInstanceID differs
+between Unity launches and feeds the body/path digests. Authored a narrowly
+scoped saved-evidence comparator retaining exact geometry text apart from
+the two declared instance-ID fields; independently reconstructs every original
+body/path hash, retains exact motion/force/path measurements and rejects ID
+changes inside a session. No live identity, physics, sensory equation or bound
+changed. Original sensory analysis unchanged. Prepared runner has 25 positive/
+corruption controls then 516,096 saved sensory steps; no Unity/model rerun.
+Python/PowerShell syntax passes; tests/reanalysis not yet executed or launched
+at this checkpoint. See `docs/DNNE_Native_Canal_Reanalysis_2026-11-23.md`.
+No pending reports now. Untracked `AvatarMuscleInitialBalance.cs` remains an
+unfinished authoring draft, excluded from this Python-only Git archive; resume
+its review/tests separately. Full neuronal control/standing remain unqualified.
+
 MUSCLE ANATOMY SOURCE CAPTURED — 23 November: inspected Avatar's named muscle
 groups/capacities and detailed Nagamori candidate before further body coupling.
 The component fixtures' first slow unit (0.462 N) and tibialis geometry are not

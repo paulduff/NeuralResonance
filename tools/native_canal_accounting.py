@@ -2,6 +2,7 @@
 import hashlib
 import json
 from head_observation_identity import original_observation
+from native_geometry_identity import CrossSessionGeometry
 
 
 def read(path):
@@ -39,10 +40,11 @@ def native_case(package, folder, condition):
     assert replies[-1]['operation'] == 'stop' and replies[-1]['physicsStep'] == 8
     assert all(r['paused'] and not r['connected'] and r['isolated'] for r in replies)
     assert all(r['mechanicsDiagnosticJson'] == original[0]['mechanicsDiagnosticJson'] for r in replies)
+    geometry = CrossSessionGeometry(ack[0], original[0])
     observations = []
     for step, (a, head, old) in enumerate(zip(ack, heads, original, strict=True)):
         assert a == replies[a['sequence']] and a['physicsStep'] == head['physicsStep'] == step
-        assert all(a[k] == old[k] for k in ('geometryJson', 'stateJson', 'paths', 'applicationsJson'))
+        geometry.check(a, old)
         assert sha(a['stateJson']) == a['stateHash'] == head['bodyStateSha256']
         assert sha(a['observationsJson']) == a['observationsHash'] == head['observationsSha256']
         assert a['observationsJson'] == head['originalObservationsJson']
@@ -62,7 +64,8 @@ def native_case(package, folder, condition):
         assert all(a[k] == ack[a['physicsStep']][k] for k in ('stateJson', 'observationsJson', 'applicationsJson', 'paths'))
     final = read(folder/'result.json')
     assert final['keepaliveInspections'] == len(inspected)
-    return dict(case=folder.name, originalPhysicalEndpointsExact=True, nativeHeadPayloadsExact=True,
+    return dict(case=folder.name, originalPhysicalStatesExact=True, nativeHeadPayloadsExact=True,
+                crossSessionGeometry=geometry.report(),
                 physicalSteps=8, headReceipts=27, keepaliveInspections=len(inspected)), observations
 
 

@@ -1,5 +1,36 @@
 # Named muscle paths in native Avatar — 23 November 2026
 
+## Build packaging repair
+
+Paul reported the final failure footer for `afc890`. Both complete 2,872-file
+copies, 2,260 Git files, executed managed binaries, unchanged selected runtime
+and exact 359 passing test cases were verified. The five-file saved review at
+`artifacts/named-muscle-native-20261123-afc890-review` also has a verified D: copy.
+
+Unity reached `WorldBuild.Inspect`, then failed at the first access to the model
+importer. The fresh package contained the FBX and texture importer sidecars but
+omitted **both attributed binary assets**: `MikeAlger.fbx` and
+`MikeAlger_Texture.jpeg`. They are intentionally excluded from Git. The new
+workflow had copied only the Git archive, unlike the earlier native workflows.
+No native cases ran, and this result says nothing adverse about muscle physics.
+
+The retry freezes those two installed assets against the existing attribution's
+exact sizes and SHA-256 values, retains the committed importer metadata, and
+records/checks all Unity metadata and both binary assets before building and at
+final preservation. It rejects missing, altered, duplicated or substituted
+inputs before invoking Unity. Eight file-only regression controls run in the
+same visible PowerShell window before the original 359 managed cases and twelve
+native cases. The biological/Unity C# code, geometry, forces, protocol and
+prospective numerical limits are unchanged. The historical TagManager parse
+warning also occurs in the successful original build and is not this missing
+importer's cause; that settings file is unchanged for this comparison.
+
+Python and PowerShell syntax and the 359-case source inventory were checked
+without executing tests. The installed asset bytes match their attribution.
+The new eight controls and native retry await their independent window result.
+
+## Implementation
+
 The full-body force owner previously required 38 synthetic joint-specific
 flexor/extensor paths. A human muscle can span several joints and must retain
 one identity, one state and one tendon tension. This candidate admits an

@@ -94,6 +94,11 @@ try {
  else{Write-Host '13 new clock controls and 142 existing regressions. No Unity or live brain. This window stays open after its final backup.'}
  $status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
  Assert-Package;Stage 'preflight'
+ if($namedMuscles){
+  if($configuration.AvatarBuildInputChecks -ne 8){throw 'Unexpected Avatar build-input regression inventory.'}
+  Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/test_unity_avatar_inputs.py')) 'avatar-input-controls.log'
+  $status['AvatarBuildInputChecksPassed']=8
+ }
  Invoke-Logged $configuration.DotnetExecutable @('--info') 'dotnet-info.log'
  $build=Join-Path $package 'source/artifacts/motor-epoch-tests'
  Invoke-Logged $configuration.DotnetExecutable @('build',(Join-Path $package 'source/tests/NeuralResonanceEngine.DNNE.Tests/NeuralResonanceEngine.DNNE.Tests.csproj'),'-c','Release','--artifacts-path',$build,'--nologo','-v','minimal') 'test-build.log'

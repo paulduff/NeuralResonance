@@ -1,5 +1,21 @@
 # Avatar and environment work
 
+NAMED MUSCLE BUILD FAILURE REVIEWED / PACKAGING REPAIRED — 23 November:
+Paul reported final FAILED for `named-muscle-native-20261123-afc890`.
+Both complete 2,872-file copies, 2,260 Git files, exact 359 passing managed tests,
+binaries and unchanged runtime verified. Five-file review plus manifest D:-verified
+at `artifacts/named-muscle-native-20261123-afc890-review`. NO pending windows now.
+Unity failed in WorldBuild.Inspect line 10 because Git-only preparation omitted
+the ignored MikeAlger FBX and texture; metadata was present. No native cases ran.
+Preparation now freezes both installed attributed binaries with size/hash checks,
+retains frozen importer identities, and validates Unity metadata in preflight.
+Eight file-only controls precede the unchanged 359 tests and twelve native cases
+in the same visible PowerShell. No C#/biological/geometry/limit changes. Syntax,
+source inventory and actual installed asset hashes checked; NO new tests run.
+Commit/push/freeze a fresh retry; never overwrite the original failed evidence.
+World starts paused, no live DNNE/source activity, no monitoring after launch.
+Goal active/incomplete. See docs/DNNE_Named_Muscle_Native_2026-11-23.md.
+
 NAMED MUSCLE UNITY STUDY LAUNCHED — 23 November: independent visible task
 `DNNE-Named-Muscle-Native-e710b2963054` started for
 `D:/DNNE-build-work/named-muscle-native-20261123-afc890`, frozen at pushed

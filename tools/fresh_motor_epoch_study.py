@@ -23,6 +23,12 @@ helper.COUNTS = COUNTS
 read, write, digest = helper.read, helper.write, helper.digest
 
 
+def unity_inputs():
+    spec = importlib.util.spec_from_file_location('epoch_unity_inputs', ROOT/'tools/unity_metadata.py')
+    result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
+    return result
+
+
 def initial_balance_reference():
     spec = importlib.util.spec_from_file_location('initial_balance_decimal_reference', ROOT/'tools/muscle_initial_balance_reference.py')
     result = importlib.util.module_from_spec(spec); spec.loader.exec_module(result)
@@ -110,6 +116,10 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with target.open('xb') as stream: stream.write(archive.read(item))
     shutil.copyfile(package/'source/tools/backup-unity-run.ps1', package/'backup-run.ps1')
+    if named_muscles:
+        metadata = unity_inputs()
+        write(package/'unity-avatar-inputs.json',metadata.freeze_avatar_assets(ROOT/'UnityWorld',package/'source/UnityWorld'))
+        write(package/'unity-metadata.json',metadata.validate(package/'source/UnityWorld'))
     if frame_map or named_muscles:
         spec = importlib.util.spec_from_file_location('frame_input_preservation', ROOT/'tools/native_articulated_head_study.py')
         preservation = importlib.util.module_from_spec(spec); spec.loader.exec_module(preservation)
@@ -135,6 +145,7 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
         UnityExecutable=str(unity) if unity else None,UnityExecutableSha256=digest(unity) if unity else None,
         UnityBuildWorkspace=str(Path('D:/DNNE-build-work')/(name+'-unity-build')) if named_muscles else None,
         NativeNamedMuscleStudy=named_muscles,NamedNativeCases=12 if named_muscles else 0,
+        AvatarBuildInputChecks=8 if named_muscles else 0,
         NamedNativeLimits=dict(forceNewtons=1e-10,pathLengthMeters=2e-12,nativePointMeters=2e-6,responseRadians=1e-6) if named_muscles else None,
         InitialBalanceChangeDeclaration=balance_declaration, InitialBalanceReferenceRuntime=balance_runtime,
         ExpectedTestCases=total, NewClockCases=0 if closed_loop else 13, NewScheduleCases=14 if closed_loop and not articulated and not initial_balance else 0,
@@ -190,6 +201,10 @@ def preflight(package):
              'tools/NativeMotorBridgeProbe/Program.cs','tests/NeuralResonanceEngine.DNNE.Tests/NamedMuscleBridgeTests.cs'])
         assert digest(cfg['UnityExecutable']) == cfg['UnityExecutableSha256']
         assert cfg['NativeNamedMuscleStudy'] and cfg['NamedNativeCases']==12
+        assert cfg['AvatarBuildInputChecks']==8
+        metadata = unity_inputs()
+        assert read(package/'unity-avatar-inputs.json')==metadata.avatar_assets(package/'source/UnityWorld')
+        assert read(package/'unity-metadata.json')==metadata.validate(package/'source/UnityWorld')
         assert cfg['NamedNativeLimits']==dict(forceNewtons=1e-10,pathLengthMeters=2e-12,nativePointMeters=2e-6,responseRadians=1e-6)
         proof=read(package/'frame-review/review.json')
         assert proof['operatorReportedCompletion'] and proof['frameArithmeticPassed'] and proof['passedTests']==288 and proof['originalPoints']==44

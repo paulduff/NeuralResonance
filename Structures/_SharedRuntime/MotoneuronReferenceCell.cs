@@ -60,11 +60,13 @@ internal sealed class MotoneuronReferenceCell
     private readonly MotoneuronDiagnosticBlock _block;
     private readonly List<double> _spikes = [];
     private bool _faulted, _receptorInputUsed;
+    public double InitialNeuralTimeMs { get; }
     public MotoneuronAccumulation Accumulation { get; }
     public MotoneuronCrossingInterpolation CrossingInterpolation { get; }
     public string IntegrationVersion => (Accumulation == MotoneuronAccumulation.Compensated ? CompensatedVersion : Version) +
         (CrossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite ? MotoneuronCrossing.CubicVersionSuffix : "") +
-        (_receptorInputUsed ? "+point-receptors-stage-evaluated-v1" : "");
+        (_receptorInputUsed ? "+point-receptors-stage-evaluated-v1" : "") +
+        (InitialNeuralTimeMs == 0 ? "" : "+fresh-neural-epoch-v1");
     public double TimeMs { get; private set; }
     public double SomaVoltageMv => _state[0];
     public double CalciumMm => _state[14];
@@ -92,11 +94,17 @@ internal sealed class MotoneuronReferenceCell
     public MotoneuronReferenceCell(MotoneuronReferenceParameters parameters, double initialVoltageMv = -65,
         MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
         MotoneuronAccumulation accumulation = MotoneuronAccumulation.Naive,
-        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear,
+        double initialNeuralTimeMs = 0)
     {
         ArgumentNullException.ThrowIfNull(parameters); parameters.Validate();
-        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block) || !Enum.IsDefined(accumulation) || !Enum.IsDefined(crossingInterpolation))
+        if (!double.IsFinite(initialVoltageMv) || !Enum.IsDefined(block) || !Enum.IsDefined(accumulation) || !Enum.IsDefined(crossingInterpolation) ||
+            !double.IsFinite(initialNeuralTimeMs) || initialNeuralTimeMs < 0 ||
+            !double.IsFinite(initialNeuralTimeMs + MaximumStepMs) || initialNeuralTimeMs + MaximumStepMs / 2 <= initialNeuralTimeMs)
             throw new ArgumentException("Invalid isolated cell initialization.");
+        // Fresh initial state at a declared absolute time. There is deliberately
+        // no setter/reset/retiming operation for an already existing cell.
+        InitialNeuralTimeMs = TimeMs = initialNeuralTimeMs;
         _parameters = parameters; _block = block; Accumulation = accumulation; CrossingInterpolation = crossingInterpolation;
         for (int i = 0; i < 5; ++i)
         {

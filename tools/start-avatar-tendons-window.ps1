@@ -51,9 +51,15 @@ function Copy-Tree([string]$Source,[string]$Destination){
  }
 }
 function Capture-Files([string]$Directory,[string]$Name){
- $entries=@(Get-ChildItem -LiteralPath $Directory -File -Recurse | Sort-Object FullName | ForEach-Object {[ordered]@{Path=$_.FullName;Sha256=Sha $_.FullName}})
- ConvertTo-Json -InputObject @($entries) -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
- return $entries
+ $files=@(Get-ChildItem -LiteralPath $Directory -File -Recurse | Sort-Object FullName)
+ Write-Host ('Preserving '+$files.Count+' dependency files: '+$Directory) -ForegroundColor Cyan
+ $entries=[Collections.Generic.List[object]]::new();$index=0
+ foreach($file in $files){
+  $entries.Add([ordered]@{Path=$file.FullName;Sha256=Sha $file.FullName});$index++
+  if($index%100 -eq 0 -or $index -eq $files.Count){Write-Host ('Hashed '+$index+' / '+$files.Count+' files ('+$Name+')')}
+ }
+ ConvertTo-Json -InputObject $entries.ToArray() -Depth 5 | Set-Content -LiteralPath (Join-Path $package $Name) -Encoding UTF8
+ return $entries.ToArray()
 }
 function Verify-Files($entries){foreach($entry in $entries){if((Sha $entry.Path) -ne $entry.Sha256){throw ('Executed dependency changed: '+$entry.Path)}}}
 function Stage([string]$stage){Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/native_avatar_tendon_study.py'),$stage,$package) ($stage+'.log')}

@@ -1,5 +1,27 @@
 # Avatar and environment work
 
+Independent authoring — 23 November: the nonzero motor epoch gap is repaired as
+an unqualified fresh-initialization candidate. See
+`docs/DNNE_Fresh_Motor_Epoch_2026-11-23.md`. Explicit constructor origin flows
+through the reference cell, receptor owner, source samples and descending pool;
+default zero behavior remains, existing cells/events cannot be retimed/reset.
+Thirteen new clock/transport controls are authored; the full test project builds
+with zero warnings/errors. NO clock tests/models have run and no second window
+is launched. Prepare a frozen visible regression workflow next. The physical
+body attachment baseline still needs auditing; neural 1010 maps to physical 10
+under the existing sensory clock, not physical zero. `bb320d` remains the only
+pending report and uses its original frozen pre-epoch source unchanged.
+
+23 November operator-requested stall check: Paul explicitly asked to inspect
+`bb320d`. One bounded process/log check found PowerShell PID 18336 alive in the
+runtime hash stage, with no test/Unity child started. ReadTransferCount advanced
+from 407,843,146 to 471,156,285 bytes; the selected .NET shared tree contains
+3,099 files / 985,574,876 bytes. This was slow ongoing dependency I/O, not evidence
+of a terminated run. No restart, cancellation or frozen-package edit occurred.
+Working-tree runner now reports hash progress for future runs. Resume the normal
+no-monitoring rule; this exception is not permission to keep polling. Its final
+footer remains unreported. Independent fresh motor-epoch authoring is underway.
+
 LATEST LAUNCH — 23 November: `D:/DNNE-build-work/avatar-tendons-20261123-bb320d`
 is frozen at pushed `218054afac3165edbb1cac7fdd0a98629d786f95`. Frozen read-only
 preflight passed; both initial 2,194-file copies plus manifest verify. Interactive

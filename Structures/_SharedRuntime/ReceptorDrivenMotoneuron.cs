@@ -30,6 +30,7 @@ internal sealed class ReceptorDrivenMotoneuron
     }
 
     private readonly Guid _session;
+    private readonly double _initialNeuralTimeMs;
     private readonly int _owner = Environment.CurrentManagedThreadId, _maximumEpochEvents, _maximumEpochBatches;
     private readonly MotoneuronReferenceCell _cell;
     private readonly Lane[] _lanes;
@@ -43,7 +44,8 @@ internal sealed class ReceptorDrivenMotoneuron
         double initialVoltageMv = -65, MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None,
         MotoneuronAccumulation accumulation = MotoneuronAccumulation.Compensated,
         int maximumEpochEventsPerContact = 1_000_000, int maximumEpochBatchesPerContact = 1_000_000,
-        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear,
+        double initialNeuralTimeMs = 0)
     {
         ArgumentNullException.ThrowIfNull(contacts);
         if (sessionId == Guid.Empty || contacts.Count == 0 || maximumEpochEventsPerContact <= 0 || maximumEpochBatchesPerContact <= 0)
@@ -54,9 +56,11 @@ internal sealed class ReceptorDrivenMotoneuron
                 d.TargetNeuronIndex != target.TargetNeuronIndex) || contacts.Select(d => d.ContactId).Distinct().Count() != contacts.Count)
             throw new ArgumentException("Distinct physical contacts must belong to one target motor neuron.");
         _session = sessionId; _maximumEpochEvents = maximumEpochEventsPerContact; _maximumEpochBatches = maximumEpochBatchesPerContact;
-        _cell = new(parameters, initialVoltageMv, block, accumulation, crossingInterpolation);
+        _cell = new(parameters, initialVoltageMv, block, accumulation, crossingInterpolation, initialNeuralTimeMs);
+        _initialNeuralTimeMs = initialNeuralTimeMs;
         _lanes = contacts.OrderBy(d => d.ContactId).Select(d => new Lane(d,
-            new MotorReceptorContact(d, sessionId, maximumEpochEvents: maximumEpochEventsPerContact))).ToArray();
+            new MotorReceptorContact(d, sessionId, initialNeuralTimeMs, maximumEpochEvents: maximumEpochEventsPerContact))
+            { CompleteThroughSourceMs = initialNeuralTimeMs }).ToArray();
         _contacts = _lanes.Select(l => l.Receptor).ToArray();
     }
 
@@ -72,14 +76,14 @@ internal sealed class ReceptorDrivenMotoneuron
     }
 
     // Each contact has an explicit delivery lane. The first batch includes
-    // firing time zero; subsequent batches cover (previous, completeThrough].
+    // the declared fresh epoch; subsequent batches cover (previous, completeThrough].
     // Exact batch replay is inert, including after its spikes were delivered.
     // Admission stores deep snapshots: later caller mutation cannot change input.
     internal MotorReceptorBatchReceipt Admit(Guid sessionId, Guid contactId, long sequence,
         double completeThroughSourceMs, IReadOnlyList<SpikeMessage> originals)
     {
         RequireOperational(); ArgumentNullException.ThrowIfNull(originals);
-        if (sessionId != _session || sequence <= 0 || !double.IsFinite(completeThroughSourceMs) || completeThroughSourceMs < 0)
+        if (sessionId != _session || sequence <= 0 || !double.IsFinite(completeThroughSourceMs) || completeThroughSourceMs < _initialNeuralTimeMs)
             throw new ArgumentException("Invalid source session, sequence or completeness time.");
         var lane = _lanes.SingleOrDefault(l => l.Definition.ContactId == contactId)
             ?? throw new ArgumentException("Unknown receptor contact.");

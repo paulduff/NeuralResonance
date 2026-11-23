@@ -39,19 +39,24 @@ internal sealed class ReceptorMotorSource
     private bool _claimed, _faulted;
     internal ReceptorMotorIdentity Identity => _identity;
     internal string ConfigurationFingerprint { get; }
+    internal double InitialNeuralTimeMs { get; }
 
     internal ReceptorMotorSource(MotoneuronReferenceParameters parameters,
         IReadOnlyList<MotorReceptorDefinition> contacts, Guid session, ReceptorMotorIdentity identity,
         double maximumStepMs = .003125, double initialVoltageMv = -65,
         MotoneuronDiagnosticBlock block = MotoneuronDiagnosticBlock.None, double sampleMs = DefaultSampleMs,
-        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear)
+        MotoneuronCrossingInterpolation crossingInterpolation = MotoneuronCrossingInterpolation.Linear,
+        double initialNeuralTimeMs = 0)
     {
         ArgumentNullException.ThrowIfNull(contacts); ArgumentNullException.ThrowIfNull(identity);
         static bool Key(string value) => !string.IsNullOrWhiteSpace(value) && value == value.Trim();
         if (session == Guid.Empty || !Key(identity.Instance) || !Key(identity.Neuron) ||
             identity.Projection == Guid.Empty || identity.Synapse == Guid.Empty || contacts.Count == 0 ||
             !double.IsFinite(maximumStepMs) || maximumStepMs <= 0 || maximumStepMs > MotoneuronReferenceCell.MaximumStepMs ||
-            !double.IsFinite(sampleMs) || sampleMs <= 0 || !Enum.IsDefined(block) || !Enum.IsDefined(crossingInterpolation))
+            !double.IsFinite(sampleMs) || sampleMs <= 0 || !Enum.IsDefined(block) || !Enum.IsDefined(crossingInterpolation) ||
+            !double.IsFinite(initialNeuralTimeMs) || initialNeuralTimeMs < 0 ||
+            !double.IsFinite(initialNeuralTimeMs + sampleMs) || initialNeuralTimeMs + sampleMs <= initialNeuralTimeMs ||
+            initialNeuralTimeMs + maximumStepMs / 2 <= initialNeuralTimeMs)
             throw new ArgumentException("Declare one identified motor cell and its bounded integration step.");
         var input = contacts.ToArray();
         foreach (var contact in input)
@@ -61,8 +66,10 @@ internal sealed class ReceptorMotorSource
                 throw new ArgumentException("Motor output must belong to the cell receiving these contacts.");
         }
         _cell = new(parameters, input, session, initialVoltageMv, block, MotoneuronAccumulation.Compensated,
-            crossingInterpolation: crossingInterpolation);
+            crossingInterpolation: crossingInterpolation, initialNeuralTimeMs: initialNeuralTimeMs);
+        InitialNeuralTimeMs = initialNeuralTimeMs;
         SourceVersion = crossingInterpolation == MotoneuronCrossingInterpolation.CubicHermite ? CubicVersion : Version;
+        if (initialNeuralTimeMs != 0) SourceVersion += "+fresh-neural-epoch-v1";
         _session = session; _identity = identity; _maximumStepMs = maximumStepMs; _block = block; _sampleMs = sampleMs;
         ConfigurationFingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -72,6 +79,9 @@ internal sealed class ReceptorMotorSource
             Parameters = parameters, Contacts = input.OrderBy(c => c.ContactId).ToArray(), Identity = identity,
             MaximumStepMs = maximumStepMs, SampleMs = sampleMs, InitialVoltageMv = initialVoltageMv, Block = block
         })));
+        if (initialNeuralTimeMs != 0)
+            ConfigurationFingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+            { Version = "fresh-receptor-motor-epoch-v1", OriginalConfiguration = ConfigurationFingerprint, InitialNeuralTimeMs })));
     }
 
     internal ReceptorMotorSourceState Capture()
@@ -113,7 +123,7 @@ internal sealed class ReceptorMotorSource
     {
         RequireOwner();
         if (_faulted) throw new InvalidOperationException("Faulted neuronal source cannot resume.");
-        long next = checked(_samples + 1); double until = next * _sampleMs;
+        long next = checked(_samples + 1); double until = InitialNeuralTimeMs + next * _sampleMs;
         if (!double.IsFinite(until) || until <= _cell.Capture().TimeMs)
             throw new InvalidOperationException("Neuronal sample endpoint is no longer representable.");
         // Missing input is a recoverable, pre-mutation rejection in the cell.
@@ -130,7 +140,7 @@ internal sealed class ReceptorMotorSource
             for (int i = _emissions.Count; i < state.Crossings.Length; ++i)
             {
                 double at = state.Crossings[i];
-                if (!double.IsFinite(at) || at <= 0 || at > until || (i > 0 && at <= state.Crossings[i - 1]))
+                if (!double.IsFinite(at) || at <= InitialNeuralTimeMs || at > until || (i > 0 && at <= state.Crossings[i - 1]))
                     throw new InvalidOperationException("Require original, strictly ordered observed crossings.");
                 Guid id = StableNeuralIdentity.Create(SourceVersion, _session, _identity.Instance,
                     _identity.Neuron, _identity.Projection, _identity.Synapse, i + 1);

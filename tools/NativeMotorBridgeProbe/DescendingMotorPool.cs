@@ -22,20 +22,21 @@ internal sealed class DescendingMotorPool
     private static readonly JsonSerializerOptions EvidenceOptions=new(){NumberHandling=JsonNumberHandling.AllowNamedFloatingPointLiterals};
     private sealed class Cell(DescendingMotorCell definition,ReceptorMotorSource source)
     {internal readonly DescendingMotorCell Definition=definition;internal readonly ReceptorMotorSource Source=source;internal ReceptorMotorLane? Lane;}
-    private sealed class Contact(Cell cell,MotorReceptorDefinition definition,Guid session)
+    private sealed class Contact(Cell cell,MotorReceptorDefinition definition,Guid session,double epoch)
     {
         internal readonly Cell Cell=cell;internal readonly MotorReceptorDefinition Definition=definition;
-        internal readonly MotorReceptorContact Validator=new(definition,session);internal long Admitted;
+        internal readonly MotorReceptorContact Validator=new(definition,session,epoch);internal long Admitted;
     }
     private sealed class Input(VestibularProjectionInput definition,Contact[] contacts)
     {
         internal readonly VestibularProjectionInput Definition=definition;internal readonly Contact[] Contacts=contacts;
         internal long Sequence,Ticks;internal VestibularProjectionPacket? Last;internal VestibularProjectionReceipt? Receipt;
-        internal double Through=>Ticks*Definition.StepMs;
+        internal double Through=>Definition.EpochMs+Ticks*Definition.StepMs;
     }
     private sealed class Held(VestibularProjectionPacket packet)
     {internal readonly VestibularProjectionPacket Packet=packet;internal readonly List<(Contact Contact,long Through)> Ends=[];}
     private readonly Guid _session;
+    private readonly double _epoch;
     private readonly string _instance;
     private readonly Cell[] _cells;
     private readonly Input[] _inputs;
@@ -62,13 +63,16 @@ internal sealed class DescendingMotorPool
             cells.Select(c=>c.Identity.Neuron).Distinct(StringComparer.Ordinal).Count()!=cells.Count||
             cells.Any(c=>c.Identity.Instance==instance)||inputs.Any(d=>d is null||!Key(d.SourceInstance)||d.SourceInstance==instance||
                 d.SourceStructure is not (StructureId.VestibularNuclei or StructureId.ReticularFormation or StructureId.SpinalCordMotor)||
-                d.EpochMs!=0||!double.IsFinite(d.StepMs)||d.StepMs<=0||d.StepMs>4||!Digest(d.OutboxFingerprint)||
+                !double.IsFinite(d.EpochMs)||d.EpochMs<0||!double.IsFinite(d.StepMs)||d.StepMs<=0||d.StepMs>4||!Digest(d.OutboxFingerprint)||
                 d.Projections is null||d.Projections.Count is <1 or >64||d.Projections.Any(r=>r is null||r.Target!=StructureId.SpinalCordMotor||
                     r.SynapseId==Guid.Empty||!Enum.IsDefined(r.Neurotransmitter))||d.Projections.Select(r=>r.SynapseId).Distinct().Count()!=d.Projections.Count)||
             inputs.Select(d=>d.SourceInstance).Distinct(StringComparer.Ordinal).Count()!=inputs.Count||
             inputs.Select(d=>d.OutboxFingerprint).Distinct(StringComparer.Ordinal).Count()!=inputs.Count||
             cells.Any(c=>inputs.Any(i=>i.SourceInstance==c.Identity.Instance)))
-            throw new ArgumentException("Declare distinct isolated source, pool and motor-cell identities starting at neural time zero.");
+            throw new ArgumentException("Declare distinct isolated source, pool and fresh motor-cell identities.");
+        _epoch=inputs[0].EpochMs;
+        if(inputs.Any(d=>d.EpochMs!=_epoch||!double.IsFinite(_epoch+d.StepMs)||_epoch+d.StepMs<=_epoch))
+            throw new ArgumentException("All sources and freshly created motor cells require one representable original epoch.");
         _session=session;_instance=instance;
         var definitions=cells.OrderBy(c=>c.Identity.Instance,StringComparer.Ordinal).Select(c=>c with
             {Contacts=Array.AsReadOnly(c.Contacts.OrderBy(d=>d.ContactId).ToArray())}).ToArray();
@@ -82,8 +86,8 @@ internal sealed class DescendingMotorPool
                 throw new ArgumentException("Every receptor must belong to a declared source and original spinal projection.");
         }
         _cells=definitions.Select(d=>new Cell(d,new(d.Parameters,d.Contacts,session,d.Identity,d.MaximumStepMs,d.InitialVoltageMv,
-            sampleMs:d.SampleMs,crossingInterpolation:MotoneuronCrossingInterpolation.CubicHermite))).ToArray();
-        var contacts=_cells.SelectMany(c=>c.Definition.Contacts.Select(d=>new Contact(c,d,session))).ToArray();
+            sampleMs:d.SampleMs,crossingInterpolation:MotoneuronCrossingInterpolation.CubicHermite,initialNeuralTimeMs:_epoch))).ToArray();
+        var contacts=_cells.SelectMany(c=>c.Definition.Contacts.Select(d=>new Contact(c,d,session,_epoch))).ToArray();
         _inputs=inputs.OrderBy(d=>d.SourceInstance,StringComparer.Ordinal).Select(d=>new Input(d with
             {Projections=Array.AsReadOnly(d.Projections.OrderBy(r=>r.SynapseId).ToArray())},contacts.Where(c=>c.Definition.SourceInstance==d.SourceInstance).ToArray())).ToArray();
         if(_inputs.Any(i=>i.Contacts.Length==0))throw new ArgumentException("Do not declare a source whose output has no receiving contact.");
@@ -109,7 +113,7 @@ internal sealed class DescendingMotorPool
         long start=root.GetProperty("StartingTick").GetInt64(),end=root.GetProperty("CompletedTick").GetInt64();
         double through=root.GetProperty("CompletedThroughMs").GetDouble();var events=root.GetProperty("Events");
         if(packet.SourceSequence!=checked(input.Sequence+1)||start!=input.Ticks||end<start||end-start>4096||
-            !double.IsFinite(through)||through!=end*input.Definition.StepMs||events.GetArrayLength()!=packet.EventCount)
+            !double.IsFinite(through)||through!=input.Definition.EpochMs+end*input.Definition.StepMs||events.GetArrayLength()!=packet.EventCount)
             throw new ArgumentException("Incomplete source sequence, clock or event accounting.");
         if(_held.Count>=MaximumHeldPackets||packet.EventCount>MaximumHeldEvents-_held.Sum(h=>h.Packet.EventCount))
             throw new InvalidOperationException("Motor input ownership capacity exceeded; no source packet consumed.");
@@ -189,7 +193,7 @@ internal sealed class DescendingMotorPool
                 bool advanced=false;
                 foreach(var cell in _cells)
                 {
-                    var state=cell.Source.Capture();double next=checked(state.CompletedSamples+1)*state.SampleMs;
+                    var state=cell.Source.Capture();double next=_epoch+checked(state.CompletedSamples+1)*state.SampleMs;
                     if(next>through)continue;
                     var sample=cell.Lane is null?cell.Source.AdvanceOneSample():cell.Lane.AdvanceOneSample();
                     _samples.Add(new(cell.Definition.Identity.Instance,sample));count++;advanced=true;
@@ -225,8 +229,8 @@ internal sealed class DescendingMotorPool
     internal DescendingMotorStatus Capture(){Owner();return new(KnownThrough(),Array.AsReadOnly(_cells.Select(c=>c.Source.Capture()).ToArray()),
         _pending,Array.AsReadOnly(_bodyReceipts.ToArray()),_failure,EvidenceJson());}
     private bool CanAdvance()=>_inputs.All(i=>i.Sequence>0)&&_cells.Any(c=>
-        checked(c.Source.Capture().CompletedSamples+1)*c.Definition.SampleMs<=KnownThrough());
-    private double KnownThrough()=>_inputs.Any(i=>i.Sequence==0)?0:_inputs.Min(i=>i.Through);
+        _epoch+checked(c.Source.Capture().CompletedSamples+1)*c.Definition.SampleMs<=KnownThrough());
+    private double KnownThrough()=>_inputs.Any(i=>i.Sequence==0)?_epoch:_inputs.Min(i=>i.Through);
     private string EvidenceJson()=>JsonSerializer.Serialize(new{Version,Fingerprint,Session=_session,KnownSourceThroughMs=KnownThrough(),
         Sources=_inputs.Select(i=>new{i.Definition.SourceInstance,i.Sequence,i.Ticks,CompleteThroughMs=i.Through,i.Receipt}),
         RetainedPackets=_held.Select(h=>h.Packet),Admissions=_admissions,MotorSamples=_samples,MotorBatches=_batches,BodyReceipts=_bodyReceipts,

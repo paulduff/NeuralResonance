@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+ISOLATED VIEW CLARIFIED — 23 November: Paul tried the visible Unity Connect
+DNNE button during `184323`. Owning source confirms isolated qualifications
+already reject live connections; no running process/output was inspected.
+The repository UI now labels the isolated mode, disables Connect DNNE and
+free Play, and keeps camera buttons enabled. No physics/neuronal equation,
+bridge or live connection behavior changed. Unity API authoring build at
+`D:/DNNE-build-work/isolated-view-authoring-20261123-v1` passes with zero errors
+and seven existing reflection-field warnings; no test/model executed. This
+applies to the next Unity build, not the frozen player in pending `184323`.
+That run and its copies remain untouched; one report still awaits Paul.
+The new source differs from the qualified player by this explicit UI edit;
+future preparation must account for it rather than bypassing source guards.
+
 VISIBLE NATIVE/SENSORY LAUNCH — 23 November: package
 `D:/DNNE-build-work/native-canal-20261123-184323` frozen at pushed
 `f851ee1be3ac0e0c708c9e8db5f82ff4d08f22d0`. Preparation/preflight passed;

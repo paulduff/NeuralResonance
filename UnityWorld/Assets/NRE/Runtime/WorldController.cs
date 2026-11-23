@@ -117,13 +117,13 @@ public sealed class WorldController:MonoBehaviour {
  }
  void OnGUI(){
   GUI.Box(new Rect(16,16,560,168),"NRE · Unity physical world");
-  GUI.Label(new Rect(32,44,530,24),Status);
+  GUI.Label(new Rect(32,44,530,24),IsolatedQualification?"Isolated test · live DNNE connection disabled":Status);
   bool ready=!connecting&&(!Connected||(Time.realtimeSinceStartup>=readyAt&&Time.realtimeSinceStartup-lastLeaseAt<7&&Time.realtimeSinceStartup-lastMotorAt<1.25f));
-  GUI.enabled=ready&&physicalSampleOwner==null&&Argument("--physical-sample-qualify")==null&&Argument("--neuronal-muscle-qualify")==null;
+  GUI.enabled=ready&&!IsolatedQualification&&physicalSampleOwner==null;
   if(Trial!=null)GUI.enabled=ready&&Connected&&!Trial.Finished;
-  if(GUI.Button(new Rect(32,75,110,30),Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE population commands":"Live · isolated mechanics preview"):"Paused";}
-  GUI.enabled=!connecting&&(Trial==null||!Trial.Finished);
-  if(GUI.Button(new Rect(152,75,150,30),Connected?"Disconnect DNNE":"Connect DNNE")){if(Connected)StartCoroutine(Disconnect());else StartCoroutine(Connect());}
+  if(GUI.Button(new Rect(32,75,110,30),IsolatedQualification?"Test controlled":Running?"Pause":"Play")){Running=!Running;Status=Running?(Connected?"Live · DNNE population commands":"Live · isolated mechanics preview"):"Paused";}
+  GUI.enabled=!IsolatedQualification&&!connecting&&(Trial==null||!Trial.Finished);
+  if(GUI.Button(new Rect(152,75,150,30),IsolatedQualification?"DNNE disabled":Connected?"Disconnect DNNE":"Connect DNNE")){if(Connected)StartCoroutine(Disconnect());else StartCoroutine(Connect());}
   GUI.enabled=true;
   if(GUI.Button(new Rect(312,75,110,30),"Front view"))PositionCamera(new Vector3(0,1.4f,4.3f));
   if(GUI.Button(new Rect(432,75,110,30),"Side view"))PositionCamera(new Vector3(4.3f,1.4f,.2f));

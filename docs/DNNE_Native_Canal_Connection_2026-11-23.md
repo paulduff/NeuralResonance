@@ -96,3 +96,20 @@ backup. Interactive task `DNNE-Native-Canal-9c770507f773` started the visible
 runner. After its build and runtime checks, Paul presses Enter to open Unity.
 No post-launch status, process or output inspected. This is the sole pending
 run; wait for Paul's final footer before reviewing it.
+
+## Connection-button correction
+
+Paul reported that Unity would not connect to DNNE during the visible run.
+The qualified player's `Connect()` already explicitly rejects an isolated
+qualification, but its enabled Connect DNNE button did not communicate that.
+The repository UI now shows **Isolated test · live DNNE connection disabled**,
+disables the connection button and labels the disabled Play button **Test
+controlled**. Camera controls remain enabled. Ordinary live connection behavior
+and all physical/neuronal equations are unchanged.
+
+The Unity API authoring build passes with zero errors and seven existing
+reflection-field warnings at `D:/DNNE-build-work/isolated-view-authoring-20261123-v1`.
+No test, model or new player ran for this display correction. It belongs in the
+next player build; the frozen player and pending `184323` run retain their
+original bytes. Future preparation must explicitly account for the UI source
+change before reusing a prior player or building its successor.

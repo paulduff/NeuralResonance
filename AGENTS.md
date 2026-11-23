@@ -1,5 +1,26 @@
 # Avatar and environment work
 
+MUSCLE ANATOMY SOURCE CAPTURED — 23 November: inspected Avatar's named muscle
+groups/capacities and detailed Nagamori candidate before further body coupling.
+The component fixtures' first slow unit (0.462 N) and tibialis geometry are not
+whole-muscle calibration for all 38 synthetic force paths. Pinned the official
+Rajagopal2016 OpenSim model at e0cee6cbcf56f74731e841668ef668556d140ce9,
+SHA256 3F5C5F23E486073F2AD2AA4A4967FFE2FCDD582B1E355512BC54F70C36376BF4.
+`capture_muscle_anatomy_source.py` decodes only: 80 muscles, 288 path points,
+40 wrapping surfaces, 42 wrapped muscles, 22 source bodies, 39 serialized
+coordinates (including two coupled patella coordinates). Original frame/scalar
+data retained; 17 torque actuators, activation floors and model controllers are
+not adopted. Twenty Avatar group-name associations are references, not runtime
+mappings or duplicated multiarticular muscles. Evidence at
+`artifacts/muscle-anatomy-source-20261123`: 13 files plus manifest D:-verified,
+including original source, decoder and six existing Avatar source snapshots.
+See `docs/DNNE_Muscle_Anatomy_Reference_2026-11-23.md`: next bind actual anatomy,
+retain wrapping, reconcile slack/reference tendon conventions, initialize fresh
+fiber force balance and populate appropriate identified motor units. Do not
+paste OpenSim slack lengths into Nagamori reference lengths or promote scalar
+activation/torque controllers to neuronal authority. No model/test executed,
+no new run launched; `184323` remains the ONLY pending report and was untouched.
+
 ISOLATED VIEW CLARIFIED — 23 November: Paul tried the visible Unity Connect
 DNNE button during `184323`. Owning source confirms isolated qualifications
 already reject live connections; no running process/output was inspected.

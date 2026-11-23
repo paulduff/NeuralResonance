@@ -1,5 +1,16 @@
 # Avatar and environment work
 
+LATEST LAUNCH — 23 November: `D:/DNNE-build-work/motor-closure-20261123-ab2502`
+is frozen at pushed `188aef7d6fd443c92aee351cdb6bbf8e1a9ff69c`. Frozen preflight
+passed; both initial 2,203-file copies plus manifest verify. Interactive task
+`DNNE-Motor-Closure-cc5670ccc12e` started the visible 243-case scheduling workflow
+(14 new controls, 229 previous regressions). Exactly TWO final reports are now
+pending: `ab2502` and native force observations `e764e3`. Neither post-launch
+output/status/process has been inspected. Await Paul's final backup/footers,
+without monitoring or duplicate launch. Source/API compilation and launch do not
+qualify scheduling, active feedback, physiology or standing. Full goal active.
+This supersedes the one-pending/preparation-only notes below.
+
 Independent authoring — 23 November: a source audit found a possible circular
 wait between the motor-before-body completeness gate and sensory owners requiring
 a completed mechanical interval. `AvatarCausalMotorPlant` now has an explicit

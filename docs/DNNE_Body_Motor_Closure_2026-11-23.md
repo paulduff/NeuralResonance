@@ -83,3 +83,13 @@ Passing would qualify those scheduling controls and regressions. It would not
 prove an active brain–body loop, independent coupled accuracy, physiological
 firing, standing or recovery. Record the frozen launch separately and await
 Paul's final footer without monitoring.
+
+## Launch record
+
+`D:/DNNE-build-work/motor-closure-20261123-ab2502` is frozen at pushed revision
+`188aef7d6fd443c92aee351cdb6bbf8e1a9ff69c`. Frozen preflight and both initial
+2,203-file copies plus manifest verify. Interactive visible task
+`DNNE-Motor-Closure-cc5670ccc12e` started on 23 November. No post-launch output,
+status or process was inspected. Exactly two operator reports remain pending:
+this scheduling run and native force observation `e764e3`. Launch is not a
+passing result. Both studies retain their own frozen source and D: backups.

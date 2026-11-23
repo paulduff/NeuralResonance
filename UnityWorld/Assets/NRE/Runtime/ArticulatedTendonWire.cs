@@ -12,6 +12,11 @@ namespace Nre.UnityWorld
     public static class ArticulatedTendonWire
     {
         public const string Protocol = "full-avatar-tendon-wire-v3";
+        public const string NamedMuscleProtocol = "named-avatar-tendon-wire-v1";
+        public const string NamedGeometryVersion = "declared-named-avatar-tendon-paths-v1";
+        // The original synthetic profile has exactly 38 paths. Named anatomy
+        // instead binds the complete explicit configuration, without inventing
+        // a flexor/extensor pair or duplicating a muscle for each crossed joint.
         public const int PathCount = 38;
         public const long MaximumSteps = 1000000;
         [Serializable] public sealed class Anchor { public string id, bodyId; public Real x, y, z; }
@@ -61,17 +66,18 @@ namespace Nre.UnityWorld
         static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 256 && !s.Any(char.IsControl);
         public static float Validate(Configuration c)
         {
-            Require(c != null && c.protocol == Protocol && GuidN(c.sessionId), "Declare the full-body protocol and fresh session.");
+            Require(c != null && (c.protocol == Protocol || c.protocol == NamedMuscleProtocol) && GuidN(c.sessionId), "Declare the full-body protocol and fresh session.");
             Require(c.mechanicsMode == "original" || c.mechanicsMode == "no-joint-friction",
                 "Explicitly select the reviewed original or no-joint-friction mechanics; other interventions are not bridge settings.");
             Require(c.passivePreludeSteps == 0 || c.passivePreludeSteps == 1, "Declare zero or one passive initialization interval.");
             double seconds = c.stepSeconds;
             Require(Finite(seconds) && seconds > 0 && seconds <= (double).01f && (double)(float)seconds == seconds,
                 "Physical seconds must be the exact positive native float, at most the existing world step.");
-            Require(c.declarations != null && c.declarations.Length == PathCount && c.declarations.All(d => d != null && Key(d.muscleId) && Key(d.provenance)),
-                "Declare all 38 muscle paths and their attachment provenance.");
+            Require(c.declarations != null && (c.protocol == Protocol ? c.declarations.Length == PathCount : c.declarations.Length > 0) &&
+                c.declarations.All(d => d != null && Key(d.muscleId) && Key(d.provenance)),
+                "Declare the complete selected muscle inventory and attachment provenance; the original protocol requires 38 paths.");
             var ids = c.declarations.Select(d => d.muscleId).ToArray();
-            Require(ids.Distinct(StringComparer.Ordinal).Count() == PathCount && ids.SequenceEqual(ids.OrderBy(s => s, StringComparer.Ordinal)),
+            Require(ids.Distinct(StringComparer.Ordinal).Count() == ids.Length && ids.SequenceEqual(ids.OrderBy(s => s, StringComparer.Ordinal)),
                 "Muscle declarations must be distinct and canonically ordered.");
             foreach (var d in c.declarations)
             {
@@ -88,7 +94,7 @@ namespace Nre.UnityWorld
         public static void Validate(Reply r, Configuration c, string configurationHash)
         {
             double h = StepMs(c);
-            Require(r != null && r.protocol == Protocol && r.sessionId == c.sessionId && Hash(configurationHash) && r.configurationHash == configurationHash &&
+            Require(r != null && r.protocol == c.protocol && r.sessionId == c.sessionId && Hash(configurationHash) && r.configurationHash == configurationHash &&
                 r.unity == "6000.3.19f1" && r.isolated && r.paused && !r.connected && r.sequence >= 0 && r.physicsStep >= 0 && r.physicsStep <= MaximumSteps &&
                 r.physicsStepMs == h && r.physicalTimeMs == r.physicsStep * h, "Invalid native full-body identity or clock.");
             Require(!string.IsNullOrEmpty(r.geometryJson) && r.bodyFingerprint == Digest(r.geometryJson) &&
@@ -97,7 +103,7 @@ namespace Nre.UnityWorld
                 !string.IsNullOrEmpty(r.mechanicsDiagnosticJson), "Native evidence hash or declared mechanical evidence is missing.");
             Require((r.plantFingerprint == "" || Hash(r.plantFingerprint)) &&
                 (r.physicsStep <= c.passivePreludeSteps ? r.lastAppliedEffortId == "" : GuidN(r.lastAppliedEffortId)), "Invalid plant/last effort identity.");
-            Require(r.paths != null && r.paths.Length == PathCount && r.paths.All(p => p != null) &&
+            Require(r.paths != null && r.paths.Length == c.declarations.Length && r.paths.All(p => p != null) &&
                 r.paths.Select(p => p.muscleId).SequenceEqual(c.declarations.Select(d => d.muscleId)) &&
                 r.paths.All(p => Hash(p.pathFingerprint) && Finite(p.lengthMeters) && p.lengthMeters > 0 && Finite(p.velocityMetersPerSecond)),
                 "Missing, unordered or nonfinite muscle path measurements.");
@@ -105,7 +111,7 @@ namespace Nre.UnityWorld
         public static void Validate(Request r, Reply current, Configuration c, string configurationHash)
         {
             Validate(current, c, configurationHash);
-            Require(r != null && r.protocol == Protocol && r.sessionId == current.sessionId && r.configurationHash == configurationHash &&
+            Require(r != null && r.protocol == c.protocol && r.sessionId == current.sessionId && r.configurationHash == configurationHash &&
                 r.sequence == checked(current.sequence + 1) && r.expectedStep == current.physicsStep &&
                 r.bodyFingerprint == current.bodyFingerprint && r.stateHash == current.stateHash && r.startTimeMs == current.physicalTimeMs,
                 "Command must name this exact session, sequence and body endpoint.");
@@ -116,7 +122,7 @@ namespace Nre.UnityWorld
             {
                 Require(Hash(current.plantFingerprint) && current.physicsStep < MaximumSteps && GuidN(r.effortId) && r.effortId != current.lastAppliedEffortId &&
                     r.endTimeMs == checked(current.physicsStep + 1) * (double)current.physicsStepMs, "Invalid effort or physical interval.");
-                Require(r.tensions != null && r.tensions.Length == PathCount && r.tensions.All(t => t != null) &&
+                Require(r.tensions != null && r.tensions.Length == c.declarations.Length && r.tensions.All(t => t != null) &&
                     r.tensions.Select(t => t.muscleId).SequenceEqual(c.declarations.Select(d => d.muscleId)) &&
                     r.tensions.All(t => Finite(t.axialNewtons) && t.axialNewtons >= 0 && t.axialNewtons <= float.MaxValue),
                     "Require every ordered, finite, nonnegative tendon tension exactly once.");

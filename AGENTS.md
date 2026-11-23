@@ -1,5 +1,32 @@
 # Avatar and environment work
 
+FRAME MAPPING REVIEWED / NAMED NATIVE PATHS AUTHORED — 23 November: Paul
+reported final DIAGNOSTICS_COMPLETE for `muscle-frames-20261123-581e1f`.
+Both full 2,852-file copies, frozen source/binaries and exact 288-test inventory
+verified. All 44 coordinates passed 80/110-digit comparisons (max coordinate
+error 5.71762150157173e-17 m), all eight passive equilibria passed, runtime
+unchanged. Five-file review plus manifest D:-verified at
+`artifacts/muscle-frames-20261123-581e1f-review`. NO pending reports here.
+
+New explicitly selected `named-avatar-tendon-wire-v1` admits a fixed named
+muscle inventory and multijoint/via-point paths without synthetic joint pairs.
+Original v3 retains its 38-path rule. Unity owner, bridge and actual host carry
+the selected protocol; named receipts verify each exact anchor/body/provenance
+and independently reconstructed canonical path fingerprint. Force/neuronal
+equations and original tests unchanged. `--named-muscles` on the existing
+fresh-motor runner adds 28 cases to the 331 previous regressions (359 total),
+then builds a separate Unity player and executes twelve mapped lower-leg
+cases: quiet, each of ten muscles at prescribed 40 N, quiet with inspections.
+96 physical steps / 108 endpoints / 324 head receipts / 3,696 force points.
+Initial bones/pose must match source before force; all old quiet states remain
+required. Prospective geometry/force limits are frozen, foot scale remains
+explicit shin-ratio proxy, no neuronal or muscle-cell source is manufactured.
+Host/test authoring builds passed with zero warnings/errors; eight inventories
+and Python/PowerShell syntax checked. NO new tests/models executed yet.
+Next commit/push/freeze/launch visible PowerShell; no live monitoring. See
+`docs/DNNE_Named_Muscle_Native_2026-11-23.md`. Full goal remains incomplete;
+native result, anatomy, populations, coupled dynamics and standing remain open.
+
 LOWER-LEG FRAME STUDY LAUNCHED — 23 November: independent visible task
 `DNNE-Muscle-Frames-8dc8e232d434` started for
 `D:/DNNE-build-work/muscle-frames-20261123-581e1f`, frozen at pushed

@@ -29,7 +29,9 @@ def initial_balance_reference():
     return result
 
 
-def configure(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False):
+def configure(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False, named_muscles=False):
+    if named_muscles: assert not (initial_balance or frame_map)
+    head = head or named_muscles
     initial_balance = initial_balance or frame_map
     if initial_balance: assert not (articulated or attachment or head)
     attachment = attachment or head
@@ -49,22 +51,37 @@ def configure(closed_loop=False, articulated=False, attachment=False, head=False
             helper.COUNTS.update(PassiveMotorAttachmentTests=20)
             if head:
                 helper.COUNTS.update(NativeArticulatedHeadInputTests=16)
-                return 331
+                if named_muscles: helper.COUNTS.update(NamedMuscleBridgeTests=28)
+                return 359 if named_muscles else 331
             return 315
         return 295
     return 243 if closed_loop else 155
 
 
-def prepare(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False):
+def prepare(closed_loop=False, articulated=False, attachment=False, head=False, initial_balance=False, frame_map=False, named_muscles=False):
+    head = head or named_muscles
     initial_balance = initial_balance or frame_map
     attachment = attachment or head
     articulated = articulated or attachment
     closed_loop = closed_loop or articulated or initial_balance
-    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map)
+    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map, named_muscles)
     assert not helper.git('status', '--porcelain'), 'Commit clean source first.'
     revision = helper.git('rev-parse', 'HEAD')
     assert revision == helper.git('rev-parse', 'origin/main'), 'Push first.'
     balance_declaration = None; balance_runtime = None
+    named_declaration = None; unity = None
+    if named_muscles:
+        changed = sorted(helper.git('diff','--name-only','7002e56',revision,'--','src','Protocol','Shared.Contracts','Structures',
+            'ControlProgram','UnityWorld','tests','tools/NativeMotorBridgeProbe').splitlines())
+        expected = sorted(['UnityWorld/Assets/NRE/Runtime/'+name+'.cs' for name in
+            ('ArticulatedTendonWire','ArticulatedMusclePathOwner','ArticulatedTendonBridge')] +
+            ['tools/NativeMotorBridgeProbe/NativeArticulatedBody.cs','tools/NativeMotorBridgeProbe/NamedMuscleNativeStudy.cs',
+             'tools/NativeMotorBridgeProbe/Program.cs','tests/NeuralResonanceEngine.DNNE.Tests/NamedMuscleBridgeTests.cs'])
+        assert changed == expected, changed
+        named_declaration = dict(baseRevision=helper.git('rev-parse','7002e56'), changedFiles=changed,
+                                 originalBiologicalKernelsAndTestsUnchanged=True)
+        unity = Path(read(Path('D:/DNNE-build-work/declared-body-mechanics-20261123-203560/configuration.json'))['UnityExecutable'])
+        assert unity.is_file()
     if initial_balance:
         changed = sorted(helper.git('diff', '--name-only', '05a1ed5', revision, '--',
             'src', 'Protocol', 'Shared.Contracts', 'Structures', 'ControlProgram', 'UnityWorld', 'tests').splitlines())
@@ -77,7 +94,7 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
         balance_declaration = dict(baseRevision=helper.git('rev-parse', '05a1ed5'), changedRuntimeFiles=changed,
                                   originalKernelsAndExistingTestsUnchanged=True)
     methods = helper.inventory(); assert sum(methods.values()) == total
-    prefix = 'muscle-frames-' if frame_map else 'muscle-initial-' if initial_balance else 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
+    prefix = 'named-muscle-native-' if named_muscles else 'muscle-frames-' if frame_map else 'muscle-initial-' if initial_balance else 'articulated-head-' if head else 'motor-attachment-' if attachment else 'tendon-wire-' if articulated else 'motor-closure-' if closed_loop else 'motor-epoch-'
     name = prefix+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+uuid.uuid4().hex[:6]
     package = Path('D:/DNNE-build-work')/name; backup = Path('D:/DNNE-desktop-runs/UnityWorld')/name
     assert not package.exists() and not backup.exists(); package.mkdir()
@@ -93,10 +110,17 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with target.open('xb') as stream: stream.write(archive.read(item))
     shutil.copyfile(package/'source/tools/backup-unity-run.ps1', package/'backup-run.ps1')
-    if frame_map:
+    if frame_map or named_muscles:
         spec = importlib.util.spec_from_file_location('frame_input_preservation', ROOT/'tools/native_articulated_head_study.py')
         preservation = importlib.util.module_from_spec(spec); spec.loader.exec_module(preservation)
-        preservation.protected_copy(ROOT/'artifacts/lower-leg-anatomy-input-20261123', package/'anatomical-input', ['binding-input.json'])
+        input_source = ROOT/'artifacts/lower-leg-anatomy-input-20261123'
+        names = [e['Path'].replace('\\','/') for e in read(input_source/'backup-manifest.json')['Files']] if named_muscles else ['binding-input.json']
+        preservation.protected_copy(input_source, package/'anatomical-input', names)
+        if named_muscles:
+            reviewed = ROOT/'artifacts/muscle-frames-20261123-581e1f-review'
+            proof = read(reviewed/'review.json')
+            assert proof['operatorReportedCompletion'] and proof['frameArithmeticPassed'] and proof['passedTests']==288 and proof['originalPoints']==44
+            preservation.protected_copy(reviewed,package/'frame-review',[e['Path'].replace('\\','/') for e in read(reviewed/'backup-manifest.json')['Files']])
     files = [dict(Path=p.relative_to(package).as_posix(), Sha256=digest(p)) for p in sorted(package.rglob('*')) if p.is_file()]
     dotnet = Path(shutil.which('dotnet')); python = Path(sys.executable)
     write(package/'configuration.json', dict(Revision=revision, PackageFiles=files, BackupDestination=str(backup),
@@ -107,12 +131,17 @@ def prepare(closed_loop=False, articulated=False, attachment=False, head=False, 
         PassiveMotorAttachmentRegression=attachment, ArticulatedHeadInputRegression=head,
         MuscleInitialBalanceRegression=initial_balance, NewInitialBalanceCases=20 if initial_balance else 0,
         MuscleFrameMapRegression=frame_map, NewFrameCases=25 if frame_map else 0,
+        NamedMuscleRegression=named_muscles, NewNamedMuscleCases=28 if named_muscles else 0, NamedMuscleChangeDeclaration=named_declaration,
+        UnityExecutable=str(unity) if unity else None,UnityExecutableSha256=digest(unity) if unity else None,
+        UnityBuildWorkspace=str(Path('D:/DNNE-build-work')/(name+'-unity-build')) if named_muscles else None,
+        NativeNamedMuscleStudy=named_muscles,NamedNativeCases=12 if named_muscles else 0,
+        NamedNativeLimits=dict(forceNewtons=1e-10,pathLengthMeters=2e-12,nativePointMeters=2e-6,responseRadians=1e-6) if named_muscles else None,
         InitialBalanceChangeDeclaration=balance_declaration, InitialBalanceReferenceRuntime=balance_runtime,
         ExpectedTestCases=total, NewClockCases=0 if closed_loop else 13, NewScheduleCases=14 if closed_loop and not articulated and not initial_balance else 0,
-        NewBridgeCases=34 if articulated and not attachment else 0, NewAttachmentCases=20 if attachment and not head else 0, NewHeadCases=16 if head else 0,
-        ExistingRegressionCases=243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142,
+        NewBridgeCases=34 if articulated and not attachment else 0, NewAttachmentCases=20 if attachment and not head else 0, NewHeadCases=16 if head and not named_muscles else 0,
+        ExistingRegressionCases=331 if named_muscles else 243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142,
         ExpectedTestMethods=methods, TestFilter='|'.join('FullyQualifiedName~'+name for name in helper.COUNTS),
-        OriginalCaptureAccessed=False, NativeUnityExecuted=False, LiveBrainAccessed=False, OldSavesLoaded=False,
+        OriginalCaptureAccessed=named_muscles, NativeUnityExecuted=False, LiveBrainAccessed=False, OldSavesLoaded=False,
         IndependentCoupledTrajectoryQualified=False, PhysiologicalFiringQualified=False, AvatarBalanceQualified=False))
     preflight(package)
     print(json.dumps(dict(Package=str(package), Backup=str(backup), Revision=revision,
@@ -127,10 +156,11 @@ def preflight(package):
     head = cfg.get('ArticulatedHeadInputRegression', False)
     initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
     frame_map = cfg.get('MuscleFrameMapRegression', False)
+    named_muscles = cfg.get('NamedMuscleRegression', False)
     assert (not articulated or closed_loop) and (not attachment or articulated) and (not head or attachment)
-    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map)
+    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map, named_muscles)
     assert cfg['NoLiveMonitoring'] and cfg['FreshMotorEpochRegression'] and cfg['ExpectedTestCases'] == total
-    assert cfg['NewClockCases'] == (0 if closed_loop else 13) and cfg['ExistingRegressionCases'] == (243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142)
+    assert cfg['NewClockCases'] == (0 if closed_loop else 13) and cfg['ExistingRegressionCases'] == (331 if named_muscles else 243 if initial_balance else 315 if head else 295 if attachment else 261 if articulated else 229 if closed_loop else 142)
     assert cfg.get('NewScheduleCases', 0) == (14 if closed_loop and not articulated and not initial_balance else 0)
     assert cfg.get('NewInitialBalanceCases', 0) == (20 if initial_balance else 0)
     if initial_balance:
@@ -150,10 +180,24 @@ def preflight(package):
         binding = read(package/'anatomical-input/binding-input.json')
         assert binding['version'] == 'paired-lower-leg-anatomical-input-v1'
         assert binding['selectedMuscles'] == 10 and binding['selectedPathPoints'] == 44 and not binding['mappedCoordinatesProduced']
+    if named_muscles:
+        assert head and not initial_balance and not frame_map and cfg['NewNamedMuscleCases'] == 28
+        declared = cfg['NamedMuscleChangeDeclaration']
+        assert declared['baseRevision'].startswith('7002e56') and declared['originalBiologicalKernelsAndTestsUnchanged']
+        assert declared['changedFiles'] == sorted(['UnityWorld/Assets/NRE/Runtime/'+name+'.cs' for name in
+            ('ArticulatedTendonWire','ArticulatedMusclePathOwner','ArticulatedTendonBridge')] +
+            ['tools/NativeMotorBridgeProbe/NativeArticulatedBody.cs','tools/NativeMotorBridgeProbe/NamedMuscleNativeStudy.cs',
+             'tools/NativeMotorBridgeProbe/Program.cs','tests/NeuralResonanceEngine.DNNE.Tests/NamedMuscleBridgeTests.cs'])
+        assert digest(cfg['UnityExecutable']) == cfg['UnityExecutableSha256']
+        assert cfg['NativeNamedMuscleStudy'] and cfg['NamedNativeCases']==12
+        assert cfg['NamedNativeLimits']==dict(forceNewtons=1e-10,pathLengthMeters=2e-12,nativePointMeters=2e-6,responseRadians=1e-6)
+        proof=read(package/'frame-review/review.json')
+        assert proof['operatorReportedCompletion'] and proof['frameArithmeticPassed'] and proof['passedTests']==288 and proof['originalPoints']==44
     assert cfg.get('NewBridgeCases', 0) == (34 if articulated and not attachment else 0)
     assert cfg.get('NewAttachmentCases', 0) == (20 if attachment and not head else 0)
-    assert cfg.get('NewHeadCases', 0) == (16 if head else 0)
-    for key in ('OriginalCaptureAccessed', 'NativeUnityExecuted', 'LiveBrainAccessed', 'OldSavesLoaded',
+    assert cfg.get('NewHeadCases', 0) == (16 if head and not named_muscles else 0)
+    assert cfg['OriginalCaptureAccessed'] == named_muscles
+    for key in ('NativeUnityExecuted', 'LiveBrainAccessed', 'OldSavesLoaded',
                 'IndependentCoupledTrajectoryQualified', 'PhysiologicalFiringQualified', 'AvatarBalanceQualified'):
         assert cfg[key] is False, key
     for entry in cfg['PackageFiles']: assert digest(package/entry['Path']) == entry['Sha256'], entry['Path']
@@ -188,7 +232,8 @@ def check_tests(package):
     head = cfg.get('ArticulatedHeadInputRegression', False)
     initial_balance = cfg.get('MuscleInitialBalanceRegression', False)
     frame_map = cfg.get('MuscleFrameMapRegression', False)
-    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map)
+    named_muscles = cfg.get('NamedMuscleRegression', False)
+    total = configure(closed_loop, articulated, attachment, head, initial_balance, frame_map, named_muscles)
     tree = ET.parse(package/'test-results/focused.trx')
     definitions = {r.attrib['id']:r.find('t:TestMethod', ns).attrib for r in tree.findall('.//t:UnitTest', ns)}
     rows = tree.findall('.//t:UnitTestResult', ns); actual = Counter()
@@ -205,6 +250,7 @@ def check_tests(package):
     if articulated: analysis.update(newBridgeCases=cfg['NewBridgeCases'], hostProtocolChecksPassed=True, nativeFullBodyBridgeQualified=False)
     if attachment: analysis.update(newAttachmentCases=cfg.get('NewAttachmentCases',20), physicalInitializationChecksPassed=True, nativePassiveInitializationQualified=False)
     if head: analysis.update(newHeadCases=16, originalHeadInputChecksPassed=True, nativeHeadDeliveryQualified=False)
+    if named_muscles: analysis.update(newHeadCases=0,newNamedMuscleCases=28,namedMuscleProtocolChecksPassed=True,nativeNamedMuscleDeliveryQualified=False)
     if initial_balance:
         independent = initial_balance_reference().compare(package)
         analysis.update(newInitialBalanceCases=20, initialMuscleBalanceChecksPassed=True,
@@ -219,14 +265,20 @@ def check_tests(package):
     print(f'All {total} component/regression cases passed. Whole-loop timing, physiological firing and standing remain separate.', flush=True)
 
 
+def named_compare(package):
+    cfg=read(package/'configuration.json');assert cfg['NativeNamedMuscleStudy'] and cfg['NamedMuscleRegression']
+    spec=importlib.util.spec_from_file_location('named_native_saved_comparison',ROOT/'tools/named_muscle_native_analysis.py')
+    comparison=importlib.util.module_from_spec(spec);spec.loader.exec_module(comparison);comparison.compare(package)
+
+
 if __name__ == '__main__':
     if not __debug__: raise RuntimeError('Assertions must remain enabled.')
-    parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests'))
+    parser = argparse.ArgumentParser(); parser.add_argument('stage', choices=('prepare','preflight','runtime','check-tests','named-compare'))
     parser.add_argument('package', nargs='?', type=Path); parser.add_argument('--closed-loop', action='store_true')
     parser.add_argument('--articulated', action='store_true'); parser.add_argument('--attachment', action='store_true'); parser.add_argument('--head', action='store_true')
-    parser.add_argument('--initial-balance', action='store_true'); parser.add_argument('--frame-map', action='store_true'); args = parser.parse_args()
-    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head, args.initial_balance, args.frame_map)
+    parser.add_argument('--initial-balance', action='store_true'); parser.add_argument('--frame-map', action='store_true'); parser.add_argument('--named-muscles', action='store_true'); args = parser.parse_args()
+    if args.stage == 'prepare': prepare(args.closed_loop, args.articulated, args.attachment, args.head, args.initial_balance, args.frame_map, args.named_muscles)
     else:
-        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head and not args.initial_balance and not args.frame_map, 'The frozen configuration selects the protocol after preparation.'
+        assert not args.closed_loop and not args.articulated and not args.attachment and not args.head and not args.initial_balance and not args.frame_map and not args.named_muscles, 'The frozen configuration selects the protocol after preparation.'
         assert args.package is not None
-        {'preflight':preflight, 'runtime':runtime, 'check-tests':check_tests}[args.stage](args.package.resolve())
+        {'preflight':preflight, 'runtime':runtime, 'check-tests':check_tests,'named-compare':named_compare}[args.stage](args.package.resolve())

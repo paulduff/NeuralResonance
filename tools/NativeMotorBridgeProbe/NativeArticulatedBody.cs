@@ -12,6 +12,9 @@ using Wire = Nre.UnityWorld.ArticulatedTendonWire;
 using Request = Nre.UnityWorld.ArticulatedTendonWire.Request;
 using Reply = Nre.UnityWorld.ArticulatedTendonWire.Reply;
 using Path = System.IO.Path;
+using AvatarMusclePath = NRE.SimAvatar.AvatarMusclePath;
+using MusclePathAnchor = NRE.SimAvatar.MusclePathAnchor;
+using MusclePathVector = NRE.SimAvatar.MusclePathVector;
 
 internal interface IArticulatedTendonExchange
 {
@@ -63,7 +66,7 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
             var after = Send(request);
             var frame = Frame(after);
             string evidence = JsonSerializer.Serialize(new
-                { Protocol, OriginalClock = originalClock, ClockFingerprint = originalClock.Fingerprint, Before = before, Request = request, After = after }, Json);
+                { Protocol = _configuration.protocol, OriginalClock = originalClock, ClockFingerprint = originalClock.Fingerprint, Before = before, Request = request, After = after }, Json);
             attachment = new(originalClock, frame, Wire.Digest(evidence));
             InitializationEvidenceJson = evidence;
         });
@@ -113,7 +116,7 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
         Require(!_faulted && !_stopped && Environment.CurrentManagedThreadId == _owner, "One owner; stopped or uncertain physical epochs cannot resume.");
         try { operation(); } catch { _faulted = true; throw; }
     }
-    private Request NewRequest(string operation) => new() { protocol = Protocol, sessionId = _configuration.sessionId,
+    private Request NewRequest(string operation) => new() { protocol = _configuration.protocol, sessionId = _configuration.sessionId,
         configurationHash = _configurationHash, operation = operation, sequence = checked(_last.sequence + 1), expectedStep = _last.physicsStep,
         bodyFingerprint = _last.bodyFingerprint, plantFingerprint = _last.plantFingerprint, stateHash = _last.stateHash,
         effortId = "", startTimeMs = _last.physicalTimeMs, endTimeMs = _last.physicalTimeMs, tensions = [] };
@@ -132,6 +135,7 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
         using var geometry = Parse(r.geometryJson);
         Require(geometry.RootElement.GetProperty("links").EnumerateArray().Select(l => l.GetProperty("id").GetString()).SequenceEqual(Bodies),
             "Full physical geometry must retain all fifteen canonical links.");
+        if (_configuration.protocol == NamedMuscleProtocol) ValidateNamedPaths(r, geometry.RootElement);
         float expectedFriction = _configuration.mechanicsMode == "original" ? .05f : 0f;
         Require(geometry.RootElement.GetProperty("links").EnumerateArray().All(l => l.GetProperty("jointFriction").GetSingle() == expectedFriction),
             "Actual joint friction differs from the explicit reviewed body setting.");
@@ -171,6 +175,30 @@ internal sealed class NativeArticulatedBody : IAvatarMotorMechanicalBody
                 "Skull measurement belongs to another sensor or endpoint.");
         }
         if (r.physicsStep > _configuration.passivePreludeSteps) Require(!string.IsNullOrEmpty(r.applicationsJson), "Missing actual point-force applications.");
+    }
+    private void ValidateNamedPaths(Reply reply, JsonElement geometry)
+    {
+        Require(geometry.GetProperty("version").GetString() == NamedGeometryVersion, "Named muscles require their explicit native geometry version.");
+        using var declared = Parse(geometry.GetProperty("declarationsJson").GetString()!);
+        var paths = declared.RootElement.GetProperty("paths");
+        Require(paths.GetArrayLength() == _configuration.declarations.Length, "Native named inventory differs from the bound configuration.");
+        for (int i = 0; i < paths.GetArrayLength(); i++)
+        {
+            var actual = paths[i]; var expected = _configuration.declarations[i];
+            Require(actual.GetProperty("id").GetString() == expected.muscleId && actual.GetProperty("provenance").GetString() == expected.provenance,
+                "Native muscle identity or provenance differs from its declaration.");
+            var anchors = actual.GetProperty("anchors"); Require(anchors.GetArrayLength() == expected.anchors.Length, "Native attachments missing or added.");
+            for (int j = 0; j < anchors.GetArrayLength(); j++)
+            {
+                var a = anchors[j]; var e = expected.anchors[j];
+                Require(a.GetProperty("id").GetString() == e.id && a.GetProperty("bodyId").GetString() == e.bodyId && Bodies.Contains(e.bodyId) &&
+                    a.GetProperty("xBits").GetString() == e.x.bits && a.GetProperty("yBits").GetString() == e.y.bits && a.GetProperty("zBits").GetString() == e.z.bits,
+                    "Native attachment frame, point order or exact declared coordinates differ.");
+            }
+            var canonical = new AvatarMusclePath(expected.muscleId, reply.bodyFingerprint, expected.provenance,
+                expected.anchors.Select(a => new MusclePathAnchor(a.id,a.bodyId,new MusclePathVector(a.x,a.y,a.z))));
+            Require(reply.paths[i].pathFingerprint == canonical.Fingerprint, "Native path fingerprint does not match its complete declared anatomy.");
+        }
     }
     private static int Bits(JsonElement array)
     { foreach (var v in array.EnumerateArray()) _ = Decode(v.GetString()); return array.GetArrayLength(); }

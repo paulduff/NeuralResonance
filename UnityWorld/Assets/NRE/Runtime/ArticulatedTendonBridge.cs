@@ -42,7 +42,8 @@ namespace Nre.UnityWorld
                 mechanics = TendonMechanicsDiagnostic.Prepare(world, configuration.mechanicsMode);
                 owner = new ArticulatedMusclePathOwner(world, configuration.declarations.Select(d => new ArticulatedMusclePathOwner.Declaration(
                     d.muscleId, d.provenance, d.anchors.Select(a => new MusclePathAnchor(a.id, a.bodyId, new MusclePathVector(a.x, a.y, a.z))))), stepSeconds,
-                    allowPassivePrelude: configuration.passivePreludeSteps == 1);
+                    allowPassivePrelude: configuration.passivePreludeSteps == 1,
+                    namedMusclePaths: configuration.protocol == NamedMuscleProtocol);
                 mechanics.Bound();
                 var initial = Capture("hello", 0, true); Validate(initial, configuration, configurationHash);
                 Write("hello.json", JsonUtility.ToJson(initial)); last = initial;
@@ -112,7 +113,7 @@ namespace Nre.UnityWorld
             }
             // Inspections replay the original endpoint observation, including its
             // wall receipt timestamp. They do not manufacture another sample.
-            return new Reply { protocol = Protocol, sessionId = configuration.sessionId, configurationHash = configurationHash,
+            return new Reply { protocol = configuration.protocol, sessionId = configuration.sessionId, configurationHash = configurationHash,
                 operation = operation, sequence = sequence, unity = Application.unityVersion, isolated = world.IsolatedQualification,
                 paused = !world.Running, connected = world.Connected, physicsStep = s.PhysicsStep, physicsStepMs = s.PhysicsStepMs,
                 physicalTimeMs = s.PhysicalTimeMs, bodyFingerprint = s.BodyFingerprint, plantFingerprint = s.PlantFingerprint,
@@ -134,7 +135,7 @@ namespace Nre.UnityWorld
             Debug.LogException(error);
             if (ownsDirectory)
             {
-                try { Write("failure.json", JsonUtility.ToJson(new Failure { sessionId = configuration?.sessionId,
+                try { Write("failure.json", JsonUtility.ToJson(new Failure { protocol = configuration?.protocol ?? Protocol, sessionId = configuration?.sessionId,
                     error = error.ToString(), lastAcknowledgedSequence = last?.sequence ?? 0, observedPhysicsStep = world.physicsSteps,
                     advanceAttempted = advanceAttempted, lastAcknowledged = last })); }
                 catch (Exception preservationError) { Debug.LogException(preservationError); }

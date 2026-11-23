@@ -93,6 +93,7 @@ namespace Nre.UnityWorld
         readonly float physicalStepSeconds;
         readonly bool observeNativeForces;
         readonly bool allowPassivePrelude;
+        readonly bool namedMusclePaths;
         bool passivePreludeCompleted;
         Snapshot last;
         bool faulted;
@@ -105,7 +106,7 @@ namespace Nre.UnityWorld
         internal string LastNativeForcesJson { get; private set; } = "";
 
         internal ArticulatedMusclePathOwner(WorldController world, IEnumerable<Declaration> declarations, float stepSeconds = WorldController.StepSeconds,
-            bool observeNativeForces = false, bool allowPassivePrelude = false)
+            bool observeNativeForces = false, bool allowPassivePrelude = false, bool namedMusclePaths = false)
         {
             if (world == null || declarations == null) throw new ArgumentNullException();
             if (!MusclePathVector.Finite(stepSeconds) || stepSeconds <= 0 || stepSeconds > WorldController.StepSeconds)
@@ -113,12 +114,14 @@ namespace Nre.UnityWorld
             physicalStepSeconds = stepSeconds;
             this.observeNativeForces = observeNativeForces;
             this.allowPassivePrelude = allowPassivePrelude;
+            this.namedMusclePaths = namedMusclePaths;
             this.world = world; body = world.Avatar;
             var declared = declarations.ToArray();
             var expected = MuscleProfiles.All.SelectMany(p => new[] { p.Variable + "/flexor", p.Variable + "/extensor" }).OrderBy(n => n, StringComparer.Ordinal).ToArray();
-            if (declared.Any(d => d == null || d.Anchors == null || d.Anchors.Any(a => a == null)) ||
-                !declared.Select(d => d.MuscleId).OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(expected))
-                throw new ArgumentException("Declare every existing Avatar muscle group exactly once, including side and joint axis.");
+            if (declared.Length == 0 || declared.Any(d => d == null || d.Anchors == null || d.Anchors.Any(a => a == null)) ||
+                declared.Select(d => d.MuscleId).Distinct(StringComparer.Ordinal).Count() != declared.Length ||
+                (!namedMusclePaths && !declared.Select(d => d.MuscleId).OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(expected)))
+                throw new ArgumentException("Declare each selected muscle exactly once; the original profile requires all joint/axis pairs.");
             declared = declared.OrderBy(d => d.MuscleId, StringComparer.Ordinal).ToArray();
             foreach (var declaration in declared)
             {
@@ -129,9 +132,14 @@ namespace Nre.UnityWorld
                     if (!body.links.ContainsKey(anchor.BodyId) || !Finite(F(anchor.LocalPositionMeters)))
                         throw new ArgumentException("Attachment names an absent body or unrepresentable local point.");
                 }
-                var profile = MuscleProfiles.All.Single(p => declaration.MuscleId.StartsWith(p.Variable + "/", StringComparison.Ordinal));
-                if (!declaration.Anchors.Any(a => a.BodyId == profile.Joint) || declaration.Anchors.Select(a => a.BodyId).Distinct().Count() < 2)
-                    throw new ArgumentException("A muscle must include its declared moving link and another body.");
+                if (declaration.Anchors.Select(a => a.BodyId).Distinct().Count() < 2)
+                    throw new ArgumentException("A muscle must connect at least two declared bodies.");
+                if (!namedMusclePaths)
+                {
+                    var profile = MuscleProfiles.All.Single(p => declaration.MuscleId.StartsWith(p.Variable + "/", StringComparison.Ordinal));
+                    if (!declaration.Anchors.Any(a => a.BodyId == profile.Joint))
+                        throw new ArgumentException("An original profile path must include its declared moving link.");
+                }
                 validation.Measure("validation", declaration.Anchors.Select(a => {
                     var native = body.links[a.BodyId].body; var point = native.transform.TransformPoint(F(a.LocalPositionMeters));
                     return new MusclePathPoint(a.AttachmentId, a.BodyId, D(point), D(native.GetPointVelocity(point)));
@@ -264,6 +272,7 @@ namespace Nre.UnityWorld
             return new Snapshot(world.physicsSteps, PhysicsStepMs, BodyFingerprint, plantFingerprint, state, lastEffort, measured);
         }
         string CaptureGeometryJson() => JsonUtility.ToJson(new Geometry {
+            version = namedMusclePaths ? ArticulatedTendonWire.NamedGeometryVersion : "declared-full-avatar-tendon-paths-v2",
             unity = Application.unityVersion, declarationsJson = declarationsJson, sceneMechanicsJson = ArticulatedMechanicsIdentity.Capture(body),
             stepSeconds = physicalStepSeconds, gravity = Physics.gravity,
             links = body.links.Values.OrderBy(l => l.name, StringComparer.Ordinal).Select(l => new GeometryLink {

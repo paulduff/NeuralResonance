@@ -9,10 +9,12 @@ $attachment=($configuration.PSObject.Properties.Name -contains 'PassiveMotorAtta
 $head=($configuration.PSObject.Properties.Name -contains 'ArticulatedHeadInputRegression') -and $configuration.ArticulatedHeadInputRegression
 $initialBalance=($configuration.PSObject.Properties.Name -contains 'MuscleInitialBalanceRegression') -and $configuration.MuscleInitialBalanceRegression
 $frameMap=($configuration.PSObject.Properties.Name -contains 'MuscleFrameMapRegression') -and $configuration.MuscleFrameMapRegression
+$namedMuscles=($configuration.PSObject.Properties.Name -contains 'NamedMuscleRegression') -and $configuration.NamedMuscleRegression
+if($namedMuscles -and (-not $head -or $initialBalance -or $frameMap -or -not $configuration.NativeNamedMuscleStudy)){throw 'Named muscle study requires its full-body regression and native protocol.'}
 if($frameMap -and -not $initialBalance){throw 'Anatomical mapping retains equilibrium controls.'}
 if($initialBalance -and (-not $closedLoop -or $articulated -or $attachment -or $head)){throw 'Initial muscle balance retains the declared motor/plant regressions.'}
 if($head -and -not $attachment){throw 'Head input retains initial physical sampling controls.'}
-$expectedCases=if($frameMap){288}elseif($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
+$expectedCases=if($namedMuscles){359}elseif($frameMap){288}elseif($initialBalance){263}elseif($head){331}elseif($attachment){315}elseif($articulated){295}elseif($closedLoop){243}else{155}
 if($attachment -and -not $articulated){throw 'Motor initialization retains the full-body host controls.'}
 if($articulated -and -not $closedLoop){throw 'Full-body host controls retain the split-schedule regressions.'}
 if(-not $configuration.NoLiveMonitoring -or -not $configuration.FreshMotorEpochRegression -or $configuration.ExpectedTestCases -ne $expectedCases){throw 'Unexpected motor-clock protocol.'}
@@ -20,6 +22,7 @@ function Sha([string]$Path){(Get-FileHash -LiteralPath $Path -Algorithm SHA256).
 function Assert-Package {
  foreach($entry in $configuration.PackageFiles){if((Sha (Join-Path $package $entry.Path)) -ne $entry.Sha256){throw ('Frozen input changed: '+$entry.Path)}}
  foreach($name in @('Dotnet','Python')){if((Sha $configuration.($name+'Executable')) -ne $configuration.($name+'ExecutableSha256')){throw ($name+' executable changed.')}}
+ if($namedMuscles -and (Sha $configuration.UnityExecutable) -ne $configuration.UnityExecutableSha256){throw 'Unity executable changed.'}
 }
 if(-not $InWindow){
  if(Test-Path -LiteralPath (Join-Path $package 'launch.json')){throw 'Already launched; use a fresh package.'}
@@ -29,7 +32,7 @@ if(-not $InWindow){
   if((Sha (Join-Path $directory $entry.Path)) -ne $entry.Sha256){throw ('Initial source/backup differs: '+$entry.Path)}
  }}
  Assert-Package
- $taskPrefix=if($frameMap){'DNNE-Muscle-Frames-'}elseif($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
+ $taskPrefix=if($namedMuscles){'DNNE-Named-Muscle-Native-'}elseif($frameMap){'DNNE-Muscle-Frames-'}elseif($initialBalance){'DNNE-Muscle-Initial-'}elseif($head){'DNNE-Articulated-Head-'}elseif($attachment){'DNNE-Motor-Attachment-'}elseif($articulated){'DNNE-Tendon-Wire-'}elseif($closedLoop){'DNNE-Motor-Closure-'}else{'DNNE-Motor-Epoch-'}
  $taskName=$taskPrefix+[Guid]::NewGuid().ToString('N').Substring(0,12)
  $shell=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
  $arguments=@('-NoLogo','-NoProfile','-NoExit','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-InWindow','-LaunchTaskName',$taskName,'-PackageDirectory',$package)
@@ -64,14 +67,25 @@ function Capture-Binaries([string]$Assembly,[string]$Name){
  return $entries.ToArray()
 }
 function Stage([string]$stage){Invoke-Logged $configuration.PythonExecutable @('-I','-B',(Join-Path $package 'source/tools/fresh_motor_epoch_study.py'),$stage,$package) ($stage+'.log')}
+function Copy-Tree([string]$Source,[string]$Destination){
+ if(Test-Path -LiteralPath $Destination){throw ('Copy destination exists: '+$Destination)}
+ [IO.Directory]::CreateDirectory($Destination) | Out-Null
+ foreach($path in [IO.Directory]::EnumerateFiles($Source,'*',[IO.SearchOption]::AllDirectories)){
+  $target=Join-Path $Destination ($path.Substring($Source.Length).TrimStart('\','/'))
+  [IO.Directory]::CreateDirectory((Split-Path $target -Parent)) | Out-Null
+  [IO.File]::Copy($path,$target,$false)
+  if((Sha $path) -ne (Sha $target)){throw ('Copy differs: '+$path)}
+ }
+}
 $status=[ordered]@{Status='RUNNING';ExitCode=$null;Revision=$configuration.Revision;NoLiveMonitoring=$true;TestExecutionAttempted=$false;ClockChecksPassed=$false;NativeUnityExecuted=$false;LiveBrainAccessed=$false;OldSavesLoaded=$false;IndependentCoupledTrajectoryQualified=$false;PhysiologicalFiringQualified=$false;AvatarBalanceQualified=$false}
-$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBinaries=@();$probeBinaries=@();$probe=$null
+$statusPath=Join-Path $package 'window-status.json';$transcribing=$false;$testBinaries=@();$probeBinaries=@();$playerFiles=@();$probe=$null
 if(Test-Path -LiteralPath $statusPath){throw 'Refusing to overwrite an earlier run.'}
 try {
  Start-Transcript -Path (Join-Path $package 'powershell.log') | Out-Null;$transcribing=$true
  $Host.UI.RawUI.WindowTitle=if($frameMap){'DNNE lower leg attachment frames - 288 cases and 44 retained points'}elseif($initialBalance){'DNNE fresh muscle equilibrium - 263 cases and independent reference'}elseif($head){'DNNE original full Avatar head input - 331 component cases'}elseif($attachment){'DNNE passive motor attachment - 315 component/regression cases'}elseif($articulated){'DNNE full Avatar bridge - 295 component/regression cases'}elseif($closedLoop){'DNNE body and motor closure - 243 component/regression cases'}else{'DNNE fresh motor clock - 155 component/regression cases'}
  Write-Host ('Results: '+$package) -ForegroundColor Cyan
- if($frameMap){Write-Host '25 mapping controls and 263 previous regressions; ten named muscle paths and 44 source points independently checked. Foot scale is a declared shin-ratio proxy, not measured foot anatomy. No Unity or live brain.'}
+ if($namedMuscles){$Host.UI.RawUI.WindowTitle='DNNE named muscle paths - 359 checks then 12 actual Unity cases';Write-Host '28 named-path controls plus 331 previous regressions, then a separate Unity build and 12 isolated native cases using ten mapped lower-leg muscles. Known test tensions; no live brain or neuronal authority claim.'}
+ elseif($frameMap){Write-Host '25 mapping controls and 263 previous regressions; ten named muscle paths and 44 source points independently checked. Foot scale is a declared shin-ratio proxy, not measured foot anatomy. No Unity or live brain.'}
  elseif($initialBalance){Write-Host '20 fresh muscle controls and 243 existing regressions, then eight independent 80/110-digit equilibria. No Unity or live brain. This window stays open after backup.'}
  elseif($head){Write-Host '16 original head-input controls and 315 previous regressions. Prescribed protocol peer; no Unity or afferent firing.'}
  elseif($attachment){Write-Host '20 new passive-attachment controls and 295 previous regressions. Prescribed protocol peer; no Unity or live brain. This window stays open after its final backup.'}
@@ -107,13 +121,41 @@ try {
  if($head){$status['OriginalHeadInputChecksPassed']=$true;$status['NativeHeadDeliveryQualified']=$false}
  if($initialBalance){$status['InitialMuscleBalanceChecksPassed']=$true;$status['IndependentInitialBalancePassed']=$true;$status['LiveMuscleGeometrySelected']=$false}
  if($frameMap){$status['AnatomicalFrameArithmeticPassed']=$true;$status['AnatomicalCalibrationQualified']=$false}
+ if($namedMuscles){
+  $status['NamedMuscleProtocolChecksPassed']=$true
+  $workProject=Join-Path $configuration.UnityBuildWorkspace 'UnityWorld'
+  Copy-Tree (Join-Path $package 'source/UnityWorld') $workProject
+  $playerOutput=Join-Path $package 'player';[IO.Directory]::CreateDirectory($playerOutput) | Out-Null
+  Write-Host 'Building a separate Unity player for named anatomical paths...' -ForegroundColor Cyan
+  $priorOutput=[Environment]::GetEnvironmentVariable('NRE_UNITY_OUTPUT','Process')
+  try{
+   [Environment]::SetEnvironmentVariable('NRE_UNITY_OUTPUT',$playerOutput,'Process')
+   $arguments=@('-batchmode','-nographics','-projectPath',$workProject,'-executeMethod','Nre.UnityWorld.Editor.WorldBuild.BuildWindows','-quit','-logFile',(Join-Path $playerOutput 'build.log'))
+   $editorProcess=Start-Process -FilePath $configuration.UnityExecutable -ArgumentList (($arguments | ForEach-Object {ConvertTo-ProcessArgument $_}) -join ' ') -WorkingDirectory $workProject -WindowStyle Hidden -PassThru
+   if(-not $editorProcess.WaitForExit(1800000)){$editorProcess.Kill();$editorProcess.WaitForExit();throw 'Dedicated Unity build exceeded 30 minutes.'}
+   if($editorProcess.ExitCode -ne 0){throw 'Unity build failed; inspect saved build.log.'}
+  }finally{[Environment]::SetEnvironmentVariable('NRE_UNITY_OUTPUT',$priorOutput,'Process')}
+  $buildResult=Get-Content -LiteralPath (Join-Path $playerOutput 'build-result.json') -Raw | ConvertFrom-Json
+  if($buildResult.result -ne 'Succeeded' -or $buildResult.errors -ne 0){throw 'Native Unity build did not succeed.'}
+  $sourceUnity=Join-Path $package 'source/UnityWorld'
+  foreach($file in Get-ChildItem -LiteralPath $sourceUnity -Filter '*.cs' -Recurse -File){
+   $relative=$file.FullName.Substring($sourceUnity.Length).TrimStart('\','/')
+   if((Sha $file.FullName) -ne (Sha (Join-Path $workProject $relative))){throw ('Compiled Unity source changed: '+$relative)}
+  }
+  foreach($folder in @('Assets','Packages','ProjectSettings')){Copy-Tree (Join-Path $workProject $folder) (Join-Path $package ('built-project/'+$folder))}
+  $player=Join-Path $playerOutput 'DNNE Unity World.exe';$playerFiles=Capture-Binaries $player 'player-files.json';$status['UnityBuildSucceeded']=$true
+  $status.NativeUnityExecuted=$true;$status | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding UTF8
+  Invoke-Logged $configuration.DotnetExecutable @($probe,'--named-muscle-native',$player,(Join-Path $package 'frame-review/mapped-lower-leg-paths.json'),(Join-Path $package 'anatomical-input/binding-input.json'),(Join-Path $package 'native')) 'native-named.log'
+  Stage 'named-compare'
+  $status['NamedNativeAccountingPassed']=$true;$status['AllNamedPathsResponded']=$true;$status['AnatomicalCalibrationQualified']=$false;$status['NeuronalMotorAuthority']=$false
+ }
  $status.Status='DIAGNOSTICS_COMPLETE';$status.ExitCode=0
 }catch{
  $status.Status='FAILED';$status.ExitCode=1;$status['Error']=$_.Exception.ToString();Write-Host ('FAILED: '+$_.Exception.Message) -ForegroundColor Red
 }finally{
  try{
   Stage 'preflight';Assert-Package
-  foreach($entry in @($testBinaries)+@($probeBinaries)){if((Sha $entry.Path) -ne $entry.Sha256){throw ('Executed binary changed: '+$entry.Path)}}
+  foreach($entry in @($testBinaries)+@($probeBinaries)+@($playerFiles)){if((Sha $entry.Path) -ne $entry.Sha256){throw ('Executed binary changed: '+$entry.Path)}}
   $status['FrozenInputsPreserved']=$true
  }catch{$status.Status='FAILED';$status.ExitCode=1;$status['PreservationError']=$_.Exception.ToString()}
  if($probe -and (Test-Path -LiteralPath (Join-Path $package 'managed-runtime-before.json'))){
@@ -131,7 +173,8 @@ try {
  if($LaunchTaskName){Unregister-ScheduledTask -TaskName $LaunchTaskName -Confirm:$false -ErrorAction SilentlyContinue}
  Write-Host ('========== '+$status.Status+' ==========') -ForegroundColor Cyan
  Write-Host ('Results: '+$package)
- if($frameMap){Write-Host 'Tell Orion the lower-leg attachment mapping outcome. Coordinate accuracy, anatomical fit, native muscle delivery and Avatar standing are separate.'}
+ if($namedMuscles){Write-Host 'Tell Orion the actual named-muscle Unity outcome. Native attachment/force delivery, anatomical fit, neuronal authority and Avatar standing are separate.'}
+ elseif($frameMap){Write-Host 'Tell Orion the lower-leg attachment mapping outcome. Coordinate accuracy, anatomical fit, native muscle delivery and Avatar standing are separate.'}
  elseif($initialBalance){Write-Host 'Tell Orion the fresh muscle equilibrium outcome. Initial force balance, coupled trajectories, anatomical calibration, neuronal authority and Avatar standing are separate.'}
  elseif($head){Write-Host 'Tell Orion the acknowledged head-input outcome. Original sample ownership, actual native delivery, afferent physiology and Avatar standing are separate.'}
  elseif($attachment){Write-Host 'Tell Orion the passive motor attachment outcome. Clock/initialization controls, native delivery, physiological feedback and Avatar standing are separate.'}

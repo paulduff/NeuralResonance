@@ -1,5 +1,14 @@
 # Lower-leg attachment frames — 23 November 2026
 
+Completed and reviewed: `muscle-frames-20261123-581e1f`. Both full 2,852-file
+copies, frozen source and binaries, exact 288-test inventory and unchanged
+managed runtime verified. All 44 coordinates and all eight initial equilibria
+passed independent comparisons. Maximum coordinate error was
+5.71762150157173e-17 m. The five-file review plus manifest is D:-verified at
+`artifacts/muscle-frames-20261123-581e1f-review`. No model, test or reference
+was rerun during review. Anatomical fit remains separate from this numerical
+coordinate result.
+
 The existing native body's synthetic flexor/extensor paths are not a mapped
 human musculature. This candidate provides an explicit conversion from
 preserved reference attachment coordinates into Avatar body-local coordinates.
@@ -80,14 +89,14 @@ comparison records are saved, including on an accuracy failure.
 The authoring build passed with zero warnings/errors; Python/PowerShell syntax
 and all seven existing/new suite inventories were checked. No tests, reference
 calculations or body integration ran during authoring. Scientific results are
-pending the independent visible window and Paul's final footer.
+reported above following the independent visible window and Paul's footer.
 
 Launched `D:/DNNE-build-work/muscle-frames-20261123-581e1f`, frozen at
 `a3c2bb9997c0d6fbbbc7babf714ae384c7671eb3`. Preparation/preflight and both
 initial 2,260-file copies plus manifest passed verification. Interactive task
 `DNNE-Muscle-Frames-8dc8e232d434` started its independent visible PowerShell
-window. No postlaunch output/process/status inspected. This is the only
-pending report; the equilibrium run `4c4377` is completed and reviewed.
+window. No postlaunch output/process/status was inspected until Paul's final
+footer. The equilibrium run `4c4377` is also completed and reviewed.
 
 Next integration must admit named anatomical paths in the native protocol,
 which currently requires 38 synthetic joint flexor/extensor paths. It must

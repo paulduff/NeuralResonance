@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+NAMED MUSCLE PACKAGING RETRY LAUNCHED — 23 November: visible independent task
+`DNNE-Named-Muscle-Native-0122f4307146` started for
+`D:/DNNE-build-work/named-muscle-native-20261123-998900`, frozen at pushed
+`250fb111aeef3da1195b4decf2f03144310acbd8`. Both initial 2,287-file copies plus
+manifest verified, including the attributed FBX/texture and unchanged importer
+metadata. Eight packaging controls, original 359 managed cases, separate Unity
+build and twelve native named-path cases run in that window. Exactly ONE pending
+report: `998900`. No postlaunch output/process/status inspected; wait for Paul's
+final footer. Original `afc890` failure and its verified review remain untouched.
+No live DNNE, no changed muscles/neural equations/geometry/limits, worlds paused.
+Goal active and incomplete; native force/path result and standing remain open.
+
 NAMED MUSCLE BUILD FAILURE REVIEWED / PACKAGING REPAIRED — 23 November:
 Paul reported final FAILED for `named-muscle-native-20261123-afc890`.
 Both complete 2,872-file copies, 2,260 Git files, exact 359 passing managed tests,

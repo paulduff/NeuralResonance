@@ -1,5 +1,17 @@
 # Avatar and environment work
 
+FULL SLOW INITIALIZATION REVIEWED — 23 November: Paul reported `370cb9` complete.
+Both complete 2,913-file copies, 2,268 Git files, runtime/binaries, exact 379
+managed cases, eight original equilibria and four 147-unit equilibria verified.
+Six-file review at artifacts/muscle-population-initial-20261123-370cb9-review
+is D:-verified. Candidate resting fibers are 1.003945/1.003947 optimal length;
+original reference dimensions gave .473953/.492694. Capacity unchanged, no
+anatomical calibration or active population/standing qualification. No pending
+windows. Preparing active 147-unit comparison from these exact saved initial
+states, preserving current numerical limits and biological equations. Tests
+execute only in visible independent PowerShell; no live monitoring. Goal active.
+The older pending statements below are superseded by this completed review.
+
 FULL SLOW POPULATION INITIAL WINDOW LAUNCHED — 23 November: independent visible
 task `DNNE-Muscle-Population-Initial-6f354a9ff2dc` started for
 `D:/DNNE-build-work/muscle-population-initial-20261123-370cb9`, frozen at pushed

@@ -6,6 +6,12 @@ slow TA units. It does not implement the 53 fast units or recruit motor neurons.
 Execution belongs in an independent visible PowerShell window with no live
 monitoring. A final footer is required before reviewing results.
 
+Launched on 23 November as `muscle-population-active-20261123-a212b5` from
+pushed revision `3ac6ecb089eff59ee96b1e7edb2c4a2d41b0eb36`. Initial package and
+D: backup each verified 2,329 files plus manifest. Interactive PowerShell task
+`DNNE-Muscle-Population-Active-f262deb0578f` accepted the launch. No subsequent
+process or result inspection; outcome is pending Paul's final report.
+
 ## Inputs fixed before execution
 
 Both sides retain their exact saved candidate fiber lengths, measured muscle

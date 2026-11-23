@@ -1,5 +1,18 @@
 # Avatar and environment work
 
+ACTIVE SLOW POPULATION WINDOW LAUNCHED — 23 November: visible independent task
+`DNNE-Muscle-Population-Active-f262deb0578f` started for
+`D:/DNNE-build-work/muscle-population-active-20261123-a212b5`, frozen at pushed
+`3ac6ecb089eff59ee96b1e7edb2c4a2d41b0eb36`. Both initial 2,329-file copies plus
+manifest verified. 379 managed/eight original Decimal/eight packaging controls,
+108 scalar/vector and six Jacobian checks, then 24 full 147-unit trajectories
+and 24 independent references execute there. Exactly ONE pending report:
+`a212b5`. No postlaunch output/process/status inspected. Wait for Paul's final
+backup/footer; no live monitoring. `370cb9` and six-file D:-verified review are
+complete. No Unity/neuronal execution in the new study; biological kernels and
+accuracy limits unchanged. Goal active and incomplete. Older "no pending"
+statements below describe preparation and are superseded by this launch.
+
 ACTIVE SLOW POPULATION AUTHORED — 23 November: next workflow is
 `fresh_motor_epoch_study.py prepare --population-dynamics`. Exact completed
 `370cb9` candidate initial states, 147 distinct slow units and original force
